@@ -1,0 +1,248 @@
+<div class="profile-page-container">
+  <div class="ambient-overlay"></div>
+
+  <!-- Barra Superior -->
+  <header class="top-nav">
+    <a routerLink="/" class="brand">
+      <img src="/logo-club-experiencias.png" alt="Club de Experiencias Logo" class="brand-logo-img" />
+      <div class="brand-text">
+        <span class="brand-title">EXPERIENCIAS.CLUB</span>
+        <span class="brand-tag">EDICIÓN CATAMARCA 2026</span>
+      </div>
+    </a>
+
+    <nav class="nav-actions">
+      <a routerLink="/" class="nav-pill-btn">
+        <mat-icon class="btn-icon">arrow_back</mat-icon>
+        Volver al Inicio
+      </a>
+      <button class="nav-pill-btn logout-btn" (click)="logout()">
+        <mat-icon class="btn-icon">logout</mat-icon>
+        Cerrar Sesión
+      </button>
+    </nav>
+  </header>
+
+  <!-- Contenido Principal de Perfil -->
+  <main class="profile-main-content">
+    <div class="profile-wrapper">
+      
+      <!-- Encabezado de Perfil -->
+      <div class="profile-header-card">
+        <div class="profile-kicker-row">
+          <span class="profile-kicker">MEMBRESÍA & PERFIL DE SOCIO</span>
+          <span class="verified-tag">✦ CUENTA VERIFICADA</span>
+        </div>
+        
+        <h1 class="profile-title">Mi Perfil de Expedicionario</h1>
+        <p class="profile-lead">
+          Gestioná tus credenciales, consultá tus comprobantes fiscales y descubrí cómo evolucionar tu membresía dentro del Club.
+        </p>
+
+        <!-- Bloque de ESTADO ACTUAL (Destacado Principal) -->
+        <div class="current-status-banner">
+          <div class="status-top-row">
+            <span class="status-indicator-badge">
+              <span class="status-dot"></span>
+              ESTADO ACTUAL
+            </span>
+            <span class="status-season-badge">TEMPORADA CATAMARCA 2026</span>
+          </div>
+
+          <div class="status-main-row">
+            <div class="status-role-wrap">
+              <h2 class="status-role-title">
+                Socio Emergente #{{ newsletter.currentMember()?.position || 143 }}
+              </h2>
+              <span class="status-email">● {{ newsletter.currentMember()?.email || 'socio@experiencias.club' }}</span>
+            </div>
+
+            <div class="status-badge-level">
+              <span class="level-num">NIVEL 1</span>
+              <span class="level-label">PUNTO DE PARTIDA</span>
+            </div>
+          </div>
+
+          <div class="status-jump-callout">
+            <div class="jump-callout-icon">➔</div>
+            <div class="jump-callout-text">
+              <strong>Cómo dar el salto a Socio Activo:</strong>
+              <span>Completá tu 1ª expedición en Catamarca o activá tu cuota mensual.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Grid de Credenciales y Referidos -->
+      <div class="profile-details-grid">
+        <div class="detail-box">
+          <div class="detail-box-header">
+            <mat-icon class="detail-icon">badge</mat-icon>
+            <span class="detail-label">IDENTIFICADOR DE SOCIO</span>
+          </div>
+          <div class="detail-val">#{{ newsletter.currentMember()?.position || 143 }}</div>
+          <div class="detail-sub">Prioridad garantizada en lista de espera 2026</div>
+        </div>
+
+        <div class="detail-box">
+          <div class="detail-box-header">
+            <mat-icon class="detail-icon">mail</mat-icon>
+            <span class="detail-label">CORREO ASOCIADO</span>
+          </div>
+          <div class="detail-val text-truncate">{{ newsletter.currentMember()?.email || 'socio@experiencias.club' }}</div>
+          <div class="detail-sub">Comprobantes y bitácoras enviadas a este email</div>
+        </div>
+
+        <div class="detail-box">
+          <div class="detail-box-header">
+            <mat-icon class="detail-icon">share</mat-icon>
+            <span class="detail-label">CÓDIGO DE INVITACIÓN</span>
+          </div>
+          <div class="referral-copy-row">
+            <span class="referral-code">{{ newsletter.currentMember()?.referralCode || 'CAT-2026-EXP' }}</span>
+            <button class="copy-code-btn" (click)="copyReferralCode()" aria-label="Copiar código">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
+                <rect x="9" y="9" width="13" height="13" rx="1" ry="1"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              Copiar
+            </button>
+          </div>
+          @if (copyStatus()) {
+          <div class="copy-feedback-msg">{{ copyStatus() }}</div>
+          } @else {
+          <div class="detail-sub">Sumá referidos para acelerar tu posición</div>
+          }
+        </div>
+      </div>
+
+      <!-- Sección: Historial de Actividades & Comprobantes -->
+      <div class="profile-section-card">
+        <div class="section-header-row">
+          <div>
+            <span class="section-kicker">DOCUMENTACIÓN OFICIAL</span>
+            <h3 class="section-title">Historial de Actividades & Comprobantes</h3>
+          </div>
+          <span class="section-badge">DEMO INTERACTIVA</span>
+        </div>
+
+        <p class="section-lead">
+          Accedé a tus salidas confirmadas y comprobantes con código de autorización bancaria y fiscal:
+        </p>
+
+        <div class="activities-list">
+          @for (act of activityService.activities(); track act.id) {
+          <div class="activity-card">
+            <div class="activity-media" [style.background-image]="'url(' + act.coverImage + ')'"></div>
+
+            <div class="activity-content">
+              <div class="activity-tag-row">
+                <span class="activity-status" [class]="act.status">
+                  ● {{ act.status === 'completada' ? 'Completada' : 'Confirmada' }}
+                </span>
+                <span class="activity-region">{{ act.region }} ({{ act.altitude }})</span>
+              </div>
+
+              <h4 class="activity-title">{{ act.title }}</h4>
+              <p class="activity-provider">Prestador: <strong>{{ act.provider.name }}</strong></p>
+              <p class="activity-date">📅 {{ act.dateLabel }} · Recibo Nº {{ act.receipt.receiptNumber }}</p>
+            </div>
+
+            <div class="activity-actions">
+              <span class="receipt-amount-hint">${{ act.receipt.amountArs.toLocaleString('es-AR') }} ARS</span>
+              <button class="receipt-btn" (click)="openReceipt(act.receipt, $event)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <line x1="16" y1="13" x2="8" y2="13" />
+                  <line x1="16" y1="17" x2="8" y2="17" />
+                </svg>
+                Ver Comprobante
+              </button>
+            </div>
+          </div>
+          }
+        </div>
+      </div>
+
+      <!-- Navegación inferior -->
+      <div class="profile-bottom-actions">
+        <a routerLink="/" class="back-home-btn">
+          <mat-icon>arrow_back</mat-icon>
+          Volver a la Portada
+        </a>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Modal Comprobante Oficial -->
+  @if (activityService.selectedReceipt()) {
+  <div class="modal-backdrop" (click)="closeReceipt()">
+    <div class="receipt-voucher-card" (click)="$event.stopPropagation()">
+      <div class="voucher-top">
+        <div>
+          <span class="voucher-brand-title">EXPERIENCIAS.CLUB</span>
+          <span class="voucher-subtitle">COMPROBANTE OFICIAL DE RESERVA</span>
+        </div>
+        <div class="voucher-seal">
+          <span>✓</span>
+          <span>PAGO APROBADO</span>
+        </div>
+      </div>
+
+      <div class="voucher-grid">
+        <div class="voucher-item">
+          <span class="voucher-lbl">Nº DE COMPROBANTE</span>
+          <span class="voucher-val">{{ activityService.selectedReceipt()?.receiptNumber }}</span>
+        </div>
+
+        <div class="voucher-item">
+          <span class="voucher-lbl">FECHA Y HORA</span>
+          <span class="voucher-val">{{ activityService.selectedReceipt()?.paidAt }}</span>
+        </div>
+
+        <div class="voucher-item">
+          <span class="voucher-lbl">ID DE TRANSACCIÓN</span>
+          <span class="voucher-val">{{ activityService.selectedReceipt()?.transactionId }}</span>
+        </div>
+
+        <div class="voucher-item">
+          <span class="voucher-lbl">CÓDIGO DE AUTORIZACIÓN</span>
+          <span class="voucher-val">{{ activityService.selectedReceipt()?.authCode }}</span>
+        </div>
+
+        <div class="voucher-item">
+          <span class="voucher-lbl">MÉTODO DE PAGO</span>
+          <span class="voucher-val">{{ activityService.selectedReceipt()?.gatewayDisplayName }}</span>
+        </div>
+
+        <div class="voucher-item">
+          <span class="voucher-lbl">TITULAR DE RESERVA</span>
+          <span class="voucher-val">{{ activityService.selectedReceipt()?.payerName }}</span>
+        </div>
+      </div>
+
+      <div class="voucher-total-box">
+        <div class="total-lbl">TOTAL ABONADO</div>
+        <div class="total-values">
+          <span class="amount-main">${{ activityService.selectedReceipt()?.amountArs?.toLocaleString('es-AR') }} ARS</span>
+          <span class="amount-usd">Equivalente: ${{ activityService.selectedReceipt()?.amountUsd }} USD</span>
+        </div>
+      </div>
+
+      <div class="voucher-footer-msg">
+        Este documento certifica la reserva oficial para la expedición turística en la Provincia de Catamarca. Válido ante las autoridades provinciales y prestadores habilitados.
+      </div>
+
+      <div class="voucher-actions">
+        <button class="pill-action-btn secondary" (click)="closeReceipt()">Cerrar</button>
+        <button class="pill-action-btn" (click)="printReceipt()">
+          <mat-icon style="font-size: 16px; width: 16px; height: 16px; line-height: 16px;">print</mat-icon>
+          Imprimir / Descargar PDF
+        </button>
+      </div>
+    </div>
+  </div>
+  }
+</div>

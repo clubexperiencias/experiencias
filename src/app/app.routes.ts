@@ -7,6 +7,11 @@ export const routes: Routes = [
       import('./features/waitlist/waitlist.component').then((m) => m.WaitlistComponent)
   },
   {
+    path: 'perfil',
+    loadComponent: () =>
+      import('./features/profile/profile.component').then((m) => m.ProfileComponent)
+  },
+  {
     path: '**',
     redirectTo: ''
   }

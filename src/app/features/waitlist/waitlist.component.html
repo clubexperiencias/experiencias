@@ -4,109 +4,86 @@
 
   <!-- Barra Superior -->
   <header class="top-nav" [class.menu-open]="mobileMenuOpen()">
-    <div class="brand">
+    <a routerLink="/" class="brand">
       <img src="/logo-club-experiencias.png" alt="Club de Experiencias Logo" class="brand-logo-img" />
       <div class="brand-text">
         <span class="brand-title">EXPERIENCIAS.CLUB</span>
         <span class="brand-tag">EDICIÓN CATAMARCA 2026</span>
       </div>
-    </div>
+    </a>
 
     <!-- Botón Hamburguesa Mobile (solo visible en pantallas móviles) -->
     <button class="mobile-menu-toggle-btn" (click)="toggleMobileMenu($event)" [class.active]="mobileMenuOpen()"
       aria-label="Abrir menú de navegación">
       @if (mobileMenuOpen()) {
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="hamburger-icon">
-        <line x1="18" y1="6" x2="6" y2="18" />
-        <line x1="6" y1="6" x2="18" y2="18" />
-      </svg>
+      <mat-icon class="hamburger-icon">close</mat-icon>
       } @else {
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="hamburger-icon">
-        <line x1="4" y1="7" x2="20" y2="7" />
-        <line x1="4" y1="12" x2="20" y2="12" />
-        <line x1="4" y1="17" x2="20" y2="17" />
-      </svg>
+      <mat-icon class="hamburger-icon">menu</mat-icon>
       }
     </button>
 
     <!-- Navegación Desktop -->
     <nav class="nav-actions">
       <button class="nav-pill-btn" (click)="openModal('tiers')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
-          <path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7z" />
-          <path d="M5 20h14" />
-        </svg>
+        <mat-icon class="btn-icon">military_tech</mat-icon>
         Niveles de Socio
       </button>
 
       <button class="nav-pill-btn" (click)="openModal('experiences')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
-          <path d="m8 3 4 8 5-5 5 15H2L8 3z" />
-        </svg>
+        <mat-icon class="btn-icon">explore</mat-icon>
         Experiencias
       </button>
 
       <button class="nav-pill-btn" (click)="openModal('providers')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
-          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-          <circle cx="9" cy="7" r="4" />
-          <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-        </svg>
+        <mat-icon class="btn-icon">handshake</mat-icon>
         Prestadores & Guías
       </button>
 
-      <!-- Menú Desplegable de Perfil -->
+      <!-- Menú Desktop: Si hay sesión iniciada muestra Perfil, si no muestra Iniciar Sesión -->
+      @if (newsletter.isSubscribed()) {
       <div class="profile-menu-container">
         <button class="nav-pill-btn profile-btn" [class.active]="profileMenuOpen()" (click)="toggleProfileMenu($event)"
           aria-label="Menú de perfil">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-            <circle cx="12" cy="7" r="4" />
-          </svg>
+          <mat-icon class="btn-icon">account_circle</mat-icon>
           <span>Perfil</span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="chevron-icon"
-            [class.rotated]="profileMenuOpen()">
-            <path d="m6 9 6 6 6-6" />
-          </svg>
+          <mat-icon class="chevron-icon" [class.rotated]="profileMenuOpen()">expand_more</mat-icon>
         </button>
 
         @if (profileMenuOpen()) {
         <div class="profile-dropdown-menu" (click)="$event.stopPropagation()">
           <div class="dropdown-header">
-            @if (newsletter.isSubscribed()) {
             <span class="dropdown-user-role">SOCIO EMERGENTE #{{ newsletter.currentMember()?.position }}</span>
             <span class="dropdown-user-status">● {{ newsletter.currentMember()?.email }}</span>
-            } @else {
-            <span class="dropdown-user-role">MIEMBROS & SOCIOS</span>
-            <span class="dropdown-user-status">● Edición Catamarca 2026</span>
-            }
           </div>
 
           <div class="dropdown-divider"></div>
 
+          <a routerLink="/perfil" class="dropdown-item" (click)="profileMenuOpen.set(false)">
+            <mat-icon class="item-icon">account_circle</mat-icon>
+            <span class="item-label">Mi Perfil</span>
+          </a>
+
           <button type="button" class="dropdown-item" (click)="openModal('history')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="item-icon">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-              <line x1="16" y1="13" x2="8" y2="13" />
-              <line x1="16" y1="17" x2="8" y2="17" />
-            </svg>
+            <mat-icon class="item-icon">receipt_long</mat-icon>
             <span class="item-label">Historial & Recibos</span>
             <span class="demo-tag">DEMO</span>
           </button>
 
-          <button type="button" class="dropdown-item" (click)="openModal('payments')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="item-icon">
-              <rect width="20" height="14" x="2" y="5" rx="2" />
-              <line x1="2" x2="22" y1="10" y2="10" />
-            </svg>
-            <span class="item-label">Pasarelas de Pago</span>
-            <span class="demo-tag">DEMO</span>
+          <div class="dropdown-divider"></div>
+
+          <button type="button" class="dropdown-item logout-item" (click)="logout()">
+            <mat-icon class="item-icon">logout</mat-icon>
+            <span class="item-label">Cerrar Sesión</span>
           </button>
         </div>
         }
       </div>
+      } @else {
+      <button class="nav-pill-btn login-nav-btn" (click)="openLoginModal()">
+        <mat-icon class="btn-icon">login</mat-icon>
+        <span>Iniciar Sesión</span>
+      </button>
+      }
     </nav>
 
     <!-- Panel de Menú Mobile (Desplegable natural desde la barra superior) -->
@@ -120,64 +97,56 @@
       <div class="mobile-nav-list">
         <button class="mobile-nav-row" (click)="openModal('tiers')">
           <div class="row-icon-wrap">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="nav-svg-icon">
-              <path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7z" />
-              <path d="M5 20h14" />
-            </svg>
+            <mat-icon class="nav-svg-icon">military_tech</mat-icon>
           </div>
           <div class="row-text-wrap">
             <span class="row-title">Niveles de Socio y Membresías</span>
             <span class="row-sub">Socio Emergente, Activo y Fundador Vitalicio</span>
           </div>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="row-arrow">
-            <path d="m9 18 6-6-6-6" />
-          </svg>
+          <mat-icon class="row-arrow">chevron_right</mat-icon>
         </button>
 
         <button class="mobile-nav-row" (click)="openModal('experiences')">
           <div class="row-icon-wrap">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="nav-svg-icon">
-              <path d="m8 3 4 8 5-5 5 15H2L8 3z" />
-            </svg>
+            <mat-icon class="nav-svg-icon">explore</mat-icon>
           </div>
           <div class="row-text-wrap">
             <span class="row-title">Experiencias Destacadas</span>
             <span class="row-sub">Puna andina, Seismiles y aguas calmas</span>
           </div>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="row-arrow">
-            <path d="m9 18 6-6-6-6" />
-          </svg>
+          <mat-icon class="row-arrow">chevron_right</mat-icon>
         </button>
 
         <button class="mobile-nav-row" (click)="openModal('providers')">
           <div class="row-icon-wrap">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="nav-svg-icon">
-              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-              <circle cx="9" cy="7" r="4" />
-              <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-            </svg>
+            <mat-icon class="nav-svg-icon">handshake</mat-icon>
           </div>
           <div class="row-text-wrap">
             <span class="row-title">Prestadores & Guías Locales</span>
             <span class="row-sub">Postulación para sumar tu travesía</span>
           </div>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="row-arrow">
-            <path d="m9 18 6-6-6-6" />
-          </svg>
+          <mat-icon class="row-arrow">chevron_right</mat-icon>
         </button>
 
         <div class="mobile-nav-separator"></div>
-        <span class="mobile-section-label">MI CUENTA & DEMO</span>
+        <span class="mobile-section-label">MI CUENTA</span>
+
+        @if (newsletter.isSubscribed()) {
+        <a routerLink="/perfil" class="mobile-nav-row" (click)="mobileMenuOpen.set(false)"
+          style="text-decoration: none;">
+          <div class="row-icon-wrap">
+            <mat-icon class="nav-svg-icon">account_circle</mat-icon>
+          </div>
+          <div class="row-text-wrap">
+            <span class="row-title">Mi Perfil</span>
+            <span class="row-sub">Estado de Socio y Comprobantes</span>
+          </div>
+          <mat-icon class="row-arrow">chevron_right</mat-icon>
+        </a>
 
         <button class="mobile-nav-row" (click)="openModal('history')">
           <div class="row-icon-wrap">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="nav-svg-icon">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-              <line x1="16" y1="13" x2="8" y2="13" />
-              <line x1="16" y1="17" x2="8" y2="17" />
-            </svg>
+            <mat-icon class="nav-svg-icon">receipt_long</mat-icon>
           </div>
           <div class="row-text-wrap">
             <span class="row-title">Historial & Comprobantes</span>
@@ -186,19 +155,27 @@
           <span class="demo-tag">DEMO</span>
         </button>
 
-        <button class="mobile-nav-row" (click)="openModal('payments')">
+        <button class="mobile-nav-row logout-row" (click)="logout()">
           <div class="row-icon-wrap">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="nav-svg-icon">
-              <rect width="20" height="14" x="2" y="5" rx="2" />
-              <line x1="2" x2="22" y1="10" y2="10" />
-            </svg>
+            <mat-icon class="nav-svg-icon">logout</mat-icon>
           </div>
           <div class="row-text-wrap">
-            <span class="row-title">Pasarelas de Pago</span>
-            <span class="row-sub">Mercado Pago & Pasarela Custom</span>
+            <span class="row-title">Cerrar Sesión</span>
+            <span class="row-sub">Finalizar sesión en este dispositivo</span>
           </div>
-          <span class="demo-tag">DEMO</span>
         </button>
+        } @else {
+        <button class="mobile-nav-row" (click)="openLoginModal()">
+          <div class="row-icon-wrap">
+            <mat-icon class="nav-svg-icon">login</mat-icon>
+          </div>
+          <div class="row-text-wrap">
+            <span class="row-title">Iniciar Sesión</span>
+            <span class="row-sub">Accedé con tu email de socio</span>
+          </div>
+          <mat-icon class="row-arrow">chevron_right</mat-icon>
+        </button>
+        }
       </div>
     </div>
     }
@@ -215,12 +192,15 @@
 
       <!-- Badge de Lanzamiento -->
       <div class="badge-pill">
-        <span class="badge-dot"></span>
-        TEMPORADA INAUGURAL • NOVIEMBRE 2026
+        <span class="badge-main-line">
+          <span class="badge-dot"></span>
+          <span>TEMPORADA INAUGURAL</span>
+        </span>
+        <span class="badge-sub-line">+ NOVIEMBRE 2026</span>
       </div>
 
       <!-- Título Editorial -->
-      <h1 class="hero-title">EXPERIENCIAS</h1>
+      <h1 class="hero-title">Experiencias</h1>
 
       <!-- Subtítulo -->
       <p class="hero-subtitle">
@@ -228,14 +208,14 @@
         travesías 4x4 y kayak junto a prestadores locales. Cupos limitados.
       </p>
 
-      <!-- ═══════════════ FORMULARIO CÁPSULA (ESTADO INICIAL) ═══════════════ -->
-      @if (!newsletter.isSubscribed()) {
+      <!-- ═══════════════ FORMULARIO CÁPSULA (SIEMPRE VISIBLE EN /) ═══════════════ -->
       <div class="pill-form-container">
         <div class="pill-form">
           <span class="input-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect width="20" height="16" x="2" y="4" rx="2" />
-              <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+              stroke-linejoin="round" class="mail-svg-icon">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+              <polyline points="22,6 12,13 2,6" />
             </svg>
           </span>
 
@@ -248,10 +228,7 @@
             @if (newsletter.isLoading()) {
             <span class="spinner"></span>
             } @else {
-            <svg viewBox="0 0 16 16" fill="currentColor" class="arrow-icon">
-              <path fill-rule="evenodd"
-                d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8z" />
-            </svg>
+            <mat-icon class="arrow-icon">arrow_forward</mat-icon>
             }
           </button>
         </div>
@@ -260,6 +237,12 @@
         <p class="error-text">{{ newsletter.errorMessage() }}</p>
         }
 
+        @if (newsletter.isSubscribed()) {
+        <div class="user-active-session-hint">
+          <span>✦ Sesión activa como <strong>Socio Emergente #{{ newsletter.currentMember()?.position }}</strong></span>
+          <a routerLink="/perfil" class="session-profile-link">Ver mi perfil →</a>
+        </div>
+        } @else {
         <div class="micro-copy">
           <span>Suscripción gratuita</span>
           <span class="dot">✦</span>
@@ -267,150 +250,8 @@
           <span class="dot">✦</span>
           <span>Sin spam</span>
         </div>
+        }
       </div>
-      }
-
-      <!-- ═══════════════ TARJETA DE CONFIRMACIÓN DE SOCIO EMERGENTE ═══════════════ -->
-      @if (newsletter.isSubscribed()) {
-      <div class="confirmed-card">
-        <div class="confirmed-header">
-          <div class="check-circle">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-          </div>
-          <div>
-            <span class="confirmed-tag">ESTADO ACTUAL</span>
-            <h2 class="confirmed-title">Socio Emergente #{{ newsletter.currentMember()?.position }}</h2>
-          </div>
-        </div>
-
-        <p class="confirmed-desc">
-          Registramos tu suscripción con <strong>{{ newsletter.currentMember()?.email }}</strong>.
-          Ya formás parte de la lista de espera oficial del club como <strong>Socio Emergente</strong>.
-        </p>
-
-        <!-- ═══════════════ FORMULARIO: PERFIL DE SOCIO EMERGENTE ═══════════════ -->
-        <div class="profile-completion-card">
-          <div class="completion-header">
-            <div class="completion-badge">
-              <span class="sparkle">✦</span>
-              DATOS DE MEMBRESÍA
-            </div>
-            <h3 class="completion-title">Completá tu perfil de Socio Emergente</h3>
-            <p class="completion-subtitle">
-              Priorizaremos tu cupo según las expediciones y travesías que elijas.
-            </p>
-          </div>
-
-          @if (!profileSaved()) {
-          <form class="profile-completion-form" (submit)="$event.preventDefault(); saveMemberProfile()">
-            <div class="profile-inputs-grid">
-              <div class="form-field">
-                <label for="member-name" class="field-label">Nombre y Apellido <span class="req">*</span></label>
-                <input id="member-name" type="text" class="field-input" placeholder="Ej. Martín Rodríguez"
-                  [value]="memberFullName()" (input)="memberFullName.set($any($event.target).value)" required />
-              </div>
-
-              <div class="form-field">
-                <label for="member-nationality" class="field-label">Nacionalidad <span class="req">*</span></label>
-                <input id="member-nationality" type="text" class="field-input"
-                  placeholder="Ej. Argentina, Chilena, Uruguaya..." [value]="memberNationality()"
-                  (input)="memberNationality.set($any($event.target).value)" required />
-              </div>
-            </div>
-
-            <div class="form-field">
-              <label class="field-label">
-                ¿Qué experiencias tenés más ganas de vivir? <span class="req">*</span>
-                <span class="field-hint">(Elegí una o varias opciones)</span>
-              </label>
-
-              <div class="wishlist-chips-grid">
-                @for (exp of wishlistExperiences; track exp.id) {
-                <button type="button" class="wishlist-chip" [class.selected]="isExperienceSelected(exp.id)"
-                  (click)="toggleExperienceWishlist(exp.id)">
-                  <span class="chip-icon">{{ exp.icon }}</span>
-                  <span class="chip-title">{{ exp.title }}</span>
-                  <span class="chip-action">
-                    @if (isExperienceSelected(exp.id)) { ✓ } @else { + }
-                  </span>
-                </button>
-                }
-              </div>
-            </div>
-
-            <div class="form-field">
-              <label for="member-notes" class="field-label">
-                Contanos sobre vos y tus expectativas <span class="opt">(opcional)</span>
-              </label>
-              <textarea id="member-notes" class="field-textarea" rows="3"
-                placeholder="Ej. Soy prestador de servicios turísticos en Catamarca, quiero conectar con otros prestadores e incluso participar de nuevas experiencias en pareja o en familia."
-                [value]="memberNotes()" (input)="memberNotes.set($any($event.target).value)"></textarea>
-            </div>
-
-            <button type="button" class="save-profile-btn" (click)="saveMemberProfile()"
-              [disabled]="!memberFullName().trim() || !memberNationality().trim() || selectedExperiences().length === 0">
-              <span>Guardar Perfil de Socio Emergente</span>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="save-icon">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-            </button>
-          </form>
-          } @else {
-          <!-- Resumen de Perfil Completado -->
-          <div class="profile-saved-box">
-            <div class="saved-icon-badge">✓</div>
-            <div class="saved-details">
-              <div class="saved-header-row">
-                <h4>¡Perfil de socio registrado con éxito!</h4>
-                <button type="button" class="edit-data-btn" (click)="editMemberProfile()">
-                  Editar datos
-                </button>
-              </div>
-              <p class="saved-member-name">
-                <strong>{{ memberFullName() }}</strong> · Nacionalidad: <span>{{ memberNationality() }}</span>
-              </p>
-              <div class="saved-chips-list">
-                @for (expId of selectedExperiences(); track expId) {
-                <span class="saved-chip">{{ getExperienceTitle(expId) }}</span>
-                }
-              </div>
-              @if (memberNotes().trim()) {
-              <p class="saved-note"><strong>Sobre vos y expectativas:</strong> "{{ memberNotes() }}"</p>
-              }
-            </div>
-          </div>
-          }
-        </div>
-
-        <div class="referral-share-box">
-          <div class="ref-single-row">
-            <span class="ref-label">CÓDIGO DE INVITACIÓN:</span>
-            <code class="ref-code">{{ newsletter.currentMember()?.referralCode }}</code>
-            <button class="copy-code-subtle-btn" (click)="copyLink()" title="Copiar enlace de invitación">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="copy-icon">
-                <rect width="14" height="14" x="8" y="8" rx="2" />
-                <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
-              </svg>
-              <span class="copy-btn-text">Copiar enlace</span>
-            </button>
-          </div>
-
-          @if (copyStatus()) {
-          <div class="toast-feedback">{{ copyStatus() }}</div>
-          }
-
-          <div class="ref-bottom-row">
-            <span class="ref-share-hint">Compartí con otros viajeros:</span>
-            <div class="ref-share-btns">
-              <button class="share-btn wa" (click)="shareWhatsApp()">WhatsApp</button>
-              <button class="share-btn tw" (click)="shareX()">X / Twitter</button>
-            </div>
-          </div>
-        </div>
-      </div>
-      }
 
       <!-- Chip de Cupos Disponibles -->
       <div class="counter-chip">
@@ -445,7 +286,7 @@
           <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
           <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
         </svg>
-        <span>@experiencias.club</span>
+        <span>experiencias.club</span>
       </a>
     </div>
   </footer>
@@ -453,6 +294,44 @@
   <!-- ═══════════════ MODALES INTERACTIVOS ═══════════════ -->
   @if (activeModal()) {
   <div class="modal-backdrop" (click)="onBackdropClick($event)">
+
+    <!-- Modal: Iniciar Sesión -->
+    @if (activeModal() === 'login') {
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <span class="modal-kicker">ACCESO DE SOCIOS</span>
+          <h3 class="modal-heading">Iniciar Sesión</h3>
+        </div>
+        <button class="modal-close-btn" (click)="closeModal()"
+          aria-label="Cerrar modal"><mat-icon>close</mat-icon></button>
+      </div>
+
+      <p class="modal-lead login-lead">
+        Ingresá tu correo electrónico para acceder a tu perfil de socio y comprobantes:
+      </p>
+
+      <div class="login-modal-box">
+        <div class="login-input-wrap">
+          <label for="login-modal-email" class="login-field-lbl">Correo Electrónico</label>
+          <input id="login-modal-email" type="email" class="login-modal-input" placeholder="tu-correo@ejemplo.com"
+            [value]="loginEmail()" (input)="loginEmail.set($any($event.target).value)" (keyup.enter)="submitLogin()" />
+        </div>
+
+        @if (loginError()) {
+        <p class="error-text" style="margin-top: 0.6rem;">{{ loginError() }}</p>
+        }
+
+        <div class="modal-footer" style="margin-top: 1.4rem;">
+          <button class="pill-action-btn secondary" (click)="closeModal()">Cancelar</button>
+          <button class="pill-action-btn" (click)="submitLogin()"
+            [disabled]="!loginEmail().trim() || newsletter.isLoading()">
+            Ingresar
+          </button>
+        </div>
+      </div>
+    </div>
+    }
 
     <!-- Modal: Niveles de Socio (Flow de Membresías) -->
     @if (activeModal() === 'tiers') {
@@ -462,27 +341,8 @@
           <span class="modal-kicker">PLAN DE MEMBRESÍAS Y EVOLUCIÓN</span>
           <h3 class="modal-heading">Niveles de Socio del Club</h3>
         </div>
-        <button class="modal-close-btn" (click)="closeModal()" aria-label="Cerrar modal">&times;</button>
-      </div>
-
-      <!-- Roadmap dinámico según el nivel actual del usuario -->
-      <div class="tier-user-banner" [class.is-member]="newsletter.isSubscribed()">
-        @if (newsletter.isSubscribed()) {
-        <div class="banner-status-icon">✓</div>
-        <div class="banner-status-text">
-          <span class="banner-title">Tu estado actual: <strong>Socio Emergente #{{ newsletter.currentMember()?.position
-              }}</strong></span>
-          <span class="banner-subtitle">Para saltar a <strong>Socio Activo</strong>, completá tu 1ª expedición en
-            Catamarca o activá tu cuota mensual.</span>
-        </div>
-        } @else {
-        <div class="banner-status-icon dot">✦</div>
-        <div class="banner-status-text">
-          <span class="banner-title">Iniciá tu camino en <strong>EXPERIENCIAS.CLUB</strong></span>
-          <span class="banner-subtitle">Registrate en la lista de espera oficial como Socio Emergente sin costo
-            alguno.</span>
-        </div>
-        }
+        <button class="modal-close-btn" (click)="closeModal()"
+          aria-label="Cerrar modal"><mat-icon>close</mat-icon></button>
       </div>
 
       <div class="tiers-grid">
@@ -632,7 +492,8 @@
           </div>
           <h3 class="modal-heading founder-heading">Carta de Postulación · Socio Fundador</h3>
         </div>
-        <button class="modal-close-btn" (click)="closeModal()" aria-label="Cerrar modal">&times;</button>
+        <button class="modal-close-btn" (click)="closeModal()"
+          aria-label="Cerrar modal"><mat-icon>close</mat-icon></button>
       </div>
 
       @if (!founderSuccess()) {
@@ -837,7 +698,8 @@
             <span class="demo-tag">DEMO</span>
           </div>
         </div>
-        <button class="modal-close-btn" (click)="closeModal()" aria-label="Cerrar modal">&times;</button>
+        <button class="modal-close-btn" (click)="closeModal()"
+          aria-label="Cerrar modal"><mat-icon>close</mat-icon></button>
       </div>
 
       <p class="modal-lead">
@@ -895,7 +757,8 @@
           <span class="modal-kicker">CURADURÍA EXCLUSIVA</span>
           <h3 class="modal-heading">Expediciones de Alta Montaña & Náuticas</h3>
         </div>
-        <button class="modal-close-btn" (click)="closeModal()" aria-label="Cerrar modal">&times;</button>
+        <button class="modal-close-btn" (click)="closeModal()"
+          aria-label="Cerrar modal"><mat-icon>close</mat-icon></button>
       </div>
 
       <p class="modal-lead">
@@ -995,7 +858,8 @@
           <span class="modal-kicker provider-modal-kicker">COMUNIDAD DE PRESTADORES</span>
           <h3 class="modal-heading">Sé Parte del Club de Experiencias</h3>
         </div>
-        <button class="modal-close-btn" (click)="closeModal()" aria-label="Cerrar modal">&times;</button>
+        <button class="modal-close-btn" (click)="closeModal()"
+          aria-label="Cerrar modal"><mat-icon>close</mat-icon></button>
       </div>
 
       <p class="modal-lead">
@@ -1007,22 +871,22 @@
 
       <div class="provider-benefits-grid">
         <div class="provider-benefit-card">
-          <span class="p-icon">🧭</span>
-          <h4>Cobros Garantizados</h4>
-          <p>Recibí pagos automáticos en tu cuenta bancaria o CBU sin intermediarios ni demoras.</p>
+          <mat-icon class="p-mat-icon">campaign</mat-icon>
+          <h4>Exposición & Publicidad</h4>
+          <p>Destaque prioritario en portada, recomendaciones directas a socios y difusión oficial.</p>
         </div>
         <div class="provider-benefit-card">
-          <span class="p-icon">🛡️</span>
+          <mat-icon class="p-mat-icon">verified_user</mat-icon>
           <h4>Socios Calificados</h4>
           <p>Comunidad privada de miembros que respetan la naturaleza, la cultura y el esfuerzo del guía.</p>
         </div>
         <div class="provider-benefit-card">
-          <span class="p-icon">📱</span>
+          <mat-icon class="p-mat-icon">tune</mat-icon>
           <h4>Panel de Gestión</h4>
           <p>Cargá tus salidas, fechas disponibles, cupos máximos y tarifas de manera simple.</p>
         </div>
         <div class="provider-benefit-card">
-          <span class="p-icon">⭐</span>
+          <mat-icon class="p-mat-icon">hotel_class</mat-icon>
           <h4>Reputación & Reseñas</h4>
           <p>Construí un perfil verificado con calificaciones reales de tus expedicionarios.</p>
         </div>
@@ -1033,7 +897,8 @@
       <div class="provider-form-box">
         <h4 class="provider-form-title">Pre-registro de Prestadores Fundadores</h4>
         <p class="provider-form-desc">
-          Completá tus datos para ser de los primeros prestadores aprobados con comisión 0% en la temporada inaugural.
+          Completá tus datos para ser de los primeros prestadores aprobados con <strong>máxima exposición y publicidad
+            prioritaria</strong> en la plataforma.
         </p>
 
         <div class="provider-form-grid">
@@ -1097,7 +962,8 @@
             <span class="demo-tag">DEMO</span>
           </div>
         </div>
-        <button class="modal-close-btn" (click)="closeModal()" aria-label="Cerrar modal">&times;</button>
+        <button class="modal-close-btn" (click)="closeModal()"
+          aria-label="Cerrar modal"><mat-icon>close</mat-icon></button>
       </div>
 
       <p class="modal-lead">

@@ -1,13 +1,16 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { WaitlistComponent } from './waitlist.component';
 
-describe('WaitlistComponent All Desktop Modals', () => {
+describe('WaitlistComponent All Desktop Modals & Navigation', () => {
   let component: WaitlistComponent;
   let fixture: ComponentFixture<WaitlistComponent>;
 
   beforeEach(async () => {
+    localStorage.clear();
     await TestBed.configureTestingModule({
       imports: [WaitlistComponent],
+      providers: [provideRouter([])]
     }).compileComponents();
 
     fixture = TestBed.createComponent(WaitlistComponent);
@@ -42,12 +45,33 @@ describe('WaitlistComponent All Desktop Modals', () => {
     expect(fixture.nativeElement.querySelector('.modal-backdrop')).toBeTruthy();
   });
 
-  it('should open history modal when clicking Historial & Recibos in Profile dropdown', () => {
+  it('should show Iniciar Sesión button when not subscribed and open login modal', () => {
+    const loginBtn = fixture.nativeElement.querySelector('.login-nav-btn');
+    expect(loginBtn).toBeTruthy();
+    expect(loginBtn.textContent).toContain('Iniciar Sesión');
+
+    loginBtn.click();
+    fixture.detectChanges();
+
+    expect(component.activeModal()).toBe('login');
+    expect(fixture.nativeElement.querySelector('.modal-backdrop')).toBeTruthy();
+  });
+
+  it('should show Perfil button when subscribed and open history modal from dropdown', async () => {
+    await component.newsletter.joinWaitlist({ email: 'socio@experiencias.club' });
+    fixture.detectChanges();
+
     const profileBtn = fixture.nativeElement.querySelector('.profile-btn');
+    expect(profileBtn).toBeTruthy();
     profileBtn.click();
     fixture.detectChanges();
 
-    const historyBtn = fixture.nativeElement.querySelectorAll('.dropdown-item')[0];
+    const dropdown = fixture.nativeElement.querySelector('.profile-dropdown-menu');
+    expect(dropdown).toBeTruthy();
+    expect(dropdown.textContent).not.toContain('Pasarelas de Pago');
+
+    const dropdownItems = fixture.nativeElement.querySelectorAll('.dropdown-item');
+    const historyBtn = dropdownItems[1] as HTMLElement;
     historyBtn.click();
     fixture.detectChanges();
 
@@ -55,16 +79,23 @@ describe('WaitlistComponent All Desktop Modals', () => {
     expect(fixture.nativeElement.querySelector('.modal-backdrop')).toBeTruthy();
   });
 
-  it('should open payments modal when clicking Pasarelas de Pago in Profile dropdown', () => {
-    const profileBtn = fixture.nativeElement.querySelector('.profile-btn');
+  it('should allow user to logout from profile menu', async () => {
+    await component.newsletter.joinWaitlist({ email: 'socio@test.com' });
+    fixture.detectChanges();
+
+    const profileBtn = fixture.nativeElement.querySelector('.profile-btn') as HTMLElement;
+    expect(profileBtn).toBeTruthy();
     profileBtn.click();
     fixture.detectChanges();
 
-    const paymentsBtn = fixture.nativeElement.querySelectorAll('.dropdown-item')[1];
-    paymentsBtn.click();
+    const logoutBtn = fixture.nativeElement.querySelector('.logout-item') as HTMLElement;
+    expect(logoutBtn).toBeTruthy();
+    expect(logoutBtn.textContent).toContain('Cerrar Sesión');
+
+    logoutBtn.click();
     fixture.detectChanges();
 
-    expect(component.activeModal()).toBe('payments');
-    expect(fixture.nativeElement.querySelector('.modal-backdrop')).toBeTruthy();
+    expect(component.newsletter.isSubscribed()).toBe(false);
+    expect(fixture.nativeElement.querySelector('.login-nav-btn')).toBeTruthy();
   });
 });

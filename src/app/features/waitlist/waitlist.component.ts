@@ -8,7 +8,10 @@ import { Experience } from '../../core/models/experience.model';
 import { ActivityHistoryService } from '../../core/services/activity-history.service';
 import { PaymentReceipt } from '../../core/models/activity-history.model';
 
-export type ModalType = 'roadmap' | 'experiences' | 'providers' | 'payments' | 'tiers' | 'history' | 'founder_application' | null;
+import { Router, RouterLink } from '@angular/router';
+import { MatIconModule } from '@angular/material/icon';
+
+export type ModalType = 'roadmap' | 'experiences' | 'providers' | 'payments' | 'tiers' | 'history' | 'founder_application' | 'login' | null;
 
 export interface LandscapeLocation {
   image: string;
@@ -23,11 +26,12 @@ export interface LandscapeLocation {
 @Component({
   selector: 'app-waitlist',
   standalone: true,
-  imports: [],
+  imports: [MatIconModule, RouterLink],
   templateUrl: './waitlist.component.html',
   styleUrl: './waitlist.component.css'
 })
 export class WaitlistComponent {
+  readonly router = inject(Router);
   readonly newsletter = inject(NewsletterService);
   readonly experienceService = inject(ExperienceService);
   readonly paymentManager = inject(PaymentManagerService);
@@ -36,6 +40,10 @@ export class WaitlistComponent {
   // Email de suscripción socio emergente
   readonly email = signal('');
   readonly copyStatus = signal<string | null>(null);
+
+  // Iniciar Sesión
+  readonly loginEmail = signal('');
+  readonly loginError = signal<string | null>(null);
 
   // Menú desplegable de perfil de usuario
   readonly profileMenuOpen = signal(false);
@@ -133,6 +141,12 @@ export class WaitlistComponent {
   }
 
   closeMobileMenu(): void {
+    this.mobileMenuOpen.set(false);
+  }
+
+  logout(): void {
+    this.newsletter.resetCurrentSubscription();
+    this.profileMenuOpen.set(false);
     this.mobileMenuOpen.set(false);
   }
 
@@ -301,20 +315,33 @@ export class WaitlistComponent {
     this.profileSaved.set(false);
   }
 
+  openLoginModal(): void {
+    this.mobileMenuOpen.set(false);
+    this.loginError.set(null);
+    this.loginEmail.set('');
+    this.openModal('login');
+  }
+
+  async submitLogin(): Promise<void> {
+    const email = this.loginEmail().trim();
+    if (!email || this.newsletter.isLoading()) return;
+
+    const res = await this.newsletter.joinWaitlist({ email });
+    if (res.success) {
+      this.closeModal();
+      this.router.navigate(['/perfil']);
+    } else {
+      this.loginError.set(res.message);
+    }
+  }
+
   async submit(): Promise<void> {
     if (!this.email().trim() || this.newsletter.isLoading()) return;
 
     const res = await this.newsletter.joinWaitlist({ email: this.email() });
     if (res.success) {
       this.email.set('');
-      if (res.entry) {
-        this.memberFullName.set(res.entry.fullName || '');
-        this.memberNationality.set(res.entry.nationality || '');
-        this.selectedExperiences.set(res.entry.experiencesWishlist || []);
-        this.memberBio.set(res.entry.bio || res.entry.wishlistNotes || '');
-        this.memberNotes.set(res.entry.wishlistNotes || res.entry.bio || '');
-        this.profileSaved.set(res.entry.profileCompleted || false);
-      }
+      this.router.navigate(['/perfil']);
     }
   }
 
