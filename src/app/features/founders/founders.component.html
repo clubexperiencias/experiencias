@@ -11,172 +11,172 @@
 
     <!-- Contenido Principal de /socios/fundadores -->
     <main class="founders-main-content">
-    <div class="founders-wrapper">
+      <div class="founders-wrapper">
 
-      <!-- ═══════════════ CARD: CARTA DE POSTULACIÓN · SOCIO FUNDADOR ═══════════════ -->
-      <div class="founders-section-card founder-application-card">
-        <div class="card-inner-header">
-          <div class="founder-badge-row">
-            <span class="founder-exclusive-tag">
-              <mat-icon class="tag-mat-icon">diamond</mat-icon>
-              CÍRCULO VITALICIO EXCLUSIVO
-            </span>
-            <span class="founder-spots-pill">11 VACANTES 2026</span>
-          </div>
-          <h1 class="card-heading">Carta de Postulación · Socio Fundador</h1>
-          <p class="card-subheading">
-            El círculo de Socios Fundadores reúne a exploradores, benefactores y líderes comprometidos con el desarrollo del
-            turismo náutico y de montaña en Catamarca. Cada postulación es evaluada individualmente por el Comité Directivo.
-          </p>
-        </div>
-
-        <!-- Condiciones de Membresía Absoluta -->
-        <div class="founder-certificate-card">
-          <div class="certificate-header">
-            <div class="cert-icon-wrapper">
-              <mat-icon class="cert-icon">verified_user</mat-icon>
+        <!-- ═══════════════ CARD: CARTA DE POSTULACIÓN · SOCIO FUNDADOR ═══════════════ -->
+        <div class="founders-section-card founder-application-card">
+          <div class="card-inner-header">
+            <div class="founder-badge-row">
+              <span class="founder-exclusive-tag">CÍRCULO VITALICIO EXCLUSIVO</span>
+              <span class="founder-spots-pill">11 VACANTES 2026</span>
             </div>
-            <div class="cert-title-group">
-              <span class="cert-kicker">CONDICIONES DE LA MEMBRESÍA ABSOLUTA</span>
-              <h2 class="cert-title">Aporte Patrimonial Vitalicio Perpetuo</h2>
-              <span class="cert-amount-badge">Valuación estimada: +$5.000.000 ARS · Pago único sin cuotas de por vida</span>
-            </div>
+            <h1 class="card-heading">Carta de Postulación para Socio Fundador</h1>
+            <p class="card-subheading">
+              El círculo de Socios Fundadores reúne a exploradores, benefactores y líderes comprometidos con el
+              desarrollo del
+              turismo náutico y de montaña en Catamarca. Cada postulación es evaluada individualmente por el Comité
+              Directivo.
+            </p>
           </div>
 
-          <div class="cert-perks-grid">
-            <div class="cert-perk-item">
-              <span class="perk-check">✓</span>
-              <div>
-                <strong>Pase Libre Perpetuo</strong>
-                <p>Sin cuotas mensuales de mantenimiento ni renovación en ningún año.</p>
+          <!-- Condiciones de Membresía Absoluta -->
+          <div class="founder-certificate-card">
+            <div class="certificate-header">
+              <div class="cert-title-group">
+                <span class="cert-kicker">CONDICIONES DE LA MEMBRESÍA ABSOLUTA</span>
+                <h2 class="cert-title">Aporte Patrimonial Vitalicio Perpetuo</h2>
+                <span class="cert-amount-badge">Valuación estimada: $5.000.000 ARS · Pago único sin cuotas de por
+                  vida</span>
               </div>
             </div>
-            <div class="cert-perk-item">
-              <span class="perk-check">✓</span>
-              <div>
-                <strong>20% OFF Perpetuo</strong>
-                <p>Bonificación de por vida en todas las expediciones, extensible a acompañantes.</p>
+
+            <div class="cert-perks-grid">
+              <div class="cert-perk-item">
+                <span class="perk-check">✓</span>
+                <div>
+                  <strong>Pase Libre Perpetuo</strong>
+                  <p>Sin cuotas mensuales de mantenimiento ni renovación en ningún año.</p>
+                </div>
               </div>
-            </div>
-            <div class="cert-perk-item">
-              <span class="perk-check">✓</span>
-              <div>
-                <strong>Consejo Consultivo</strong>
-                <p>Acceso anticipado y prioritario a aperturas de rutas andinas secretas.</p>
+              <div class="cert-perk-item">
+                <span class="perk-check">✓</span>
+                <div>
+                  <strong>20% OFF Perpetuo</strong>
+                  <p>Bonificación de por vida en todas las expediciones, extensible a acompañantes.</p>
+                </div>
+              </div>
+              <div class="cert-perk-item">
+                <span class="perk-check">✓</span>
+                <div>
+                  <strong>Consejo Consultivo</strong>
+                  <p>Acceso anticipado y prioritario a aperturas de rutas andinas secretas.</p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- Formulario de Postulación -->
-        @if (!founderSuccess()) {
-        <form class="founder-form-body" (ngSubmit)="submitFounder()">
-          <div class="form-grid-2col">
+          <!-- Formulario de Postulación -->
+          @if (!founderSuccess()) {
+          <form class="founder-form-body" (ngSubmit)="submitFounder()">
+            <div class="form-grid-2col">
+              <div class="form-field">
+                <label for="f-name" class="field-lbl">Nombre y Apellido Completo</label>
+                <input id="f-name" type="text" class="field-input" placeholder="Ej. Ignacio Balcarce"
+                  [value]="founderName()" (input)="founderName.set($any($event.target).value)" required />
+              </div>
+
+              <div class="form-field">
+                <label for="f-email" class="field-lbl">Correo Electrónico</label>
+                <input id="f-email" type="email" class="field-input" placeholder="ignacio@ejemplo.com"
+                  [value]="founderEmail()" (input)="founderEmail.set($any($event.target).value)" required />
+              </div>
+            </div>
+
             <div class="form-field">
-              <label for="f-name" class="field-lbl">Nombre y Apellido Completo</label>
-              <input id="f-name" type="text" class="field-input" placeholder="Ej. Ignacio Balcarce"
-                [value]="founderName()" (input)="founderName.set($any($event.target).value)" required />
+              <label for="f-phone" class="field-lbl">Teléfono / WhatsApp de Contacto Confidencial</label>
+              <input id="f-phone" type="tel" class="field-input" placeholder="+54 9 11 4455-6677"
+                [value]="founderPhone()" (input)="founderPhone.set($any($event.target).value)" />
             </div>
 
             <div class="form-field">
-              <label for="f-email" class="field-lbl">Correo Electrónico</label>
-              <input id="f-email" type="email" class="field-input" placeholder="ignacio@ejemplo.com"
-                [value]="founderEmail()" (input)="founderEmail.set($any($event.target).value)" required />
+              <label for="f-letter" class="field-lbl">
+                Carta de Motivación & Vínculo con Catamarca / Turismo Andino
+              </label>
+              <textarea id="f-letter" class="field-textarea" rows="4"
+                placeholder="Contanos tu trayectoria, expediciones previas, visión sobre el turismo sustentable en Catamarca..."
+                [value]="founderLetter()" (input)="founderLetter.set($any($event.target).value)" required></textarea>
+            </div>
+
+            <!-- Checkbox de Compromiso Patrimonial -->
+            <div class="founder-agreement-box" (click)="founderAgreedToPrice.update(v => !v)">
+              <div class="custom-checkbox" [class.checked]="founderAgreedToPrice()">
+                @if (founderAgreedToPrice()) {
+                <mat-icon class="chk-check-icon">check</mat-icon>
+                }
+              </div>
+              <div class="agreement-text">
+                <strong>Compromiso formal y adhesión al protocolo de admisión</strong>
+                <p>
+                  Declaro estar al tanto y en conformidad con el aporte patrimonial correspondiente a la
+                  <strong>Membresía Absoluta Vitalicia (5 millones de pesos ARS)</strong>,
+                  asumiendo el compromiso de efectivizarlo en caso de que mi carta de postulación sea aprobada
+                  unánimemente por el Comité Directivo.
+                </p>
+              </div>
+            </div>
+
+            <div class="form-submit-row">
+              <button type="submit" class="founder-submit-btn"
+                [disabled]="!founderName().trim() || !founderEmail().trim() || !founderLetter().trim() || !founderAgreedToPrice()">
+                <span>Enviar Carta al Comité Directivo</span>
+                <mat-icon class="btn-icon">arrow_forward</mat-icon>
+              </button>
+            </div>
+          </form>
+          } @else {
+          <!-- Estado de Éxito / Confirmación -->
+          <div class="founder-success-card">
+            <div class="success-seal">
+              <mat-icon class="seal-icon">verified</mat-icon>
+            </div>
+
+            <span class="success-kicker">POSTULACIÓN REGISTRADA FORMALMENTE</span>
+            <h2 class="success-title">¡Carta de Admisión en Evaluación!</h2>
+            <p class="success-description">
+              Tu postulación al <strong>Círculo de Socios Fundadores (Membresía Absoluta Vitalicia)</strong> ha sido
+              remitida con éxito al Comité Directivo de EXPERIENCIAS.CLUB.
+            </p>
+
+            <div class="success-summary-box">
+              <div class="summary-field">
+                <span class="sf-label">Postulante</span>
+                <span class="sf-value">{{ founderName() }}</span>
+              </div>
+              <div class="summary-field">
+                <span class="sf-label">Correo de contacto</span>
+                <span class="sf-value">{{ founderEmail() }}</span>
+              </div>
+              <div class="summary-field">
+                <span class="sf-label">Estado</span>
+                <span class="sf-value status-review">En evaluación confidencial</span>
+              </div>
+              <div class="summary-field">
+                <span class="sf-label">Plazo estimado</span>
+                <span class="sf-value">48 a 72 hs hábiles</span>
+              </div>
+            </div>
+
+            <p class="success-next-step">
+              Un miembro del comité se pondrá en contacto por WhatsApp o correo electrónico para coordinar la entrevista
+              confidencial y los pasos protocolares de incorporación.
+            </p>
+
+            <div class="success-actions-row">
+              <a routerLink="/socios" class="action-btn-back">
+                <mat-icon class="btn-icon">arrow_back</mat-icon>
+                <span>Volver a Niveles de Socio</span>
+              </a>
+              <a routerLink="/" class="action-btn-home">
+                <mat-icon class="btn-icon">home</mat-icon>
+                <span>Ir al Inicio</span>
+              </a>
             </div>
           </div>
-
-          <div class="form-field">
-            <label for="f-phone" class="field-lbl">Teléfono / WhatsApp de Contacto Confidencial</label>
-            <input id="f-phone" type="tel" class="field-input" placeholder="+54 9 11 4455-6677"
-              [value]="founderPhone()" (input)="founderPhone.set($any($event.target).value)" />
-          </div>
-
-          <div class="form-field">
-            <label for="f-letter" class="field-lbl">
-              Carta de Motivación & Vínculo con Catamarca / Turismo Andino
-            </label>
-            <textarea id="f-letter" class="field-textarea" rows="4"
-              placeholder="Contanos tu trayectoria, expediciones previas, visión sobre el turismo sustentable en Catamarca..."
-              [value]="founderLetter()" (input)="founderLetter.set($any($event.target).value)" required></textarea>
-          </div>
-
-          <!-- Checkbox de Compromiso Patrimonial -->
-          <div class="founder-agreement-box" (click)="founderAgreedToPrice.update(v => !v)">
-            <div class="custom-checkbox" [class.checked]="founderAgreedToPrice()">
-              @if (founderAgreedToPrice()) {
-              <mat-icon class="chk-check-icon">check</mat-icon>
-              }
-            </div>
-            <div class="agreement-text">
-              <strong>Compromiso formal y adhesión al protocolo de admisión</strong>
-              <p>
-                Declaro estar al tanto y en conformidad con el aporte patrimonial correspondiente a la
-                <strong>Membresía Absoluta Vitalicia (+5 millones de pesos ARS)</strong>,
-                asumiendo el compromiso de efectivizarlo en caso de que mi carta de postulación sea aprobada unánimemente por el Comité Directivo.
-              </p>
-            </div>
-          </div>
-
-          <div class="form-submit-row">
-            <button type="submit" class="founder-submit-btn"
-              [disabled]="!founderName().trim() || !founderEmail().trim() || !founderLetter().trim() || !founderAgreedToPrice()">
-              <span>Enviar Carta al Comité Directivo</span>
-              <mat-icon class="btn-icon">arrow_forward</mat-icon>
-            </button>
-          </div>
-        </form>
-        } @else {
-        <!-- Estado de Éxito / Confirmación -->
-        <div class="founder-success-card">
-          <div class="success-seal">
-            <mat-icon class="seal-icon">verified</mat-icon>
-          </div>
-
-          <span class="success-kicker">POSTULACIÓN REGISTRADA FORMALMENTE</span>
-          <h2 class="success-title">¡Carta de Admisión en Evaluación!</h2>
-          <p class="success-description">
-            Tu postulación al <strong>Círculo de Socios Fundadores (Membresía Absoluta Vitalicia)</strong> ha sido remitida con éxito al Comité Directivo de EXPERIENCIAS.CLUB.
-          </p>
-
-          <div class="success-summary-box">
-            <div class="summary-field">
-              <span class="sf-label">Postulante</span>
-              <span class="sf-value">{{ founderName() }}</span>
-            </div>
-            <div class="summary-field">
-              <span class="sf-label">Correo de contacto</span>
-              <span class="sf-value">{{ founderEmail() }}</span>
-            </div>
-            <div class="summary-field">
-              <span class="sf-label">Estado</span>
-              <span class="sf-value status-review">En evaluación confidencial</span>
-            </div>
-            <div class="summary-field">
-              <span class="sf-label">Plazo estimado</span>
-              <span class="sf-value">48 a 72 hs hábiles</span>
-            </div>
-          </div>
-
-          <p class="success-next-step">
-            Un miembro del comité se pondrá en contacto por WhatsApp o correo electrónico para coordinar la entrevista confidencial y los pasos protocolares de incorporación.
-          </p>
-
-          <div class="success-actions-row">
-            <a routerLink="/socios" class="action-btn-back">
-              <mat-icon class="btn-icon">arrow_back</mat-icon>
-              <span>Volver a Niveles de Socio</span>
-            </a>
-            <a routerLink="/" class="action-btn-home">
-              <mat-icon class="btn-icon">home</mat-icon>
-              <span>Ir al Inicio</span>
-            </a>
-          </div>
+          }
         </div>
-        }
+
       </div>
-
-    </div>
-  </main>
+    </main>
   </div>
 
   <!-- Footer Compartido -->

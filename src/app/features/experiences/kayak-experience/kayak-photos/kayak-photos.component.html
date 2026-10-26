@@ -1,0 +1,88 @@
+<div class="kayak-photos-container">
+  <!-- Header Compartido -->
+  <app-header [(mobileMenuOpen)]="mobileMenuOpen"></app-header>
+
+  <!-- Breadcrumb -->
+  <app-breadcrumb [items]="breadcrumbs"></app-breadcrumb>
+
+  <!-- Wallpaper y Fondo -->
+  <div class="kayak-photos-body app-wallpaper-body">
+    <div class="ambient-overlay"></div>
+
+    <main class="kayak-photos-main">
+      <div class="kayak-photos-wrapper">
+
+        <!-- ═══════════════ HEADER CARD: TÍTULO Y DESCRIPCIÓN ═══════════════ -->
+        <div class="kayak-section-card hero-gallery-card">
+          <div class="card-inner-header">
+            <span class="section-kicker">REGISTRO VISUAL · EXPERIENCIAS PASADAS</span>
+            <h1 class="card-heading">Galería de Travesías en Las Pirquitas</h1>
+            <p class="card-subheading">
+              Postales reales capturadas durante nuestras salidas de kayak al atardecer en el Valle Central de Catamarca.
+              Momentos de navegación silenciosa, quebradas rojizas y tertulias gastronómicas junto a los expedicionarios del Club.
+            </p>
+          </div>
+        </div>
+
+        <!-- ═══════════════ FOTO PRINCIPAL DESTACADA ═══════════════ -->
+        <div class="kayak-section-card featured-photo-card" (click)="openPhotoModal(photos[0])">
+          <div class="featured-media-wrap">
+            <img [src]="photos[0].src" [alt]="photos[0].title" class="featured-img" />
+            <span class="media-tag">{{ photos[0].tag }}</span>
+            <div class="media-overlay-info">
+              <span class="media-caption-kicker">FOTO OFICIAL DE LA EXPERIENCIA</span>
+              <h3 class="media-caption-title">{{ photos[0].title }}</h3>
+              <p class="media-caption-desc">{{ photos[0].caption }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══════════════ CARD DE ACCIÓN Y RETORNO ═══════════════ -->
+        <div class="kayak-section-card gallery-action-card">
+          <div class="gallery-action-flex">
+            <div>
+              <span class="section-kicker">PARTICIPÁ EN LA PRÓXIMA SALIDA</span>
+              <h3 class="action-heading">¿Querés remar en el próximo atardecer?</h3>
+              <p class="action-sub">
+                Los cupos para las travesías en Las Pirquitas se habilitan prioritariamente para Socios del Club.
+              </p>
+            </div>
+
+            <div class="action-buttons-wrap">
+              <a routerLink="/socios" class="cta-primary-btn">
+                <span>Acceder con Membresía</span>
+                <mat-icon>arrow_forward</mat-icon>
+              </a>
+              <a routerLink="/experiencias/kayak" class="cta-secondary-link">
+                <span>← Volver a la Ficha Técnica</span>
+              </a>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- Footer Compartido -->
+  <app-footer />
+
+  <!-- Modal Visor de Foto Ampliada -->
+  @if (activePhotoModal()) {
+  <div class="photo-lightbox-backdrop" (click)="closePhotoModal()">
+    <div class="lightbox-content" (click)="$event.stopPropagation()">
+      <button class="lightbox-close-btn" (click)="closePhotoModal()" aria-label="Cerrar foto">
+        <mat-icon>close</mat-icon>
+      </button>
+
+      <img [src]="activePhotoModal()?.src" [alt]="activePhotoModal()?.title" class="lightbox-img" />
+
+      <div class="lightbox-caption">
+        <span class="lightbox-tag">{{ activePhotoModal()?.tag }}</span>
+        <h4>{{ activePhotoModal()?.title }}</h4>
+        <p>{{ activePhotoModal()?.caption }}</p>
+      </div>
+    </div>
+  </div>
+  }
+</div>

@@ -11,173 +11,191 @@
 
     <!-- Contenido Principal de /socios -->
     <main class="members-main-content">
-    <div class="members-wrapper">
+      <div class="members-wrapper">
 
-      <!-- ═══════════════ CARD 1: HERO / INTRODUCCIÓN ═══════════════ -->
-      <div class="member-section-card hero-member-card">
-        <div class="section-card-header">
-          <div class="member-hero-icon-box">
-            <mat-icon class="hero-mat-icon">military_tech</mat-icon>
-          </div>
-          <div>
+        <!-- ═══════════════ CARD 1: HERO / INTRODUCCIÓN ═══════════════ -->
+        <div class="member-section-card hero-member-card">
+          <div class="section-card-header">
             <span class="section-kicker">PLAN DE MEMBRESÍAS Y EVOLUCIÓN</span>
             <h1 class="section-main-title">Niveles de Socio del Club</h1>
           </div>
-        </div>
 
-        <p class="section-lead-text">
-          Diseñado para exploradores comprometidos con la naturaleza, el patrimonio andino y las travesías irrepetibles.
-          Evolucioná en la comunidad para acceder a preventas exclusivas, tarifas bonificadas y expediciones privadas sin permanencia.
-        </p>
-
-        <div class="hero-quick-stats">
-          <div class="quick-stat-item">
-            <span class="stat-number">3 Niveles</span>
-            <span class="stat-label">Emergente · Activo · Fundador</span>
-          </div>
-          <div class="quick-stat-divider"></div>
-          <div class="quick-stat-item">
-            <span class="stat-number">Sin Ataduras</span>
-            <span class="stat-label">Cancelá tu cuota activa cuando quieras</span>
-          </div>
-          <div class="quick-stat-divider"></div>
-          <div class="quick-stat-item">
-            <span class="stat-number">11 Vacantes</span>
-            <span class="stat-label">Cupo cerrado Socios Fundadores 2026</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- ═══════════════ CARD 2: GRILLA DE LOS 3 NIVELES ═══════════════ -->
-      <div class="member-section-card">
-        <div class="card-inner-header">
-          <span class="section-kicker">CURADURÍA DE ACCESO</span>
-          <h2 class="card-heading">Elegí tu Grado de Participación</h2>
-          <p class="card-subheading">
-            Desde el pre-registro sin cargo hasta la membresía vitalicia perpetua evaluada por el Comité Directivo.
+          <p class="section-lead-text">
+            Diseñado para exploradores comprometidos con la naturaleza, el patrimonio andino y las travesías
+            irrepetibles.
+            Evolucioná en la comunidad para acceder a preventas exclusivas, tarifas bonificadas y expediciones privadas
+            sin permanencia.
           </p>
-        </div>
 
-        <div class="tiers-grid">
-          <!-- 1. Socio Emergente -->
-          <div class="tier-card" [class.user-current-tier]="newsletter.isSubscribed()">
-            <div class="tier-card-header">
-              @if (newsletter.isSubscribed()) {
-              <span class="tier-level-badge current">✓ TU NIVEL ACTUAL</span>
-              } @else {
-              <span class="tier-level-badge initial">NIVEL 1 · PUNTO DE PARTIDA</span>
-              }
-              <h4 class="tier-name">Socio Emergente</h4>
+          <div class="hero-quick-stats">
+            <div class="quick-stat-item">
+              <span class="stat-number">3 Niveles</span>
+              <span class="stat-label">Emergente · Activo · Fundador</span>
             </div>
-
-            <div class="tier-jump-card">
-              <span class="jump-tag">CÓMO ACCEDER</span>
-              <p>Registro gratuito con tu email a la lista de espera oficial del club.</p>
+            <div class="quick-stat-divider"></div>
+            <div class="quick-stat-item">
+              <span class="stat-number">Sin Ataduras</span>
+              <span class="stat-label">Cancelá tu cuota activa cuando quieras</span>
             </div>
-
-            <ul class="tier-benefits">
-              <li>Acceso anticipado a preventa de temporada 2026</li>
-              <li>Código de invitación personal para referidos</li>
-              <li>Bitácoras exclusivas y novedades de rutas andinas</li>
-              <li>Prioridad en cupos de expediciones inaugurales</li>
-            </ul>
-
-            <div class="tier-card-footer">
-              @if (newsletter.isSubscribed()) {
-              <a routerLink="/perfil" class="tier-cta-btn current-achieved">
-                <span class="cta-title-row">
-                  <mat-icon class="btn-icon">check_circle</mat-icon>
-                  <span>Ver mi Perfil</span>
-                </span>
-                <span class="cta-sub-text">Socio Emergente #{{ newsletter.currentMember()?.position }}</span>
-              </a>
-              } @else {
-              <a routerLink="/" class="tier-cta-btn default-action">
-                <span class="cta-title-row">
-                  <span>Unirme Gratis</span>
-                  <mat-icon class="btn-icon">arrow_forward</mat-icon>
-                </span>
-                <span class="cta-sub-text">Pre-registro en lista de espera</span>
-              </a>
-              }
-            </div>
-          </div>
-
-          <!-- 2. Socio Activo -->
-          <div class="tier-card featured-tier">
-            <div class="tier-featured-glow"></div>
-            <div class="tier-card-header">
-              <span class="tier-level-badge active-badge">NIVEL 2 · MÁXIMO BENEFICIO</span>
-              <h4 class="tier-name">Socio Activo</h4>
-              <div class="tier-price-wrap">
-                <span class="tier-price">$12.000</span>
-                <span class="tier-period">ARS / mes</span>
-              </div>
-            </div>
-
-            <div class="tier-jump-card">
-              <span class="jump-tag">CÓMO ACCEDER</span>
-              <p>Suscripción mensual recurrente. Activación inmediata y cancelación cuando quieras.</p>
-            </div>
-
-            <ul class="tier-benefits">
-              <li>Todos los beneficios de Socio Emergente</li>
-              <li><strong>10% OFF directo</strong> en todas las expediciones y salidas</li>
-              <li>Cupo asegurado prioritario en fechas de alta demanda</li>
-              <li>Asistencia personalizada de viaje con guías locales</li>
-              <li>Acceso a la bitácora privada de fotos de cada travesía</li>
-            </ul>
-
-            <div class="tier-card-footer">
-              <a routerLink="/socios/activos" class="tier-cta-btn active-cta">
-                <span class="cta-title-row">
-                  <span>Activar Membresía Mensual</span>
-                  <mat-icon class="btn-icon">bolt</mat-icon>
-                </span>
-                <span class="cta-sub-text">Suscripción sin permanencia mínima</span>
-              </a>
-            </div>
-          </div>
-
-          <!-- 3. Socio Fundador Vitalicio -->
-          <div class="tier-card founder-tier">
-            <div class="tier-card-header">
-              <span class="tier-level-badge founder-badge">NIVEL 3 · PERPETUO</span>
-              <h4 class="tier-name">Socio Fundador</h4>
-              <div class="tier-price-wrap">
-                <span class="tier-price">Vitalicio</span>
-                <span class="tier-period">Aporte único perpetuo</span>
-              </div>
-            </div>
-
-            <div class="tier-jump-card founder-jump">
-              <span class="jump-tag">CÓMO ACCEDER</span>
-              <p>Aporte patrimonial único evaluado por el Comité Directivo (11 vacantes).</p>
-            </div>
-
-            <ul class="tier-benefits">
-              <li><strong>Pase Libre Perpetuo:</strong> Sin cuotas mensuales de por vida</li>
-              <li><strong>20% OFF permanente</strong> en todas las expediciones para titular y acompañante</li>
-              <li>Participación formal en el Consejo Consultivo del Club</li>
-              <li>Acceso prioritario a aperturas de nuevas rutas andinas</li>
-              <li>Carnet grabado metálico y kit de bienvenida oficial</li>
-            </ul>
-
-            <div class="tier-card-footer">
-              <a routerLink="/socios/fundadores" class="tier-cta-btn founder-cta">
-                <span class="cta-title-row">
-                  <span>Postularme como Fundador</span>
-                  <mat-icon class="btn-icon">arrow_forward</mat-icon>
-                </span>
-                <span class="cta-sub-text">Carta de admisión confidencial</span>
-              </a>
+            <div class="quick-stat-divider"></div>
+            <div class="quick-stat-item">
+              <span class="stat-number">11 Vacantes</span>
+              <span class="stat-label">Cupo cerrado Socios Fundadores</span>
             </div>
           </div>
         </div>
+
+        <!-- ═══════════════ CARD 2: GRILLA DE LOS 3 NIVELES ═══════════════ -->
+        <div class="member-section-card">
+          <div class="card-inner-header">
+            <span class="section-kicker">CURADURÍA DE ACCESO</span>
+            <h2 class="card-heading">Elegí tu Grado de Participación</h2>
+            <p class="card-subheading">
+              Desde el pre-registro sin cargo hasta la membresía vitalicia perpetua evaluada por el Comité Directivo.
+            </p>
+          </div>
+
+          <div class="tiers-grid">
+            <!-- 1. Socio Emergente -->
+            <div class="tier-card" [class.user-current-tier]="newsletter.isSubscribed()">
+              <div class="tier-card-header">
+                @if (newsletter.isSubscribed()) {
+                <span class="tier-level-badge current">✓ TU NIVEL ACTUAL</span>
+                } @else {
+                <span class="tier-level-badge initial">NIVEL 1 · PUNTO DE PARTIDA</span>
+                }
+                <h4 class="tier-name">Socio Emergente</h4>
+                <div class="tier-price-wrap">
+                  <span class="tier-price tier-price-free" style="color: #ffffff !important;">$0</span>
+                  <span class="tier-period">ARS / mes</span>
+                </div>
+              </div>
+
+              <div class="tier-jump-card">
+                <span class="jump-tag">CÓMO ACCEDER</span>
+                <p>Registro gratuito con tu email a la lista de espera oficial del club.</p>
+              </div>
+
+              <ul class="tier-benefits">
+                <li>Acceso anticipado a preventa de temporada 2026</li>
+                <li>Código de invitación personal para referidos</li>
+                <li>Bitácoras exclusivas y novedades de rutas andinas</li>
+                <li>Prioridad en cupos de expediciones inaugurales</li>
+              </ul>
+
+              <div class="tier-card-footer">
+                @if (newsletter.isSubscribed()) {
+                <a routerLink="/perfil" class="tier-cta-btn current-achieved">
+                  <span class="cta-title-row">
+                    <mat-icon class="btn-icon">check_circle</mat-icon>
+                    <span>Ver mi Perfil</span>
+                  </span>
+                  <span class="cta-sub-text">Socio Emergente #{{ newsletter.currentMember()?.position }}</span>
+                </a>
+                } @else {
+                <a routerLink="/" class="tier-cta-btn default-action">
+                  <span class="cta-title-row">
+                    <span>Unirme Gratis</span>
+                    <mat-icon class="btn-icon">arrow_forward</mat-icon>
+                  </span>
+                  <span class="cta-sub-text">Pre-registro en lista de espera</span>
+                </a>
+                }
+              </div>
+            </div>
+
+            <!-- 2. Socio Activo -->
+            <div class="tier-card featured-tier" [class.tier-card-locked]="!newsletter.isMonthlyActive()">
+              <div class="tier-featured-glow"></div>
+              <div class="tier-card-header">
+                @if (newsletter.isMonthlyActive()) {
+                <span class="tier-level-badge current">✓ TU NIVEL ACTUAL</span>
+                } @else {
+                <span class="tier-level-badge locked-badge">
+                  <mat-icon class="badge-lock-icon">lock</mat-icon>
+                  <span>BLOQUEADO · PRÓXIMAMENTE</span>
+                </span>
+                }
+                <h4 class="tier-name">Socio Activo</h4>
+                <div class="tier-price-wrap">
+                  <span class="tier-price">$12.000</span>
+                  <span class="tier-period">ARS / mes</span>
+                </div>
+              </div>
+
+              <div class="tier-jump-card">
+                <span class="jump-tag">CÓMO ACCEDER</span>
+                <p>Suscripción mensual recurrente. Se habilitará en el lanzamiento de la temporada.</p>
+              </div>
+
+              <ul class="tier-benefits">
+                <li>Todos los beneficios de Socio Emergente</li>
+                <li><strong>10% OFF directo</strong> en todas las expediciones y salidas</li>
+                <li>Cupo asegurado prioritario en fechas de alta demanda</li>
+                <li>Asistencia personalizada de viaje con guías locales</li>
+                <li>Acceso a la bitácora privada de fotos de cada travesía</li>
+              </ul>
+
+              <div class="tier-card-footer">
+                @if (newsletter.isMonthlyActive()) {
+                <a routerLink="/socios/activos" class="tier-cta-btn current-achieved">
+                  <span class="cta-title-row">
+                    <mat-icon class="btn-icon">check</mat-icon>
+                    <span>Membresía Activa</span>
+                  </span>
+                  <span class="cta-sub-text">Gestionar suscripción</span>
+                </a>
+                } @else {
+                <button type="button" class="tier-cta-btn locked-cta" disabled>
+                  <span class="cta-title-row">
+                    <span>Membresía Bloqueada</span>
+                    <mat-icon class="btn-icon">lock</mat-icon>
+                  </span>
+                  <span class="cta-sub-text">Se habilitará en el lanzamiento oficial</span>
+                </button>
+                }
+              </div>
+            </div>
+
+            <!-- 3. Socio Fundador Vitalicio -->
+            <div class="tier-card founder-tier">
+              <div class="tier-card-header">
+                <span class="tier-level-badge founder-badge">NIVEL 3 · PERPETUO</span>
+                <h4 class="tier-name">Socio Fundador</h4>
+                <div class="tier-price-wrap">
+                  <span class="tier-price">Vitalicio</span>
+                  <span class="tier-period">· Aporte único</span>
+                </div>
+              </div>
+
+              <div class="tier-jump-card founder-jump">
+                <span class="jump-tag">CÓMO ACCEDER</span>
+                <p>Aporte patrimonial único evaluado por el Comité Directivo (11 vacantes).</p>
+              </div>
+
+              <ul class="tier-benefits">
+                <li><strong>Pase Libre Perpetuo:</strong> Sin cuotas mensuales de por vida</li>
+                <li><strong>20% OFF permanente</strong> en todas las expediciones para titular y acompañante</li>
+                <li>Participación formal en el Consejo Consultivo del Club</li>
+                <li>Acceso prioritario a aperturas de nuevas rutas andinas</li>
+                <li>Carnet grabado metálico y kit de bienvenida oficial</li>
+              </ul>
+
+              <div class="tier-card-footer">
+                <a routerLink="/socios/fundadores" class="tier-cta-btn founder-cta">
+                  <span class="cta-title-row">
+                    <span>Postularme como Fundador</span>
+                    <mat-icon class="btn-icon">arrow_forward</mat-icon>
+                  </span>
+                  <span class="cta-sub-text">Carta de admisión confidencial</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
-
-    </div>
-  </main>
+    </main>
   </div>
 
   <!-- Footer Compartido -->
@@ -212,7 +230,8 @@
 
         <div class="modal-footer" style="margin-top: 1.4rem;">
           <button class="pill-action-btn secondary" (click)="closeModal()">Cancelar</button>
-          <button class="pill-action-btn" (click)="submitLogin()" [disabled]="!loginEmail().trim() || newsletter.isLoading()">
+          <button class="pill-action-btn" (click)="submitLogin()"
+            [disabled]="!loginEmail().trim() || newsletter.isLoading()">
             Ingresar
           </button>
         </div>

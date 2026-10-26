@@ -11,65 +11,58 @@
 
     <!-- Contenido Principal Centrado -->
     <main class="hero-center">
-    <div class="hero-content">
+      <div class="hero-content">
 
-      <!-- Badge de Lanzamiento -->
-      <div class="badge-pill">
-        <span class="badge-main-line">
-          <strong>TEMPORADA INAUGURAL</strong>
-        </span>
-      </div>
-
-      <!-- Título Editorial con Logo Oficial -->
-      <h1 class="hero-title-container">
-        <img src="/logo-experiencias.png" alt="Experiencias" class="hero-logo-img" />
-      </h1>
-
-      <!-- Subtítulo -->
-      <p class="hero-subtitle">
-        Club privado de expediciones andinas y travesías náuticas en Catamarca. Ingresá como Socio Emergente para
-        acceder con descuento a las primeras salidas de kayak con locales.
-      </p>
-
-      <!-- ═══════════════ FORMULARIO CÁPSULA (SIEMPRE VISIBLE EN /) ═══════════════ -->
-      <div class="pill-form-container">
-        <div class="pill-form">
-          <span class="input-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-              stroke-linejoin="round" class="mail-svg-icon">
-              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-              <polyline points="22,6 12,13 2,6" />
-            </svg>
+        <!-- Badge de Lanzamiento -->
+        <div class="badge-pill">
+          <span class="badge-main-line">
+            <strong>TEMPORADA INAUGURAL</strong>
           </span>
-
-          <input type="email" class="pill-input" placeholder="Ingresá tu correo electrónico..." [value]="email()"
-            (input)="email.set($any($event.target).value)" (keyup.enter)="submit()" [disabled]="newsletter.isLoading()"
-            autocomplete="email" id="waitlist-email" />
-
-          <button class="pill-submit-btn" (click)="submit()" [disabled]="newsletter.isLoading() || !email().trim()"
-            id="waitlist-submit" aria-label="Unirme a la lista de espera">
-            @if (newsletter.isLoading()) {
-            <span class="spinner"></span>
-            } @else {
-            <mat-icon class="arrow-icon">arrow_forward</mat-icon>
-            }
-          </button>
         </div>
 
-        @if (newsletter.errorMessage()) {
-        <p class="error-text">{{ newsletter.errorMessage() }}</p>
-        }
+        <!-- Título Editorial con Logo Oficial -->
+        <h1 class="hero-title-container">
+          <img src="/logo-experiencias.png" alt="Experiencias" class="hero-logo-img" />
+        </h1>
 
-        @if (newsletter.isSubscribed()) {
-        <div class="user-active-session-hint">
-          <span>Sesión activa como <strong>Socio Emergente #{{ newsletter.currentMember()?.position }}</strong></span>
-          <a routerLink="/perfil" class="session-profile-link">Ver mi perfil →</a>
+        <!-- Subtítulo -->
+        <p class="hero-subtitle">
+          Club privado de expediciones andinas y travesías náuticas en Catamarca. Ingresá como Socio Emergente para
+          acceder con descuento a las primeras salidas de kayak con locales.
+        </p>
+
+        <!-- ═══════════════ FORMULARIO CÁPSULA (SIEMPRE VISIBLE EN /) ═══════════════ -->
+        <div class="pill-form-container">
+          <div class="pill-form">
+            <span class="input-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round" class="mail-svg-icon">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                <polyline points="22,6 12,13 2,6" />
+              </svg>
+            </span>
+
+            <input type="email" class="pill-input" placeholder="Ingresá tu correo electrónico..." [value]="email()"
+              (input)="email.set($any($event.target).value)" (keyup.enter)="submit()"
+              [disabled]="newsletter.isLoading()" autocomplete="email" id="waitlist-email" />
+
+            <button class="pill-submit-btn" (click)="submit()" [disabled]="newsletter.isLoading() || !email().trim()"
+              id="waitlist-submit" aria-label="Unirme a la lista de espera">
+              @if (newsletter.isLoading()) {
+              <span class="spinner"></span>
+              } @else {
+              <mat-icon class="arrow-icon">arrow_forward</mat-icon>
+              }
+            </button>
+          </div>
+
+          @if (newsletter.errorMessage()) {
+          <p class="error-text">{{ newsletter.errorMessage() }}</p>
+          }
         </div>
-        }
+
       </div>
-
-    </div>
-  </main>
+    </main>
   </div>
 
   <!-- Footer Inferior Compartido -->
@@ -183,7 +176,7 @@
         <div class="tier-card highlight" [class.user-next-tier]="newsletter.isSubscribed()">
           <div class="tier-card-header">
             @if (newsletter.isSubscribed()) {
-            <span class="tier-level-badge next">➔ PRÓXIMO SALTO RECOMENDADO</span>
+            <span class="tier-level-badge next">PRÓXIMO SALTO RECOMENDADO</span>
             } @else {
             <span class="tier-level-badge">NIVEL 2 · MEMBRESÍA MENSUAL</span>
             }
@@ -204,7 +197,8 @@
           </ul>
 
           <div class="tier-card-footer">
-            <a routerLink="/socios/activos" class="tier-cta-btn cta-active" (click)="closeModal()" style="text-decoration: none;">
+            <a routerLink="/socios/activos" class="tier-cta-btn cta-active" (click)="closeModal()"
+              style="text-decoration: none;">
               <span class="cta-title-row">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
                   <polygon
@@ -273,9 +267,9 @@
               </svg>
               CÍRCULO VITALICIO EXCLUSIVO
             </span>
-            <span class="founder-spots-pill">11 VACANTES 2026</span>
+            <span class="founder-spots-pill">11 VACANTES</span>
           </div>
-          <h3 class="modal-heading founder-heading">Carta de Postulación · Socio Fundador</h3>
+          <h3 class="modal-heading founder-heading">Carta de Postulación para Socio Fundador</h3>
         </div>
         <button class="modal-close-btn" (click)="closeModal()"
           aria-label="Cerrar modal"><mat-icon>close</mat-icon></button>
@@ -297,7 +291,7 @@
           <div class="cert-title-group">
             <span class="cert-kicker">CONDICIONES DE LA MEMBRESÍA ABSOLUTA</span>
             <h4 class="cert-title">Aporte Patrimonial Vitalicio Perpetuo</h4>
-            <span class="cert-amount-badge">Valuación estimada: +$5.000.000 ARS · Pago único sin cuotas de por
+            <span class="cert-amount-badge">Valuación estimada: $5.000.000 ARS · Pago único sin cuotas de por
               vida</span>
           </div>
         </div>
@@ -395,7 +389,7 @@
               <strong>Compromiso formal y adhesión al protocolo de admisión</strong>
               <p>
                 Declaro estar al tanto y en conformidad con el aporte patrimonial correspondiente a la
-                <strong>Membresía Absoluta Vitalicia (+5 millones de pesos ARS, actualmente en dictamen final de
+                <strong>Membresía Absoluta Vitalicia (5 millones de pesos ARS, actualmente en dictamen final de
                   curaduría)</strong>,
                 asumiendo el compromiso de efectivizarlo en caso de que mi carta de postulación sea aprobada
                 unánimemente por el Comité Directivo.
@@ -499,14 +493,14 @@
           <div class="activity-content">
             <div class="activity-tag-row">
               <span class="activity-status" [class]="act.status">
-                ● {{ act.status === 'completada' ? 'Completada' : 'Confirmada' }}
+                {{ act.status === 'completada' ? 'Completada' : 'Confirmada' }}
               </span>
               <span class="activity-region">{{ act.region }} ({{ act.altitude }})</span>
             </div>
 
             <h4 class="activity-title">{{ act.title }}</h4>
             <p class="activity-provider">Prestador: <strong>{{ act.provider.name }}</strong></p>
-            <p class="activity-date">📅 {{ act.dateLabel }} · Recibo Nº {{ act.receipt.receiptNumber }}</p>
+            <p class="activity-date">{{ act.dateLabel }} · Recibo Nº {{ act.receipt.receiptNumber }}</p>
           </div>
 
           <div class="activity-actions">
@@ -561,14 +555,14 @@
             </div>
             <div class="exp-card-content">
               <div class="exp-rating">
-                ★ {{ exp.rating }} <span class="reviews">({{ exp.reviewsCount }} expedicionarios)</span>
+                {{ exp.rating }} <span class="reviews">({{ exp.reviewsCount }} expedicionarios)</span>
               </div>
               <h4 class="exp-title">{{ exp.title }}</h4>
               <p class="exp-tagline">{{ exp.tagline }}</p>
 
               <div class="exp-meta-row">
-                <span>⏱ {{ exp.durationLabel }}</span>
-                <span>⛰ {{ exp.difficulty }}</span>
+                <span>{{ exp.durationLabel }}</span>
+                <span>{{ exp.difficulty }}</span>
               </div>
 
               <div class="exp-price-row">

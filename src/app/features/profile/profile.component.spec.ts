@@ -9,7 +9,7 @@ describe('ProfileComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [ProfileComponent],
-      providers: [provideRouter([])]
+      providers: [provideRouter([{ path: 'ingresar', component: ProfileComponent }])]
     }).compileComponents();
 
     fixture = TestBed.createComponent(ProfileComponent);
@@ -17,11 +17,21 @@ describe('ProfileComponent', () => {
     fixture.detectChanges();
   });
 
-  it('should display the current member status banner', () => {
-    const banner = fixture.nativeElement.querySelector('.current-status-banner');
-    expect(banner).toBeTruthy();
-    expect(banner.textContent).toContain('ESTADO ACTUAL');
-    expect(banner.textContent).toContain('Socio Emergente');
+  it('should display the green registration success notification replacing breadcrumb', () => {
+    const notification = fixture.nativeElement.querySelector('.registration-success-bar');
+    expect(notification).toBeTruthy();
+    expect(notification.textContent).toContain('¡REGISTRO EXITOSO!');
+    expect(notification.textContent).toContain('Socio Emergente');
+  });
+
+  it('should display the membership info box with activation link', () => {
+    const card = fixture.nativeElement.querySelector('.profile-completion-card');
+    expect(card).toBeTruthy();
+    expect(card.textContent).toContain('DATOS DE MEMBRESÍA');
+    expect(card.textContent).toContain('Socio Emergente');
+    const link = card.querySelector('.upgrade-membership-link');
+    expect(link).toBeTruthy();
+    expect(link.getAttribute('routerLink')).toBe('/socios/activos');
   });
 
   it('should link back to root / from the header logo', () => {
@@ -36,15 +46,9 @@ describe('ProfileComponent', () => {
     expect(homeBtn.getAttribute('routerlink') || homeBtn.getAttribute('href')).toBe('/');
   });
 
-  it('should have a logout button that resets current subscription', () => {
-    component.newsletter.joinWaitlist({ email: 'perfil@test.com' });
+  it('should have a logout button that resets current subscription', async () => {
+    await component.newsletter.joinWaitlist({ email: 'perfil@test.com' });
     fixture.detectChanges();
-
-    const profileBtn = fixture.nativeElement.querySelector('.profile-btn') as HTMLElement;
-    if (profileBtn) {
-      profileBtn.click();
-      fixture.detectChanges();
-    }
 
     const logoutBtn = fixture.nativeElement.querySelector('.logout-btn') as HTMLElement;
     expect(logoutBtn).toBeTruthy();

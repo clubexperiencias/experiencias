@@ -1,4 +1,4 @@
-import { Component, HostListener, inject, signal } from '@angular/core';
+import { Component, HostListener, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
@@ -22,7 +22,7 @@ import { BreadcrumbComponent, BreadcrumbItem } from '../../shared/components/bre
   templateUrl: './profile.component.html',
   styleUrl: './profile.component.css'
 })
-export class ProfileComponent {
+export class ProfileComponent implements OnInit {
   readonly newsletter = inject(NewsletterService);
   readonly activityService = inject(ActivityHistoryService);
   readonly experienceService = inject(ExperienceService);
@@ -37,6 +37,13 @@ export class ProfileComponent {
 
   readonly bg = signal('/assets/images/laguna_blanca.jpg');
   readonly copyStatus = signal<string | null>(null);
+  readonly showSuccessNotification = signal(true);
+
+  ngOnInit(): void {
+    setTimeout(() => {
+      this.showSuccessNotification.set(false);
+    }, 3000);
+  }
 
   // Menús de navegación idénticos a los de la landing /
   readonly mobileMenuOpen = signal(false);

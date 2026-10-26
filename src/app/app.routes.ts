@@ -27,6 +27,30 @@ export const routes: Routes = [
       import('./features/experiences/experiences.component').then((m) => m.ExperiencesComponent)
   },
   {
+    path: 'experiencias/kayak',
+    loadComponent: () =>
+      import('./features/experiences/kayak-experience/kayak-experience.component').then(
+        (m) => m.KayakExperienceComponent
+      )
+  },
+  {
+    path: 'experiencias/kayak/fotos',
+    loadComponent: () =>
+      import('./features/experiences/kayak-experience/kayak-photos/kayak-photos.component').then(
+        (m) => m.KayakPhotosComponent
+      )
+  },
+  {
+    path: 'experiencia/kayak/fotos',
+    redirectTo: 'experiencias/kayak/fotos',
+    pathMatch: 'full'
+  },
+  {
+    path: 'experiencia/kayak',
+    redirectTo: 'experiencias/kayak',
+    pathMatch: 'full'
+  },
+  {
     path: 'experiencias/prestadores',
     loadComponent: () =>
       import('./features/providers/providers.component').then((m) => m.ProvidersComponent)

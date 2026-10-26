@@ -567,7 +567,7 @@ mat-icon.chevron-icon.rotated {
   border: none;
   outline: none;
   font-family: var(--font-sans);
-  color: #ffffff;
+  color: #000000;
   font-size: 0.95rem;
   font-weight: 500;
   letter-spacing: normal;
@@ -575,20 +575,14 @@ mat-icon.chevron-icon.rotated {
 
 .pill-input:focus,
 .pill-input:active {
-  color: #ffffff;
+  color: #000000;
 }
 
 .pill-input::placeholder {
   font-family: var(--font-sans);
-  color: hsla(0, 0%, 100%, 0.65);
+  color: rgba(0, 0, 0, 0.65);
   font-weight: 400;
   letter-spacing: normal;
-}
-
-.pill-input:-webkit-autofill,
-.pill-input:-webkit-autofill:hover,
-.pill-input:-webkit-autofill:focus {
-  -webkit-text-fill-color: #ffffff !important;
 }
 
 .pill-input:-webkit-autofill,
@@ -3443,6 +3437,11 @@ mat-icon.arrow-icon {
   color: #ffffff !important;
 }
 
+.tier-card:first-child .tier-price,
+.modal-card.tiers-modal-card .tier-card:first-child .tier-price {
+  color: #ffffff !important;
+}
+
 /* Columna 3: Vitalicio / Socio Fundador (todo en celeste 80b3ff) */
 .tier-card.founder-card .tier-price,
 .modal-card.tiers-modal-card .tier-card.founder-card .tier-price {
@@ -3505,16 +3504,16 @@ mat-icon.arrow-icon {
 }
 
 .tier-cta-btn.current-achieved {
-  background: #80b3ff !important;
+  background: #ffffff !important;
   color: #000000 !important;
-  border: 1px solid rgba(0, 0, 0, 0.08) !important;
-  box-shadow: 0 4px 16px rgba(128, 179, 255, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
   opacity: 1 !important;
   cursor: pointer;
 }
 
 .tier-cta-btn.current-achieved:hover {
-  background: #99c2ff !important;
+  background: #f0f4f8 !important;
   transform: translateY(-2px);
 }
 

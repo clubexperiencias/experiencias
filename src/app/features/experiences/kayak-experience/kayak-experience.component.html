@@ -1,0 +1,275 @@
+<div class="kayak-page-container">
+  <!-- Header Compartido -->
+  <app-header [(mobileMenuOpen)]="mobileMenuOpen"></app-header>
+
+  <!-- Breadcrumb -->
+  <app-breadcrumb [items]="breadcrumbs"></app-breadcrumb>
+
+  <!-- Wallpaper y Fondo -->
+  <div class="kayak-wallpaper-body app-wallpaper-body">
+    <div class="ambient-overlay"></div>
+
+    <main class="kayak-main-content">
+      <div class="kayak-wrapper">
+
+        <!-- ═══════════════ HERO CARD: CABECERA Y RESUMEN TÉCNICO ═══════════════ -->
+        <div class="kayak-section-card hero-kayak-card">
+          <div class="card-inner-header">
+            <span class="section-kicker">EXPEDICIÓN NÁUTICA · VALLE CENTRAL</span>
+            <h1 class="card-heading">Travesía en Kayak & Sunset en Las Pirquitas</h1>
+            <p class="card-subheading">
+              Remada guiada en kayak en aguas calmas rodeadas de quebradas y vegetación de yungas andinas.
+              Presenciamos la caída del sol reflejada en el dique y coronamos la jornada con un brindis y picada de
+              productos artesanales catamarqueños.
+            </p>
+          </div>
+
+          <!-- Specs Rápidas -->
+          <div class="kayak-specs-grid">
+            <div class="spec-tile">
+              <span class="spec-label">DIFICULTAD</span>
+              <span class="spec-value">Baja (Sin experiencia previa)</span>
+            </div>
+            <div class="spec-tile">
+              <span class="spec-label">DURACIÓN</span>
+              <span class="spec-value">4 Horas (Media Jornada)</span>
+            </div>
+            <div class="spec-tile">
+              <span class="spec-label">ALTITUD</span>
+              <span class="spec-value">850 msnm</span>
+            </div>
+            <div class="spec-tile">
+              <span class="spec-label">CUPO MÁXIMO</span>
+              <span class="spec-value">12 Expedicionarios</span>
+            </div>
+            <div class="spec-tile">
+              <span class="spec-label">TEMPORADA</span>
+              <span class="spec-value">Todo el año</span>
+            </div>
+            <div class="spec-tile">
+              <span class="spec-label">CALIFICACIÓN</span>
+              <span class="spec-value gold-text">4.95 ★ (62 reseñas)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══════════════ CARD: CRONOGRAMA & ITINERARIO ═══════════════ -->
+        <div class="kayak-section-card">
+          <div class="card-inner-header">
+            <span class="section-kicker">CRONOGRAMA DETALLADO</span>
+            <h2 class="card-heading">Itinerario de la Jornada</h2>
+            <p class="card-subheading">
+              Cada etapa está coordinada por guías náuticos certificados para garantizar una experiencia relajada y
+              segura.
+            </p>
+          </div>
+
+          <div class="timeline-list">
+            <div class="timeline-step">
+              <div class="timeline-time">15:30 hs</div>
+              <div class="timeline-body">
+                <h4>Recepción & Charla de Seguridad Lacustre</h4>
+                <p>
+                  Punto de encuentro en el Club Náutico Dique Las Pirquitas. Asignación de chalecos salvavidas, ajuste
+                  de remos ergonómicos y briefing de técnica básica de remada en aguas mansas.
+                </p>
+              </div>
+            </div>
+
+            <div class="timeline-step">
+              <div class="timeline-time">16:15 hs</div>
+              <div class="timeline-body">
+                <h4>Zarpada & Exploración de Bahías</h4>
+                <p>
+                  Navegación guiada ingresando por ensenadas y paredones de roca rojiza inaccesibles por tierra.
+                  Avistaje de fauna acuática y vegetación de yungas andinas.
+                </p>
+              </div>
+            </div>
+
+            <div class="timeline-step">
+              <div class="timeline-time">18:15 hs</div>
+              <div class="timeline-body">
+                <h4>Pausa Sunset en Bahía Tranquila</h4>
+                <p>
+                  Agrupamiento de embarcaciones en aguas calmas para contemplar la caída del sol tiñendo de tonos
+                  dorados y violetas el cordón de las Sierras de Ambato.
+                </p>
+              </div>
+            </div>
+
+            <div class="timeline-step">
+              <div class="timeline-time">19:00 hs</div>
+              <div class="timeline-body">
+                <h4>Desembarco & Brindis con Sabores Catamarqueños</h4>
+                <p>
+                  Regreso al club náutico, entrega de equipos y cierre gastronómico con degustación de quesos de cabra,
+                  nueces confitadas, pan casero y vinos de altura locales.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══════════════ CARD: EQUIPAMIENTO & PROTOCOLO ═══════════════ -->
+        <div class="kayak-section-card">
+          <div class="card-inner-header">
+            <span class="section-kicker">EQUIPAMIENTO Y PROTOCOLO</span>
+            <h2 class="card-heading">Servicios Incluidos & Seguridad</h2>
+          </div>
+
+          <div class="features-dual-grid">
+            <div class="feature-box">
+              <span class="box-tag">EQUIPAMIENTO PROVISTO</span>
+              <ul class="check-list">
+                <li>Kayaks dobles e individuales de travesía insumergibles y autovaciables</li>
+                <li>Palas ergonómicas de aluminio y fibra ultraliviana</li>
+                <li>Chalecos salvavidas homologados DNP con silbato de socorro</li>
+                <li>Bolsas estancas de 10L y 20L para teléfonos móviles y cámaras</li>
+              </ul>
+            </div>
+
+            <div class="feature-box">
+              <span class="box-tag">SEGURIDAD & ASISTENCIA</span>
+              <ul class="check-list">
+                <li>Guías e instructores náuticos matriculados en Catamarca</li>
+                <li>Certificación internacional en primeros auxilios en zonas agrestes (WFR)</li>
+                <li>Embarcación de apoyo y seguimiento motorizada</li>
+                <li>Seguro integral de turismo aventura y asistencia médica</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══════════════ CARD: RECOMENDACIONES & QUÉ LLEVAR ═══════════════ -->
+        <div class="kayak-section-card">
+          <div class="card-inner-header">
+            <span class="section-kicker">PREPARACIÓN</span>
+            <h2 class="card-heading">Qué debe llevar el Expedicionario</h2>
+          </div>
+
+          <div class="tips-grid">
+            <div class="tip-card">
+              <span class="tip-num">01</span>
+              <h4>Indumentaria</h4>
+              <p>Ropa deportiva cómoda que se pueda mojar (lycra, traje de baño, remera técnica). Muda seca completa de recambio en mochila.</p>
+            </div>
+            <div class="tip-card">
+              <span class="tip-num">02</span>
+              <h4>Calzado para Agua</h4>
+              <p>Sandalias tipo trekking con ajuste al talón, escarpines o zapatillas livianas aptas para mojarse.</p>
+            </div>
+            <div class="tip-card">
+              <span class="tip-num">03</span>
+              <h4>Protección Solar</h4>
+              <p>Gorra o sombrero con visera, lentes de sol con cordón de sujeción al cuello y protector solar factor 50+.</p>
+            </div>
+            <div class="tip-card">
+              <span class="tip-num">04</span>
+              <h4>Hidratación</h4>
+              <p>Botella reutilizable de agua fresca de al menos 1 litro por persona para mantenerte hidratado durante la remada.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══════════════ CARD: UBICACIÓN Y PUNTO DE ENCUENTRO ═══════════════ -->
+        <div class="kayak-section-card">
+          <div class="card-inner-header">
+            <span class="section-kicker">VALLE CENTRAL · FRAY MAMERTO ESQUIÚ</span>
+            <h2 class="card-heading">Punto de Encuentro & Ubicación</h2>
+            <p class="card-subheading">
+              Dique Las Pirquitas se encuentra a 28 km de San Fernando del Valle de Catamarca por Ruta Provincial 1.
+              El acceso es 100% asfaltado y el Club Náutico cuenta con estacionamiento vigilado para vehículos particulares.
+            </p>
+          </div>
+
+          <div class="location-media-preview">
+            <img src="/assets/images/kayak-club-de-experiencias.jpg"
+              alt="Dique Las Pirquitas - Club Náutico" class="location-preview-img" />
+            <span class="location-preview-tag">DIQUE LAS PIRQUITAS · CATAMARCA</span>
+          </div>
+
+          <div class="location-actions-row">
+            <a href="https://maps.google.com/?q=Dique+Las+Pirquitas,+Catamarca" target="_blank"
+              rel="noopener noreferrer" class="location-btn maps-btn">
+              <mat-icon class="loc-icon">location_on</mat-icon>
+              <span>Abrir en Google Maps</span>
+            </a>
+
+            <a routerLink="/experiencias/kayak/fotos" class="location-btn gallery-btn">
+              <mat-icon class="loc-icon">photo_library</mat-icon>
+              <span>Fotos de Experiencias Pasadas</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- ═══════════════ CARD: ARANCEL & RESERVA ═══════════════ -->
+        <div class="kayak-section-card pricing-action-card">
+          <div class="pricing-card-flex">
+            <div class="price-data">
+              <span class="price-title">ARANCEL POR EXPEDICIONARIO</span>
+              <div class="price-figures">
+                <span class="ars-price">$65.000 ARS</span>
+                <span class="usd-price">o $70 USD</span>
+              </div>
+              <span class="price-note">Cupos reservados con prioridad para Socios de EXPERIENCIAS.CLUB</span>
+            </div>
+
+            <div class="action-btns-group">
+              <a routerLink="/socios" class="cta-primary-btn">
+                <span>Acceder con Membresía de Socio</span>
+                <mat-icon>arrow_forward</mat-icon>
+              </a>
+              <a routerLink="/experiencias" class="cta-secondary-btn">
+                <span>← Volver al Catálogo de Experiencias</span>
+              </a>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- Footer Compartido -->
+  <app-footer />
+
+  <!-- Modal Login -->
+  @if (activeModal() === 'login') {
+  <div class="modal-backdrop" (click)="closeModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <span class="modal-kicker">ACCESO DE SOCIOS</span>
+          <h3 class="modal-heading">Iniciar Sesión</h3>
+        </div>
+        <button class="modal-close-btn" (click)="closeModal()" aria-label="Cerrar modal">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <p class="modal-lead">Ingresá tu correo electrónico para acceder a tu perfil y cupos reservados:</p>
+
+      <div class="login-modal-box">
+        <div class="login-input-wrap">
+          <label for="kayak-modal-email" class="login-field-lbl">Correo Electrónico</label>
+          <input id="kayak-modal-email" type="email" class="login-modal-input" placeholder="socio@ejemplo.com"
+            [value]="loginEmail()" (input)="loginEmail.set($any($event.target).value)" (keyup.enter)="submitLogin()" />
+        </div>
+
+        @if (loginError()) {
+        <p class="error-text" style="margin-top: 0.6rem;">{{ loginError() }}</p>
+        }
+
+        <div class="modal-footer" style="margin-top: 1.4rem;">
+          <button class="pill-action-btn secondary" (click)="closeModal()">Cancelar</button>
+          <button class="pill-action-btn" (click)="submitLogin()"
+            [disabled]="!loginEmail().trim() || newsletter.isLoading()">
+            Ingresar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  }
+</div>

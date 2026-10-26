@@ -1,5 +1,6 @@
-import { Component, Input } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Component, Input, inject } from '@angular/core';
+import { Router, RouterLink } from '@angular/router';
+import { NewsletterService } from '../../../core/services/newsletter.service';
 
 export interface FooterLandscape {
   name: string;
@@ -16,6 +17,9 @@ export interface FooterLandscape {
   styleUrl: './footer.component.css'
 })
 export class FooterComponent {
+  private readonly router = inject(Router);
+  readonly newsletter = inject(NewsletterService);
+
   @Input() landscape?: FooterLandscape;
 
   readonly defaultLandscape: FooterLandscape = {
@@ -28,4 +32,33 @@ export class FooterComponent {
   get activeLandscape(): FooterLandscape {
     return this.landscape || this.defaultLandscape;
   }
+
+  get userDisplay(): string {
+    const member = this.newsletter.currentMember();
+    if (!member) {
+      return 'Invitado';
+    }
+    return member.email;
+  }
+
+  get membershipLabel(): string {
+    const member = this.newsletter.currentMember();
+    if (!member) {
+      return 'Sin membresía activa';
+    }
+    const pos = member.position ? ` #${member.position}` : '';
+    if (member.membershipTier === 'fundador') {
+      return `Socio Fundador${pos}`;
+    }
+    if (member.membershipTier === 'activo' || member.subscription?.status === 'active') {
+      return `Socio Activo${pos}`;
+    }
+    return `Socio Emergente${pos}`;
+  }
+
+  logout(): void {
+    this.newsletter.resetCurrentSubscription();
+    this.router.navigate(['/ingresar']);
+  }
 }
+

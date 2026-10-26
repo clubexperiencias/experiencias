@@ -22,7 +22,7 @@ describe('FoundersComponent (/fundadores)', () => {
     expect(component).toBeTruthy();
     const heading = fixture.nativeElement.querySelector('.card-heading');
     expect(heading).toBeTruthy();
-    expect(heading.textContent).toContain('Carta de Postulación · Socio Fundador');
+    expect(heading.textContent).toContain('Carta de Postulación para Socio Fundador');
   });
 
   it('should display the 11 vacantes badge and circle tag', () => {

@@ -1,11 +1,109 @@
 /* ==========================================================================
    Footer Inferior Compartido • EXPERIENCIAS.CLUB
-   Fondo Blanco y Letras Negras para paridad 100% en todas las vistas
+   Franja #ff5f00 pegada al Footer + Fondo Blanco inferior
    ========================================================================== */
 
 :host {
   display: block;
   width: 100%;
+}
+
+/* ==========================================================================
+   Franja Negra (#000000) • Sesión, Membresía y Cerrar Sesión
+   ========================================================================== */
+.footer-session-bar {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  background: #000000;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.3);
+  padding: 0.65rem 2.5rem;
+  box-sizing: border-box;
+  color: #ffffff;
+}
+
+.footer-session-container {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  box-sizing: border-box;
+}
+
+.session-action-col {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex: 1;
+}
+
+.session-tier-col {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  flex: 1;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.session-user-col {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  flex: 1;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.session-label {
+  color: rgba(255, 255, 255, 0.65);
+  font-weight: 500;
+}
+
+.session-value {
+  color: #ffffff;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.session-action-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: #ffffff;
+  padding: 0.28rem 0.85rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  font-family: var(--font-sans);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-radius: 2px;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.session-action-btn:hover {
+  background: #ffffff;
+  color: #000000;
+  border-color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.session-action-btn:active {
+  transform: translateY(0);
 }
 
 .bottom-footer {
@@ -23,7 +121,7 @@
   flex-wrap: wrap;
   gap: 1rem;
   background: #ffffff;
-  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  border-top: none;
 }
 
 .bottom-footer a,
@@ -128,6 +226,51 @@
 
 /* Adaptación responsive en pantallas móviles */
 @media (max-width: 768px) {
+  .footer-session-bar {
+    padding: 0.65rem 1.4rem;
+  }
+
+  .footer-session-container {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+    grid-template-areas:
+      "action tier"
+      "action user";
+    align-items: center;
+    gap: 0.2rem 0.85rem;
+  }
+
+  .footer-session-container.no-session {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .session-action-col {
+    grid-area: action;
+    justify-content: flex-start;
+  }
+
+  .session-tier-col {
+    grid-area: tier;
+    justify-content: flex-end;
+    text-align: right;
+    font-size: 0.78rem;
+  }
+
+  .session-user-col {
+    grid-area: user;
+    justify-content: flex-end;
+    text-align: right;
+    font-size: 0.76rem;
+  }
+
+  .session-action-btn {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.7rem;
+  }
+
   .bottom-footer {
     padding: 1.2rem 1.2rem calc(2rem + env(safe-area-inset-bottom, 0px));
     flex-direction: column;
@@ -161,3 +304,4 @@
     width: 100%;
   }
 }
+

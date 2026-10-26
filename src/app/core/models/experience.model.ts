@@ -20,4 +20,6 @@ export interface Experience {
   highlights: string[];
   included: string[];
   isExclusiveClub: boolean;
+  isLocked?: boolean;
+  detailRoute?: string;
 }

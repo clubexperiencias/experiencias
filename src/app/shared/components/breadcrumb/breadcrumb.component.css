@@ -13,14 +13,14 @@
   background: #FFCC00;
   border-bottom: 1px solid rgba(0, 0, 0, 0.12);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-  padding: 0.65rem 1.5rem;
+  padding: 0.65rem 2.5rem;
   box-sizing: border-box;
 }
 
 .breadcrumb-container {
   width: 100%;
-  max-width: 880px;
-  margin: 0 auto;
+  max-width: 100%;
+  margin: 0;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -46,7 +46,7 @@
 
 .bc-link {
   color: #000000;
-  opacity: 0.78;
+  opacity: 0.82;
   font-weight: 600;
   transition: opacity 0.15s ease;
 }
@@ -79,12 +79,12 @@
 
 .bc-current {
   color: #000000;
-  font-weight: 800;
-  letter-spacing: 0.02em;
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }
 
 @media (max-width: 768px) {
   .breadcrumb-bar {
-    padding: 0.55rem 1.25rem;
+    padding: 0.65rem 1.25rem;
   }
 }

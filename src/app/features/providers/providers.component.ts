@@ -48,6 +48,14 @@ export class ProvidersComponent {
   readonly providerDescription = signal('');
   readonly providerSuccess = signal(false);
 
+  selectCategory(category: string): void {
+    this.providerCategory.set(category);
+    const formElement = document.getElementById('registro-form');
+    if (formElement) {
+      formElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
   toggleMobileMenu(event: Event): void {
     event.stopPropagation();
     this.profileMenuOpen.set(false);
