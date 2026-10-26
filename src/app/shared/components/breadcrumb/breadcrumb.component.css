@@ -1,0 +1,90 @@
+/* ==========================================================================
+   Breadcrumb Bar • Fondo Amarillo #FFCC00 (Estilo National Geographic)
+   ========================================================================== */
+:host {
+  display: block;
+  width: 100%;
+}
+
+.breadcrumb-bar {
+  position: relative;
+  z-index: 20;
+  width: 100%;
+  background: #FFCC00;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  padding: 0.65rem 1.5rem;
+  box-sizing: border-box;
+}
+
+.breadcrumb-container {
+  width: 100%;
+  max-width: 880px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  overflow-x: auto;
+  white-space: nowrap;
+  scrollbar-width: none;
+  box-sizing: border-box;
+}
+
+.breadcrumb-container::-webkit-scrollbar {
+  display: none;
+}
+
+.bc-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  text-decoration: none;
+  line-height: 1;
+}
+
+.bc-link {
+  color: #000000;
+  opacity: 0.78;
+  font-weight: 600;
+  transition: opacity 0.15s ease;
+}
+
+.bc-link:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.bc-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #000000;
+}
+
+.bc-sep {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  color: rgba(0, 0, 0, 0.45);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.bc-current {
+  color: #000000;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+@media (max-width: 768px) {
+  .breadcrumb-bar {
+    padding: 0.55rem 1.25rem;
+  }
+}

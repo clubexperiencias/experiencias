@@ -1,0 +1,66 @@
+<div class="login-page-container">
+  <!-- Barra Superior Unificada -->
+  <app-header [(mobileMenuOpen)]="mobileMenuOpen"></app-header>
+
+  <!-- Breadcrumb debajo del Header con fondo #FFCC00 -->
+  <app-breadcrumb [items]="breadcrumbs"></app-breadcrumb>
+
+  <!-- Cuerpo de /ingresar -->
+  <div class="login-wallpaper-body app-wallpaper-body">
+    <div class="ambient-overlay"></div>
+
+    <!-- Contenido Principal de /ingresar -->
+    <main class="login-main-content">
+      <div class="login-wrapper">
+
+        <div class="login-section-card">
+          <div class="login-card-header">
+            <div class="login-icon-box">
+              <mat-icon class="login-icon">login</mat-icon>
+            </div>
+            <div class="login-header-text">
+              <span class="section-kicker">PORTAL DE MIEMBROS</span>
+              <h1 class="card-heading">Iniciar Sesión</h1>
+            </div>
+          </div>
+
+          <p class="card-subheading">
+            Ingresá el correo electrónico asociado a tu membresía oficial de <strong>EXPERIENCIAS.CLUB</strong> para
+            acceder a tu perfil, reservas activas y credencial digital.
+          </p>
+
+          @if (error()) {
+          <div class="login-alert-error">
+            <mat-icon class="alert-icon">error_outline</mat-icon>
+            <span>{{ error() }}</span>
+          </div>
+          }
+
+          <form class="login-form" (ngSubmit)="submitLogin()">
+            <div class="form-field">
+              <label for="login-email-input" class="field-lbl">Correo Electrónico</label>
+              <input id="login-email-input" type="email" class="field-input" placeholder="socio@ejemplo.com"
+                [value]="email()" (input)="email.set($any($event.target).value)" required autofocus />
+            </div>
+
+            <button type="submit" class="login-submit-btn" [disabled]="!email().trim() || isLoading()">
+              <span>{{ isLoading() ? 'Verificando...' : 'Ingresar a Mi Perfil' }}</span>
+              <mat-icon class="btn-icon">arrow_forward</mat-icon>
+            </button>
+          </form>
+
+          <div class="login-card-footer">
+            <p class="footer-note">
+              ¿Todavía no sos socio?
+              <a routerLink="/socios" class="footer-link">Conocé los Niveles de Socio</a>
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- Footer Compartido -->
+  <app-footer />
+</div>

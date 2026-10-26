@@ -1,0 +1,94 @@
+<header class="top-nav" [class.menu-open]="mobileMenuOpen()">
+  <a routerLink="/" class="brand">
+    <img src="/logo-experiencias-club.png" alt="Club de Experiencias Logo" class="brand-logo-img" />
+    <div class="brand-text">
+      <span class="brand-title">EXPERIENCIAS.CLUB</span>
+      <span class="brand-tag">EDICIÓN CATAMARCA</span>
+    </div>
+  </a>
+
+  <!-- Botón Hamburguesa Mobile (solo visible en pantallas móviles) -->
+  <button class="mobile-menu-toggle-btn" (click)="toggleMobileMenu($event)" [class.active]="mobileMenuOpen()"
+    aria-label="Abrir menú de navegación">
+    @if (mobileMenuOpen()) {
+    <mat-icon class="hamburger-icon">close</mat-icon>
+    } @else {
+    <mat-icon class="hamburger-icon">menu</mat-icon>
+    }
+  </button>
+
+  <!-- Navegación Desktop -->
+  <nav class="nav-actions">
+    <a routerLink="/" class="nav-pill-btn home-header-btn" routerLinkActive="active-route" [routerLinkActiveOptions]="{exact: true}">
+      <mat-icon class="btn-icon">home</mat-icon>
+      <span>Inicio</span>
+    </a>
+
+    <a routerLink="/socios" class="nav-pill-btn socios-nav-btn" routerLinkActive="active-route">
+      <mat-icon class="btn-icon">military_tech</mat-icon>
+      <span>Niveles de Socio</span>
+    </a>
+
+    <a routerLink="/experiencias" class="nav-pill-btn exp-nav-btn" routerLinkActive="active-route">
+      <mat-icon class="btn-icon">explore</mat-icon>
+      <span>Experiencias</span>
+    </a>
+
+    <!-- Menú Desktop: Si hay sesión iniciada muestra Mi Perfil, si no muestra Iniciar Sesión -->
+    @if (newsletter.isSubscribed()) {
+    <a routerLink="/perfil" class="nav-pill-btn profile-btn" routerLinkActive="active-route">
+      <mat-icon class="btn-icon">account_circle</mat-icon>
+      <span>Mi Perfil</span>
+    </a>
+    } @else {
+    <a routerLink="/ingresar" class="nav-pill-btn login-nav-btn" (click)="closeMobileMenu()">
+      <mat-icon class="btn-icon">login</mat-icon>
+      <span>Iniciar Sesión</span>
+    </a>
+    }
+  </nav>
+
+  <!-- Panel de Menú Mobile (Desplegable National Geographic) -->
+  @if (mobileMenuOpen()) {
+  <div class="mobile-nav-panel" (click)="$event.stopPropagation()">
+    <div class="mobile-nav-list">
+      <a routerLink="/" class="mobile-nav-row" (click)="closeMobileMenu()">
+        <span class="row-title">Inicio</span>
+        <mat-icon class="row-arrow">chevron_right</mat-icon>
+      </a>
+
+      <a routerLink="/socios" class="mobile-nav-row" (click)="closeMobileMenu()">
+        <span class="row-title">Niveles de Socio</span>
+        <mat-icon class="row-arrow">chevron_right</mat-icon>
+      </a>
+
+      <a routerLink="/experiencias" class="mobile-nav-row" (click)="closeMobileMenu()">
+        <span class="row-title">Experiencias</span>
+        <mat-icon class="row-arrow">chevron_right</mat-icon>
+      </a>
+
+      @if (newsletter.isSubscribed()) {
+      <a routerLink="/perfil" class="mobile-nav-row profile-cta-row" (click)="closeMobileMenu()">
+        <span class="row-title">Mi Perfil</span>
+        <mat-icon class="row-arrow">arrow_forward</mat-icon>
+      </a>
+
+      <button class="mobile-nav-row logout-row logout-btn" (click)="logout()">
+        <span class="row-title">Cerrar Sesión</span>
+        <mat-icon class="row-arrow">chevron_right</mat-icon>
+      </button>
+      } @else {
+      <a routerLink="/ingresar" class="mobile-nav-row login-cta-row" (click)="closeMobileMenu()">
+        <span class="row-title">Iniciar Sesión</span>
+        <mat-icon class="row-arrow">arrow_forward</mat-icon>
+      </a>
+      }
+    </div>
+  </div>
+  }
+</header>
+
+<!-- Telón de fondo oscuro y difuminado para mobile -->
+@if (mobileMenuOpen()) {
+<div class="mobile-menu-backdrop" (click)="closeMobileMenu()"></div>
+}

@@ -1,0 +1,404 @@
+<div class="sub-page-container">
+  <!-- Barra Superior Unificada -->
+  <app-header [(mobileMenuOpen)]="mobileMenuOpen"></app-header>
+
+  <!-- Breadcrumb debajo del Header con fondo #FFCC00 -->
+  <app-breadcrumb [items]="breadcrumbs"></app-breadcrumb>
+
+  <!-- Contenedor Principal de /socios/activos -->
+  <div class="sub-wallpaper-body app-wallpaper-body">
+    <div class="ambient-overlay"></div>
+
+    <!-- Contenido Principal de /socios/activos -->
+    <main class="sub-main-content">
+    <div class="sub-wrapper">
+
+      <!-- ═══════════════ CASO 1: SUSCRIPCIÓN ACTIVA (GESTIÓN) ═══════════════ -->
+      @if (newsletter.isMonthlyActive()) {
+      <div class="sub-section-card active-management-card">
+        <div class="section-card-header">
+          <div class="status-seal-active">
+            <mat-icon class="seal-icon">verified</mat-icon>
+          </div>
+          <div>
+            <div class="status-badge-row">
+              <span class="active-pill">
+                {{ newsletter.activeSubscription()?.status === 'paused' ? '⏸ SUSCRIPCIÓN PAUSADA' : '✓ SUSCRIPCIÓN ACTIVA' }}
+              </span>
+              <span class="tier-pill">NIVEL 2 · SOCIO ACTIVO</span>
+            </div>
+            <h1 class="section-main-title">Gestión de Membresía Mensual</h1>
+          </div>
+        </div>
+
+        <p class="section-lead-text">
+          Tu membresía se encuentra vinculada a tu cuenta de socio. Tenés acceso a todos los beneficios exclusivos,
+          tarifas con descuento y prioridad en expediciones.
+        </p>
+
+        <!-- Grilla de Detalles de Suscripción -->
+        <div class="subscription-details-grid">
+          <div class="detail-box">
+            <span class="detail-lbl">Cuota Mensual</span>
+            <span class="detail-val price-highlight">$12.000 ARS</span>
+            <span class="detail-sub">Sin permanencia</span>
+          </div>
+
+          <div class="detail-box">
+            <span class="detail-lbl">Estado</span>
+            <span class="detail-val" [class.text-paused]="newsletter.activeSubscription()?.status === 'paused'">
+              {{ newsletter.activeSubscription()?.status === 'paused' ? 'Pausada' : 'Al día' }}
+            </span>
+            <span class="detail-sub">
+              {{ newsletter.activeSubscription()?.status === 'paused' ? 'Reanudable cuando quieras' : 'Débito automático' }}
+            </span>
+          </div>
+
+          <div class="detail-box">
+            <span class="detail-lbl">Método de Cobro</span>
+            <span class="detail-val">{{ newsletter.activeSubscription()?.paymentMethod || 'Tarjeta registrada' }}</span>
+            <button class="link-action-btn" (click)="openManageModal('change_payment')">Cambiar método</button>
+          </div>
+
+          <div class="detail-box">
+            <span class="detail-lbl">Próximo Débito</span>
+            <span class="detail-val">{{ newsletter.activeSubscription()?.nextBillingDate || '12 de Noviembre 2026' }}</span>
+            <span class="detail-sub">Recibo automático por email</span>
+          </div>
+        </div>
+
+        <!-- Beneficios en Vigencia -->
+        <div class="active-perks-box">
+          <h4 class="perks-heading">Beneficios activos incluidos:</h4>
+          <div class="perks-pills-row">
+            <span class="active-perk-pill">✓ 10% OFF en todas las salidas</span>
+            <span class="active-perk-pill">✓ Cupo garantizado preferencial</span>
+            <span class="active-perk-pill">✓ Asistencia directa de viaje</span>
+            <span class="active-perk-pill">✓ Bitácora privada de fotos HD</span>
+          </div>
+        </div>
+
+        <!-- Botones de Acción y Gestión -->
+        <div class="management-actions-row">
+          @if (newsletter.activeSubscription()?.status === 'paused') {
+          <button class="mgmt-btn resume-btn" (click)="resumeSubscription()">
+            <mat-icon class="btn-icon">play_arrow</mat-icon>
+            <span>Reanudar Suscripción</span>
+          </button>
+          } @else {
+          <button class="mgmt-btn pause-btn" (click)="openManageModal('pause_confirm')">
+            <mat-icon class="btn-icon">pause</mat-icon>
+            <span>Pausar Suscripción</span>
+          </button>
+          }
+
+          <button class="mgmt-btn cancel-btn" (click)="openManageModal('cancel_confirm')">
+            <mat-icon class="btn-icon">cancel</mat-icon>
+            <span>Cancelar Membresía</span>
+          </button>
+
+          <a routerLink="/experiencias" class="mgmt-btn explore-btn">
+            <span>Ver Experiencias con 10% OFF</span>
+            <mat-icon class="btn-icon">arrow_forward</mat-icon>
+          </a>
+        </div>
+      </div>
+
+      <!-- ═══════════════ CASO 2: FORMULARIO DE ALTA / PAGO ═══════════════ -->
+      } @else {
+      <div class="sub-section-card hero-sub-card">
+        <div class="section-card-header">
+          <div class="sub-hero-icon-box">
+            <mat-icon class="hero-mat-icon">bolt</mat-icon>
+          </div>
+          <div>
+            <span class="section-kicker">MEMBRESÍA MENSUAL · SOCIO ACTIVO</span>
+            <h1 class="section-main-title">Activar Suscripción Mensual</h1>
+          </div>
+        </div>
+
+        <p class="section-lead-text">
+          Formá parte activa de <strong>EXPERIENCIAS.CLUB</strong> con cupos prioritarios, 10% de bonificación en todas las
+          expediciones andinas y náuticas en Catamarca, y bitácora privada. Sin permanencia mínima.
+        </p>
+
+        <!-- Tarjeta de Precio y Beneficios -->
+        <div class="plan-price-banner">
+          <div class="plan-price-left">
+            <span class="plan-badge">NIVEL 2</span>
+            <div class="price-figures">
+              <span class="price-val">$12.000</span>
+              <span class="price-sub">ARS / mes</span>
+            </div>
+            <span class="price-hint">Podés cancelar o pausar en cualquier momento</span>
+          </div>
+
+          <div class="plan-perks-list">
+            <div class="plan-perk-item">
+              <span class="check-icon">✓</span>
+              <span><strong>10% OFF directo</strong> en todas las expediciones y salidas</span>
+            </div>
+            <div class="plan-perk-item">
+              <span class="check-icon">✓</span>
+              <span>Cupo reservado con prioridad en fechas de alta demanda</span>
+            </div>
+            <div class="plan-perk-item">
+              <span class="check-icon">✓</span>
+              <span>Asistencia y asesoramiento personalizado para tus travesías</span>
+            </div>
+            <div class="plan-perk-item">
+              <span class="check-icon">✓</span>
+              <span>Bitácora fotográfica de expediciones en alta resolución</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card: Formulario y Pasarela de Pago -->
+      <div class="sub-section-card payment-flow-card">
+        <div class="card-inner-header">
+          <span class="section-kicker">MÉTODO DE PAGO Y FACTURACIÓN</span>
+          <h2 class="card-heading">Completá tus Datos de Suscripción</h2>
+          <p class="card-subheading">Procesamiento seguro con encriptación SSL de 256 bits y comprobante fiscal inmediato.</p>
+        </div>
+
+        <form class="payment-form" (ngSubmit)="submitSubscription()">
+          <!-- Paso 1: Datos del Socio -->
+          <div class="form-step-block">
+            <h4 class="step-title">1. Datos del Titular</h4>
+            <div class="form-grid-2col">
+              <div class="form-field">
+                <label for="sub-email" class="field-lbl">Correo Electrónico del Socio</label>
+                <input id="sub-email" type="email" class="field-input" placeholder="tu-correo@ejemplo.com"
+                  [value]="subscriberEmail()" (input)="subscriberEmail.set($any($event.target).value)" required />
+              </div>
+
+              <div class="form-field">
+                <label for="sub-name" class="field-lbl">Nombre y Apellido</label>
+                <input id="sub-name" type="text" class="field-input" placeholder="Ej. Valentina Morales"
+                  [value]="subscriberName()" (input)="subscriberName.set($any($event.target).value)" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Paso 2: Selección de Método de Pago -->
+          <div class="form-step-block">
+            <h4 class="step-title">2. Seleccioná el Método de Pago</h4>
+
+            <div class="payment-methods-selector">
+              <button type="button" class="method-tab" [class.selected]="selectedPaymentMethod() === 'card'"
+                (click)="setPaymentMethod('card')">
+                <mat-icon class="method-icon">credit_card</mat-icon>
+                <div class="method-info">
+                  <strong>Tarjeta de Débito / Crédito</strong>
+                  <span>Visa, Mastercard, Cabal</span>
+                </div>
+              </button>
+
+              <button type="button" class="method-tab" [class.selected]="selectedPaymentMethod() === 'mercadopago'"
+                (click)="setPaymentMethod('mercadopago')">
+                <mat-icon class="method-icon">account_balance_wallet</mat-icon>
+                <div class="method-info">
+                  <strong>Mercado Pago</strong>
+                  <span>Débito en cuenta o dinero en cuenta</span>
+                </div>
+              </button>
+
+              <button type="button" class="method-tab" [class.selected]="selectedPaymentMethod() === 'transfer'"
+                (click)="setPaymentMethod('transfer')">
+                <mat-icon class="method-icon">account_balance</mat-icon>
+                <div class="method-info">
+                  <strong>Transferencia CBU / Alias</strong>
+                  <span>Sin intermediarios</span>
+                </div>
+              </button>
+            </div>
+
+            <!-- Inputs según método -->
+            @if (selectedPaymentMethod() === 'card') {
+            <div class="method-details-panel">
+              <div class="form-field">
+                <label for="card-num" class="field-lbl">Número de Tarjeta</label>
+                <input id="card-num" type="text" class="field-input font-mono" placeholder="4509 •••• •••• 4821"
+                  maxlength="19" [value]="cardNumber()" (input)="cardNumber.set($any($event.target).value)" />
+              </div>
+
+              <div class="card-row-3col">
+                <div class="form-field">
+                  <label for="card-holder" class="field-lbl">Nombre como figura en la tarjeta</label>
+                  <input id="card-holder" type="text" class="field-input" placeholder="VALENTINA MORALES"
+                    [value]="cardHolder()" (input)="cardHolder.set($any($event.target).value)" />
+                </div>
+
+                <div class="form-field">
+                  <label for="card-exp" class="field-lbl">Vencimiento</label>
+                  <input id="card-exp" type="text" class="field-input font-mono" placeholder="MM/AA" maxlength="5"
+                    [value]="cardExp()" (input)="cardExp.set($any($event.target).value)" />
+                </div>
+
+                <div class="form-field">
+                  <label for="card-cvc" class="field-lbl">CVC / Código</label>
+                  <input id="card-cvc" type="password" class="field-input font-mono" placeholder="•••" maxlength="4"
+                    [value]="cardCvc()" (input)="cardCvc.set($any($event.target).value)" />
+                </div>
+              </div>
+            </div>
+            }
+
+            @if (selectedPaymentMethod() === 'mercadopago') {
+            <div class="method-details-panel mp-panel">
+              <div class="mp-banner-info">
+                <mat-icon class="mp-icon">check_circle</mat-icon>
+                <div>
+                  <strong>Suscripción automática con Mercado Pago</strong>
+                  <p>Al confirmar, se vinculará tu débito recurrente mensual a tu cuenta de Mercado Pago con débito automático.</p>
+                </div>
+              </div>
+            </div>
+            }
+
+            @if (selectedPaymentMethod() === 'transfer') {
+            <div class="method-details-panel bank-panel">
+              <div class="bank-data-box">
+                <div class="bank-row">
+                  <span class="bank-lbl">Alias Oficial:</span>
+                  <span class="bank-val font-mono">CLUB.CATAMARCA.VIAJES</span>
+                </div>
+                <div class="bank-row">
+                  <span class="bank-lbl">CBU:</span>
+                  <span class="bank-val font-mono">0110452330045298124012</span>
+                </div>
+                <div class="bank-row">
+                  <span class="bank-lbl">Titular:</span>
+                  <span class="bank-val">Club de Experiencias Turísticas Catamarca S.A.S.</span>
+                </div>
+                <div class="bank-row">
+                  <span class="bank-lbl">Monto mensual:</span>
+                  <span class="bank-val price-highlight">$12.000 ARS</span>
+                </div>
+              </div>
+            </div>
+            }
+          </div>
+
+          @if (errorMessage()) {
+          <div class="error-banner">
+            <mat-icon class="err-icon">error</mat-icon>
+            <span>{{ errorMessage() }}</span>
+          </div>
+          }
+
+          <!-- Botón de Activación -->
+          <div class="submit-action-row">
+            <button type="submit" class="activate-submit-btn" [disabled]="isProcessing() || !subscriberEmail().trim()">
+              @if (isProcessing()) {
+              <span class="btn-spinner"></span>
+              <span>Procesando suscripción...</span>
+              } @else {
+              <span>Confirmar y Activar Membresía ($12.000 ARS / mes)</span>
+              <mat-icon class="btn-icon">bolt</mat-icon>
+              }
+            </button>
+          </div>
+
+          <div class="security-guarantee-row">
+            <mat-icon class="lock-icon">lock</mat-icon>
+            <span>Cobro automático mensual. Cancelá o pausá en cualquier momento desde tu panel de socio.</span>
+          </div>
+        </form>
+      </div>
+      }
+
+    </div>
+  </main>
+
+  <!-- Modales de Gestión de Suscripción -->
+  @if (manageModal() === 'change_payment') {
+  <div class="modal-backdrop" (click)="closeManageModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <span class="modal-kicker">GESTIÓN DE SUSCRIPCIÓN</span>
+          <h3 class="modal-heading">Cambiar Método de Pago</h3>
+        </div>
+        <button class="modal-close-btn" (click)="closeManageModal()" aria-label="Cerrar modal">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+      <p class="modal-lead">Seleccioná o ingresá el nuevo método de cobro automático para tu cuota de socio:</p>
+
+      <div class="login-modal-box">
+        <div class="form-field">
+          <label for="new-method-sel" class="field-lbl">Nuevo Método de Cobro</label>
+          <select id="new-method-sel" class="field-input" [value]="newSelectedMethod()"
+            (change)="newSelectedMethod.set($any($event.target).value)">
+            <option value="Tarjeta de Débito (•••• 9210)">Tarjeta de Débito (•••• 9210)</option>
+            <option value="Tarjeta de Crédito Visa (•••• 3341)">Tarjeta de Crédito Visa (•••• 3341)</option>
+            <option value="Mercado Pago (Débito en Cuenta)">Mercado Pago (Débito en Cuenta)</option>
+            <option value="Transferencia Bancaria Automática">Transferencia Bancaria Automática</option>
+          </select>
+        </div>
+
+        <div class="modal-footer" style="margin-top: 1.5rem;">
+          <button class="pill-action-btn secondary" (click)="closeManageModal()">Cancelar</button>
+          <button class="pill-action-btn" (click)="savePaymentMethod()">Guardar Cambios</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  }
+
+  @if (manageModal() === 'pause_confirm') {
+  <div class="modal-backdrop" (click)="closeManageModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <span class="modal-kicker">PAUSAR SUSCRIPCIÓN</span>
+          <h3 class="modal-heading">¿Pausar tu Membresía?</h3>
+        </div>
+        <button class="modal-close-btn" (click)="closeManageModal()" aria-label="Cerrar modal">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+      <p class="modal-lead">
+        Tu membresía quedará pausada temporalmente y no se debitarán cuotas. Mantendrás tu número de socio y podrás
+        reactivarla con un clic cuando desees volver a expedicionar.
+      </p>
+      <div class="modal-footer" style="margin-top: 1.5rem;">
+        <button class="pill-action-btn secondary" (click)="closeManageModal()">Volver</button>
+        <button class="pill-action-btn" (click)="pauseSubscription()">Sí, Pausar</button>
+      </div>
+    </div>
+  </div>
+  }
+
+  @if (manageModal() === 'cancel_confirm') {
+  <div class="modal-backdrop" (click)="closeManageModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <span class="modal-kicker">CANCELACIÓN DIRECTA</span>
+          <h3 class="modal-heading">¿Cancelar tu Membresía Mensual?</h3>
+        </div>
+        <button class="modal-close-btn" (click)="closeManageModal()" aria-label="Cerrar modal">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+      <p class="modal-lead">
+        No se te volverá a cobrar ningún cargo. Continuarás conservando tu registro gratuito como Socio Emergente en el club.
+      </p>
+      <div class="modal-footer" style="margin-top: 1.5rem;">
+        <button class="pill-action-btn secondary" (click)="closeManageModal()">No, Mantener</button>
+        <button class="pill-action-btn" style="background: #e74c3c; color: #fff;" (click)="cancelSubscription()">
+          Confirmar Cancelación
+        </button>
+      </div>
+    </div>
+  </div>
+  }
+
+  </div>
+
+  <!-- Footer Compartido -->
+  <app-footer />
+</div>

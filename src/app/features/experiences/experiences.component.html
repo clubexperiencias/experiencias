@@ -1,0 +1,245 @@
+<div class="exp-page-container">
+  <!-- Barra Superior Unificada -->
+  <app-header [(mobileMenuOpen)]="mobileMenuOpen" (loginClick)="openModal('login')"></app-header>
+
+  <!-- Breadcrumb debajo del Header con fondo #FFCC00 -->
+  <app-breadcrumb [items]="breadcrumbs"></app-breadcrumb>
+
+  <!-- Contenedor Principal de /experiencias -->
+  <div class="exp-wallpaper-body app-wallpaper-body">
+    <div class="ambient-overlay"></div>
+
+    <!-- Contenido Principal de /experiencias -->
+    <main class="exp-main-content">
+    <div class="exp-wrapper">
+
+      <!-- ═══════════════ CARD 1: HERO / INTRODUCCIÓN ═══════════════ -->
+      <div class="exp-section-card hero-exp-card">
+        <div class="section-card-header">
+          <div class="exp-hero-icon-box">
+            <mat-icon class="hero-mat-icon">explore</mat-icon>
+          </div>
+          <div>
+            <span class="section-kicker">CURADURÍA EXCLUSIVA</span>
+            <h1 class="section-main-title">Expediciones de Alta Montaña & Náuticas</h1>
+          </div>
+        </div>
+
+        <p class="section-lead-text">
+          Una muestra de las travesías irrepetibles que coordinamos con los mejores prestadores locales en Catamarca.
+          Todas las salidas cuentan con guías matriculados, seguros de actividad y estándares de seguridad
+          internacional.
+        </p>
+
+        <div class="hero-quick-stats">
+          <div class="quick-stat-item">
+            <span class="stat-number">4.96 ★</span>
+            <span class="stat-label">Calificación promedio expedicionaria</span>
+          </div>
+          <div class="quick-stat-divider"></div>
+          <div class="quick-stat-item">
+            <span class="stat-number">100%</span>
+            <span class="stat-label">Guías y baqueanos matriculados</span>
+          </div>
+          <div class="quick-stat-divider"></div>
+          <div class="quick-stat-item">
+            <span class="stat-number">Puna & Valles</span>
+            <span class="stat-label">De 850 a 4.700 msnm</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════════ CARD 2: CATÁLOGO DE EXPEDICIONES ═══════════════ -->
+      <div class="exp-section-card">
+        <div class="card-inner-header">
+          <span class="section-kicker">ITINERARIOS DESTACADOS</span>
+          <h2 class="card-heading">Catálogo de Salidas & Travesías</h2>
+          <p class="card-subheading">
+            Seleccioná cualquier expedición para ver su ficha técnica detallada, puntos de recorrido y servicios
+            incluidos.
+          </p>
+        </div>
+
+        <div class="experiences-catalog-grid">
+          @for (exp of experienceService.experiences(); track exp.id) {
+          <div class="exp-catalog-item" [class.is-expanded]="selectedExperience()?.id === exp.id">
+            <div class="exp-card-main">
+              <div class="exp-card-media">
+                <img [src]="exp.coverImage" [alt]="exp.title" class="exp-card-img" />
+                <span class="exp-region-tag">{{ exp.region }}</span>
+                <span class="exp-altitude">{{ exp.altitudeMeters }} msnm</span>
+              </div>
+
+              <div class="exp-card-content">
+                <div class="exp-rating">
+                  ★ {{ exp.rating }} <span class="reviews">({{ exp.reviewsCount }} expedicionarios)</span>
+                </div>
+                <h3 class="exp-title">{{ exp.title }}</h3>
+                <p class="exp-tagline">{{ exp.tagline }}</p>
+
+                <div class="exp-meta-row">
+                  <span>⏱ {{ exp.durationLabel }}</span>
+                  <span>⛰ Dificultad: {{ exp.difficulty }}</span>
+                  <span>☀️ Temporada: {{ exp.bestSeason }}</span>
+                </div>
+
+                <div class="exp-price-action-row">
+                  <div class="price-box">
+                    <span class="price-val">${{ exp.priceArs.toLocaleString('es-AR') }} ARS</span>
+                    <span class="price-usd">o ${{ exp.priceUsd }} USD</span>
+                  </div>
+
+                  <button class="exp-toggle-details-btn" [class.active]="selectedExperience()?.id === exp.id"
+                    (click)="toggleExperienceDetails(exp)">
+                    @if (selectedExperience()?.id === exp.id) {
+                    <span>Ocultar detalles</span>
+                    <mat-icon class="toggle-icon">expand_less</mat-icon>
+                    } @else {
+                    <span>Ver ficha técnica</span>
+                    <mat-icon class="toggle-icon">expand_more</mat-icon>
+                    }
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Panel expandible de detalles técnicos -->
+            @if (selectedExperience()?.id === exp.id) {
+            <div class="exp-details-panel">
+              <div class="details-panel-header">
+                <div>
+                  <span class="details-kicker">FICHA TÉCNICA Y PROTOCOLO</span>
+                  <h4 class="details-title">{{ exp.title }}</h4>
+                </div>
+                <button class="details-close-btn" (click)="selectedExperience.set(null)" aria-label="Cerrar detalles">
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+
+              <p class="details-description">{{ exp.description }}</p>
+
+              <div class="details-columns-grid">
+                <div class="details-col">
+                  <span class="col-kicker">PUNTOS DESTACADOS</span>
+                  <ul class="highlights-list">
+                    @for (h of exp.highlights; track h) {
+                    <li>{{ h }}</li>
+                    }
+                  </ul>
+                </div>
+
+                <div class="details-col">
+                  <span class="col-kicker">SERVICIOS INCLUIDOS</span>
+                  <div class="included-pills-wrap">
+                    @for (inc of exp.included; track inc) {
+                    <span class="inc-pill">✓ {{ inc }}</span>
+                    }
+                  </div>
+                </div>
+              </div>
+
+              <div class="details-footer-row">
+                <div class="footer-hint">
+                  <mat-icon class="hint-icon">lock</mat-icon>
+                  <span>Cupos reservados exclusivamente para Socios del Club</span>
+                </div>
+                <a routerLink="/socios" class="participate-cta-btn">
+                  <span>Quiero ser Socio del Club</span>
+                  <mat-icon class="btn-icon">arrow_forward</mat-icon>
+                </a>
+              </div>
+            </div>
+            }
+          </div>
+          }
+        </div>
+      </div>
+
+      <!-- ═══════════════ CARD 3: SEGURIDAD & PRESTADORES ═══════════════ -->
+      <div class="exp-section-card safety-provider-card">
+        <div class="card-inner-header">
+          <span class="section-kicker">SEGURIDAD Y COMPROMISO LOCAL</span>
+          <h2 class="card-heading">Turismo Responsable en Tierras Andinas</h2>
+          <p class="card-subheading">
+            Catamarca conserva ecosistemas prístinos y de extrema fragilidad. Nuestras expediciones se rigen por
+            principios
+            estrictos de impacto cero, respeto a las comunidades locales y equipamiento de rescate en zonas agrestes.
+          </p>
+        </div>
+
+        <div class="safety-features-grid">
+          <div class="safety-item">
+            <mat-icon class="safety-icon">health_and_safety</mat-icon>
+            <h4>Guías con Certificación WFR</h4>
+            <p>Socorrismo en zonas agrestes y comunicación satelital en cordillera.</p>
+          </div>
+          <div class="safety-item">
+            <mat-icon class="safety-icon">eco</mat-icon>
+            <h4>Impacto Cero & Sustentabilidad</h4>
+            <p>Preservamos los campos de pumita, salares y cuencas hídricas sin alteración.</p>
+          </div>
+          <div class="safety-item">
+            <mat-icon class="safety-icon">handshake</mat-icon>
+            <h4>Valorización del Baqueano</h4>
+            <p>El 100% de las contrataciones apoyan directamente la economía local catamarqueña.</p>
+          </div>
+        </div>
+
+        <div class="provider-callout-box">
+          <div>
+            <h4 class="callout-title">¿Sos guía, chofer 4x4 o prestador en Catamarca?</h4>
+            <p class="callout-sub">Sumate a nuestra red y recibí expedicionarios calificados todo el año.</p>
+          </div>
+          <a routerLink="/experiencias/prestadores" class="callout-btn">
+            <span>Convertirme en Prestador</span>
+            <mat-icon class="btn-icon">arrow_forward</mat-icon>
+          </a>
+        </div>
+      </div>
+
+    </div>
+  </main>
+  </div>
+
+  <!-- Footer Compartido -->
+  <app-footer />
+
+  <!-- Modal: Iniciar Sesión (si se abre desde el header) -->
+  @if (activeModal() === 'login') {
+  <div class="modal-backdrop" (click)="closeModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <span class="modal-kicker">ACCESO DE SOCIOS</span>
+          <h3 class="modal-heading">Iniciar Sesión</h3>
+        </div>
+        <button class="modal-close-btn" (click)="closeModal()" aria-label="Cerrar modal">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <p class="modal-lead">Ingresá tu correo electrónico para acceder a tu perfil de socio y comprobantes:</p>
+
+      <div class="login-modal-box">
+        <div class="login-input-wrap">
+          <label for="login-email-exp" class="login-field-lbl">Correo Electrónico</label>
+          <input id="login-email-exp" type="email" class="login-modal-input" placeholder="tu-correo@ejemplo.com"
+            [value]="loginEmail()" (input)="loginEmail.set($any($event.target).value)" (keyup.enter)="submitLogin()" />
+        </div>
+
+        @if (loginError()) {
+        <p class="error-text" style="margin-top: 0.6rem;">{{ loginError() }}</p>
+        }
+
+        <div class="modal-footer" style="margin-top: 1.4rem;">
+          <button class="pill-action-btn secondary" (click)="closeModal()">Cancelar</button>
+          <button class="pill-action-btn" (click)="submitLogin()"
+            [disabled]="!loginEmail().trim() || newsletter.isLoading()">
+            Ingresar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  }
+</div>

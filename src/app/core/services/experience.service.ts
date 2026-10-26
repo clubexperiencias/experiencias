@@ -34,60 +34,6 @@ export class ExperienceService {
       isExclusiveClub: true
     },
     {
-      id: 'exp_seismiles',
-      slug: 'ruta-de-los-seismiles-pissis',
-      title: 'Balcón del Pissis & Seismiles Sagrados',
-      tagline: 'La segunda cumbre más alta de América rodeada de lagunas esmeralda',
-      description: 'Travesía de alta montaña hacia los gigantes andinos. Lagunas de colores inverosímiles (Turquesa, Negra, Celeste y Verde) pobladas de flamencos andinos en salares vírgenes.',
-      region: 'Fiambalá y Seismiles',
-      difficulty: 'Exigente',
-      durationDays: 3,
-      durationLabel: '3 Días / 2 Noches',
-      altitudeMeters: 4600,
-      bestSeason: 'Noviembre a Abril',
-      priceArs: 240000,
-      priceUsd: 250,
-      maxSpotsPerGroup: 6,
-      rating: 4.98,
-      reviewsCount: 34,
-      coverImage: '/assets/images/catamarca_hero.jpg',
-      galleryImages: ['/assets/images/catamarca_hero.jpg'],
-      highlights: [
-        'Vistas panorámicas del Monte Pissis (6.795 msnm)',
-        'Avistaje de fauna autóctona: vicuñas silvestres y parinas',
-        'Termas naturales de alta montaña al anochecer'
-      ],
-      included: ['Transporte 4x4 especializado', 'Equipo de aclimatación y oxígeno', 'Campamento domo premium', 'Gastronomía de autor'],
-      isExclusiveClub: true
-    },
-    {
-      id: 'exp_galan',
-      slug: 'caldera-volcan-galan',
-      title: 'Cráter del Volcán Galán & Laguna Diamante',
-      tagline: 'El cráter volcánico más imponente del planeta Tierra',
-      description: 'Una de las maravillas geológicas más extremas del mundo. Una caldera de 45 km de diámetro con aguas turquesas hipersalinas y extremófilos que replican las condiciones del origen de la vida.',
-      region: 'Puna de Atacama',
-      difficulty: 'Alta Montaña',
-      durationDays: 3,
-      durationLabel: '3 Días / Expedición Extrema',
-      altitudeMeters: 4900,
-      bestSeason: 'Noviembre a Marzo',
-      priceArs: 290000,
-      priceUsd: 310,
-      maxSpotsPerGroup: 6,
-      rating: 5.0,
-      reviewsCount: 22,
-      coverImage: '/assets/images/catamarca_hero.jpg',
-      galleryImages: ['/assets/images/catamarca_hero.jpg'],
-      highlights: [
-        'Descenso al interior de la caldera volcánica más ancha del mundo',
-        'Fumarolas activas y termas escondidas',
-        'Registro fotográfico profesional incluido para tu bitácora de recuerdos'
-      ],
-      included: ['Vehículos oruga/4x4 de rescate', 'Guía geólogo andino', 'Seguro de alta montaña', 'Comidas gourmet liofilizadas y frescas'],
-      isExclusiveClub: true
-    },
-    {
       id: 'exp_kayak_pirquitas',
       slug: 'kayak-sunset-dique-las-pirquitas',
       title: 'Travesía en Kayak & Sunset en Las Pirquitas',
@@ -104,14 +50,41 @@ export class ExperienceService {
       maxSpotsPerGroup: 12,
       rating: 4.95,
       reviewsCount: 62,
-      coverImage: '/assets/images/catamarca_pomez.jpg',
-      galleryImages: ['/assets/images/catamarca_pomez.jpg'],
+      coverImage: '/assets/images/laguna_blanca.jpg',
+      galleryImages: ['/assets/images/laguna_blanca.jpg'],
       highlights: [
         'Navegación guiada por instructores certificados en aguas mansas',
         'Puntos panorámicos inaccesibles por tierra firme',
         'Atardecer con degustación de dulces y quesos de cabra catamarqueños'
       ],
       included: ['Kayaks de travesía y remos de carbono', 'Chaleco salvavidas reglamentario', 'Guía náutico certificado', 'Snack y bebidas'],
+      isExclusiveClub: true
+    },
+    {
+      id: 'exp_seismiles',
+      slug: 'ruta-de-los-seismiles-laguna-verde',
+      title: 'Ruta de los Seismiles & Laguna Verde',
+      tagline: 'Expedición de alta montaña entre gigantes andinos de más de 6.000 metros',
+      description: 'Travesía escénica por la mítica Ruta Nacional 60 ascendiendo hacia el Paso de San Francisco, avistando el Volcán Pissis, Ojos del Salado e hipnóticas lagunas turquesas de altura.',
+      region: 'Fiambalá y Seismiles',
+      difficulty: 'Exigente',
+      durationDays: 3,
+      durationLabel: '3 Días / 2 Noches',
+      altitudeMeters: 4700,
+      bestSeason: 'Noviembre a Abril',
+      priceArs: 240000,
+      priceUsd: 250,
+      maxSpotsPerGroup: 6,
+      rating: 4.98,
+      reviewsCount: 39,
+      coverImage: '/assets/images/catamarca_hero.jpg',
+      galleryImages: ['/assets/images/catamarca_hero.jpg'],
+      highlights: [
+        'Vistas a las cumbres más altas de la Cordillera de los Andes después del Aconcagua',
+        'Termas naturales de Fiambalá bajo el cielo estrellado',
+        'Avistaje de vicuñas, flamencos andinos y salares de altura'
+      ],
+      included: ['Transporte 4x4 especializado', 'Guía matriculado de montaña', 'Alojamiento en hosterías de cordillera', 'Seguro de aventura'],
       isExclusiveClub: true
     }
   ]);

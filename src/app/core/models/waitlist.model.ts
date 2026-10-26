@@ -1,3 +1,16 @@
+export type MembershipTier = 'emergente' | 'activo' | 'fundador';
+
+export interface SubscriptionDetails {
+  status: 'active' | 'paused' | 'cancelled';
+  tier: MembershipTier;
+  amountArs: number;
+  paymentMethod: string;
+  startedAt: string;
+  nextBillingDate: string;
+  autoRenew: boolean;
+  lastPaymentReceipt?: string;
+}
+
 export interface WaitlistEntry {
   id: string;
   email: string;
@@ -13,6 +26,8 @@ export interface WaitlistEntry {
   createdAt: Date;
   status: 'pending' | 'confirmed' | 'invited';
   source: string;
+  membershipTier?: MembershipTier;
+  subscription?: SubscriptionDetails;
 }
 
 export type ExperienceInterest =

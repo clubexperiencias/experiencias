@@ -1,0 +1,22 @@
+<nav class="breadcrumb-bar" aria-label="Ruta de navegación">
+  <div class="breadcrumb-container">
+    @for (item of items(); track item.label; let last = $last; let first = $first) {
+      @if (item.url && !last) {
+        <a [routerLink]="item.url" class="bc-item bc-link">
+          @if (first) {
+            <mat-icon class="bc-icon">home</mat-icon>
+          }
+          <span>{{ item.label }}</span>
+        </a>
+        <mat-icon class="bc-sep">chevron_right</mat-icon>
+      } @else {
+        <span class="bc-item bc-current" aria-current="page">
+          @if (first) {
+            <mat-icon class="bc-icon">home</mat-icon>
+          }
+          <span>{{ item.label }}</span>
+        </span>
+      }
+    }
+  </div>
+</nav>

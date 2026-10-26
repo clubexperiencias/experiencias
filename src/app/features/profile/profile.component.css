@@ -4,18 +4,23 @@
    ========================================================================== */
 @import '../waitlist/waitlist.component.css';
 
-/* Contenedor de página de perfil con fondo Laguna Blanca */
+/* Contenedor de página */
 .profile-page-container {
   min-height: 100vh;
   position: relative;
-  background-color: #06090e;
-  background-image: url('/assets/images/laguna_blanca.jpg');
-  background-size: cover;
-  background-position: center center;
-  background-repeat: no-repeat;
-  background-attachment: fixed;
+  background: transparent;
   color: var(--color-text-white);
-  overflow-x: hidden;
+  overflow-x: clip;
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-wallpaper-body {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Contenedor principal: Ligeramente más ancho y todas las cajas con ancho máximo parejo */
@@ -37,7 +42,7 @@
 }
 
 /* ==========================================================================
-   Boxes en Filas: Ancho Máximo Completo, Sin Sombreado y Translúcidas (0.52)
+   Boxes en Filas: Vidrio traslúcido ligero para mantener el fondo brillante como en /
    ========================================================================== */
 .confirmed-card,
 .profile-completion-card,
@@ -45,13 +50,13 @@
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
-  background: hsla(220, 24%, 9%, 0.52);
+  background: hsla(220, 24%, 9%, 0.22);
   border: 1px solid rgba(255, 212, 42, 0.35);
   border-radius: 2px;
   padding: 2.2rem;
   margin: 0;
-  backdrop-filter: blur(28px);
-  -webkit-backdrop-filter: blur(28px);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   box-shadow: none !important;
   text-align: left;
   animation: profileBoxEntrance 0.45s cubic-bezier(0.16, 1, 0.3, 1) backwards;

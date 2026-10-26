@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { App } from './app';
 import { routes } from './app.routes';
 
@@ -15,5 +15,15 @@ describe('App', () => {
     const fixture = TestBed.createComponent(App);
     const app = fixture.componentInstance;
     expect(app).toBeTruthy();
+  });
+
+  it('should scroll to top on navigation', async () => {
+    const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    const fixture = TestBed.createComponent(App);
+    const router = TestBed.inject(Router);
+    await router.navigate(['/']);
+    await fixture.whenStable();
+    expect(scrollToSpy).toHaveBeenCalled();
+    scrollToSpy.mockRestore();
   });
 });

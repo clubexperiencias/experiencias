@@ -1,135 +1,16 @@
-<div class="profile-page-container" [style.background-image]="'url(' + bg() + ')'">
-  <!-- Viñeta cinematográfica y filtro de contraste idéntico a portada / -->
-  <div class="ambient-overlay"></div>
+<div class="profile-page-container">
+  <!-- Barra Superior Unificada -->
+  <app-header [(mobileMenuOpen)]="mobileMenuOpen" (loginClick)="openLoginModal()"></app-header>
 
-  <!-- Barra Superior Idéntica a Portada / -->
-  <header class="top-nav" [class.menu-open]="mobileMenuOpen()">
-    <a routerLink="/" class="brand">
-      <img src="/logo-club-experiencias.png" alt="Club de Experiencias Logo" class="brand-logo-img" />
-      <div class="brand-text">
-        <span class="brand-title">EXPERIENCIAS.CLUB</span>
-        <span class="brand-tag">EDICIÓN CATAMARCA 2026</span>
-      </div>
-    </a>
+  <!-- Breadcrumb debajo del Header con fondo #FFCC00 -->
+  <app-breadcrumb [items]="breadcrumbs"></app-breadcrumb>
 
-    <!-- Botón Hamburguesa Mobile (solo visible en pantallas móviles) -->
-    <button class="mobile-menu-toggle-btn" (click)="toggleMobileMenu($event)" [class.active]="mobileMenuOpen()"
-      aria-label="Abrir menú de navegación">
-      @if (mobileMenuOpen()) {
-      <mat-icon class="hamburger-icon">close</mat-icon>
-      } @else {
-      <mat-icon class="hamburger-icon">menu</mat-icon>
-      }
-    </button>
+  <!-- Contenedor Principal de Perfil -->
+  <div class="profile-wallpaper-body app-wallpaper-body">
+    <div class="ambient-overlay"></div>
 
-    <!-- Navegación Desktop -->
-    <nav class="nav-actions">
-      <button class="nav-pill-btn" (click)="openModal('tiers')">
-        <mat-icon class="btn-icon">military_tech</mat-icon>
-        Niveles de Socio
-      </button>
-
-      <button class="nav-pill-btn" (click)="openModal('experiences')">
-        <mat-icon class="btn-icon">explore</mat-icon>
-        Experiencias
-      </button>
-
-      <button class="nav-pill-btn" (click)="openModal('providers')">
-        <mat-icon class="btn-icon">handshake</mat-icon>
-        Prestadores & Guías
-      </button>
-
-      <!-- Botón Inicio en Header -->
-      <a routerLink="/" class="nav-pill-btn home-header-btn" style="text-decoration: none;">
-        <mat-icon class="btn-icon">home</mat-icon>
-        <span>Inicio</span>
-      </a>
-    </nav>
-
-    <!-- Panel de Menú Mobile (Desplegable idéntico a portada /) -->
-    @if (mobileMenuOpen()) {
-    <div class="mobile-nav-panel" (click)="$event.stopPropagation()">
-      <div class="mobile-nav-kicker-row">
-        <span class="pulse-dot"></span>
-        <span class="mobile-kicker-text">MENÚ · SOCIOS VITALICIOS</span>
-      </div>
-
-      <div class="mobile-nav-list">
-        <button class="mobile-nav-row" (click)="openModal('tiers')">
-          <div class="row-icon-wrap">
-            <mat-icon class="nav-svg-icon">military_tech</mat-icon>
-          </div>
-          <div class="row-text-wrap">
-            <span class="row-title">Niveles de Socio y Membresías</span>
-            <span class="row-sub">Socio Emergente, Activo y Fundador Vitalicio</span>
-          </div>
-          <mat-icon class="row-arrow">chevron_right</mat-icon>
-        </button>
-
-        <button class="mobile-nav-row" (click)="openModal('experiences')">
-          <div class="row-icon-wrap">
-            <mat-icon class="nav-svg-icon">explore</mat-icon>
-          </div>
-          <div class="row-text-wrap">
-            <span class="row-title">Experiencias Destacadas</span>
-            <span class="row-sub">Puna andina, Seismiles y aguas calmas</span>
-          </div>
-          <mat-icon class="row-arrow">chevron_right</mat-icon>
-        </button>
-
-        <button class="mobile-nav-row" (click)="openModal('providers')">
-          <div class="row-icon-wrap">
-            <mat-icon class="nav-svg-icon">handshake</mat-icon>
-          </div>
-          <div class="row-text-wrap">
-            <span class="row-title">Prestadores & Guías Locales</span>
-            <span class="row-sub">Postulación para sumar tu travesía</span>
-          </div>
-          <mat-icon class="row-arrow">chevron_right</mat-icon>
-        </button>
-
-        <div class="mobile-nav-separator"></div>
-        <span class="mobile-section-label">MI CUENTA</span>
-
-        <a routerLink="/perfil" class="mobile-nav-row" (click)="mobileMenuOpen.set(false)"
-          style="text-decoration: none;">
-          <div class="row-icon-wrap">
-            <mat-icon class="nav-svg-icon">account_circle</mat-icon>
-          </div>
-          <div class="row-text-wrap">
-            <span class="row-title">Mi Perfil</span>
-            <span class="row-sub">Estado de Socio y Comprobantes</span>
-          </div>
-          <mat-icon class="row-arrow">chevron_right</mat-icon>
-        </a>
-
-        <a routerLink="/" class="mobile-nav-row" (click)="mobileMenuOpen.set(false)" style="text-decoration: none;">
-          <div class="row-icon-wrap">
-            <mat-icon class="nav-svg-icon">home</mat-icon>
-          </div>
-          <div class="row-text-wrap">
-            <span class="row-title">Volver al Inicio</span>
-            <span class="row-sub">Ir a la página principal</span>
-          </div>
-          <mat-icon class="row-arrow">chevron_right</mat-icon>
-        </a>
-
-        <button class="mobile-nav-row logout-row logout-btn" (click)="logout()">
-          <div class="row-icon-wrap">
-            <mat-icon class="nav-svg-icon">logout</mat-icon>
-          </div>
-          <div class="row-text-wrap">
-            <span class="row-title">Cerrar Sesión</span>
-            <span class="row-sub">Finalizar sesión en este dispositivo</span>
-          </div>
-        </button>
-      </div>
-    </div>
-    }
-  </header>
-
-  <!-- Contenido Principal de Perfil -->
-  <main class="profile-main-content">
+    <!-- Contenido Principal de Perfil -->
+    <main class="profile-main-content">
     <div class="profile-wrapper">
 
       <!-- ═══════════════ FILA 1: REGISTRO EXITOSO / ESTADO ACTUAL ═══════════════ -->
@@ -142,14 +23,16 @@
           </div>
           <div>
             <span class="confirmed-tag">¡REGISTRO EXITOSO! · ESTADO ACTUAL</span>
-            <h2 class="confirmed-title">Socio Emergente #{{ newsletter.currentMember()?.position || 143 }}</h2>
+            <h2 class="confirmed-title">{{ newsletter.isMonthlyActive() ? 'Socio Activo' : 'Socio Emergente' }} #{{ newsletter.currentMember()?.position || 143 }}</h2>
           </div>
         </div>
 
         <p class="confirmed-desc">
-          Registramos tu suscripción con <strong>{{ newsletter.currentMember()?.email || 'socio@experiencias.club'
-            }}</strong>.
-          Ya formás parte de la lista de espera oficial del club como <strong>Socio Emergente</strong>.
+          Registramos tu suscripción con <strong>{{ newsletter.currentMember()?.email || 'socio@experiencias.club' }}</strong>.
+          Ya formás parte de la lista de espera oficial del club como <strong>{{ newsletter.isMonthlyActive() ? 'Socio Activo' : 'Socio Emergente' }}</strong>.
+          <a routerLink="/socios/activos" style="color: var(--color-gold); margin-left: 0.5rem; text-decoration: underline;">
+            {{ newsletter.isMonthlyActive() ? 'Gestionar membresía mensual →' : 'Activar membresía mensual (10% OFF) →' }}
+          </a>
         </p>
       </div>
 
@@ -430,14 +313,56 @@
 
     </div>
   </main>
+  </div>
+
+  <!-- Footer Inferior Compartido -->
+  <app-footer />
 
   <!-- ═══════════════ MODALES INTERACTIVOS EN LA MISMA PÁGINA DE PERFIL ═══════════════ -->
   @if (activeModal()) {
   <div class="modal-backdrop" (click)="closeModal()">
 
+    <!-- Modal: Iniciar Sesión -->
+    @if (activeModal() === 'login') {
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <span class="modal-kicker">ACCESO DE SOCIOS</span>
+          <h3 class="modal-heading">Iniciar Sesión</h3>
+        </div>
+        <button class="modal-close-btn" (click)="closeModal()"
+          aria-label="Cerrar modal"><mat-icon>close</mat-icon></button>
+      </div>
+
+      <p class="modal-lead login-lead">
+        Ingresá tu correo electrónico para acceder a tu perfil de socio y comprobantes:
+      </p>
+
+      <div class="login-modal-box">
+        <div class="login-input-wrap">
+          <label for="login-modal-email" class="login-field-lbl">Correo Electrónico</label>
+          <input id="login-modal-email" type="email" class="login-modal-input" placeholder="tu-correo@ejemplo.com"
+            [value]="loginEmail()" (input)="loginEmail.set($any($event.target).value)" (keyup.enter)="submitLogin()" />
+        </div>
+
+        @if (loginError()) {
+        <p class="error-text" style="margin-top: 0.6rem;">{{ loginError() }}</p>
+        }
+
+        <div class="modal-footer" style="margin-top: 1.4rem;">
+          <button class="pill-action-btn secondary" (click)="closeModal()">Cancelar</button>
+          <button class="pill-action-btn" (click)="submitLogin()"
+            [disabled]="!loginEmail().trim() || newsletter.isLoading()">
+            Ingresar
+          </button>
+        </div>
+      </div>
+    </div>
+    }
+
     <!-- Modal: Niveles de Socio y Membresías -->
     @if (activeModal() === 'tiers') {
-    <div class="modal-card wide" (click)="$event.stopPropagation()">
+    <div class="modal-card wide tiers-modal-card" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <div>
           <span class="modal-kicker">CLUB PRIVADO DE EXPEDICIONARIOS</span>
@@ -509,7 +434,7 @@
           </ul>
 
           <div class="tier-card-footer">
-            <button class="tier-cta-btn cta-active" (click)="openMembershipPayment('activo')">
+            <a routerLink="/socios/activos" class="tier-cta-btn cta-active" (click)="closeModal()" style="text-decoration: none;">
               <span class="cta-title-row">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
                   <polygon
@@ -518,7 +443,7 @@
                 Activar Membresía Mensual
               </span>
               <span class="cta-sub-text">$12.000 ARS/mes · Cancelación libre</span>
-            </button>
+            </a>
           </div>
         </div>
 
@@ -578,7 +503,7 @@
               </svg>
               CÍRCULO VITALICIO EXCLUSIVO
             </span>
-            <span class="founder-spots-pill">12 VACANTES 2026</span>
+            <span class="founder-spots-pill">11 VACANTES 2026</span>
           </div>
           <h3 class="modal-heading founder-heading">Carta de Postulación · Socio Fundador</h3>
         </div>
@@ -779,7 +704,7 @@
 
     <!-- Modal: Experiencias Destacadas -->
     @if (activeModal() === 'experiences') {
-    <div class="modal-card wide" (click)="$event.stopPropagation()">
+    <div class="modal-card wide experiences-modal-card" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <div>
           <span class="modal-kicker">CURADURÍA EXCLUSIVA</span>
@@ -908,11 +833,6 @@
           <p>Comunidad privada de miembros que respetan la naturaleza, la cultura y el esfuerzo del guía.</p>
         </div>
         <div class="provider-benefit-card">
-          <mat-icon class="p-mat-icon">tune</mat-icon>
-          <h4>Panel de Gestión</h4>
-          <p>Cargá tus salidas, fechas disponibles, cupos máximos y tarifas de manera simple.</p>
-        </div>
-        <div class="provider-benefit-card">
           <mat-icon class="p-mat-icon">hotel_class</mat-icon>
           <h4>Reputación & Reseñas</h4>
           <p>Construí un perfil verificado con calificaciones reales de tus expedicionarios.</p>
@@ -956,9 +876,15 @@
           </div>
 
           <div class="provider-field">
-            <label for="p-phone">Teléfono / WhatsApp</label>
-            <input id="p-phone" type="tel" class="provider-input" placeholder="+54 9 3834..." [value]="providerPhone()"
+            <label for="p-profile-phone">Teléfono / WhatsApp</label>
+            <input id="p-profile-phone" type="tel" class="provider-input" placeholder="+54 9 3834..." [value]="providerPhone()"
               (input)="providerPhone.set($any($event.target).value)" />
+          </div>
+
+          <div class="provider-field">
+            <label for="p-profile-website">Sitio Web o Red Social de la Marca</label>
+            <input id="p-profile-website" type="text" class="provider-input" placeholder="instagram.com/mitravesia o tuweb.com"
+              [value]="providerWebsite()" (input)="providerWebsite.set($any($event.target).value)" />
           </div>
         </div>
 

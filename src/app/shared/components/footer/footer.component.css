@@ -1,0 +1,163 @@
+/* ==========================================================================
+   Footer Inferior Compartido • EXPERIENCIAS.CLUB
+   Fondo Blanco y Letras Negras para paridad 100% en todas las vistas
+   ========================================================================== */
+
+:host {
+  display: block;
+  width: 100%;
+}
+
+.bottom-footer {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 2.8rem;
+  font-size: 0.78rem;
+  color: #000000;
+  font-weight: 500;
+  width: 100%;
+  box-sizing: border-box;
+  flex-wrap: wrap;
+  gap: 1rem;
+  background: #ffffff;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.bottom-footer a,
+.bottom-footer .location-place,
+.bottom-footer .location-coords,
+.bottom-footer .location-sep,
+.bottom-footer .footer-platform-text {
+  color: #000000;
+}
+
+.footer-location {
+  display: flex;
+  align-items: center;
+}
+
+.landscape-link {
+  color: #000000;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(0, 0, 0, 0.28);
+  transition: all 0.2s ease;
+}
+
+.landscape-link:hover,
+.landscape-link:hover .location-place,
+.landscape-link:hover .location-coords {
+  color: #000000 !important;
+  opacity: 1 !important;
+  text-decoration-color: #000000;
+}
+
+.footer-links {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.footer-provider-link {
+  color: #000000 !important;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(0, 0, 0, 0.28);
+  font-weight: 600;
+  font-size: 0.78rem;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+}
+
+.footer-provider-link:hover {
+  color: #000000 !important;
+  text-decoration-color: #000000;
+}
+
+.social-ig-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #000000 !important;
+  text-decoration: none !important;
+  font-weight: 600;
+  font-size: 0.76rem;
+  transition: all 0.2s ease;
+  padding: 0.25rem 0.65rem;
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 2px;
+}
+
+.social-ig-link:hover {
+  color: #000000 !important;
+  border-color: #000000;
+  background: rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+
+.ig-svg-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.footer-dot {
+  opacity: 0.35;
+  margin: 0 0.2rem;
+  color: #000000;
+}
+
+.bottom-footer a {
+  color: #000000;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: all 0.2s ease;
+}
+
+.bottom-footer a:hover {
+  color: #000000 !important;
+  opacity: 1 !important;
+}
+
+/* Adaptación responsive en pantallas móviles */
+@media (max-width: 768px) {
+  .bottom-footer {
+    padding: 1.2rem 1.2rem calc(2rem + env(safe-area-inset-bottom, 0px));
+    flex-direction: column;
+    gap: 0.75rem;
+    text-align: center;
+    align-items: center;
+    background: #ffffff;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+  }
+
+  .footer-location {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .location-place {
+    display: block;
+  }
+
+  .location-sep {
+    display: none;
+  }
+
+  .location-coords {
+    display: block;
+  }
+
+  .footer-links {
+    justify-content: center;
+    width: 100%;
+  }
+}

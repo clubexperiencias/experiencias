@@ -18,43 +18,30 @@ describe('WaitlistComponent All Desktop Modals & Navigation', () => {
     fixture.detectChanges();
   });
 
-  it('should open tiers modal when clicking Niveles de Socio', () => {
-    const navButtons = fixture.nativeElement.querySelectorAll('.nav-actions > .nav-pill-btn');
-    navButtons[0].click(); // Niveles de Socio
-    fixture.detectChanges();
-
-    expect(component.activeModal()).toBe('tiers');
-    expect(fixture.nativeElement.querySelector('.modal-backdrop')).toBeTruthy();
+  it('should link to /socios when clicking Niveles de Socio', () => {
+    const sociosBtn = fixture.nativeElement.querySelector('.socios-nav-btn');
+    expect(sociosBtn).toBeTruthy();
+    expect(sociosBtn.getAttribute('routerlink') || sociosBtn.getAttribute('href')).toBe('/socios');
   });
 
-  it('should open experiences modal when clicking Experiencias', () => {
-    const navButtons = fixture.nativeElement.querySelectorAll('.nav-actions > .nav-pill-btn');
-    navButtons[1].click(); // Experiencias
-    fixture.detectChanges();
-
-    expect(component.activeModal()).toBe('experiences');
-    expect(fixture.nativeElement.querySelector('.modal-backdrop')).toBeTruthy();
+  it('should link to /experiencias when clicking Experiencias', () => {
+    const expBtn = fixture.nativeElement.querySelector('.exp-nav-btn');
+    expect(expBtn).toBeTruthy();
+    expect(expBtn.getAttribute('routerlink') || expBtn.getAttribute('href')).toBe('/experiencias');
   });
 
-  it('should open providers modal when clicking Prestadores & Guías', () => {
-    const navButtons = fixture.nativeElement.querySelectorAll('.nav-actions > .nav-pill-btn');
-    navButtons[2].click(); // Prestadores & Guías
-    fixture.detectChanges();
-
-    expect(component.activeModal()).toBe('providers');
-    expect(fixture.nativeElement.querySelector('.modal-backdrop')).toBeTruthy();
+  it('should have a Convertirme en Prestador link in the footer pointing to /experiencias/prestadores', () => {
+    const providerLink = fixture.nativeElement.querySelector('.footer-provider-link');
+    expect(providerLink).toBeTruthy();
+    expect(providerLink.textContent).toContain('Convertirme en Prestador');
+    expect(providerLink.getAttribute('routerlink') || providerLink.getAttribute('href')).toBe('/experiencias/prestadores');
   });
 
-  it('should show Iniciar Sesión button when not subscribed and open login modal', () => {
+  it('should show Iniciar Sesión button when not subscribed and link to /ingresar', () => {
     const loginBtn = fixture.nativeElement.querySelector('.login-nav-btn');
     expect(loginBtn).toBeTruthy();
     expect(loginBtn.textContent).toContain('Iniciar Sesión');
-
-    loginBtn.click();
-    fixture.detectChanges();
-
-    expect(component.activeModal()).toBe('login');
-    expect(fixture.nativeElement.querySelector('.modal-backdrop')).toBeTruthy();
+    expect(loginBtn.getAttribute('routerlink') || loginBtn.getAttribute('href')).toBe('/ingresar');
   });
 
   it('should show Perfil button when subscribed and link directly to /perfil without dropdown', async () => {

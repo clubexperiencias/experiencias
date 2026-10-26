@@ -29,6 +29,11 @@ export class NewsletterService {
   readonly isLoading = this._isLoading.asReadonly();
   readonly errorMessage = this._errorMessage.asReadonly();
   readonly isSubscribed = computed(() => this._currentMember() !== null);
+  readonly isMonthlyActive = computed(() => {
+    const member = this._currentMember();
+    return member?.membershipTier === 'activo' || member?.subscription?.status === 'active';
+  });
+  readonly activeSubscription = computed(() => this._currentMember()?.subscription || null);
 
   readonly stats = computed<WaitlistStats>(() => {
     const maxSpots = 60;
@@ -147,6 +152,140 @@ export class NewsletterService {
       entry: updatedMember,
       message: '¡Perfil de Socio Emergente guardado con éxito!'
     };
+  }
+
+  async activateMonthlySubscription(details?: {
+    paymentMethod?: string;
+    email?: string;
+    fullName?: string;
+  }): Promise<{ success: boolean; message: string }> {
+    this._isLoading.set(true);
+    await new Promise((resolve) => setTimeout(resolve, 600));
+
+    let member = this._currentMember();
+    if (!member && details?.email) {
+      await this.joinWaitlist({ email: details.email, fullName: details.fullName });
+      member = this._currentMember();
+    }
+
+    if (!member) {
+      this._isLoading.set(false);
+      return { success: false, message: 'Ingresá tu correo electrónico para asociar la membresía.' };
+    }
+
+    const today = new Date();
+    const nextMonth = new Date(today);
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
+
+    const subscription = {
+      status: 'active' as const,
+      tier: 'activo' as const,
+      amountArs: 12000,
+      paymentMethod: details?.paymentMethod || 'Tarjeta de Débito (•••• 4821)',
+      startedAt: today.toISOString(),
+      nextBillingDate: nextMonth.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' }),
+      autoRenew: true,
+      lastPaymentReceipt: 'REC-' + Math.floor(100000 + Math.random() * 900000)
+    };
+
+    const updated: WaitlistEntry = {
+      ...member,
+      membershipTier: 'activo',
+      subscription
+    };
+
+    this._currentMember.set(updated);
+    this.persistCurrentMember(updated);
+
+    const updatedEntries = this._entries().map((e) =>
+      e.id === updated.id || e.email === updated.email ? updated : e
+    );
+    this._entries.set(updatedEntries);
+    this.persistEntries(updatedEntries);
+
+    this._isLoading.set(false);
+    return { success: true, message: '¡Membresía Mensual activada con éxito!' };
+  }
+
+  cancelMonthlySubscription(): { success: boolean; message: string } {
+    const member = this._currentMember();
+    if (!member || !member.subscription) {
+      return { success: false, message: 'No hay una suscripción activa.' };
+    }
+
+    const updated: WaitlistEntry = {
+      ...member,
+      membershipTier: 'emergente',
+      subscription: {
+        ...member.subscription,
+        status: 'cancelled',
+        autoRenew: false
+      }
+    };
+
+    this._currentMember.set(updated);
+    this.persistCurrentMember(updated);
+    return { success: true, message: 'Suscripción cancelada con éxito. Continuás como Socio Emergente.' };
+  }
+
+  pauseMonthlySubscription(): { success: boolean; message: string } {
+    const member = this._currentMember();
+    if (!member || !member.subscription) {
+      return { success: false, message: 'No hay una suscripción activa.' };
+    }
+
+    const updated: WaitlistEntry = {
+      ...member,
+      subscription: {
+        ...member.subscription,
+        status: 'paused',
+        autoRenew: false
+      }
+    };
+
+    this._currentMember.set(updated);
+    this.persistCurrentMember(updated);
+    return { success: true, message: 'Suscripción pausada temporalmente.' };
+  }
+
+  resumeMonthlySubscription(): { success: boolean; message: string } {
+    const member = this._currentMember();
+    if (!member || !member.subscription) {
+      return { success: false, message: 'No hay una suscripción activa.' };
+    }
+
+    const updated: WaitlistEntry = {
+      ...member,
+      membershipTier: 'activo',
+      subscription: {
+        ...member.subscription,
+        status: 'active',
+        autoRenew: true
+      }
+    };
+
+    this._currentMember.set(updated);
+    this.persistCurrentMember(updated);
+    return { success: true, message: 'Suscripción reactivada con éxito.' };
+  }
+
+  updateSubscriptionPaymentMethod(newMethod: string): { success: boolean; message: string } {
+    const member = this._currentMember();
+    if (!member || !member.subscription) {
+      return { success: false, message: 'No hay una suscripción activa.' };
+    }
+
+    const updated: WaitlistEntry = {
+      ...member,
+      subscription: {
+        ...member.subscription,
+        paymentMethod: newMethod
+      }
+    };
+
+    this._currentMember.set(updated);
+    this.persistCurrentMember(updated);
+    return { success: true, message: 'Método de pago actualizado con éxito.' };
   }
 
   // ── Helpers privados ────────────────────────────────────────────────────────

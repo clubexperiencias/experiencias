@@ -11,11 +11,14 @@ import { Experience } from '../../core/models/experience.model';
 import { PaymentGatewayType } from '../../core/models/payment.model';
 import { ModalType } from '../waitlist/waitlist.component';
 import { ReferralService } from '../../core/services/referral.service';
+import { FooterComponent } from '../../shared/components/footer/footer.component';
+import { HeaderComponent } from '../../shared/components/header/header.component';
+import { BreadcrumbComponent, BreadcrumbItem } from '../../shared/components/breadcrumb/breadcrumb.component';
 
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule, RouterLink, MatIconModule],
+  imports: [CommonModule, RouterLink, MatIconModule, FooterComponent, HeaderComponent, BreadcrumbComponent],
   templateUrl: './profile.component.html',
   styleUrl: './profile.component.css'
 })
@@ -26,6 +29,11 @@ export class ProfileComponent {
   readonly paymentManager = inject(PaymentManagerService);
   readonly referralService = inject(ReferralService);
   readonly router = inject(Router);
+
+  readonly breadcrumbs: BreadcrumbItem[] = [
+    { label: 'Inicio', url: '/' },
+    { label: 'Mi Perfil' }
+  ];
 
   readonly bg = signal('/assets/images/laguna_blanca.jpg');
   readonly copyStatus = signal<string | null>(null);
@@ -42,6 +50,7 @@ export class ProfileComponent {
   readonly providerName = signal('');
   readonly providerEmail = signal('');
   readonly providerPhone = signal('');
+  readonly providerWebsite = signal('');
   readonly providerCategory = signal('guia_montaña');
   readonly providerRegion = signal('Puna & Fiambalá');
   readonly providerSuccess = signal(false);
@@ -58,6 +67,36 @@ export class ProfileComponent {
   // Suscripción de Membresía Mensual
   readonly subscribingMembership = signal(false);
   readonly membershipPaymentSuccess = signal(false);
+
+  // Acceso de Socios (Login Modal)
+  readonly loginEmail = signal('');
+  readonly loginError = signal<string | null>(null);
+
+  openLoginModal(): void {
+    this.loginError.set(null);
+    this.loginEmail.set('');
+    this.openModal('login');
+  }
+
+  submitLogin(): void {
+    const email = this.loginEmail().trim().toLowerCase();
+    if (!email) return;
+
+    if (this.newsletter.isSubscribed() && this.newsletter.currentMember()?.email?.toLowerCase() === email) {
+      this.closeModal();
+      return;
+    }
+
+    this.newsletter.joinWaitlist({ email }).then(() => {
+      this.closeModal();
+    }).catch(() => {
+      this.loginError.set('Ocurrió un error al ingresar. Intentá nuevamente.');
+    });
+  }
+
+  closeMobileMenu(): void {
+    this.mobileMenuOpen.set(false);
+  }
 
   toggleMobileMenu(event: Event): void {
     event.stopPropagation();

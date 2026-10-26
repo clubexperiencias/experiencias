@@ -10,6 +10,9 @@ import { PaymentReceipt } from '../../core/models/activity-history.model';
 
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
+import { FooterComponent } from '../../shared/components/footer/footer.component';
+import { HeaderComponent } from '../../shared/components/header/header.component';
+import { BreadcrumbComponent, BreadcrumbItem } from '../../shared/components/breadcrumb/breadcrumb.component';
 
 export type ModalType = 'roadmap' | 'experiences' | 'providers' | 'payments' | 'tiers' | 'history' | 'founder_application' | 'login' | null;
 
@@ -26,11 +29,14 @@ export interface LandscapeLocation {
 @Component({
   selector: 'app-waitlist',
   standalone: true,
-  imports: [MatIconModule, RouterLink],
+  imports: [MatIconModule, RouterLink, FooterComponent, HeaderComponent, BreadcrumbComponent],
   templateUrl: './waitlist.component.html',
   styleUrl: './waitlist.component.css'
 })
 export class WaitlistComponent {
+  readonly breadcrumbs: BreadcrumbItem[] = [
+    { label: 'Inicio' }
+  ];
   readonly router = inject(Router);
   readonly route = inject(ActivatedRoute);
   readonly newsletter = inject(NewsletterService);
@@ -69,6 +75,7 @@ export class WaitlistComponent {
   readonly providerName = signal('');
   readonly providerEmail = signal('');
   readonly providerPhone = signal('');
+  readonly providerWebsite = signal('');
   readonly providerCategory = signal('guia_montaña');
   readonly providerRegion = signal('Puna & Fiambalá');
   readonly providerSuccess = signal(false);
