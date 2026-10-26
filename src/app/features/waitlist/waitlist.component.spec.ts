@@ -57,38 +57,25 @@ describe('WaitlistComponent All Desktop Modals & Navigation', () => {
     expect(fixture.nativeElement.querySelector('.modal-backdrop')).toBeTruthy();
   });
 
-  it('should show Perfil button when subscribed and open history modal from dropdown', async () => {
+  it('should show Perfil button when subscribed and link directly to /perfil without dropdown', async () => {
     await component.newsletter.joinWaitlist({ email: 'socio@experiencias.club' });
     fixture.detectChanges();
 
     const profileBtn = fixture.nativeElement.querySelector('.profile-btn');
     expect(profileBtn).toBeTruthy();
-    profileBtn.click();
-    fixture.detectChanges();
-
-    const dropdown = fixture.nativeElement.querySelector('.profile-dropdown-menu');
-    expect(dropdown).toBeTruthy();
-    expect(dropdown.textContent).not.toContain('Pasarelas de Pago');
-
-    const dropdownItems = fixture.nativeElement.querySelectorAll('.dropdown-item');
-    const historyBtn = dropdownItems[1] as HTMLElement;
-    historyBtn.click();
-    fixture.detectChanges();
-
-    expect(component.activeModal()).toBe('history');
-    expect(fixture.nativeElement.querySelector('.modal-backdrop')).toBeTruthy();
+    expect(profileBtn.textContent).toContain('Perfil');
+    expect(profileBtn.getAttribute('routerlink') || profileBtn.getAttribute('href')).toBe('/perfil');
+    expect(fixture.nativeElement.querySelector('.profile-dropdown-menu')).toBeFalsy();
   });
 
-  it('should allow user to logout from profile menu', async () => {
+  it('should allow user to logout from mobile menu', async () => {
     await component.newsletter.joinWaitlist({ email: 'socio@test.com' });
     fixture.detectChanges();
 
-    const profileBtn = fixture.nativeElement.querySelector('.profile-btn') as HTMLElement;
-    expect(profileBtn).toBeTruthy();
-    profileBtn.click();
+    component.mobileMenuOpen.set(true);
     fixture.detectChanges();
 
-    const logoutBtn = fixture.nativeElement.querySelector('.logout-item') as HTMLElement;
+    const logoutBtn = fixture.nativeElement.querySelector('.logout-row') as HTMLElement;
     expect(logoutBtn).toBeTruthy();
     expect(logoutBtn.textContent).toContain('Cerrar Sesión');
 

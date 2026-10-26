@@ -8,7 +8,7 @@ import { Experience } from '../../core/models/experience.model';
 import { ActivityHistoryService } from '../../core/services/activity-history.service';
 import { PaymentReceipt } from '../../core/models/activity-history.model';
 
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 
 export type ModalType = 'roadmap' | 'experiences' | 'providers' | 'payments' | 'tiers' | 'history' | 'founder_application' | 'login' | null;
@@ -32,10 +32,20 @@ export interface LandscapeLocation {
 })
 export class WaitlistComponent {
   readonly router = inject(Router);
+  readonly route = inject(ActivatedRoute);
   readonly newsletter = inject(NewsletterService);
   readonly experienceService = inject(ExperienceService);
   readonly paymentManager = inject(PaymentManagerService);
   readonly activityService = inject(ActivityHistoryService);
+
+  constructor() {
+    this.route.queryParams.subscribe(params => {
+      const modal = params['modal'] as ModalType;
+      if (modal && ['roadmap', 'experiences', 'providers', 'payments', 'tiers', 'history', 'founder_application', 'login'].includes(modal)) {
+        this.openModal(modal);
+      }
+    });
+  }
 
   // Email de suscripción socio emergente
   readonly email = signal('');
@@ -250,8 +260,57 @@ export class WaitlistComponent {
     }, 150);
   }
 
+  readonly subscribingMembership = signal(false);
+  readonly membershipPaymentSuccess = signal(false);
+
   openMembershipPayment(tier: 'activo'): void {
+    this.membershipPaymentSuccess.set(false);
+    this.subscribingMembership.set(false);
     this.openModal('payments');
+  }
+
+  async confirmMembershipPayment(): Promise<void> {
+    if (this.subscribingMembership()) return;
+    this.subscribingMembership.set(true);
+
+    await new Promise((resolve) => setTimeout(resolve, 650));
+
+    const receiptNumber = 'REC-2026-CAT-0' + Math.floor(100 + Math.random() * 900);
+    this.activityService.addActivity({
+      id: 'act_' + Date.now(),
+      userId: this.newsletter.currentMember()?.id || 'user_current',
+      experienceId: 'membership_monthly',
+      title: 'Membresía Mensual · Socio Activo (Temporada Inaugural)',
+      region: 'Catamarca · Club de Experiencias',
+      altitude: 'Sede Central',
+      coverImage: '/assets/images/laguna_blanca.jpg',
+      dateLabel: new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date()),
+      status: 'completada',
+      provider: {
+        name: 'EXPERIENCIAS.CLUB Oficial',
+        category: 'Membresía & Cuota Social',
+        contactPhone: '+54 9 3834 89-2104'
+      },
+      receipt: {
+        receiptNumber,
+        transactionId: 'SUB-' + Math.random().toString(36).substring(2, 9).toUpperCase(),
+        gateway: this.paymentManager.activeGatewayType(),
+        gatewayDisplayName: this.paymentManager.activeGateway().displayName,
+        amountArs: 12000,
+        amountUsd: 12,
+        paidAt: new Date().toLocaleString('es-AR'),
+        paymentMethodSummary: `Cuota Mensual · ${this.paymentManager.activeGateway().displayName}`,
+        payerEmail: this.newsletter.currentMember()?.email || 'socio@experiencias.club',
+        payerName: this.newsletter.currentMember()?.fullName || 'Socio Activo Catamarca',
+        authCode: 'AUTH-' + Math.random().toString(36).substring(2, 8).toUpperCase(),
+        status: 'aprobado'
+      },
+      memoriesCount: 0,
+      memoryPhotos: []
+    });
+
+    this.subscribingMembership.set(false);
+    this.membershipPaymentSuccess.set(true);
   }
 
   openFounderApplication(): void {

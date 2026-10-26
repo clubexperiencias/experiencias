@@ -29,9 +29,22 @@ describe('ProfileComponent', () => {
     expect(brandLink.getAttribute('routerlink') || brandLink.getAttribute('href')).toBe('/');
   });
 
+  it('should have an Inicio button in the header pointing to root /', () => {
+    const homeBtn = fixture.nativeElement.querySelector('.home-header-btn');
+    expect(homeBtn).toBeTruthy();
+    expect(homeBtn.textContent).toContain('Inicio');
+    expect(homeBtn.getAttribute('routerlink') || homeBtn.getAttribute('href')).toBe('/');
+  });
+
   it('should have a logout button that resets current subscription', () => {
     component.newsletter.joinWaitlist({ email: 'perfil@test.com' });
     fixture.detectChanges();
+
+    const profileBtn = fixture.nativeElement.querySelector('.profile-btn') as HTMLElement;
+    if (profileBtn) {
+      profileBtn.click();
+      fixture.detectChanges();
+    }
 
     const logoutBtn = fixture.nativeElement.querySelector('.logout-btn') as HTMLElement;
     expect(logoutBtn).toBeTruthy();

@@ -1,8 +1,9 @@
-<div class="profile-page-container">
+<div class="profile-page-container" [style.background-image]="'url(' + bg() + ')'">
+  <!-- Viñeta cinematográfica y filtro de contraste idéntico a portada / -->
   <div class="ambient-overlay"></div>
 
-  <!-- Barra Superior -->
-  <header class="top-nav">
+  <!-- Barra Superior Idéntica a Portada / -->
+  <header class="top-nav" [class.menu-open]="mobileMenuOpen()">
     <a routerLink="/" class="brand">
       <img src="/logo-club-experiencias.png" alt="Club de Experiencias Logo" class="brand-logo-img" />
       <div class="brand-text">
@@ -11,113 +12,362 @@
       </div>
     </a>
 
+    <!-- Botón Hamburguesa Mobile (solo visible en pantallas móviles) -->
+    <button class="mobile-menu-toggle-btn" (click)="toggleMobileMenu($event)" [class.active]="mobileMenuOpen()"
+      aria-label="Abrir menú de navegación">
+      @if (mobileMenuOpen()) {
+      <mat-icon class="hamburger-icon">close</mat-icon>
+      } @else {
+      <mat-icon class="hamburger-icon">menu</mat-icon>
+      }
+    </button>
+
+    <!-- Navegación Desktop -->
     <nav class="nav-actions">
-      <a routerLink="/" class="nav-pill-btn">
-        <mat-icon class="btn-icon">arrow_back</mat-icon>
-        Volver al Inicio
-      </a>
-      <button class="nav-pill-btn logout-btn" (click)="logout()">
-        <mat-icon class="btn-icon">logout</mat-icon>
-        Cerrar Sesión
+      <button class="nav-pill-btn" (click)="openModal('tiers')">
+        <mat-icon class="btn-icon">military_tech</mat-icon>
+        Niveles de Socio
       </button>
+
+      <button class="nav-pill-btn" (click)="openModal('experiences')">
+        <mat-icon class="btn-icon">explore</mat-icon>
+        Experiencias
+      </button>
+
+      <button class="nav-pill-btn" (click)="openModal('providers')">
+        <mat-icon class="btn-icon">handshake</mat-icon>
+        Prestadores & Guías
+      </button>
+
+      <!-- Botón Inicio en Header -->
+      <a routerLink="/" class="nav-pill-btn home-header-btn" style="text-decoration: none;">
+        <mat-icon class="btn-icon">home</mat-icon>
+        <span>Inicio</span>
+      </a>
     </nav>
+
+    <!-- Panel de Menú Mobile (Desplegable idéntico a portada /) -->
+    @if (mobileMenuOpen()) {
+    <div class="mobile-nav-panel" (click)="$event.stopPropagation()">
+      <div class="mobile-nav-kicker-row">
+        <span class="pulse-dot"></span>
+        <span class="mobile-kicker-text">MENÚ · SOCIOS VITALICIOS</span>
+      </div>
+
+      <div class="mobile-nav-list">
+        <button class="mobile-nav-row" (click)="openModal('tiers')">
+          <div class="row-icon-wrap">
+            <mat-icon class="nav-svg-icon">military_tech</mat-icon>
+          </div>
+          <div class="row-text-wrap">
+            <span class="row-title">Niveles de Socio y Membresías</span>
+            <span class="row-sub">Socio Emergente, Activo y Fundador Vitalicio</span>
+          </div>
+          <mat-icon class="row-arrow">chevron_right</mat-icon>
+        </button>
+
+        <button class="mobile-nav-row" (click)="openModal('experiences')">
+          <div class="row-icon-wrap">
+            <mat-icon class="nav-svg-icon">explore</mat-icon>
+          </div>
+          <div class="row-text-wrap">
+            <span class="row-title">Experiencias Destacadas</span>
+            <span class="row-sub">Puna andina, Seismiles y aguas calmas</span>
+          </div>
+          <mat-icon class="row-arrow">chevron_right</mat-icon>
+        </button>
+
+        <button class="mobile-nav-row" (click)="openModal('providers')">
+          <div class="row-icon-wrap">
+            <mat-icon class="nav-svg-icon">handshake</mat-icon>
+          </div>
+          <div class="row-text-wrap">
+            <span class="row-title">Prestadores & Guías Locales</span>
+            <span class="row-sub">Postulación para sumar tu travesía</span>
+          </div>
+          <mat-icon class="row-arrow">chevron_right</mat-icon>
+        </button>
+
+        <div class="mobile-nav-separator"></div>
+        <span class="mobile-section-label">MI CUENTA</span>
+
+        <a routerLink="/perfil" class="mobile-nav-row" (click)="mobileMenuOpen.set(false)"
+          style="text-decoration: none;">
+          <div class="row-icon-wrap">
+            <mat-icon class="nav-svg-icon">account_circle</mat-icon>
+          </div>
+          <div class="row-text-wrap">
+            <span class="row-title">Mi Perfil</span>
+            <span class="row-sub">Estado de Socio y Comprobantes</span>
+          </div>
+          <mat-icon class="row-arrow">chevron_right</mat-icon>
+        </a>
+
+        <a routerLink="/" class="mobile-nav-row" (click)="mobileMenuOpen.set(false)" style="text-decoration: none;">
+          <div class="row-icon-wrap">
+            <mat-icon class="nav-svg-icon">home</mat-icon>
+          </div>
+          <div class="row-text-wrap">
+            <span class="row-title">Volver al Inicio</span>
+            <span class="row-sub">Ir a la página principal</span>
+          </div>
+          <mat-icon class="row-arrow">chevron_right</mat-icon>
+        </a>
+
+        <button class="mobile-nav-row logout-row logout-btn" (click)="logout()">
+          <div class="row-icon-wrap">
+            <mat-icon class="nav-svg-icon">logout</mat-icon>
+          </div>
+          <div class="row-text-wrap">
+            <span class="row-title">Cerrar Sesión</span>
+            <span class="row-sub">Finalizar sesión en este dispositivo</span>
+          </div>
+        </button>
+      </div>
+    </div>
+    }
   </header>
 
   <!-- Contenido Principal de Perfil -->
   <main class="profile-main-content">
     <div class="profile-wrapper">
-      
-      <!-- Encabezado de Perfil -->
-      <div class="profile-header-card">
-        <div class="profile-kicker-row">
-          <span class="profile-kicker">MEMBRESÍA & PERFIL DE SOCIO</span>
-          <span class="verified-tag">✦ CUENTA VERIFICADA</span>
+
+      <!-- ═══════════════ FILA 1: REGISTRO EXITOSO / ESTADO ACTUAL ═══════════════ -->
+      <div class="confirmed-card current-status-banner">
+        <div class="confirmed-header">
+          <div class="check-circle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </div>
+          <div>
+            <span class="confirmed-tag">¡REGISTRO EXITOSO! · ESTADO ACTUAL</span>
+            <h2 class="confirmed-title">Socio Emergente #{{ newsletter.currentMember()?.position || 143 }}</h2>
+          </div>
         </div>
-        
-        <h1 class="profile-title">Mi Perfil de Expedicionario</h1>
-        <p class="profile-lead">
-          Gestioná tus credenciales, consultá tus comprobantes fiscales y descubrí cómo evolucionar tu membresía dentro del Club.
+
+        <p class="confirmed-desc">
+          Registramos tu suscripción con <strong>{{ newsletter.currentMember()?.email || 'socio@experiencias.club'
+            }}</strong>.
+          Ya formás parte de la lista de espera oficial del club como <strong>Socio Emergente</strong>.
         </p>
-
-        <!-- Bloque de ESTADO ACTUAL (Destacado Principal) -->
-        <div class="current-status-banner">
-          <div class="status-top-row">
-            <span class="status-indicator-badge">
-              <span class="status-dot"></span>
-              ESTADO ACTUAL
-            </span>
-            <span class="status-season-badge">TEMPORADA CATAMARCA 2026</span>
-          </div>
-
-          <div class="status-main-row">
-            <div class="status-role-wrap">
-              <h2 class="status-role-title">
-                Socio Emergente #{{ newsletter.currentMember()?.position || 143 }}
-              </h2>
-              <span class="status-email">● {{ newsletter.currentMember()?.email || 'socio@experiencias.club' }}</span>
-            </div>
-
-            <div class="status-badge-level">
-              <span class="level-num">NIVEL 1</span>
-              <span class="level-label">PUNTO DE PARTIDA</span>
-            </div>
-          </div>
-
-          <div class="status-jump-callout">
-            <div class="jump-callout-icon">➔</div>
-            <div class="jump-callout-text">
-              <strong>Cómo dar el salto a Socio Activo:</strong>
-              <span>Completá tu 1ª expedición en Catamarca o activá tu cuota mensual.</span>
-            </div>
-          </div>
-        </div>
       </div>
 
-      <!-- Grid de Credenciales y Referidos -->
-      <div class="profile-details-grid">
-        <div class="detail-box">
-          <div class="detail-box-header">
-            <mat-icon class="detail-icon">badge</mat-icon>
-            <span class="detail-label">IDENTIFICADOR DE SOCIO</span>
+      <!-- ═══════════════ FILA 2: COMPLETAR PERFIL DE SOCIO EMERGENTE ═══════════════ -->
+      <div class="profile-completion-card">
+        <div class="completion-header">
+          <div class="completion-badge">
+            <span class="sparkle">✦</span>
+            DATOS DE MEMBRESÍA
           </div>
-          <div class="detail-val">#{{ newsletter.currentMember()?.position || 143 }}</div>
-          <div class="detail-sub">Prioridad garantizada en lista de espera 2026</div>
+          <h3 class="completion-title">Completá tu perfil de Socio Emergente</h3>
+          <p class="completion-subtitle">
+            Priorizaremos tu cupo según las expediciones y travesías que elijas.
+          </p>
         </div>
 
-        <div class="detail-box">
-          <div class="detail-box-header">
-            <mat-icon class="detail-icon">mail</mat-icon>
-            <span class="detail-label">CORREO ASOCIADO</span>
-          </div>
-          <div class="detail-val text-truncate">{{ newsletter.currentMember()?.email || 'socio@experiencias.club' }}</div>
-          <div class="detail-sub">Comprobantes y bitácoras enviadas a este email</div>
-        </div>
+        @if (!profileSaved()) {
+        <form class="profile-completion-form" (submit)="$event.preventDefault(); saveMemberProfile()">
+          <div class="profile-inputs-grid">
+            <div class="form-field">
+              <label for="member-name" class="field-label">Nombre y Apellido <span class="req">*</span></label>
+              <input id="member-name" type="text" class="field-input" placeholder="Ej. Martín Rodríguez"
+                [value]="memberFullName()" (input)="memberFullName.set($any($event.target).value)" required />
+            </div>
 
-        <div class="detail-box">
-          <div class="detail-box-header">
-            <mat-icon class="detail-icon">share</mat-icon>
-            <span class="detail-label">CÓDIGO DE INVITACIÓN</span>
+            <div class="form-field">
+              <label for="member-nationality" class="field-label">Nacionalidad <span class="req">*</span></label>
+              <input id="member-nationality" type="text" class="field-input"
+                placeholder="Ej. Argentina, Chilena, Uruguaya..." [value]="memberNationality()"
+                (input)="memberNationality.set($any($event.target).value)" required />
+            </div>
           </div>
-          <div class="referral-copy-row">
-            <span class="referral-code">{{ newsletter.currentMember()?.referralCode || 'CAT-2026-EXP' }}</span>
-            <button class="copy-code-btn" (click)="copyReferralCode()" aria-label="Copiar código">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
-                <rect x="9" y="9" width="13" height="13" rx="1" ry="1"></rect>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-              </svg>
-              Copiar
+
+          <div class="form-field">
+            <label class="field-label">
+              ¿Qué experiencias tenés más ganas de vivir? <span class="req">*</span>
+              <span class="field-hint">(Elegí una o varias opciones)</span>
+            </label>
+
+            <div class="wishlist-chips-grid">
+              @for (exp of wishlistExperiences; track exp.id) {
+              <button type="button" class="wishlist-chip" [class.selected]="isExperienceSelected(exp.id)"
+                (click)="toggleExperienceWishlist(exp.id)">
+                <span class="chip-icon">{{ exp.icon }}</span>
+                <span class="chip-title">{{ exp.title }}</span>
+                <span class="chip-action">
+                  @if (isExperienceSelected(exp.id)) { ✓ } @else { + }
+                </span>
+              </button>
+              }
+            </div>
+          </div>
+
+          <div class="form-field">
+            <label for="member-notes" class="field-label">
+              Contanos sobre vos y tus expectativas <span class="opt">(opcional)</span>
+            </label>
+            <textarea id="member-notes" class="field-textarea" rows="3"
+              placeholder="Ej. Soy prestador de servicios turísticos en Catamarca, quiero conectar con otros prestadores e incluso participar de nuevas experiencias en pareja o en familia."
+              [value]="memberNotes()" (input)="memberNotes.set($any($event.target).value)"></textarea>
+          </div>
+
+          <button type="button" class="save-profile-btn" (click)="saveMemberProfile()"
+            [disabled]="!memberFullName().trim() || !memberNationality().trim() || selectedExperiences().length === 0">
+            <span>Guardar Perfil de Socio Emergente</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="save-icon">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </button>
+        </form>
+        } @else {
+        <!-- Resumen de Perfil Completado -->
+        <div class="profile-saved-box">
+          <div class="saved-icon-badge">✓</div>
+          <div class="saved-details">
+            <div class="saved-header-row">
+              <h4>¡Perfil de socio registrado con éxito!</h4>
+              <button type="button" class="edit-data-btn" (click)="editMemberProfile()">
+                Editar datos
+              </button>
+            </div>
+            <p class="saved-member-name">
+              <strong>{{ memberFullName() }}</strong> · Nacionalidad: <span>{{ memberNationality() }}</span>
+            </p>
+            <div class="saved-chips-list">
+              @for (expId of selectedExperiences(); track expId) {
+              <span class="saved-chip">{{ getExperienceTitle(expId) }}</span>
+              }
+            </div>
+            @if (memberNotes().trim()) {
+            <p class="saved-note"><strong>Sobre vos y expectativas:</strong> "{{ memberNotes() }}"</p>
+            }
+          </div>
+        </div>
+        }
+      </div>
+
+      <!-- ═══════════════ FILA 3: CÓDIGO DE INVITACIÓN & EXPEDICIONARIOS (BOX PROPIA) ═══════════════ -->
+      <div class="profile-section-card referral-share-card">
+        <div class="ref-unified-row">
+          <div class="ref-left-group">
+            <span class="ref-label">CÓDIGO DE INVITACIÓN:</span>
+            <button type="button" class="fused-code-pill" (click)="copyLink()" title="Copiar código de invitación">
+              <span class="fused-code-val">{{ newsletter.currentMember()?.referralCode || 'CAT-2026-EXP' }}</span>
+              <span class="fused-code-sep"></span>
+              <span class="fused-copy-action">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="copy-icon">
+                  <rect width="14" height="14" x="8" y="8" rx="2" />
+                  <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+                </svg>
+                <span>Copiar</span>
+              </span>
             </button>
           </div>
-          @if (copyStatus()) {
-          <div class="copy-feedback-msg">{{ copyStatus() }}</div>
-          } @else {
-          <div class="detail-sub">Sumá referidos para acelerar tu posición</div>
-          }
+
+          <div class="ref-right-group">
+            <span class="ref-share-hint">Compartí con otros viajeros:</span>
+            <div class="ref-share-btns">
+              <button class="share-btn wa" (click)="shareWhatsApp()">WhatsApp</button>
+              <button class="share-btn tw" (click)="shareX()">X / Twitter</button>
+            </div>
+          </div>
+        </div>
+
+        @if (copyStatus()) {
+        <div class="toast-feedback">{{ copyStatus() }}</div>
+        }
+
+        <!-- ═══════════════ REFERIDOS REGISTRADOS & CONTADOR DE EXPERIENCIAS ═══════════════ -->
+        <div class="referrals-rewards-panel">
+          <div class="panel-header-row">
+            <div>
+              <span class="panel-kicker">BENEFICIO EXCLUSIVO · CUPONES DEL 10% OFF</span>
+              <h4 class="panel-title">Expedicionarios registrados con tu código</h4>
+            </div>
+            <span class="panel-rule-badge">10% OFF POR CADA EXPERIENCIA COMPRADA</span>
+          </div>
+
+          <p class="panel-desc">
+            Por cada experiencia que compren los expedicionarios registrados con tu código, obtenés un
+            <strong>código de descuento del 10% único</strong> para usar en tu propia próxima salida.
+          </p>
+
+          <!-- Métricas Resumen -->
+          <div class="referrals-stats-grid">
+            <div class="stat-pill">
+              <span class="stat-number">{{ referralService.totalReferred() }}</span>
+              <span class="stat-label">Amigos registrados</span>
+            </div>
+            <div class="stat-pill">
+              <span class="stat-number highlight">{{ referralService.totalExperiencesPurchased() }}</span>
+              <span class="stat-label">Experiencias compradas</span>
+            </div>
+            <div class="stat-pill">
+              <span class="stat-number gold">{{ referralService.totalCouponsEarned() }}</span>
+              <span class="stat-label">Códigos 10% OFF ganados</span>
+            </div>
+          </div>
+
+          <!-- Lista de Mails de Referidos -->
+          <div class="referred-members-list">
+            @for (member of referralService.referrals(); track member.id) {
+            <div class="referred-member-row">
+              <div class="member-identity">
+                <div class="member-avatar-circle">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="avatar-svg">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                </div>
+                <div class="member-meta">
+                  <span class="member-email">{{ member.email }}</span>
+                  <div class="member-date-wrap">
+                    <span class="member-date">Registrado: {{ member.registeredAt }}</span>
+                    @if (member.isDemo) {
+                    <span class="member-demo-badge">DEMO</span>
+                    }
+                  </div>
+                </div>
+              </div>
+
+              <!-- Contador de Experiencias Compradas -->
+              <div class="member-counter-box" [class.has-purchases]="member.experiencesPurchasedCount > 0">
+                <span class="counter-badge">
+                  {{ member.experiencesPurchasedCount }}
+                </span>
+                <span class="counter-text">
+                  {{ member.experiencesPurchasedCount === 1 ? 'experiencia comprada' : 'experiencias compradas' }}
+                </span>
+              </div>
+
+              <!-- Códigos de Descuento 10% OFF Únicos -->
+              <div class="member-coupons-wrap">
+                @if (member.couponsEarned.length > 0) {
+                <div class="coupons-stack">
+                  @for (coupon of member.couponsEarned; track coupon.code) {
+                  <div class="coupon-item">
+                    <span class="coupon-off-tag">10% OFF</span>
+                    <code class="coupon-code-val">{{ coupon.code }}</code>
+                    <button type="button" class="copy-coupon-btn" (click)="copyCoupon(coupon.code)"
+                      title="Copiar código de descuento">
+                      Copiar
+                    </button>
+                  </div>
+                  }
+                </div>
+                } @else {
+                <span class="no-purchases-hint">Aún no compró salidas</span>
+                }
+              </div>
+            </div>
+            }
+          </div>
         </div>
       </div>
 
-      <!-- Sección: Historial de Actividades & Comprobantes -->
-      <div class="profile-section-card">
+      <!-- ═══════════════ FILA 4: HISTORIAL DE ACTIVIDADES & COMPROBANTES ═══════════════ -->
+      <div class="profile-section-card" id="historial-seccion">
         <div class="section-header-row">
           <div>
             <span class="section-kicker">DOCUMENTACIÓN OFICIAL</span>
@@ -151,7 +401,8 @@
             <div class="activity-actions">
               <span class="receipt-amount-hint">${{ act.receipt.amountArs.toLocaleString('es-AR') }} ARS</span>
               <button class="receipt-btn" (click)="openReceipt(act.receipt, $event)">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  style="width: 14px; height: 14px;">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                   <polyline points="14 2 14 8 20 8" />
                   <line x1="16" y1="13" x2="8" y2="13" />
@@ -165,83 +416,734 @@
         </div>
       </div>
 
-      <!-- Navegación inferior -->
+      <!-- ═══════════════ FILA 4: NAVEGACIÓN INFERIOR (UNO EN CADA PUNTA) ═══════════════ -->
       <div class="profile-bottom-actions">
         <a routerLink="/" class="back-home-btn">
           <mat-icon>arrow_back</mat-icon>
-          Volver a la Portada
+          <span>Volver al Inicio</span>
         </a>
+        <button class="back-home-btn logout-bottom-btn logout-btn" (click)="logout()">
+          <span>Cerrar Sesión</span>
+          <mat-icon>logout</mat-icon>
+        </button>
       </div>
 
     </div>
   </main>
 
+  <!-- ═══════════════ MODALES INTERACTIVOS EN LA MISMA PÁGINA DE PERFIL ═══════════════ -->
+  @if (activeModal()) {
+  <div class="modal-backdrop" (click)="closeModal()">
+
+    <!-- Modal: Niveles de Socio y Membresías -->
+    @if (activeModal() === 'tiers') {
+    <div class="modal-card wide" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <span class="modal-kicker">CLUB PRIVADO DE EXPEDICIONARIOS</span>
+          <h3 class="modal-heading">Niveles de Socio y Membresías</h3>
+        </div>
+        <button class="modal-close-btn" (click)="closeModal()"
+          aria-label="Cerrar modal"><mat-icon>close</mat-icon></button>
+      </div>
+
+      <p class="modal-lead">
+        Conocé los tres niveles de membresía del Club de Experiencias y las condiciones para acceder a cada uno:
+      </p>
+
+      <div class="tiers-grid">
+        <!-- 1. Socio Emergente -->
+        <div class="tier-card" [class.user-current-tier]="newsletter.isSubscribed()">
+          <div class="tier-card-header">
+            @if (newsletter.isSubscribed()) {
+            <span class="tier-level-badge current">✓ TU NIVEL ACTUAL</span>
+            } @else {
+            <span class="tier-level-badge initial">NIVEL 1 · PUNTO DE PARTIDA</span>
+            }
+            <h4 class="tier-name">Socio Emergente</h4>
+          </div>
+
+          <div class="tier-jump-card">
+            <span class="jump-tag">CÓMO ACCEDER</span>
+            <p>Registro gratuito con tu email a la lista de espera oficial del club.</p>
+          </div>
+
+          <ul class="tier-benefits">
+            <li>Acceso anticipado a preventa de temporada 2026</li>
+            <li>Código de invitación personal para referidos</li>
+            <li>Bitácoras exclusivas y novedades de rutas andinas</li>
+            <li>Prioridad en cupos de expediciones inaugurales</li>
+          </ul>
+
+          <div class="tier-card-footer">
+            <button class="tier-cta-btn current-achieved" disabled>
+              <span class="cta-title-row">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="btn-icon">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                Nivel alcanzado
+              </span>
+              <span class="cta-sub-text">Suscripción confirmada</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 2. Socio Activo -->
+        <div class="tier-card highlight" [class.user-next-tier]="newsletter.isSubscribed()">
+          <div class="tier-card-header">
+            <span class="tier-level-badge next">➔ PRÓXIMO SALTO RECOMENDADO</span>
+            <h4 class="tier-name">Socio Activo</h4>
+          </div>
+
+          <div class="tier-jump-card highlight">
+            <span class="jump-tag">ACTIVACIÓN INMEDIATA</span>
+            <p>Membresía mensual con acceso directo a cupos prioritarios y beneficios ($12.000 ARS/mes · sin
+              permanencia).</p>
+          </div>
+
+          <ul class="tier-benefits">
+            <li><strong>10% de descuento directo</strong> en todas las expediciones</li>
+            <li>Prioridad de reserva con los mejores guías y prestadores</li>
+            <li>Historial de salidas con comprobantes respaldados</li>
+            <li>Acceso a la bitácora privada de recuerdos fotográficos</li>
+          </ul>
+
+          <div class="tier-card-footer">
+            <button class="tier-cta-btn cta-active" (click)="openMembershipPayment('activo')">
+              <span class="cta-title-row">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
+                  <polygon
+                    points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                </svg>
+                Activar Membresía Mensual
+              </span>
+              <span class="cta-sub-text">$12.000 ARS/mes · Cancelación libre</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 3. Socio Fundador -->
+        <div class="tier-card founder-card">
+          <div class="tier-card-header">
+            <span class="tier-level-badge founder">★ VITALICIO · CUPO LIMITADO (60)</span>
+            <h4 class="tier-name">Socio Fundador</h4>
+          </div>
+
+          <div class="tier-jump-card founder">
+            <span class="jump-tag">CÓMO DAR EL SALTO</span>
+            <p>Postulación aprobada por comité directivo + Membresía Vitalicia única.</p>
+          </div>
+
+          <ul class="tier-benefits">
+            <li><strong>Sin cuotas mensuales de por vida</strong> (pase perpetuo)</li>
+            <li><strong>20% de descuento vitalicio</strong> en todas las salidas</li>
+            <li>Acceso exclusivo a travesías secretas y seismiles</li>
+            <li>Kit de bienvenida oficial y merch del club de regalo</li>
+            <li>Voz y voto en nuevas rutas y expediciones a incorporar</li>
+          </ul>
+
+          <div class="tier-card-footer">
+            <button class="tier-cta-btn cta-founder" (click)="openFounderApplication()">
+              <span class="cta-title-row">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
+                  <path d="M6 3h12l4 6-10 12L2 9z" />
+                  <path d="M11 3 8 9l4 12 4-12-3-6" />
+                  <path d="M2 9h20" />
+                </svg>
+                Postular a Fundador
+              </span>
+              <span class="cta-sub-text">Carta de admisión · Sin cuotas</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="pill-action-btn" (click)="closeModal()">Entendido</button>
+      </div>
+    </div>
+    }
+
+    <!-- Modal: Carta de Admisión - Socio Fundador -->
+    @if (activeModal() === 'founder_application') {
+    <div class="modal-card wide founder-modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header founder-modal-header">
+        <div>
+          <div class="founder-badge-row">
+            <span class="founder-exclusive-tag">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tag-svg-icon">
+                <path d="M6 3h12l4 6-10 12L2 9z" />
+                <path d="M11 3 8 9l4 12 4-12-3-6" />
+                <path d="M2 9h20" />
+              </svg>
+              CÍRCULO VITALICIO EXCLUSIVO
+            </span>
+            <span class="founder-spots-pill">12 VACANTES 2026</span>
+          </div>
+          <h3 class="modal-heading founder-heading">Carta de Postulación · Socio Fundador</h3>
+        </div>
+        <button class="modal-close-btn" (click)="closeModal()"
+          aria-label="Cerrar modal"><mat-icon>close</mat-icon></button>
+      </div>
+
+      @if (!founderSuccess()) {
+      <p class="modal-lead founder-lead">
+        El círculo de Socios Fundadores reúne a líderes, exploradores y benefactores comprometidos con el desarrollo del
+        turismo náutico y de alta montaña en Catamarca. Cada postulación es evaluada individualmente por el Comité
+        Directivo.
+      </p>
+
+      <!-- Certificado / Tarjeta de Membresía Absoluta -->
+      <div class="founder-certificate-card">
+        <div class="certificate-header">
+          <div class="cert-icon-wrapper">
+            <span class="cert-star">✦</span>
+          </div>
+          <div class="cert-title-group">
+            <span class="cert-kicker">CONDICIONES DE LA MEMBRESÍA ABSOLUTA</span>
+            <h4 class="cert-title">Aporte Patrimonial Vitalicio Perpetuo</h4>
+            <span class="cert-amount-badge">Valuación estimada: +$5.000.000 ARS · Pago único sin cuotas de por
+              vida</span>
+          </div>
+        </div>
+
+        <div class="cert-perks-grid">
+          <div class="cert-perk-item">
+            <span class="perk-check">✓</span>
+            <div>
+              <strong>Pase Libre Perpetuo</strong>
+              <p>Sin cuotas mensuales de mantenimiento ni renovación en ningún año.</p>
+            </div>
+          </div>
+          <div class="cert-perk-item">
+            <span class="perk-check">✓</span>
+            <div>
+              <strong>20% OFF Perpetuo</strong>
+              <p>Bonificación de por vida en todas las expediciones, extensible a acompañantes.</p>
+            </div>
+          </div>
+          <div class="cert-perk-item">
+            <span class="perk-check">✓</span>
+            <div>
+              <strong>Consejo Consultivo</strong>
+              <p>Acceso anticipado y prioritario a aperturas de rutas andinas secretas.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <form class="founder-form-v2" (submit)="$event.preventDefault(); submitFounderApplication()">
+        <div class="form-row-2">
+          <div class="founder-field-group">
+            <label for="f-name" class="founder-label">
+              Nombre y Apellido <span class="req-star">*</span>
+            </label>
+            <input id="f-name" type="text" class="founder-input" placeholder="Tu nombre completo"
+              [value]="founderName()" (input)="founderName.set($any($event.target).value)" required />
+          </div>
+          <div class="founder-field-group">
+            <label for="f-email" class="founder-label">
+              Correo Electrónico <span class="req-star">*</span>
+            </label>
+            <input id="f-email" type="email" class="founder-input" placeholder="tu-correo@ejemplo.com"
+              [value]="founderEmail()" (input)="founderEmail.set($any($event.target).value)" required />
+          </div>
+        </div>
+
+        <div class="form-row-2">
+          <div class="founder-field-group">
+            <label for="f-phone" class="founder-label">
+              Teléfono / WhatsApp de contacto <span class="req-star">*</span>
+            </label>
+            <input id="f-phone" type="tel" class="founder-input" placeholder="+54 9 11 ..." [value]="founderPhone()"
+              (input)="founderPhone.set($any($event.target).value)" required />
+          </div>
+          <div class="founder-field-group">
+            <label for="f-city" class="founder-label">
+              Ciudad / Provincia de residencia <span class="opt-label">(opcional)</span>
+            </label>
+            <input id="f-city" type="text" class="founder-input" placeholder="Ej. Catamarca / Buenos Aires / Córdoba"
+              [value]="founderCity()" (input)="founderCity.set($any($event.target).value)" />
+          </div>
+        </div>
+
+        <div class="founder-field-group">
+          <div class="label-with-counter">
+            <label for="f-letter" class="founder-label">
+              Carta de Motivación & Presentación Personal <span class="req-star">*</span>
+            </label>
+            <span class="letter-guide-hint">Curaduría confidencial</span>
+          </div>
+          <textarea id="f-letter" class="founder-textarea-v2" rows="5"
+            placeholder="Estimado Comité Directivo de EXPERIENCIAS.CLUB:&#10;&#10;Me dirijo a ustedes con el propósito de postularme formalmente como Socio Fundador. En mi trayectoria en... y mi motivación para acompañar el desarrollo del turismo náutico y de alta montaña en Catamarca se fundamenta en...&#10;&#10;Estaría honrado/a de aportar mi visión y acompañar el crecimiento del club..."
+            [value]="founderLetter()" (input)="founderLetter.set($any($event.target).value)" required></textarea>
+          <div class="textarea-callout">
+            <span class="callout-sparkle">✦</span>
+            <span>El Comité Directivo valora especialmente la vocación por la sustentabilidad, el cuidado ambiental de
+              los ecosistemas puneños y el respaldo a los prestadores locales.</span>
+          </div>
+        </div>
+
+        <div class="founder-agreement-card" [class.is-agreed]="founderAgreedToPrice()"
+          (click)="founderAgreedToPrice.set(!founderAgreedToPrice())">
+          <div class="custom-checkbox-container">
+            <input type="checkbox" class="founder-real-checkbox" [checked]="founderAgreedToPrice()"
+              (click)="$event.stopPropagation()" (change)="founderAgreedToPrice.set($any($event.target).checked)"
+              required />
+            <div class="checkbox-visual">
+              @if (founderAgreedToPrice()) {
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="chk-check-svg">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              }
+            </div>
+            <div class="agreement-text">
+              <strong>Compromiso formal y adhesión al protocolo de admisión</strong>
+              <p>
+                Declaro estar al tanto y en conformidad con el aporte patrimonial correspondiente a la
+                <strong>Membresía Absoluta Vitalicia (+5 millones de pesos ARS, actualmente en dictamen final de
+                  curaduría)</strong>,
+                asumiendo el compromiso de efectivizarlo en caso de que mi carta de postulación sea aprobada
+                unánimemente por el Comité Directivo.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer founder-footer">
+          <button type="button" class="founder-back-btn" (click)="openModal('tiers')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="arrow-back-svg">
+              <line x1="19" y1="12" x2="5" y2="12" />
+              <polyline points="12 19 5 12 12 5" />
+            </svg>
+            <span>Volver a Niveles</span>
+          </button>
+          <button type="submit" class="founder-submit-btn"
+            [disabled]="!founderName().trim() || !founderEmail().trim() || !founderLetter().trim() || !founderAgreedToPrice()">
+            <span>Enviar Carta al Comité Directivo</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="arrow-send-svg">
+              <line x1="5" y1="12" x2="19" y2="12" />
+              <polyline points="12 5 19 12 12 19" />
+            </svg>
+          </button>
+        </div>
+      </form>
+      } @else {
+      <!-- Estado de Éxito / Confirmación de Postulación -->
+      <div class="founder-success-card">
+        <div class="success-seal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="seal-svg">
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="16 10 11 15 8 12" />
+          </svg>
+        </div>
+
+        <span class="success-kicker">POSTULACIÓN REGISTRADA FORMALMENTE</span>
+        <h4 class="success-title">¡Carta de Admisión en Evaluación!</h4>
+        <p class="success-description">
+          Tu postulación al <strong>Círculo de Socios Fundadores (Membresía Absoluta Vitalicia)</strong> ha sido
+          remitida con éxito al Comité Directivo de EXPERIENCIAS.CLUB.
+        </p>
+
+        <div class="success-summary-box">
+          <div class="summary-field">
+            <span class="sf-label">Postulante</span>
+            <span class="sf-value">{{ founderName() }}</span>
+          </div>
+          <div class="summary-field">
+            <span class="sf-label">Correo de contacto</span>
+            <span class="sf-value">{{ founderEmail() }}</span>
+          </div>
+          <div class="summary-field">
+            <span class="sf-label">Estado</span>
+            <span class="sf-value status-review">✦ En evaluación confidencial</span>
+          </div>
+          <div class="summary-field">
+            <span class="sf-label">Plazo estimado</span>
+            <span class="sf-value">48 a 72 hs hábiles</span>
+          </div>
+        </div>
+
+        <p class="success-next-step">
+          Un miembro del comité se pondrá en contacto a tu correo electrónico o WhatsApp para coordinar la entrevista
+          privada de admisión y los pasos protocolares de incorporación.
+        </p>
+
+        <button class="pill-action-btn founder-done-btn" (click)="closeModal()">
+          Entendido y volver
+        </button>
+      </div>
+      }
+    </div>
+    }
+
+    <!-- Modal: Experiencias Destacadas -->
+    @if (activeModal() === 'experiences') {
+    <div class="modal-card wide" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <span class="modal-kicker">CURADURÍA EXCLUSIVA</span>
+          <h3 class="modal-heading">Expediciones de Alta Montaña & Náuticas</h3>
+        </div>
+        <button class="modal-close-btn" (click)="closeModal()"
+          aria-label="Cerrar modal"><mat-icon>close</mat-icon></button>
+      </div>
+
+      <p class="modal-lead">
+        Una muestra de las travesías irrepetibles que coordinamos con los mejores prestadores locales:
+      </p>
+
+      <div class="cards-grid">
+        @for (exp of experienceService.experiences(); track exp.id; let idx = $index) {
+        <div class="exp-card-wrapper" [class.col-left]="idx % 2 === 0" [class.col-right]="idx % 2 !== 0"
+          [class.is-expanded]="selectedExperience()?.id === exp.id">
+          <div class="exp-card" [class.focused]="selectedExperience()?.id === exp.id"
+            [class.dimmed]="selectedExperience() !== null && selectedExperience()?.id !== exp.id">
+            <div class="exp-card-media" [style.background-image]="'url(' + exp.coverImage + ')'">
+              <span class="exp-region-tag">{{ exp.region }}</span>
+              <span class="exp-altitude">{{ exp.altitudeMeters }} msnm</span>
+            </div>
+            <div class="exp-card-content">
+              <div class="exp-rating">
+                ★ {{ exp.rating }} <span class="reviews">({{ exp.reviewsCount }} expedicionarios)</span>
+              </div>
+              <h4 class="exp-title">{{ exp.title }}</h4>
+              <p class="exp-tagline">{{ exp.tagline }}</p>
+
+              <div class="exp-meta-row">
+                <span>⏱ {{ exp.durationLabel }}</span>
+                <span>⛰ {{ exp.difficulty }}</span>
+              </div>
+
+              <div class="exp-price-row">
+                <div>
+                  <span class="price-val">${{ exp.priceArs.toLocaleString('es-AR') }} ARS</span>
+                  <span class="price-usd">o ${{ exp.priceUsd }} USD</span>
+                </div>
+                <button class="exp-book-btn" [class.active]="selectedExperience()?.id === exp.id"
+                  (click)="toggleExperienceDetails(exp)">
+                  @if (selectedExperience()?.id === exp.id) {
+                  ✕ Ocultar detalles
+                  } @else {
+                  {{ idx % 2 === 0 ? 'Ver detalles →' : '← Ver detalles' }}
+                  }
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Box de detalles que se expande lateralmente unido a la card -->
+          @if (selectedExperience()?.id === exp.id) {
+          <div class="exp-lateral-panel" [class.expand-right]="idx % 2 === 0" [class.expand-left]="idx % 2 !== 0">
+            <div class="lateral-header-row">
+              <div class="lateral-kicker-group">
+                <span class="lateral-kicker">
+                  {{ idx % 2 === 0 ? 'FICHA TÉCNICA Y RECORRIDO →' : '← FICHA TÉCNICA Y RECORRIDO' }}
+                </span>
+                <h4 class="lateral-title">✦ {{ exp.title }}</h4>
+              </div>
+              <button class="close-details-pill" (click)="selectedExperience.set(null)"
+                aria-label="Cerrar detalles">✕</button>
+            </div>
+
+            <p class="details-desc">{{ exp.description }}</p>
+
+            <div class="highlights-list">
+              <strong>Puntos destacados de la travesía:</strong>
+              <ul>
+                @for (h of exp.highlights; track h) {
+                <li>{{ h }}</li>
+                }
+              </ul>
+            </div>
+
+            <div class="included-services">
+              <strong>Servicios incluidos por el prestador:</strong>
+              <div class="included-tags-row">
+                @for (inc of exp.included; track inc) {
+                <span class="inc-pill">✓ {{ inc }}</span>
+                }
+              </div>
+            </div>
+          </div>
+          }
+        </div>
+        }
+      </div>
+
+      <div class="modal-footer">
+        <button class="pill-action-btn secondary" (click)="closeModal()">Cerrar</button>
+        <button class="pill-action-btn" (click)="openModal('tiers')">Quiero ser Socio</button>
+      </div>
+    </div>
+    }
+
+    <!-- Modal: Prestadores de Servicios & Guías -->
+    @if (activeModal() === 'providers') {
+    <div class="modal-card wide providers-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <span class="modal-kicker provider-modal-kicker">COMUNIDAD DE PRESTADORES</span>
+          <h3 class="modal-heading">Sé Parte del Club de Experiencias</h3>
+        </div>
+        <button class="modal-close-btn" (click)="closeModal()"
+          aria-label="Cerrar modal"><mat-icon>close</mat-icon></button>
+      </div>
+
+      <p class="modal-lead">
+        Nuestra plataforma gira en torno a los prestadores locales. Si sos guía de montaña, chofer 4x4,
+        instructor de kayak, anfitrión de alojamiento rural, productor artesanal o fotógrafo andino, te conectamos
+        directamente con viajeros calificados de todo el país y del mundo.
+      </p>
+
+      <div class="provider-benefits-grid">
+        <div class="provider-benefit-card">
+          <mat-icon class="p-mat-icon">campaign</mat-icon>
+          <h4>Exposición & Publicidad</h4>
+          <p>Destaque prioritario en portada, recomendaciones directas a socios y difusión oficial.</p>
+        </div>
+        <div class="provider-benefit-card">
+          <mat-icon class="p-mat-icon">verified_user</mat-icon>
+          <h4>Socios Calificados</h4>
+          <p>Comunidad privada de miembros que respetan la naturaleza, la cultura y el esfuerzo del guía.</p>
+        </div>
+        <div class="provider-benefit-card">
+          <mat-icon class="p-mat-icon">tune</mat-icon>
+          <h4>Panel de Gestión</h4>
+          <p>Cargá tus salidas, fechas disponibles, cupos máximos y tarifas de manera simple.</p>
+        </div>
+        <div class="provider-benefit-card">
+          <mat-icon class="p-mat-icon">hotel_class</mat-icon>
+          <h4>Reputación & Reseñas</h4>
+          <p>Construí un perfil verificado con calificaciones reales de tus expedicionarios.</p>
+        </div>
+      </div>
+
+      <!-- Formulario de Pre-registro de Prestadores -->
+      @if (!providerSuccess()) {
+      <div class="provider-form-box">
+        <h4 class="provider-form-title">Pre-registro de Prestadores Fundadores</h4>
+        <p class="provider-form-desc">
+          Completá tus datos para ser de los primeros prestadores aprobados con <strong>máxima exposición y publicidad
+            prioritaria</strong> en la plataforma.
+        </p>
+
+        <div class="provider-form-grid">
+          <div class="provider-field">
+            <label for="p-name">Nombre y Apellido / Razón Social</label>
+            <input id="p-name" type="text" class="provider-input" placeholder="Ej. Lucas Albarracín - Travesías Puna"
+              [value]="providerName()" (input)="providerName.set($any($event.target).value)" />
+          </div>
+
+          <div class="provider-field">
+            <label for="p-category">Categoría del Servicio</label>
+            <select id="p-category" class="provider-select" [value]="providerCategory()"
+              (change)="providerCategory.set($any($event.target).value)">
+              <option value="guia_montaña">Guía de Alta Montaña / Trekking</option>
+              <option value="kayak_nautica">Kayak & Travesías Náuticas (Diques y Lagunas)</option>
+              <option value="transporte_4x4">Transporte & Expedición 4x4</option>
+              <option value="alojamiento">Alojamiento / Refugio Puneño</option>
+              <option value="gastronomia">Gastronomía & Vinos de Altura</option>
+              <option value="fotografia">Fotografía / Bitácora Audiovisual</option>
+              <option value="artesanias">Artesanías & Productos Regionales</option>
+            </select>
+          </div>
+
+          <div class="provider-field">
+            <label for="p-email">Correo Electrónico</label>
+            <input id="p-email" type="email" class="provider-input" placeholder="tu-correo@ejemplo.com"
+              [value]="providerEmail()" (input)="providerEmail.set($any($event.target).value)" />
+          </div>
+
+          <div class="provider-field">
+            <label for="p-phone">Teléfono / WhatsApp</label>
+            <input id="p-phone" type="tel" class="provider-input" placeholder="+54 9 3834..." [value]="providerPhone()"
+              (input)="providerPhone.set($any($event.target).value)" />
+          </div>
+        </div>
+
+        <div class="modal-footer" style="margin-top: 0.5rem;">
+          <button class="pill-action-btn provider-submit-btn" (click)="submitProvider()"
+            [disabled]="!providerName().trim() || !providerEmail().trim()">
+            Postularme como Prestador
+          </button>
+        </div>
+      </div>
+      } @else {
+      <div class="provider-success-banner">
+        <h4>✦ ¡Postulación Recibida con Éxito!</h4>
+        <p>Nos contactaremos con vos para validar tus certificaciones y coordinar tu alta en la plataforma.</p>
+      </div>
+      }
+    </div>
+    }
+
+    <!-- Modal: Pasarelas de Pago & Adhesión a Membresía Mensual -->
+    @if (activeModal() === 'payments') {
+    <div class="modal-card wide" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <span class="modal-kicker">MEMBRESÍA MENSUAL · SOCIO ACTIVO</span>
+          <div class="heading-with-tag">
+            <h3 class="modal-heading">Activar Suscripción Mensual</h3>
+            <span class="demo-tag"
+              style="background: rgba(255, 212, 42, 0.15); color: var(--color-gold); border: 1px solid rgba(255, 212, 42, 0.35);">$12.000
+              ARS / mes</span>
+          </div>
+        </div>
+        <button class="modal-close-btn" (click)="closeModal()"
+          aria-label="Cerrar modal"><mat-icon>close</mat-icon></button>
+      </div>
+
+      @if (!membershipPaymentSuccess()) {
+      <p class="modal-lead">
+        Formá parte activa de <strong>EXPERIENCIAS.CLUB</strong> con cupos preferenciales, 10% de descuento en todas las
+        expediciones andinas y náuticas, y bitácora privada de recuerdos. Sin permanencia mínima.
+      </p>
+
+      <div class="gateways-selector">
+        <span class="selector-label">Seleccioná tu método de pago preferido:</span>
+        <div class="gateway-options">
+          @for (gw of paymentManager.availableGateways(); track gw.type) {
+          <button class="gw-option-btn" [class.active]="paymentManager.activeGatewayType() === gw.type"
+            (click)="selectGateway(gw.type)">
+            <div class="gw-title">{{ gw.name }}</div>
+            <div class="gw-sub">
+              @if (gw.type === 'custom') {
+              Transferencia bancaria con CBU/CVU o Alias directo sin comisiones en pesos.
+              } @else if (gw.type === 'mercadopago') {
+              Débito automático mensual con saldo disponible o tarjetas de crédito y débito.
+              } @else if (gw.type === 'stripe') {
+              Tarjetas internacionales Visa / Mastercard con cobro equivalente en USD ($12 USD aprox.).
+              }
+            </div>
+          </button>
+          }
+        </div>
+      </div>
+
+      <div class="active-gw-status">
+        <span class="status-badge">MÉTODO DE PAGO ACTIVO</span>
+        <p>
+          Procesando con: <strong>{{ paymentManager.activeGateway().displayName }}</strong> · Cuota mensual:
+          <strong>$12.000 ARS</strong>
+        </p>
+      </div>
+
+      <div class="modal-footer" style="display: flex; gap: 0.8rem; justify-content: flex-end;">
+        <button class="pill-action-btn secondary" (click)="closeModal()">Cancelar</button>
+        <button class="pill-action-btn" (click)="confirmMembershipPayment()" [disabled]="subscribingMembership()">
+          @if (subscribingMembership()) {
+          <span>Procesando pago...</span>
+          } @else {
+          <span>Confirmar y Activar Membresía ($12.000 ARS/mes)</span>
+          }
+        </button>
+      </div>
+      } @else {
+      <!-- Estado de Confirmación Exitosa -->
+      <div class="founder-success-view" style="padding: 1.5rem 0; text-align: center;">
+        <div class="founder-gold-badge"
+          style="margin: 0 auto 1.2rem; width: 50px; height: 50px; border-radius: 50%; background: hsla(152, 65%, 56%, 0.2); border: 1.5px solid var(--color-success); color: var(--color-success); display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+          ✓
+        </div>
+        <h3 style="font-size: 1.4rem; color: #fff; margin-bottom: 0.5rem; font-family: var(--font-serif);">¡Membresía
+          Socio Activo Activada!</h3>
+        <p
+          style="color: var(--color-text-soft); font-size: 0.95rem; max-width: 480px; margin: 0 auto 1rem; line-height: 1.5;">
+          Registramos tu pago de <strong>$12.000 ARS</strong> mediante <strong>{{
+            paymentManager.activeGateway().displayName }}</strong>. Ya contás con el 10% de descuento y prioridad de
+          reserva.
+        </p>
+        <p style="color: var(--color-gold); font-size: 0.85rem; margin-bottom: 1.5rem;">
+          Se generó tu comprobante oficial y constancia de pago con validez fiscal.
+        </p>
+        <div style="display: flex; gap: 0.8rem; justify-content: center;">
+          <button class="pill-action-btn" (click)="closeModal()">
+            Entendido
+          </button>
+        </div>
+      </div>
+      }
+    </div>
+    }
+
+  </div>
+  }
+
   <!-- Modal Comprobante Oficial -->
   @if (activityService.selectedReceipt()) {
   <div class="modal-backdrop" (click)="closeReceipt()">
     <div class="receipt-voucher-card" (click)="$event.stopPropagation()">
+
       <div class="voucher-top">
         <div>
           <span class="voucher-brand-title">EXPERIENCIAS.CLUB</span>
-          <span class="voucher-subtitle">COMPROBANTE OFICIAL DE RESERVA</span>
+          <span class="voucher-subtitle">COMPROBANTE OFICIAL DE PAGO Y RESERVA</span>
         </div>
         <div class="voucher-seal">
-          <span>✓</span>
-          <span>PAGO APROBADO</span>
+          <span>✓</span> PAGO APROBADO
         </div>
       </div>
 
       <div class="voucher-grid">
-        <div class="voucher-item">
-          <span class="voucher-lbl">Nº DE COMPROBANTE</span>
+        <div class="voucher-field">
+          <span class="voucher-label">NÚMERO DE RECIBO</span>
           <span class="voucher-val">{{ activityService.selectedReceipt()?.receiptNumber }}</span>
         </div>
 
-        <div class="voucher-item">
-          <span class="voucher-lbl">FECHA Y HORA</span>
+        <div class="voucher-field">
+          <span class="voucher-label">FECHA Y HORA</span>
           <span class="voucher-val">{{ activityService.selectedReceipt()?.paidAt }}</span>
         </div>
 
-        <div class="voucher-item">
-          <span class="voucher-lbl">ID DE TRANSACCIÓN</span>
+        <div class="voucher-field">
+          <span class="voucher-label">ID DE TRANSACCIÓN</span>
           <span class="voucher-val">{{ activityService.selectedReceipt()?.transactionId }}</span>
         </div>
 
-        <div class="voucher-item">
-          <span class="voucher-lbl">CÓDIGO DE AUTORIZACIÓN</span>
+        <div class="voucher-field">
+          <span class="voucher-label">CÓDIGO DE AUTORIZACIÓN</span>
           <span class="voucher-val">{{ activityService.selectedReceipt()?.authCode }}</span>
         </div>
 
-        <div class="voucher-item">
-          <span class="voucher-lbl">MÉTODO DE PAGO</span>
+        <div class="voucher-field">
+          <span class="voucher-label">MÉTODO DE PAGO</span>
           <span class="voucher-val">{{ activityService.selectedReceipt()?.gatewayDisplayName }}</span>
         </div>
 
-        <div class="voucher-item">
-          <span class="voucher-lbl">TITULAR DE RESERVA</span>
+        <div class="voucher-field">
+          <span class="voucher-label">PAGO A NOMBRE DE</span>
           <span class="voucher-val">{{ activityService.selectedReceipt()?.payerName }}</span>
         </div>
       </div>
 
-      <div class="voucher-total-box">
-        <div class="total-lbl">TOTAL ABONADO</div>
-        <div class="total-values">
-          <span class="amount-main">${{ activityService.selectedReceipt()?.amountArs?.toLocaleString('es-AR') }} ARS</span>
-          <span class="amount-usd">Equivalente: ${{ activityService.selectedReceipt()?.amountUsd }} USD</span>
+      <div class="voucher-amount-box">
+        <div class="amount-display">
+          <span class="voucher-label">MONTO TOTAL ABONADO</span>
+          <span class="amount-main">${{ activityService.selectedReceipt()?.amountArs?.toLocaleString('es-AR') }}
+            ARS</span>
+        </div>
+        <div class="amount-sub">
+          Equivalente: ${{ activityService.selectedReceipt()?.amountUsd }} USD
         </div>
       </div>
 
-      <div class="voucher-footer-msg">
-        Este documento certifica la reserva oficial para la expedición turística en la Provincia de Catamarca. Válido ante las autoridades provinciales y prestadores habilitados.
+      <div class="voucher-meta-footer">
+        <p>
+          Comprobante emitido por <strong>EXPERIENCIAS.CLUB · Edición Catamarca</strong><br />
+          Este documento certifica la reserva para la expedición turística en la Provincia de Catamarca. Válido ante las
+          autoridades provinciales y prestadores habilitados.
+        </p>
       </div>
 
-      <div class="voucher-actions">
+      <div class="modal-footer" style="margin-top: 0; display: flex; gap: 0.8rem; justify-content: flex-end;">
         <button class="pill-action-btn secondary" (click)="closeReceipt()">Cerrar</button>
         <button class="pill-action-btn" (click)="printReceipt()">
-          <mat-icon style="font-size: 16px; width: 16px; height: 16px; line-height: 16px;">print</mat-icon>
-          Imprimir / Descargar PDF
+          Imprimir / Descargar Comprobante
         </button>
       </div>
+
     </div>
   </div>
   }
