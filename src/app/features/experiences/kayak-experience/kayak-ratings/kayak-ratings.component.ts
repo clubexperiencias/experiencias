@@ -56,6 +56,9 @@ export class KayakRatingsComponent {
 
   // Form State
   newRating = signal(5);
+  ratingNature = signal(5);
+  ratingEquipment = signal(5);
+  ratingGuides = signal(5);
   newTitle = signal('');
   newComment = signal('');
   newUserName = signal('');
@@ -78,24 +81,6 @@ export class KayakRatingsComponent {
         badge: 'Prestador Oficial Habilitado',
         date: '15 de Marzo, 2026',
         message: '¡Muchas gracias Valentina! Un placer enorme recibirlos en Las Pirquitas. El atardecer de marzo estuvo especialmente calmo y con una luz dorada increíble. Nos alegra mucho que hayan disfrutado tanto los kayaks como la degustación de productores locales de Fray Mamerto Esquiú. ¡Los esperamos en la próxima expedición andina!'
-      }
-    },
-    {
-      id: 'rev_2',
-      userName: 'Ing. Matías Benítez',
-      userLocation: 'San Miguel de Tucumán',
-      userTier: 'Socio Fundador #24',
-      verifiedBooking: true,
-      activityDate: 'Febrero 2026',
-      rating: 5,
-      date: '22 de Febrero, 2026',
-      title: 'Impecable nivel de seguridad y atención de los instructores',
-      comment: 'Fui con mis dos hijos adolescentes. Era nuestra primera vez en kayak de travesía y la charla técnica previa nos dio total tranquilidad. La lancha de apoyo siempre estuvo cerca cuidando el grupo. Destaco la puntualidad y la calidad de los chalecos y remos de carbono.',
-      providerReply: {
-        responderName: 'Equipo de Guías Náuticos • Club de Experiencias',
-        badge: 'Prestador Oficial Habilitado',
-        date: '23 de Febrero, 2026',
-        message: '¡Gracias por tus palabras Matías! Para nosotros la seguridad náutica y la tranquilidad de las familias es la máxima prioridad. Los chicos tuvieron una técnica de remada impecable. Saludos a la familia y nos vemos pronto en aguas andinas.'
       }
     },
     {
@@ -188,6 +173,14 @@ export class KayakRatingsComponent {
     this.newRating.set(stars);
   }
 
+  setAspectRating(aspect: 'nature' | 'equipment' | 'guides', stars: number): void {
+    if (aspect === 'nature') this.ratingNature.set(stars);
+    if (aspect === 'equipment') this.ratingEquipment.set(stars);
+    if (aspect === 'guides') this.ratingGuides.set(stars);
+    const avg = Math.round((this.ratingNature() + this.ratingEquipment() + this.ratingGuides()) / 3);
+    this.newRating.set(Math.max(1, Math.min(5, avg)));
+  }
+
   submitReview(): void {
     if (!this.newTitle().trim() || !this.newComment().trim()) {
       return;
@@ -227,5 +220,9 @@ export class KayakRatingsComponent {
     this.newComment.set('');
     this.newUserName.set('');
     this.newUserLocation.set('');
+    this.ratingNature.set(5);
+    this.ratingEquipment.set(5);
+    this.ratingGuides.set(5);
+    this.newRating.set(5);
   }
 }

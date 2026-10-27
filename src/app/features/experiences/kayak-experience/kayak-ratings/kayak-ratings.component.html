@@ -23,17 +23,6 @@
                 prestadores náuticos habilitados.
               </p>
             </div>
-
-            <div class="header-nav-actions">
-              <a routerLink="/experiencias/kayak" class="back-link-btn">
-                <mat-icon>arrow_back</mat-icon>
-                <span>Ficha Técnica</span>
-              </a>
-              <button class="write-review-btn" (click)="showNewReviewForm.set(!showNewReviewForm())">
-                <mat-icon>{{ showNewReviewForm() ? 'close' : 'rate_review' }}</mat-icon>
-                <span>{{ showNewReviewForm() ? 'Cerrar Formulario' : 'Escribir Reseña' }}</span>
-              </button>
-            </div>
           </div>
 
           <!-- Métricas Resumen -->
@@ -48,13 +37,12 @@
                 <span class="star-icon">★</span>
               </div>
               <div class="score-reviews-count">62 valoraciones verificadas</div>
-              <div class="recommendation-badge">100% de socios recomiendan esta salida</div>
             </div>
 
             <div class="aspects-scores-grid">
               <div class="aspect-tile">
-                <div class="aspect-header">
-                  <span class="aspect-label">Seguridad & Protocolo WFR</span>
+                <div class="aspect-label-row">
+                  <span class="aspect-label">Entorno Natural & Travesía en Kayak</span>
                   <span class="aspect-val">5.0 ★</span>
                 </div>
                 <div class="progress-track"><div class="progress-fill" style="width: 100%;"></div></div>
@@ -75,98 +63,13 @@
                 </div>
                 <div class="progress-track"><div class="progress-fill" style="width: 100%;"></div></div>
               </div>
-
-              <div class="aspect-tile">
-                <div class="aspect-label-row">
-                  <span class="aspect-label">Sunset & Cierre Gastronómico</span>
-                  <span class="aspect-val">4.9 ★</span>
-                </div>
-                <div class="progress-track"><div class="progress-fill" style="width: 98%;"></div></div>
-              </div>
             </div>
           </div>
         </div>
-
-        <!-- ═══════════════ FORMULARIO PARA AGREGAR RESEÑA ═══════════════ -->
-        @if (showNewReviewForm()) {
-        <div class="ratings-section-card new-review-form-card">
-          <div class="form-header">
-            <span class="section-kicker">TU EXPERIENCIA CUENTA</span>
-            <h2 class="form-title">Compartí tu Calificación de la Travesía en Kayak</h2>
-            <p class="form-desc">
-              Tu opinión ayuda a otros socios a elegir sus expediciones y permite a los prestadores locales seguir elevando
-              los estándares de seguridad y hospitalidad.
-            </p>
-          </div>
-
-          <form (submit)="$event.preventDefault(); submitReview()" class="review-form">
-            <div class="rating-picker-row">
-              <label class="field-label">Calificación General:</label>
-              <div class="stars-picker">
-                @for (s of [1, 2, 3, 4, 5]; track s) {
-                <button type="button" class="star-btn" [class.selected]="newRating() >= s" (click)="setRating(s)">
-                  ★
-                </button>
-                }
-                <span class="picker-rating-text">{{ newRating() }} de 5 estrellas</span>
-              </div>
-            </div>
-
-            <div class="form-inputs-row">
-              <div class="input-field">
-                <label for="rev-name" class="field-label">Nombre y Apellido</label>
-                <input id="rev-name" type="text" class="standard-input" placeholder="Ej. Valentina Morán"
-                  [value]="newUserName()" (input)="newUserName.set($any($event.target).value)" />
-              </div>
-
-              <div class="input-field">
-                <label for="rev-loc" class="field-label">Ciudad / Procedencia</label>
-                <input id="rev-loc" type="text" class="standard-input" placeholder="Ej. Córdoba, Argentina"
-                  [value]="newUserLocation()" (input)="newUserLocation.set($any($event.target).value)" />
-              </div>
-            </div>
-
-            <div class="input-field">
-              <label for="rev-title" class="field-label">Título de la Reseña <span class="req">*</span></label>
-              <input id="rev-title" type="text" class="standard-input"
-                placeholder="Ej. Una experiencia inolvidable en las aguas del dique..." [value]="newTitle()"
-                (input)="newTitle.set($any($event.target).value)" required />
-            </div>
-
-            <div class="input-field">
-              <label for="rev-comment" class="field-label">Tu Opinión Detallada <span class="req">*</span></label>
-              <textarea id="rev-comment" rows="4" class="standard-textarea"
-                placeholder="Contanos sobre la remada, la seguridad, los guías náuticos y el cierre al atardecer..."
-                [value]="newComment()" (input)="newComment.set($any($event.target).value)" required></textarea>
-            </div>
-
-            <div class="form-actions-row">
-              <button type="button" class="cancel-form-btn" (click)="showNewReviewForm.set(false)">
-                Cancelar
-              </button>
-              <button type="button" class="submit-review-btn" (click)="submitReview()"
-                [disabled]="!newTitle().trim() || !newComment().trim()">
-                <mat-icon>send</mat-icon>
-                <span>Publicar Reseña</span>
-              </button>
-            </div>
-          </form>
-        </div>
-        }
-
-        <!-- Notificación de Reseña Publicada -->
-        @if (reviewSubmitted()) {
-        <div class="submitted-notification" role="status">
-          <mat-icon class="check-icon">check_circle</mat-icon>
-          <div>
-            <strong>¡Reseña registrada con éxito!</strong>
-            <p>Tu opinión ya fue incorporada al historial de la travesía y notificada al prestador náutico.</p>
-          </div>
-        </div>
-        }
 
         <!-- ═══════════════ CARD 2: LISTA DE RESEÑAS CON RESPUESTAS ═══════════════ -->
         <div class="ratings-section-card reviews-list-card">
+          <!-- Filtros interactivos -->
           <div class="list-controls-row">
             <div class="controls-left">
               <span class="section-kicker">OPINIONES VERIFICADAS</span>
@@ -209,7 +112,7 @@
                       <span class="user-name">{{ rev.userName }}</span>
                       <span class="user-tier-tag">{{ rev.userTier }}</span>
                     </div>
-                    <span class="user-location">{{ rev.userLocation }} · {{ rev.activityDate }}</span>
+                    <span class="user-location">{{ rev.userLocation }}</span>
                   </div>
                 </div>
 
@@ -219,10 +122,6 @@
                     <span class="star-badge" [class.active]="star <= rev.rating">★</span>
                     }
                   </div>
-                  <span class="verified-booking-badge">
-                    <mat-icon class="shield-icon">verified</mat-icon>
-                    <span>Salida Verificada</span>
-                  </span>
                   <span class="review-date">{{ rev.date }}</span>
                 </div>
               </div>
@@ -238,7 +137,9 @@
               <div class="provider-reply-box">
                 <div class="reply-header-row">
                   <div class="provider-badge-wrap">
-                    <mat-icon class="reply-icon">support_agent</mat-icon>
+                    <div class="provider-avatar-initials">
+                      {{ rev.providerReply.responderName.charAt(0) }}
+                    </div>
                     <div>
                       <span class="responder-name">{{ rev.providerReply.responderName }}</span>
                       <span class="official-tag">{{ rev.providerReply.badge }}</span>
@@ -257,26 +158,123 @@
           </div>
         </div>
 
-        <!-- ═══════════════ BOTONES INFERIORES DE ACCIÓN ═══════════════ -->
-        <div class="bottom-navigation-card">
-          <div class="bottom-nav-content">
-            <div>
-              <h3 class="bottom-nav-title">¿Listo para vivir la travesía en Las Pirquitas?</h3>
-              <p class="bottom-nav-desc">Consultá disponibilidad y reservá tu lugar con cupo prioritario para socios.</p>
+        <!-- ═══════════════ CARD 3: VALORÁ TU SALIDA (PROPIA BOX) ═══════════════ -->
+        <div class="ratings-section-card create-review-card">
+          <div class="create-review-header">
+            <span class="section-kicker">VALORÁ TU SALIDA</span>
+            <h2 id="create-review-title" class="create-review-title">Escribí tu Reseña de la Travesía</h2>
+            <p class="create-review-desc">
+              Compartí tu experiencia en el lago y calificá cada aspecto para la comunidad del club:
+            </p>
+          </div>
+
+          <!-- Votación de los 3 ítems clave -->
+          <div class="aspects-voting-grid">
+            <!-- Item 1: Entorno Natural & Travesía en Kayak -->
+            <div class="aspect-vote-card">
+              <div class="aspect-vote-info">
+                <span class="aspect-vote-label">Entorno Natural & Travesía en Kayak</span>
+              </div>
+              <div class="aspect-stars-picker">
+                @for (s of [1, 2, 3, 4, 5]; track s) {
+                <button type="button" class="aspect-star-btn" [class.selected]="ratingNature() >= s"
+                  (click)="setAspectRating('nature', s)" [attr.aria-label]="s + ' estrellas en Entorno Natural'">
+                  ★
+                </button>
+                }
+              </div>
             </div>
-            <div class="bottom-nav-buttons">
-              <a routerLink="/experiencias/kayak" class="nav-secondary-btn">
-                <span>← Ficha Técnica</span>
-              </a>
-              <a routerLink="/experiencias/kayak/fotos" class="nav-secondary-btn">
-                <span>Fotos de Salidas Pasadas</span>
-              </a>
-              <a routerLink="/socios" class="nav-primary-gold-btn">
-                <span>Unirme como Socio del Club</span>
-                <mat-icon>arrow_forward</mat-icon>
-              </a>
+
+            <!-- Item 2: Equipamiento Náutico -->
+            <div class="aspect-vote-card">
+              <div class="aspect-vote-info">
+                <span class="aspect-vote-label">Equipamiento Náutico</span>
+              </div>
+              <div class="aspect-stars-picker">
+                @for (s of [1, 2, 3, 4, 5]; track s) {
+                <button type="button" class="aspect-star-btn" [class.selected]="ratingEquipment() >= s"
+                  (click)="setAspectRating('equipment', s)" [attr.aria-label]="s + ' estrellas en Equipamiento Náutico'">
+                  ★
+                </button>
+                }
+              </div>
+            </div>
+
+            <!-- Item 3: Guías & Asistencia Técnica -->
+            <div class="aspect-vote-card">
+              <div class="aspect-vote-info">
+                <span class="aspect-vote-label">Guías & Asistencia Técnica</span>
+              </div>
+              <div class="aspect-stars-picker">
+                @for (s of [1, 2, 3, 4, 5]; track s) {
+                <button type="button" class="aspect-star-btn" [class.selected]="ratingGuides() >= s"
+                  (click)="setAspectRating('guides', s)" [attr.aria-label]="s + ' estrellas en Guías & Asistencia Técnica'">
+                  ★
+                </button>
+                }
+              </div>
             </div>
           </div>
+
+          <!-- Formulario de Texto y Envío -->
+          <form (submit)="$event.preventDefault(); submitReview()" class="inline-review-form">
+            <div class="form-inputs-row">
+              <div class="input-field">
+                <label for="rev-inline-name" class="field-label">Nombre y Apellido</label>
+                <input id="rev-inline-name" type="text" class="standard-input" placeholder="Ej. Valentina Morán"
+                  [value]="newUserName()" (input)="newUserName.set($any($event.target).value)" />
+              </div>
+
+              <div class="input-field">
+                <label for="rev-inline-loc" class="field-label">Ciudad / Procedencia</label>
+                <input id="rev-inline-loc" type="text" class="standard-input" placeholder="Ej. Córdoba, Argentina"
+                  [value]="newUserLocation()" (input)="newUserLocation.set($any($event.target).value)" />
+              </div>
+            </div>
+
+            <div class="input-field">
+              <label for="rev-inline-title" class="field-label">Título de la Reseña <span class="req">*</span></label>
+              <input id="rev-inline-title" type="text" class="standard-input"
+                placeholder="Ej. Una experiencia inolvidable en las aguas del dique..." [value]="newTitle()"
+                (input)="newTitle.set($any($event.target).value)" required />
+            </div>
+
+            <div class="input-field">
+              <label for="rev-inline-comment" class="field-label">Tu Opinión Detallada <span class="req">*</span></label>
+              <textarea id="rev-inline-comment" rows="3" class="standard-textarea"
+                placeholder="Contanos sobre la remada, la seguridad, los guías náuticos y el cierre al atardecer..."
+                [value]="newComment()" (input)="newComment.set($any($event.target).value)" required></textarea>
+            </div>
+
+            <div class="form-actions-row">
+              <button type="button" class="submit-review-btn" (click)="submitReview()"
+                [disabled]="!newTitle().trim() || !newComment().trim()">
+                <mat-icon>send</mat-icon>
+                <span>Publicar Reseña</span>
+              </button>
+            </div>
+          </form>
+
+          @if (reviewSubmitted()) {
+          <div class="submitted-notification" role="status">
+            <mat-icon class="check-icon">check_circle</mat-icon>
+            <div>
+              <strong>¡Reseña registrada con éxito!</strong>
+              <p>Tu opinión ya fue incorporada al historial de la travesía y notificada al prestador náutico.</p>
+            </div>
+          </div>
+          }
+        </div>
+
+        <!-- ═══════════════ AD BANNER: CONVOCATORIA SOCIO FUNDADOR ═══════════════ -->
+        <div class="kayak-ad-wrapper">
+          <div class="ad-tag-header">
+            <span class="ad-label-pill">Publicidad</span>
+            <span class="ad-sponsor-text">Club de Experiencias</span>
+          </div>
+          <a routerLink="/socios/fundadores" class="ad-banner-link" aria-label="Convocatoria Socio Fundador">
+            <img src="/assets/images/ad.png" alt="Socio Fundador Convocatoria Oficial" class="ad-banner-img" />
+          </a>
         </div>
 
       </div>

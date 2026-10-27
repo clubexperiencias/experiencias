@@ -66,4 +66,18 @@ describe('KayakPhotosComponent (/experiencias/kayak/fotos)', () => {
     expect(adImg).toBeTruthy();
     expect(adImg.getAttribute('src')).toContain('ad.png');
   });
+
+  it('should render 3 photos in the same row below the portada replicating the image', () => {
+    const photosGrid = fixture.nativeElement.querySelector('.photos-grid');
+    expect(photosGrid).toBeTruthy();
+
+    const items = fixture.nativeElement.querySelectorAll('.photo-card-item');
+    expect(items.length).toBe(3);
+
+    const thumbImgs = fixture.nativeElement.querySelectorAll('.gallery-thumb-img');
+    expect(thumbImgs.length).toBe(3);
+    thumbImgs.forEach((img: HTMLImageElement) => {
+      expect(img.getAttribute('src')).toBe('/assets/images/kayak-club-de-experiencias.jpg');
+    });
+  });
 });

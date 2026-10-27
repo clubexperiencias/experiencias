@@ -37,6 +37,22 @@
           </div>
         </div>
 
+        <!-- ═══════════════ TRES FOTOS EN LA MISMA FILA ═══════════════ -->
+        <div class="photos-grid">
+          @for (photo of secondaryPhotos; track $index) {
+          <div class="photo-card-item" (click)="openPhotoModal(photo)">
+            <div class="photo-card-media">
+              <img [src]="photo.src" [alt]="photo.title" class="gallery-thumb-img" />
+              <span class="photo-tag">{{ photo.tag }}</span>
+            </div>
+            <div class="photo-card-body">
+              <h3 class="photo-item-title">{{ photo.title }}</h3>
+              <p class="photo-item-caption">{{ photo.caption }}</p>
+            </div>
+          </div>
+          }
+        </div>
+
         <!-- ═══════════════ AD BANNER: CONVOCATORIA SOCIO FUNDADOR ═══════════════ -->
         <div class="kayak-ad-wrapper">
           <div class="ad-tag-header">

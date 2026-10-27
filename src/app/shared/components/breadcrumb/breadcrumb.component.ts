@@ -203,7 +203,7 @@ export class BreadcrumbComponent implements OnInit {
         secondaryCard: {
           kicker: 'Membresía—',
           title: 'Sumate como Socio Fundador',
-          subtitle: 'Membresía vitalicia 2026 · Cupos preferenciales y acceso exclusivo',
+          subtitle: 'Membresía vitalicia con cupos y accesos exclusivos',
           url: '/socios/fundadores',
           imageUrl: '/assets/images/sumate.png',
           badge: 'FUNDADOR 2026'
@@ -259,7 +259,7 @@ export class BreadcrumbComponent implements OnInit {
         secondaryCard: {
           kicker: 'Membresía—',
           title: 'Sumate como Socio Fundador',
-          subtitle: 'Membresía vitalicia 2026 · Cupos preferenciales y acceso exclusivo',
+          subtitle: 'Membresía vitalicia con cupos y accesos exclusivos',
           url: '/socios/fundadores',
           imageUrl: '/assets/images/sumate.png',
           badge: 'FUNDADOR 2026'
@@ -287,7 +287,7 @@ export class BreadcrumbComponent implements OnInit {
         secondaryCard: {
           kicker: 'Membresía—',
           title: 'Sumate como Socio Fundador',
-          subtitle: 'Membresía vitalicia 2026 · Cupos preferenciales y acceso exclusivo',
+          subtitle: 'Membresía vitalicia con cupos y accesos exclusivos',
           url: '/socios/fundadores',
           imageUrl: '/assets/images/sumate.png',
           badge: 'FUNDADOR 2026'
@@ -371,10 +371,10 @@ export class BreadcrumbComponent implements OnInit {
         secondaryCard: {
           kicker: 'Membresía—',
           title: 'Sumate como Socio Fundador',
-          subtitle: 'Membresía vitalicia 2026 · Cupos preferenciales y acceso exclusivo',
+          subtitle: 'Membresía vitalicia con cupos y accesos exclusivos',
           url: '/socios/fundadores',
           imageUrl: '/assets/images/sumate.png',
-          badge: 'FUNDADOR 2026'
+          badge: 'SOCIOS FUNDADORES'
         }
       };
     }
@@ -398,7 +398,7 @@ export class BreadcrumbComponent implements OnInit {
       secondaryCard: {
         kicker: 'Membresía—',
         title: 'Sumate como Socio Fundador',
-        subtitle: 'Membresía vitalicia 2026 · Cupos preferenciales y acceso exclusivo',
+        subtitle: 'Membresía vitalicia con cupos y accesos exclusivos',
         url: '/socios/fundadores',
         imageUrl: '/assets/images/sumate.png',
         badge: 'FUNDADOR 2026'

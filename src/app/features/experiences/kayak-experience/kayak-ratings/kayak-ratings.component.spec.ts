@@ -75,4 +75,40 @@ describe('KayakRatingsComponent (/experiencias/kayak/calificaciones)', () => {
     expect(latestReview.providerReply).toBeDefined();
     expect(latestReview.providerReply?.responderName).toContain('Lucas Nieto');
   });
+
+  it('should display ad banner linking to /socios/fundadores', () => {
+    const adWrapper = fixture.nativeElement.querySelector('.kayak-ad-wrapper');
+    expect(adWrapper).toBeTruthy();
+    const adLink = fixture.nativeElement.querySelector('.ad-banner-link');
+    expect(adLink).toBeTruthy();
+    expect(adLink.getAttribute('routerlink') || adLink.getAttribute('href')).toBe('/socios/fundadores');
+    const adImg = fixture.nativeElement.querySelector('.ad-banner-img');
+    expect(adImg).toBeTruthy();
+    expect(adImg.getAttribute('src')).toContain('ad.png');
+  });
+
+  it('should display the review creation box with 3 voting aspects and clean user location', () => {
+    const createReviewBox = fixture.nativeElement.querySelector('.create-review-card');
+    expect(createReviewBox).toBeTruthy();
+
+    const aspectCards = fixture.nativeElement.querySelectorAll('.aspect-vote-card');
+    expect(aspectCards.length).toBe(3);
+    expect(createReviewBox.textContent).toContain('Entorno Natural & Travesía en Kayak');
+    expect(createReviewBox.textContent).toContain('Equipamiento Náutico');
+    expect(createReviewBox.textContent).toContain('Guías & Asistencia Técnica');
+
+    // Test aspect rating interaction
+    component.setAspectRating('equipment', 4);
+    expect(component.ratingEquipment()).toBe(4);
+
+    // Verify clean user location without activityDate
+    const firstUserLoc = fixture.nativeElement.querySelector('.user-location');
+    expect(firstUserLoc).toBeTruthy();
+    expect(firstUserLoc.textContent.trim()).toBe('Córdoba, Argentina');
+
+    // Verify provider avatar placeholder matches socio styling with initial
+    const providerAvatar = fixture.nativeElement.querySelector('.provider-avatar-initials');
+    expect(providerAvatar).toBeTruthy();
+    expect(providerAvatar.textContent.trim()).toBe('L');
+  });
 });

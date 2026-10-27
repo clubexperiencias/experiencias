@@ -44,6 +44,27 @@ export class KayakPhotosComponent {
     }
   ];
 
+  readonly secondaryPhotos: GalleryPhoto[] = [
+    {
+      src: '/assets/images/kayak-club-de-experiencias.jpg',
+      title: 'Navegación al Atardecer',
+      caption: 'Remada en grupo en las bahías protegidas del dique Las Pirquitas.',
+      tag: 'ATARDECER'
+    },
+    {
+      src: '/assets/images/kayak-club-de-experiencias.jpg',
+      title: 'Entorno & Cordón de Ambato',
+      caption: 'Panorámica de las sierras catamarqueñas reflejadas en el espejo de agua.',
+      tag: 'PAISAJE'
+    },
+    {
+      src: '/assets/images/kayak-club-de-experiencias.jpg',
+      title: 'Equipo & Asistencia Náutica',
+      caption: 'Embarcaciones de travesía y chalecos técnicos de alta flotabilidad.',
+      tag: 'EXPEDICIÓN'
+    }
+  ];
+
   toggleMobileMenu(event: Event): void {
     event.stopPropagation();
     this.mobileMenuOpen.update((v) => !v);
