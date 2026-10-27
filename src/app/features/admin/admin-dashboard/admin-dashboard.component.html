@@ -1,0 +1,153 @@
+<section class="admin-dashboard-section">
+  <div class="admin-dashboard-container">
+    <!-- Top Bar Navigation -->
+    <header class="admin-header">
+      <div class="header-left">
+        <span class="section-kicker">CLUB DE EXPERIENCIAS CATAMARCA</span>
+        <h1 class="dashboard-title">Panel de Administración</h1>
+      </div>
+      <div class="header-actions">
+        <a routerLink="/admin/users" class="btn-secondary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+          </svg>
+          Gestionar Usuarios
+        </a>
+        <button (click)="logout()" class="btn-logout" title="Cerrar sesión de administrador">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+          Salir
+        </button>
+      </div>
+    </header>
+
+    <!-- Metrics Grid -->
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <span class="metric-label">REGISTRADOS TOTALES</span>
+        <div class="metric-value">{{ metrics().totalRegistered }}</div>
+        <span class="metric-sub">Usuarios con perfil activo</span>
+      </div>
+
+      <div class="metric-card">
+        <span class="metric-label">SOCIOS ACTIVOS</span>
+        <div class="metric-value text-accent">{{ metrics().activeSubscribers }}</div>
+        <span class="metric-sub">Suscripción recurrente</span>
+      </div>
+
+      <div class="metric-card">
+        <span class="metric-label">SOCIOS FUNDADORES</span>
+        <div class="metric-value text-gold">{{ metrics().founderMembers }}</div>
+        <span class="metric-sub">Pase vitalicio Catamarca 2026</span>
+      </div>
+
+      <div class="metric-card">
+        <span class="metric-label">PRESTADORES HABILITADOS</span>
+        <div class="metric-value text-cyan">{{ metrics().registeredProviders }}</div>
+        <span class="metric-sub">Guías, 4x4 y baqueanos</span>
+      </div>
+    </div>
+
+    <!-- Revenue & Operations Row -->
+    <div class="finance-grid">
+      <div class="finance-card">
+        <div class="card-header">
+          <span class="section-kicker">FACTURACIÓN COBRADA</span>
+          <h2 class="card-title">Ingresos Plataforma</h2>
+        </div>
+        <div class="finance-numbers">
+          <div class="finance-item">
+            <span class="finance-label">Volumen en ARS</span>
+            <span class="finance-amount">${{ metrics().totalRevenueArs.toLocaleString('es-AR') }}</span>
+          </div>
+          <div class="finance-item">
+            <span class="finance-label">Equivalente Estimado USD</span>
+            <span class="finance-amount">US$ {{ metrics().totalRevenueUsd.toLocaleString('es-AR') }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="finance-card">
+        <div class="card-header">
+          <span class="section-kicker">ESTADO DE SUPABASE</span>
+          <h2 class="card-title">Infraestructura & Datos</h2>
+        </div>
+        <div class="infra-status">
+          <div class="infra-item">
+            <span class="status-indicator live"></span>
+            <span class="infra-name">PostgreSQL DB:</span>
+            <span class="infra-val">Configurado (esperando env keys)</span>
+          </div>
+          <div class="infra-item">
+            <span class="status-indicator live"></span>
+            <span class="infra-name">Auth Service:</span>
+            <span class="infra-val">Magic Link + RLS activo</span>
+          </div>
+          <div class="infra-item">
+            <span class="status-indicator live"></span>
+            <span class="infra-name">Storage Memories:</span>
+            <span class="infra-val">Cloudflare R2 Bucket</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick User Table Preview -->
+    <div class="section-card">
+      <div class="card-header-bar">
+        <div>
+          <span class="section-kicker">ACCESO RÁPIDO</span>
+          <h2 class="card-title">Usuarios Recientes & Prestadores</h2>
+        </div>
+        <a routerLink="/admin/users" class="link-view-all">Ver todos los usuarios ({{ users().length }}) →</a>
+      </div>
+
+      <div class="table-responsive">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>ID SOCIO</th>
+              <th>NOMBRE & EMAIL</th>
+              <th>MEMBRESÍA</th>
+              <th>PRESTADOR</th>
+              <th>ACTIVIDADES</th>
+              <th>ACCIONES</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let u of users()">
+              <td class="mono-id">{{ u.memberNumber }}</td>
+              <td>
+                <div class="user-name">{{ u.fullName }}</div>
+                <div class="user-email">{{ u.email }}</div>
+              </td>
+              <td>
+                <span class="badge" [ngClass]="'badge-' + u.membershipTier">
+                  {{ u.membershipTier | uppercase }}
+                </span>
+              </td>
+              <td>
+                <span *ngIf="u.isProvider" class="badge-provider">
+                  ✓ {{ u.providerDetail?.category || 'Prestador' }}
+                </span>
+                <span *ngIf="!u.isProvider" class="text-muted">—</span>
+              </td>
+              <td class="mono-count">{{ u.activities.length }} completadas</td>
+              <td>
+                <a [routerLink]="['/admin/users', u.id]" class="btn-inspect">
+                  Ver Ficha #{{ u.id }}
+                </a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>

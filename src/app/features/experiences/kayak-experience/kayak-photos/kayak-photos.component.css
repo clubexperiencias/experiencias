@@ -262,76 +262,75 @@
   margin: 0;
 }
 
-/* ═══════════════ CARD DE ACCIÓN Y RETORNO ═══════════════ */
-.gallery-action-card {
-  border-color: rgba(255, 212, 42, 0.45);
-  background: hsla(220, 24%, 9%, 0.32);
-}
-
-.gallery-action-flex {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 2rem;
-}
-
-.action-heading {
-  font-family: var(--font-serif);
-  font-size: 1.45rem;
-  font-weight: 600;
-  color: #ffffff;
-  margin: 0.2rem 0 0.35rem;
-}
-
-.action-sub {
-  font-size: 0.88rem;
-  color: var(--color-text-soft);
-  margin: 0;
-}
-
-.action-buttons-wrap {
+/* ═══════════════ AD BANNER: CONVOCATORIA SOCIO FUNDADOR ═══════════════ */
+.kayak-ad-wrapper {
+  width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
-  align-items: center;
-  flex-shrink: 0;
-}
-
-.cta-primary-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   gap: 0.55rem;
-  padding: 0.85rem 1.6rem;
-  background: var(--color-gold);
-  color: #000000;
+  margin-top: 0.2rem;
+}
+
+.ad-tag-header {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0 0.2rem;
+}
+
+.ad-label-pill {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
   font-weight: 700;
-  font-size: 0.88rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  border-radius: 2px;
-  text-decoration: none;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-}
-
-.cta-primary-btn:hover {
-  background: #ffd93a;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(255, 204, 0, 0.35);
-}
-
-.cta-secondary-link {
-  font-size: 0.82rem;
-  color: var(--color-text-soft);
-  text-decoration: none;
-  transition: color 0.15s ease;
-  white-space: nowrap;
-}
-
-.cta-secondary-link:hover {
+  letter-spacing: 0.12em;
   color: #ffffff;
-  text-decoration: underline;
+  background: #80b3ff;
+  border: 1px solid #80b3ff;
+  padding: 0.18rem 0.6rem;
+  border-radius: 2px;
+  text-transform: uppercase;
+  box-shadow: 0 2px 8px rgba(128, 179, 255, 0.35);
+}
+
+.ad-sponsor-text {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.45);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.ad-banner-link {
+  position: relative;
+  display: block;
+  width: 100%;
+  border-radius: 2px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.45);
+  text-decoration: none !important;
+  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+  cursor: pointer;
+  background: #000000;
+}
+
+.ad-banner-link:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 212, 42, 0.5);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.6), 0 0 20px rgba(255, 212, 42, 0.15);
+}
+
+.ad-banner-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+  transition: transform 0.35s ease;
+}
+
+.ad-banner-link:hover .ad-banner-img {
+  transform: scale(1.015);
 }
 
 /* ═══════════════ LIGHTBOX MODAL ═══════════════ */

@@ -53,4 +53,17 @@ describe('KayakPhotosComponent (/experiencias/kayak/fotos)', () => {
     fixture.detectChanges();
     expect(component.activePhotoModal()).toBeNull();
   });
+
+  it('should display the ad banner linking to /socios/fundadores', () => {
+    const adBanner = fixture.nativeElement.querySelector('.kayak-ad-wrapper');
+    expect(adBanner).toBeTruthy();
+
+    const link = fixture.nativeElement.querySelector('.ad-banner-link');
+    expect(link).toBeTruthy();
+    expect(link.getAttribute('routerlink') || link.getAttribute('href')).toBe('/socios/fundadores');
+
+    const adImg = fixture.nativeElement.querySelector('.ad-banner-img');
+    expect(adImg).toBeTruthy();
+    expect(adImg.getAttribute('src')).toContain('ad.png');
+  });
 });

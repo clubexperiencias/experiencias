@@ -39,10 +39,11 @@ describe('KayakExperienceComponent (/experiencias/kayak)', () => {
     expect(current.textContent).toContain('Travesía en Kayak');
   });
 
-  it('should display the pricing and CTA link to /socios', () => {
+  it('should display the pricing and blocked CTA to pay experience', () => {
     const primaryCta = fixture.nativeElement.querySelector('.cta-primary-btn');
     expect(primaryCta).toBeTruthy();
-    expect(primaryCta.getAttribute('routerlink') || primaryCta.getAttribute('href')).toBe('/socios');
+    expect(primaryCta.textContent).toContain('Pagar Experiencia');
+    expect(primaryCta.hasAttribute('disabled')).toBe(true);
 
     const arsPrice = fixture.nativeElement.querySelector('.ars-price');
     expect(arsPrice).toBeTruthy();

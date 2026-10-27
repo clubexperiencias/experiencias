@@ -38,13 +38,7 @@
                 }}</strong>.
               Ya formás parte de la lista de espera oficial del club como <strong>{{ newsletter.isMonthlyActive() ?
                 'Socio Activo' : 'Socio Emergente' }}</strong>.
-              <a routerLink="/socios/activos" class="upgrade-membership-link">
-                {{ newsletter.isMonthlyActive() ? 'Gestionar membresía mensual →' : 'Activar membresía mensual (10% OFF)
-                →' }}
-              </a>
-            </p>
-            <p class="completion-subtitle">
-              Priorizaremos tu cupo según las expediciones y travesías que elijas.
+              Priorizaremos tu cupo según qué expediciones realices y qué tan completo tengas tu perfil.
             </p>
           </div>
 
@@ -58,16 +52,16 @@
               </div>
 
               <div class="form-field">
-                <label for="member-nationality" class="field-label">Nacionalidad <span class="req">*</span></label>
+                <label for="member-nationality" class="field-label">Nacionalidad <span class="opt">(opcional)</span></label>
                 <input id="member-nationality" type="text" class="field-input"
                   placeholder="Ej. Argentina, Chilena, Uruguaya..." [value]="memberNationality()"
-                  (input)="memberNationality.set($any($event.target).value)" required />
+                  (input)="memberNationality.set($any($event.target).value)" />
               </div>
             </div>
 
             <div class="form-field">
               <label class="field-label">
-                ¿Qué experiencias tenés más ganas de vivir? <span class="req">*</span>
+                ¿Qué experiencias tenés más ganas de vivir? <span class="opt">(opcional)</span>
                 <span class="field-hint">(Elegí una o varias opciones)</span>
               </label>
 
@@ -76,9 +70,6 @@
                 <button type="button" class="wishlist-chip" [class.selected]="isExperienceSelected(exp.id)"
                   (click)="toggleExperienceWishlist(exp.id)">
                   <span class="chip-title">{{ exp.title }}</span>
-                  <span class="chip-action">
-                    @if (isExperienceSelected(exp.id)) { ✓ } @else { + }
-                  </span>
                 </button>
                 }
               </div>
@@ -94,12 +85,20 @@
             </div>
 
             <button type="button" class="save-profile-btn" (click)="saveMemberProfile()"
-              [disabled]="!memberFullName().trim() || !memberNationality().trim() || selectedExperiences().length === 0">
+              [disabled]="!memberFullName().trim()">
               <span>Guardar Perfil de Socio Emergente</span>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="save-icon">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             </button>
+
+            @if (!memberFullName().trim()) {
+            <div class="profile-required-name-tag-wrap">
+              <span class="profile-required-name-tag">
+                * Ingresá tu Nombre y Apellido para poder guardar tu perfil de socio.
+              </span>
+            </div>
+            }
           </form>
           } @else {
           <!-- Resumen de Perfil Completado -->
@@ -113,13 +112,15 @@
                 </button>
               </div>
               <p class="saved-member-name">
-                <strong>{{ memberFullName() }}</strong> · Nacionalidad: <span>{{ memberNationality() }}</span>
+                <strong>{{ memberFullName() }}</strong>@if (memberNationality().trim()) { · Nacionalidad: <span>{{ memberNationality() }}</span>}
               </p>
+              @if (selectedExperiences().length > 0) {
               <div class="saved-chips-list">
                 @for (expId of selectedExperiences(); track expId) {
                 <span class="saved-chip">{{ getExperienceTitle(expId) }}</span>
                 }
               </div>
+              }
               @if (memberNotes().trim()) {
               <p class="saved-note"><strong>Sobre vos y expectativas:</strong> "{{ memberNotes() }}"</p>
               }
@@ -128,7 +129,7 @@
           }
         </div>
 
-        <!-- ═══════════════ FILA 3: CÓDIGO DE INVITACIÓN & EXPEDICIONARIOS (OCULTO TEMPORALMENTE) ═══════════════ -->
+        <!-- ═══════════════ FILA 3: CÓDIGO DE INVITACIÓN & SOCIOS (OCULTO TEMPORALMENTE) ═══════════════ -->
         @if (false) {
         <div class="profile-section-card referral-share-card">
           <div class="ref-unified-row">
@@ -165,13 +166,13 @@
             <div class="panel-header-row">
               <div>
                 <span class="panel-kicker">BENEFICIO EXCLUSIVO · CUPONES DEL 10% OFF</span>
-                <h4 class="panel-title">Expedicionarios registrados con tu código</h4>
+                <h4 class="panel-title">Socios registrados con tu código</h4>
               </div>
               <span class="panel-rule-badge">10% OFF POR CADA EXPERIENCIA COMPRADA</span>
             </div>
 
             <p class="panel-desc">
-              Por cada experiencia que compren los expedicionarios registrados con tu código, obtenés un
+              Por cada experiencia que compren los socios registrados con tu código, obtenés un
               <strong>código de descuento del 10% único</strong> para usar en tu propia próxima salida.
             </p>
 
@@ -253,18 +254,13 @@
         <div class="profile-section-card" id="historial-seccion">
           <div class="section-header-row">
             <div>
-              <span class="section-kicker">DOCUMENTACIÓN OFICIAL</span>
+              <span class="section-kicker">DOCUMENTOS OFICIALES</span>
               <h3 class="section-title">Historial de Actividades & Comprobantes</h3>
             </div>
-            <span class="section-badge">DEMO INTERACTIVA</span>
           </div>
 
-          <p class="section-lead">
-            Accedé a tus salidas confirmadas y comprobantes con código de autorización bancaria y fiscal:
-          </p>
-
           <div class="activities-list">
-            @for (act of activityService.activities(); track act.id) {
+            @for (act of recentActivities(); track act.id) {
             <div class="activity-card">
               <div class="activity-media" [style.background-image]="'url(' + act.coverImage + ')'"></div>
 
@@ -283,19 +279,35 @@
 
               <div class="activity-actions">
                 <span class="receipt-amount-hint">${{ act.receipt.amountArs.toLocaleString('es-AR') }} ARS</span>
-                <button class="receipt-btn" (click)="openReceipt(act.receipt, $event)">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    style="width: 14px; height: 14px;">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                    <line x1="16" y1="13" x2="8" y2="13" />
-                    <line x1="16" y1="17" x2="8" y2="17" />
-                  </svg>
-                  Ver Comprobante
-                </button>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                  <a [routerLink]="['/perfil/actividades', act.slug]" class="receipt-btn" style="text-decoration: none; background: #ffd42a; color: #0b1120; border-color: #ffd42a; font-weight: 700;">
+                    Ver detalles →
+                  </a>
+                  <button class="receipt-btn" (click)="openReceipt(act.receipt, $event)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                      style="width: 14px; height: 14px;">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                      <polyline points="14 2 14 8 20 8" />
+                      <line x1="16" y1="13" x2="8" y2="13" />
+                      <line x1="16" y1="17" x2="8" y2="17" />
+                    </svg>
+                    Comprobante
+                  </button>
+                </div>
               </div>
             </div>
             }
+          </div>
+
+          <!-- Botón de Historial Completo con más presencia abajo -->
+          <div class="view-all-activities-action">
+            <a routerLink="/perfil/actividades" class="btn-view-all-activities">
+              <span>Ver historial completo ({{ activityService.activities().length }} expediciones)</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="view-all-arrow-icon">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <polyline points="12 5 19 12 12 19"></polyline>
+              </svg>
+            </a>
           </div>
         </div>
 
@@ -355,7 +367,7 @@
     <div class="modal-card wide tiers-modal-card" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <div>
-          <span class="modal-kicker">CLUB PRIVADO DE EXPEDICIONARIOS</span>
+          <span class="modal-kicker">CLUB PRIVADO DE SOCIOS</span>
           <h3 class="modal-heading">Niveles de Socio y Membresías</h3>
         </div>
         <button class="modal-close-btn" (click)="closeModal()"
@@ -715,13 +727,18 @@
           <div class="exp-card" [class.focused]="selectedExperience()?.id === exp.id"
             [class.dimmed]="selectedExperience() !== null && selectedExperience()?.id !== exp.id">
             <div class="exp-card-media" [style.background-image]="'url(' + exp.coverImage + ')'">
-              <span class="exp-region-tag">{{ exp.region }}</span>
-              <span class="exp-altitude">{{ exp.altitudeMeters }} msnm</span>
+              <span class="exp-region-tag">{{ exp.region }} ({{ exp.altitudeMeters }} msnm)</span>
             </div>
             <div class="exp-card-content">
+              @if (exp.detailRoute === '/experiencias/kayak' || exp.id === 'exp_kayak_pirquitas') {
+              <a routerLink="/experiencias/kayak/calificaciones" class="exp-rating rating-link-yellow">
+                Puntaje de {{ exp.rating }} <span class="reviews">({{ exp.reviewsCount }} reseñas)</span>
+              </a>
+              } @else {
               <div class="exp-rating">
-                {{ exp.rating }} <span class="reviews">({{ exp.reviewsCount }} expedicionarios)</span>
+                Puntaje de {{ exp.rating }} <span class="reviews">({{ exp.reviewsCount }} reseñas)</span>
               </div>
+              }
               <h4 class="exp-title">{{ exp.title }}</h4>
               <p class="exp-tagline">{{ exp.tagline }}</p>
 
@@ -825,7 +842,7 @@
         <div class="provider-benefit-card">
           <mat-icon class="p-mat-icon">hotel_class</mat-icon>
           <h4>Reputación & Reseñas</h4>
-          <p>Construí un perfil verificado con calificaciones reales de tus expedicionarios.</p>
+          <p>Construí un perfil verificado con calificaciones reales de tus socios.</p>
         </div>
       </div>
 
@@ -964,7 +981,7 @@
           style="margin: 0 auto 1.2rem; width: 50px; height: 50px; border-radius: 50%; background: hsla(152, 65%, 56%, 0.2); border: 1.5px solid var(--color-success); color: var(--color-success); display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
           ✓
         </div>
-        <h3 style="font-size: 1.4rem; color: #fff; margin-bottom: 0.5rem; font-family: var(--font-serif);">¡Membresía
+        <h3 style="font-size: 1.4rem; color: #fff; margin-bottom: 0.5rem; font-family: var(--font-sans);">¡Membresía
           Socio Activo Activada!</h3>
         <p
           style="color: var(--color-text-soft); font-size: 0.95rem; max-width: 480px; margin: 0 auto 1rem; line-height: 1.5;">

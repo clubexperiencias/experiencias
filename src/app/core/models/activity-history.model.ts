@@ -16,8 +16,25 @@ export interface PaymentReceipt {
   status: 'aprobado' | 'pendiente_verificacion';
 }
 
+export interface CommunityPhoto {
+  id: string;
+  url: string;
+  caption?: string;
+  uploadedBy: string; // Ej. "Lucas A."
+  uploadedAt: string;
+}
+
+export interface ActivityReview {
+  id: string;
+  authorSignature: string; // Ej. "Gonzalo G." (Nombre y la inicial del apellido)
+  rating: number;          // 1 a 5 estrellas
+  comment: string;
+  createdAt: string;
+}
+
 export interface ActivityRecord {
   id: string;
+  slug?: string;                 // Ej. 'kayak-las-pirquitas'
   userId: string;
   experienceId: string;
   title: string;
@@ -26,6 +43,7 @@ export interface ActivityRecord {
   coverImage: string;
   dateLabel: string;
   status: ActivityStatus;
+  description?: string;
   provider: {
     name: string;
     category: string;
@@ -34,8 +52,11 @@ export interface ActivityRecord {
   receipt: PaymentReceipt;
   memoriesCount: number;
   memoryPhotos: string[];
+  communityPhotos?: CommunityPhoto[];
+  reviews?: ActivityReview[];
   userReview?: {
     rating: number;
     comment: string;
+    authorSignature?: string;
   };
 }

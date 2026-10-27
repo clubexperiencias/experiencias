@@ -22,6 +22,14 @@
   overflow-x: clip;
 }
 
+.landing-container::before,
+.landing-container .ambient-overlay {
+  display: none !important;
+  content: none !important;
+}
+
+
+
 /* Barra Superior • Estilo National Geographic */
 .top-nav {
   position: sticky;
@@ -1137,7 +1145,7 @@ mat-icon.arrow-icon {
 .modal-card.tiers-modal-card .btn-icon,
 .modal-card.tiers-modal-card .tier-cta-btn svg,
 .modal-card.tiers-modal-card .current-level-btn svg,
-.modal-card.experiences-modal-card .exp-rating,
+.modal-card.experiences-modal-card .exp-rating:not(.rating-link-yellow),
 .modal-card.experiences-modal-card .close-details-pill {
   color: #ffffff !important;
 }
@@ -3591,9 +3599,9 @@ mat-icon.arrow-icon {
 }
 
 .activity-status.completada {
-  background: hsla(152, 65%, 56%, 0.15);
-  color: var(--color-success);
-  border: 1px solid hsla(152, 65%, 56%, 0.3);
+  background: rgba(255, 204, 0, 0.15);
+  color: var(--color-gold);
+  border: 1px solid rgba(255, 204, 0, 0.45);
 }
 
 .activity-status.confirmada {

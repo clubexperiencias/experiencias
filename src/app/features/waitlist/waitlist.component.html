@@ -28,7 +28,7 @@
         <!-- Subtítulo -->
         <p class="hero-subtitle">
           Club privado de expediciones andinas y travesías náuticas en Catamarca. Ingresá como Socio Emergente para
-          acceder con descuento a las primeras salidas de kayak con locales.
+          acceder con descuento a las primeras salidas de kayak.
         </p>
 
         <!-- ═══════════════ FORMULARIO CÁPSULA (SIEMPRE VISIBLE EN /) ═══════════════ -->
@@ -550,13 +550,18 @@
           <div class="exp-card" [class.focused]="selectedExperience()?.id === exp.id"
             [class.dimmed]="selectedExperience() !== null && selectedExperience()?.id !== exp.id">
             <div class="exp-card-media" [style.background-image]="'url(' + exp.coverImage + ')'">
-              <span class="exp-region-tag">{{ exp.region }}</span>
-              <span class="exp-altitude">{{ exp.altitudeMeters }} msnm</span>
+              <span class="exp-region-tag">{{ exp.region }} ({{ exp.altitudeMeters }} msnm)</span>
             </div>
             <div class="exp-card-content">
+              @if (exp.detailRoute === '/experiencias/kayak' || exp.id === 'exp_kayak_pirquitas') {
+              <a routerLink="/experiencias/kayak/calificaciones" class="exp-rating rating-link-yellow">
+                Puntaje de {{ exp.rating }} <span class="reviews">({{ exp.reviewsCount }} reseñas)</span>
+              </a>
+              } @else {
               <div class="exp-rating">
-                {{ exp.rating }} <span class="reviews">({{ exp.reviewsCount }} expedicionarios)</span>
+                Puntaje de {{ exp.rating }} <span class="reviews">({{ exp.reviewsCount }} reseñas)</span>
               </div>
+              }
               <h4 class="exp-title">{{ exp.title }}</h4>
               <p class="exp-tagline">{{ exp.tagline }}</p>
 
@@ -661,7 +666,7 @@
         <div class="provider-benefit-card">
           <mat-icon class="p-mat-icon">hotel_class</mat-icon>
           <h4>Reputación & Reseñas</h4>
-          <p>Construí un perfil verificado con calificaciones reales de tus expedicionarios.</p>
+          <p>Construí un perfil verificado con calificaciones reales de tus socios.</p>
         </div>
       </div>
 

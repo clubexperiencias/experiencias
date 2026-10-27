@@ -37,12 +37,20 @@ export class ProfileComponent implements OnInit {
 
   readonly bg = signal('/assets/images/laguna_blanca.jpg');
   readonly copyStatus = signal<string | null>(null);
-  readonly showSuccessNotification = signal(true);
+  readonly showSuccessNotification = signal(false);
+
+  // Historial: Solo las últimas dos actividades en la vista previa del perfil
+  readonly recentActivities = () => this.activityService.activities().slice(0, 2);
 
   ngOnInit(): void {
-    setTimeout(() => {
-      this.showSuccessNotification.set(false);
-    }, 3000);
+    if (this.newsletter.consumeLoginSuccessFlag()) {
+      this.showSuccessNotification.set(true);
+      this.newsletter.profileSuccessHighlight.set(true);
+      setTimeout(() => {
+        this.showSuccessNotification.set(false);
+        this.newsletter.profileSuccessHighlight.set(false);
+      }, 3000);
+    }
   }
 
   // Menús de navegación idénticos a los de la landing /
@@ -280,7 +288,7 @@ export class ProfileComponent implements OnInit {
   }
 
   saveMemberProfile(): void {
-    if (!this.memberFullName().trim() || !this.memberNationality().trim() || this.selectedExperiences().length === 0) {
+    if (!this.memberFullName().trim()) {
       return;
     }
 

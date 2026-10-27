@@ -1,0 +1,297 @@
+<section class="admin-detail-section">
+  <div class="admin-detail-container" *ngIf="user() as u; else notFoundState">
+    <!-- Breadcrumb & Top Bar -->
+    <header class="detail-header">
+      <div>
+        <nav class="admin-nav-trail">
+          <a routerLink="/admin" class="nav-back">Dashboard</a>
+          <span class="sep">/</span>
+          <a routerLink="/admin/users" class="nav-back">Usuarios</a>
+          <span class="sep">/</span>
+          <span class="current">Perfil #{{ u.id }}</span>
+        </nav>
+        <div class="title-row">
+          <span class="member-code">{{ u.memberNumber }}</span>
+          <h1 class="user-display-name">{{ u.fullName }}</h1>
+          <span class="tier-pill" [ngClass]="'tier-' + u.membershipTier">
+            {{ u.membershipTier | uppercase }}
+          </span>
+          <span *ngIf="u.isProvider" class="provider-badge">PRESTADOR OFICIAL</span>
+        </div>
+      </div>
+
+      <div class="quick-stats-box">
+        <div class="stat-mini">
+          <span class="stat-lbl">FACTURACIÓN ACUMULADA</span>
+          <span class="stat-val">${{ u.totalSpentArs.toLocaleString('es-AR') }} ARS</span>
+        </div>
+        <div class="stat-mini">
+          <span class="stat-lbl">ACTIVIDADES</span>
+          <span class="stat-val">{{ u.activities.length }} completadas</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Detail Navigation Tabs -->
+    <nav class="detail-tabs">
+      <button
+        type="button"
+        (click)="setTab('perfil')"
+        [class.active]="selectedTab() === 'perfil'"
+        class="tab-btn"
+      >
+        Ficha Personal & Membresía
+      </button>
+
+      <button
+        *ngIf="u.isProvider"
+        type="button"
+        (click)="setTab('prestador')"
+        [class.active]="selectedTab() === 'prestador'"
+        class="tab-btn"
+      >
+        Ficha de Prestador & Vehículo
+      </button>
+
+      <button
+        type="button"
+        (click)="setTab('actividades')"
+        [class.active]="selectedTab() === 'actividades'"
+        class="tab-btn"
+      >
+        Historial de Actividades ({{ u.activities.length }})
+      </button>
+
+      <button
+        type="button"
+        (click)="setTab('comprobantes')"
+        [class.active]="selectedTab() === 'comprobantes'"
+        class="tab-btn"
+      >
+        Comprobantes de Pago
+      </button>
+    </nav>
+
+    <!-- Tab 1: Perfil Personal -->
+    <div *ngIf="selectedTab() === 'perfil'" class="tab-panel">
+      <div class="grid-2-col">
+        <div class="card-panel">
+          <span class="section-kicker">INFORMACIÓN PERSONAL</span>
+          <h2 class="panel-heading">Datos de Contacto & Identidad</h2>
+
+          <dl class="data-list">
+            <div class="data-row">
+              <dt>Nombre Completo:</dt>
+              <dd>{{ u.fullName }}</dd>
+            </div>
+            <div class="data-row">
+              <dt>Correo Electrónico:</dt>
+              <dd class="mono-text">{{ u.email }}</dd>
+            </div>
+            <div class="data-row">
+              <dt>Teléfono Móvil:</dt>
+              <dd class="mono-text">{{ u.phone }}</dd>
+            </div>
+            <div class="data-row">
+              <dt>Nacionalidad:</dt>
+              <dd>{{ u.nationality }}</dd>
+            </div>
+            <div class="data-row">
+              <dt>Fecha de Registro:</dt>
+              <dd class="mono-text">{{ u.registeredAt }}</dd>
+            </div>
+            <div class="data-row">
+              <dt>Biografía:</dt>
+              <dd class="bio-text">{{ u.bio }}</dd>
+            </div>
+          </dl>
+        </div>
+
+        <div class="card-panel">
+          <span class="section-kicker">MEMBRESÍA & SUSCRIPCIÓN</span>
+          <h2 class="panel-heading">Estado en el Club</h2>
+
+          <div class="subscription-status-box" *ngIf="u.subscription as sub">
+            <div class="sub-header">
+              <span class="sub-tier-title">Plan {{ sub.tier | uppercase }}</span>
+              <span class="sub-status-tag" [ngClass]="'sub-status-' + sub.status">{{ sub.status | uppercase }}</span>
+            </div>
+            <p class="sub-price">${{ sub.amountArs.toLocaleString('es-AR') }} ARS</p>
+            <div class="sub-details">
+              <div><strong>Método de pago:</strong> {{ sub.paymentMethod }}</div>
+              <div><strong>Fecha de inicio:</strong> {{ sub.startedAt }}</div>
+              <div><strong>Próximo corte:</strong> {{ sub.nextBillingDate }}</div>
+              <div><strong>Último recibo emitido:</strong> <span class="mono-tag">{{ sub.lastPaymentReceipt }}</span></div>
+            </div>
+          </div>
+
+          <div *ngIf="u.adminNotes" class="admin-notes-box">
+            <span class="notes-label">NOTAS INTERNAS DE ADMINISTRACIÓN:</span>
+            <p class="notes-body">{{ u.adminNotes }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 2: Ficha de Prestador -->
+    <div *ngIf="selectedTab() === 'prestador' && u.providerDetail as prov" class="tab-panel">
+      <div class="card-panel">
+        <div class="panel-header-row">
+          <div>
+            <span class="section-kicker">HABILITACIÓN TURÍSTICA PROVINCIAL</span>
+            <h2 class="panel-heading">Ficha Técnica de Prestador</h2>
+          </div>
+          <span class="status-provider-pill">{{ prov.status | uppercase }}</span>
+        </div>
+
+        <div class="grid-2-col">
+          <dl class="data-list">
+            <div class="data-row">
+              <dt>Especialidad / Rol:</dt>
+              <dd><strong>{{ prov.category }}</strong></dd>
+            </div>
+            <div class="data-row">
+              <dt>Zona de Operación:</dt>
+              <dd>{{ prov.zone }}</dd>
+            </div>
+            <div class="data-row">
+              <dt>Matrícula / Licencia:</dt>
+              <dd class="mono-text">{{ prov.licenseNumber || 'En trámite' }}</dd>
+            </div>
+            <div class="data-row">
+              <dt>Fecha de Habilitación:</dt>
+              <dd class="mono-text">{{ prov.registeredDate }}</dd>
+            </div>
+          </dl>
+
+          <div class="vehicle-cert-box">
+            <div class="veh-section">
+              <span class="sec-subtitle">Vehículo Asignado a Travesías:</span>
+              <p class="veh-desc">{{ prov.vehicleDescription || 'Vehículo estándar homologado' }}</p>
+            </div>
+
+            <div class="cert-section">
+              <span class="sec-subtitle">Certificaciones & Capacitaciones:</span>
+              <ul class="cert-list">
+                <li *ngFor="let cert of prov.certifications">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                  <span>{{ cert }}</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 3: Historial de Actividades -->
+    <div *ngIf="selectedTab() === 'actividades'" class="tab-panel">
+      <div class="card-panel">
+        <span class="section-kicker">TRAZABILIDAD EN CATAMARCA</span>
+        <h2 class="panel-heading">Expediciones Realizadas</h2>
+
+        <div class="activities-stream">
+          <article *ngFor="let act of u.activities" class="activity-entry">
+            <div class="activity-left">
+              <img [src]="act.coverImage" [alt]="act.title" class="activity-thumb" />
+            </div>
+            <div class="activity-main">
+              <div class="act-header">
+                <span class="act-region">{{ act.region }} • {{ act.altitude }}</span>
+                <span class="act-date">{{ act.dateLabel }}</span>
+              </div>
+              <h3 class="act-title">{{ act.title }}</h3>
+              <div class="act-meta">
+                <span>Guía / Prestador: <strong>{{ act.provider.name }}</strong> ({{ act.provider.category }})</span>
+                <span class="booking-ref">ID Actividad: {{ act.id }}</span>
+              </div>
+            </div>
+            <div class="activity-status-col">
+              <span class="badge-completed">COMPLETADA</span>
+            </div>
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 4: Comprobantes de Pago -->
+    <div *ngIf="selectedTab() === 'comprobantes'" class="tab-panel">
+      <div class="card-panel">
+        <span class="section-kicker">HISTORIAL FINANCIERO</span>
+        <h2 class="panel-heading">Comprobantes & Facturación Emitida</h2>
+
+        <div class="receipts-list">
+          <div *ngFor="let act of u.activities" class="receipt-card">
+            <ng-container *ngIf="act.receipt as r">
+              <div class="receipt-top">
+                <div class="receipt-id-box">
+                  <span class="rec-label">COMPROBANTE OFICIAL</span>
+                  <span class="rec-number">{{ r.receiptNumber }}</span>
+                </div>
+                <span class="rec-status-tag" [ngClass]="'rec-' + r.status">{{ r.status | uppercase }}</span>
+              </div>
+
+              <div class="receipt-body">
+                <div class="rec-col">
+                  <span class="rc-label">Concepto</span>
+                  <span class="rc-val">{{ act.title }}</span>
+                </div>
+                <div class="rec-col">
+                  <span class="rc-label">Fecha</span>
+                  <span class="rc-val mono-text">{{ r.paidAt }}</span>
+                </div>
+                <div class="rec-col">
+                  <span class="rc-label">Pasarela / Medio</span>
+                  <span class="rc-val">{{ r.gatewayDisplayName }} ({{ r.transactionId }})</span>
+                </div>
+                <div class="rec-col price-col">
+                  <span class="rc-label">Monto Abonado</span>
+                  <span class="rc-price">${{ r.amountArs.toLocaleString('es-AR') }} ARS</span>
+                </div>
+              </div>
+            </ng-container>
+          </div>
+
+          <!-- Cuota de Fundador si tiene -->
+          <div *ngIf="u.subscription?.lastPaymentReceipt as fndRec" class="receipt-card">
+            <div class="receipt-top">
+              <div class="receipt-id-box">
+                <span class="rec-label">CUOTA DE ADHESIÓN SOCIO FUNDADOR</span>
+                <span class="rec-number">{{ fndRec }}</span>
+              </div>
+              <span class="rec-status-tag rec-paid">PAGADO</span>
+            </div>
+            <div class="receipt-body">
+              <div class="rec-col">
+                <span class="rc-label">Concepto</span>
+                <span class="rc-val">Aporte Membresía Fundadora Anual Catamarca 2026</span>
+              </div>
+              <div class="rec-col">
+                <span class="rc-label">Fecha</span>
+                <span class="rc-val mono-text">{{ u.subscription?.startedAt }}</span>
+              </div>
+              <div class="rec-col">
+                <span class="rc-label">Pasarela / Medio</span>
+                <span class="rc-val">{{ u.subscription?.paymentMethod }}</span>
+              </div>
+              <div class="rec-col price-col">
+                <span class="rc-label">Monto Abonado</span>
+                <span class="rc-price">${{ (u.subscription?.amountArs || 0).toLocaleString('es-AR') }} ARS</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <ng-template #notFoundState>
+    <div class="admin-detail-container not-found-box">
+      <h2>Usuario #{{ userId() }} no encontrado</h2>
+      <p>No existe ningún registro de usuario con el identificador solicitado.</p>
+      <a routerLink="/admin/users" class="btn-return">← Volver al listado de usuarios</a>
+    </div>
+  </ng-template>
+</section>

@@ -1,0 +1,349 @@
+.admin-dashboard-section {
+  padding: 2.2rem 1.5rem 3rem;
+  min-height: calc(100vh - 120px);
+}
+
+.admin-dashboard-container {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 2rem;
+  padding-bottom: 1.2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.section-kicker {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: #ffd42a;
+  display: block;
+  margin-bottom: 0.35rem;
+}
+
+.dashboard-title {
+  font-family: var(--font-serif, serif);
+  font-size: 2rem;
+  color: #ffffff;
+  margin: 0;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.1rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 212, 42, 0.4);
+  border-radius: 8px;
+  color: #ffd42a;
+  text-decoration: none;
+  font-size: 0.88rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 212, 42, 0.12);
+  border-color: #ffd42a;
+}
+
+.btn-logout {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.65rem 1rem;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  color: #fca5a5;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-logout:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ffffff;
+}
+
+/* Metrics */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.2rem;
+  margin-bottom: 1.8rem;
+}
+
+.metric-card {
+  background: hsla(220, 24%, 9%, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 1.4rem;
+  backdrop-filter: blur(12px);
+}
+
+.metric-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #94a3b8;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.metric-value {
+  font-family: var(--font-serif, serif);
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1.1;
+  margin-bottom: 0.4rem;
+}
+
+.text-gold {
+  color: #ffd42a;
+}
+
+.text-accent {
+  color: #38bdf8;
+}
+
+.text-cyan {
+  color: #34d399;
+}
+
+.metric-sub {
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+/* Finance Grid */
+.finance-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.2rem;
+  margin-bottom: 2rem;
+}
+
+.finance-card {
+  background: hsla(220, 24%, 9%, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 1.6rem;
+  backdrop-filter: blur(12px);
+}
+
+.card-title {
+  font-family: var(--font-serif, serif);
+  font-size: 1.25rem;
+  color: #ffffff;
+  margin: 0.2rem 0 1rem;
+}
+
+.finance-numbers {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.finance-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.finance-label {
+  font-size: 0.88rem;
+  color: #94a3b8;
+}
+
+.finance-amount {
+  font-family: var(--font-mono, monospace);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #ffd42a;
+}
+
+.infra-status {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.infra-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+}
+
+.status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #34d399;
+  box-shadow: 0 0 8px #34d399;
+}
+
+.infra-name {
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.infra-val {
+  color: #e2e8f0;
+}
+
+/* Section Card */
+.section-card {
+  background: hsla(220, 24%, 9%, 0.45);
+  border: 1px solid rgba(255, 212, 42, 0.25);
+  border-radius: 10px;
+  padding: 1.8rem;
+  backdrop-filter: blur(12px);
+}
+
+.card-header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 1.2rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.link-view-all {
+  color: #ffd42a;
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.link-view-all:hover {
+  text-decoration: underline;
+}
+
+/* Table */
+.table-responsive {
+  overflow-x: auto;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.admin-table th {
+  padding: 0.85rem 1rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #94a3b8;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.admin-table td {
+  padding: 1rem;
+  font-size: 0.88rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  vertical-align: middle;
+}
+
+.mono-id {
+  font-family: var(--font-mono, monospace);
+  color: #ffd42a;
+  font-weight: 600;
+}
+
+.user-name {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.user-email {
+  font-size: 0.78rem;
+  color: #94a3b8;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.badge-fundador {
+  background: rgba(255, 212, 42, 0.15);
+  color: #ffd42a;
+  border: 1px solid rgba(255, 212, 42, 0.35);
+}
+
+.badge-activo {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+}
+
+.badge-emergente {
+  background: rgba(148, 163, 184, 0.15);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+.badge-provider {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  background: rgba(52, 211, 153, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.text-muted {
+  color: #64748b;
+}
+
+.mono-count {
+  font-family: var(--font-mono, monospace);
+  color: #cbd5e1;
+  font-size: 0.8rem;
+}
+
+.btn-inspect {
+  display: inline-block;
+  padding: 0.45rem 0.85rem;
+  background: rgba(255, 212, 42, 0.1);
+  color: #ffd42a;
+  border: 1px solid rgba(255, 212, 42, 0.3);
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.btn-inspect:hover {
+  background: #ffd42a;
+  color: #0b1120;
+}

@@ -1,0 +1,60 @@
+<section class="admin-login-section">
+  <div class="admin-login-container">
+    <div class="admin-login-card">
+      <div class="admin-badge-row">
+        <span class="admin-security-badge">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+          SISTEMA INTERNO
+        </span>
+      </div>
+
+      <header class="admin-login-header">
+        <span class="section-kicker">PANEL DE CONTROL</span>
+        <h1 class="admin-title">Acceso de Administración</h1>
+        <p class="admin-subtitle">
+          Ingresá con tu credencial maestra para gestionar socios, métricas y prestadores de la plataforma.
+        </p>
+      </header>
+
+      <form (ngSubmit)="onSubmit()" class="admin-form">
+        <div class="form-group">
+          <label for="admin-pass" class="form-label">Clave Maestra</label>
+          <div class="input-wrapper">
+            <input
+              id="admin-pass"
+              type="password"
+              [ngModel]="password()"
+              (ngModelChange)="password.set($event)"
+              name="password"
+              placeholder="••••••••••••"
+              class="admin-input"
+              required
+              autocomplete="current-password"
+            />
+          </div>
+        </div>
+
+        <div *ngIf="errorMessage()" class="alert-error">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          <span>{{ errorMessage() }}</span>
+        </div>
+
+        <button type="submit" [disabled]="isLoading()" class="btn-admin-submit">
+          <span *ngIf="!isLoading()">Entrar al Panel de Control</span>
+          <span *ngIf="isLoading()">Verificando credencial...</span>
+        </button>
+
+        <div class="admin-login-footer">
+          <a routerLink="/" class="link-return">← Volver al sitio público</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</section>

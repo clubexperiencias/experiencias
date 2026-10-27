@@ -39,6 +39,12 @@ describe('MembersComponent (/socios)', () => {
     expect(brandLink.getAttribute('routerlink') || brandLink.getAttribute('href')).toBe('/');
   });
 
+  it('should link to /socios/emergentes from the emerging tier CTA button', () => {
+    const emergingBtn = fixture.nativeElement.querySelector('.tier-card .default-action');
+    expect(emergingBtn).toBeTruthy();
+    expect(emergingBtn.getAttribute('routerlink') || emergingBtn.getAttribute('href')).toBe('/socios/emergentes');
+  });
+
   it('should link to /experiencias in the desktop nav and not include Prestadores', () => {
     const navLinks = fixture.nativeElement.querySelectorAll('.nav-actions a');
     const hrefs = Array.from(navLinks).map((a: any) => a.getAttribute('routerlink') || a.getAttribute('href'));

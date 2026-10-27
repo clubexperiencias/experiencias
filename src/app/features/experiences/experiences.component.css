@@ -46,7 +46,7 @@
   width: 100%;
   box-sizing: border-box;
   background: hsla(220, 24%, 9%, 0.22);
-  border: 1px solid rgba(255, 212, 42, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 2px;
   padding: 2.2rem;
   margin: 0;
@@ -69,7 +69,7 @@
 }
 
 .hero-exp-card {
-  border-color: rgba(255, 212, 42, 0.45);
+  border-color: rgba(255, 255, 255, 0.25);
 }
 
 .section-card-header {
@@ -84,9 +84,9 @@
   width: 48px;
   height: 48px;
   border-radius: 2px;
-  background: rgba(255, 212, 42, 0.15);
-  border: 1px solid rgba(255, 212, 42, 0.45);
-  color: var(--color-gold);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -145,7 +145,7 @@
   font-family: var(--font-mono);
   font-size: 1.15rem;
   font-weight: 700;
-  color: var(--color-gold);
+  color: #ffffff;
 }
 
 .stat-label {
@@ -179,12 +179,65 @@
 }
 
 /* ==========================================================================
-   Catálogo de Experiencias
+   Catálogo de Experiencias (Grid Vertical como /perfil/actividades)
    ========================================================================== */
 .experiences-catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.8rem;
+}
+
+.experiences-catalog-grid.featured-grid {
+  grid-template-columns: repeat(2, 1fr);
+  margin-bottom: 2.5rem;
+}
+
+@media (max-width: 820px) {
+  .experiences-catalog-grid.featured-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Bloque de Otras Experiencias Horizontales */
+.other-experiences-block {
+  margin-top: 1rem;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.other-exp-header {
+  margin-bottom: 1.5rem;
+}
+
+.other-exp-heading {
+  font-family: var(--font-sans);
+  font-size: 1.45rem;
+  font-weight: 600;
+  color: #fff;
+  margin: 0.3rem 0 0.5rem;
+}
+
+.experiences-horizontal-list {
   display: flex;
   flex-direction: column;
-  gap: 1.8rem;
+  gap: 2rem;
+}
+
+.exp-item-horizontal {
+  width: 100%;
+}
+
+.exp-item-horizontal .exp-card-media.horizontal-media {
+  width: 100%;
+  height: 180px !important;
+  min-height: 180px !important;
+}
+
+@media (max-width: 768px) {
+  .exp-item-horizontal .exp-card-media.horizontal-media {
+    height: 150px !important;
+    min-height: 150px !important;
+  }
 }
 
 .exp-catalog-item {
@@ -194,30 +247,39 @@
   overflow: hidden;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.2s ease;
 }
 
-.exp-catalog-item:hover {
-  border-color: rgba(255, 212, 42, 0.5);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.3);
+.exp-catalog-item:not(.is-locked-card):hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.45);
+  box-shadow: 0 12px 30px rgba(255, 255, 255, 0.2);
+}
+
+.featured-grid .exp-catalog-item:not(.is-locked-card):hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.6);
+  box-shadow: 0 12px 32px rgba(255, 255, 255, 0.25), 0 0 16px rgba(255, 255, 255, 0.15);
 }
 
 .exp-catalog-item.is-expanded {
   border-color: rgba(128, 179, 255, 0.6);
+  grid-column: 1 / -1;
 }
 
 .exp-card-main {
-  display: grid;
-  grid-template-columns: 340px 1fr;
-  align-items: stretch;
-  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .exp-card-media {
   position: relative;
   width: 100%;
-  height: 100% !important;
-  min-height: 100% !important;
+  height: 200px !important;
+  min-height: 200px !important;
   margin: 0;
   padding: 0;
   overflow: hidden;
@@ -251,28 +313,47 @@
 
 .exp-altitude {
   position: absolute;
-  bottom: 12px;
-  left: 12px;
+  top: 12px;
+  right: 12px;
   font-size: 0.7rem;
   font-family: var(--font-mono);
   font-weight: 700;
-  background: rgba(255, 212, 42, 0.85);
-  color: #000;
+  background: #ffffff;
+  color: #0b1120;
   padding: 0.25rem 0.55rem;
   border-radius: 2px;
 }
 
 .exp-card-content {
-  padding: 1.4rem 1.6rem;
+  padding: 1.4rem;
+  flex: 1;
   display: flex;
   flex-direction: column;
 }
 
 .exp-rating {
   font-size: 0.82rem;
-  color: var(--color-gold);
+  color: #ffffff;
   font-weight: 600;
   margin-bottom: 0.4rem;
+}
+
+.exp-rating.rating-uncalculated {
+  color: #ffcc00 !important;
+  font-weight: 600;
+}
+
+.exp-rating.rating-link-yellow {
+  color: #ffd42a !important;
+  text-decoration: none;
+  display: inline-block;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.exp-rating.rating-link-yellow:hover {
+  text-decoration: underline;
+  opacity: 0.85;
 }
 
 .exp-rating .reviews {
@@ -315,6 +396,8 @@
   justify-content: space-between;
   margin-top: auto;
   gap: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .price-box {
@@ -326,7 +409,11 @@
   font-family: var(--font-mono);
   font-size: 1.25rem;
   font-weight: 700;
-  color: var(--color-gold);
+  color: #ffffff;
+}
+
+.exp-catalog-item:not(.is-locked-card) .price-val {
+  color: #80b3ff;
 }
 
 .price-usd {
@@ -339,26 +426,30 @@
   align-items: center;
   gap: 0.4rem;
   padding: 0.65rem 1.1rem;
-  background: #ffffff;
-  color: #000000;
+  background: #80b3ff;
+  color: #0b1120;
   font-size: 0.84rem;
-  font-weight: 600;
+  font-weight: 700;
   border-radius: 2px;
-  border: none;
+  border: 1px solid #80b3ff;
   cursor: pointer;
   transition: all 0.2s ease;
   font-family: inherit;
+  text-decoration: none;
 }
 
 .exp-toggle-details-btn:hover {
-  background: #f0f4f8;
+  background: #99c2ff;
+  border-color: #99c2ff;
+  color: #0b1120;
   transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(128, 179, 255, 0.35);
 }
 
 .exp-toggle-details-btn.active {
-  background: #ffffff;
-  color: #000000;
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: #66a3ff;
+  border-color: #66a3ff;
+  color: #0b1120;
 }
 
 .toggle-icon {
@@ -369,10 +460,22 @@
 
 .exp-catalog-item.is-locked-card {
   opacity: 0.88;
+  cursor: default;
 }
 
 .exp-catalog-item.is-locked-card:hover {
-  opacity: 0.98;
+  transform: none !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: none !important;
+  opacity: 0.88 !important;
+}
+
+.exp-catalog-item.is-locked-card .exp-card-img,
+.exp-catalog-item.is-locked-card:hover .exp-card-img {
+  filter: grayscale(100%);
+  -webkit-filter: grayscale(100%);
+  opacity: 0.82;
+  transform: none !important;
 }
 
 .exp-locked-badge {
@@ -401,7 +504,7 @@
   height: 13px !important;
   line-height: 13px !important;
   display: inline-flex;
-  color: var(--color-gold);
+  color: #ffffff;
 }
 
 .exp-locked-btn {
@@ -429,17 +532,17 @@
 
 .exp-toggle-details-btn.exp-cta-link {
   text-decoration: none;
-  background: var(--color-gold);
-  color: #000000;
+  background: #80b3ff;
+  color: #0b1120;
   font-weight: 700;
-  border: 1px solid var(--color-gold);
+  border: 1px solid #80b3ff;
 }
 
 .exp-toggle-details-btn.exp-cta-link:hover {
-  background: #ffd93a;
-  border-color: #ffd93a;
+  background: #99c2ff;
+  border-color: #99c2ff;
   transform: translateY(-2px);
-  box-shadow: 0 4px 14px rgba(255, 204, 0, 0.35);
+  box-shadow: 0 4px 14px rgba(128, 179, 255, 0.35);
 }
 
 /* ==========================================================================
@@ -614,6 +717,14 @@
   grid-template-columns: repeat(3, 1fr);
   gap: 1.2rem;
   margin-bottom: 0;
+}
+
+.safety-provider-card {
+  padding: 1.8rem 2.2rem 1.4rem !important;
+}
+
+.safety-provider-card .card-inner-header {
+  margin-bottom: 0 !important;
 }
 
 .safety-item {

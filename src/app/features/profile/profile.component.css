@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Página de Perfil del Expedicionario • EXPERIENCIAS.CLUB
+   Página de Perfil del Socio • EXPERIENCIAS.CLUB
    Hereda la navbar, modales y estilos de marca de portada para paridad 100%
    ========================================================================== */
 @import '../waitlist/waitlist.component.css';
@@ -8,7 +8,12 @@
 .profile-page-container {
   min-height: 100vh;
   position: relative;
-  background: transparent;
+  background-color: #70a3ff !important;
+  background-image: url('/assets/images/relieve.jpeg') !important;
+  background-repeat: no-repeat !important;
+  background-position: center top !important;
+  background-size: cover !important;
+  background-attachment: fixed !important;
   color: var(--color-text-white);
   overflow-x: clip;
   display: flex;
@@ -21,6 +26,12 @@
   width: 100%;
   display: flex;
   flex-direction: column;
+  background: transparent !important;
+}
+
+.profile-wallpaper-body .ambient-overlay,
+.profile-wallpaper-body::before {
+  display: none !important;
 }
 
 /* Contenedor principal: Ligeramente más ancho y todas las cajas con ancho máximo parejo */
@@ -42,7 +53,7 @@
 }
 
 /* ==========================================================================
-   Boxes en Filas: Vidrio traslúcido ligero para mantener el fondo brillante como en /
+   Boxes en Filas: Fondo azul #253B80 sobre el fondo #80b3ff
    ========================================================================== */
 .confirmed-card,
 .profile-completion-card,
@@ -50,14 +61,14 @@
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
-  background: hsla(220, 24%, 9%, 0.22);
+  background: rgba(22, 33, 85, 0.55);
   border: 1px solid rgba(255, 212, 42, 0.35);
-  border-radius: 2px;
+  border-radius: 0;
   padding: 2.2rem;
   margin: 0;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  box-shadow: none !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 12px 30px rgba(11, 17, 32, 0.25) !important;
   text-align: left;
   animation: profileBoxEntrance 0.45s cubic-bezier(0.16, 1, 0.3, 1) backwards;
 }
@@ -86,7 +97,7 @@
   animation-delay: 0.12s;
 }
 
-/* Fila 3: Código de invitación y expedicionarios */
+/* Fila 3: Código de invitación y socios */
 .referral-share-card {
   animation-delay: 0.2s;
 }
@@ -156,8 +167,8 @@
 }
 
 .confirmed-title {
-  font-family: var(--font-serif);
-  font-size: 1.55rem;
+  font-family: var(--font-sans);
+  font-size: 1.75rem;
   font-weight: 600;
   color: #fff;
   line-height: 1.2;
@@ -179,8 +190,8 @@
 }
 
 .completion-header .section-kicker {
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
   letter-spacing: 0.16em;
   font-weight: 700;
   color: var(--color-gold);
@@ -191,7 +202,7 @@
 
 .completion-header .card-heading,
 .completion-title {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 1.45rem;
   font-weight: 600;
   color: #fff;
@@ -334,9 +345,9 @@
 .field-input,
 .field-textarea {
   width: 100%;
-  background: hsla(220, 24%, 6%, 0.75);
-  border: 1px solid hsla(0, 0%, 100%, 0.18);
-  border-radius: 2px;
+  background: rgba(18, 28, 70, 0.30);
+  border: 1px solid hsla(0, 0%, 100%, 0.22);
+  border-radius: 0;
   color: #fff;
   padding: 0.65rem 0.85rem;
   font-size: 0.86rem;
@@ -345,11 +356,17 @@
   box-sizing: border-box;
 }
 
+.field-input::placeholder,
+.field-textarea::placeholder {
+  color: #c5d5f5 !important;
+  opacity: 0.85;
+}
+
 .field-input:focus,
 .field-textarea:focus {
   outline: none;
   border-color: var(--color-gold);
-  background: hsla(220, 24%, 8%, 0.95);
+  background: #2d4491;
   box-shadow: 0 0 12px rgba(255, 212, 42, 0.25);
 }
 
@@ -437,6 +454,29 @@
   opacity: 0.45;
   cursor: not-allowed;
   filter: grayscale(0.5);
+}
+
+.profile-required-name-tag-wrap {
+  display: flex;
+  justify-content: center;
+  margin-top: 0.95rem;
+  margin-bottom: -0.35rem;
+}
+
+.profile-required-name-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #ff5f00;
+  border: 1px solid #ff5f00;
+  color: #ffffff;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 0.38rem 0.95rem;
+  border-radius: 2px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(255, 95, 0, 0.28);
 }
 
 .save-icon {
@@ -538,9 +578,9 @@
 .referral-share-box {
   width: 100%;
   box-sizing: border-box;
-  background: hsla(220, 24%, 6%, 0.65);
-  border: 1px solid hsla(0, 0%, 100%, 0.1);
-  border-radius: 2px;
+  background: rgba(22, 33, 85, 0.25);
+  border: 1px solid rgba(255, 212, 42, 0.25);
+  border-radius: 0;
   padding: 1.4rem 1.6rem;
   margin-top: 1.2rem;
 }
@@ -574,9 +614,9 @@
 .fused-code-pill {
   display: inline-flex;
   align-items: center;
-  background: hsla(220, 24%, 7%, 0.95);
+  background: rgba(22, 33, 85, 0.25);
   border: 1px solid rgba(255, 212, 42, 0.45);
-  border-radius: 2px;
+  border-radius: 0;
   padding: 0;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -586,7 +626,7 @@
 
 .fused-code-pill:hover {
   border-color: var(--color-gold);
-  background: hsla(220, 24%, 9%, 1);
+  background: #2d4491;
   box-shadow: 0 0 16px rgba(255, 212, 42, 0.25);
 }
 
@@ -749,9 +789,9 @@
 }
 
 .stat-pill {
-  background: hsla(220, 24%, 8%, 0.85);
-  border: 1px solid hsla(0, 0%, 100%, 0.1);
-  border-radius: 2px;
+  background: rgba(22, 33, 85, 0.25);
+  border: 1px solid rgba(255, 212, 42, 0.2);
+  border-radius: 0;
   padding: 0.75rem 1rem;
   display: flex;
   flex-direction: column;
@@ -793,16 +833,16 @@
   grid-template-columns: minmax(210px, 1fr) auto auto;
   align-items: center;
   gap: 1.25rem;
-  background: hsla(220, 24%, 8%, 0.9);
-  border: 1px solid hsla(0, 0%, 100%, 0.1);
-  border-radius: 2px;
+  background: rgba(22, 33, 85, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0;
   padding: 0.85rem 1.15rem;
   transition: all 0.2s ease;
 }
 
 .referred-member-row:hover {
   border-color: rgba(255, 212, 42, 0.35);
-  background: hsla(220, 24%, 10%, 0.95);
+  background: #2d4491;
 }
 
 .member-identity {
@@ -975,7 +1015,7 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 0.5rem;
+  margin-bottom: 1.25rem;
 }
 
 .section-kicker {
@@ -988,8 +1028,8 @@
 }
 
 .section-title {
-  font-family: var(--font-serif);
-  font-size: 1.4rem;
+  font-family: var(--font-sans);
+  font-size: 1.45rem;
   font-weight: 600;
   color: #fff;
   margin: 0;
@@ -1023,17 +1063,76 @@
   display: grid;
   grid-template-columns: 140px 1fr auto;
   gap: 1.2rem;
-  background: hsla(220, 24%, 6%, 0.75);
-  border: 1px solid hsla(0, 0%, 100%, 0.12);
-  border-radius: 2px;
+  background-color: rgba(22, 33, 85, 0.25) !important;
+  background: rgba(22, 33, 85, 0.25) !important;
+  border: 1px solid rgba(255, 212, 42, 0.25);
+  border-radius: 0;
   overflow: hidden;
   transition: all 0.25s ease;
   align-items: center;
 }
 
 .activity-card:hover {
-  border-color: rgba(255, 212, 42, 0.45);
-  background: hsla(220, 24%, 8%, 0.85);
+  border-color: #ffd42a;
+  background-color: #2d4491 !important;
+  background: #2d4491 !important;
+}
+
+/* ==========================================================================
+   Botón de Historial Completo con más presencia abajo (Full Width & Rectangular)
+   ========================================================================== */
+.view-all-activities-action {
+  margin-top: 1.4rem;
+  padding-top: 0;
+  border-top: none;
+  display: flex;
+  width: 100%;
+}
+
+.btn-view-all-activities {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
+  padding: 1rem 1.8rem;
+  background: #ffd42a;
+  border: 2px solid #ffd42a;
+  border-radius: 0 !important;
+  color: #0b1120;
+  font-family: var(--font-sans);
+  font-size: 0.96rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25), 0 0 15px rgba(255, 212, 42, 0.25);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  text-align: center;
+}
+
+.btn-view-all-activities:hover {
+  background: #ffe066;
+  border-color: #ffe066;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.35), 0 0 25px rgba(255, 212, 42, 0.4);
+}
+
+.btn-view-all-activities:active {
+  transform: translateY(0);
+}
+
+.view-all-arrow-icon {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2.5;
+  transition: transform 0.2s ease;
+}
+
+.btn-view-all-activities:hover .view-all-arrow-icon {
+  transform: translateX(4px);
 }
 
 .activity-media {
@@ -1064,9 +1163,9 @@
 }
 
 .activity-status.completada {
-  color: var(--color-success);
-  background: hsla(152, 65%, 56%, 0.15);
-  border: 1px solid rgba(46, 213, 115, 0.35);
+  color: var(--color-gold);
+  background: rgba(255, 212, 42, 0.15);
+  border: 1px solid rgba(255, 212, 42, 0.45);
 }
 
 .activity-status.confirmada {
@@ -1188,7 +1287,7 @@
 /* Mobile Responsive */
 @media (max-width: 768px) {
   .profile-main-content {
-    padding: 0.5rem 1rem 3rem;
+    padding: 1.5rem 1rem 3.5rem;
   }
 
   .confirmed-card,

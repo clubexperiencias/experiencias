@@ -37,6 +37,9 @@ export class ExperiencesComponent {
   readonly loginEmail = signal('');
   readonly loginError = signal<string | null>(null);
 
+  readonly featuredExperiences = () => this.experienceService.experiences().slice(0, 2);
+  readonly otherExperiences = () => this.experienceService.experiences().slice(2);
+
   toggleMobileMenu(event: Event): void {
     event.stopPropagation();
     this.mobileMenuOpen.update((v) => !v);

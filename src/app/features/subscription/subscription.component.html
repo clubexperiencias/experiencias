@@ -108,9 +108,6 @@
       } @else {
       <div class="sub-section-card hero-sub-card">
         <div class="section-card-header">
-          <div class="sub-hero-icon-box">
-            <mat-icon class="hero-mat-icon">bolt</mat-icon>
-          </div>
           <div>
             <span class="section-kicker">MEMBRESÍA MENSUAL · SOCIO ACTIVO</span>
             <h1 class="section-main-title">Activar Suscripción Mensual</h1>
@@ -125,12 +122,15 @@
         <!-- Tarjeta de Precio y Beneficios -->
         <div class="plan-price-banner">
           <div class="plan-price-left">
-            <span class="plan-badge">NIVEL 2</span>
+            <div class="badge-status-wrap">
+              <span class="plan-badge">NIVEL 2</span>
+              <span class="plan-status-pill">PAUSADO</span>
+            </div>
             <div class="price-figures">
               <span class="price-val">$12.000</span>
               <span class="price-sub">ARS / mes</span>
             </div>
-            <span class="price-hint">Podés cancelar o pausar en cualquier momento</span>
+            <span class="price-hint">Inscripciones online en pausa por el momento</span>
           </div>
 
           <div class="plan-perks-list">
@@ -154,157 +154,101 @@
         </div>
       </div>
 
-      <!-- Card: Formulario y Pasarela de Pago -->
+      <!-- Card: Formulario y Pasarela de Pago (Bloqueado) -->
       <div class="sub-section-card payment-flow-card">
-        <div class="card-inner-header">
-          <span class="section-kicker">MÉTODO DE PAGO Y FACTURACIÓN</span>
-          <h2 class="card-heading">Completá tus Datos de Suscripción</h2>
-          <p class="card-subheading">Procesamiento seguro con encriptación SSL de 256 bits y comprobante fiscal inmediato.</p>
+        <!-- Banner de Estado: Formulario Deshabilitado Temporalmente -->
+        <div class="sub-blocked-notice-card">
+          <div class="notice-body">
+            <div class="notice-badge-row">
+              <span class="notice-status-pill">INSCRIPCIONES EN PAUSA</span>
+              <span class="notice-meta-pill">TEMPORADA 2026</span>
+            </div>
+            <h3 class="notice-headline">Suscripciones Mensuales no disponibles por el momento</h3>
+            <p class="notice-description">
+              Las nuevas altas para la membresía de <strong>Socio Activo</strong> están temporalmente pausadas mientras se actualizan las pasarelas de pago y la asignación de cupos preferenciales para las próximas expediciones.
+            </p>
+            <div class="notice-cta-row">
+              <a routerLink="/" class="notice-cta-btn secondary-cta">
+                <mat-icon class="cta-icon">hourglass_empty</mat-icon>
+                <span>Sumarme a Lista de Espera</span>
+              </a>
+              <a routerLink="/socios/fundadores" class="notice-cta-btn primary-cta">
+                <span>Ver Membresía Socio Fundador</span>
+                <mat-icon class="cta-icon">arrow_forward</mat-icon>
+              </a>
+            </div>
+          </div>
         </div>
 
-        <form class="payment-form" (ngSubmit)="submitSubscription()">
-          <!-- Paso 1: Datos del Socio -->
-          <div class="form-step-block">
-            <h4 class="step-title">1. Datos del Titular</h4>
-            <div class="form-grid-2col">
-              <div class="form-field">
-                <label for="sub-email" class="field-lbl">Correo Electrónico del Socio</label>
-                <input id="sub-email" type="email" class="field-input" placeholder="tu-correo@ejemplo.com"
-                  [value]="subscriberEmail()" (input)="subscriberEmail.set($any($event.target).value)" required />
-              </div>
+        <div class="card-inner-header blocked-header">
+          <span class="section-kicker">MÉTODO DE PAGO Y FACTURACIÓN · DESHABILITADO</span>
+          <h2 class="card-heading">Formulario de Suscripción en Pausa</h2>
+          <p class="card-subheading">El procesamiento de cobro online para este nivel no admite nuevas solicitudes actualmente.</p>
+        </div>
 
-              <div class="form-field">
-                <label for="sub-name" class="field-lbl">Nombre y Apellido</label>
-                <input id="sub-name" type="text" class="field-input" placeholder="Ej. Valentina Morales"
-                  [value]="subscriberName()" (input)="subscriberName.set($any($event.target).value)" />
-              </div>
-            </div>
-          </div>
-
-          <!-- Paso 2: Selección de Método de Pago -->
-          <div class="form-step-block">
-            <h4 class="step-title">2. Seleccioná el Método de Pago</h4>
-
-            <div class="payment-methods-selector">
-              <button type="button" class="method-tab" [class.selected]="selectedPaymentMethod() === 'card'"
-                (click)="setPaymentMethod('card')">
-                <mat-icon class="method-icon">credit_card</mat-icon>
-                <div class="method-info">
-                  <strong>Tarjeta de Débito / Crédito</strong>
-                  <span>Visa, Mastercard, Cabal</span>
-                </div>
-              </button>
-
-              <button type="button" class="method-tab" [class.selected]="selectedPaymentMethod() === 'mercadopago'"
-                (click)="setPaymentMethod('mercadopago')">
-                <mat-icon class="method-icon">account_balance_wallet</mat-icon>
-                <div class="method-info">
-                  <strong>Mercado Pago</strong>
-                  <span>Débito en cuenta o dinero en cuenta</span>
-                </div>
-              </button>
-
-              <button type="button" class="method-tab" [class.selected]="selectedPaymentMethod() === 'transfer'"
-                (click)="setPaymentMethod('transfer')">
-                <mat-icon class="method-icon">account_balance</mat-icon>
-                <div class="method-info">
-                  <strong>Transferencia CBU / Alias</strong>
-                  <span>Sin intermediarios</span>
-                </div>
-              </button>
-            </div>
-
-            <!-- Inputs según método -->
-            @if (selectedPaymentMethod() === 'card') {
-            <div class="method-details-panel">
-              <div class="form-field">
-                <label for="card-num" class="field-lbl">Número de Tarjeta</label>
-                <input id="card-num" type="text" class="field-input font-mono" placeholder="4509 •••• •••• 4821"
-                  maxlength="19" [value]="cardNumber()" (input)="cardNumber.set($any($event.target).value)" />
-              </div>
-
-              <div class="card-row-3col">
+        <form class="payment-form form-is-blocked" (ngSubmit)="$event.preventDefault()">
+          <fieldset disabled class="form-blocked-fieldset">
+            <!-- Paso 1: Datos del Socio -->
+            <div class="form-step-block">
+              <h4 class="step-title">1. Datos del Titular</h4>
+              <div class="form-grid-2col">
                 <div class="form-field">
-                  <label for="card-holder" class="field-lbl">Nombre como figura en la tarjeta</label>
-                  <input id="card-holder" type="text" class="field-input" placeholder="VALENTINA MORALES"
-                    [value]="cardHolder()" (input)="cardHolder.set($any($event.target).value)" />
+                  <label for="sub-email" class="field-lbl">Correo Electrónico del Socio</label>
+                  <input id="sub-email" type="email" class="field-input" placeholder="tu-correo@ejemplo.com"
+                    [value]="subscriberEmail()" disabled />
                 </div>
 
                 <div class="form-field">
-                  <label for="card-exp" class="field-lbl">Vencimiento</label>
-                  <input id="card-exp" type="text" class="field-input font-mono" placeholder="MM/AA" maxlength="5"
-                    [value]="cardExp()" (input)="cardExp.set($any($event.target).value)" />
-                </div>
-
-                <div class="form-field">
-                  <label for="card-cvc" class="field-lbl">CVC / Código</label>
-                  <input id="card-cvc" type="password" class="field-input font-mono" placeholder="•••" maxlength="4"
-                    [value]="cardCvc()" (input)="cardCvc.set($any($event.target).value)" />
+                  <label for="sub-name" class="field-lbl">Nombre y Apellido</label>
+                  <input id="sub-name" type="text" class="field-input" placeholder="Ej. Valentina Morales"
+                    [value]="subscriberName()" disabled />
                 </div>
               </div>
             </div>
-            }
 
-            @if (selectedPaymentMethod() === 'mercadopago') {
-            <div class="method-details-panel mp-panel">
-              <div class="mp-banner-info">
-                <mat-icon class="mp-icon">check_circle</mat-icon>
-                <div>
-                  <strong>Suscripción automática con Mercado Pago</strong>
-                  <p>Al confirmar, se vinculará tu débito recurrente mensual a tu cuenta de Mercado Pago con débito automático.</p>
-                </div>
+            <!-- Paso 2: Selección de Método de Pago -->
+            <div class="form-step-block">
+              <h4 class="step-title">2. Método de Pago</h4>
+
+              <div class="payment-methods-selector">
+                <button type="button" class="method-tab" [class.selected]="selectedPaymentMethod() === 'card'" disabled>
+                  <mat-icon class="method-icon">credit_card</mat-icon>
+                  <div class="method-info">
+                    <strong>Tarjeta de Débito / Crédito</strong>
+                    <span>Visa, Mastercard, Cabal</span>
+                  </div>
+                </button>
+
+                <button type="button" class="method-tab" [class.selected]="selectedPaymentMethod() === 'mercadopago'" disabled>
+                  <mat-icon class="method-icon">account_balance_wallet</mat-icon>
+                  <div class="method-info">
+                    <strong>Mercado Pago</strong>
+                    <span>Débito en cuenta o dinero en cuenta</span>
+                  </div>
+                </button>
+
+                <button type="button" class="method-tab" [class.selected]="selectedPaymentMethod() === 'transfer'" disabled>
+                  <mat-icon class="method-icon">account_balance</mat-icon>
+                  <div class="method-info">
+                    <strong>Transferencia CBU / Alias</strong>
+                    <span>Sin intermediarios</span>
+                  </div>
+                </button>
               </div>
             </div>
-            }
 
-            @if (selectedPaymentMethod() === 'transfer') {
-            <div class="method-details-panel bank-panel">
-              <div class="bank-data-box">
-                <div class="bank-row">
-                  <span class="bank-lbl">Alias Oficial:</span>
-                  <span class="bank-val font-mono">CLUB.CATAMARCA.VIAJES</span>
-                </div>
-                <div class="bank-row">
-                  <span class="bank-lbl">CBU:</span>
-                  <span class="bank-val font-mono">0110452330045298124012</span>
-                </div>
-                <div class="bank-row">
-                  <span class="bank-lbl">Titular:</span>
-                  <span class="bank-val">Club de Experiencias Turísticas Catamarca S.A.S.</span>
-                </div>
-                <div class="bank-row">
-                  <span class="bank-lbl">Monto mensual:</span>
-                  <span class="bank-val price-highlight">$12.000 ARS</span>
-                </div>
-              </div>
+            <!-- Botón de Activación Bloqueado -->
+            <div class="submit-action-row">
+              <button type="button" class="activate-submit-btn is-blocked" disabled>
+                <span>Suscripción Temporalmente Deshabilitada</span>
+              </button>
             </div>
-            }
-          </div>
 
-          @if (errorMessage()) {
-          <div class="error-banner">
-            <mat-icon class="err-icon">error</mat-icon>
-            <span>{{ errorMessage() }}</span>
-          </div>
-          }
-
-          <!-- Botón de Activación -->
-          <div class="submit-action-row">
-            <button type="submit" class="activate-submit-btn" [disabled]="isProcessing() || !subscriberEmail().trim()">
-              @if (isProcessing()) {
-              <span class="btn-spinner"></span>
-              <span>Procesando suscripción...</span>
-              } @else {
-              <span>Confirmar y Activar Membresía ($12.000 ARS / mes)</span>
-              <mat-icon class="btn-icon">bolt</mat-icon>
-              }
-            </button>
-          </div>
-
-          <div class="security-guarantee-row">
-            <mat-icon class="lock-icon">lock</mat-icon>
-            <span>Cobro automático mensual. Cancelá o pausá en cualquier momento desde tu panel de socio.</span>
-          </div>
+            <div class="security-guarantee-row">
+              <mat-icon class="lock-icon">info</mat-icon>
+              <span>El registro de nuevas membresías se reabrirá con la nueva agenda de expediciones.</span>
+            </div>
+          </fieldset>
         </form>
       </div>
       }

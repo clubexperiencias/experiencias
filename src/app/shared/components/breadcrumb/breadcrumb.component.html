@@ -1,21 +1,89 @@
-<nav class="breadcrumb-bar" aria-label="Ruta de navegación">
+<nav class="breadcrumb-bar"
+     [class.hover-suppressed]="isHoverSuppressed()"
+     (mouseleave)="onBarMouseLeave()"
+     (mousemove)="onBarMouseMove($event)"
+     aria-label="Ruta de navegación">
   <div class="breadcrumb-container">
-    @for (item of items(); track item.label; let last = $last; let first = $first) {
-      @if (item.url && !last) {
-        <a [routerLink]="item.url" class="bc-item bc-link">
-          @if (first) {
-            <mat-icon class="bc-icon">home</mat-icon>
-          }
-          <span>{{ item.label }}</span>
-        </a>
+    @for (item of items(); track item.label; let last = $last; let first = $first; let idx = $index) {
+      <div class="bc-step-wrapper"
+           [class.has-dropdown]="canShowNextSteps(item, first, last)"
+           [class.is-mobile-active]="activeMobileIndex() === idx">
+        @if (item.url && !last) {
+          <a [routerLink]="item.url" class="bc-item bc-link"
+             (click)="onItemClick(idx, item, first, last, $event)">
+            <span>{{ item.label }}</span>
+          </a>
+        } @else {
+          <span class="bc-item bc-current" aria-current="page"
+                (click)="onItemClick(idx, item, first, last, $event)">
+            <span>{{ item.label }}</span>
+          </span>
+        }
+
+        <!-- Mega Menú Desplegable Estilo National Geographic -->
+        @if (canShowNextSteps(item, first, last)) {
+          @let data = getNextStepsData(item);
+          <div class="natgeo-mega-menu">
+            <div class="natgeo-menu-container">
+              <!-- Columna de Tópicos (Topics—) - Costado Izquierdo -->
+              <div class="natgeo-topics-col">
+                <span class="natgeo-col-kicker">{{ data.kicker }}</span>
+                <ul class="natgeo-topics-list">
+                  @for (step of data.steps; track step.url) {
+                    <li>
+                      <a [routerLink]="step.url" class="natgeo-topic-link" (click)="onLinkClick(step.url, $event)">
+                        {{ step.label }}
+                      </a>
+                    </li>
+                  }
+                </ul>
+                @if (data.viewAllLabel && data.viewAllUrl) {
+                  <a [routerLink]="data.viewAllUrl" class="natgeo-view-all-link" (click)="onLinkClick(data.viewAllUrl, $event)">
+                    {{ data.viewAllLabel }}
+                  </a>
+                }
+              </div>
+
+              <!-- Columna Recomendada (Travesía en Kayak) - Bloque del Medio -->
+              @if (data.featured) {
+                <div class="natgeo-featured-col">
+                  <span class="natgeo-col-kicker">Recomendada—</span>
+                  <a [routerLink]="data.featured.url" class="natgeo-featured-card" (click)="onLinkClick(data.featured.url, $event)">
+                    <div class="featured-img-wrap">
+                      <img [src]="data.featured.imageUrl" [alt]="data.featured.title" class="featured-img" />
+                      @if (data.featured.badge) {
+                        <span class="featured-badge">{{ data.featured.badge }}</span>
+                      }
+                    </div>
+                    <h4 class="featured-title">{{ data.featured.title }}</h4>
+                    <p class="featured-sub">{{ data.featured.subtitle }}</p>
+                  </a>
+                </div>
+              }
+
+              <!-- Columna Membresía (Socio Fundador) - Costado Derecho (a la derecha de la destacada) -->
+              @if (data.secondaryCard) {
+                <div class="natgeo-featured-col natgeo-founder-col">
+                  <span class="natgeo-col-kicker">{{ data.secondaryCard.kicker || 'Membresía—' }}</span>
+                  <a [routerLink]="data.secondaryCard.url" class="natgeo-featured-card" (click)="onLinkClick(data.secondaryCard.url, $event)">
+                    <div class="featured-img-wrap">
+                      <img [src]="data.secondaryCard.imageUrl" [alt]="data.secondaryCard.title" class="featured-img" />
+                      @if (data.secondaryCard.badge) {
+                        <span class="featured-badge">{{ data.secondaryCard.badge }}</span>
+                      }
+                    </div>
+                    <h4 class="featured-title">{{ data.secondaryCard.title }}</h4>
+                    <p class="featured-sub">{{ data.secondaryCard.subtitle }}</p>
+                  </a>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+
+      @if (!last) {
         <mat-icon class="bc-sep">chevron_right</mat-icon>
-      } @else {
-        <span class="bc-item bc-current" aria-current="page">
-          @if (first) {
-            <mat-icon class="bc-icon">home</mat-icon>
-          }
-          <span>{{ item.label }}</span>
-        </span>
       }
     }
   </div>

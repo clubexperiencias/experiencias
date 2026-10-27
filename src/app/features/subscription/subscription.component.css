@@ -138,13 +138,30 @@
   padding-right: 1.4rem;
 }
 
+.badge-status-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.3rem;
+}
+
 .plan-badge {
   font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.14em;
   color: var(--color-gold);
   text-transform: uppercase;
-  margin-bottom: 0.3rem;
+}
+
+.plan-status-pill {
+  font-size: 0.60rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #ffb84d;
+  background: rgba(255, 184, 77, 0.15);
+  border: 1px solid rgba(255, 184, 77, 0.4);
+  padding: 0.15rem 0.45rem;
+  border-radius: 2px;
 }
 
 .price-figures {
@@ -192,6 +209,118 @@
   font-weight: bold;
 }
 
+/* ==========================================================================
+   Banner de Formulario Bloqueado / En Pausa (Estilo Editorial Nat Geo)
+   ========================================================================== */
+.sub-blocked-notice-card {
+  display: flex;
+  gap: 1.3rem;
+  background: rgba(0, 0, 0, 0.38);
+  border: 1px solid rgba(128, 179, 255, 0.45);
+  border-left: 4px solid #80b3ff;
+  border-radius: 2px;
+  padding: 1.6rem 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.notice-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.notice-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.notice-status-pill {
+  font-family: var(--font-sans);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #000000;
+  background: #80b3ff;
+  padding: 0.2rem 0.55rem;
+  border-radius: 0;
+}
+
+.notice-meta-pill {
+  font-family: var(--font-sans);
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  color: var(--color-text-soft);
+  text-transform: uppercase;
+}
+
+.notice-headline {
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0.2rem 0 0;
+  line-height: 1.3;
+}
+
+.notice-description {
+  font-size: 0.90rem;
+  line-height: 1.6;
+  color: var(--color-text-soft);
+  margin: 0;
+}
+
+.notice-cta-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-top: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.notice-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1.15rem;
+  font-family: var(--font-sans);
+  font-size: 0.80rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  border-radius: 2px;
+  text-decoration: none !important;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.notice-cta-btn.primary-cta {
+  background: #80b3ff;
+  color: #000000;
+}
+
+.notice-cta-btn.primary-cta:hover {
+  background: #99c2ff;
+  transform: translateY(-1px);
+}
+
+.notice-cta-btn.secondary-cta {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.notice-cta-btn.secondary-cta:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.cta-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+}
+
 /* Card: Flujo de Pago */
 .payment-flow-card {
   border-color: rgba(255, 255, 255, 0.15);
@@ -201,12 +330,40 @@
   margin-bottom: 1.8rem;
 }
 
+.card-inner-header.blocked-header {
+  opacity: 0.75;
+}
+
 .card-heading {
   font-family: var(--font-serif);
   font-size: 1.45rem;
   font-weight: 600;
   color: #fff;
   margin: 0.3rem 0 0.5rem;
+}
+
+/* Formulario Bloqueado */
+.form-blocked-fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  opacity: 0.55;
+  filter: grayscale(0.25);
+  pointer-events: none;
+  user-select: none;
+}
+
+.activate-submit-btn.is-blocked {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: rgba(255, 255, 255, 0.45) !important;
+  border: 1px dashed rgba(255, 255, 255, 0.25) !important;
+  cursor: not-allowed !important;
+  pointer-events: none !important;
+  box-shadow: none !important;
+  transform: none !important;
 }
 
 .card-subheading {

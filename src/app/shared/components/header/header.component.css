@@ -195,6 +195,29 @@ mat-icon.btn-icon {
 }
 
 /* ==========================================================================
+   Highlight Verde de Éxito al Iniciar Sesión (Sincronizado con la alerta verde)
+   ========================================================================== */
+.nav-pill-btn.profile-btn.highlight-green {
+  background: #059669 !important;
+  border-color: #059669 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 16px rgba(5, 150, 105, 0.55) !important;
+}
+
+.nav-pill-btn.profile-btn.highlight-green *,
+.nav-pill-btn.profile-btn.highlight-green:hover *,
+.nav-pill-btn.profile-btn.highlight-green:hover {
+  color: #ffffff !important;
+  background: #047857 !important;
+  border-color: #047857 !important;
+}
+
+.mobile-nav-row.profile-cta-row.highlight-green {
+  background: #059669 !important;
+  color: #ffffff !important;
+}
+
+/* ==========================================================================
    Mobile Controls & Drawer (Ocultos en desktop)
    ========================================================================== */
 .mobile-menu-toggle-btn {

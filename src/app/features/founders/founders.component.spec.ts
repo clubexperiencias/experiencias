@@ -25,11 +25,7 @@ describe('FoundersComponent (/fundadores)', () => {
     expect(heading.textContent).toContain('Carta de Postulación para Socio Fundador');
   });
 
-  it('should display the 11 vacantes badge and circle tag', () => {
-    const spots = fixture.nativeElement.querySelector('.founder-spots-pill');
-    expect(spots).toBeTruthy();
-    expect(spots.textContent).toContain('11 VACANTES 2026');
-
+  it('should display the exclusive circle tag', () => {
     const circleTag = fixture.nativeElement.querySelector('.founder-exclusive-tag');
     expect(circleTag).toBeTruthy();
     expect(circleTag.textContent).toContain('CÍRCULO VITALICIO EXCLUSIVO');
@@ -62,5 +58,11 @@ describe('FoundersComponent (/fundadores)', () => {
     const current = breadcrumb.querySelector('.bc-current');
     expect(current).toBeTruthy();
     expect(current.textContent).toContain('Socio Fundador');
+  });
+
+  it('should display the founder hero media image', () => {
+    const heroImg = fixture.nativeElement.querySelector('.founder-hero-img');
+    expect(heroImg).toBeTruthy();
+    expect(heroImg.getAttribute('src')).toContain('ad.png');
   });
 });

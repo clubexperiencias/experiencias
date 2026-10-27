@@ -17,21 +17,41 @@ describe('ProfileComponent', () => {
     fixture.detectChanges();
   });
 
-  it('should display the green registration success notification replacing breadcrumb', () => {
+  it('should display the green registration success notification replacing breadcrumb when logging in', () => {
+    component.newsletter.setLoginSuccessFlag();
+    component.ngOnInit();
+    fixture.detectChanges();
+
     const notification = fixture.nativeElement.querySelector('.registration-success-bar');
     expect(notification).toBeTruthy();
     expect(notification.textContent).toContain('¡REGISTRO EXITOSO!');
     expect(notification.textContent).toContain('Socio Emergente');
+    expect(component.newsletter.profileSuccessHighlight()).toBe(true);
   });
 
-  it('should display the membership info box with activation link', () => {
+  it('should NOT display the green registration success notification when navigating normally via breadcrumb', () => {
+    // Normal navigation: login flag was not set
+    const notification = fixture.nativeElement.querySelector('.registration-success-bar');
+    expect(notification).toBeFalsy();
+    const breadcrumb = fixture.nativeElement.querySelector('.breadcrumb-bar');
+    expect(breadcrumb).toBeTruthy();
+  });
+
+  it('should only show the last 2 activities in profile preview and link to full history', () => {
+    const cards = fixture.nativeElement.querySelectorAll('.activities-list .activity-card');
+    expect(cards.length).toBeLessThanOrEqual(2);
+
+    const viewAllBtn = fixture.nativeElement.querySelector('.btn-view-all-activities');
+    expect(viewAllBtn).toBeTruthy();
+    expect(viewAllBtn.getAttribute('routerlink')).toBe('/perfil/actividades');
+  });
+
+  it('should display the membership info box with updated cupo text', () => {
     const card = fixture.nativeElement.querySelector('.profile-completion-card');
     expect(card).toBeTruthy();
     expect(card.textContent).toContain('DATOS DE MEMBRESÍA');
     expect(card.textContent).toContain('Socio Emergente');
-    const link = card.querySelector('.upgrade-membership-link');
-    expect(link).toBeTruthy();
-    expect(link.getAttribute('routerLink')).toBe('/socios/activos');
+    expect(card.textContent).toContain('Priorizaremos tu cupo según qué expediciones realices y qué tan completo tengas tu perfil.');
   });
 
   it('should link back to root / from the header logo', () => {

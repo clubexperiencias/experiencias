@@ -1,0 +1,294 @@
+<div class="ratings-page-container">
+  <!-- Barra Superior Unificada -->
+  <app-header [(mobileMenuOpen)]="mobileMenuOpen"></app-header>
+
+  <!-- Breadcrumb debajo del Header con fondo #FFCC00 -->
+  <app-breadcrumb [items]="breadcrumbs"></app-breadcrumb>
+
+  <!-- Contenedor Principal de Calificaciones -->
+  <div class="ratings-wallpaper-body app-wallpaper-body">
+    <div class="ambient-overlay"></div>
+
+    <main class="ratings-main-content">
+      <div class="ratings-wrapper">
+
+        <!-- Encabezado Editorial Estilo National Geographic -->
+        <header class="editorial-header-card">
+          <div class="editorial-header-content">
+            <span class="editorial-kicker">FEEDBACK REAL DE SOCIOS · CATAMARCA</span>
+            <h1 class="editorial-title">Calificaciones Verificadas del Club</h1>
+            <p class="editorial-lead">
+              Reseñas auténticas y experiencias compartidas por socios que vivieron nuestras travesías en Catamarca.
+              Cada salida cuenta con guías habilitados, protocolo médico de montaña y trazabilidad completa.
+            </p>
+          </div>
+        </header>
+
+        <!-- Cuadro Resumen de Puntuaciones y Experiencias -->
+        <section class="global-scoreboard-card">
+          <div class="overall-score-col">
+            <div class="score-figure-wrap">
+              <span class="score-number">4.96</span>
+              <div class="score-stars-stars">
+                <span class="star-icon">★</span>
+                <span class="star-icon">★</span>
+                <span class="star-icon">★</span>
+                <span class="star-icon">★</span>
+                <span class="star-icon">★</span>
+              </div>
+            </div>
+            <span class="score-meta-text">Puntaje global consolidado</span>
+            <span class="score-count-badge">149 VALORACIONES VERIFICADAS</span>
+          </div>
+
+          <div class="experiences-breakdown-col">
+            <h3 class="breakdown-heading">Desglose por Expedición Oficial:</h3>
+            <div class="breakdown-cards-grid">
+              <!-- Kayak -->
+              <a routerLink="/experiencias/kayak/calificaciones" class="exp-score-mini-card">
+                <div class="mini-card-top">
+                  <span class="mini-exp-name">Kayak & Sunset Las Pirquitas</span>
+                  <span class="mini-score-val">4.95 ★</span>
+                </div>
+                <div class="mini-card-bottom">
+                  <span>62 reseñas verificadas</span>
+                  <span class="mini-link-arrow">Ver reseñas →</span>
+                </div>
+              </a>
+
+              <!-- Piedra Pómez -->
+              <div class="exp-score-mini-card static-mini">
+                <div class="mini-card-top">
+                  <span class="mini-exp-name">Campo de Piedra Pómez</span>
+                  <span class="mini-score-val">4.96 ★</span>
+                </div>
+                <div class="mini-card-bottom">
+                  <span>48 reseñas verificadas</span>
+                  <span class="mini-tag">Antofagasta</span>
+                </div>
+              </div>
+
+              <!-- Seismiles -->
+              <div class="exp-score-mini-card static-mini">
+                <div class="mini-card-top">
+                  <span class="mini-exp-name">Ruta de los Seismiles</span>
+                  <span class="mini-score-val">4.98 ★</span>
+                </div>
+                <div class="mini-card-bottom">
+                  <span>39 reseñas verificadas</span>
+                  <span class="mini-tag">Fiambalá</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Barra de Filtros y Acción de Escribir Reseña -->
+        <div class="filters-action-bar">
+          <div class="filter-pills-row">
+            <button type="button" class="filter-pill-btn" [class.active]="activeFilter() === 'all'" (click)="setFilter('all')">
+              Todas ({{ reviewsList().length }})
+            </button>
+            <button type="button" class="filter-pill-btn" [class.active]="activeFilter() === 'kayak'" (click)="setFilter('kayak')">
+              Kayak Las Pirquitas
+            </button>
+            <button type="button" class="filter-pill-btn" [class.active]="activeFilter() === 'pomez'" (click)="setFilter('pomez')">
+              Piedra Pómez
+            </button>
+            <button type="button" class="filter-pill-btn" [class.active]="activeFilter() === 'seismiles'" (click)="setFilter('seismiles')">
+              Seismiles
+            </button>
+            <button type="button" class="filter-pill-btn" [class.active]="activeFilter() === 'with-reply'" (click)="setFilter('with-reply')">
+              Con Respuesta Oficial
+            </button>
+            <button type="button" class="filter-pill-btn" [class.active]="activeFilter() === '5-stars'" (click)="setFilter('5-stars')">
+              5 Estrellas ★
+            </button>
+          </div>
+
+          <button type="button" class="write-review-btn" (click)="toggleReviewForm()">
+            <mat-icon>{{ showNewReviewForm() ? 'close' : 'rate_review' }}</mat-icon>
+            <span>{{ showNewReviewForm() ? 'Cancelar' : 'Compartir mi Calificación' }}</span>
+          </button>
+        </div>
+
+        <!-- Formulario Desplegable para Agregar Reseña -->
+        @if (showNewReviewForm()) {
+          <div class="new-review-form-card">
+            <h3 class="form-title">Dejá tu Reseña como Socio</h3>
+            <p class="form-sub">Tu comentario ayuda a futuros socios a preparar sus travesías por Catamarca.</p>
+
+            <form (ngSubmit)="submitReview()" class="review-inputs-form">
+              <div class="form-grid-2col">
+                <div class="form-group">
+                  <label class="form-lbl">Expedición que realizaste</label>
+                  <select class="form-select" [value]="newExperience()" (change)="newExperience.set($any($event.target).value)">
+                    <option value="kayak">Travesía en Kayak & Sunset en Las Pirquitas</option>
+                    <option value="pomez">Campo de Piedra Pómez & Duna Gigante</option>
+                    <option value="seismiles">Ruta de los Seismiles & Laguna Verde</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-lbl">Tu Nombre / Apodo de Socio</label>
+                  <input
+                    type="text"
+                    class="form-input"
+                    [class.is-readonly]="hasProfileName()"
+                    [class.is-missing-profile]="!hasProfileName()"
+                    [value]="hasProfileName() ? memberProfileName() : ''"
+                    [placeholder]="hasProfileName() ? '' : 'Completá tu perfil para poder calificar...'"
+                    readonly
+                  />
+                  @if (!hasProfileName()) {
+                    <p class="profile-required-hint">
+                      Debés <a routerLink="/perfil" class="profile-link">completar tu perfil de socio</a> para poder publicar una calificación.
+                    </p>
+                  }
+                </div>
+              </div>
+
+              <div class="form-grid-2col">
+                <div class="form-group">
+                  <label class="form-lbl">Título de la Reseña</label>
+                  <input type="text" class="form-input" placeholder="Ej. Remada inolvidable y excelente atención"
+                    [value]="newTitle()" (input)="newTitle.set($any($event.target).value)" required />
+                </div>
+
+                <div class="form-group">
+                  <label class="form-lbl">Puntuación General</label>
+                  <div class="star-rating-selector">
+                    @for (star of [1, 2, 3, 4, 5]; track star) {
+                      <button type="button" class="star-btn" [class.active]="newRating() >= star" (click)="newRating.set(star)">
+                        ★
+                      </button>
+                    }
+                    <span class="rating-choice-label">{{ newRating() }} de 5 estrellas</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-lbl">Tu Experiencia y Detalles de la Salida</label>
+                <textarea class="form-textarea" rows="4"
+                  placeholder="Contanos sobre el estado del equipo, los guías, la dificultad o los paisajes..."
+                  [value]="newComment()" (input)="newComment.set($any($event.target).value)" required></textarea>
+              </div>
+
+              <div class="form-submit-row">
+                <button type="submit" class="submit-review-action-btn" [disabled]="!hasProfileName() || !newTitle().trim() || !newComment().trim()">
+                  <mat-icon>send</mat-icon>
+                  <span>Publicar Calificación Verificada</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        }
+
+        @if (reviewSubmitted()) {
+          <div class="success-banner">
+            <mat-icon class="success-icon">check_circle</mat-icon>
+            <div>
+              <strong>¡Calificación publicada con éxito!</strong>
+              <p>Tu reseña ha sido verificada y sumada a la bitácora pública de socios.</p>
+            </div>
+          </div>
+        }
+
+        <!-- Feed de Reseñas Verificadas -->
+        <div class="reviews-feed-container">
+          @for (review of filteredReviews(); track review.id) {
+            <article class="review-item-card">
+              <header class="review-card-header">
+                <div class="reviewer-meta">
+                  <div class="reviewer-avatar">
+                    <span>{{ review.userName.charAt(0) }}</span>
+                  </div>
+                  <div>
+                    <div class="reviewer-name-row">
+                      <h4 class="reviewer-name">{{ review.userName }}</h4>
+                      <span class="verified-pill" title="Socio Verificado">
+                        <mat-icon class="pill-icon">verified</mat-icon>
+                      </span>
+                    </div>
+                    <div class="reviewer-sub-info">
+                      <span>{{ review.userLocation }}</span>
+                      <span>·</span>
+                      <span class="tier-tag">{{ review.userTier }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="review-date-rating">
+                  <div class="stars-row">
+                    @for (s of [1, 2, 3, 4, 5]; track s) {
+                      <span class="star-point" [class.filled]="s <= review.rating">★</span>
+                    }
+                  </div>
+                  <span class="review-date-val">{{ review.date }}</span>
+                </div>
+              </header>
+
+              <!-- Tag de Expedición Asociada -->
+              <div class="review-exp-badge-row">
+                <a [routerLink]="review.experienceRoute" class="review-exp-badge">
+                  <mat-icon class="exp-icon">place</mat-icon>
+                  <span>{{ review.experienceName }}</span>
+                </a>
+                <span class="activity-date-tag">Salida: {{ review.activityDate }}</span>
+              </div>
+
+              <div class="review-card-body">
+                <h3 class="review-title">{{ review.title }}</h3>
+                <p class="review-text">{{ review.comment }}</p>
+              </div>
+
+              <!-- Respuesta Oficial del Prestador o Club -->
+              @if (review.providerReply; as reply) {
+                <div class="official-reply-box">
+                  <div class="reply-header">
+                    <mat-icon class="reply-icon">forum</mat-icon>
+                    <div>
+                      <strong class="responder-name">{{ reply.responderName }}</strong>
+                      <span class="responder-role">· {{ reply.badge }}</span>
+                    </div>
+                    <span class="reply-date">{{ reply.date }}</span>
+                  </div>
+                  <p class="reply-message">{{ reply.message }}</p>
+                </div>
+              }
+            </article>
+          }
+        </div>
+
+        <!-- Bloque Inferior de Exploración -->
+        <div class="ratings-bottom-cta-card">
+          <div class="cta-inner">
+            <span class="cta-kicker">¿LISTO PARA TU PRÓXIMA AVENTURA?</span>
+            <h2 class="cta-title">Vivilo con tus propios ojos</h2>
+            <p class="cta-text">
+              Explorá las expediciones andinas y náuticas disponibles para socios y sumate con cupo prioritario.
+            </p>
+            <div class="cta-actions-row">
+              <a routerLink="/experiencias" class="cta-btn primary">
+                <span>Ver Catálogo de Travesías</span>
+                <mat-icon>arrow_forward</mat-icon>
+              </a>
+              <a routerLink="/experiencias/fotos" class="cta-btn secondary">
+                <mat-icon>photo_camera</mat-icon>
+                <span>Ver Fotos Destacadas</span>
+              </a>
+              <a routerLink="/socios" class="cta-btn tertiary">
+                <span>Niveles de Socio</span>
+              </a>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- Footer Compartido -->
+  <app-footer />
+</div>

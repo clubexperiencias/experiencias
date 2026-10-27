@@ -23,6 +23,21 @@ export class NewsletterService {
   private readonly _reservedSpots = signal<number>(this.loadReservedSpots());
   private readonly _isLoading = signal<boolean>(false);
   private readonly _errorMessage = signal<string | null>(null);
+  private readonly _loginSuccessFlag = signal<boolean>(false);
+
+  readonly profileSuccessHighlight = signal<boolean>(false);
+
+  setLoginSuccessFlag(): void {
+    this._loginSuccessFlag.set(true);
+  }
+
+  consumeLoginSuccessFlag(): boolean {
+    const val = this._loginSuccessFlag();
+    if (val) {
+      this._loginSuccessFlag.set(false);
+    }
+    return val;
+  }
 
   readonly entries = this._entries.asReadonly();
   readonly currentMember = this._currentMember.asReadonly();
@@ -65,6 +80,7 @@ export class NewsletterService {
       this._currentMember.set(existing);
       this.persistCurrentMember(existing);
       this._isLoading.set(false);
+      this.setLoginSuccessFlag();
       return {
         success: true,
         entry: existing,
@@ -99,6 +115,7 @@ export class NewsletterService {
     this.persistCurrentMember(newEntry);
 
     this._isLoading.set(false);
+    this.setLoginSuccessFlag();
 
     return {
       success: true,

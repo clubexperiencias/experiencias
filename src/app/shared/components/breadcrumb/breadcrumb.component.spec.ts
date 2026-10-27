@@ -36,4 +36,62 @@ describe('BreadcrumbComponent', () => {
     expect(current).toBeTruthy();
     expect(current.textContent).toContain('Socio Activo');
   });
+
+  it('should not render a home icon in the breadcrumb', () => {
+    fixture.componentRef.setInput('items', [
+      { label: 'Inicio', url: '/' },
+      { label: 'Experiencias' }
+    ]);
+    fixture.detectChanges();
+
+    const homeIcon = fixture.nativeElement.querySelector('.bc-icon');
+    expect(homeIcon).toBeNull();
+  });
+
+  it('should render National Geographic style mega-menu on all breadcrumb items including the last one', () => {
+    fixture.componentRef.setInput('items', [
+      { label: 'Inicio', url: '/' },
+      { label: 'Experiencias' }
+    ]);
+    fixture.detectChanges();
+
+    const wrappers = fixture.nativeElement.querySelectorAll('.bc-step-wrapper');
+    expect(wrappers.length).toBe(2);
+
+    // Primer item (Inicio): tiene menú desplegable
+    expect(wrappers[0].classList.contains('has-dropdown')).toBe(true);
+    const firstMenu = wrappers[0].querySelector('.natgeo-mega-menu');
+    expect(firstMenu).toBeTruthy();
+    const topics = firstMenu.querySelectorAll('.natgeo-topic-link');
+    expect(topics.length).toBeGreaterThan(0);
+
+    // Segundo item (Experiencias, último de la ruta): también tiene menú desplegable
+    expect(wrappers[1].classList.contains('has-dropdown')).toBe(true);
+    const secondMenu = wrappers[1].querySelector('.natgeo-mega-menu');
+    expect(secondMenu).toBeTruthy();
+  });
+
+  it('should activate mega-menu on Inicio even when it is the only breadcrumb item', () => {
+    fixture.componentRef.setInput('items', [
+      { label: 'Inicio' }
+    ]);
+    fixture.detectChanges();
+
+    const wrappers = fixture.nativeElement.querySelectorAll('.bc-step-wrapper');
+    expect(wrappers.length).toBe(1);
+    expect(wrappers[0].classList.contains('has-dropdown')).toBe(true);
+    expect(wrappers[0].querySelector('.natgeo-mega-menu')).toBeTruthy();
+  });
+
+  it('should use sumate.png for secondaryCard founder card in mega-menu', () => {
+    fixture.componentRef.setInput('items', [
+      { label: 'Inicio', url: '/' },
+      { label: 'Experiencias' }
+    ]);
+    fixture.detectChanges();
+
+    const founderImg = fixture.nativeElement.querySelector('.natgeo-founder-col .featured-img');
+    expect(founderImg).toBeTruthy();
+    expect(founderImg.getAttribute('src')).toContain('sumate.png');
+  });
 });

@@ -29,7 +29,7 @@
           <div class="hero-quick-stats">
             <div class="quick-stat-item">
               <span class="stat-number">100%</span>
-              <span class="stat-label">Trato directo con el expedicionario</span>
+              <span class="stat-label">Trato directo con el socio</span>
             </div>
             <div class="quick-stat-divider"></div>
             <div class="quick-stat-item">
@@ -71,7 +71,7 @@
             <div class="provider-benefit-card">
               <span class="editorial-index">CONFIANZA</span>
               <h4>Reputación & Reseñas</h4>
-              <p>Construí un perfil verificado con calificaciones reales de tus expedicionarios y fidelizá viajeros.</p>
+              <p>Construí un perfil verificado con calificaciones reales de tus socios y fidelizá viajeros.</p>
             </div>
           </div>
         </div>
@@ -517,8 +517,7 @@
         @for (exp of experienceService.experiences(); track exp.id) {
         <div class="exp-card">
           <div class="exp-card-media" [style.background-image]="'url(' + exp.coverImage + ')'">
-            <span class="exp-region-tag">{{ exp.region }}</span>
-            <span class="exp-altitude">{{ exp.altitudeMeters }} msnm</span>
+            <span class="exp-region-tag">{{ exp.region }} ({{ exp.altitudeMeters }} msnm)</span>
           </div>
           <div class="exp-card-content">
             <h4 class="exp-title">{{ exp.title }}</h4>

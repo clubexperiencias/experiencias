@@ -24,19 +24,19 @@
       <span>Inicio</span>
     </a>
 
-    <a routerLink="/socios" class="nav-pill-btn socios-nav-btn" routerLinkActive="active-route">
-      <mat-icon class="btn-icon">military_tech</mat-icon>
-      <span>Niveles de Socio</span>
-    </a>
-
     <a routerLink="/experiencias" class="nav-pill-btn exp-nav-btn" routerLinkActive="active-route">
       <mat-icon class="btn-icon">explore</mat-icon>
       <span>Experiencias</span>
     </a>
 
+    <a routerLink="/socios" class="nav-pill-btn socios-nav-btn" routerLinkActive="active-route">
+      <mat-icon class="btn-icon">military_tech</mat-icon>
+      <span>Niveles de Socio</span>
+    </a>
+
     <!-- Menú Desktop: Si hay sesión iniciada muestra Mi Perfil, si no muestra Iniciar Sesión -->
     @if (newsletter.isSubscribed()) {
-    <a routerLink="/perfil" class="nav-pill-btn profile-btn" routerLinkActive="active-route">
+    <a routerLink="/perfil" class="nav-pill-btn profile-btn" [class.highlight-green]="newsletter.profileSuccessHighlight()" routerLinkActive="active-route">
       <mat-icon class="btn-icon">account_circle</mat-icon>
       <span>Mi Perfil</span>
     </a>
@@ -57,18 +57,18 @@
         <mat-icon class="row-arrow">chevron_right</mat-icon>
       </a>
 
-      <a routerLink="/socios" class="mobile-nav-row" (click)="closeMobileMenu()">
-        <span class="row-title">Niveles de Socio</span>
-        <mat-icon class="row-arrow">chevron_right</mat-icon>
-      </a>
-
       <a routerLink="/experiencias" class="mobile-nav-row" (click)="closeMobileMenu()">
         <span class="row-title">Experiencias</span>
         <mat-icon class="row-arrow">chevron_right</mat-icon>
       </a>
 
+      <a routerLink="/socios" class="mobile-nav-row" (click)="closeMobileMenu()">
+        <span class="row-title">Niveles de Socio</span>
+        <mat-icon class="row-arrow">chevron_right</mat-icon>
+      </a>
+
       @if (newsletter.isSubscribed()) {
-      <a routerLink="/perfil" class="mobile-nav-row profile-cta-row" (click)="closeMobileMenu()">
+      <a routerLink="/perfil" class="mobile-nav-row profile-cta-row" [class.highlight-green]="newsletter.profileSuccessHighlight()" (click)="closeMobileMenu()">
         <span class="row-title">Mi Perfil</span>
         <mat-icon class="row-arrow">arrow_forward</mat-icon>
       </a>

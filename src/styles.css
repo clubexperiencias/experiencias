@@ -7,6 +7,7 @@
   /* Tipografía principal: Geist y Geist Mono */
   --font-sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-serif: var(--font-sans);
 
   /* Paleta cromática HSL (Inspirada en la Puna, Seismiles y atardeceres andinos) */
   --color-bg-dark: hsl(220, 24%, 7%);
@@ -167,7 +168,7 @@ mat-icon {
   flex: 1;
   width: 100%;
   background-color: #06090e;
-  background-image: url('/assets/images/laguna_blanca.jpg') !important;
+  background-image: url('/assets/images/catamarca-style.png') !important;
   background-size: cover !important;
   background-position: center top !important;
   background-repeat: no-repeat !important;
@@ -175,18 +176,10 @@ mat-icon {
   overflow: clip;
 }
 
-.ambient-overlay {
-  display: block !important;
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(to bottom, rgba(6, 9, 14, 0.08) 0%, transparent 40%, transparent 75%, rgba(6, 9, 14, 0.18) 100%),
-    radial-gradient(
-      circle at 50% 45%,
-      transparent 0%,
-      rgba(6, 9, 14, 0.12) 100%
-    );
-  pointer-events: none;
-  z-index: 1;
+/* En todas las rutas públicas y de socios (excepto perfil y admin), fondo limpio sin patrón de relieve ni overlay */
+.app-wallpaper-body::before,
+.app-wallpaper-body .ambient-overlay {
+  display: none !important;
+  content: none !important;
 }
 

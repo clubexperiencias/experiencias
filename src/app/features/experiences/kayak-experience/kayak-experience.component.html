@@ -40,7 +40,7 @@
             </div>
             <div class="spec-tile">
               <span class="spec-label">CUPO MÁXIMO</span>
-              <span class="spec-value">12 Expedicionarios</span>
+              <span class="spec-value">12 Socios</span>
             </div>
             <div class="spec-tile">
               <span class="spec-label">TEMPORADA</span>
@@ -48,7 +48,8 @@
             </div>
             <div class="spec-tile">
               <span class="spec-label">CALIFICACIÓN</span>
-              <span class="spec-value gold-text">4.95 ★ (62 reseñas)</span>
+              <a routerLink="/experiencias/kayak/calificaciones" class="spec-value gold-text spec-link">4.95 ★ (62
+                reseñas) →</a>
             </div>
           </div>
         </div>
@@ -112,62 +113,44 @@
         </div>
 
         <!-- ═══════════════ CARD: EQUIPAMIENTO & PROTOCOLO ═══════════════ -->
+        <!-- ═══════════════ CARD UNIFICADA: EQUIPAMIENTO, SEGURIDAD & PREPARACIÓN ═══════════════ -->
         <div class="kayak-section-card">
           <div class="card-inner-header">
-            <span class="section-kicker">EQUIPAMIENTO Y PROTOCOLO</span>
-            <h2 class="card-heading">Servicios Incluidos & Seguridad</h2>
+            <span class="section-kicker">EQUIPAMIENTO, SEGURIDAD & PREPARACIÓN</span>
+            <h2 class="card-heading">Servicios Incluidos, Protocolo & Qué Llevar</h2>
+            <p class="card-subheading">
+              Todo el equipamiento náutico y de seguridad provisto por el club, junto a los elementos recomendados para
+              tu salida.
+            </p>
           </div>
 
-          <div class="features-dual-grid">
-            <div class="feature-box">
-              <span class="box-tag">EQUIPAMIENTO PROVISTO</span>
-              <ul class="check-list">
-                <li>Kayaks dobles e individuales de travesía insumergibles y autovaciables</li>
-                <li>Palas ergonómicas de aluminio y fibra ultraliviana</li>
-                <li>Chalecos salvavidas homologados DNP con silbato de socorro</li>
-                <li>Bolsas estancas de 10L y 20L para teléfonos móviles y cámaras</li>
+          <div class="simple-logistics-grid">
+            <!-- Columna 1: Provisto por el Club -->
+            <div class="simple-logistics-col">
+              <div class="simple-col-title-wrap">
+                <mat-icon class="simple-col-icon check-icon">verified</mat-icon>
+                <h3 class="simple-col-title">Servicios e Indumentaria Provista</h3>
+              </div>
+              <ul class="simple-check-list">
+                <li>Kayaks de travesía (individuales y dobles) con palas ultralivianas</li>
+                <li>Chalecos salvavidas homologados y silbato de auxilio</li>
+                <li>Bolsas estancas impermeables para celulares y pertenencias</li>
+                <li>Guías náuticos matriculados, lancha de apoyo y seguro integral</li>
               </ul>
             </div>
 
-            <div class="feature-box">
-              <span class="box-tag">SEGURIDAD & ASISTENCIA</span>
-              <ul class="check-list">
-                <li>Guías e instructores náuticos matriculados en Catamarca</li>
-                <li>Certificación internacional en primeros auxilios en zonas agrestes (WFR)</li>
-                <li>Embarcación de apoyo y seguimiento motorizada</li>
-                <li>Seguro integral de turismo aventura y asistencia médica</li>
+            <!-- Columna 2: A cargo del participante -->
+            <div class="simple-logistics-col traer-col">
+              <div class="simple-col-title-wrap">
+                <mat-icon class="simple-col-icon blue-icon">verified</mat-icon>
+                <h3 class="simple-col-title">Qué Debes Traer a la Experiencia</h3>
+              </div>
+              <ul class="simple-check-list blue-checks">
+                <li><strong>Ropa y calzado de agua:</strong> Indumentaria deportiva cómoda que se pueda mojar.</li>
+                <li><strong>Muda seca de recambio:</strong> Ropa adicional y toalla personal en mochila.</li>
+                <li><strong>Protección solar:</strong> Gorra, lentes de sol y protector FPS 50+.</li>
+                <li><strong>Hidratación y abrigo:</strong> Botella de agua y campera liviana para el atardecer.</li>
               </ul>
-            </div>
-          </div>
-        </div>
-
-        <!-- ═══════════════ CARD: RECOMENDACIONES & QUÉ LLEVAR ═══════════════ -->
-        <div class="kayak-section-card">
-          <div class="card-inner-header">
-            <span class="section-kicker">PREPARACIÓN</span>
-            <h2 class="card-heading">Qué debe llevar el Expedicionario</h2>
-          </div>
-
-          <div class="tips-grid">
-            <div class="tip-card">
-              <span class="tip-num">01</span>
-              <h4>Indumentaria</h4>
-              <p>Ropa deportiva cómoda que se pueda mojar (lycra, traje de baño, remera técnica). Muda seca completa de recambio en mochila.</p>
-            </div>
-            <div class="tip-card">
-              <span class="tip-num">02</span>
-              <h4>Calzado para Agua</h4>
-              <p>Sandalias tipo trekking con ajuste al talón, escarpines o zapatillas livianas aptas para mojarse.</p>
-            </div>
-            <div class="tip-card">
-              <span class="tip-num">03</span>
-              <h4>Protección Solar</h4>
-              <p>Gorra o sombrero con visera, lentes de sol con cordón de sujeción al cuello y protector solar factor 50+.</p>
-            </div>
-            <div class="tip-card">
-              <span class="tip-num">04</span>
-              <h4>Hidratación</h4>
-              <p>Botella reutilizable de agua fresca de al menos 1 litro por persona para mantenerte hidratado durante la remada.</p>
             </div>
           </div>
         </div>
@@ -179,13 +162,14 @@
             <h2 class="card-heading">Punto de Encuentro & Ubicación</h2>
             <p class="card-subheading">
               Dique Las Pirquitas se encuentra a 28 km de San Fernando del Valle de Catamarca por Ruta Provincial 1.
-              El acceso es 100% asfaltado y el Club Náutico cuenta con estacionamiento vigilado para vehículos particulares.
+              El acceso es 100% asfaltado y el Club Náutico cuenta con estacionamiento vigilado para vehículos
+              particulares.
             </p>
           </div>
 
           <div class="location-media-preview">
-            <img src="/assets/images/kayak-club-de-experiencias.jpg"
-              alt="Dique Las Pirquitas - Club Náutico" class="location-preview-img" />
+            <img src="/assets/images/kayak-club-de-experiencias.jpg" alt="Dique Las Pirquitas - Club Náutico"
+              class="location-preview-img" />
             <span class="location-preview-tag">DIQUE LAS PIRQUITAS · CATAMARCA</span>
           </div>
 
@@ -207,22 +191,18 @@
         <div class="kayak-section-card pricing-action-card">
           <div class="pricing-card-flex">
             <div class="price-data">
-              <span class="price-title">ARANCEL POR EXPEDICIONARIO</span>
+              <span class="price-title">ARANCEL POR PERSONA</span>
               <div class="price-figures">
                 <span class="ars-price">$65.000 ARS</span>
                 <span class="usd-price">o $70 USD</span>
               </div>
-              <span class="price-note">Cupos reservados con prioridad para Socios de EXPERIENCIAS.CLUB</span>
+              <span class="price-note">Prioridad para socios de nuestro Club de Experiencias</span>
             </div>
 
             <div class="action-btns-group">
-              <a routerLink="/socios" class="cta-primary-btn">
-                <span>Acceder con Membresía de Socio</span>
-                <mat-icon>arrow_forward</mat-icon>
-              </a>
-              <a routerLink="/experiencias" class="cta-secondary-btn">
-                <span>← Volver al Catálogo de Experiencias</span>
-              </a>
+              <button type="button" class="cta-primary-btn is-blocked" disabled aria-disabled="true">
+                <span>Pagar Experiencia</span>
+              </button>
             </div>
           </div>
         </div>

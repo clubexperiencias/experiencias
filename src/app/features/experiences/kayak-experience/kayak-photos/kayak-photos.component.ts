@@ -39,7 +39,7 @@ export class KayakPhotosComponent {
     {
       src: '/assets/images/kayak-club-de-experiencias.jpg',
       title: 'Travesía en Las Pirquitas',
-      caption: 'Expedicionarios del Club navegando en aguas calmas frente al cordón de las Sierras de Ambato.',
+      caption: 'Socios del Club navegando en aguas calmas frente al cordón de las Sierras de Ambato.',
       tag: 'PORTADA OFICIAL'
     }
   ];
