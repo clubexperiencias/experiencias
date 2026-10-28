@@ -287,6 +287,10 @@ export class ProfileComponent implements OnInit {
   ];
 
   readonly memberFullName = signal(this.newsletter.currentMember()?.fullName || '');
+  readonly memberDni = signal(
+    this.newsletter.currentMember()?.dni || this.newsletter.currentMember()?.documentNumber || '',
+  );
+  readonly memberPhone = signal(this.newsletter.currentMember()?.phone || '');
   readonly memberNationality = signal(this.newsletter.currentMember()?.nationality || '');
   readonly selectedExperiences = signal<string[]>(
     this.newsletter.currentMember()?.experiencesWishlist || [],
@@ -315,12 +319,16 @@ export class ProfileComponent implements OnInit {
   }
 
   saveMemberProfile(): void {
-    if (!this.memberFullName().trim()) {
+    const dni = this.memberDni().replace(/\D/g, '').slice(0, 9);
+    const phone = this.memberPhone().trim().slice(0, 25);
+    if (!this.memberFullName().trim() || !/^\d{7,9}$/.test(dni) || !phone) {
       return;
     }
 
     this.newsletter.updateMemberProfile({
       fullName: this.memberFullName().trim().slice(0, 100),
+      dni,
+      phone,
       nationality: this.memberNationality().trim().slice(0, 80),
       experiencesWishlist: this.selectedExperiences(),
       wishlistNotes: this.memberNotes().trim().slice(0, 1000),

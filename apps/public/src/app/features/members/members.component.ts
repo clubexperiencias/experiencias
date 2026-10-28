@@ -5,16 +5,28 @@ import { MatIconModule } from '@angular/material/icon';
 import { NewsletterService } from '../../core/services/newsletter.service';
 import { FooterComponent } from '../../shared/components/footer/footer.component';
 import { HeaderComponent } from '../../shared/components/header/header.component';
-import { BreadcrumbComponent, BreadcrumbItem } from '../../shared/components/breadcrumb/breadcrumb.component';
+import {
+  BreadcrumbComponent,
+  BreadcrumbItem,
+} from '../../shared/components/breadcrumb/breadcrumb.component';
+import { FounderAdComponent } from '../../shared/components/founder-ad/founder-ad.component';
 
 export type MembersModalType = 'login' | 'payments' | null;
 
 @Component({
   selector: 'app-members',
   standalone: true,
-  imports: [CommonModule, RouterLink, MatIconModule, FooterComponent, HeaderComponent, BreadcrumbComponent],
+  imports: [
+    CommonModule,
+    RouterLink,
+    MatIconModule,
+    FooterComponent,
+    HeaderComponent,
+    BreadcrumbComponent,
+    FounderAdComponent,
+  ],
   templateUrl: './members.component.html',
-  styleUrl: './members.component.css'
+  styleUrl: './members.component.css',
 })
 export class MembersComponent {
   readonly newsletter = inject(NewsletterService);
@@ -24,7 +36,7 @@ export class MembersComponent {
 
   readonly breadcrumbs: BreadcrumbItem[] = [
     { label: 'Inicio', url: '/' },
-    { label: 'Niveles de Socio' }
+    { label: 'Niveles de Socio' },
   ];
 
   // Menús de navegación
@@ -65,18 +77,24 @@ export class MembersComponent {
     const email = this.loginEmail().trim();
     if (!email) return;
 
-    if (this.newsletter.isSubscribed() && this.newsletter.currentMember()?.email.toLowerCase() === email.toLowerCase()) {
+    if (
+      this.newsletter.isSubscribed() &&
+      this.newsletter.currentMember()?.email.toLowerCase() === email.toLowerCase()
+    ) {
       this.closeModal();
       this.router.navigate(['/perfil']);
       return;
     }
 
-    this.newsletter.joinWaitlist({ email }).then(() => {
-      this.closeModal();
-      this.router.navigate(['/perfil']);
-    }).catch(() => {
-      this.loginError.set('Ocurrió un error al ingresar. Intentá nuevamente.');
-    });
+    this.newsletter
+      .joinWaitlist({ email })
+      .then(() => {
+        this.closeModal();
+        this.router.navigate(['/perfil']);
+      })
+      .catch(() => {
+        this.loginError.set('Ocurrió un error al ingresar. Intentá nuevamente.');
+      });
   }
 
   logout(): void {

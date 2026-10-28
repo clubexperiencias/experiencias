@@ -8,13 +8,14 @@ import { Experience } from '../../core/models/experience.model';
 import { FooterComponent } from '../../shared/components/footer/footer.component';
 import { HeaderComponent } from '../../shared/components/header/header.component';
 import { BreadcrumbComponent, BreadcrumbItem } from '../../shared/components/breadcrumb/breadcrumb.component';
+import { FounderAdComponent } from '../../shared/components/founder-ad/founder-ad.component';
 
 export type ExperiencesModalType = 'login' | null;
 
 @Component({
   selector: 'app-experiences',
   standalone: true,
-  imports: [CommonModule, RouterLink, MatIconModule, FooterComponent, HeaderComponent, BreadcrumbComponent],
+  imports: [CommonModule, RouterLink, MatIconModule, FooterComponent, HeaderComponent, BreadcrumbComponent, FounderAdComponent],
   templateUrl: './experiences.component.html',
   styleUrl: './experiences.component.css'
 })

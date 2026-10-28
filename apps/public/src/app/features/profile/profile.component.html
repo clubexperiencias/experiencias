@@ -90,6 +90,46 @@
                 </div>
               </div>
 
+              <div class="profile-inputs-grid">
+                <div class="form-field">
+                  <label for="member-dni" class="field-label">DNI <span class="req">*</span></label>
+                  <input
+                    id="member-dni"
+                    type="text"
+                    inputmode="numeric"
+                    class="field-input"
+                    placeholder="Ej. 30123456"
+                    [value]="memberDni()"
+                    (input)="
+                      memberDni.set(
+                        $any($event.target)
+                          .value.replace(/[^0-9]/g, '')
+                          .slice(0, 9)
+                      )
+                    "
+                    maxlength="9"
+                    pattern="[0-9]{7,9}"
+                    required
+                  />
+                </div>
+
+                <div class="form-field">
+                  <label for="member-phone" class="field-label"
+                    >Celular <span class="req">*</span></label
+                  >
+                  <input
+                    id="member-phone"
+                    type="tel"
+                    class="field-input"
+                    placeholder="Ej. +54 9 383 4123456"
+                    [value]="memberPhone()"
+                    (input)="memberPhone.set($any($event.target).value.slice(0, 25))"
+                    maxlength="25"
+                    required
+                  />
+                </div>
+              </div>
+
               <div class="form-field">
                 <label class="field-label">
                   ¿Qué experiencias tenés más ganas de vivir? <span class="opt">(opcional)</span>
@@ -129,27 +169,10 @@
                 type="button"
                 class="save-profile-btn"
                 (click)="saveMemberProfile()"
-                [disabled]="!memberFullName().trim()"
+                [disabled]="!memberFullName().trim() || !memberDni() || !memberPhone().trim()"
               >
-                <span>Guardar Perfil de Socio Emergente</span>
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2.5"
-                  class="save-icon"
-                >
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
+                <span>Guardar Perfil</span>
               </button>
-
-              @if (!memberFullName().trim()) {
-                <div class="profile-required-name-tag-wrap">
-                  <span class="profile-required-name-tag">
-                    * Ingresá tu Nombre y Apellido para poder guardar tu perfil de socio.
-                  </span>
-                </div>
-              }
             </form>
           } @else {
             <!-- Resumen de Perfil Completado -->

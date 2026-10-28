@@ -1,9 +1,7 @@
-import { Location } from '@angular/common';
 import { Component, input, signal, inject, OnInit } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import {
-  MEMBERSHIP_CARD,
   MenuCardComponent,
   RECOMMENDED_CARD,
 } from './menu-card/menu-card.component';
@@ -38,10 +36,8 @@ let globalSuppressBreadcrumbHover = false;
 })
 export class BreadcrumbComponent implements OnInit {
   readonly recommendedCard = RECOMMENDED_CARD;
-  readonly membershipCard = MEMBERSHIP_CARD;
 
   private readonly router = inject(Router);
-  private readonly location = inject(Location);
 
   readonly items = input<BreadcrumbItem[]>([]);
   readonly activeMobileIndex = signal<number | null>(null);
@@ -169,7 +165,15 @@ export class BreadcrumbComponent implements OnInit {
       event.preventDefault();
       event.stopPropagation();
       this.closeMobileMenu();
-      this.location.back();
+      const previousItem = [...this.items()]
+        .reverse()
+        .find((item) => item.url);
+      const previousUrl = previousItem?.url ?? '/';
+      globalSuppressBreadcrumbHover = true;
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('suppress_breadcrumb_hover', 'true');
+      }
+      void this.router.navigateByUrl(previousUrl);
       return;
     }
 

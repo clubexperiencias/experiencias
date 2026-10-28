@@ -4,7 +4,9 @@
   flex-direction: column;
   position: relative;
   background-color: #ffcc00 !important;
-  background-image: url('/assets/images/relieve.jpeg') !important;
+  background-image:
+    linear-gradient(rgba(255, 204, 0, 0.82), rgba(255, 204, 0, 0.82)),
+    url('/assets/images/relieve.jpeg') !important;
   background-size: cover !important;
   background-position: center top !important;
   background-repeat: no-repeat !important;
@@ -57,7 +59,12 @@
 .hero-gradient-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(11, 17, 32, 0.4) 0%, rgba(11, 17, 32, 0.88) 70%, #253B80 100%);
+  background: linear-gradient(
+    180deg,
+    rgba(11, 17, 32, 0.4) 0%,
+    rgba(11, 17, 32, 0.88) 70%,
+    #253b80 100%
+  );
 }
 
 .hero-content {
@@ -205,7 +212,7 @@
 }
 
 .highlight-item {
-  background: #253B80;
+  background: #253b80;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 0;
   padding: 0.8rem 1rem;
@@ -231,7 +238,7 @@
 }
 
 .provider-box {
-  background: #253B80;
+  background: #253b80;
   border: 1px solid rgba(255, 212, 42, 0.25);
   border-radius: 0;
   padding: 1.4rem;
@@ -305,7 +312,7 @@
 }
 
 .receipt-formal-ticket {
-  background: #253B80;
+  background: #253b80;
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 0;
   padding: 1.8rem;
@@ -471,12 +478,14 @@
 }
 
 .photo-card {
-  background: #253B80;
+  background: #253b80;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 0;
   overflow: hidden;
   cursor: pointer;
-  transition: transform 0.2s ease, border-color 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease;
 }
 
 .photo-card:hover {
@@ -560,7 +569,7 @@
 .empty-photos-box {
   text-align: center;
   padding: 2.5rem 1rem;
-  background: #253B80;
+  background: #253b80;
   border: 1px dashed rgba(255, 255, 255, 0.2);
   border-radius: 0;
   margin-bottom: 2rem;
@@ -579,7 +588,7 @@
 
 /* Upload Widget */
 .upload-widget-box {
-  background: #253B80;
+  background: #253b80;
   border: 1px solid rgba(255, 212, 42, 0.25);
   border-radius: 0;
   padding: 1.5rem;
@@ -630,7 +639,7 @@
 
 .staged-item {
   position: relative;
-  background: #253B80;
+  background: #253b80;
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 0;
   overflow: hidden;
@@ -760,7 +769,7 @@
 
 /* Reviews Section */
 .signature-preview-badge {
-  background: #253B80;
+  background: #253b80;
   border: 1px solid rgba(255, 212, 42, 0.3);
   border-radius: 0;
   padding: 0.5rem 0.9rem;
@@ -782,7 +791,7 @@
 }
 
 .review-form-card {
-  background: #253B80;
+  background: #253b80;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 0;
   padding: 1.6rem;
@@ -822,7 +831,9 @@
   color: #475569;
   cursor: pointer;
   padding: 0;
-  transition: color 0.15s ease, transform 0.15s ease;
+  transition:
+    color 0.15s ease,
+    transform 0.15s ease;
   line-height: 1;
 }
 
@@ -949,7 +960,7 @@
 }
 
 .review-bubble {
-  background: #253B80;
+  background: #253b80;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 0;
   padding: 1.2rem;

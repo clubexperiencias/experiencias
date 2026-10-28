@@ -186,6 +186,8 @@ export class NewsletterService {
 
   updateMemberProfile(data: {
     fullName: string;
+    dni?: string;
+    phone?: string;
     nationality: string;
     experiencesWishlist: string[];
     wishlistNotes?: string;
@@ -199,6 +201,13 @@ export class NewsletterService {
     const updatedMember: WaitlistEntry = {
       ...current,
       fullName: data.fullName.slice(0, 100),
+      ...(data.dni
+        ? {
+            dni: data.dni.replace(/\D/g, '').slice(0, 9),
+            documentNumber: data.dni.replace(/\D/g, '').slice(0, 9),
+          }
+        : {}),
+      ...(data.phone ? { phone: data.phone.trim().slice(0, 25) } : {}),
       nationality: data.nationality.slice(0, 80),
       experiencesWishlist: data.experiencesWishlist,
       wishlistNotes: data.wishlistNotes?.slice(0, 1000),
