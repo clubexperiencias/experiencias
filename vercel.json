@@ -1,0 +1,6 @@
+{
+  "version": 2,
+  "buildCommand": "pnpm build",
+  "outputDirectory": "apps/public/dist/experiencias/browser",
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+}
