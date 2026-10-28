@@ -6,7 +6,10 @@ import { MatIconModule } from '@angular/material/icon';
 import { NewsletterService } from '../../core/services/newsletter.service';
 import { FooterComponent } from '../../shared/components/footer/footer.component';
 import { HeaderComponent } from '../../shared/components/header/header.component';
-import { BreadcrumbComponent, BreadcrumbItem } from '../../shared/components/breadcrumb/breadcrumb.component';
+import {
+  BreadcrumbComponent,
+  BreadcrumbItem,
+} from '../../shared/components/breadcrumb/breadcrumb.component';
 
 export type PaymentMethodChoice = 'card' | 'mercadopago' | 'transfer';
 export type ManageModalType = 'change_payment' | 'pause_confirm' | 'cancel_confirm' | null;
@@ -14,9 +17,17 @@ export type ManageModalType = 'change_payment' | 'pause_confirm' | 'cancel_confi
 @Component({
   selector: 'app-subscription',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule, MatIconModule, FooterComponent, HeaderComponent, BreadcrumbComponent],
+  imports: [
+    CommonModule,
+    RouterLink,
+    FormsModule,
+    MatIconModule,
+    FooterComponent,
+    HeaderComponent,
+    BreadcrumbComponent,
+  ],
   templateUrl: './subscription.component.html',
-  styleUrl: './subscription.component.css'
+  styleUrl: './subscription.component.css',
 })
 export class SubscriptionComponent implements OnInit {
   readonly newsletter = inject(NewsletterService);
@@ -27,7 +38,7 @@ export class SubscriptionComponent implements OnInit {
   readonly breadcrumbs: BreadcrumbItem[] = [
     { label: 'Inicio', url: '/' },
     { label: 'Niveles de Socio', url: '/socios' },
-    { label: 'Socio Activo' }
+    { label: 'Socios Plenos' },
   ];
 
   // Menús de navegación
@@ -103,7 +114,8 @@ export class SubscriptionComponent implements OnInit {
     this.isProcessing.set(true);
     this.errorMessage.set(null);
 
-    let paymentMethodLabel = 'Tarjeta de Crédito / Débito (•••• ' + (this.cardNumber().slice(-4) || '4821') + ')';
+    let paymentMethodLabel =
+      'Tarjeta de Crédito / Débito (•••• ' + (this.cardNumber().slice(-4) || '4821') + ')';
     if (this.selectedPaymentMethod() === 'mercadopago') {
       paymentMethodLabel = 'Mercado Pago (Débito en Cuenta)';
     } else if (this.selectedPaymentMethod() === 'transfer') {
@@ -114,7 +126,7 @@ export class SubscriptionComponent implements OnInit {
       const res = await this.newsletter.activateMonthlySubscription({
         email,
         fullName: this.subscriberName().trim(),
-        paymentMethod: paymentMethodLabel
+        paymentMethod: paymentMethodLabel,
       });
 
       this.isProcessing.set(false);

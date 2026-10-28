@@ -6,7 +6,10 @@ import { MatIconModule } from '@angular/material/icon';
 import { NewsletterService } from '../../../core/services/newsletter.service';
 import { FooterComponent } from '../../../shared/components/footer/footer.component';
 import { HeaderComponent } from '../../../shared/components/header/header.component';
-import { BreadcrumbComponent, BreadcrumbItem } from '../../../shared/components/breadcrumb/breadcrumb.component';
+import {
+  BreadcrumbComponent,
+  BreadcrumbItem,
+} from '../../../shared/components/breadcrumb/breadcrumb.component';
 
 export interface GlobalReview {
   id: string;
@@ -35,9 +38,17 @@ export type GlobalReviewFilter = 'all' | 'kayak' | 'pomez' | 'seismiles' | 'with
 @Component({
   selector: 'app-experiences-ratings',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule, MatIconModule, FooterComponent, HeaderComponent, BreadcrumbComponent],
+  imports: [
+    CommonModule,
+    RouterLink,
+    FormsModule,
+    MatIconModule,
+    FooterComponent,
+    HeaderComponent,
+    BreadcrumbComponent,
+  ],
   templateUrl: './experiences-ratings.component.html',
-  styleUrl: './experiences-ratings.component.css'
+  styleUrl: './experiences-ratings.component.css',
 })
 export class ExperiencesRatingsComponent {
   readonly newsletter = inject(NewsletterService);
@@ -46,7 +57,7 @@ export class ExperiencesRatingsComponent {
   readonly breadcrumbs: BreadcrumbItem[] = [
     { label: 'Inicio', url: '/' },
     { label: 'Experiencias', url: '/experiencias' },
-    { label: 'Calificaciones Verificadas' }
+    { label: 'Calificaciones Verificadas' },
   ];
 
   readonly mobileMenuOpen = signal(false);
@@ -61,7 +72,9 @@ export class ExperiencesRatingsComponent {
   newComment = signal('');
   newUserName = signal('');
 
-  readonly memberProfileName = computed(() => this.newsletter.currentMember()?.fullName?.trim() || '');
+  readonly memberProfileName = computed(
+    () => this.newsletter.currentMember()?.fullName?.trim() || '',
+  );
   readonly hasProfileName = computed(() => !!this.memberProfileName());
 
   readonly reviewsList = signal<GlobalReview[]>([
@@ -78,19 +91,21 @@ export class ExperiencesRatingsComponent {
       rating: 5,
       date: '14 de Octubre, 2026',
       title: 'Una experiencia transformadora en aguas calmas',
-      comment: 'El espejo de agua de Las Pirquitas con el atardecer cayendo sobre el cordón de Ambato es impresionante. Los kayaks son de travesía profesional, livianos y estables. Lucas, el guía, nos explicó la hidrografía de la cuenca y la picada regional con quesos de cabra fue el broche de oro.',
+      comment:
+        'El espejo de agua de Las Pirquitas con el atardecer cayendo sobre el cordón de Ambato es impresionante. Los kayaks son de travesía profesional, livianos y estables. Lucas, el guía, nos explicó la hidrografía de la cuenca y la picada regional con quesos de cabra fue el broche de oro.',
       providerReply: {
         responderName: 'Lucas Nieto',
         badge: 'Guía Náutico Homologado',
         date: '15 de Octubre, 2026',
-        message: '¡Gracias Martín! Un orgullo remar juntos. Cuidamos cada detalle para que la navegación y el atardecer sean inolvidables.'
-      }
+        message:
+          '¡Gracias Martín! Un orgullo remar juntos. Cuidamos cada detalle para que la navegación y el atardecer sean inolvidables.',
+      },
     },
     {
       id: 'rev_pomez_1',
       userName: 'Florencia & Diego V.',
       userLocation: 'Rosario, Santa Fe',
-      userTier: 'Socio Activo Mensual',
+      userTier: 'Socio Pleno Mensual',
       verifiedBooking: true,
       experienceName: 'Campo de Piedra Pómez & Duna Gigante',
       experienceSlug: 'pomez',
@@ -99,13 +114,15 @@ export class ExperiencesRatingsComponent {
       rating: 5,
       date: '1 de Octubre, 2026',
       title: 'Paisaje de otro planeta, logística impecable',
-      comment: 'Caminar entre las olas blancas de piedra pómez a más de 3.000 metros fue surrealista. La camioneta 4x4 súper confortable y el conocimiento geológico de Sergio nos abrió los ojos a un paisaje único en el planeta. La noche estrellada en la Puna no se compara con nada.',
+      comment:
+        'Caminar entre las olas blancas de piedra pómez a más de 3.000 metros fue surrealista. La camioneta 4x4 súper confortable y el conocimiento geológico de Sergio nos abrió los ojos a un paisaje único en el planeta. La noche estrellada en la Puna no se compara con nada.',
       providerReply: {
         responderName: 'Sergio Albarracín',
         badge: 'Guía de Alta Montaña WFR',
         date: '2 de Octubre, 2026',
-        message: '¡Abrazo grande Flor y Diego! El Campo de Piedra Pómez requiere respeto y amor por la montaña andina. Los esperamos para el cruce de Seismiles.'
-      }
+        message:
+          '¡Abrazo grande Flor y Diego! El Campo de Piedra Pómez requiere respeto y amor por la montaña andina. Los esperamos para el cruce de Seismiles.',
+      },
     },
     {
       id: 'rev_seismiles_1',
@@ -120,19 +137,21 @@ export class ExperiencesRatingsComponent {
       rating: 5,
       date: '22 de Septiembre, 2026',
       title: 'La inmensidad de los Andes en su máxima expresión',
-      comment: 'Subir por la RN 60 hacia el Paso de San Francisco y ver los gigantes de 6.000 metros reflejados en las lagunas de altura te cambia la perspectiva. La seguridad médica, los oxímetros y la hidratación coordinada por el club fueron intachables.',
+      comment:
+        'Subir por la RN 60 hacia el Paso de San Francisco y ver los gigantes de 6.000 metros reflejados en las lagunas de altura te cambia la perspectiva. La seguridad médica, los oxímetros y la hidratación coordinada por el club fueron intachables.',
       providerReply: {
         responderName: 'Equipo de Operaciones Club',
         badge: 'Staff Oficial EXPERIENCIAS.CLUB',
         date: '23 de Septiembre, 2026',
-        message: 'Estimado Gustavo, la seguridad en altura es nuestra prioridad número uno. Nos alegra profundamente que hayas disfrutado de los Seismiles.'
-      }
+        message:
+          'Estimado Gustavo, la seguridad en altura es nuestra prioridad número uno. Nos alegra profundamente que hayas disfrutado de los Seismiles.',
+      },
     },
     {
       id: 'rev_kayak_2',
       userName: 'Camila Rossi',
       userLocation: 'Buenos Aires',
-      userTier: 'Socio Activo Mensual',
+      userTier: 'Socio Pleno Mensual',
       verifiedBooking: true,
       experienceName: 'Travesía en Kayak & Sunset en Las Pirquitas',
       experienceSlug: 'kayak',
@@ -141,13 +160,15 @@ export class ExperiencesRatingsComponent {
       rating: 5,
       date: '6 de Octubre, 2026',
       title: 'Paz absoluta y trato ultra personalizado',
-      comment: 'Fui sola con dudas de si me costaría remar, pero los chalecos y la instrucción previa de 20 minutos te dan total confianza. El silencio cuando el sol toca la montaña es mágico.',
+      comment:
+        'Fui sola con dudas de si me costaría remar, pero los chalecos y la instrucción previa de 20 minutos te dan total confianza. El silencio cuando el sol toca la montaña es mágico.',
       providerReply: {
         responderName: 'Lucas Nieto',
         badge: 'Guía Náutico Homologado',
         date: '7 de Octubre, 2026',
-        message: '¡Genia Camila! El kayak de travesía es accesible para todos cuando se navega con paciencia y en equipo.'
-      }
+        message:
+          '¡Genia Camila! El kayak de travesía es accesible para todos cuando se navega con paciencia y en equipo.',
+      },
     },
     {
       id: 'rev_pomez_2',
@@ -162,8 +183,9 @@ export class ExperiencesRatingsComponent {
       rating: 5,
       date: '12 de Septiembre, 2026',
       title: 'La mejor experiencia de aventura del norte argentino',
-      comment: 'Manejo en arena volcánica impecable y la subida a la Duna Gigante te deja sin aliento. Un 10 rotundo en servicio y hospitalidad local.'
-    }
+      comment:
+        'Manejo en arena volcánica impecable y la subida a la Duna Gigante te deja sin aliento. Un 10 rotundo en servicio y hospitalidad local.',
+    },
   ]);
 
   filteredReviews(): GlobalReview[] {
@@ -210,10 +232,10 @@ export class ExperiencesRatingsComponent {
 
     const current = this.newsletter.currentMember();
     const userTier = this.newsletter.isMonthlyActive()
-      ? 'Socio Activo Mensual'
+      ? 'Socio Pleno Mensual'
       : current
-      ? 'Socio Emergente'
-      : 'Socio Verificado';
+        ? 'Socio Emergente'
+        : 'Socio Verificado';
 
     const newRev: GlobalReview = {
       id: 'rev_' + Date.now(),
@@ -233,8 +255,9 @@ export class ExperiencesRatingsComponent {
         responderName: 'Equipo de Calidad EXPERIENCIAS.CLUB',
         badge: 'Staff Oficial Homologado',
         date: 'Inmediata',
-        message: '¡Muchas gracias por compartir tu experiencia con toda la comunidad del club! Valoramos enormemente tus palabras.'
-      }
+        message:
+          '¡Muchas gracias por compartir tu experiencia con toda la comunidad del club! Valoramos enormemente tus palabras.',
+      },
     };
 
     this.reviewsList.update((arr) => [newRev, ...arr]);

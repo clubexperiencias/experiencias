@@ -10,7 +10,7 @@ describe('FoundersComponent (/fundadores)', () => {
     localStorage.clear();
     await TestBed.configureTestingModule({
       imports: [FoundersComponent],
-      providers: [provideRouter([])]
+      providers: [provideRouter([])],
     }).compileComponents();
 
     fixture = TestBed.createComponent(FoundersComponent);
@@ -46,7 +46,7 @@ describe('FoundersComponent (/fundadores)', () => {
     expect(successCard.textContent).toContain('¡Carta de Admisión en Evaluación!');
   });
 
-  it('should render breadcrumb with links to / and /socios and active Socio Fundador', () => {
+  it('should render breadcrumb with links to / and /socios and active Socios Fundadores', () => {
     const breadcrumb = fixture.nativeElement.querySelector('.breadcrumb-bar');
     expect(breadcrumb).toBeTruthy();
 
@@ -57,7 +57,7 @@ describe('FoundersComponent (/fundadores)', () => {
 
     const current = breadcrumb.querySelector('.bc-current');
     expect(current).toBeTruthy();
-    expect(current.textContent).toContain('Socio Fundador');
+    expect(current.textContent).toContain('Socios Fundadores');
   });
 
   it('should display the founder hero media image', () => {

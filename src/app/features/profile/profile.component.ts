@@ -13,14 +13,24 @@ import { ModalType } from '../waitlist/waitlist.component';
 import { ReferralService } from '../../core/services/referral.service';
 import { FooterComponent } from '../../shared/components/footer/footer.component';
 import { HeaderComponent } from '../../shared/components/header/header.component';
-import { BreadcrumbComponent, BreadcrumbItem } from '../../shared/components/breadcrumb/breadcrumb.component';
+import {
+  BreadcrumbComponent,
+  BreadcrumbItem,
+} from '../../shared/components/breadcrumb/breadcrumb.component';
 
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule, RouterLink, MatIconModule, FooterComponent, HeaderComponent, BreadcrumbComponent],
+  imports: [
+    CommonModule,
+    RouterLink,
+    MatIconModule,
+    FooterComponent,
+    HeaderComponent,
+    BreadcrumbComponent,
+  ],
   templateUrl: './profile.component.html',
-  styleUrl: './profile.component.css'
+  styleUrl: './profile.component.css',
 })
 export class ProfileComponent implements OnInit {
   readonly newsletter = inject(NewsletterService);
@@ -30,10 +40,7 @@ export class ProfileComponent implements OnInit {
   readonly referralService = inject(ReferralService);
   readonly router = inject(Router);
 
-  readonly breadcrumbs: BreadcrumbItem[] = [
-    { label: 'Inicio', url: '/' },
-    { label: 'Mi Perfil' }
-  ];
+  readonly breadcrumbs: BreadcrumbItem[] = [{ label: 'Inicio', url: '/' }, { label: 'Mi Perfil' }];
 
   readonly bg = signal('/assets/images/laguna_blanca.jpg');
   readonly copyStatus = signal<string | null>(null);
@@ -97,16 +104,22 @@ export class ProfileComponent implements OnInit {
     const email = this.loginEmail().trim().toLowerCase();
     if (!email) return;
 
-    if (this.newsletter.isSubscribed() && this.newsletter.currentMember()?.email?.toLowerCase() === email) {
+    if (
+      this.newsletter.isSubscribed() &&
+      this.newsletter.currentMember()?.email?.toLowerCase() === email
+    ) {
       this.closeModal();
       return;
     }
 
-    this.newsletter.joinWaitlist({ email }).then(() => {
-      this.closeModal();
-    }).catch(() => {
-      this.loginError.set('Ocurrió un error al ingresar. Intentá nuevamente.');
-    });
+    this.newsletter
+      .joinWaitlist({ email })
+      .then(() => {
+        this.closeModal();
+      })
+      .catch(() => {
+        this.loginError.set('Ocurrió un error al ingresar. Intentá nuevamente.');
+      });
   }
 
   closeMobileMenu(): void {
@@ -181,16 +194,20 @@ export class ProfileComponent implements OnInit {
       id: 'act_' + Date.now(),
       userId: this.newsletter.currentMember()?.id || 'user_current',
       experienceId: 'membership_monthly',
-      title: 'Membresía Mensual · Socio Activo (Temporada Inaugural)',
+      title: 'Membresía Mensual · Socio Pleno (Temporada Inaugural)',
       region: 'Catamarca · Club de Experiencias',
       altitude: 'Sede Central',
-      dateLabel: new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date()),
+      dateLabel: new Intl.DateTimeFormat('es-AR', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      }).format(new Date()),
       status: 'completada',
       coverImage: '/assets/images/laguna_blanca.jpg',
       provider: {
         name: 'EXPERIENCIAS.CLUB Oficial',
         category: 'Membresía & Cuota Social',
-        contactPhone: '+54 9 3834 89-2104'
+        contactPhone: '+54 9 3834 89-2104',
       },
       receipt: {
         receiptNumber,
@@ -202,12 +219,12 @@ export class ProfileComponent implements OnInit {
         paidAt: new Date().toLocaleString('es-AR'),
         paymentMethodSummary: `Cuota Mensual · ${this.paymentManager.activeGateway().displayName}`,
         payerEmail: this.newsletter.currentMember()?.email || 'socio@experiencias.club',
-        payerName: this.newsletter.currentMember()?.fullName || 'Socio Activo Catamarca',
+        payerName: this.newsletter.currentMember()?.fullName || 'Socio Pleno Catamarca',
         authCode: 'AUTH-' + Math.random().toString(36).substring(2, 8).toUpperCase(),
-        status: 'aprobado'
+        status: 'aprobado',
       },
       memoriesCount: 0,
-      memoryPhotos: []
+      memoryPhotos: [],
     });
 
     this.subscribingMembership.set(false);
@@ -260,13 +277,17 @@ export class ProfileComponent implements OnInit {
     { id: 'kayak', icon: '🚣', title: 'Kayak & Aguas Calmas en Diques Andinos' },
     { id: 'pissis', icon: '🏔️', title: 'Trekking Balcón del Pissis & Lagunas' },
     { id: 'astroturismo', icon: '🌌', title: 'Astrofotografía & Cielos de la Puna' },
-    { id: 'termas', icon: '🌿', title: 'Termas de Fiambalá & Valles Secretos' }
+    { id: 'termas', icon: '🌿', title: 'Termas de Fiambalá & Valles Secretos' },
   ];
 
   readonly memberFullName = signal(this.newsletter.currentMember()?.fullName || '');
   readonly memberNationality = signal(this.newsletter.currentMember()?.nationality || '');
-  readonly selectedExperiences = signal<string[]>(this.newsletter.currentMember()?.experiencesWishlist || []);
-  readonly memberNotes = signal(this.newsletter.currentMember()?.wishlistNotes || this.newsletter.currentMember()?.bio || '');
+  readonly selectedExperiences = signal<string[]>(
+    this.newsletter.currentMember()?.experiencesWishlist || [],
+  );
+  readonly memberNotes = signal(
+    this.newsletter.currentMember()?.wishlistNotes || this.newsletter.currentMember()?.bio || '',
+  );
   readonly profileSaved = signal(this.newsletter.currentMember()?.profileCompleted || false);
 
   toggleExperienceWishlist(id: string): void {
@@ -297,7 +318,7 @@ export class ProfileComponent implements OnInit {
       nationality: this.memberNationality().trim(),
       experiencesWishlist: this.selectedExperiences(),
       wishlistNotes: this.memberNotes().trim(),
-      bio: this.memberNotes().trim()
+      bio: this.memberNotes().trim(),
     });
 
     this.profileSaved.set(true);
@@ -311,26 +332,31 @@ export class ProfileComponent implements OnInit {
     const member = this.newsletter.currentMember();
     if (!member) return;
     const url = `${location.origin}?ref=${member.referralCode}`;
-    navigator.clipboard?.writeText(url).then(() => {
-      this.copyStatus.set('¡Enlace de invitación copiado!');
-      setTimeout(() => this.copyStatus.set(null), 2500);
-    }).catch(() => {
-      this.copyStatus.set(url);
-      setTimeout(() => this.copyStatus.set(null), 3000);
-    });
+    navigator.clipboard
+      ?.writeText(url)
+      .then(() => {
+        this.copyStatus.set('¡Enlace de invitación copiado!');
+        setTimeout(() => this.copyStatus.set(null), 2500);
+      })
+      .catch(() => {
+        this.copyStatus.set(url);
+        setTimeout(() => this.copyStatus.set(null), 3000);
+      });
   }
 
   shareWhatsApp(): void {
     const member = this.newsletter.currentMember();
     const text = encodeURIComponent(
-      `Me sumé como Socio Emergente a EXPERIENCIAS.CLUB (Edición Catamarca), el club privado de expediciones andinas y náuticas. ¡Unite a la lista de espera antes del lanzamiento! ${location.origin}?ref=${member?.referralCode ?? ''}`
+      `Me sumé como Socio Emergente a EXPERIENCIAS.CLUB (Edición Catamarca), el club privado de expediciones andinas y náuticas. ¡Unite a la lista de espera antes del lanzamiento! ${location.origin}?ref=${member?.referralCode ?? ''}`,
     );
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
   }
 
   shareX(): void {
     const member = this.newsletter.currentMember();
-    const text = encodeURIComponent('Acabo de registrarme como Socio Emergente en EXPERIENCIAS.CLUB (Edición Catamarca) — expediciones andinas y travesías náuticas.');
+    const text = encodeURIComponent(
+      'Acabo de registrarme como Socio Emergente en EXPERIENCIAS.CLUB (Edición Catamarca) — expediciones andinas y travesías náuticas.',
+    );
     const url = encodeURIComponent(`${location.origin}?ref=${member?.referralCode ?? ''}`);
     window.open(`https://x.com/intent/tweet?text=${text}&url=${url}`, '_blank');
   }
@@ -354,13 +380,16 @@ export class ProfileComponent implements OnInit {
   }
 
   copyCoupon(code: string): void {
-    navigator.clipboard?.writeText(code).then(() => {
-      this.copyStatus.set(`¡Cupón ${code} (10% OFF) copiado!`);
-      setTimeout(() => this.copyStatus.set(null), 3000);
-    }).catch(() => {
-      this.copyStatus.set(code);
-      setTimeout(() => this.copyStatus.set(null), 3000);
-    });
+    navigator.clipboard
+      ?.writeText(code)
+      .then(() => {
+        this.copyStatus.set(`¡Cupón ${code} (10% OFF) copiado!`);
+        setTimeout(() => this.copyStatus.set(null), 3000);
+      })
+      .catch(() => {
+        this.copyStatus.set(code);
+        setTimeout(() => this.copyStatus.set(null), 3000);
+      });
   }
 
   printReceipt(): void {

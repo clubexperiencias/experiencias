@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { SubscriptionComponent } from './subscription.component';
 
-describe('SubscriptionComponent (/socios/activos)', () => {
+describe('SubscriptionComponent (/socios/plenos)', () => {
   let component: SubscriptionComponent;
   let fixture: ComponentFixture<SubscriptionComponent>;
 
@@ -10,7 +10,7 @@ describe('SubscriptionComponent (/socios/activos)', () => {
     localStorage.clear();
     await TestBed.configureTestingModule({
       imports: [SubscriptionComponent],
-      providers: [provideRouter([])]
+      providers: [provideRouter([])],
     }).compileComponents();
 
     fixture = TestBed.createComponent(SubscriptionComponent);
@@ -18,7 +18,7 @@ describe('SubscriptionComponent (/socios/activos)', () => {
     fixture.detectChanges();
   });
 
-  it('should render breadcrumb with links to / and /socios and active Socio Activo', () => {
+  it('should render breadcrumb with links to / and /socios and active Socios Plenos', () => {
     const breadcrumb = fixture.nativeElement.querySelector('.breadcrumb-bar');
     expect(breadcrumb).toBeTruthy();
 
@@ -29,7 +29,7 @@ describe('SubscriptionComponent (/socios/activos)', () => {
 
     const current = breadcrumb.querySelector('.bc-current');
     expect(current).toBeTruthy();
-    expect(current.textContent).toContain('Socio Activo');
+    expect(current.textContent).toContain('Socios Plenos');
   });
 
   it('should create the component and display activation title when not active', () => {
@@ -62,7 +62,7 @@ describe('SubscriptionComponent (/socios/activos)', () => {
   it('should allow pausing and cancelling active subscription', async () => {
     await component.newsletter.activateMonthlySubscription({
       email: 'socio.activo@test.com',
-      fullName: 'Lucas Puna'
+      fullName: 'Lucas Puna',
     });
     fixture.detectChanges();
 

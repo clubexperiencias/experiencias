@@ -10,7 +10,7 @@ describe('EmergingMemberComponent (/socios/emergentes)', () => {
     localStorage.clear();
     await TestBed.configureTestingModule({
       imports: [EmergingMemberComponent],
-      providers: [provideRouter([])]
+      providers: [provideRouter([])],
     }).compileComponents();
 
     fixture = TestBed.createComponent(EmergingMemberComponent);
@@ -28,24 +28,28 @@ describe('EmergingMemberComponent (/socios/emergentes)', () => {
     expect(benefitCards.length).toBe(4);
   });
 
-  it('should render breadcrumb with links to / and /socios and active Socio Emergente', () => {
+  it('should render breadcrumb with links to / and /socios and active Socios Emergentes', () => {
     const breadcrumb = fixture.nativeElement.querySelector('.breadcrumb-bar');
     expect(breadcrumb).toBeTruthy();
 
     const links = breadcrumb.querySelectorAll('.bc-link');
-    const hrefs = Array.from(links).map((l: any) => l.getAttribute('routerlink') || l.getAttribute('href'));
+    const hrefs = Array.from(links).map(
+      (l: any) => l.getAttribute('routerlink') || l.getAttribute('href'),
+    );
     expect(hrefs).toContain('/');
     expect(hrefs).toContain('/socios');
 
     const current = breadcrumb.querySelector('.bc-current');
     expect(current).toBeTruthy();
-    expect(current.textContent).toContain('Socio Emergente');
+    expect(current.textContent).toContain('Socios Emergentes');
   });
 
   it('should display ad banner linking to /socios/fundadores', () => {
     const adLink = fixture.nativeElement.querySelector('.ad-banner-link');
     expect(adLink).toBeTruthy();
-    expect(adLink.getAttribute('routerlink') || adLink.getAttribute('href')).toBe('/socios/fundadores');
+    expect(adLink.getAttribute('routerlink') || adLink.getAttribute('href')).toBe(
+      '/socios/fundadores',
+    );
     const adImg = adLink.querySelector('img');
     expect(adImg).toBeTruthy();
     expect(adImg.getAttribute('src')).toContain('ad.png');

@@ -59,11 +59,48 @@ describe('KayakRatingsComponent (/experiencias/kayak/calificaciones)', () => {
     expect(withReplyReviews.every((r) => !!r.providerReply)).toBe(true);
   });
 
-  it('should allow user to submit a review and receive immediate provider feedback', () => {
+  it('should display profile invitation button opening /perfil in another tab and keep fields locked when profile is incomplete', () => {
+    // Member has no profile data initially
+    expect(component.hasProfileCompleted()).toBe(false);
+
+    const notice = fixture.nativeElement.querySelector('.profile-incomplete-notice');
+    expect(notice).toBeTruthy();
+    expect(notice.textContent).toContain('Completá tu perfil para publicar una reseña');
+
+    const profileLink = fixture.nativeElement.querySelector('.complete-profile-btn');
+    expect(profileLink).toBeTruthy();
+    expect(profileLink.getAttribute('href')).toBe('/perfil');
+    expect(profileLink.getAttribute('target')).toBe('_blank');
+
+    const nameInput = fixture.nativeElement.querySelector('#rev-inline-name');
+    const locInput = fixture.nativeElement.querySelector('#rev-inline-loc');
+    expect(nameInput.hasAttribute('disabled')).toBe(true);
+    expect(nameInput.hasAttribute('readonly')).toBe(true);
+    expect(locInput.hasAttribute('disabled')).toBe(true);
+    expect(locInput.hasAttribute('readonly')).toBe(true);
+
+    const submitBtn = fixture.nativeElement.querySelector('.submit-review-btn');
+    expect(submitBtn.disabled).toBe(true);
+  });
+
+  it('should allow user to submit a review with profile data once profile is completed and receive immediate provider feedback', async () => {
+    await component.newsletter.joinWaitlist({
+      email: 'juan@ejemplo.com',
+      fullName: 'Juan Pérez',
+      nationality: 'Córdoba, Argentina'
+    });
+    fixture.detectChanges();
+
+    expect(component.hasProfileCompleted()).toBe(true);
+    expect(component.memberProfileName()).toBe('Juan Pérez');
+    expect(component.memberProfileLocation()).toBe('Córdoba, Argentina');
+
+    const notice = fixture.nativeElement.querySelector('.profile-incomplete-notice');
+    expect(notice).toBeFalsy();
+
     const initialCount = component.reviewsList().length;
     component.newTitle.set('Travesía maravillosa en Catamarca');
     component.newComment.set('Excelente atención y kayak de primera calidad en Las Pirquitas.');
-    component.newUserName.set('Juan Pérez');
     component.submitReview();
     fixture.detectChanges();
 
@@ -72,6 +109,8 @@ describe('KayakRatingsComponent (/experiencias/kayak/calificaciones)', () => {
 
     const latestReview = component.reviewsList()[0];
     expect(latestReview.title).toBe('Travesía maravillosa en Catamarca');
+    expect(latestReview.userName).toBe('Juan Pérez');
+    expect(latestReview.userLocation).toBe('Córdoba, Argentina');
     expect(latestReview.providerReply).toBeDefined();
     expect(latestReview.providerReply?.responderName).toContain('Lucas Nieto');
   });

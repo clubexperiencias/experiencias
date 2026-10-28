@@ -6,14 +6,25 @@ import { MatIconModule } from '@angular/material/icon';
 import { NewsletterService } from '../../core/services/newsletter.service';
 import { FooterComponent } from '../../shared/components/footer/footer.component';
 import { HeaderComponent } from '../../shared/components/header/header.component';
-import { BreadcrumbComponent, BreadcrumbItem } from '../../shared/components/breadcrumb/breadcrumb.component';
+import {
+  BreadcrumbComponent,
+  BreadcrumbItem,
+} from '../../shared/components/breadcrumb/breadcrumb.component';
 
 @Component({
   selector: 'app-founders',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule, MatIconModule, FooterComponent, HeaderComponent, BreadcrumbComponent],
+  imports: [
+    CommonModule,
+    RouterLink,
+    FormsModule,
+    MatIconModule,
+    FooterComponent,
+    HeaderComponent,
+    BreadcrumbComponent,
+  ],
   templateUrl: './founders.component.html',
-  styleUrl: './founders.component.css'
+  styleUrl: './founders.component.css',
 })
 export class FoundersComponent implements OnInit {
   readonly newsletter = inject(NewsletterService);
@@ -24,7 +35,7 @@ export class FoundersComponent implements OnInit {
   readonly breadcrumbs: BreadcrumbItem[] = [
     { label: 'Inicio', url: '/' },
     { label: 'Niveles de Socio', url: '/socios' },
-    { label: 'Socio Fundador' }
+    { label: 'Socios Fundadores' },
   ];
 
   // Menús de navegación

@@ -39,7 +39,7 @@ let globalSuppressBreadcrumbHover = false;
   standalone: true,
   imports: [RouterLink, MatIconModule],
   templateUrl: './breadcrumb.component.html',
-  styleUrl: './breadcrumb.component.css'
+  styleUrl: './breadcrumb.component.css',
 })
 export class BreadcrumbComponent implements OnInit {
   private readonly router = inject(Router);
@@ -89,7 +89,10 @@ export class BreadcrumbComponent implements OnInit {
       this.initialMousePos = { x: event.clientX, y: event.clientY };
       return;
     }
-    const dist = Math.hypot(event.clientX - this.initialMousePos.x, event.clientY - this.initialMousePos.y);
+    const dist = Math.hypot(
+      event.clientX - this.initialMousePos.x,
+      event.clientY - this.initialMousePos.y,
+    );
     // Si el usuario mueve deliberadamente el cursor más de 20 píxeles, rehabilitamos el hover
     if (dist > 20) {
       this.clearHoverSuppression();
@@ -100,13 +103,23 @@ export class BreadcrumbComponent implements OnInit {
     return true;
   }
 
-  onItemClick(idx: number, item: BreadcrumbItem, first: boolean, last: boolean, event: MouseEvent): void {
+  onItemClick(
+    idx: number,
+    item: BreadcrumbItem,
+    first: boolean,
+    last: boolean,
+    event: MouseEvent,
+  ): void {
     const currentPath = (this.router.url || '').split('?')[0].split('#')[0];
     const itemPath = item.url ? item.url.split('?')[0].split('#')[0] : null;
     const isCurrentPage = last || (itemPath !== null && itemPath === currentPath);
 
     // En mobile, si tiene menú y el menú NO está abierto todavía, lo mostramos durante 3 segundos:
-    if (this.isMobileOrTouch() && this.canShowNextSteps(item, first, last) && this.activeMobileIndex() !== idx) {
+    if (
+      this.isMobileOrTouch() &&
+      this.canShowNextSteps(item, first, last) &&
+      this.activeMobileIndex() !== idx
+    ) {
       event.preventDefault();
       event.stopPropagation();
       this.openMenuForDuration(idx, 3000);
@@ -172,7 +185,7 @@ export class BreadcrumbComponent implements OnInit {
 
   isMobileOrTouch(): boolean {
     if (typeof window === 'undefined') return false;
-    return window.innerWidth <= 900 || ('ontouchstart' in window);
+    return window.innerWidth <= 900 || 'ontouchstart' in window;
   }
 
   getNextStepsData(item: BreadcrumbItem): BreadcrumbNextStepsData {
@@ -191,14 +204,14 @@ export class BreadcrumbComponent implements OnInit {
           { label: 'Catálogo de Expediciones', url: '/experiencias' },
           { label: 'Membresías & Niveles de Socio', url: '/socios' },
           { label: 'Mi Perfil de Socio', url: '/perfil' },
-          { label: 'Volver al Inicio', url: '/' }
+          { label: 'Volver al Inicio', url: '/' },
         ],
         featured: {
           title: 'Travesía en Kayak & Sunset en Las Pirquitas',
           subtitle: 'Dique Las Pirquitas · 850 msnm · Calificación 4.95 ★',
           url: '/experiencias/kayak',
           imageUrl: '/assets/images/kayak-club-de-experiencias.jpg',
-          badge: 'DESTACADA'
+          badge: 'DESTACADA',
         },
         secondaryCard: {
           kicker: 'Membresía—',
@@ -206,8 +219,8 @@ export class BreadcrumbComponent implements OnInit {
           subtitle: 'Membresía vitalicia con cupos y accesos exclusivos',
           url: '/socios/fundadores',
           imageUrl: '/assets/images/sumate.png',
-          badge: 'FUNDADOR 2026'
-        }
+          badge: 'FUNDADOR 2026',
+        },
       };
     }
 
@@ -219,14 +232,14 @@ export class BreadcrumbComponent implements OnInit {
           { label: 'Kayak & Sunset Las Pirquitas', url: '/experiencias/kayak' },
           { label: 'Fotos de Travesías', url: '/experiencias/fotos' },
           { label: 'Calificaciones Verificadas', url: '/experiencias/calificaciones' },
-          { label: 'Volver al Inicio', url: '/' }
+          { label: 'Volver al Inicio', url: '/' },
         ],
         featured: {
           title: 'Kayak & Sunset en Las Pirquitas',
           subtitle: 'Navegación silenciosa, cata y baqueano homologado',
           url: '/experiencias/kayak',
           imageUrl: '/assets/images/kayak-club-de-experiencias.jpg',
-          badge: 'CUPO PRIORITARIO'
+          badge: 'CUPO PRIORITARIO',
         },
         secondaryCard: {
           kicker: 'Membresía—',
@@ -234,8 +247,8 @@ export class BreadcrumbComponent implements OnInit {
           subtitle: 'Membresía vitalicia 2026 · Cupos preferenciales en cada expedición',
           url: '/socios/fundadores',
           imageUrl: '/assets/images/sumate.png',
-          badge: 'FUNDADOR 2026'
-        }
+          badge: 'FUNDADOR 2026',
+        },
       };
     }
 
@@ -247,14 +260,14 @@ export class BreadcrumbComponent implements OnInit {
           { label: 'Galería Fotográfica Oficial', url: '/experiencias/kayak/fotos' },
           { label: 'Reseñas & Calificaciones', url: '/experiencias/kayak/calificaciones' },
           { label: 'Catálogo de Expediciones', url: '/experiencias' },
-          { label: 'Volver al Inicio', url: '/' }
+          { label: 'Volver al Inicio', url: '/' },
         ],
         featured: {
           title: 'Postales de Socios',
           subtitle: 'Registro fotográfico oficial en aguas calmas',
           url: '/experiencias/kayak/fotos',
           imageUrl: '/assets/images/kayak-club-de-experiencias.jpg',
-          badge: 'FOTOGRAFÍAS'
+          badge: 'FOTOGRAFÍAS',
         },
         secondaryCard: {
           kicker: 'Membresía—',
@@ -262,27 +275,32 @@ export class BreadcrumbComponent implements OnInit {
           subtitle: 'Membresía vitalicia con cupos y accesos exclusivos',
           url: '/socios/fundadores',
           imageUrl: '/assets/images/sumate.png',
-          badge: 'FUNDADOR 2026'
-        }
+          badge: 'FUNDADOR 2026',
+        },
       };
     }
 
     // 4. FOTOS O CALIFICACIONES (General o Kayak)
-    if (labelNorm.includes('foto') || labelNorm.includes('galería') || labelNorm.includes('calificaci') || labelNorm.includes('reseña')) {
+    if (
+      labelNorm.includes('foto') ||
+      labelNorm.includes('galería') ||
+      labelNorm.includes('calificaci') ||
+      labelNorm.includes('reseña')
+    ) {
       return {
         kicker: 'Comunidad & Archivos—',
         steps: [
           { label: 'Fotos de Travesías', url: '/experiencias/fotos' },
           { label: 'Calificaciones Verificadas', url: '/experiencias/calificaciones' },
           { label: 'Travesía en Kayak', url: '/experiencias/kayak' },
-          { label: 'Volver al Inicio', url: '/' }
+          { label: 'Volver al Inicio', url: '/' },
         ],
         featured: {
           title: 'Ficha Técnica & Requisitos',
           subtitle: 'Itinerario, equipo provisto y protocolo WFR',
           url: '/experiencias/kayak',
           imageUrl: '/assets/images/kayak-club-de-experiencias.jpg',
-          badge: 'FICHA TÉCNICA'
+          badge: 'FICHA TÉCNICA',
         },
         secondaryCard: {
           kicker: 'Membresía—',
@@ -290,8 +308,8 @@ export class BreadcrumbComponent implements OnInit {
           subtitle: 'Membresía vitalicia con cupos y accesos exclusivos',
           url: '/socios/fundadores',
           imageUrl: '/assets/images/sumate.png',
-          badge: 'FUNDADOR 2026'
-        }
+          badge: 'FUNDADOR 2026',
+        },
       };
     }
 
@@ -300,17 +318,17 @@ export class BreadcrumbComponent implements OnInit {
       return {
         kicker: 'Membresías—',
         steps: [
-          { label: 'Socio Fundador 2026', url: '/socios/fundadores' },
-          { label: 'Socio Activo Mensual', url: '/socios/activos' },
+          { label: 'Socios Fundadores', url: '/socios/fundadores' },
+          { label: 'Socios Plenos Mensuales', url: '/socios/plenos' },
           { label: 'Catálogo de Expediciones', url: '/experiencias' },
-          { label: 'Volver al Inicio', url: '/' }
+          { label: 'Volver al Inicio', url: '/' },
         ],
         featured: {
           title: 'Travesía en Kayak & Sunset en Las Pirquitas',
           subtitle: 'Dique Las Pirquitas · 850 msnm · Calificación 4.95 ★',
           url: '/experiencias/kayak',
           imageUrl: '/assets/images/kayak-club-de-experiencias.jpg',
-          badge: 'DESTACADA'
+          badge: 'DESTACADA',
         },
         secondaryCard: {
           kicker: 'Membresía—',
@@ -318,27 +336,31 @@ export class BreadcrumbComponent implements OnInit {
           subtitle: 'Acceso vitalicio exclusivo con cupo preferencial',
           url: '/socios/fundadores',
           imageUrl: '/assets/images/sumate.png',
-          badge: 'VITALICIO'
-        }
+          badge: 'VITALICIO',
+        },
       };
     }
 
-    // 6. SOCIO FUNDADOR O ACTIVO
-    if (labelNorm.includes('fundador') || labelNorm.includes('activo') || labelNorm.includes('emergente')) {
+    // 6. SOCIO FUNDADOR O PLENO
+    if (
+      labelNorm.includes('fundador') ||
+      labelNorm.includes('activo') ||
+      labelNorm.includes('emergente')
+    ) {
       return {
         kicker: 'Niveles de Socio—',
         steps: [
-          { label: 'Socio Fundador 2026', url: '/socios/fundadores' },
-          { label: 'Socio Activo Mensual', url: '/socios/activos' },
+          { label: 'Socios Fundadores', url: '/socios/fundadores' },
+          { label: 'Socios Plenos Mensuales', url: '/socios/plenos' },
           { label: 'Catálogo de Expediciones', url: '/experiencias' },
-          { label: 'Volver al Inicio', url: '/' }
+          { label: 'Volver al Inicio', url: '/' },
         ],
         featured: {
           title: 'Travesía en Kayak & Sunset en Las Pirquitas',
           subtitle: 'Dique Las Pirquitas · 850 msnm · Calificación 4.95 ★',
           url: '/experiencias/kayak',
           imageUrl: '/assets/images/kayak-club-de-experiencias.jpg',
-          badge: 'DESTACADA'
+          badge: 'DESTACADA',
         },
         secondaryCard: {
           kicker: 'Membresía—',
@@ -346,27 +368,31 @@ export class BreadcrumbComponent implements OnInit {
           subtitle: 'Tarifas especiales, cupos y credencial oficial',
           url: '/socios',
           imageUrl: '/assets/images/sumate.png',
-          badge: 'BENEFICIOS'
-        }
+          badge: 'BENEFICIOS',
+        },
       };
     }
 
     // 7. MI PERFIL O ACTIVIDADES
-    if (labelNorm.includes('perfil') || labelNorm.includes('actividad') || urlNorm.includes('/perfil')) {
+    if (
+      labelNorm.includes('perfil') ||
+      labelNorm.includes('actividad') ||
+      urlNorm.includes('/perfil')
+    ) {
       return {
         kicker: 'Socio—',
         steps: [
           { label: 'Mis Actividades & Reservas', url: '/perfil/actividades' },
           { label: 'Membresías & Niveles de Socio', url: '/socios' },
           { label: 'Catálogo de Expediciones', url: '/experiencias' },
-          { label: 'Volver al Inicio', url: '/' }
+          { label: 'Volver al Inicio', url: '/' },
         ],
         featured: {
           title: 'Travesía en Kayak & Sunset en Las Pirquitas',
           subtitle: 'Dique Las Pirquitas · 850 msnm · Calificación 4.95 ★',
           url: '/experiencias/kayak',
           imageUrl: '/assets/images/kayak-club-de-experiencias.jpg',
-          badge: 'DESTACADA'
+          badge: 'DESTACADA',
         },
         secondaryCard: {
           kicker: 'Membresía—',
@@ -374,8 +400,8 @@ export class BreadcrumbComponent implements OnInit {
           subtitle: 'Membresía vitalicia con cupos y accesos exclusivos',
           url: '/socios/fundadores',
           imageUrl: '/assets/images/sumate.png',
-          badge: 'SOCIOS FUNDADORES'
-        }
+          badge: 'SOCIOS FUNDADORES',
+        },
       };
     }
 
@@ -386,14 +412,14 @@ export class BreadcrumbComponent implements OnInit {
         { label: 'Catálogo de Expediciones', url: '/experiencias' },
         { label: 'Membresías & Niveles de Socio', url: '/socios' },
         { label: 'Mi Perfil de Socio', url: '/perfil' },
-        { label: 'Volver al Inicio', url: '/' }
+        { label: 'Volver al Inicio', url: '/' },
       ],
       featured: {
         title: 'Travesía en Kayak & Sunset en Las Pirquitas',
         subtitle: 'Dique Las Pirquitas · 850 msnm · 4.95 ★',
         url: '/experiencias/kayak',
         imageUrl: '/assets/images/kayak-club-de-experiencias.jpg',
-        badge: 'DESTACADA'
+        badge: 'DESTACADA',
       },
       secondaryCard: {
         kicker: 'Membresía—',
@@ -401,8 +427,8 @@ export class BreadcrumbComponent implements OnInit {
         subtitle: 'Membresía vitalicia con cupos y accesos exclusivos',
         url: '/socios/fundadores',
         imageUrl: '/assets/images/sumate.png',
-        badge: 'FUNDADOR 2026'
-      }
+        badge: 'FUNDADOR 2026',
+      },
     };
   }
 }

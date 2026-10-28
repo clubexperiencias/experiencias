@@ -218,17 +218,47 @@
 
           <!-- Formulario de Texto y Envío -->
           <form (submit)="$event.preventDefault(); submitReview()" class="inline-review-form">
+            @if (!hasProfileCompleted()) {
+              <div class="profile-incomplete-notice">
+                <div class="notice-info">
+                  <mat-icon class="notice-icon">badge</mat-icon>
+                  <div>
+                    <strong class="notice-title">Completá tu perfil para publicar una reseña</strong>
+                    <p class="notice-text">
+                      Tu Nombre, Apellido y Ciudad de procedencia se vinculan directamente desde tu perfil de socio verificado.
+                    </p>
+                  </div>
+                </div>
+                <a href="/perfil" target="_blank" rel="noopener noreferrer" class="complete-profile-btn">
+                  <mat-icon>open_in_new</mat-icon>
+                  <span>Completar Perfil</span>
+                </a>
+              </div>
+            }
+
             <div class="form-inputs-row">
               <div class="input-field">
-                <label for="rev-inline-name" class="field-label">Nombre y Apellido</label>
-                <input id="rev-inline-name" type="text" class="standard-input" placeholder="Ej. Valentina Morán"
-                  [value]="newUserName()" (input)="newUserName.set($any($event.target).value)" />
+                <label for="rev-inline-name" class="field-label">
+                  Nombre y Apellido
+                  <mat-icon class="locked-indicator-icon" title="Campo bloqueado: proviene de tu perfil">lock</mat-icon>
+                </label>
+                <input id="rev-inline-name" type="text" class="standard-input is-locked"
+                  [value]="memberProfileName()"
+                  placeholder="Se completa desde tu perfil..."
+                  readonly
+                  disabled />
               </div>
 
               <div class="input-field">
-                <label for="rev-inline-loc" class="field-label">Ciudad / Procedencia</label>
-                <input id="rev-inline-loc" type="text" class="standard-input" placeholder="Ej. Córdoba, Argentina"
-                  [value]="newUserLocation()" (input)="newUserLocation.set($any($event.target).value)" />
+                <label for="rev-inline-loc" class="field-label">
+                  Ciudad / Procedencia
+                  <mat-icon class="locked-indicator-icon" title="Campo bloqueado: proviene de tu perfil">lock</mat-icon>
+                </label>
+                <input id="rev-inline-loc" type="text" class="standard-input is-locked"
+                  [value]="memberProfileLocation()"
+                  placeholder="Se completa desde tu perfil..."
+                  readonly
+                  disabled />
               </div>
             </div>
 
@@ -248,7 +278,7 @@
 
             <div class="form-actions-row">
               <button type="button" class="submit-review-btn" (click)="submitReview()"
-                [disabled]="!newTitle().trim() || !newComment().trim()">
+                [disabled]="!hasProfileCompleted() || !newTitle().trim() || !newComment().trim()">
                 <mat-icon>send</mat-icon>
                 <span>Publicar Reseña</span>
               </button>

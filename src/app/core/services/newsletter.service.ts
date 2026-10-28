@@ -13,7 +13,7 @@ const SPOTS_KEY = 'catamarca_club_reserved_spots';
  * (signals, joinWaitlist, stats) se mantiene idéntico.
  */
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class NewsletterService {
   private readonly baseWaitlistCount = 142;
@@ -56,11 +56,13 @@ export class NewsletterService {
       totalMembers: 50,
       seasonLaunchDate: 'Noviembre 2026',
       exclusiveSpotsTotal: maxSpots,
-      exclusiveSpotsRemaining: this._reservedSpots()
+      exclusiveSpotsRemaining: this._reservedSpots(),
     };
   });
 
-  async joinWaitlist(dto: WaitlistSubmissionDto): Promise<{ success: boolean; entry?: WaitlistEntry; message: string }> {
+  async joinWaitlist(
+    dto: WaitlistSubmissionDto,
+  ): Promise<{ success: boolean; entry?: WaitlistEntry; message: string }> {
     this._isLoading.set(true);
     this._errorMessage.set(null);
 
@@ -84,7 +86,7 @@ export class NewsletterService {
       return {
         success: true,
         entry: existing,
-        message: '¡Ya estás en la lista de espera exclusiva! Tu lugar está reservado.'
+        message: '¡Ya estás en la lista de espera exclusiva! Tu lugar está reservado.',
       };
     }
 
@@ -95,12 +97,16 @@ export class NewsletterService {
       id: 'waitlist_' + Date.now().toString(),
       email: cleanEmail,
       fullName: dto.fullName?.trim(),
+      nationality: dto.nationality?.trim(),
+      experiencesWishlist: dto.experiencesWishlist || [],
+      wishlistNotes: dto.wishlistNotes?.trim(),
+      bio: dto.bio?.trim(),
       interest: dto.interest || 'all',
       position,
       referralCode,
       createdAt: new Date(),
       status: 'confirmed',
-      source: 'web_minimal_landing'
+      source: 'web_minimal_landing',
     };
 
     const updated = [newEntry, ...this._entries()];
@@ -120,7 +126,7 @@ export class NewsletterService {
     return {
       success: true,
       entry: newEntry,
-      message: `¡Bienvenido al Club! Sos el miembro fundador #${position}.`
+      message: `¡Bienvenido al Club! Sos el miembro fundador #${position}.`,
     };
   }
 
@@ -148,7 +154,7 @@ export class NewsletterService {
       experiencesWishlist: data.experiencesWishlist,
       wishlistNotes: data.wishlistNotes,
       bio: data.bio,
-      profileCompleted: true
+      profileCompleted: true,
     };
 
     this._currentMember.set(updatedMember);
@@ -159,7 +165,7 @@ export class NewsletterService {
     this.persistReservedSpots(nextSpots);
 
     const updatedEntries = this._entries().map((e) =>
-      e.id === updatedMember.id || e.email === updatedMember.email ? updatedMember : e
+      e.id === updatedMember.id || e.email === updatedMember.email ? updatedMember : e,
     );
     this._entries.set(updatedEntries);
     this.persistEntries(updatedEntries);
@@ -167,7 +173,7 @@ export class NewsletterService {
     return {
       success: true,
       entry: updatedMember,
-      message: '¡Perfil de Socio Emergente guardado con éxito!'
+      message: '¡Perfil de Socio Emergente guardado con éxito!',
     };
   }
 
@@ -187,7 +193,10 @@ export class NewsletterService {
 
     if (!member) {
       this._isLoading.set(false);
-      return { success: false, message: 'Ingresá tu correo electrónico para asociar la membresía.' };
+      return {
+        success: false,
+        message: 'Ingresá tu correo electrónico para asociar la membresía.',
+      };
     }
 
     const today = new Date();
@@ -200,22 +209,26 @@ export class NewsletterService {
       amountArs: 12000,
       paymentMethod: details?.paymentMethod || 'Tarjeta de Débito (•••• 4821)',
       startedAt: today.toISOString(),
-      nextBillingDate: nextMonth.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' }),
+      nextBillingDate: nextMonth.toLocaleDateString('es-AR', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      }),
       autoRenew: true,
-      lastPaymentReceipt: 'REC-' + Math.floor(100000 + Math.random() * 900000)
+      lastPaymentReceipt: 'REC-' + Math.floor(100000 + Math.random() * 900000),
     };
 
     const updated: WaitlistEntry = {
       ...member,
       membershipTier: 'activo',
-      subscription
+      subscription,
     };
 
     this._currentMember.set(updated);
     this.persistCurrentMember(updated);
 
     const updatedEntries = this._entries().map((e) =>
-      e.id === updated.id || e.email === updated.email ? updated : e
+      e.id === updated.id || e.email === updated.email ? updated : e,
     );
     this._entries.set(updatedEntries);
     this.persistEntries(updatedEntries);
@@ -236,13 +249,16 @@ export class NewsletterService {
       subscription: {
         ...member.subscription,
         status: 'cancelled',
-        autoRenew: false
-      }
+        autoRenew: false,
+      },
     };
 
     this._currentMember.set(updated);
     this.persistCurrentMember(updated);
-    return { success: true, message: 'Suscripción cancelada con éxito. Continuás como Socio Emergente.' };
+    return {
+      success: true,
+      message: 'Suscripción cancelada con éxito. Continuás como Socio Emergente.',
+    };
   }
 
   pauseMonthlySubscription(): { success: boolean; message: string } {
@@ -256,8 +272,8 @@ export class NewsletterService {
       subscription: {
         ...member.subscription,
         status: 'paused',
-        autoRenew: false
-      }
+        autoRenew: false,
+      },
     };
 
     this._currentMember.set(updated);
@@ -277,8 +293,8 @@ export class NewsletterService {
       subscription: {
         ...member.subscription,
         status: 'active',
-        autoRenew: true
-      }
+        autoRenew: true,
+      },
     };
 
     this._currentMember.set(updated);
@@ -296,8 +312,8 @@ export class NewsletterService {
       ...member,
       subscription: {
         ...member.subscription,
-        paymentMethod: newMethod
-      }
+        paymentMethod: newMethod,
+      },
     };
 
     this._currentMember.set(updated);
@@ -327,7 +343,9 @@ export class NewsletterService {
   private persistReservedSpots(spots: number): void {
     try {
       localStorage.setItem(SPOTS_KEY, spots.toString());
-    } catch { /* modo privado */ }
+    } catch {
+      /* modo privado */
+    }
   }
 
   private loadStoredEntries(): WaitlistEntry[] {
@@ -342,7 +360,9 @@ export class NewsletterService {
   private persistEntries(entries: WaitlistEntry[]): void {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
-    } catch { /* modo privado */ }
+    } catch {
+      /* modo privado */
+    }
   }
 
   private loadCurrentMember(): WaitlistEntry | null {
@@ -357,6 +377,8 @@ export class NewsletterService {
   private persistCurrentMember(entry: WaitlistEntry): void {
     try {
       localStorage.setItem(SUBSCRIBED_KEY, JSON.stringify(entry));
-    } catch { /* modo privado */ }
+    } catch {
+      /* modo privado */
+    }
   }
 }

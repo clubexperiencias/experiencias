@@ -10,7 +10,7 @@ describe('KayakPhotosComponent (/experiencias/kayak/fotos)', () => {
     localStorage.clear();
     await TestBed.configureTestingModule({
       imports: [KayakPhotosComponent],
-      providers: [provideRouter([])]
+      providers: [provideRouter([])],
     }).compileComponents();
 
     fixture = TestBed.createComponent(KayakPhotosComponent);
@@ -30,7 +30,9 @@ describe('KayakPhotosComponent (/experiencias/kayak/fotos)', () => {
     expect(breadcrumb).toBeTruthy();
 
     const links = breadcrumb.querySelectorAll('.bc-link');
-    const hrefs = Array.from(links).map((l: any) => l.getAttribute('routerlink') || l.getAttribute('href'));
+    const hrefs = Array.from(links).map(
+      (l: any) => l.getAttribute('routerlink') || l.getAttribute('href'),
+    );
     expect(hrefs).toContain('/');
     expect(hrefs).toContain('/experiencias');
     expect(hrefs).toContain('/experiencias/kayak');
@@ -67,17 +69,91 @@ describe('KayakPhotosComponent (/experiencias/kayak/fotos)', () => {
     expect(adImg.getAttribute('src')).toContain('ad.png');
   });
 
-  it('should render 3 photos in the same row below the portada replicating the image', () => {
-    const photosGrid = fixture.nativeElement.querySelector('.photos-grid');
+  it('should render exactly 2 featured boxes below portada with DESTACADA tag and photographer credit', () => {
+    const photosGrid = fixture.nativeElement.querySelector('.photos-grid-2cols');
     expect(photosGrid).toBeTruthy();
 
     const items = fixture.nativeElement.querySelectorAll('.photo-card-item');
-    expect(items.length).toBe(3);
+    expect(items.length).toBe(2);
 
-    const thumbImgs = fixture.nativeElement.querySelectorAll('.gallery-thumb-img');
-    expect(thumbImgs.length).toBe(3);
-    thumbImgs.forEach((img: HTMLImageElement) => {
-      expect(img.getAttribute('src')).toBe('/assets/images/kayak-club-de-experiencias.jpg');
+    const portadaTag = fixture.nativeElement.querySelector('.media-tag');
+    expect(portadaTag.textContent.trim()).toBe('DESTACADA');
+
+    const kicker = fixture.nativeElement.querySelector('.media-caption-kicker');
+    expect(kicker.textContent).toContain('Fotógrafo:');
+
+    const credits = fixture.nativeElement.querySelectorAll('.photo-item-credit');
+    expect(credits.length).toBe(2);
+    expect(credits[0].textContent).toContain('Fotógrafo: Marcos T. · Guía & Fotografía');
+
+    const tags = fixture.nativeElement.querySelectorAll('.photo-tag');
+    expect(tags.length).toBe(2);
+    tags.forEach((tag: HTMLElement) => {
+      expect(tag.textContent.trim()).toBe(portadaTag.textContent.trim());
     });
+  });
+
+  it('should render community section with 3x3 grid (9 photos) all tagged DESTACADA POR EL EQUIPO and author above title', () => {
+    const communitySection = fixture.nativeElement.querySelector('.community-photos-section');
+    expect(communitySection).toBeTruthy();
+    expect(communitySection.textContent).toContain('Fotos de la Comunidad');
+
+    const communityItems = fixture.nativeElement.querySelectorAll('.community-card-item');
+    expect(communityItems.length).toBe(9);
+
+    const communityBadges = fixture.nativeElement.querySelectorAll('.community-badge');
+    expect(communityBadges.length).toBe(9);
+    communityBadges.forEach((badge: HTMLElement) => {
+      expect(badge.textContent.trim()).toBe('DESTACADA POR EL EQUIPO');
+    });
+
+    const authors = fixture.nativeElement.querySelectorAll('.community-photo-author');
+    expect(authors.length).toBe(9);
+    expect(authors[0].textContent).toContain('Autor: Valentina M. · Socio Pleno');
+  });
+
+  it('should include bottom download button, side navigation arrows, and remove top download button', () => {
+    const list = component.featuredGroup;
+    const firstPhoto = list[0];
+    component.openPhotoModal(firstPhoto, list);
+    fixture.detectChanges();
+
+    const downloadBtn = fixture.nativeElement.querySelector('.lightbox-download-action-btn');
+    expect(downloadBtn).toBeTruthy();
+
+    const topDownloadBtn = fixture.nativeElement.querySelector('.lightbox-icon-btn.download-btn');
+    expect(topDownloadBtn).toBeNull();
+
+    const nextBtn = fixture.nativeElement.querySelector('.lightbox-nav-btn.next-btn');
+    const prevBtn = fixture.nativeElement.querySelector('.lightbox-nav-btn.prev-btn');
+    expect(nextBtn).toBeTruthy();
+    expect(prevBtn).toBeTruthy();
+
+    // Verify next and prev photo navigation
+    expect(component.currentPhotoIndex()).toBe(0);
+    component.nextPhoto();
+    expect(component.currentPhotoIndex()).toBe(1);
+    expect(component.activePhotoModal()).toBe(list[1]);
+
+    component.prevPhoto();
+    expect(component.currentPhotoIndex()).toBe(0);
+    expect(component.activePhotoModal()).toBe(list[0]);
+
+    // Verify landscape class is applied
+    const lightboxImg = fixture.nativeElement.querySelector('.lightbox-img');
+    expect(lightboxImg.classList.contains('is-landscape')).toBe(true);
+
+    // Spy on document.createElement to ensure downloadPhoto runs cleanly
+    const createElementSpy = vi.spyOn(document, 'createElement');
+    component.downloadPhoto(firstPhoto);
+    expect(createElementSpy).toHaveBeenCalledWith('a');
+
+    // Test community photo in modal: no tag, no description
+    component.openPhotoModal(component.communityPhotos[0], component.communityPhotos);
+    fixture.detectChanges();
+    const modalTag = fixture.nativeElement.querySelector('.lightbox-tag');
+    expect(modalTag).toBeNull();
+    const modalDesc = fixture.nativeElement.querySelector('.lightbox-caption-text p');
+    expect(modalDesc).toBeNull();
   });
 });

@@ -9,7 +9,7 @@ describe('BreadcrumbComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [BreadcrumbComponent],
-      providers: [provideRouter([])]
+      providers: [provideRouter([])],
     }).compileComponents();
 
     fixture = TestBed.createComponent(BreadcrumbComponent);
@@ -20,7 +20,7 @@ describe('BreadcrumbComponent', () => {
     fixture.componentRef.setInput('items', [
       { label: 'Inicio', url: '/' },
       { label: 'Niveles de Socio', url: '/socios' },
-      { label: 'Socio Activo' }
+      { label: 'Socios Plenos' },
     ]);
     fixture.detectChanges();
 
@@ -34,13 +34,13 @@ describe('BreadcrumbComponent', () => {
 
     const current = fixture.nativeElement.querySelector('.bc-current');
     expect(current).toBeTruthy();
-    expect(current.textContent).toContain('Socio Activo');
+    expect(current.textContent).toContain('Socios Plenos');
   });
 
   it('should not render a home icon in the breadcrumb', () => {
     fixture.componentRef.setInput('items', [
       { label: 'Inicio', url: '/' },
-      { label: 'Experiencias' }
+      { label: 'Experiencias' },
     ]);
     fixture.detectChanges();
 
@@ -51,7 +51,7 @@ describe('BreadcrumbComponent', () => {
   it('should render National Geographic style mega-menu on all breadcrumb items including the last one', () => {
     fixture.componentRef.setInput('items', [
       { label: 'Inicio', url: '/' },
-      { label: 'Experiencias' }
+      { label: 'Experiencias' },
     ]);
     fixture.detectChanges();
 
@@ -72,9 +72,7 @@ describe('BreadcrumbComponent', () => {
   });
 
   it('should activate mega-menu on Inicio even when it is the only breadcrumb item', () => {
-    fixture.componentRef.setInput('items', [
-      { label: 'Inicio' }
-    ]);
+    fixture.componentRef.setInput('items', [{ label: 'Inicio' }]);
     fixture.detectChanges();
 
     const wrappers = fixture.nativeElement.querySelectorAll('.bc-step-wrapper');
@@ -86,7 +84,7 @@ describe('BreadcrumbComponent', () => {
   it('should use sumate.png for secondaryCard founder card in mega-menu', () => {
     fixture.componentRef.setInput('items', [
       { label: 'Inicio', url: '/' },
-      { label: 'Experiencias' }
+      { label: 'Experiencias' },
     ]);
     fixture.detectChanges();
 

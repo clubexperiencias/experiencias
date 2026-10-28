@@ -9,7 +9,7 @@ describe('ProvidersComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [ProvidersComponent],
-      providers: [provideRouter([])]
+      providers: [provideRouter([])],
     }).compileComponents();
 
     fixture = TestBed.createComponent(ProvidersComponent);
@@ -52,7 +52,7 @@ describe('ProvidersComponent', () => {
     const tiersGrid = fixture.nativeElement.querySelector('.tiers-grid');
     expect(tiersGrid).toBeTruthy();
     expect(tiersGrid.textContent).toContain('Socio Emergente');
-    expect(tiersGrid.textContent).toContain('Socio Activo');
+    expect(tiersGrid.textContent).toContain('Socio Pleno');
     expect(tiersGrid.textContent).toContain('Socio Fundador');
   });
 
@@ -68,7 +68,9 @@ describe('ProvidersComponent', () => {
     const links = breadcrumb.querySelectorAll('.bc-link');
     expect(links.length).toBe(2);
     expect(links[0].getAttribute('routerlink') || links[0].getAttribute('href')).toBe('/');
-    expect(links[1].getAttribute('routerlink') || links[1].getAttribute('href')).toBe('/experiencias');
+    expect(links[1].getAttribute('routerlink') || links[1].getAttribute('href')).toBe(
+      '/experiencias',
+    );
 
     const current = breadcrumb.querySelector('.bc-current');
     expect(current).toBeTruthy();

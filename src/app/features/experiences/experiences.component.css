@@ -311,6 +311,14 @@
   backdrop-filter: blur(4px);
 }
 
+.exp-region-tag.is-enabled-tag {
+  background: var(--color-gold);
+  color: #0b1120;
+  border: 1px solid var(--color-gold);
+  font-weight: 800;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
 .exp-altitude {
   position: absolute;
   top: 12px;

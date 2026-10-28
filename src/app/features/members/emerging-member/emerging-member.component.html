@@ -12,24 +12,24 @@
     <!-- Contenido Principal -->
     <main class="emerging-main-content">
       <div class="emerging-wrapper">
-
         <!-- ═══════════════ CARD: MEMBRESÍA SOCIO EMERGENTE ═══════════════ -->
         <div class="emerging-section-card">
           <div class="card-inner-header">
             <div class="tier-badge-row">
               <span class="emerging-badge-tag">Nivel 1 Gratuito</span>
               @if (newsletter.isSubscribed()) {
-              <span class="member-status-tag">
-                <mat-icon class="status-icon">verified</mat-icon>
-                <span>Tu nivel actual Socio #{{ newsletter.currentMember()?.position }}</span>
-              </span>
+                <span class="member-status-tag">
+                  <mat-icon class="status-icon">verified</mat-icon>
+                  <span>Tu nivel actual Socio #{{ newsletter.currentMember()?.position }}</span>
+                </span>
               }
             </div>
             <h1 class="card-heading">Membresía Socio Emergente</h1>
             <p class="card-subheading">
-              El primer paso para ser parte de la comunidad de exploradores de Catamarca. Una membresía abierta y sin
-              costos para ingresar a la lista de espera oficial, informarte con anticipación sobre cada travesía náutica
-              o de montaña y acceder a tu perfil digital de socio.
+              El primer paso para ser parte de la comunidad de exploradores de Catamarca. Una
+              membresía abierta y sin costos para ingresar a la lista de espera oficial, informarte
+              con anticipación sobre cada travesía náutica o de montaña y acceder a tu perfil
+              digital de socio.
             </p>
           </div>
 
@@ -46,10 +46,12 @@
               <div class="meta-item">
                 <span class="meta-label">Costo de Ingreso</span>
                 <span class="meta-value highlight-free">Sin costo</span>
-                <span class="meta-note">Activación libre sin datos bancarios ni cuotas mensuales</span>
+                <span class="meta-note"
+                  >Activación libre sin datos bancarios ni cuotas mensuales</span
+                >
               </div>
               <div class="meta-item">
-                <span class="meta-label">Asignación de Cupos</span>
+                <span class="meta-label">Reserva de cupos</span>
                 <span class="meta-value">Lista de Espera</span>
                 <span class="meta-note">Por orden correlativo de pre-registro</span>
               </div>
@@ -71,47 +73,51 @@
             <h3 class="benefits-block-title">Beneficios incluidos en tu membresía</h3>
             <div class="benefits-simple-list">
               @for (b of benefits; track b.title) {
-              <div class="benefit-card">
-                <h4 class="benefit-title">{{ b.title }}</h4>
-                <p class="benefit-desc">{{ b.description }}</p>
-              </div>
+                <div class="benefit-card">
+                  <h4 class="benefit-title">{{ b.title }}</h4>
+                  <p class="benefit-desc">{{ b.description }}</p>
+                </div>
               }
             </div>
           </div>
 
           <!-- Bloque de Estado / CTA -->
           @if (!newsletter.isSubscribed()) {
-          <div class="emerging-cta-box">
-            <div class="cta-text-group">
-              <span class="cta-kicker">INCORPORACIÓN INMEDIATA</span>
-              <h3 class="cta-title">Asegurá tu lugar en la Lista de Espera</h3>
-              <p class="cta-desc">
-                Completá el pre-registro en la portada para obtener tu número correlativo de socio y ser notificado de
-                las primeras expediciones.
-              </p>
+            <div class="emerging-cta-box">
+              <div class="cta-text-group">
+                <span class="cta-kicker">INCORPORACIÓN INMEDIATA</span>
+                <h3 class="cta-title">Asegurá tu lugar en la Lista de Espera</h3>
+                <p class="cta-desc">
+                  Completá el pre-registro en la portada para obtener tu número correlativo de socio
+                  y ser notificado de las primeras expediciones.
+                </p>
+              </div>
+              <a routerLink="/socios/emergentes/ingreso" class="emerging-cta-btn">
+                <span>Unirme a la Lista de Espera</span>
+                <mat-icon class="btn-icon">arrow_forward</mat-icon>
+              </a>
             </div>
-            <a routerLink="/" class="emerging-cta-btn">
-              <span>Unirme a la Lista de Espera</span>
-              <mat-icon class="btn-icon">arrow_forward</mat-icon>
-            </a>
-          </div>
           } @else {
-          <div class="emerging-confirmed-box">
-            <div class="confirmed-seal">
-              <mat-icon class="seal-icon">verified</mat-icon>
+            <div class="emerging-confirmed-box">
+              <div class="confirmed-seal">
+                <mat-icon class="seal-icon">verified</mat-icon>
+              </div>
+              <div class="confirmed-text-group">
+                <span class="confirmed-kicker">MEMBRESÍA ACTIVA</span>
+                <h3 class="confirmed-title">
+                  Ya sos Socio Emergente #{{ newsletter.currentMember()?.position }}
+                </h3>
+                <p class="confirmed-desc">
+                  Tu registro está verificado con el correo
+                  <strong>{{ newsletter.currentMember()?.email }}</strong
+                  >.
+                </p>
+              </div>
+              <a routerLink="/perfil" class="emerging-profile-btn">
+                <span>Ver Mi Perfil</span>
+                <mat-icon class="btn-icon">arrow_forward</mat-icon>
+              </a>
             </div>
-            <div class="confirmed-text-group">
-              <span class="confirmed-kicker">MEMBRESÍA ACTIVA</span>
-              <h3 class="confirmed-title">Ya sos Socio Emergente #{{ newsletter.currentMember()?.position }}</h3>
-              <p class="confirmed-desc">
-                Tu registro está verificado con el correo <strong>{{ newsletter.currentMember()?.email }}</strong>.
-              </p>
-            </div>
-            <a routerLink="/perfil" class="emerging-profile-btn">
-              <span>Ver Mi Perfil</span>
-              <mat-icon class="btn-icon">arrow_forward</mat-icon>
-            </a>
-          </div>
           }
         </div>
 
@@ -121,11 +127,18 @@
             <span class="ad-label-pill">Publicidad</span>
             <span class="ad-sponsor-text">Club de Experiencias</span>
           </div>
-          <a routerLink="/socios/fundadores" class="ad-banner-link" aria-label="Convocatoria Socio Fundador">
-            <img src="/assets/images/ad.png" alt="Socio Fundador Convocatoria Oficial" class="ad-banner-img" />
+          <a
+            routerLink="/socios/fundadores"
+            class="ad-banner-link"
+            aria-label="Convocatoria Socio Fundador"
+          >
+            <img
+              src="/assets/images/ad.png"
+              alt="Socio Fundador Convocatoria Oficial"
+              class="ad-banner-img"
+            />
           </a>
         </div>
-
       </div>
     </main>
   </div>

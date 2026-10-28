@@ -11,26 +11,23 @@
 
     <main class="not-found-main-content">
       <div class="not-found-wrapper">
-
         <div class="not-found-section-card">
           <div class="card-inner-header">
             <span class="error-visual-number">404</span>
             <span class="error-kicker">COORDENADAS NO ENCONTRADAS</span>
             <h1 class="card-heading">Esta senda no conduce a ninguna expedición</h1>
             <p class="card-subheading">
-              La coordenada o ruta que intentás explorar no existe, cambió de trazado o se encuentra fuera de la
-              cartografía oficial de <strong>Club de Experiencias</strong>.
+              La coordenada o ruta que intentás explorar no existe, cambió de trazado o se encuentra
+              fuera de la cartografía oficial de <strong>Club de Experiencias</strong>.
             </p>
           </div>
 
           <div class="navigation-actions-group">
             <a routerLink="/" class="cta-primary-btn">
               <span>Volver al inicio</span>
-              <mat-icon>arrow_forward</mat-icon>
             </a>
           </div>
         </div>
-
       </div>
     </main>
   </div>
@@ -40,40 +37,52 @@
 
   <!-- Modal Login -->
   @if (activeModal() === 'login') {
-  <div class="modal-backdrop" (click)="closeModal()">
-    <div class="modal-card" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <div>
-          <span class="modal-kicker">ACCESO DE SOCIOS</span>
-          <h3 class="modal-heading">Iniciar Sesión</h3>
-        </div>
-        <button class="modal-close-btn" (click)="closeModal()" aria-label="Cerrar modal">
-          <mat-icon>close</mat-icon>
-        </button>
-      </div>
-
-      <p class="modal-lead">Ingresá tu correo electrónico para acceder a tu perfil y cupos reservados:</p>
-
-      <div class="login-modal-box">
-        <div class="login-input-wrap">
-          <label for="nf-modal-email" class="login-field-lbl">Correo Electrónico</label>
-          <input id="nf-modal-email" type="email" class="login-modal-input" placeholder="socio@ejemplo.com"
-            [value]="loginEmail()" (input)="loginEmail.set($any($event.target).value)" (keyup.enter)="submitLogin()" />
-        </div>
-
-        @if (loginError()) {
-        <p class="error-text" style="margin-top: 0.6rem;">{{ loginError() }}</p>
-        }
-
-        <div class="modal-footer" style="margin-top: 1.4rem;">
-          <button class="pill-action-btn secondary" (click)="closeModal()">Cancelar</button>
-          <button class="pill-action-btn" (click)="submitLogin()"
-            [disabled]="!loginEmail().trim() || newsletter.isLoading()">
-            Ingresar
+    <div class="modal-backdrop" (click)="closeModal()">
+      <div class="modal-card" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <div>
+            <span class="modal-kicker">ACCESO DE SOCIOS</span>
+            <h3 class="modal-heading">Iniciar Sesión</h3>
+          </div>
+          <button class="modal-close-btn" (click)="closeModal()" aria-label="Cerrar modal">
+            <mat-icon>close</mat-icon>
           </button>
+        </div>
+
+        <p class="modal-lead">
+          Ingresá tu correo electrónico para acceder a tu perfil y cupos reservados:
+        </p>
+
+        <div class="login-modal-box">
+          <div class="login-input-wrap">
+            <label for="nf-modal-email" class="login-field-lbl">Correo Electrónico</label>
+            <input
+              id="nf-modal-email"
+              type="email"
+              class="login-modal-input"
+              placeholder="socio@ejemplo.com"
+              [value]="loginEmail()"
+              (input)="loginEmail.set($any($event.target).value)"
+              (keyup.enter)="submitLogin()"
+            />
+          </div>
+
+          @if (loginError()) {
+            <p class="error-text" style="margin-top: 0.6rem">{{ loginError() }}</p>
+          }
+
+          <div class="modal-footer" style="margin-top: 1.4rem">
+            <button class="pill-action-btn secondary" (click)="closeModal()">Cancelar</button>
+            <button
+              class="pill-action-btn"
+              (click)="submitLogin()"
+              [disabled]="!loginEmail().trim() || newsletter.isLoading()"
+            >
+              Ingresar
+            </button>
+          </div>
         </div>
       </div>
     </div>
-  </div>
   }
 </div>

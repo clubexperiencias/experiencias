@@ -313,21 +313,44 @@
   transform: scale(1.02);
 }
 
+.kayak-video-card {
+  padding: 2.2rem;
+}
+
+.kayak-video-media-wrap {
+  width: 100%;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 212, 42, 0.35);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+  background: #000;
+  display: flex;
+  margin-top: 1.4rem;
+}
+
+.kayak-video-element {
+  width: 100%;
+  height: auto;
+  max-height: 520px;
+  display: block;
+  object-fit: cover;
+  background: #000;
+}
+
 .location-preview-tag {
   position: absolute;
   top: 12px;
   left: 12px;
   font-family: var(--font-mono);
   font-size: 0.65rem;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 0.12em;
-  background: rgba(0, 0, 0, 0.75);
-  color: #ffffff;
+  background: var(--color-gold);
+  color: #0b1120;
   padding: 0.3rem 0.65rem;
   border-radius: 2px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid var(--color-gold);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 .location-actions-row {

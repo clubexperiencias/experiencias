@@ -11,7 +11,7 @@ describe('FooterComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [FooterComponent],
-      providers: [provideRouter([{ path: 'ingresar', component: FooterComponent }])]
+      providers: [provideRouter([{ path: 'ingresar', component: FooterComponent }])],
     }).compileComponents();
 
     newsletter = TestBed.inject(NewsletterService);
@@ -61,4 +61,3 @@ describe('FooterComponent', () => {
     expect(logoutSpy).toHaveBeenCalled();
   });
 });
-

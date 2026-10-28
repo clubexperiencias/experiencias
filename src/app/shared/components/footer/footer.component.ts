@@ -14,7 +14,7 @@ export interface FooterLandscape {
   standalone: true,
   imports: [RouterLink],
   templateUrl: './footer.component.html',
-  styleUrl: './footer.component.css'
+  styleUrl: './footer.component.css',
 })
 export class FooterComponent {
   private readonly router = inject(Router);
@@ -25,8 +25,9 @@ export class FooterComponent {
   readonly defaultLandscape: FooterLandscape = {
     name: 'Laguna Blanca',
     region: 'Reserva de Biósfera · Catamarca',
-    coordsText: '26°32\'S 66°56\'W · 3.200 msnm',
-    officialUrl: 'https://www.argentina.gob.ar/jefatura/turismo/best-tourism-villages-argentina/laguna-blanca-catamarca'
+    coordsText: "26°32'S 66°56'W · 3.200 msnm",
+    officialUrl:
+      'https://www.argentina.gob.ar/jefatura/turismo/best-tourism-villages-argentina/laguna-blanca-catamarca',
   };
 
   get activeLandscape(): FooterLandscape {
@@ -51,7 +52,7 @@ export class FooterComponent {
       return `Socio Fundador${pos}`;
     }
     if (member.membershipTier === 'activo' || member.subscription?.status === 'active') {
-      return `Socio Activo${pos}`;
+      return `Socio Pleno${pos}`;
     }
     return `Socio Emergente${pos}`;
   }
@@ -61,4 +62,3 @@ export class FooterComponent {
     this.router.navigate(['/ingresar']);
   }
 }
-
