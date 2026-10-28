@@ -15,7 +15,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         <div class="welcome-main">
           <div class="avatar-ring">
             <img
-              [src]="provider()?.avatar || '/assets/aistudio/patricio_84c0d3a9.jpg'"
+              [src]="provider()?.avatar || '/assets/aistudio/patricio.jpg'"
               [alt]="provider()?.name || 'Patricio Facundo'"
               class="provider-avatar"
               referrerpolicy="no-referrer"
@@ -33,9 +33,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         </div>
 
         <div class="welcome-actions">
-          <a routerLink="../comprobantes" class="cta-blue-btn">
-            Ver comprobantes
-          </a>
+          <a routerLink="../comprobantes" class="cta-blue-btn"> Ver comprobantes </a>
         </div>
       </section>
 
@@ -105,7 +103,8 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
           </div>
           <div class="card-head-actions">
             <span class="active-count-badge">
-              {{ activeExperiences().length }} {{ activeExperiences().length === 1 ? 'experiencia activa' : 'experiencias activas' }}
+              {{ activeExperiences().length }}
+              {{ activeExperiences().length === 1 ? 'experiencia activa' : 'experiencias activas' }}
             </span>
             <a routerLink="../experiencias" class="card-link">
               <span>Gestionar catálogo</span>
@@ -116,9 +115,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         @if (activeExperiences().length === 0) {
           <div class="empty-active-box">
             <p class="empty-text">No tenés experiencias activas publicadas actualmente.</p>
-            <a routerLink="../experiencias/nueva" class="cta-blue-btn">
-              Nueva Experiencia
-            </a>
+            <a routerLink="../experiencias/nueva" class="cta-blue-btn"> Nueva Experiencia </a>
           </div>
         } @else {
           <div class="active-experiences-list">
@@ -138,7 +135,9 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                   <div class="active-exp-top-row">
                     <span class="exp-cat-tag">{{ exp.region }}</span>
                     <span class="exp-sep">·</span>
-                    <span class="exp-duration-tag">{{ exp.difficulty }} · {{ exp.durationLabel }}</span>
+                    <span class="exp-duration-tag"
+                      >{{ exp.difficulty }} · {{ exp.durationLabel }}</span
+                    >
                   </div>
 
                   <h3 class="active-exp-name">{{ exp.title }}</h3>
@@ -157,7 +156,9 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
 
                     <div class="kpi-mini-col">
                       <span class="kpi-mini-lbl">Socios Inscriptos</span>
-                      <strong class="kpi-mini-val">{{ getExperienceEnrolled(exp.id) }} socios</strong>
+                      <strong class="kpi-mini-val"
+                        >{{ getExperienceEnrolled(exp.id) }} socios</strong
+                      >
                     </div>
 
                     <div class="kpi-mini-col">
@@ -166,7 +167,11 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                         @for (d of exp.dates; track d) {
                           <span class="mini-date-badge">
                             {{ d | fecha }}
-                            <span class="date-occupancy">({{ store.reservedSeats(exp.id, d) }}/{{ exp.capacityPerDate }})</span>
+                            <span class="date-occupancy"
+                              >({{ store.reservedSeats(exp.id, d) }}/{{
+                                exp.capacityPerDate
+                              }})</span
+                            >
                           </span>
                         }
                       </div>
@@ -204,7 +209,9 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
           <div class="alert-body">
             <h3>Solicitudes en revisión por el Admin</h3>
             <p>
-              Tenés {{ pendingModerationExperiences().length }} solicitud(es) enviadas al equipo de administración de <strong>experiencias.club</strong>. Una vez aprobadas, se aplicarán en la web pública.
+              Tenés {{ pendingModerationExperiences().length }} solicitud(es) enviadas al equipo de
+              administración de <strong>experiencias.club</strong>. Una vez aprobadas, se aplicarán
+              en la web pública.
             </p>
             <div class="moderation-items">
               @for (exp of pendingModerationExperiences(); track exp.id) {
@@ -247,7 +254,10 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
             <h2 class="card-title">Últimos Pagos y Conciliación de Comprobantes</h2>
           </div>
           <div class="card-head-actions">
-            <span class="active-count-badge" [class.badge-pending]="stats().pendingReceiptsCount > 0">
+            <span
+              class="active-count-badge"
+              [class.badge-pending]="stats().pendingReceiptsCount > 0"
+            >
               {{ stats().pendingReceiptsCount }} por revisar
             </span>
             <a routerLink="../comprobantes" class="card-link">
@@ -270,14 +280,18 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
             <div class="metric-content">
               <span class="metric-label">En Revisión / Pendientes</span>
               <strong class="metric-value">{{ stats().pendingRevenue | ars }}</strong>
-              <span class="metric-hint">{{ stats().pendingReceiptsCount }} comprobante(s) por validar</span>
+              <span class="metric-hint"
+                >{{ stats().pendingReceiptsCount }} comprobante(s) por validar</span
+              >
             </div>
           </div>
 
           <div class="metric-card">
             <div class="metric-content">
               <span class="metric-label">Recaudación Estimada</span>
-              <strong class="metric-value">{{ (stats().confirmedRevenue + stats().pendingRevenue) | ars }}</strong>
+              <strong class="metric-value">{{
+                stats().confirmedRevenue + stats().pendingRevenue | ars
+              }}</strong>
               <span class="metric-hint">Confirmados + En revisión</span>
             </div>
           </div>
@@ -286,7 +300,13 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
             <div class="metric-content">
               <span class="metric-label">Comprobantes Recibidos</span>
               <strong class="metric-value">{{ store.providerSubmissions().length }}</strong>
-              <span class="metric-hint">{{ stats().pendingReceiptsCount }} pendientes · {{ store.providerSubmissions().length - stats().pendingReceiptsCount }} aprobados</span>
+              <span class="metric-hint"
+                >{{ stats().pendingReceiptsCount }} pendientes ·
+                {{
+                  store.providerSubmissions().length - stats().pendingReceiptsCount
+                }}
+                aprobados</span
+              >
             </div>
           </div>
         </div>
@@ -295,15 +315,21 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         <div class="fin-bank-banner">
           <div class="fin-bank-item">
             <span class="fin-bank-lbl">Cuenta Recaudadora</span>
-            <strong class="fin-bank-val">{{ provider()?.agency || 'Catamarca Kayak & Aventura Náutica' }}</strong>
+            <strong class="fin-bank-val">{{
+              provider()?.agency || 'Catamarca Kayak & Aventura Náutica'
+            }}</strong>
           </div>
           <div class="fin-bank-item">
             <span class="fin-bank-lbl">CBU / Alias</span>
-            <strong class="fin-bank-val code-font">{{ provider()?.cbuAlias || 'KAYAK.CATAMARCA.MP' }}</strong>
+            <strong class="fin-bank-val code-font">{{
+              provider()?.cbuAlias || 'KAYAK.CATAMARCA.MP'
+            }}</strong>
           </div>
           <div class="fin-bank-item">
             <span class="fin-bank-lbl">Entidad Receptora</span>
-            <strong class="fin-bank-val">{{ provider()?.bankName || 'Mercado Pago / Banco Nación' }}</strong>
+            <strong class="fin-bank-val">{{
+              provider()?.bankName || 'Mercado Pago / Banco Nación'
+            }}</strong>
           </div>
         </div>
 
@@ -329,7 +355,13 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                   <tr [class.row-pending]="sub.status === 'pendiente'">
                     <td>
                       <span class="fin-status-pill" [class]="'status-' + sub.status">
-                        {{ sub.status === 'pendiente' ? 'PENDIENTE' : (sub.status === 'aprobado' ? 'APROBADO' : 'RECHAZADO') }}
+                        {{
+                          sub.status === 'pendiente'
+                            ? 'PENDIENTE'
+                            : sub.status === 'aprobado'
+                              ? 'APROBADO'
+                              : 'RECHAZADO'
+                        }}
                       </span>
                     </td>
                     <td>
@@ -339,7 +371,9 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                       </div>
                     </td>
                     <td>
-                      <span class="exp-title-text" [title]="sub.experienceTitle">{{ sub.experienceTitle }}</span>
+                      <span class="exp-title-text" [title]="sub.experienceTitle">{{
+                        sub.experienceTitle
+                      }}</span>
                     </td>
                     <td>
                       <span class="cell-date">{{ sub.date | fecha }}</span>
@@ -376,710 +410,714 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
       </section>
     </div>
   `,
-  styles: [`
-    .dash-container {
-      display: flex;
-      flex-direction: column;
-      gap: 1.5rem;
-    }
-    .welcome-card {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: rgba(22, 33, 85, 0.55);
-      border: 1px solid rgba(128, 179, 255, 0.35);
-      border-radius: 2px;
-      padding: 1.75rem 2rem;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      gap: 1.5rem;
-      flex-wrap: wrap;
-    }
-    .welcome-main {
-      display: flex;
-      align-items: center;
-      gap: 1.25rem;
-    }
-    .avatar-ring {
-      position: relative;
-    }
-    .provider-avatar {
-      width: 64px;
-      height: 64px;
-      border-radius: 2px;
-      border: 1px solid #80b3ff;
-      object-fit: cover;
-    }
-    .welcome-text {
-      display: flex;
-      flex-direction: column;
-      gap: 0.25rem;
-    }
-    .welcome-tag {
-      display: inline-flex;
-      align-items: center;
-      font-size: 0.72rem;
-      font-weight: 700;
-      color: #80b3ff;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-    }
-    .welcome-name {
-      font-size: 1.6rem;
-      font-weight: 700;
-      color: #ffffff;
-      margin: 0;
-      letter-spacing: -0.02em;
-    }
-    .welcome-agency {
-      font-size: 0.88rem;
-      color: rgba(255, 255, 255, 0.75);
-      margin: 0;
-    }
-    .welcome-agency code {
-      background: rgba(128, 179, 255, 0.12);
-      border: 1px solid rgba(128, 179, 255, 0.25);
-      padding: 0.15rem 0.45rem;
-      border-radius: 2px;
-      color: #80b3ff;
-      font-size: 0.8rem;
-    }
-    .welcome-actions {
-      display: flex;
-      gap: 0.75rem;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-    .cta-blue-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0.65rem 1.25rem;
-      background: #80b3ff;
-      color: #081124;
-      font-weight: 700;
-      font-size: 0.85rem;
-      border-radius: 2px;
-      transition: all 0.2s ease;
-      text-decoration: none;
-      letter-spacing: 0.02em;
-    }
-    .cta-blue-btn:hover {
-      background: #a6c8ff;
-    }
-    .cta-secondary-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      padding: 0.65rem 1.15rem;
-      background: rgba(22, 33, 85, 0.6);
-      border: 1px solid rgba(128, 179, 255, 0.35);
-      color: #ffffff;
-      font-weight: 600;
-      font-size: 0.85rem;
-      border-radius: 2px;
-      transition: all 0.2s ease;
-      text-decoration: none;
-    }
-    .cta-secondary-btn:hover {
-      border-color: #80b3ff;
-      color: #80b3ff;
-    }
-    .btn-badge {
-      background: #80b3ff;
-      color: #081124;
-      font-size: 0.7rem;
-      font-weight: 800;
-      padding: 0.1rem 0.4rem;
-      border-radius: 2px;
-      line-height: 1;
-    }
-    .metrics-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-      gap: 1rem;
-    }
-    .metric-card {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      background: rgba(22, 33, 85, 0.55);
-      border: 1px solid rgba(128, 179, 255, 0.25);
-      border-radius: 2px;
-      padding: 1.35rem 1.25rem;
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
-      backdrop-filter: blur(14px);
-    }
-    .metric-card.blue-highlight-border {
-      border-color: rgba(128, 179, 255, 0.5);
-      background: rgba(128, 179, 255, 0.08);
-    }
-    .metric-content {
-      display: flex;
-      flex-direction: column;
-      gap: 0.25rem;
-    }
-    .metric-label {
-      font-size: 0.75rem;
-      color: rgba(255, 255, 255, 0.65);
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-    .metric-value {
-      font-size: 1.55rem;
-      font-weight: 700;
-      color: #ffffff;
-      line-height: 1.2;
-    }
-    .text-blue { color: #80b3ff !important; }
-    .metric-hint {
-      font-size: 0.75rem;
-      color: rgba(255, 255, 255, 0.5);
-    }
-    .moderation-alert-card {
-      background: rgba(128, 179, 255, 0.06);
-      border: 1px solid rgba(128, 179, 255, 0.35);
-      border-radius: 2px;
-      padding: 1.25rem 1.5rem;
-    }
-    .alert-body h3 {
-      font-size: 0.95rem;
-      font-weight: 700;
-      color: #80b3ff;
-      margin-bottom: 0.25rem;
-    }
-    .alert-body p {
-      font-size: 0.85rem;
-      color: rgba(255, 255, 255, 0.75);
-      margin-bottom: 0.75rem;
-    }
-    .moderation-items {
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-    }
-    .mod-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: rgba(7, 13, 28, 0.6);
-      border: 1px solid rgba(128, 179, 255, 0.2);
-      border-radius: 2px;
-      padding: 0.6rem 0.85rem;
-      gap: 1rem;
-    }
-    .mod-item-info {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      flex-wrap: wrap;
-    }
-    .mod-item-info strong {
-      font-size: 0.88rem;
-      color: #ffffff;
-    }
-    .mod-pill {
-      font-size: 0.72rem;
-      padding: 0.15rem 0.5rem;
-      border-radius: 2px;
-      background: rgba(128, 179, 255, 0.15);
-      border: 1px solid rgba(128, 179, 255, 0.3);
-      color: #80b3ff;
-      font-weight: 600;
-    }
-    .sim-admin-btn {
-      display: inline-flex;
-      align-items: center;
-      background: rgba(128, 179, 255, 0.15);
-      border: 1px solid rgba(128, 179, 255, 0.45);
-      color: #80b3ff;
-      padding: 0.35rem 0.75rem;
-      border-radius: 2px;
-      font-size: 0.75rem;
-      font-weight: 700;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-    .sim-admin-btn:hover {
-      background: #80b3ff;
-      color: #070d18;
-    }
-    .dash-card {
-      background: rgba(22, 33, 85, 0.55);
-      border: 1px solid rgba(128, 179, 255, 0.25);
-      border-radius: 2px;
-      padding: 1.5rem;
-      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
-      backdrop-filter: blur(14px);
-    }
-    .card-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 1.25rem;
-    }
-    .card-kicker {
-      font-size: 0.7rem;
-      font-weight: 700;
-      color: #80b3ff;
-      letter-spacing: 0.08em;
-    }
-    .card-title {
-      font-size: 1.15rem;
-      font-weight: 700;
-      color: #ffffff;
-      margin: 0.15rem 0 0 0;
-    }
-    .card-link {
-      font-size: 0.8rem;
-      color: #80b3ff;
-      font-weight: 600;
-      text-decoration: none;
-    }
-    .card-link:hover {
-      text-decoration: underline;
-    }
-    .empty-text {
-      font-size: 0.85rem;
-      color: rgba(255, 255, 255, 0.5);
-      text-align: center;
-      padding: 2rem 0;
-    }
-
-    /* Finanzas Section - Full Width */
-    .finanzas-section {
-      display: flex;
-      flex-direction: column;
-      gap: 1.25rem;
-    }
-    .badge-pending {
-      background: rgba(128, 179, 255, 0.25) !important;
-      border-color: #80b3ff !important;
-      color: #ffffff !important;
-    }
-
-    /* Bank Details Info Strip */
-    .fin-bank-banner {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 1rem;
-      padding: 1rem 1.25rem;
-      background: rgba(7, 13, 28, 0.6);
-      border: 1px solid rgba(128, 179, 255, 0.25);
-      border-radius: 2px;
-    }
-    .fin-bank-item {
-      display: flex;
-      flex-direction: column;
-      gap: 0.25rem;
-    }
-    .fin-bank-lbl {
-      font-size: 0.68rem;
-      text-transform: uppercase;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-      color: rgba(255, 255, 255, 0.55);
-    }
-    .fin-bank-val {
-      font-size: 0.88rem;
-      color: #ffffff;
-      word-break: break-all;
-    }
-    .code-font {
-      font-family: monospace;
-      color: #80b3ff;
-      letter-spacing: 0.04em;
-    }
-
-    /* Table Container & Semantic Table */
-    .fin-table-wrap {
-      width: 100%;
-      overflow-x: auto;
-      border: 1px solid rgba(128, 179, 255, 0.25);
-      border-radius: 2px;
-      background: rgba(7, 13, 28, 0.6);
-      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25);
-    }
-    .fin-data-table {
-      width: 100%;
-      min-width: 860px;
-      border-collapse: collapse;
-      text-align: left;
-    }
-    .fin-data-table th {
-      padding: 0.85rem 1rem;
-      background: rgba(22, 33, 85, 0.85);
-      border-bottom: 1px solid rgba(128, 179, 255, 0.3);
-      font-size: 0.72rem;
-      font-weight: 700;
-      color: #80b3ff;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      white-space: nowrap;
-    }
-    .fin-data-table td {
-      padding: 0.95rem 1rem;
-      border-bottom: 1px solid rgba(128, 179, 255, 0.12);
-      vertical-align: middle;
-      font-size: 0.86rem;
-      color: #ffffff;
-    }
-    .fin-data-table tbody tr:last-child td {
-      border-bottom: none;
-    }
-    .fin-data-table tbody tr:hover {
-      background: rgba(128, 179, 255, 0.05);
-    }
-    .fin-data-table tbody tr.row-pending {
-      background: rgba(128, 179, 255, 0.09);
-    }
-    .fin-status-pill {
-      display: inline-block;
-      font-size: 0.65rem;
-      font-weight: 800;
-      letter-spacing: 0.05em;
-      padding: 0.25rem 0.5rem;
-      border-radius: 2px;
-      text-align: center;
-      white-space: nowrap;
-    }
-    .status-pendiente {
-      background: rgba(128, 179, 255, 0.2);
-      border: 1px solid #80b3ff;
-      color: #80b3ff;
-    }
-    .status-aprobado {
-      background: rgba(128, 179, 255, 0.1);
-      border: 1px solid rgba(128, 179, 255, 0.35);
-      color: #ffffff;
-    }
-    .status-rechazado {
-      background: rgba(255, 95, 95, 0.15);
-      border: 1px solid #ff5f5f;
-      color: #ff8080;
-    }
-    .cell-stack {
-      display: flex;
-      flex-direction: column;
-      gap: 0.2rem;
-    }
-    .socio-name {
-      font-size: 0.88rem;
-      color: #ffffff;
-    }
-    .cell-sub {
-      font-size: 0.72rem;
-      color: rgba(255, 255, 255, 0.55);
-    }
-    .exp-title-text {
-      font-size: 0.85rem;
-      color: #ffffff;
-      max-width: 260px;
-      display: block;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .cell-date {
-      font-size: 0.82rem;
-      color: rgba(128, 179, 255, 0.9);
-      white-space: nowrap;
-    }
-    .ref-code {
-      font-family: monospace;
-      font-size: 0.8rem;
-      color: #80b3ff;
-    }
-    .seats-badge {
-      display: inline-block;
-      padding: 0.2rem 0.55rem;
-      border-radius: 2px;
-      background: rgba(128, 179, 255, 0.12);
-      border: 1px solid rgba(128, 179, 255, 0.25);
-      color: #ffffff;
-      font-size: 0.8rem;
-      font-weight: 700;
-    }
-    .amount-val {
-      font-size: 0.95rem;
-      font-weight: 700;
-      color: #80b3ff;
-      white-space: nowrap;
-    }
-    .text-center {
-      text-align: center;
-    }
-    .text-right {
-      text-align: right;
-    }
-    .fin-review-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0.45rem 0.85rem;
-      font-size: 0.75rem;
-      font-weight: 700;
-      border-radius: 2px;
-      text-decoration: none;
-      transition: all 0.2s ease;
-      background: rgba(128, 179, 255, 0.15);
-      border: 1px solid rgba(128, 179, 255, 0.35);
-      color: #80b3ff;
-      text-align: center;
-      white-space: nowrap;
-    }
-    .fin-review-btn:hover {
-      background: #80b3ff;
-      color: #070d18;
-    }
-    .fin-review-btn.btn-pending {
-      background: #80b3ff;
-      color: #070d18;
-      border-color: #80b3ff;
-    }
-    .fin-review-btn.btn-pending:hover {
-      background: #a3c7ff;
-    }
-
-    /* Experiencias Activas - Full Width Box */
-    .full-width-card {
-      width: 100%;
-      box-sizing: border-box;
-    }
-    .active-experiences-section {
-      display: flex;
-      flex-direction: column;
-    }
-    .card-head-actions {
-      display: flex;
-      align-items: center;
-      gap: 0.85rem;
-    }
-    .active-count-badge {
-      background: rgba(128, 179, 255, 0.15);
-      border: 1px solid rgba(128, 179, 255, 0.35);
-      color: #80b3ff;
-      font-size: 0.72rem;
-      font-weight: 700;
-      padding: 0.2rem 0.55rem;
-      border-radius: 2px;
-      letter-spacing: 0.04em;
-    }
-    .empty-active-box {
-      text-align: center;
-      padding: 2rem 1rem;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 1rem;
-    }
-    .active-experiences-list {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-    }
-    .active-exp-row {
-      display: grid;
-      grid-template-columns: 240px 1fr auto;
-      gap: 0;
-      background: rgba(7, 13, 28, 0.5);
-      border: 1px solid rgba(128, 179, 255, 0.2);
-      border-radius: 2px;
-      padding: 0;
-      align-items: stretch;
-      overflow: hidden;
-      transition: all 0.2s ease;
-    }
-    .active-exp-row:hover {
-      border-color: rgba(128, 179, 255, 0.45);
-      background: rgba(7, 13, 28, 0.7);
-    }
-    .active-exp-cover-wrap {
-      position: relative;
-      width: 100%;
-      height: 100%;
-      min-height: 165px;
-      border-radius: 0;
-      overflow: hidden;
-      border-right: 1px solid rgba(128, 179, 255, 0.2);
-      flex-shrink: 0;
-    }
-    .active-exp-cover {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-    .exp-live-pill {
-      position: absolute;
-      top: 8px;
-      left: 8px;
-      background: #80b3ff;
-      color: #070d18;
-      font-size: 0.65rem;
-      font-weight: 800;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      padding: 0.2rem 0.55rem;
-      border-radius: 2px;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
-    }
-    .active-exp-main {
-      padding: 1.25rem 1.5rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.35rem;
-      min-width: 0;
-    }
-    .active-exp-top-row {
-      display: flex;
-      align-items: center;
-      gap: 0.45rem;
-      font-size: 0.74rem;
-      color: rgba(255, 255, 255, 0.6);
-      flex-wrap: wrap;
-    }
-    .exp-cat-tag {
-      color: #80b3ff;
-      font-weight: 700;
-      text-transform: uppercase;
-      font-size: 0.7rem;
-      letter-spacing: 0.05em;
-    }
-    .exp-sep {
-      color: rgba(128, 179, 255, 0.4);
-    }
-    .exp-duration-tag {
-      color: rgba(255, 255, 255, 0.75);
-    }
-    .active-exp-name {
-      font-size: 1.05rem;
-      font-weight: 700;
-      color: #ffffff;
-      margin: 0;
-      line-height: 1.3;
-    }
-    .active-exp-desc {
-      font-size: 0.8rem;
-      color: rgba(255, 255, 255, 0.7);
-      margin: 0;
-      line-height: 1.4;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
-    .active-exp-kpis {
-      display: flex;
-      gap: 1.25rem;
-      flex-wrap: wrap;
-      margin-top: 0.35rem;
-      padding-top: 0.45rem;
-      border-top: 1px solid rgba(128, 179, 255, 0.12);
-    }
-    .kpi-mini-col {
-      display: flex;
-      flex-direction: column;
-      gap: 0.15rem;
-    }
-    .kpi-mini-lbl {
-      font-size: 0.68rem;
-      color: rgba(255, 255, 255, 0.5);
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
-    .kpi-mini-val {
-      font-size: 0.88rem;
-      font-weight: 700;
-      color: #ffffff;
-    }
-    .exp-mini-dates {
-      display: flex;
-      gap: 0.35rem;
-      flex-wrap: wrap;
-    }
-    .mini-date-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.25rem;
-      font-size: 0.72rem;
-      background: rgba(128, 179, 255, 0.1);
-      border: 1px solid rgba(128, 179, 255, 0.25);
-      color: rgba(255, 255, 255, 0.85);
-      padding: 0.15rem 0.45rem;
-      border-radius: 2px;
-    }
-    .date-occupancy {
-      color: #80b3ff;
-      font-weight: 700;
-    }
-    .active-exp-btns {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      gap: 0.5rem;
-      min-width: 130px;
-      padding: 1.25rem 1.5rem 1.25rem 0;
-    }
-    .active-action-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0.55rem 0.95rem;
-      font-size: 0.78rem;
-      font-weight: 700;
-      border-radius: 2px;
-      text-decoration: none;
-      transition: all 0.2s ease;
-      text-align: center;
-      white-space: nowrap;
-    }
-    .edit-action {
-      background: rgba(128, 179, 255, 0.15);
-      border: 1px solid rgba(128, 179, 255, 0.35);
-      color: #80b3ff;
-    }
-    .edit-action:hover {
-      background: #80b3ff;
-      color: #070d18;
-    }
-    .socios-action {
-      background: rgba(22, 33, 85, 0.55);
-      border: 1px solid rgba(128, 179, 255, 0.25);
-      color: #ffffff;
-    }
-    .socios-action:hover {
-      background: rgba(128, 179, 255, 0.25);
-      border-color: #80b3ff;
-    }
-    @media (max-width: 768px) {
-      .active-exp-row {
-        grid-template-columns: 1fr;
+  styles: [
+    `
+      .dash-container {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
       }
-      .active-exp-cover-wrap {
+      .welcome-card {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: rgba(22, 33, 85, 0.55);
+        border: 1px solid rgba(128, 179, 255, 0.35);
+        border-radius: 2px;
+        padding: 1.75rem 2rem;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        gap: 1.5rem;
+        flex-wrap: wrap;
+      }
+      .welcome-main {
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+      }
+      .avatar-ring {
+        position: relative;
+      }
+      .provider-avatar {
+        width: 64px;
+        height: 64px;
+        border-radius: 2px;
+        border: 1px solid #80b3ff;
+        object-fit: cover;
+      }
+      .welcome-text {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+      }
+      .welcome-tag {
+        display: inline-flex;
+        align-items: center;
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: #80b3ff;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      .welcome-name {
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: #ffffff;
+        margin: 0;
+        letter-spacing: -0.02em;
+      }
+      .welcome-agency {
+        font-size: 0.88rem;
+        color: rgba(255, 255, 255, 0.75);
+        margin: 0;
+      }
+      .welcome-agency code {
+        background: rgba(128, 179, 255, 0.12);
+        border: 1px solid rgba(128, 179, 255, 0.25);
+        padding: 0.15rem 0.45rem;
+        border-radius: 2px;
+        color: #80b3ff;
+        font-size: 0.8rem;
+      }
+      .welcome-actions {
+        display: flex;
+        gap: 0.75rem;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .cta-blue-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.65rem 1.25rem;
+        background: #80b3ff;
+        color: #081124;
+        font-weight: 700;
+        font-size: 0.85rem;
+        border-radius: 2px;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        letter-spacing: 0.02em;
+      }
+      .cta-blue-btn:hover {
+        background: #a6c8ff;
+      }
+      .cta-secondary-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.65rem 1.15rem;
+        background: rgba(22, 33, 85, 0.6);
+        border: 1px solid rgba(128, 179, 255, 0.35);
+        color: #ffffff;
+        font-weight: 600;
+        font-size: 0.85rem;
+        border-radius: 2px;
+        transition: all 0.2s ease;
+        text-decoration: none;
+      }
+      .cta-secondary-btn:hover {
+        border-color: #80b3ff;
+        color: #80b3ff;
+      }
+      .btn-badge {
+        background: #80b3ff;
+        color: #081124;
+        font-size: 0.7rem;
+        font-weight: 800;
+        padding: 0.1rem 0.4rem;
+        border-radius: 2px;
+        line-height: 1;
+      }
+      .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+        gap: 1rem;
+      }
+      .metric-card {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        background: rgba(22, 33, 85, 0.55);
+        border: 1px solid rgba(128, 179, 255, 0.25);
+        border-radius: 2px;
+        padding: 1.35rem 1.25rem;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+        backdrop-filter: blur(14px);
+      }
+      .metric-card.blue-highlight-border {
+        border-color: rgba(128, 179, 255, 0.5);
+        background: rgba(128, 179, 255, 0.08);
+      }
+      .metric-content {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+      }
+      .metric-label {
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.65);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .metric-value {
+        font-size: 1.55rem;
+        font-weight: 700;
+        color: #ffffff;
+        line-height: 1.2;
+      }
+      .text-blue {
+        color: #80b3ff !important;
+      }
+      .metric-hint {
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.5);
+      }
+      .moderation-alert-card {
+        background: rgba(128, 179, 255, 0.06);
+        border: 1px solid rgba(128, 179, 255, 0.35);
+        border-radius: 2px;
+        padding: 1.25rem 1.5rem;
+      }
+      .alert-body h3 {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #80b3ff;
+        margin-bottom: 0.25rem;
+      }
+      .alert-body p {
+        font-size: 0.85rem;
+        color: rgba(255, 255, 255, 0.75);
+        margin-bottom: 0.75rem;
+      }
+      .moderation-items {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      .mod-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: rgba(7, 13, 28, 0.6);
+        border: 1px solid rgba(128, 179, 255, 0.2);
+        border-radius: 2px;
+        padding: 0.6rem 0.85rem;
+        gap: 1rem;
+      }
+      .mod-item-info {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+      }
+      .mod-item-info strong {
+        font-size: 0.88rem;
+        color: #ffffff;
+      }
+      .mod-pill {
+        font-size: 0.72rem;
+        padding: 0.15rem 0.5rem;
+        border-radius: 2px;
+        background: rgba(128, 179, 255, 0.15);
+        border: 1px solid rgba(128, 179, 255, 0.3);
+        color: #80b3ff;
+        font-weight: 600;
+      }
+      .sim-admin-btn {
+        display: inline-flex;
+        align-items: center;
+        background: rgba(128, 179, 255, 0.15);
+        border: 1px solid rgba(128, 179, 255, 0.45);
+        color: #80b3ff;
+        padding: 0.35rem 0.75rem;
+        border-radius: 2px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .sim-admin-btn:hover {
+        background: #80b3ff;
+        color: #070d18;
+      }
+      .dash-card {
+        background: rgba(22, 33, 85, 0.55);
+        border: 1px solid rgba(128, 179, 255, 0.25);
+        border-radius: 2px;
+        padding: 1.5rem;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
+        backdrop-filter: blur(14px);
+      }
+      .card-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 1.25rem;
+      }
+      .card-kicker {
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: #80b3ff;
+        letter-spacing: 0.08em;
+      }
+      .card-title {
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: #ffffff;
+        margin: 0.15rem 0 0 0;
+      }
+      .card-link {
+        font-size: 0.8rem;
+        color: #80b3ff;
+        font-weight: 600;
+        text-decoration: none;
+      }
+      .card-link:hover {
+        text-decoration: underline;
+      }
+      .empty-text {
+        font-size: 0.85rem;
+        color: rgba(255, 255, 255, 0.5);
+        text-align: center;
+        padding: 2rem 0;
+      }
+
+      /* Finanzas Section - Full Width */
+      .finanzas-section {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+      }
+      .badge-pending {
+        background: rgba(128, 179, 255, 0.25) !important;
+        border-color: #80b3ff !important;
+        color: #ffffff !important;
+      }
+
+      /* Bank Details Info Strip */
+      .fin-bank-banner {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1rem;
+        padding: 1rem 1.25rem;
+        background: rgba(7, 13, 28, 0.6);
+        border: 1px solid rgba(128, 179, 255, 0.25);
+        border-radius: 2px;
+      }
+      .fin-bank-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+      }
+      .fin-bank-lbl {
+        font-size: 0.68rem;
+        text-transform: uppercase;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        color: rgba(255, 255, 255, 0.55);
+      }
+      .fin-bank-val {
+        font-size: 0.88rem;
+        color: #ffffff;
+        word-break: break-all;
+      }
+      .code-font {
+        font-family: monospace;
+        color: #80b3ff;
+        letter-spacing: 0.04em;
+      }
+
+      /* Table Container & Semantic Table */
+      .fin-table-wrap {
         width: 100%;
-        height: 190px;
-        min-height: 190px;
-        border-right: none;
-        border-bottom: 1px solid rgba(128, 179, 255, 0.2);
+        overflow-x: auto;
+        border: 1px solid rgba(128, 179, 255, 0.25);
+        border-radius: 2px;
+        background: rgba(7, 13, 28, 0.6);
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25);
       }
-      .active-exp-main {
-        padding: 1.25rem;
+      .fin-data-table {
+        width: 100%;
+        min-width: 860px;
+        border-collapse: collapse;
+        text-align: left;
       }
-      .active-exp-btns {
-        padding: 0 1.25rem 1.25rem 1.25rem;
-        flex-direction: row;
+      .fin-data-table th {
+        padding: 0.85rem 1rem;
+        background: rgba(22, 33, 85, 0.85);
+        border-bottom: 1px solid rgba(128, 179, 255, 0.3);
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: #80b3ff;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        white-space: nowrap;
+      }
+      .fin-data-table td {
+        padding: 0.95rem 1rem;
+        border-bottom: 1px solid rgba(128, 179, 255, 0.12);
+        vertical-align: middle;
+        font-size: 0.86rem;
+        color: #ffffff;
+      }
+      .fin-data-table tbody tr:last-child td {
+        border-bottom: none;
+      }
+      .fin-data-table tbody tr:hover {
+        background: rgba(128, 179, 255, 0.05);
+      }
+      .fin-data-table tbody tr.row-pending {
+        background: rgba(128, 179, 255, 0.09);
+      }
+      .fin-status-pill {
+        display: inline-block;
+        font-size: 0.65rem;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        padding: 0.25rem 0.5rem;
+        border-radius: 2px;
+        text-align: center;
+        white-space: nowrap;
+      }
+      .status-pendiente {
+        background: rgba(128, 179, 255, 0.2);
+        border: 1px solid #80b3ff;
+        color: #80b3ff;
+      }
+      .status-aprobado {
+        background: rgba(128, 179, 255, 0.1);
+        border: 1px solid rgba(128, 179, 255, 0.35);
+        color: #ffffff;
+      }
+      .status-rechazado {
+        background: rgba(255, 95, 95, 0.15);
+        border: 1px solid #ff5f5f;
+        color: #ff8080;
+      }
+      .cell-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+      }
+      .socio-name {
+        font-size: 0.88rem;
+        color: #ffffff;
+      }
+      .cell-sub {
+        font-size: 0.72rem;
+        color: rgba(255, 255, 255, 0.55);
+      }
+      .exp-title-text {
+        font-size: 0.85rem;
+        color: #ffffff;
+        max-width: 260px;
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .cell-date {
+        font-size: 0.82rem;
+        color: rgba(128, 179, 255, 0.9);
+        white-space: nowrap;
+      }
+      .ref-code {
+        font-family: monospace;
+        font-size: 0.8rem;
+        color: #80b3ff;
+      }
+      .seats-badge {
+        display: inline-block;
+        padding: 0.2rem 0.55rem;
+        border-radius: 2px;
+        background: rgba(128, 179, 255, 0.12);
+        border: 1px solid rgba(128, 179, 255, 0.25);
+        color: #ffffff;
+        font-size: 0.8rem;
+        font-weight: 700;
+      }
+      .amount-val {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #80b3ff;
+        white-space: nowrap;
+      }
+      .text-center {
+        text-align: center;
+      }
+      .text-right {
+        text-align: right;
+      }
+      .fin-review-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.45rem 0.85rem;
+        font-size: 0.75rem;
+        font-weight: 700;
+        border-radius: 2px;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        background: rgba(128, 179, 255, 0.15);
+        border: 1px solid rgba(128, 179, 255, 0.35);
+        color: #80b3ff;
+        text-align: center;
+        white-space: nowrap;
+      }
+      .fin-review-btn:hover {
+        background: #80b3ff;
+        color: #070d18;
+      }
+      .fin-review-btn.btn-pending {
+        background: #80b3ff;
+        color: #070d18;
+        border-color: #80b3ff;
+      }
+      .fin-review-btn.btn-pending:hover {
+        background: #a3c7ff;
+      }
+
+      /* Experiencias Activas - Full Width Box */
+      .full-width-card {
         width: 100%;
         box-sizing: border-box;
       }
-      .active-action-btn {
-        flex: 1;
+      .active-experiences-section {
+        display: flex;
+        flex-direction: column;
       }
-    }
-  `],
+      .card-head-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
+      }
+      .active-count-badge {
+        background: rgba(128, 179, 255, 0.15);
+        border: 1px solid rgba(128, 179, 255, 0.35);
+        color: #80b3ff;
+        font-size: 0.72rem;
+        font-weight: 700;
+        padding: 0.2rem 0.55rem;
+        border-radius: 2px;
+        letter-spacing: 0.04em;
+      }
+      .empty-active-box {
+        text-align: center;
+        padding: 2rem 1rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+      }
+      .active-experiences-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+      .active-exp-row {
+        display: grid;
+        grid-template-columns: 240px 1fr auto;
+        gap: 0;
+        background: rgba(7, 13, 28, 0.5);
+        border: 1px solid rgba(128, 179, 255, 0.2);
+        border-radius: 2px;
+        padding: 0;
+        align-items: stretch;
+        overflow: hidden;
+        transition: all 0.2s ease;
+      }
+      .active-exp-row:hover {
+        border-color: rgba(128, 179, 255, 0.45);
+        background: rgba(7, 13, 28, 0.7);
+      }
+      .active-exp-cover-wrap {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        min-height: 165px;
+        border-radius: 0;
+        overflow: hidden;
+        border-right: 1px solid rgba(128, 179, 255, 0.2);
+        flex-shrink: 0;
+      }
+      .active-exp-cover {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+      .exp-live-pill {
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        background: #80b3ff;
+        color: #070d18;
+        font-size: 0.65rem;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        padding: 0.2rem 0.55rem;
+        border-radius: 2px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+      }
+      .active-exp-main {
+        padding: 1.25rem 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        min-width: 0;
+      }
+      .active-exp-top-row {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        font-size: 0.74rem;
+        color: rgba(255, 255, 255, 0.6);
+        flex-wrap: wrap;
+      }
+      .exp-cat-tag {
+        color: #80b3ff;
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 0.7rem;
+        letter-spacing: 0.05em;
+      }
+      .exp-sep {
+        color: rgba(128, 179, 255, 0.4);
+      }
+      .exp-duration-tag {
+        color: rgba(255, 255, 255, 0.75);
+      }
+      .active-exp-name {
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: #ffffff;
+        margin: 0;
+        line-height: 1.3;
+      }
+      .active-exp-desc {
+        font-size: 0.8rem;
+        color: rgba(255, 255, 255, 0.7);
+        margin: 0;
+        line-height: 1.4;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .active-exp-kpis {
+        display: flex;
+        gap: 1.25rem;
+        flex-wrap: wrap;
+        margin-top: 0.35rem;
+        padding-top: 0.45rem;
+        border-top: 1px solid rgba(128, 179, 255, 0.12);
+      }
+      .kpi-mini-col {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+      }
+      .kpi-mini-lbl {
+        font-size: 0.68rem;
+        color: rgba(255, 255, 255, 0.5);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .kpi-mini-val {
+        font-size: 0.88rem;
+        font-weight: 700;
+        color: #ffffff;
+      }
+      .exp-mini-dates {
+        display: flex;
+        gap: 0.35rem;
+        flex-wrap: wrap;
+      }
+      .mini-date-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        font-size: 0.72rem;
+        background: rgba(128, 179, 255, 0.1);
+        border: 1px solid rgba(128, 179, 255, 0.25);
+        color: rgba(255, 255, 255, 0.85);
+        padding: 0.15rem 0.45rem;
+        border-radius: 2px;
+      }
+      .date-occupancy {
+        color: #80b3ff;
+        font-weight: 700;
+      }
+      .active-exp-btns {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 0.5rem;
+        min-width: 130px;
+        padding: 1.25rem 1.5rem 1.25rem 0;
+      }
+      .active-action-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.55rem 0.95rem;
+        font-size: 0.78rem;
+        font-weight: 700;
+        border-radius: 2px;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        text-align: center;
+        white-space: nowrap;
+      }
+      .edit-action {
+        background: rgba(128, 179, 255, 0.15);
+        border: 1px solid rgba(128, 179, 255, 0.35);
+        color: #80b3ff;
+      }
+      .edit-action:hover {
+        background: #80b3ff;
+        color: #070d18;
+      }
+      .socios-action {
+        background: rgba(22, 33, 85, 0.55);
+        border: 1px solid rgba(128, 179, 255, 0.25);
+        color: #ffffff;
+      }
+      .socios-action:hover {
+        background: rgba(128, 179, 255, 0.25);
+        border-color: #80b3ff;
+      }
+      @media (max-width: 768px) {
+        .active-exp-row {
+          grid-template-columns: 1fr;
+        }
+        .active-exp-cover-wrap {
+          width: 100%;
+          height: 190px;
+          min-height: 190px;
+          border-right: none;
+          border-bottom: 1px solid rgba(128, 179, 255, 0.2);
+        }
+        .active-exp-main {
+          padding: 1.25rem;
+        }
+        .active-exp-btns {
+          padding: 0 1.25rem 1.25rem 1.25rem;
+          flex-direction: row;
+          width: 100%;
+          box-sizing: border-box;
+        }
+        .active-action-btn {
+          flex: 1;
+        }
+      }
+    `,
+  ],
 })
 export class ProviderDashboardComponent {
   readonly store = inject(ProviderStoreService);

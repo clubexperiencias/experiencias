@@ -67,7 +67,7 @@ export const SEED_PROVIDERS: ProviderUser[] = [
     bankName: 'Banco Nación / Mercado Pago',
     verified: true,
     role: 'prestador',
-    avatar: '/assets/aistudio/patricio_84c0d3a9.jpg',
+    avatar: '/assets/aistudio/patricio.jpg',
     joinedAt: '2024-03-15T10:00:00Z',
   },
   {
@@ -81,7 +81,8 @@ export const SEED_PROVIDERS: ProviderUser[] = [
     bankName: 'Banco Galicia',
     verified: true,
     role: 'prestador',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
+    avatar:
+      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
     joinedAt: '2024-06-20T14:30:00Z',
   },
 ];
@@ -147,7 +148,12 @@ const SEED_SUBMISSIONS: TransferSubmission[] = [
     email: 'lucia.fernandez@ejemplo.com',
     dni: '32458190',
     phone: '+54 383 455 1290',
-    receipt: { fileName: 'transferencia-lucia.png', mimeType: 'image/png', sizeBytes: 412_000, url: SAMPLE_RECEIPT_URL },
+    receipt: {
+      fileName: 'transferencia-lucia.png',
+      mimeType: 'image/png',
+      sizeBytes: 412_000,
+      url: SAMPLE_RECEIPT_URL,
+    },
     status: 'pendiente',
     submittedAt: hoursAgo(3),
   },
@@ -163,7 +169,12 @@ const SEED_SUBMISSIONS: TransferSubmission[] = [
     email: 'mquiroga@ejemplo.com',
     dni: '28771034',
     phone: '+54 11 5021 7781',
-    receipt: { fileName: 'comprobante.png', mimeType: 'image/png', sizeBytes: 388_000, url: SAMPLE_RECEIPT_URL },
+    receipt: {
+      fileName: 'comprobante.png',
+      mimeType: 'image/png',
+      sizeBytes: 388_000,
+      url: SAMPLE_RECEIPT_URL,
+    },
     status: 'pendiente',
     submittedAt: hoursAgo(20),
   },
@@ -179,7 +190,12 @@ const SEED_SUBMISSIONS: TransferSubmission[] = [
     email: 'carla.ahumada@ejemplo.com',
     dni: '35120988',
     phone: '+54 383 412 0033',
-    receipt: { fileName: 'pago-kayak.png', mimeType: 'image/png', sizeBytes: 401_000, url: SAMPLE_RECEIPT_URL },
+    receipt: {
+      fileName: 'pago-kayak.png',
+      mimeType: 'image/png',
+      sizeBytes: 401_000,
+      url: SAMPLE_RECEIPT_URL,
+    },
     status: 'aprobado',
     submittedAt: hoursAgo(52),
     reviewedAt: hoursAgo(48),
@@ -286,7 +302,8 @@ export class ProviderStoreService {
         bankName: 'Banco de Catamarca',
         verified: false,
         role: 'prestador',
-        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
+        avatar:
+          'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
         joinedAt: new Date().toISOString(),
       };
       this._providers.update((list) => [...list, provider!]);
@@ -326,7 +343,8 @@ export class ProviderStoreService {
       bankName: data.bankName.trim(),
       verified: false,
       role: 'prestador',
-      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
+      avatar:
+        'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
       joinedAt: new Date().toISOString(),
     };
 
@@ -385,7 +403,11 @@ export class ProviderStoreService {
       .reduce((total, s) => total + s.participants, 0);
   }
 
-  canDeleteExperience(experienceId: string): { allowed: boolean; reason?: string; enrolledCount: number } {
+  canDeleteExperience(experienceId: string): {
+    allowed: boolean;
+    reason?: string;
+    enrolledCount: number;
+  } {
     const submissions = this.submissionsFor(experienceId);
     const nonRejected = submissions.filter((s) => s.status !== 'rechazado');
     const enrolledCount = nonRejected.reduce((sum, s) => sum + s.participants, 0);
@@ -400,10 +422,7 @@ export class ProviderStoreService {
     return { allowed: true, enrolledCount: 0 };
   }
 
-  createExperience(
-    input: NewProviderExperience,
-    requestPublication = false,
-  ): ProviderExperience {
+  createExperience(input: NewProviderExperience, requestPublication = false): ProviderExperience {
     const provider = this._currentProvider() || SEED_PROVIDERS[0];
     const baseSlug = slugify(input.title) || 'experiencia';
     let slug = baseSlug;
@@ -548,7 +567,9 @@ export class ProviderStoreService {
    * Set status directly (backward compatibility)
    */
   setExperienceStatus(experienceId: string, status: ProviderExperience['status']): void {
-    this._experiences.update((list) => list.map((e) => (e.id === experienceId ? { ...e, status } : e)));
+    this._experiences.update((list) =>
+      list.map((e) => (e.id === experienceId ? { ...e, status } : e)),
+    );
     this.saveExperiences();
   }
 
@@ -556,7 +577,10 @@ export class ProviderStoreService {
    * Admin Moderation Simulation / Execution:
    * Approves the pending request (publish, hide, delete)
    */
-  adminApproveAction(experienceId: string, adminComment = 'Aprobado por el equipo editorial'): void {
+  adminApproveAction(
+    experienceId: string,
+    adminComment = 'Aprobado por el equipo editorial',
+  ): void {
     const exp = this.getExperienceById(experienceId);
     if (!exp || !exp.moderation) return;
 
@@ -627,7 +651,11 @@ export class ProviderStoreService {
     if (!experience.dates.includes(input.date)) {
       throw new Error('La fecha elegida no está disponible.');
     }
-    if (!Number.isInteger(input.participants) || input.participants < 1 || input.participants > MAX_PARTICIPANTS_PER_BOOKING) {
+    if (
+      !Number.isInteger(input.participants) ||
+      input.participants < 1 ||
+      input.participants > MAX_PARTICIPANTS_PER_BOOKING
+    ) {
       throw new Error('Cantidad de personas inválida.');
     }
     if (input.participants > this.availableSeats(experience, input.date)) {
@@ -638,7 +666,8 @@ export class ProviderStoreService {
       throw new Error(fileError);
     }
     const discount = input.discountCode
-      ? (findDiscountCode(input.discountCode) ?? this.newsletter.findMemberDiscount(input.discountCode))
+      ? (findDiscountCode(input.discountCode) ??
+        this.newsletter.findMemberDiscount(input.discountCode))
       : undefined;
     if (input.discountCode && !discount) {
       throw new Error('El código de descuento no es válido.');
@@ -673,7 +702,11 @@ export class ProviderStoreService {
     this.saveSubmissions();
 
     if (submission.discountCode) {
-      this.newsletter.markMemberDiscountUsed(submission.discountCode, submission.reference, experience.title);
+      this.newsletter.markMemberDiscountUsed(
+        submission.discountCode,
+        submission.reference,
+        experience.title,
+      );
     }
     this.recordMemberActivity(experience, submission);
     this.emails.notifyReceiptReceived(submission);
@@ -681,7 +714,11 @@ export class ProviderStoreService {
     return submission;
   }
 
-  reviewSubmission(submissionId: string, status: Exclude<TransferStatus, 'pendiente'>, rejectionReason?: string): void {
+  reviewSubmission(
+    submissionId: string,
+    status: Exclude<TransferStatus, 'pendiente'>,
+    rejectionReason?: string,
+  ): void {
     let reviewed: TransferSubmission | undefined;
     this._submissions.update((list) =>
       list.map((s) => {
@@ -689,7 +726,8 @@ export class ProviderStoreService {
         reviewed = {
           ...s,
           status,
-          rejectionReason: status === 'rechazado' ? rejectionReason?.trim() || undefined : undefined,
+          rejectionReason:
+            status === 'rechazado' ? rejectionReason?.trim() || undefined : undefined,
           reviewedAt: new Date().toISOString(),
         };
         return reviewed;
@@ -705,12 +743,17 @@ export class ProviderStoreService {
     }
   }
 
-  private recordMemberActivity(experience: ProviderExperience, submission: TransferSubmission): void {
+  private recordMemberActivity(
+    experience: ProviderExperience,
+    submission: TransferSubmission,
+  ): void {
     const member = this.newsletter.currentMember();
     if (!member) return;
-    const dateLabel = new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'long', year: 'numeric' }).format(
-      new Date(`${submission.date}T12:00:00`),
-    );
+    const dateLabel = new Intl.DateTimeFormat('es-AR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }).format(new Date(`${submission.date}T12:00:00`));
     this.activities.addActivity({
       id: `act_${submission.id}`,
       slug: `${experience.slug}-${submission.reference.toLowerCase()}`,
@@ -722,7 +765,11 @@ export class ProviderStoreService {
       coverImage: experience.coverImage || '/assets/images/laguna_blanca.jpg',
       dateLabel,
       status: 'pendiente_pago',
-      provider: { name: experience.shortTitle ?? experience.title, category: experience.difficulty, contactPhone: '' },
+      provider: {
+        name: experience.shortTitle ?? experience.title,
+        category: experience.difficulty,
+        contactPhone: '',
+      },
       receipt: {
         receiptNumber: submission.reference,
         transactionId: submission.id,

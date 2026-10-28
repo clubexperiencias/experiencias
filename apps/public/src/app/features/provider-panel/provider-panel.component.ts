@@ -1,5 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { ProviderStoreService } from '../../core/services/provider-store.service';
 import { ProviderLoginComponent } from './provider-login/provider-login.component';
@@ -7,7 +7,7 @@ import { ProviderLoginComponent } from './provider-login/provider-login.componen
 @Component({
   selector: 'app-provider-panel',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, MatIconModule, ProviderLoginComponent],
+  imports: [RouterOutlet, RouterLink, MatIconModule, ProviderLoginComponent],
   template: `
     <div class="provider-portal-root">
       <!-- Domain indicator strip con estilo perfil / azul #80b3ff -->
@@ -17,10 +17,18 @@ import { ProviderLoginComponent } from './provider-login/provider-login.componen
             <span class="live-dot"></span>
             <span class="subdomain-host">prestadores.experiencias.club</span>
             <span class="subdomain-sep">·</span>
-            <span class="subdomain-tag">Portal Operativo para Prestadores y Guías de Catamarca</span>
+            <span class="subdomain-tag"
+              >Portal Operativo para Prestadores y Guías de Catamarca</span
+            >
           </div>
           <div class="subdomain-right">
-            <a href="https://experiencias.club" class="back-public-link" target="_blank" rel="noopener" title="Ir al sitio público de experiencias">
+            <a
+              href="https://experiencias.club"
+              class="back-public-link"
+              target="_blank"
+              rel="noopener"
+              title="Ir al sitio público de experiencias"
+            >
               <mat-icon>open_in_new</mat-icon>
               <span>Ir a experiencias.club</span>
             </a>
@@ -53,7 +61,11 @@ import { ProviderLoginComponent } from './provider-login/provider-login.componen
             <!-- Acciones del Header: Botón Nueva Experiencia + Menú de Perfil Ampliado -->
             <div class="header-right">
               <!-- Botón Nueva Experiencia en azul 80b3ff rectangular -->
-              <a routerLink="/experiencias/nueva" class="new-exp-btn" title="Publicar o proponer una nueva experiencia">
+              <a
+                routerLink="/experiencias/nueva"
+                class="new-exp-btn"
+                title="Publicar o proponer una nueva experiencia"
+              >
                 <mat-icon class="btn-icon">add</mat-icon>
                 <span>Nueva Experiencia</span>
               </a>
@@ -61,7 +73,7 @@ import { ProviderLoginComponent } from './provider-login/provider-login.componen
               <!-- Menú de Prestador activo -->
               <div class="user-pill" (click)="toggleUserMenu()">
                 <img
-                  [src]="provider()?.avatar || '/assets/aistudio/patricio_84c0d3a9.jpg'"
+                  [src]="provider()?.avatar || '/assets/aistudio/patricio.jpg'"
                   [alt]="provider()?.name || 'Patricio Facundo'"
                   class="user-avatar"
                   referrerpolicy="no-referrer"
@@ -77,13 +89,15 @@ import { ProviderLoginComponent } from './provider-login/provider-login.componen
                     <div class="dropdown-header">
                       <div class="dropdown-user-row">
                         <img
-                          [src]="provider()?.avatar || '/assets/aistudio/patricio_84c0d3a9.jpg'"
+                          [src]="provider()?.avatar || '/assets/aistudio/patricio.jpg'"
                           [alt]="provider()?.name || 'Patricio Facundo'"
                           class="dropdown-avatar-lg"
                           referrerpolicy="no-referrer"
                         />
                         <div class="dropdown-user-details">
-                          <strong class="dropdown-user-name">{{ provider()?.name || 'Patricio Facundo' }}</strong>
+                          <strong class="dropdown-user-name">{{
+                            provider()?.name || 'Patricio Facundo'
+                          }}</strong>
                           <span class="dropdown-user-email">{{ provider()?.email }}</span>
                           <span class="dropdown-user-tag">{{ provider()?.agency }}</span>
                         </div>
@@ -94,23 +108,39 @@ import { ProviderLoginComponent } from './provider-login/provider-login.componen
 
                     <!-- Opciones de Navegación del Menú Agrandadas -->
                     <div class="dropdown-nav-list">
-                      <a routerLink="/dashboard" class="dropdown-item enlarged-item" (click)="userMenuOpen.set(false)">
+                      <a
+                        routerLink="/dashboard"
+                        class="dropdown-item enlarged-item"
+                        (click)="userMenuOpen.set(false)"
+                      >
                         <mat-icon class="menu-item-icon">dashboard</mat-icon>
                         <div class="menu-item-info">
                           <strong class="menu-item-title">Panel de Control</strong>
-                          <span class="menu-item-desc">Métricas de socios, recaudación y catálogo</span>
+                          <span class="menu-item-desc"
+                            >Métricas de socios, recaudación y catálogo</span
+                          >
                         </div>
                       </a>
 
-                      <a routerLink="/experiencias" class="dropdown-item enlarged-item" (click)="userMenuOpen.set(false)">
+                      <a
+                        routerLink="/experiencias"
+                        class="dropdown-item enlarged-item"
+                        (click)="userMenuOpen.set(false)"
+                      >
                         <mat-icon class="menu-item-icon">hiking</mat-icon>
                         <div class="menu-item-info">
                           <strong class="menu-item-title">Mis Experiencias</strong>
-                          <span class="menu-item-desc">Catálogo activo, cupos y estado de publicación</span>
+                          <span class="menu-item-desc"
+                            >Catálogo activo, cupos y estado de publicación</span
+                          >
                         </div>
                       </a>
 
-                      <a routerLink="/comprobantes" class="dropdown-item enlarged-item" (click)="userMenuOpen.set(false)">
+                      <a
+                        routerLink="/comprobantes"
+                        class="dropdown-item enlarged-item"
+                        (click)="userMenuOpen.set(false)"
+                      >
                         <mat-icon class="menu-item-icon">receipt_long</mat-icon>
                         <div class="menu-item-info">
                           <strong class="menu-item-title">Comprobantes y Socios</strong>
@@ -118,11 +148,17 @@ import { ProviderLoginComponent } from './provider-login/provider-login.componen
                         </div>
                       </a>
 
-                      <a routerLink="/perfil" class="dropdown-item enlarged-item" (click)="userMenuOpen.set(false)">
+                      <a
+                        routerLink="/perfil"
+                        class="dropdown-item enlarged-item"
+                        (click)="userMenuOpen.set(false)"
+                      >
                         <mat-icon class="menu-item-icon">account_balance</mat-icon>
                         <div class="menu-item-info">
                           <strong class="menu-item-title">Cobros, CBU y Perfil</strong>
-                          <span class="menu-item-desc">Datos fiscales y cuenta bancaria de destino</span>
+                          <span class="menu-item-desc"
+                            >Datos fiscales y cuenta bancaria de destino</span
+                          >
                         </div>
                       </a>
                     </div>
@@ -146,7 +182,11 @@ import { ProviderLoginComponent } from './provider-login/provider-login.componen
 
                     <div class="dropdown-divider"></div>
 
-                    <button type="button" class="dropdown-item enlarged-item logout-item" (click)="logout()">
+                    <button
+                      type="button"
+                      class="dropdown-item enlarged-item logout-item"
+                      (click)="logout()"
+                    >
                       <mat-icon class="menu-item-icon">logout</mat-icon>
                       <div class="menu-item-info">
                         <strong class="menu-item-title">Cerrar sesión</strong>
