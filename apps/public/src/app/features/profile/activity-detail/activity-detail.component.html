@@ -1,0 +1,466 @@
+<div class="activity-detail-page">
+  <!-- Header Principal -->
+  <app-header [(mobileMenuOpen)]="mobileMenuOpen" (loginClick)="openLoginModal()"></app-header>
+
+  <!-- Breadcrumb Oficial -->
+  <app-breadcrumb [items]="breadcrumbs()"></app-breadcrumb>
+
+  <main class="detail-main" *ngIf="activity() as act; else notFoundTemplate">
+    <div class="detail-container">
+
+      <!-- ══════════ ENCABEZADO DE ACTIVIDAD ══════════ -->
+      <header class="activity-hero-card">
+        <div class="hero-image-backdrop" [style.background-image]="'url(' + act.coverImage + ')'">
+          <div class="hero-gradient-overlay"></div>
+        </div>
+
+        <div class="hero-content">
+          <div class="badge-row">
+            <span class="region-pill">{{ act.region }}</span>
+            <span class="altitude-pill">{{ act.altitude }}</span>
+            <span class="status-pill" [class.completed]="act.status === 'completada'">
+              {{ act.status === 'completada' ? 'ACTIVIDAD COMPLETADA' : 'SALIDA CONFIRMADA' }}
+            </span>
+          </div>
+
+          <h1 class="activity-hero-title">{{ act.title }}</h1>
+          <p class="activity-date-lead">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            {{ act.dateLabel }} · Comprobante Oficial Nº {{ act.receipt.receiptNumber }}
+          </p>
+        </div>
+      </header>
+
+      <!-- ══════════ FILA 1: INFO COMPLETA & PRESTADOR ══════════ -->
+      <section class="section-card info-section">
+        <div class="info-grid">
+          <div class="info-main">
+            <span class="section-kicker">INFORMACIÓN GENERAL & RECORRIDO</span>
+            <h2 class="section-title">Detalles de la Expedición</h2>
+            <p class="activity-description">
+              {{ act.description || 'Una travesía exclusiva diseñada para socios del Club de Experiencias Catamarca, con logística de seguridad integral, prestadores locales homologados y registros fotográficos de alta montaña.' }}
+            </p>
+
+            <div class="highlights-grid">
+              <div class="highlight-item">
+                <span class="hl-label">Destino & Región</span>
+                <span class="hl-val">{{ act.region }}</span>
+              </div>
+              <div class="highlight-item">
+                <span class="hl-label">Altitud Operativa</span>
+                <span class="hl-val">{{ act.altitude }}</span>
+              </div>
+              <div class="highlight-item">
+                <span class="hl-label">Estado de Reserva</span>
+                <span class="hl-val text-green">{{ act.status === 'completada' ? 'Realizada' : 'Confirmada' }}</span>
+              </div>
+              <div class="highlight-item">
+                <span class="hl-label">Recuerdos en Comunidad</span>
+                <span class="hl-val">{{ act.communityPhotos?.length || 0 }} fotos</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Ficha del Prestador -->
+          <div class="provider-box">
+            <span class="section-kicker">PRESTADOR A CARGO</span>
+            <h3 class="provider-title">{{ act.provider.name }}</h3>
+            <span class="provider-cat">{{ act.provider.category }}</span>
+
+            <div class="provider-phone">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+              </svg>
+              <span>{{ act.provider.contactPhone }}</span>
+            </div>
+
+            <div class="provider-badge-verified">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+              <span>Prestador Oficial Homologado</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════ FILA 2: EL COMPROBANTE DE PAGO OFICIAL ══════════ -->
+      <section class="section-card receipt-section">
+        <div class="section-header-row">
+          <div>
+            <span class="section-kicker">DOCUMENTACIÓN FISCAL & BANCARIA</span>
+            <h2 class="section-title">Comprobante Oficial de Pago</h2>
+          </div>
+          <button (click)="printReceipt()" class="btn-print" title="Imprimir o guardar como PDF">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 6 2 18 2 18 9"></polyline>
+              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+              <rect x="6" y="14" width="12" height="8"></rect>
+            </svg>
+            Imprimir Comprobante
+          </button>
+        </div>
+
+        <div class="receipt-formal-ticket" *ngIf="act.receipt as r">
+          <div class="ticket-header">
+            <div class="brand-group">
+              <span class="ticket-brand">CLUB DE EXPERIENCIAS CATAMARCA</span>
+              <span class="ticket-type">RECIBO DE PAGO DE EXPEDICIÓN</span>
+            </div>
+            <div class="ticket-number-box">
+              <span class="tkt-lbl">Nº DE COMPROBANTE</span>
+              <span class="tkt-num">{{ r.receiptNumber }}</span>
+            </div>
+          </div>
+
+          <div class="ticket-body-grid">
+            <div class="ticket-item">
+              <span class="tkt-key">Concepto:</span>
+              <span class="tkt-val font-semibold">{{ act.title }}</span>
+            </div>
+            <div class="ticket-item">
+              <span class="tkt-key">Titular del Pago:</span>
+              <span class="tkt-val">{{ r.payerName }}</span>
+            </div>
+            <div class="ticket-item">
+              <span class="tkt-key">Email de Notificación:</span>
+              <span class="tkt-val mono-val">{{ r.payerEmail }}</span>
+            </div>
+            <div class="ticket-item">
+              <span class="tkt-key">Fecha y Hora de Emisión:</span>
+              <span class="tkt-val mono-val">{{ r.paidAt }}</span>
+            </div>
+            <div class="ticket-item">
+              <span class="tkt-key">Pasarela / Procesador:</span>
+              <span class="tkt-val">{{ r.gatewayDisplayName }}</span>
+            </div>
+            <div class="ticket-item">
+              <span class="tkt-key">ID Transacción:</span>
+              <span class="tkt-val mono-val">{{ r.transactionId }}</span>
+            </div>
+            <div class="ticket-item">
+              <span class="tkt-key">Código de Autorización:</span>
+              <span class="tkt-val mono-val highlight-auth">{{ r.authCode }}</span>
+            </div>
+            <div class="ticket-item" *ngIf="r.cbuDestination">
+              <span class="tkt-key">CBU / Alias Destino:</span>
+              <span class="tkt-val mono-val">{{ r.cbuDestination }}</span>
+            </div>
+          </div>
+
+          <div class="ticket-total-bar">
+            <div class="status-ticket-box">
+              <span class="auth-pill">ESTADO: {{ r.status | uppercase }}</span>
+              <span class="ticket-audit-text">Operación confirmada y registrada en plataforma.</span>
+            </div>
+
+            <div class="amount-ticket-box">
+              <span class="total-lbl">TOTAL ABONADO</span>
+              <span class="total-ars">${{ r.amountArs.toLocaleString('es-AR') }} ARS</span>
+              <span class="total-usd">Equivalente US$ {{ r.amountUsd }}</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════ FILA 3: GALERÍA DE RECUERDOS (FOTOS DE PARTICIPANTES) ══════════ -->
+      <section class="section-card community-section">
+        <div class="section-header-row">
+          <div>
+            <span class="section-kicker">ÁLBUM COMPARTIDO DE LA EXPEDICIÓN</span>
+            <h2 class="section-title">Fotos que subieron los participantes</h2>
+            <p class="section-lead-muted">
+              Recuerdos y capturas reales compartidas por los miembros del club que participaron de esta misma salida.
+            </p>
+          </div>
+          <span class="counter-badge">{{ act.communityPhotos?.length || 0 }} fotos publicadas</span>
+        </div>
+
+        <div class="community-grid" *ngIf="(act.communityPhotos?.length || 0) > 0; else noPhotosState">
+          <div
+            *ngFor="let photo of (act.communityPhotos || [])"
+            class="photo-card"
+            (click)="openLightbox(photo)"
+            tabindex="0"
+          >
+            <div class="photo-img-wrapper">
+              <img [src]="photo.url" [alt]="photo.caption || 'Foto de participante'" class="community-img" />
+              <div class="photo-overlay">
+                <span class="btn-zoom">Ver en tamaño completo ↗</span>
+              </div>
+            </div>
+            <div class="photo-card-info">
+              <p class="photo-caption" *ngIf="photo.caption">{{ photo.caption }}</p>
+              <div class="photo-meta">
+                <span class="author-badge">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                  </svg>
+                  {{ photo.uploadedBy }}
+                </span>
+                <span class="photo-date">{{ formatUploadDate(photo.uploadedAt) }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <ng-template #noPhotosState>
+          <div class="empty-photos-box">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="1.5">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <circle cx="8.5" cy="8.5" r="1.5"></circle>
+              <polyline points="21 15 16 10 5 21"></polyline>
+            </svg>
+            <p>Todavía no hay fotos en el álbum comunitario de esta actividad.</p>
+            <span>¡Sé el primero en compartir tus recuerdos a continuación!</span>
+          </div>
+        </ng-template>
+
+        <!-- ══════════ SUBIDA DE HASTA 3 FOTOS ══════════ -->
+        <div class="upload-widget-box">
+          <div class="upload-header">
+            <div>
+              <span class="section-kicker">SUBIR RECUERDOS</span>
+              <h3 class="upload-title">Sumar tus fotos a la galería</h3>
+              <p class="upload-hint">Podés subir hasta 3 fotografías tomadas durante la experiencia.</p>
+            </div>
+            <div class="counter-slots">
+              <span class="slots-text">{{ stagedPhotos().length }}/3 seleccionadas</span>
+            </div>
+          </div>
+
+          <!-- Staged Photos Preview -->
+          <div class="staged-preview-grid" *ngIf="stagedPhotos().length > 0">
+            <div *ngFor="let item of stagedPhotos(); let i = index" class="staged-item">
+              <img [src]="item.previewUrl" alt="Previsualización" class="staged-img" />
+              <button type="button" (click)="removeStagedPhoto(i)" class="btn-remove-photo" title="Eliminar foto">
+                ✕
+              </button>
+              <input
+                type="text"
+                placeholder="Pie de foto opcional..."
+                [(ngModel)]="item.caption"
+                class="staged-caption-input"
+              />
+            </div>
+          </div>
+
+          <!-- File selector & Dropzone -->
+          <div class="upload-dropzone" *ngIf="stagedPhotos().length < 3">
+            <input
+              type="file"
+              id="photo-input"
+              accept="image/*"
+              multiple
+              (change)="onFileSelected($event)"
+              class="hidden-file-input"
+            />
+            <label for="photo-input" class="dropzone-label">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffd42a" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              <span class="dropzone-text">Hacé click para seleccionar fotos desde tu dispositivo</span>
+              <span class="dropzone-sub">Formatos JPG, PNG o WEBP (Espacio disponible: {{ 3 - stagedPhotos().length }} de 3)</span>
+            </label>
+          </div>
+
+          <!-- Alerts & Actions -->
+          <div *ngIf="uploadErrorMessage()" class="alert-box error-alert">
+            {{ uploadErrorMessage() }}
+          </div>
+          <div *ngIf="uploadSuccessMessage()" class="alert-box success-alert">
+            {{ uploadSuccessMessage() }}
+          </div>
+
+          <div class="upload-actions-bar" *ngIf="stagedPhotos().length > 0">
+            <div class="signature-tag">
+              Subiendo como: <strong>{{ authorSignature() }}</strong>
+            </div>
+
+            <button
+              type="button"
+              (click)="submitPhotos()"
+              [disabled]="isUploading()"
+              class="btn-submit-photos"
+            >
+              <span *ngIf="!isUploading()">Publicar {{ stagedPhotos().length }} foto{{ stagedPhotos().length > 1 ? 's' : '' }} en la galería</span>
+              <span *ngIf="isUploading()">Subiendo fotografías...</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════ FILA 4: VOTAR CON 5 ESTRELLAS Y RESEÑA ══════════ -->
+      <section class="section-card review-section">
+        <div class="section-header-row">
+          <div>
+            <span class="section-kicker">OPINIÓN DE LA COMUNIDAD</span>
+            <h2 class="section-title">Valoración & Reseñas de Socios</h2>
+            <p class="section-lead-muted">
+              Compartí tu puntaje de 1 a 5 estrellas y tu experiencia personal. Todas las reseñas se firman con tu nombre y la inicial del apellido.
+            </p>
+          </div>
+        </div>
+
+        <!-- Formulario de Reseña -->
+        <div class="review-form-card">
+          <h3 class="form-title">Votar y Dejar tu Reseña</h3>
+
+          <div class="rating-picker-row">
+            <span class="rating-label">Puntaje:</span>
+            <div class="stars-selector" (mouseleave)="clearHoverRating()">
+              <button
+                *ngFor="let star of [1, 2, 3, 4, 5]"
+                type="button"
+                (click)="setRating(star)"
+                (mouseenter)="setHoverRating(star)"
+                class="star-btn"
+                [class.active]="(hoverRating() || selectedRating()) >= star"
+                [title]="star + ' estrellas'"
+              >
+                ★
+              </button>
+            </div>
+            <span class="rating-legend">
+              {{ (hoverRating() || selectedRating()) }} de 5 estrellas
+            </span>
+          </div>
+
+          <div class="form-group">
+            <label for="review-text" class="field-label">Tu Reseña o Reflexión de la Travesía</label>
+            <textarea
+              id="review-text"
+              rows="4"
+              placeholder="Contale a los demás miembros cómo fue el recorrido, la atención del guía, las condiciones del lugar y qué recomendaciones les darías..."
+              [ngModel]="reviewComment()"
+              (ngModelChange)="reviewComment.set($event)"
+              class="review-textarea"
+            ></textarea>
+          </div>
+
+          <div class="form-footer-row">
+            <div class="signature-info-hint">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffd42a" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="16" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+              </svg>
+              <span>Esta reseña se publicará firmada como: <strong>{{ authorSignature() }}</strong></span>
+            </div>
+
+            <button
+              type="button"
+              (click)="submitReview()"
+              [disabled]="!reviewComment().trim()"
+              class="btn-submit-review"
+            >
+              Publicar Reseña (5 Estrellas)
+            </button>
+          </div>
+
+          <div *ngIf="reviewErrorMessage()" class="alert-box error-alert mt-3">
+            {{ reviewErrorMessage() }}
+          </div>
+          <div *ngIf="reviewSubmitted()" class="alert-box success-alert mt-3">
+            ¡Muchas gracias! Tu reseña y votación de 5 estrellas fueron publicadas y firmadas como <strong>{{ authorSignature() }}</strong>.
+          </div>
+        </div>
+
+        <!-- Lista de Reseñas de la Comunidad -->
+        <div class="reviews-list-container">
+          <h3 class="reviews-list-title">Reseñas Publicadas ({{ act.reviews?.length || 0 }})</h3>
+
+          <div *ngIf="(act.reviews?.length || 0) > 0; else noReviewsState" class="reviews-grid">
+            <div *ngFor="let rev of (act.reviews || [])" class="review-bubble">
+              <div class="rev-header">
+                <div class="rev-stars">
+                  <span *ngFor="let s of [1, 2, 3, 4, 5]" [class.star-gold]="rev.rating >= s">★</span>
+                </div>
+                <span class="rev-date">{{ rev.createdAt }}</span>
+              </div>
+
+              <p class="rev-comment">"{{ rev.comment }}"</p>
+
+              <div class="rev-footer">
+                <span class="author-signed">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2">
+                    <path d="M20 6L9 17l-5-5"></path>
+                  </svg>
+                  Firmado por: <strong>{{ rev.authorSignature }}</strong>
+                </span>
+                <span class="verified-member">Socio Verificado</span>
+              </div>
+            </div>
+          </div>
+
+          <ng-template #noReviewsState>
+            <div class="empty-reviews-box">
+              <p>Aún no hay reseñas registradas para esta experiencia. ¡Dejá la primera arriba!</p>
+            </div>
+          </ng-template>
+        </div>
+      </section>
+
+      <!-- Botón de retorno al listado -->
+      <div class="return-bar">
+        <a routerLink="/perfil/actividades" class="btn-back-link">
+          ← Volver a Actividades
+        </a>
+      </div>
+
+    </div>
+  </main>
+
+  <ng-template #notFoundTemplate>
+    <main class="detail-main not-found-state">
+      <div class="detail-container">
+        <h2>Actividad no encontrada</h2>
+        <p>No pudimos encontrar la actividad solicitada con el identificador "{{ slug() }}".</p>
+        <a routerLink="/perfil/actividades" class="btn-back-link">← Volver a Actividades</a>
+      </div>
+    </main>
+  </ng-template>
+
+  <!-- Lightbox Modal -->
+  <div class="lightbox-overlay" *ngIf="activeLightboxPhoto() as p" (click)="closeLightbox()">
+    <div class="lightbox-content" (click)="$event.stopPropagation()">
+      <div class="lightbox-top-bar">
+        <a [href]="p.url" [download]="'experiencias-recuerdo-' + p.id + '.jpg'" target="_blank" class="btn-download-lightbox" title="Descargar imagen con un solo click">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>Descargar Imagen</span>
+        </a>
+        <button class="btn-close-lightbox" (click)="closeLightbox()" title="Cerrar">✕</button>
+      </div>
+      <img [src]="p.url" [alt]="p.caption || 'Foto'" class="lightbox-img" />
+      <div class="lightbox-caption">
+        <p class="caption-text">{{ p.caption }}</p>
+        <div class="caption-meta-row">
+          <span class="caption-author">Subida por {{ p.uploadedBy }} el {{ formatUploadDate(p.uploadedAt) }}</span>
+          <a [href]="p.url" [download]="'experiencias-recuerdo-' + p.id + '.jpg'" target="_blank" class="caption-download-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span>Descargar foto</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer Compartido -->
+  <app-footer></app-footer>
+</div>

@@ -1,0 +1,67 @@
+@if (rows().length === 0) {
+<section class="kayak-section-card">
+  <h2 class="card-heading">Todavía no creaste experiencias</h2>
+  <p class="card-subheading">Cargá tu primera experiencia para empezar a recibir pagos de socios.</p>
+  <a routerLink="../experiencias/nueva" class="cta-primary-btn">Crear experiencia</a>
+</section>
+}
+
+<ul class="exp-list">
+  @for (row of rows(); track row.experience.id) {
+  <li class="kayak-section-card exp-card">
+    <div class="exp-card-top">
+      <div class="exp-card-title">
+        <span class="exp-status" [class.is-live]="row.experience.status === 'publicada'">
+          {{ row.experience.status === 'publicada' ? 'Publicada' : 'Borrador' }}
+        </span>
+        <h2 class="exp-title">{{ row.experience.title }}</h2>
+        <p class="exp-meta">{{ row.experience.region }} · {{ row.experience.durationLabel }} · {{ row.experience.priceArs | ars }} por persona</p>
+      </div>
+
+      <div class="exp-stats">
+        <div>
+          <span class="pay-label">Pendientes</span>
+          <strong [class.gold-text]="row.pending > 0">{{ row.pending }}</strong>
+        </div>
+        <div>
+          <span class="pay-label">Confirmado</span>
+          <strong>{{ row.confirmedRevenue | ars }}</strong>
+        </div>
+      </div>
+    </div>
+
+    @if (row.nextDates.length) {
+    <div class="exp-dates">
+      @for (d of row.nextDates; track d.date) {
+      <div class="exp-date">
+        <span class="exp-date-day">{{ d.date | fecha }}</span>
+        <div class="exp-date-bar" role="progressbar" [attr.aria-valuenow]="d.reserved" aria-valuemin="0"
+          [attr.aria-valuemax]="row.experience.capacityPerDate"
+          [attr.aria-label]="'Cupos reservados ' + (d.date | fecha)">
+          <span [style.width.%]="(d.reserved / row.experience.capacityPerDate) * 100"></span>
+        </div>
+        <span class="exp-date-count">{{ d.reserved }}/{{ row.experience.capacityPerDate }}</span>
+      </div>
+      }
+    </div>
+    }
+
+    <div class="exp-actions">
+      <a routerLink="../comprobantes" [queryParams]="{ experiencia: row.experience.id }" class="pay-copy-btn">
+        <mat-icon aria-hidden="true">receipt_long</mat-icon>
+        Ver comprobantes
+      </a>
+      @if (row.experience.status === 'publicada') {
+      <a [routerLink]="['/experiencias', row.experience.slug, 'pago']" class="pay-copy-btn">
+        <mat-icon aria-hidden="true">open_in_new</mat-icon>
+        Página de pago
+      </a>
+      }
+      <button type="button" class="pay-copy-btn" (click)="toggleStatus(row.experience)">
+        <mat-icon aria-hidden="true">{{ row.experience.status === 'publicada' ? 'visibility_off' : 'publish' }}</mat-icon>
+        {{ row.experience.status === 'publicada' ? 'Pasar a borrador' : 'Publicar' }}
+      </button>
+    </div>
+  </li>
+  }
+</ul>

@@ -15,6 +15,7 @@ export interface WaitlistEntry {
   id: string;
   email: string;
   fullName?: string;
+  documentNumber?: string;
   nationality?: string;
   experiencesWishlist?: string[];
   wishlistNotes?: string;
@@ -43,6 +44,7 @@ export interface WaitlistSubmissionDto {
   email: string;
   interest?: ExperienceInterest;
   fullName?: string;
+  documentNumber?: string;
   nationality?: string;
   experiencesWishlist?: string[];
   wishlistNotes?: string;

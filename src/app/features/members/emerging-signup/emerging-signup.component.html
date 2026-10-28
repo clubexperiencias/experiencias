@@ -28,6 +28,26 @@
           </label>
 
           <label class="signup-field">
+            <span>DNI <em>(opcional, hasta 9 dígitos)</em></span>
+            <input
+              type="text"
+              inputmode="numeric"
+              maxlength="9"
+              pattern="[0-9]{1,9}"
+              [value]="documentNumber()"
+              (input)="
+                documentNumber.set(
+                  $any($event.target)
+                    .value.replace(/[^0-9]/g, '')
+                    .slice(0, 9)
+                )
+              "
+              placeholder="Ej. 30123456"
+              autocomplete="off"
+            />
+          </label>
+
+          <label class="signup-field">
             <span>Correo Electrónico <b>*</b></span>
             <input
               type="email"

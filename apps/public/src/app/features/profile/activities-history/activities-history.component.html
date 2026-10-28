@@ -1,0 +1,121 @@
+<div class="activities-page-wrapper">
+  <!-- Header Principal -->
+  <app-header [(mobileMenuOpen)]="mobileMenuOpen" (loginClick)="openLoginModal()"></app-header>
+
+  <!-- Breadcrumb Oficial -->
+  <app-breadcrumb [items]="breadcrumbs"></app-breadcrumb>
+
+  <!-- Cuerpo Principal -->
+  <main class="activities-main">
+    <div class="activities-container">
+      <!-- Box Principal: DOCUMENTOS OFICIALES (Estilo idéntico a /perfil) -->
+      <div class="activities-main-box">
+        <div class="box-header-row">
+          <div class="box-texts">
+            <span class="section-kicker">DOCUMENTOS OFICIALES · REGISTRO DEL SOCIO</span>
+            <h1 class="page-title">Actividades: Salidas & Expediciones</h1>
+            <p class="page-subtitle">
+              Accedé al registro certificado de tus travesías andinas en Catamarca, comprobantes oficiales respaldados con código de autorización bancaria y al álbum comunitario compartido con otros miembros del club.
+            </p>
+          </div>
+        </div>
+
+        <!-- Calendario y orden de actividades -->
+        <div class="activities-filter-bar">
+          <div class="date-filter-controls">
+            <label class="date-filter-field">
+              <span>Desde</span>
+              <input type="date" [value]="dateFrom()" (change)="dateFrom.set($any($event.target).value)" />
+            </label>
+            <label class="date-filter-field">
+              <span>Hasta</span>
+              <input type="date" [value]="dateTo()" (change)="dateTo.set($any($event.target).value)" />
+            </label>
+            <label class="date-filter-field sort-field">
+              <span>Ordenar por fecha</span>
+              <select [value]="sortOrder()" (change)="sortOrder.set($any($event.target).value)">
+                <option value="desc">Más recientes primero</option>
+                <option value="asc">Más antiguas primero</option>
+              </select>
+            </label>
+            @if (dateFrom() || dateTo()) {
+              <button type="button" class="clear-date-filter-btn" (click)="dateFrom.set(''); dateTo.set('')">
+                Limpiar fechas
+              </button>
+            }
+          </div>
+
+          <div class="filter-search-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="search-icon">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input
+              type="text"
+              class="search-input"
+              placeholder="Buscar por expedición, región o prestador..."
+              [value]="searchQuery()"
+              (input)="searchQuery.set($any($event.target).value)"
+            />
+            @if (searchQuery().trim()) {
+              <button type="button" class="clear-search-btn" (click)="searchQuery.set('')">✕</button>
+            }
+          </div>
+        </div>
+
+        <!-- Lista de Actividades dentro de la Box (estilo idéntico a /perfil) -->
+        <div class="activities-list">
+          @for (act of filteredActivities(); track act.id) {
+          <article class="activity-card">
+            <div class="activity-media" [style.background-image]="'url(' + act.coverImage + ')'"></div>
+
+            <div class="activity-content">
+              <div class="activity-tag-row">
+                <span class="activity-status" [class]="act.status">
+                  {{ act.status === 'completada' ? 'Completada' : 'Confirmada' }}
+                </span>
+                <span class="activity-region" [title]="act.region + ' (' + act.altitude + ')'"
+                  >{{ act.region }} ({{ act.altitude }})</span
+                >
+              </div>
+
+              <h2 class="activity-title" [title]="act.title">{{ act.title }}</h2>
+              <p class="activity-provider" [title]="'Prestador: ' + act.provider.name">
+                Prestador: <strong>{{ act.provider.name }}</strong>
+              </p>
+              <p
+                class="activity-date"
+                [title]="act.dateLabel + ' · Recibo Nº ' + act.receipt.receiptNumber"
+              >
+                {{ act.dateLabel }} · Recibo Nº {{ act.receipt.receiptNumber }}
+              </p>
+            </div>
+
+            <div class="activity-actions">
+              <span class="receipt-amount-hint">${{ act.receipt.amountArs.toLocaleString('es-AR') }} ARS</span>
+              <div class="activity-btns-group">
+                <button type="button" class="receipt-btn btn-receipt-doc" (click)="openReceipt(act.receipt)">
+                  <span>Comprobante</span>
+                </button>
+                <a
+                  [href]="getExperienceRoute(act.experienceId)"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="receipt-btn btn-view-details"
+                >
+                  Ver detalles
+                </a>
+              </div>
+            </div>
+          </article>
+          }
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer Compartido -->
+  <app-footer></app-footer>
+</div>
+
+<app-receipt-modal />

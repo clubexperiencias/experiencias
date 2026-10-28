@@ -1,0 +1,104 @@
+<form class="form-stack" [formGroup]="form" (ngSubmit)="save('publicada')" novalidate>
+  <section class="kayak-section-card" aria-labelledby="info-title">
+    <h2 id="info-title" class="form-section-title">Información general</h2>
+
+    <div class="pay-field">
+      <label for="exp-title" class="pay-label">Título</label>
+      <input id="exp-title" class="pay-input" formControlName="title" placeholder="Ej: Travesía en Kayak al atardecer"
+        [attr.aria-invalid]="fieldInvalid('title')" />
+      @if (fieldInvalid('title')) {<p class="pay-error">Entre 6 y 90 caracteres.</p>}
+    </div>
+
+    <div class="pay-field">
+      <label for="exp-tagline" class="pay-label">Bajada</label>
+      <input id="exp-tagline" class="pay-input" formControlName="tagline"
+        placeholder="Una frase que resuma la experiencia" [attr.aria-invalid]="fieldInvalid('tagline')" />
+      @if (fieldInvalid('tagline')) {<p class="pay-error">Requerida, hasta 140 caracteres.</p>}
+    </div>
+
+    <div class="pay-field">
+      <label for="exp-description" class="pay-label">Descripción</label>
+      <textarea id="exp-description" class="pay-input" rows="5" formControlName="description"
+        [attr.aria-invalid]="fieldInvalid('description')"></textarea>
+      @if (fieldInvalid('description')) {<p class="pay-error">Contá la experiencia en al menos 40 caracteres.</p>}
+    </div>
+
+    <div class="pay-fields-grid">
+      <div class="pay-field">
+        <label for="exp-region" class="pay-label">Región</label>
+        <select id="exp-region" class="pay-input" formControlName="region">
+          @for (region of regions; track region) {<option [value]="region">{{ region }}</option>}
+        </select>
+      </div>
+      <div class="pay-field">
+        <label for="exp-meeting" class="pay-label">Punto de encuentro</label>
+        <input id="exp-meeting" class="pay-input" formControlName="meetingPoint"
+          [attr.aria-invalid]="fieldInvalid('meetingPoint')" />
+        @if (fieldInvalid('meetingPoint')) {<p class="pay-error">Indicá dónde se encuentra el grupo.</p>}
+      </div>
+      <div class="pay-field">
+        <label for="exp-difficulty" class="pay-label">Dificultad</label>
+        <select id="exp-difficulty" class="pay-input" formControlName="difficulty">
+          @for (d of difficulties; track d) {<option [value]="d">{{ d }}</option>}
+        </select>
+      </div>
+      <div class="pay-field">
+        <label for="exp-duration" class="pay-label">Duración</label>
+        <input id="exp-duration" class="pay-input" formControlName="durationLabel" placeholder="Ej: 4 horas"
+          [attr.aria-invalid]="fieldInvalid('durationLabel')" />
+        @if (fieldInvalid('durationLabel')) {<p class="pay-error">Requerida.</p>}
+      </div>
+    </div>
+  </section>
+
+  <section class="kayak-section-card" aria-labelledby="price-title">
+    <h2 id="price-title" class="form-section-title">Precio y cupo</h2>
+    <div class="pay-fields-grid">
+      <div class="pay-field">
+        <label for="exp-price" class="pay-label">Arancel por persona (ARS)</label>
+        <input id="exp-price" type="number" min="1000" step="500" inputmode="numeric" class="pay-input"
+          formControlName="priceArs" [attr.aria-invalid]="fieldInvalid('priceArs')" />
+        @if (fieldInvalid('priceArs')) {<p class="pay-error">Mínimo $1.000.</p>}
+      </div>
+      <div class="pay-field">
+        <label for="exp-capacity" class="pay-label">Cupo por fecha</label>
+        <input id="exp-capacity" type="number" min="1" max="200" inputmode="numeric" class="pay-input"
+          formControlName="capacityPerDate" [attr.aria-invalid]="fieldInvalid('capacityPerDate')" />
+        @if (fieldInvalid('capacityPerDate')) {<p class="pay-error">Entre 1 y 200 personas.</p>}
+      </div>
+    </div>
+    <p class="pay-hint">Los socios pagan por transferencia al CBU del club y suben el comprobante. Vos lo validás desde la pestaña Comprobantes.</p>
+  </section>
+
+  <section class="kayak-section-card" aria-labelledby="dates-title">
+    <h2 id="dates-title" class="form-section-title">Fechas de salida</h2>
+    <div class="date-adder">
+      <label for="exp-new-date" class="sr-only">Nueva fecha</label>
+      <input id="exp-new-date" type="date" class="pay-input" [min]="today" [value]="newDate()"
+        (input)="newDate.set($any($event.target).value)" />
+      <button type="button" class="pay-secondary-btn" (click)="addDate()" [disabled]="!newDate()">Agregar</button>
+    </div>
+    @if (datesError()) {<p class="pay-error" role="alert">{{ datesError() }}</p>}
+
+    @if (dates().length) {
+    <ul class="date-chips">
+      @for (date of dates(); track date) {
+      <li class="date-chip">
+        <span>{{ date | fecha }}</span>
+        <button type="button" (click)="removeDate(date)" [attr.aria-label]="'Quitar ' + (date | fecha)">
+          <mat-icon aria-hidden="true">close</mat-icon>
+        </button>
+      </li>
+      }
+    </ul>
+    } @else {
+    <p class="pay-hint">Todavía no agregaste fechas.</p>
+    }
+  </section>
+
+  <div class="form-actions">
+    <a routerLink="/prestador/experiencias" class="pay-secondary-btn">Cancelar</a>
+    <button type="button" class="pay-secondary-btn" (click)="save('borrador')">Guardar borrador</button>
+    <button type="submit" class="cta-primary-btn">Publicar experiencia</button>
+  </div>
+</form>

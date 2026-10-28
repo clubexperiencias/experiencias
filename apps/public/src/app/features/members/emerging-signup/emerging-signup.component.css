@@ -1,0 +1,205 @@
+@import '../emerging-member/emerging-member.component.css';
+
+.signup-page-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  color: var(--color-text-white);
+  background: #101a2d url('/assets/images/relieve.jpeg') center top / cover fixed;
+}
+
+.signup-main-content {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  padding: 2.4rem 1.5rem 3rem;
+}
+
+.signup-card {
+  width: min(100%, 880px);
+  align-self: flex-start;
+  padding: clamp(1.5rem, 4vw, 2.8rem);
+  background: rgba(22, 33, 85, 0.72);
+  border: 1px solid rgba(255, 212, 42, 0.35);
+  box-shadow: 0 16px 38px rgba(11, 17, 32, 0.3);
+  backdrop-filter: blur(14px);
+  animation: signupEntrance 0.4s ease both;
+}
+
+@keyframes signupEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.signup-header {
+  max-width: 680px;
+  margin-bottom: 2rem;
+}
+.signup-kicker,
+.signup-field > span {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.signup-kicker {
+  color: var(--color-gold);
+}
+.signup-header h1 {
+  margin: 0.5rem 0 0.7rem;
+  font-family: var(--font-serif);
+  font-size: clamp(1.8rem, 4vw, 2.7rem);
+  line-height: 1.15;
+  color: #fff;
+}
+.signup-header p {
+  margin: 0;
+  color: var(--color-text-soft);
+  line-height: 1.65;
+}
+.signup-form {
+  display: grid;
+  gap: 1.35rem;
+}
+.signup-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.2rem;
+}
+.signup-field {
+  display: grid;
+  gap: 0.55rem;
+}
+.signup-field > span {
+  color: #fff;
+}
+.signup-field b {
+  color: var(--color-gold);
+}
+.signup-field em {
+  color: var(--color-text-soft);
+  font-style: normal;
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.signup-field input,
+.signup-field textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 2px;
+  padding: 0.85rem 0.95rem;
+  background: rgba(4, 10, 25, 0.42);
+  color: #fff;
+  font: inherit;
+  outline: none;
+}
+.signup-field textarea {
+  resize: vertical;
+  min-height: 7rem;
+}
+.signup-field input:focus,
+.signup-field textarea:focus {
+  border-color: var(--color-gold);
+  box-shadow: 0 0 0 2px rgba(255, 212, 42, 0.12);
+}
+.signup-field input::placeholder,
+.signup-field textarea::placeholder {
+  color: rgba(255, 255, 255, 0.48);
+}
+.experience-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+.experience-option {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 3rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 2px;
+  background: rgba(4, 10, 25, 0.26);
+  color: var(--color-text-soft);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+.experience-option mat-icon {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 1.1rem;
+  width: 1.1rem;
+  height: 1.1rem;
+}
+.experience-option.selected {
+  border-color: var(--color-gold);
+  color: #fff;
+  background: rgba(255, 212, 42, 0.1);
+}
+.experience-option.selected mat-icon {
+  color: var(--color-gold);
+}
+.signup-error {
+  margin: 0;
+  color: #ff9a9a;
+  font-size: 0.9rem;
+}
+.signup-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 0.4rem;
+}
+.signup-back {
+  color: var(--color-text-soft);
+  text-decoration: none;
+}
+.signup-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: 3rem;
+  padding: 0.75rem 1.15rem;
+  border: 1px solid var(--color-gold);
+  border-radius: 2px;
+  background: var(--color-gold);
+  color: #101a2d;
+  font: 700 0.78rem var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.signup-submit:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+.signup-submit mat-icon {
+  font-size: 1.1rem;
+}
+
+@media (max-width: 680px) {
+  .signup-grid,
+  .experience-options {
+    grid-template-columns: 1fr;
+  }
+  .signup-actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+  .signup-back {
+    text-align: center;
+    padding: 0.5rem;
+  }
+}

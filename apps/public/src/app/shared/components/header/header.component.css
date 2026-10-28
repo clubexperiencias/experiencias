@@ -1,0 +1,491 @@
+/* ==========================================================================
+   Header Component • Estilo National Geographic (Blanco, Limpio y Preciso)
+   ========================================================================== */
+
+:host {
+  display: block;
+  width: 100%;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.top-nav {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 68px;
+  padding: 0 2.5rem;
+  width: 100%;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e5e5;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  box-sizing: border-box;
+}
+
+/* ==========================================================================
+   Brand & Logo Lockup
+   ========================================================================== */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  user-select: none;
+  text-decoration: none;
+  cursor: pointer;
+  height: 100%;
+}
+
+.brand-logo-img {
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 0;
+  object-fit: contain;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+  filter: none;
+  position: relative;
+  top: -3px;
+  transition: transform 0.25s var(--ease-spring);
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.brand-title {
+  font-family: var(--font-sans);
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  color: #000000;
+  display: inline-block;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.brand-tag {
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  letter-spacing: 0.16em;
+  color: #666666;
+  font-weight: 700;
+  margin-top: 2px;
+  text-transform: uppercase;
+}
+
+/* ==========================================================================
+   Desktop Navigation Links
+   ========================================================================== */
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  height: 100%;
+}
+
+.nav-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 68px;
+  box-sizing: border-box;
+  padding: 0 1.15rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  color: #000000;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  font-family: var(--font-sans);
+  text-decoration: none;
+  cursor: pointer;
+  position: relative;
+  transition: color 0.15s ease;
+}
+
+.nav-pill-btn::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0.75rem;
+  right: 0.75rem;
+  height: 3.5px;
+  background: #ffcc00;
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.nav-pill-btn:hover {
+  background: transparent;
+  color: #000000;
+  transform: none;
+}
+
+.nav-pill-btn:hover::after,
+.nav-pill-btn.active-route::after {
+  transform: scaleX(1);
+}
+
+.btn-icon,
+mat-icon.btn-icon {
+  display: none !important;
+}
+
+/* ==========================================================================
+   CTA Button • National Geographic 'Subscribe' Style
+   ========================================================================== */
+.nav-pill-btn.profile-btn,
+.login-nav-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 38px !important;
+  line-height: 38px !important;
+  margin-left: 0.85rem;
+  padding: 0 1.45rem !important;
+  background: #ffcc00 !important;
+  color: #000000 !important;
+  border: 1.5px solid #ffcc00 !important;
+  border-radius: 2px !important;
+  font-family: var(--font-sans) !important;
+  font-weight: 800 !important;
+  font-size: 0.82rem !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  box-shadow: none !important;
+  cursor: pointer !important;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease !important;
+}
+
+.nav-pill-btn.profile-btn::after,
+.login-nav-btn::after {
+  display: none !important;
+}
+
+/* Hover: Mantiene el fondo amarillo */
+.nav-pill-btn.profile-btn:hover,
+.login-nav-btn:hover {
+  background: #ffcc00 !important;
+  border-color: #ffcc00 !important;
+  color: #000000 !important;
+  transform: none !important;
+}
+
+.nav-pill-btn.profile-btn:hover *,
+.login-nav-btn:hover * {
+  color: #000000 !important;
+}
+
+.nav-pill-btn.profile-btn:active,
+.login-nav-btn:active {
+  background: #ffcc00 !important;
+  border-color: #ffcc00 !important;
+  color: #000000 !important;
+}
+
+/* ==========================================================================
+   Highlight Verde de Éxito al Iniciar Sesión (Sincronizado con la alerta verde)
+   ========================================================================== */
+.nav-pill-btn.profile-btn.highlight-green {
+  background: #059669 !important;
+  border-color: #059669 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 16px rgba(5, 150, 105, 0.55) !important;
+}
+
+.nav-pill-btn.profile-btn.highlight-green:hover {
+  background: #059669 !important;
+  border-color: #059669 !important;
+}
+
+.nav-pill-btn.profile-btn.highlight-green *,
+.nav-pill-btn.profile-btn.highlight-green:hover *,
+.mobile-nav-row.profile-cta-row.highlight-green * {
+  color: #ffffff !important;
+  background: transparent !important;
+}
+
+.mobile-nav-row.profile-cta-row.highlight-green {
+  background: #059669 !important;
+  border-color: #059669 !important;
+  color: #ffffff !important;
+}
+
+/* ==========================================================================
+   Mobile Controls & Drawer (Ocultos en desktop)
+   ========================================================================== */
+.mobile-menu-toggle-btn {
+  display: none;
+}
+
+.mobile-nav-panel {
+  display: none;
+}
+
+.mobile-menu-backdrop {
+  display: none;
+}
+
+/* ==========================================================================
+   Responsive (Pantallas Móviles <= 768px)
+   ========================================================================== */
+@media (max-width: 768px) {
+  :host {
+    z-index: 1000;
+  }
+
+  .top-nav {
+    height: 60px;
+    padding: 0 1.25rem;
+    position: relative;
+    z-index: 1001;
+    background: #ffffff;
+  }
+
+  .brand {
+    gap: 0.6rem;
+    height: 100%;
+  }
+
+  .brand-logo-img {
+    width: 30px;
+    height: 30px;
+    position: relative;
+    top: -3px;
+  }
+
+  .brand-title {
+    font-size: 0.95rem;
+    line-height: 1.05;
+  }
+
+  .brand-tag {
+    font-size: 0.74rem;
+    letter-spacing: 0.14em;
+    margin-top: 2px;
+  }
+
+  .nav-actions {
+    display: none !important;
+  }
+
+  .mobile-menu-toggle-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 2px;
+    background: transparent;
+    border: none;
+    color: #000000;
+    cursor: pointer;
+    transition: all 0.2s var(--ease-spring);
+    flex-shrink: 0;
+  }
+
+  .mobile-menu-toggle-btn:hover,
+  .mobile-menu-toggle-btn.active {
+    background: rgba(0, 0, 0, 0.05);
+    color: #000000;
+    transform: none;
+  }
+
+  .hamburger-icon,
+  mat-icon.hamburger-icon {
+    width: 24px;
+    height: 24px;
+    font-size: 24px;
+    color: #000000 !important;
+  }
+
+  .mobile-menu-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 990;
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  .mobile-nav-panel {
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    width: 100%;
+    background: #ffffff;
+    border-top: 3.5px solid #ffcc00;
+    border-bottom: 1px solid #e5e5e5;
+    padding: 0.75rem 1rem 1.25rem;
+    z-index: 1002;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+    animation: slideDownPanel 0.28s var(--ease-spring);
+    max-height: 82vh;
+    overflow-y: auto;
+  }
+
+  .mobile-nav-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .mobile-nav-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.85rem 0.9rem;
+    border-radius: 0;
+    background: #ffffff;
+    border: none;
+    border-bottom: 1px solid #f0f0f0;
+    color: #000000;
+    text-decoration: none;
+    box-shadow: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+    font-family: var(--font-sans);
+  }
+
+  .mobile-nav-row:hover,
+  .mobile-nav-row:active {
+    background: #fbfbfb;
+    transform: translateX(3px);
+  }
+
+  .row-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .nav-row-icon,
+  mat-icon.nav-row-icon {
+    width: 20px !important;
+    height: 20px !important;
+    font-size: 20px !important;
+    line-height: 20px !important;
+    color: #000000 !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .row-title {
+    font-size: 0.86rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #000000;
+  }
+
+  .row-arrow,
+  mat-icon.row-arrow {
+    width: 18px !important;
+    height: 18px !important;
+    font-size: 18px !important;
+    line-height: 18px !important;
+    color: #000000 !important;
+    opacity: 0.4;
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mobile-nav-row:hover .row-arrow {
+    opacity: 0.85;
+    transform: translateX(2px);
+  }
+
+  .mobile-nav-row.logout-row {
+    color: #ff5f00;
+  }
+
+  .mobile-nav-row.logout-row .nav-row-icon {
+    color: #ff5f00 !important;
+  }
+
+  .mobile-nav-row.logout-row:hover {
+    background: rgba(255, 95, 0, 0.08);
+  }
+
+  /* Botón Iniciar Sesión / Mi Perfil destacado en mobile (Estilo National Geographic) */
+  .mobile-nav-row.login-cta-row,
+  .mobile-nav-row.profile-cta-row {
+    margin-top: 0.75rem;
+    background: #ffcc00 !important;
+    border: 1.5px solid #ffcc00 !important;
+    border-radius: 2px !important;
+    color: #000000 !important;
+    padding: 0.85rem 1rem;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  }
+
+  .mobile-nav-row.login-cta-row .row-title,
+  .mobile-nav-row.profile-cta-row .row-title {
+    color: #000000 !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.08em;
+  }
+
+  .mobile-nav-row.login-cta-row .nav-row-icon,
+  .mobile-nav-row.profile-cta-row .nav-row-icon,
+  .mobile-nav-row.login-cta-row .row-arrow,
+  .mobile-nav-row.profile-cta-row .row-arrow {
+    color: #000000 !important;
+    opacity: 1 !important;
+  }
+
+  .mobile-nav-row.login-cta-row:hover,
+  .mobile-nav-row.login-cta-row:active,
+  .mobile-nav-row.profile-cta-row:hover,
+  .mobile-nav-row.profile-cta-row:active {
+    background: #ffcc00 !important;
+    border-color: #ffcc00 !important;
+    transform: none;
+  }
+}
+
+@keyframes slideDownPanel {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

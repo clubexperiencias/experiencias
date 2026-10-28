@@ -1,0 +1,995 @@
+/* ==========================================================================
+   Fotos Destacadas de Travesías • EXPERIENCIAS.CLUB
+   Estilo Galería / Collage Editorial National Geographic
+   ========================================================================== */
+@import '../../waitlist/waitlist.component.css';
+
+.photos-page-container {
+  min-height: 100vh;
+  position: relative;
+  background: transparent;
+  color: var(--color-text-white);
+  overflow-x: clip;
+  display: flex;
+  flex-direction: column;
+}
+
+.photos-wallpaper-body {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.photos-main-content {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  padding: 2.2rem 1.85rem 3.5rem;
+}
+
+.photos-wrapper {
+  width: 100%;
+  max-width: 1240px;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  align-items: stretch;
+}
+
+/* ==========================================================================
+   Encabezado Editorial
+   ========================================================================== */
+.editorial-header-card {
+  width: 100%;
+  box-sizing: border-box;
+  background: hsla(220, 24%, 9%, 0.35);
+  border: 1px solid rgba(255, 204, 0, 0.45);
+  border-left: 4px solid #ffcc00;
+  border-radius: 2px;
+  padding: 2.2rem;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.editorial-kicker {
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  color: #ffcc00;
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.editorial-title {
+  font-family: var(--font-serif);
+  font-size: 2.3rem;
+  font-weight: 600;
+  color: #ffffff;
+  line-height: 1.15;
+  margin: 0 0 0.8rem;
+  letter-spacing: -0.015em;
+}
+
+.editorial-lead {
+  font-size: 1.05rem;
+  line-height: 1.65;
+  color: var(--color-text-soft);
+  max-width: 900px;
+  margin: 0 0 1.6rem;
+}
+
+.editorial-metrics-row {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  flex-wrap: wrap;
+}
+
+.metric-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+  padding: 0.4rem 0.85rem;
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #ffffff;
+  text-transform: uppercase;
+}
+
+.chip-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  color: #ffcc00;
+}
+
+/* ==========================================================================
+   Barra de Filtros
+   ========================================================================== */
+.filters-bar-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: hsla(220, 24%, 9%, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+  padding: 1rem 1.4rem;
+  flex-wrap: wrap;
+}
+
+.filters-label {
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #ffcc00;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.filters-chips-scroll {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.filter-chip-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+  padding: 0.45rem 0.9rem;
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.filter-chip-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 204, 0, 0.4);
+}
+
+.filter-chip-btn.active {
+  background: #ffcc00;
+  color: #000000;
+  border-color: #ffcc00;
+}
+
+/* ==========================================================================
+   Collage / Grid de Fotos Destacadas
+   ========================================================================== */
+.photos-collage-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 1.5rem;
+  grid-auto-flow: dense;
+}
+
+.collage-card {
+  position: relative;
+  background: #000000;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+  overflow: hidden;
+  cursor: pointer;
+  transition:
+    border-color 0.25s ease,
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.collage-card:hover {
+  border-color: #ffcc00;
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgba(255, 255, 255, 0.32);
+}
+
+/* Spans para el efecto Collage */
+.collage-card.span-hero {
+  grid-column: span 8;
+  height: 440px;
+}
+
+.collage-card.span-wide {
+  grid-column: span 7;
+  height: 380px;
+}
+
+.collage-card.span-tall {
+  grid-column: span 4;
+  height: 440px;
+}
+
+.collage-card.span-normal {
+  grid-column: span 5;
+  height: 380px;
+}
+
+.photo-media-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.collage-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.collage-card:hover .collage-img {
+  transform: scale(1.04);
+}
+
+.photo-gradient-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.35) 0%,
+    rgba(0, 0, 0, 0.1) 40%,
+    rgba(0, 0, 0, 0.85) 85%,
+    rgba(0, 0, 0, 0.95) 100%
+  );
+  pointer-events: none;
+}
+
+.photo-top-badges {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  right: 14px;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  z-index: 5;
+}
+
+.admin-curated-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #ffcc00;
+  color: #0b1120;
+  border: 1px solid #ffcc00;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  padding: 0.3rem 0.65rem;
+  border-radius: 2px;
+  box-sizing: border-box;
+  text-transform: uppercase;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.badge-mini-icon {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+}
+
+.photo-location-tag {
+  background: var(--color-gold);
+  border: 1px solid var(--color-gold);
+  color: #0b1120;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.25rem 0.6rem;
+  border-radius: 2px;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.photo-overlay-content {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 1.4rem;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.experience-kicker-row {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #ffcc00;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.exp-kicker-region {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.photo-headline {
+  font-family: var(--font-serif);
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0.1rem 0;
+  line-height: 1.25;
+}
+
+.photo-summary {
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.82);
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.photo-footer-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.admin-attribution {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.74rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.author-icon {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+  color: #ffcc00;
+}
+
+.view-hd-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #ffcc00;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.zoom-icon {
+  font-size: 15px;
+  width: 15px;
+  height: 15px;
+}
+
+/* ==========================================================================
+   Bloque Inferior CTA
+   ========================================================================== */
+.collage-bottom-cta-card {
+  width: 100%;
+  box-sizing: border-box;
+  background: hsla(220, 24%, 9%, 0.35);
+  border: 1px solid rgba(255, 204, 0, 0.35);
+  border-radius: 2px;
+  padding: 2.2rem;
+  backdrop-filter: blur(10px);
+}
+
+.cta-kicker {
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: #ffcc00;
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 0.4rem;
+}
+
+.cta-title {
+  font-family: var(--font-serif);
+  font-size: 1.65rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0 0 0.6rem;
+}
+
+.cta-text {
+  font-size: 0.95rem;
+  color: var(--color-text-soft);
+  max-width: 800px;
+  line-height: 1.6;
+  margin: 0 0 1.5rem;
+}
+
+.cta-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.cta-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.4rem;
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  font-weight: 700;
+  border-radius: 2px;
+  text-decoration: none !important;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.cta-action-btn.primary {
+  background: #ffcc00;
+  color: #000000;
+}
+
+.cta-action-btn.primary:hover {
+  background: #ffd93a;
+  transform: translateY(-2px);
+}
+
+.cta-action-btn.secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.cta-action-btn.secondary:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.cta-action-btn.tertiary {
+  background: transparent;
+  color: var(--color-text-soft);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.cta-action-btn.tertiary:hover {
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* ==========================================================================
+   Lightbox Modal
+   ========================================================================== */
+.lightbox-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.62);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.5rem;
+  box-sizing: border-box;
+}
+
+.lightbox-modal-card {
+  position: relative;
+  width: 100%;
+  max-width: 960px;
+  max-height: 90vh;
+  background: #0d121a;
+  border: 1px solid rgba(255, 204, 0, 0.45);
+  border-radius: 2px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  animation: modalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalPop {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.lightbox-close-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 20;
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.lightbox-close-btn:hover {
+  background: #ffcc00;
+  color: #000000;
+  border-color: #ffcc00;
+}
+
+.lightbox-media-box {
+  width: 100%;
+  max-height: 520px;
+  background: #000000;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lightbox-img {
+  width: 100%;
+  height: 100%;
+  max-height: 520px;
+  object-fit: cover;
+  display: block;
+}
+
+.lightbox-info-panel {
+  padding: 1.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.lightbox-tag-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.lightbox-exp-tag {
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #ffcc00;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.lightbox-title {
+  font-family: var(--font-serif);
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0;
+}
+
+.lightbox-caption {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--color-text-soft);
+  margin: 0;
+}
+
+.lightbox-details-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  padding: 1rem 1.2rem;
+  margin-top: 0.4rem;
+}
+
+.lightbox-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.detail-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-soft);
+}
+
+.detail-value {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.lightbox-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.lightbox-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #ffcc00;
+  color: #000000;
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 0.65rem 1.2rem;
+  border-radius: 2px;
+  text-decoration: none !important;
+}
+
+.lightbox-cta-btn:hover {
+  background: #ffd93a;
+}
+
+.lightbox-secondary-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.65rem 1.2rem;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.lightbox-secondary-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+@media (max-width: 1024px) {
+  .collage-card.span-hero,
+  .collage-card.span-wide,
+  .collage-card.span-tall,
+  .collage-card.span-normal {
+    grid-column: span 6;
+    height: 360px;
+  }
+}
+
+@media (max-width: 768px) {
+  .photos-main-content {
+    padding: 1.5rem 1rem 2.5rem;
+  }
+
+  .editorial-title {
+    font-size: 1.7rem;
+  }
+
+  .editorial-lead {
+    font-size: 0.95rem;
+  }
+
+  .photos-collage-grid {
+    grid-template-columns: 1fr;
+    gap: 1.2rem;
+  }
+
+  .collage-card.span-hero,
+  .collage-card.span-wide,
+  .collage-card.span-tall,
+  .collage-card.span-normal {
+    grid-column: span 1;
+    height: 330px;
+  }
+
+  .lightbox-details-grid {
+    grid-template-columns: 1fr;
+    gap: 0.8rem;
+  }
+}
+
+/* Galería uniforme y visor compartido con /experiencias/kayak/fotos */
+.photos-grid-3cols {
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.4rem;
+}
+
+.photo-card-item {
+  position: relative;
+  background: hsla(220, 24%, 9%, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+  overflow: hidden;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  transition:
+    transform 0.25s ease,
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.photo-card-item:hover {
+  transform: translateY(-3px);
+  border-color: rgba(255, 204, 0, 0.7);
+  box-shadow: 0 10px 24px rgba(255, 255, 255, 0.28);
+}
+
+.photo-card-media {
+  position: relative;
+  width: 100%;
+  height: 220px;
+  overflow: hidden;
+}
+
+.gallery-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.35s ease;
+}
+
+.photo-card-item:hover .gallery-thumb-img {
+  transform: scale(1.04);
+}
+
+.photo-card-media .admin-curated-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1;
+}
+
+.photo-card-media .photo-location-tag {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: var(--color-gold);
+  border: 1px solid var(--color-gold);
+  color: #0b1120;
+  padding: 0.3rem 0.65rem;
+  border-radius: 2px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  z-index: 1;
+}
+
+.photo-card-body {
+  padding: 1rem 1.1rem 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1;
+}
+
+.photo-item-credit {
+  color: var(--color-gold);
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.photo-item-title {
+  color: #ffffff;
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 0;
+}
+
+.photo-lightbox-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.5rem;
+  background: rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.photo-lightbox-backdrop .lightbox-content {
+  position: relative;
+  width: min(100%, 960px);
+  max-height: 90vh;
+  overflow: visible;
+  background: rgba(13, 18, 26, 0.34);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 204, 0, 0.45);
+  border-radius: 2px;
+}
+
+.photo-lightbox-backdrop .lightbox-media-wrap {
+  width: 100%;
+  max-height: 520px;
+  background: rgba(0, 0, 0, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.photo-lightbox-backdrop .lightbox-img {
+  width: 100%;
+  max-height: 520px;
+  height: 520px;
+  object-fit: cover;
+  display: block;
+}
+
+.photo-lightbox-backdrop .lightbox-close-btn,
+.photo-lightbox-backdrop .lightbox-nav-btn {
+  position: absolute;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 2px;
+  color: #ffffff;
+  background: rgba(0, 0, 0, 0.7);
+  cursor: pointer;
+}
+
+.photo-lightbox-backdrop .lightbox-close-btn {
+  top: 14px;
+  right: 14px;
+}
+
+.photo-lightbox-backdrop .lightbox-nav-btn {
+  top: 50%;
+  width: 44px;
+  height: 44px;
+  border: 2px solid #ffcc00;
+  border-radius: 50%;
+  background: #ffcc00;
+  color: #000000;
+  transform: translateY(-50%);
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease;
+}
+
+.photo-lightbox-backdrop .prev-btn {
+  left: -58px;
+}
+.photo-lightbox-backdrop .next-btn {
+  right: -58px;
+}
+
+.photo-lightbox-backdrop .lightbox-nav-btn:hover {
+  background: #ffdc33;
+  border-color: #ffdc33;
+  color: #000000;
+  transform: translateY(-50%) scale(1.06);
+}
+
+.photo-lightbox-backdrop .lightbox-close-btn:hover,
+.photo-lightbox-backdrop .lightbox-nav-btn:hover {
+  background: #ffcc00;
+  border-color: #ffcc00;
+  color: #000000;
+}
+
+.photo-lightbox-backdrop .lightbox-caption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.2rem;
+  padding: 1.4rem 1.6rem;
+  background: #171d29;
+  flex-wrap: wrap;
+}
+
+.photo-lightbox-backdrop .lightbox-caption-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1;
+  min-width: 260px;
+}
+
+.photo-lightbox-backdrop .lightbox-signature {
+  color: #ffcc00;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.photo-lightbox-backdrop .lightbox-caption h4 {
+  color: #ffffff;
+  font-family: var(--font-serif);
+  font-size: 1.35rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.photo-lightbox-backdrop .lightbox-caption p {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.86rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.lightbox-download-action-btn {
+  flex-shrink: 0;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.6rem 1.2rem;
+  border: 1px solid #ffcc00;
+  border-radius: 2px;
+  background: #ffcc00;
+  color: #000000;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.lightbox-download-action-btn mat-icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+}
+
+@media (max-width: 768px) {
+  .photo-lightbox-backdrop .lightbox-nav-btn {
+    width: 38px;
+    height: 38px;
+  }
+  .photo-lightbox-backdrop .prev-btn {
+    left: 10px;
+  }
+  .photo-lightbox-backdrop .next-btn {
+    right: 10px;
+  }
+  .photo-lightbox-backdrop .lightbox-img {
+    height: 360px;
+  }
+  .photo-lightbox-backdrop .lightbox-caption {
+    flex-direction: column;
+  }
+  .lightbox-download-action-btn {
+    width: 100%;
+    min-width: 0;
+  }
+}

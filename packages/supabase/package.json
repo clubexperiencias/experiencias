@@ -1,0 +1,27 @@
+{
+  "name": "@experiencias/supabase",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json",
+    "gen:types": "supabase gen types typescript --project-id \"$SUPABASE_PROJECT_ID\" --schema public > src/database.types.ts"
+  },
+  "dependencies": {
+    "@experiencias/domain": "workspace:*"
+  },
+  "peerDependencies": {
+    "@supabase/supabase-js": "^2.118.0"
+  },
+  "devDependencies": {
+    "@experiencias/config": "workspace:*",
+    "@supabase/supabase-js": "^2.118.0",
+    "typescript": "~6.0.2",
+    "vitest": "^5.0.0"
+  }
+}

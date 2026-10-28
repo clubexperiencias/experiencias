@@ -1,0 +1,185 @@
+/* ==========================================================================
+   Catamarca Secreta • Design System Tokens (Pure Vanilla CSS)
+   Inspirado en la estética minimalista y editorial de v0
+   ========================================================================== */
+
+:root {
+  /* Tipografía principal: Geist y Geist Mono */
+  --font-sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-serif: var(--font-sans);
+
+  /* Paleta cromática HSL (Inspirada en la Puna, Seismiles y atardeceres andinos) */
+  --color-bg-dark: hsl(220, 24%, 7%);
+  --color-bg-overlay: hsla(220, 24%, 6%, 0.52);
+  --color-bg-card: hsla(220, 18%, 13%, 0.65);
+  
+  /* Glassmorphism tokens */
+  --glass-bg: hsla(220, 20%, 15%, 0.45);
+  --glass-bg-hover: hsla(220, 20%, 22%, 0.62);
+  --glass-bg-active: hsla(220, 20%, 28%, 0.75);
+  --glass-border: hsla(0, 0%, 100%, 0.18);
+  --glass-border-focus: rgba(255, 212, 42, 0.65);
+  --glass-blur: 18px;
+
+  /* Texto y contrastes */
+  --color-text-white: hsl(0, 0%, 98%);
+  --color-text-soft: hsla(0, 0%, 100%, 0.82);
+  --color-text-muted: hsla(0, 0%, 100%, 0.52);
+  --color-text-subtle: hsla(0, 0%, 100%, 0.35);
+
+  /* Acentos de Catamarca */
+  --color-gold: #FFD42A;
+  --color-gold-hover: #ffe066;
+  --color-copper: hsl(22, 65%, 58%);
+  --color-success: hsl(152, 65%, 56%);
+  --color-error: #ff5f00;
+
+  /* Sombras y profundidad */
+  --shadow-capsule: 0 15px 35px rgba(0, 0, 0, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.22);
+  --shadow-card: 0 25px 60px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  --shadow-glow-gold: 0 0 35px rgba(255, 212, 42, 0.28);
+
+  /* Curvas y transiciones */
+  --radius-pill: 9999px;
+  --radius-xl: 24px;
+  --radius-lg: 16px;
+  --radius-md: 10px;
+  --radius-sm: 6px;
+
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-fast: 0.2s var(--ease-spring);
+  --transition-normal: 0.35s var(--ease-spring);
+  --transition-slow: 0.6s var(--ease-spring);
+}
+
+/* Reset y Base */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  min-height: 100%;
+  background-color: #ffffff;
+  color: var(--color-text-white);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: clip;
+}
+
+/* Enlaces y botones base */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: inherit;
+}
+
+input {
+  font-family: inherit;
+}
+
+/* Utilidades de accesibilidad y foco */
+:focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 3px;
+}
+
+/* Animaciones globales */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(255, 212, 42, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 35px rgba(255, 212, 42, 0.45);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Scrollbar estilizada */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsla(0, 0%, 100%, 0.15);
+  border-radius: var(--radius-pill);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsla(0, 0%, 100%, 0.3);
+}
+
+/* Angular Material Icons base styles */
+mat-icon {
+  font-family: 'Material Icons', 'Material Icons Outlined' !important;
+  font-weight: normal;
+  font-style: normal;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'liga';
+  vertical-align: middle;
+}
+
+/* ==========================================================================
+   Contenedor de Wallpaper Global Enclosed (Entre Header y Footer)
+   ========================================================================== */
+.app-wallpaper-body {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  background-color: #06090e;
+  background-image: url('/assets/images/catamarca-style.png') !important;
+  background-size: cover !important;
+  background-position: center top !important;
+  background-repeat: no-repeat !important;
+  background-attachment: fixed !important;
+  overflow: clip;
+}
+
+/* En todas las rutas públicas y de socios (excepto perfil y admin), fondo limpio sin patrón de relieve ni overlay */
+.app-wallpaper-body::before,
+.app-wallpaper-body .ambient-overlay {
+  display: none !important;
+  content: none !important;
+}
+

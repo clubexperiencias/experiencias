@@ -1,0 +1,769 @@
+/* ==========================================================================
+   Galería de Fotos de Experiencias Pasadas • /experiencias/kayak/fotos
+   ========================================================================== */
+@import '../../../waitlist/waitlist.component.css';
+
+.kayak-photos-container {
+  min-height: 100vh;
+  position: relative;
+  background: transparent;
+  color: var(--color-text-white);
+  overflow-x: clip;
+  display: flex;
+  flex-direction: column;
+}
+
+.kayak-photos-body {
+  position: relative;
+  flex: 1;
+  width: 100%;
+}
+
+.kayak-photos-main {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 2.2rem 1.5rem 2rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.kayak-photos-wrapper {
+  width: 100%;
+  max-width: 880px;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  align-items: stretch;
+}
+
+/* ═══════════════ CARDS DE SECCIÓN EDITORIAL ═══════════════ */
+.kayak-section-card {
+  width: 100%;
+  box-sizing: border-box;
+  background: hsla(220, 24%, 9%, 0.22);
+  border: 1px solid rgba(255, 212, 42, 0.35);
+  border-radius: 2px;
+  padding: 2.2rem;
+  margin: 0;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: none !important;
+  text-align: left;
+  animation: photoBoxEntrance 0.45s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+@keyframes photoBoxEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hero-gallery-card {
+  border-color: rgba(255, 212, 42, 0.45);
+}
+
+.card-inner-header {
+  margin: 0;
+}
+
+.section-kicker {
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  color: var(--color-gold);
+  font-weight: 700;
+  display: block;
+  margin-bottom: 0.4rem;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.card-heading {
+  font-family: var(--font-serif);
+  font-size: 1.95rem;
+  font-weight: 600;
+  color: #fff;
+  margin: 0 0 0.6rem;
+  line-height: 1.2;
+}
+
+.card-subheading {
+  font-size: 0.94rem;
+  line-height: 1.6;
+  color: var(--color-text-soft);
+  margin: 0;
+}
+
+/* ═══════════════ FOTO PRINCIPAL DESTACADA ═══════════════ */
+.featured-photo-card {
+  padding: 0 !important;
+  overflow: hidden;
+  cursor: pointer;
+  border-color: rgba(255, 212, 42, 0.45);
+  transition: all 0.25s ease;
+}
+
+.featured-photo-card:hover {
+  border-color: rgba(255, 255, 255, 0.45);
+  box-shadow:
+    0 12px 32px rgba(255, 255, 255, 0.18),
+    0 0 20px rgba(255, 255, 255, 0.12);
+}
+
+.featured-media-wrap {
+  position: relative;
+  width: 100%;
+  height: 440px;
+  overflow: hidden;
+  display: flex;
+}
+
+.featured-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  transition: transform 0.4s ease;
+}
+
+.featured-photo-card:hover .featured-img {
+  transform: scale(1.03);
+}
+
+.media-tag {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  background: var(--color-gold);
+  color: #0b1120;
+  border: 1px solid var(--color-gold);
+  padding: 0.35rem 0.75rem;
+  border-radius: 2px;
+  text-transform: uppercase;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.media-overlay-info {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 2rem 2rem 1.6rem;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.88) 0%,
+    rgba(0, 0, 0, 0.4) 65%,
+    transparent 100%
+  );
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.media-caption-kicker {
+  font-size: 0.82rem;
+  color: var(--color-gold);
+  font-weight: 500;
+}
+
+.media-caption-title {
+  font-family: var(--font-serif);
+  font-size: 1.55rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0;
+}
+
+.media-caption-desc {
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.85);
+  margin: 0;
+  max-width: 720px;
+  line-height: 1.5;
+}
+
+/* ═══════════════ GRILLA DE FOTOS ═══════════════ */
+.photos-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.4rem;
+}
+
+.photos-grid-2cols {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.featured-gold-tag {
+  background: var(--color-gold) !important;
+  color: #0b1120 !important;
+  border: 1px solid var(--color-gold) !important;
+  font-weight: 800 !important;
+}
+
+.photo-card-item {
+  background: hsla(220, 24%, 9%, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+  overflow: hidden;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.25s ease;
+  backdrop-filter: blur(8px);
+}
+
+.photo-card-item:hover {
+  transform: translateY(-3px);
+  border-color: rgba(255, 255, 255, 0.45);
+  box-shadow:
+    0 10px 24px rgba(255, 255, 255, 0.18),
+    0 0 16px rgba(255, 255, 255, 0.1);
+}
+
+.photo-card-media {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  overflow: hidden;
+}
+
+.gallery-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.35s ease;
+}
+
+.photo-card-item:hover .gallery-thumb-img {
+  transform: scale(1.05);
+}
+
+.photo-tag {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  background: var(--color-gold);
+  color: #0b1120;
+  border: 1px solid var(--color-gold);
+  padding: 0.3rem 0.65rem;
+  border-radius: 2px;
+  text-transform: uppercase;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.photo-card-body {
+  padding: 1.1rem 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1;
+}
+
+.photo-item-credit {
+  font-size: 0.74rem;
+  color: var(--color-gold);
+  font-weight: 500;
+}
+
+.photo-item-title {
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0;
+}
+
+.photo-item-caption {
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--color-text-soft);
+  margin: 0;
+}
+
+/* ═══════════════ SECCIÓN COMUNIDAD: GRILLA 3 x 3 ═══════════════ */
+.community-photos-section {
+  padding: 2.2rem;
+  border-color: rgba(255, 212, 42, 0.35);
+}
+
+.community-header {
+  margin-bottom: 1.6rem;
+}
+
+.community-title {
+  font-family: var(--font-serif);
+  font-size: 1.7rem;
+  font-weight: 600;
+  color: #fff;
+  margin: 0.2rem 0 0.5rem;
+}
+
+.community-desc {
+  font-size: 0.92rem;
+  color: var(--color-text-soft);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.community-grid-3x3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.2rem;
+}
+
+.community-card-item {
+  background: hsla(220, 24%, 9%, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+  overflow: hidden;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.25s ease;
+}
+
+.community-card-item:hover {
+  transform: translateY(-3px);
+  border-color: rgba(255, 255, 255, 0.45);
+  box-shadow:
+    0 10px 24px rgba(255, 255, 255, 0.18),
+    0 0 16px rgba(255, 255, 255, 0.1);
+}
+
+.community-card-media {
+  position: relative;
+  width: 100%;
+  height: 180px;
+  overflow: hidden;
+}
+
+.community-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.35s ease;
+}
+
+.community-card-item:hover .community-thumb-img {
+  transform: scale(1.06);
+}
+
+.community-badge {
+  position: absolute;
+  top: 9px;
+  left: 9px;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  background: var(--color-gold);
+  color: #0b1120;
+  border: 1px solid var(--color-gold);
+  padding: 0.22rem 0.55rem;
+  border-radius: 2px;
+  text-transform: uppercase;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.community-card-body {
+  padding: 0.9rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.community-photo-title {
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.community-photo-author {
+  font-size: 0.74rem;
+  color: var(--color-gold);
+  font-weight: 500;
+}
+
+/* ═══════════════ AD BANNER: CONVOCATORIA SOCIO FUNDADOR ═══════════════ */
+.kayak-ad-wrapper {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-top: 0.2rem;
+}
+
+.ad-tag-header {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0 0.2rem;
+}
+
+.ad-label-pill {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #ffffff;
+  background: #80b3ff;
+  border: 1px solid #80b3ff;
+  padding: 0.18rem 0.6rem;
+  border-radius: 2px;
+  text-transform: uppercase;
+  box-shadow: 0 2px 8px rgba(128, 179, 255, 0.35);
+}
+
+.ad-sponsor-text {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.45);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.ad-banner-link {
+  position: relative;
+  display: block;
+  width: 100%;
+  border-radius: 2px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 10px 32px rgba(255, 255, 255, 0.28);
+  text-decoration: none !important;
+  transition:
+    transform 0.25s ease,
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
+  cursor: pointer;
+  background: #ffffff;
+}
+
+.ad-banner-link:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 212, 42, 0.5);
+  box-shadow:
+    0 16px 44px rgba(255, 255, 255, 0.4),
+    0 0 20px rgba(255, 212, 42, 0.15);
+}
+
+.ad-banner-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+  transition: transform 0.35s ease;
+}
+
+.ad-banner-link:hover .ad-banner-img {
+  transform: scale(1.015);
+}
+
+/* ═══════════════ LIGHTBOX MODAL ═══════════════ */
+.photo-lightbox-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.lightbox-content {
+  position: relative;
+  max-width: 960px;
+  width: 100%;
+  background: hsla(220, 22%, 16%, 0.96);
+  border: 1px solid rgba(255, 212, 42, 0.45);
+  border-radius: 4px;
+  overflow: visible;
+  box-shadow:
+    0 20px 50px rgba(0, 0, 0, 0.45),
+    0 0 25px rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+}
+
+.lightbox-top-actions {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  z-index: 15;
+}
+
+.lightbox-icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.lightbox-icon-btn:hover {
+  background: var(--color-gold);
+  color: #0b1120;
+  border-color: var(--color-gold);
+  transform: scale(1.05);
+}
+
+.lightbox-close-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 25;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(6px);
+}
+
+.lightbox-close-btn:hover {
+  background: var(--color-gold);
+  color: #0b1120;
+  border-color: var(--color-gold);
+  transform: scale(1.05);
+}
+
+.lightbox-nav-btn {
+  position: absolute;
+  top: 40%;
+  transform: translateY(-50%);
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--color-gold);
+  border: 1px solid var(--color-gold);
+  color: #0b1120;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 35;
+  transition: all 0.2s ease;
+  padding: 0;
+  box-shadow:
+    0 4px 18px rgba(0, 0, 0, 0.45),
+    0 0 16px rgba(255, 212, 42, 0.35);
+}
+
+.lightbox-nav-btn:hover {
+  background: var(--color-gold-hover);
+  color: #000;
+  border-color: var(--color-gold-hover);
+  transform: translateY(-50%) scale(1.1);
+  box-shadow: 0 8px 25px rgba(255, 212, 42, 0.55);
+}
+
+.lightbox-nav-btn.prev-btn {
+  left: -64px;
+}
+
+.lightbox-nav-btn.next-btn {
+  right: -64px;
+}
+
+.lightbox-nav-btn mat-icon {
+  font-size: 30px;
+  width: 30px;
+  height: 30px;
+}
+
+.lightbox-media-wrap {
+  width: 100%;
+  position: relative;
+  background: hsla(220, 22%, 12%, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.lightbox-img {
+  display: block;
+  max-height: 70vh;
+  object-fit: contain;
+  transition: all 0.25s ease;
+}
+
+.lightbox-img.is-landscape {
+  width: 100%;
+  height: auto;
+  max-height: 72vh;
+  object-fit: cover;
+  object-position: center;
+}
+
+.lightbox-caption {
+  padding: 1.4rem 1.6rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.2rem;
+  background: hsla(220, 22%, 14%, 0.98);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  flex-wrap: wrap;
+}
+
+.lightbox-caption-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  flex: 1;
+  min-width: 260px;
+}
+
+.lightbox-signature {
+  font-size: 0.8rem;
+  color: var(--color-gold);
+  font-weight: 500;
+}
+
+.lightbox-author {
+  font-size: 0.78rem;
+  color: var(--color-gold);
+  font-weight: 600;
+}
+
+.lightbox-download-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: var(--color-gold);
+  border: 1px solid var(--color-gold);
+  color: #0b1120;
+  padding: 0.6rem 1.2rem;
+  border-radius: 2px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.lightbox-download-action-btn:hover {
+  background: var(--color-gold-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 212, 42, 0.3);
+}
+
+.lightbox-tag {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--color-gold);
+  text-transform: uppercase;
+}
+
+.lightbox-caption h4 {
+  font-family: var(--font-serif);
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0;
+}
+
+.lightbox-caption p {
+  font-size: 0.86rem;
+  color: var(--color-text-soft);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ═══════════════ RESPONSIVE ═══════════════ */
+@media (max-width: 1140px) {
+  .photo-lightbox-backdrop {
+    padding: 1.5rem 4.5rem;
+  }
+
+  .lightbox-nav-btn.prev-btn {
+    left: -52px;
+  }
+
+  .lightbox-nav-btn.next-btn {
+    right: -52px;
+  }
+}
+
+@media (max-width: 768px) {
+  .photo-lightbox-backdrop {
+    padding: 1rem;
+  }
+
+  .lightbox-nav-btn {
+    width: 40px;
+    height: 40px;
+  }
+
+  .lightbox-nav-btn.prev-btn {
+    left: 8px;
+  }
+
+  .lightbox-nav-btn.next-btn {
+    right: 8px;
+  }
+
+  .photos-grid,
+  .photos-grid-2cols,
+  .community-grid-3x3 {
+    grid-template-columns: 1fr;
+  }
+
+  .featured-media-wrap {
+    height: 280px;
+  }
+
+  .gallery-action-flex {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .action-buttons-wrap {
+    width: 100%;
+    align-items: center;
+  }
+
+  .cta-primary-btn {
+    width: 100%;
+    box-sizing: border-box;
+  }
+}

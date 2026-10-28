@@ -67,7 +67,7 @@ export class NewsletterService {
     this._errorMessage.set(null);
 
     const cleanEmail = dto.email.trim().toLowerCase();
-    if (!this.isValidEmail(cleanEmail)) {
+    if (!this.isValidEmail(cleanEmail) || cleanEmail.length > 254) {
       this._isLoading.set(false);
       const msg = 'Por favor, ingresá un correo electrónico válido.';
       this._errorMessage.set(msg);
@@ -96,11 +96,12 @@ export class NewsletterService {
     const newEntry: WaitlistEntry = {
       id: 'waitlist_' + Date.now().toString(),
       email: cleanEmail,
-      fullName: dto.fullName?.trim(),
-      nationality: dto.nationality?.trim(),
+      fullName: dto.fullName?.trim().slice(0, 100),
+      documentNumber: dto.documentNumber?.replace(/\D/g, '').slice(0, 9),
+      nationality: dto.nationality?.trim().slice(0, 80),
       experiencesWishlist: dto.experiencesWishlist || [],
-      wishlistNotes: dto.wishlistNotes?.trim(),
-      bio: dto.bio?.trim(),
+      wishlistNotes: dto.wishlistNotes?.trim().slice(0, 1000),
+      bio: dto.bio?.trim().slice(0, 1000),
       interest: dto.interest || 'all',
       position,
       referralCode,
@@ -149,11 +150,11 @@ export class NewsletterService {
 
     const updatedMember: WaitlistEntry = {
       ...current,
-      fullName: data.fullName,
-      nationality: data.nationality,
+      fullName: data.fullName.slice(0, 100),
+      nationality: data.nationality.slice(0, 80),
       experiencesWishlist: data.experiencesWishlist,
-      wishlistNotes: data.wishlistNotes,
-      bio: data.bio,
+      wishlistNotes: data.wishlistNotes?.slice(0, 1000),
+      bio: data.bio?.slice(0, 1000),
       profileCompleted: true,
     };
 

@@ -1,0 +1,128 @@
+<div class="rc-toolbar">
+  <div class="rc-filters" role="group" aria-label="Filtrar por estado">
+    @for (f of filters; track f.value) {
+    <button type="button" class="rc-filter" [class.is-active]="statusFilter() === f.value"
+      [attr.aria-pressed]="statusFilter() === f.value" (click)="statusFilter.set(f.value)">
+      {{ f.label }} <span class="rc-filter-count">{{ countFor(f.value) }}</span>
+    </button>
+    }
+  </div>
+
+  <label class="sr-only" for="rc-experience">Filtrar por experiencia</label>
+  <select id="rc-experience" class="pay-input rc-select" [value]="experienceFilter()"
+    (change)="setExperienceFilter($any($event.target).value)">
+    <option value="">Todas las experiencias</option>
+    @for (exp of store.experiences(); track exp.id) {
+    <option [value]="exp.id">{{ exp.title }}</option>
+    }
+  </select>
+</div>
+
+@if (filtered().length === 0) {
+<section class="kayak-section-card rc-empty">
+  <mat-icon aria-hidden="true">inbox</mat-icon>
+  <p>No hay comprobantes en esta vista.</p>
+</section>
+} @else {
+<ul class="rc-list">
+  @for (sub of filtered(); track sub.id) {
+  <li>
+    <button type="button" class="rc-row" (click)="open(sub.id)">
+      <img [src]="sub.receipt.url" alt="" class="rc-thumb" [class.is-hidden]="isPdf(sub.receipt.mimeType)" />
+      @if (isPdf(sub.receipt.mimeType)) {
+      <span class="rc-thumb rc-thumb-pdf"><mat-icon aria-hidden="true">picture_as_pdf</mat-icon></span>
+      }
+      <span class="rc-row-main">
+        <span class="rc-row-name">{{ sub.fullName }}</span>
+        <span class="rc-row-meta">{{ sub.experienceTitle }} · {{ sub.date | fecha }} · {{ sub.participants }}
+          {{ sub.participants === 1 ? 'persona' : 'personas' }}</span>
+      </span>
+      <span class="rc-row-amount">
+        <strong>{{ sub.amountArs | ars }}</strong>
+        <span class="rc-row-time">{{ sub.submittedAt | fecha: 'hora' }}</span>
+      </span>
+      <span class="rc-badge" [attr.data-status]="sub.status">{{ sub.status }}</span>
+    </button>
+  </li>
+  }
+</ul>
+}
+
+@if (selected(); as sub) {
+<div class="modal-backdrop" (click)="close()">
+  <div class="rc-modal" role="dialog" aria-modal="true" aria-labelledby="rc-modal-title" (click)="$event.stopPropagation()">
+    <div class="rc-modal-receipt">
+      @if (isPdf(sub.receipt.mimeType)) {
+      <a [href]="sub.receipt.url" target="_blank" rel="noopener" class="rc-pdf-link">
+        <mat-icon aria-hidden="true">picture_as_pdf</mat-icon>
+        Abrir PDF · {{ sub.receipt.fileName }}
+      </a>
+      } @else {
+      <a [href]="sub.receipt.url" target="_blank" rel="noopener" class="rc-receipt-link">
+        <img [src]="sub.receipt.url" [alt]="'Comprobante de ' + sub.fullName" />
+      </a>
+      }
+    </div>
+
+    <div class="rc-modal-info">
+      <div class="rc-modal-head">
+        <div>
+          <span class="section-kicker">COMPROBANTE · <span class="pay-mono">{{ sub.reference }}</span></span>
+          <h2 id="rc-modal-title" class="rc-modal-title">{{ sub.fullName }}</h2>
+        </div>
+        <button type="button" class="pay-copy-btn" (click)="close()" aria-label="Cerrar">
+          <mat-icon aria-hidden="true">close</mat-icon>
+        </button>
+      </div>
+
+      <div class="rc-check">
+        <span class="pay-label">Monto esperado</span>
+        <strong>{{ sub.amountArs | ars }}</strong>
+        <span class="rc-check-hint">Verificá que el comprobante muestre este monto y el CBU terminado en {{ cbu.slice(-6) }}.</span>
+      </div>
+
+      <dl class="rc-details">
+        <div><dt>Experiencia</dt><dd>{{ sub.experienceTitle }}</dd></div>
+        <div><dt>Fecha</dt><dd>{{ sub.date | fecha: 'larga' }}</dd></div>
+        <div><dt>Personas</dt><dd>{{ sub.participants }}</dd></div>
+        <div><dt>Email</dt><dd>{{ sub.email }}</dd></div>
+        <div><dt>Teléfono</dt><dd>{{ sub.phone }}</dd></div>
+        <div><dt>DNI</dt><dd class="pay-mono">{{ sub.dni }}</dd></div>
+        <div><dt>Enviado</dt><dd>{{ sub.submittedAt | fecha: 'hora' }}</dd></div>
+      </dl>
+
+      @if (sub.status === 'pendiente') {
+      @if (rejecting()) {
+      <div class="pay-field">
+        <label for="rc-reason" class="pay-label">Motivo del rechazo (se envía al socio)</label>
+        <textarea id="rc-reason" class="pay-input" rows="3" [value]="rejectionReason()"
+          (input)="rejectionReason.set($any($event.target).value)"
+          placeholder="Ej: El monto transferido no coincide con el total."></textarea>
+      </div>
+      <div class="rc-actions">
+        <button type="button" class="pay-secondary-btn" (click)="rejecting.set(false)">Volver</button>
+        <button type="button" class="rc-reject-btn" [disabled]="rejectionReason().trim().length < 5" (click)="reject()">
+          Confirmar rechazo
+        </button>
+      </div>
+      } @else {
+      <div class="rc-actions">
+        <button type="button" class="pay-secondary-btn" (click)="rejecting.set(true)">Rechazar</button>
+        <button type="button" class="cta-primary-btn" (click)="approve()">Aprobar pago</button>
+      </div>
+      }
+      <p class="pay-hint">Al aprobar o rechazar, el socio recibe un email automático.</p>
+      } @else {
+      <div class="rc-result" [attr.data-status]="sub.status">
+        <mat-icon aria-hidden="true">{{ sub.status === 'aprobado' ? 'check_circle' : 'cancel' }}</mat-icon>
+        <div>
+          <strong>{{ sub.status === 'aprobado' ? 'Pago aprobado' : 'Pago rechazado' }}</strong>
+          @if (sub.reviewedAt) {<span> · {{ sub.reviewedAt | fecha: 'hora' }}</span>}
+          @if (sub.rejectionReason) {<p>{{ sub.rejectionReason }}</p>}
+        </div>
+      </div>
+      }
+    </div>
+  </div>
+</div>
+}

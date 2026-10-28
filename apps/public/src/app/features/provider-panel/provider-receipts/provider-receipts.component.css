@@ -1,0 +1,345 @@
+@import '../../experiences/kayak-experience/kayak-experience.component.css';
+@import '../../../shared/styles/panel-form.css';
+
+.rc-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.rc-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.rc-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.85rem;
+  border: 1px solid var(--glass-border);
+  font-size: 0.85rem;
+  color: var(--color-text-soft);
+}
+
+.rc-filter.is-active {
+  border-color: var(--color-gold);
+  color: var(--color-gold);
+}
+
+.rc-filter-count {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.rc-select {
+  width: auto;
+  min-width: 220px;
+  max-width: 100%;
+}
+
+.rc-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: center !important;
+  color: var(--color-text-muted);
+}
+
+.rc-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(255, 212, 42, 0.35);
+  background: hsla(220, 24%, 9%, 0.22);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.rc-list li + li {
+  border-top: 1px solid var(--glass-border);
+}
+
+.rc-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  padding: 0.9rem 1.1rem;
+  text-align: left;
+  transition: background var(--transition-fast);
+}
+
+.rc-row:hover {
+  background: hsla(0, 0%, 100%, 0.05);
+}
+
+.rc-thumb {
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  object-position: top;
+  flex-shrink: 0;
+  border: 1px solid var(--glass-border);
+}
+
+.rc-thumb.is-hidden {
+  display: none;
+}
+
+.rc-thumb-pdf {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-gold);
+}
+
+.rc-row-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.rc-row-name {
+  font-weight: 600;
+}
+
+.rc-row-meta {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rc-row-amount {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.rc-row-time {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.rc-badge {
+  width: 6rem;
+  text-align: center;
+  padding: 0.2rem 0.5rem;
+  border: 1px solid var(--glass-border);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.rc-badge[data-status='pendiente'] {
+  border-color: var(--color-gold);
+  color: var(--color-gold);
+}
+
+.rc-badge[data-status='aprobado'] {
+  border-color: var(--color-success);
+  color: var(--color-success);
+}
+
+.rc-badge[data-status='rechazado'] {
+  border-color: var(--color-error);
+  color: var(--color-error);
+}
+
+@media (max-width: 640px) {
+  .rc-row {
+    flex-wrap: wrap;
+  }
+  .rc-row-main {
+    flex-basis: calc(100% - 60px);
+  }
+  .rc-row-amount {
+    align-items: flex-start;
+    flex: 1;
+  }
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: hsla(220, 30%, 4%, 0.78);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.rc-modal {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 940px;
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  background: hsl(220, 24%, 8%);
+  border: 1px solid rgba(255, 212, 42, 0.45);
+  color: var(--color-text-white);
+}
+
+@media (min-width: 820px) {
+  .rc-modal {
+    flex-direction: row;
+  }
+  .rc-modal-receipt {
+    width: 45%;
+    flex-shrink: 0;
+  }
+}
+
+.rc-modal-receipt {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 1.2rem;
+  background: hsla(0, 0%, 100%, 0.04);
+}
+
+.rc-receipt-link img {
+  display: block;
+  width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+}
+
+.rc-pdf-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: auto;
+  padding: 1rem 1.2rem;
+  border: 1px solid var(--color-gold);
+  color: var(--color-gold);
+}
+
+.rc-modal-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  padding: 1.6rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.rc-modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.rc-modal-title {
+  font-size: 1.35rem;
+  font-weight: 600;
+  margin-top: 0.4rem;
+}
+
+.rc-check {
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  border: 1px solid rgba(255, 212, 42, 0.45);
+}
+
+.rc-check strong {
+  font-size: 1.5rem;
+  color: var(--color-gold);
+}
+
+.rc-check-hint {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  margin-top: 0.3rem;
+}
+
+.rc-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  font-size: 0.9rem;
+}
+
+.rc-details > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.rc-details dt {
+  color: var(--color-text-muted);
+}
+
+.rc-details dd {
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.pay-mono {
+  font-family: var(--font-mono);
+}
+
+.rc-actions {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.rc-actions > * {
+  flex: 1;
+}
+
+.rc-reject-btn {
+  padding: 0.85rem 1.2rem;
+  background: var(--color-error);
+  color: hsl(220, 24%, 7%);
+  font-weight: 700;
+}
+
+.rc-reject-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.rc-result {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--glass-border);
+}
+
+.rc-result[data-status='aprobado'] {
+  border-color: var(--color-success);
+}
+
+.rc-result[data-status='aprobado'] mat-icon {
+  color: var(--color-success);
+}
+
+.rc-result[data-status='rechazado'] {
+  border-color: var(--color-error);
+}
+
+.rc-result[data-status='rechazado'] mat-icon {
+  color: var(--color-error);
+}
+
+.rc-result p {
+  margin-top: 0.3rem;
+  font-size: 0.88rem;
+  color: var(--color-text-soft);
+}

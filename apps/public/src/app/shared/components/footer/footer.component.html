@@ -1,0 +1,59 @@
+<!-- Franja Negra pegada al Footer con Información de Sesión y Membresía -->
+<aside class="footer-session-bar" aria-label="Información de sesión y membresía">
+  <div class="footer-session-container" [class.no-session]="!newsletter.isSubscribed()">
+    <div class="session-action-col">
+      @if (newsletter.isSubscribed()) {
+        <button type="button" class="session-action-btn logout-action logout-btn" (click)="logout()" title="Cerrar sesión activa">
+          Cerrar Sesión
+        </button>
+      } @else {
+        <a routerLink="/ingresar" class="session-action-btn login-action" title="Iniciar sesión con tu cuenta">
+          Iniciar Sesión
+        </a>
+      }
+    </div>
+
+    @if (newsletter.isSubscribed()) {
+      <div class="session-tier-col">
+        <span class="session-label">Membresía:</span>
+        <strong class="session-value">{{ membershipLabel }}</strong>
+      </div>
+
+      <div class="session-user-col">
+        <span class="session-label">Usuario:</span>
+        <strong class="session-value">{{ userDisplay }}</strong>
+      </div>
+    } @else {
+      <div class="session-user-col session-tier-fallback">
+        <span class="session-label">Membresía:</span>
+        <strong class="session-value">{{ membershipLabel }}</strong>
+      </div>
+    }
+  </div>
+</aside>
+
+<!-- Footer Inferior Compartido con la Ubicación Exacta del Wallpaper y Enlaces Oficiales -->
+<footer class="bottom-footer">
+  <div class="footer-location">
+    <a [href]="activeLandscape.officialUrl || 'https://www.argentina.gob.ar/jefatura/turismo/best-tourism-villages-argentina/laguna-blanca-catamarca'"
+      target="_blank" rel="noopener noreferrer" class="landscape-link" title="Ver información oficial">
+      <span class="location-place">{{ activeLandscape.name }} · {{ activeLandscape.region }}</span>
+      <span class="location-sep"> · </span>
+      <span class="location-coords">{{ activeLandscape.coordsText }} ↗</span>
+    </a>
+  </div>
+  <div class="footer-links">
+    <a routerLink="/experiencias/prestadores" class="footer-provider-link" title="Sé parte de la comunidad de prestadores">
+      Convertirme en Prestador
+    </a>
+    <a href="https://www.instagram.com/experiencias.club/" target="_blank" rel="noopener noreferrer"
+      class="social-ig-link" title="Instagram oficial de EXPERIENCIAS.CLUB">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="ig-svg-icon">
+        <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+        <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+        <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+      </svg>
+      <span>experiencias.club</span>
+    </a>
+  </div>
+</footer>

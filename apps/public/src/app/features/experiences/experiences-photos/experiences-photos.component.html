@@ -1,0 +1,130 @@
+<div class="photos-page-container">
+  <!-- Barra Superior Unificada -->
+  <app-header [(mobileMenuOpen)]="mobileMenuOpen"></app-header>
+
+  <!-- Breadcrumb debajo del Header con fondo #FFCC00 -->
+  <app-breadcrumb [items]="breadcrumbs"></app-breadcrumb>
+
+  <!-- Contenedor Principal de Galería -->
+  <div class="photos-wallpaper-body app-wallpaper-body">
+    <div class="ambient-overlay"></div>
+
+    <main class="photos-main-content">
+      <div class="photos-wrapper">
+        <!-- Encabezado Editorial Estilo National Geographic -->
+        <header class="editorial-header-card">
+          <div class="editorial-header-content">
+            <span class="editorial-kicker">ARCHIVO FOTOGRÁFICO OFICIAL DE CATAMARCA</span>
+            <h1 class="editorial-title">Fotos Destacadas de Nuestras Travesías</h1>
+            <p class="editorial-lead">
+              Registro visual curado por miembros del equipo y guías oficiales del
+              <strong>Club de Experiencias</strong>. Navegación en aguas mansas y postales de altura
+              en los rincones más sorprendentes de Catamarca.
+            </p>
+          </div>
+        </header>
+
+        <!-- Collage / Galería de Fotos Destacadas -->
+        <div class="photos-collage-grid">
+          @for (photo of filteredPhotos(); track photo.id) {
+            <article
+              class="collage-card"
+              [ngClass]="photo.spanClass || 'span-normal'"
+              (click)="openPhotoModal(photo)"
+            >
+              <div class="photo-media-wrapper">
+                <img [src]="photo.src" [alt]="photo.title" class="collage-img" loading="lazy" />
+                <div class="photo-gradient-overlay"></div>
+                <div class="photo-top-badges">
+                  <span class="photo-location-tag"
+                    >{{ photo.region }} ({{ photo.altitudeMeters }} msnm)</span
+                  >
+                </div>
+                <div class="photo-overlay-content">
+                  <div class="experience-kicker-row">
+                    <span class="exp-kicker-name">{{ photo.experienceName }}</span>
+                  </div>
+                  <h3 class="photo-headline">{{ photo.title }}</h3>
+                  <p class="photo-summary">{{ photo.caption }}</p>
+                  <div class="photo-footer-meta">
+                    <div class="admin-attribution">
+                      <mat-icon class="author-icon">person</mat-icon>
+                      <span>{{ photo.adminName }} · {{ photo.adminRole }}</span>
+                    </div>
+                    <span class="view-hd-hint">
+                      <mat-icon class="zoom-icon">zoom_in</mat-icon>
+                      <span>Ver HD</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </article>
+          }
+        </div>
+
+        <app-founder-ad />
+      </div>
+    </main>
+
+    <!-- Modal Lightbox en Alta Resolución -->
+    @if (activeModalPhoto(); as photo) {
+      <div class="photo-lightbox-backdrop" (click)="closePhotoModal()">
+        <div class="lightbox-content" (click)="$event.stopPropagation()">
+          <button class="lightbox-close-btn" (click)="closePhotoModal()" aria-label="Cerrar foto">
+            <mat-icon>close</mat-icon>
+          </button>
+
+          @if (currentPhotoList().length > 1) {
+            <button
+              type="button"
+              class="lightbox-nav-btn prev-btn"
+              (click)="prevPhoto($event)"
+              aria-label="Foto anterior"
+            >
+              <mat-icon>chevron_left</mat-icon>
+            </button>
+            <button
+              type="button"
+              class="lightbox-nav-btn next-btn"
+              (click)="nextPhoto($event)"
+              aria-label="Foto siguiente"
+            >
+              <mat-icon>chevron_right</mat-icon>
+            </button>
+          }
+
+          <div class="lightbox-media-wrap">
+            <img
+              [src]="photo.src"
+              [alt]="photo.title"
+              class="lightbox-img"
+              [class.is-landscape]="isLandscape()"
+              (load)="onImageLoad($event)"
+            />
+          </div>
+
+          <div class="lightbox-caption">
+            <div class="lightbox-caption-text">
+              <span class="lightbox-signature"
+                >Fotógrafo: {{ photo.adminName }} · {{ photo.adminRole }}</span
+              >
+              <h4>{{ photo.title }}</h4>
+              <p>{{ photo.caption }}</p>
+            </div>
+            <button
+              type="button"
+              class="lightbox-download-action-btn"
+              (click)="downloadPhoto(photo)"
+            >
+              <mat-icon aria-hidden="true">file_download</mat-icon>
+              <span>Descargar Foto</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- Footer Compartido -->
+  <app-footer />
+</div>

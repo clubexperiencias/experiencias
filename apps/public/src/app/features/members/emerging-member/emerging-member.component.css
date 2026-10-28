@@ -1,0 +1,518 @@
+/* ==========================================================================
+   Página de Socio Emergente • Club de Experiencias
+   ========================================================================== */
+@import '../../waitlist/waitlist.component.css';
+
+.emerging-page-container {
+  min-height: 100vh;
+  position: relative;
+  background: transparent;
+  color: var(--color-text-white);
+  overflow-x: clip;
+  display: flex;
+  flex-direction: column;
+}
+
+.emerging-wallpaper-body {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.emerging-main-content {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  padding: 2.2rem 1.5rem 2.5rem;
+}
+
+.emerging-wrapper {
+  width: 100%;
+  max-width: 820px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.8rem;
+  align-items: stretch;
+}
+
+.emerging-section-card {
+  width: 100%;
+  box-sizing: border-box;
+  background: hsla(220, 24%, 9%, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 2px;
+  padding: 2.2rem;
+  margin: 0;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: none !important;
+  text-align: left;
+  animation: emergingBoxEntrance 0.35s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+@keyframes emergingBoxEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.card-inner-header {
+  margin-bottom: 1.6rem;
+}
+
+.tier-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-bottom: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.emerging-badge-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  box-sizing: border-box;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--color-gold);
+  background: rgba(255, 212, 42, 0.12);
+  border: 1px solid rgba(255, 212, 42, 0.35);
+  padding: 0 0.85rem;
+  border-radius: 2px;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.emerging-season-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  box-sizing: border-box;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #80b3ff;
+  background: rgba(128, 179, 255, 0.12);
+  border: 1px solid rgba(128, 179, 255, 0.35);
+  padding: 0 0.85rem;
+  border-radius: 2px;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.card-heading {
+  font-family: var(--font-serif);
+  font-size: 1.85rem;
+  font-weight: 600;
+  color: #fff;
+  margin: 0.3rem 0 0.65rem;
+  line-height: 1.25;
+}
+
+.card-subheading {
+  font-size: 0.95rem;
+  color: var(--color-text-soft);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ═══════════════ CONDICIONES DE MEMBRESÍA INICIAL ═══════════════ */
+.emerging-conditions-card {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 212, 42, 0.28);
+  border-radius: 2px;
+  padding: 1.4rem;
+  margin: 1.8rem 0;
+}
+
+.conditions-header {
+  margin-bottom: 1.2rem;
+}
+
+.conditions-kicker {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  font-weight: 700;
+  color: var(--color-gold);
+  display: block;
+}
+
+.conditions-title {
+  font-family: var(--font-serif);
+  font-size: 1.3rem;
+  color: #fff;
+  margin: 0.25rem 0 0.45rem;
+}
+
+.conditions-amount-badge {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--color-gold);
+  background: rgba(255, 212, 42, 0.12);
+  border: 1px solid rgba(255, 212, 42, 0.3);
+  padding: 0.25rem 0.65rem;
+  border-radius: 2px;
+  display: inline-block;
+  font-weight: 700;
+}
+
+.conditions-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+
+@media (max-width: 800px) {
+  .conditions-meta-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .conditions-meta-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.meta-item {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 2px;
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.meta-label {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 600;
+}
+
+.meta-value {
+  font-family: var(--font-sans);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.highlight-free {
+  color: var(--color-gold);
+}
+
+.meta-note {
+  font-size: 0.76rem;
+  color: var(--color-text-soft);
+  line-height: 1.35;
+}
+
+/* ═══════════════ BLOQUE DE BENEFICIOS ═══════════════ */
+.benefits-section-block {
+  margin-bottom: 1.8rem;
+}
+
+.benefits-block-title {
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0 0 1rem;
+}
+
+/* ═══════════════ LISTA SIMPLE DE BENEFICIOS ═══════════════ */
+.benefits-simple-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.2rem;
+}
+
+@media (max-width: 680px) {
+  .benefits-simple-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+.benefit-card {
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  padding: 1.2rem 1.4rem;
+  display: flex;
+  flex-direction: column;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.benefit-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 212, 42, 0.35);
+}
+
+.benefit-title {
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 0.4rem;
+}
+
+.benefit-desc {
+  font-size: 0.85rem;
+  color: var(--color-text-soft);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ═══════════════ BLOQUE DE ACCIÓN / CTA ═══════════════ */
+.emerging-cta-box {
+  background: rgba(255, 212, 42, 0.08);
+  border: 1px solid rgba(255, 212, 42, 0.35);
+  border-radius: 2px;
+  padding: 1.4rem 1.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-top: 1.8rem;
+}
+
+@media (max-width: 720px) {
+  .emerging-cta-box {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+.cta-text-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.cta-kicker {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--color-gold);
+  text-transform: uppercase;
+}
+
+.cta-title {
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0;
+}
+
+.cta-desc {
+  font-size: 0.85rem;
+  color: var(--color-text-soft);
+  margin: 0;
+  line-height: 1.45;
+}
+
+.emerging-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  background: var(--color-gold);
+  color: #000000;
+  font-weight: 700;
+  font-size: 0.88rem;
+  letter-spacing: 0.04em;
+  padding: 0.85rem 1.6rem;
+  border-radius: 2px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px rgba(255, 204, 0, 0.25);
+  flex-shrink: 0;
+}
+
+.emerging-cta-btn:hover {
+  background: #ffd93a;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 204, 0, 0.4);
+}
+
+.emerging-cta-btn .btn-icon,
+.emerging-profile-btn .btn-icon {
+  font-size: 18px !important;
+  width: 18px !important;
+  height: 18px !important;
+  line-height: 18px !important;
+}
+
+.emerging-confirmed-box {
+  background: rgba(255, 204, 0, 0.08);
+  border: 1px solid rgba(255, 204, 0, 0.35);
+  border-radius: 2px;
+  padding: 1.4rem 1.6rem;
+  display: flex;
+  align-items: center;
+  gap: 1.4rem;
+  margin-top: 1.8rem;
+}
+
+@media (max-width: 720px) {
+  .emerging-confirmed-box {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+.confirmed-text-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.confirmed-kicker {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: #ffcc00;
+  text-transform: uppercase;
+}
+
+.confirmed-title {
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0;
+}
+
+.confirmed-desc {
+  font-size: 0.85rem;
+  color: var(--color-text-soft);
+  margin: 0;
+  line-height: 1.45;
+}
+
+.emerging-profile-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  background: rgba(255, 204, 0, 0.15);
+  color: #ffcc00;
+  border: 1px solid rgba(255, 204, 0, 0.4);
+  font-weight: 700;
+  font-size: 0.88rem;
+  letter-spacing: 0.04em;
+  padding: 0.85rem 1.6rem;
+  border-radius: 2px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.emerging-profile-btn:hover {
+  background: #ffcc00;
+  border-color: #ffcc00;
+  color: #000000;
+  transform: translateY(-2px);
+}
+
+/* ═══════════════ AD BANNER: CONVOCATORIA SOCIO FUNDADOR ═══════════════ */
+.emerging-ad-wrapper {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-top: 0.2rem;
+}
+
+.ad-tag-header {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0 0.2rem;
+}
+
+.ad-label-pill {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #ffffff;
+  background: #80b3ff;
+  border: 1px solid #80b3ff;
+  padding: 0.18rem 0.6rem;
+  border-radius: 2px;
+  text-transform: uppercase;
+  box-shadow: 0 2px 8px rgba(128, 179, 255, 0.35);
+}
+
+.ad-sponsor-text {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.45);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.ad-banner-link {
+  position: relative;
+  display: block;
+  width: 100%;
+  border-radius: 2px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.45);
+  text-decoration: none !important;
+  transition:
+    transform 0.25s ease,
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
+  cursor: pointer;
+  background: #000000;
+}
+
+.ad-banner-link:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 212, 42, 0.5);
+  box-shadow:
+    0 16px 44px rgba(0, 0, 0, 0.6),
+    0 0 20px rgba(255, 212, 42, 0.15);
+}
+
+.ad-banner-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+  transition: transform 0.35s ease;
+}
+
+.ad-banner-link:hover .ad-banner-img {
+  transform: scale(1.015);
+}

@@ -1,0 +1,773 @@
+<div class="providers-page-container">
+  <!-- Barra Superior Unificada -->
+  <app-header [(mobileMenuOpen)]="mobileMenuOpen" (loginClick)="openModal('login')"></app-header>
+
+  <!-- Breadcrumb debajo del Header con fondo #FFCC00 -->
+  <app-breadcrumb [items]="breadcrumbs"></app-breadcrumb>
+
+  <!-- Contenedor Principal de Prestadores (Estilo /perfil con cajas uniformes de 880px) -->
+  <div class="providers-wallpaper-body app-wallpaper-body">
+    <div class="ambient-overlay"></div>
+
+    <!-- Contenido Principal de Prestadores (Estilo /perfil con cajas uniformes de 880px) -->
+    <main class="providers-main-content">
+      <div class="providers-wrapper">
+        <!-- ═══════════════ CARD 1: HERO / PRESENTACIÓN ═══════════════ -->
+        <div class="provider-section-card hero-provider-card">
+          <div class="section-card-header">
+            <span class="section-kicker">COMUNIDAD DE PRESTADORES & GUÍAS LOCALES</span>
+            <h1 class="section-main-title">Sé Parte del Club de Experiencias</h1>
+          </div>
+
+          <p class="section-lead-text">
+            Nuestra plataforma gira en torno a los prestadores locales. Si sos guía de montaña,
+            chofer 4x4, instructor de kayak, anfitrión de alojamiento rural, productor artesanal o
+            fotógrafo andino, te conectamos directamente con viajeros calificados de todo el país y
+            del mundo.
+          </p>
+
+          <div class="hero-quick-stats">
+            <div class="quick-stat-item">
+              <span class="stat-number">100%</span>
+              <span class="stat-label">Trato directo con el socio</span>
+            </div>
+            <div class="quick-stat-divider"></div>
+            <div class="quick-stat-item">
+              <span class="stat-number">0 Costo</span>
+              <span class="stat-label">Pre-registro sin cargo para fundadores</span>
+            </div>
+            <div class="quick-stat-divider"></div>
+            <div class="quick-stat-item">
+              <span class="stat-number">Catamarca</span>
+              <span class="stat-label">Foco exclusivo en turismo andino</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══════════════ CARD 2: BENEFICIOS EXCLUSIVOS ═══════════════ -->
+        <div class="provider-section-card">
+          <div class="card-inner-header">
+            <span class="section-kicker">VALOR AGREGADO & DIFUSIÓN</span>
+            <h2 class="card-heading">Beneficios de Integrarte al Club</h2>
+            <p class="card-subheading">
+              Diseñado para potenciar el turismo sustentable y dar valor real al conocimiento del
+              baqueano y guía local.
+            </p>
+          </div>
+
+          <div class="provider-benefits-grid">
+            <div class="provider-benefit-card">
+              <span class="editorial-index">DIFUSIÓN</span>
+              <h4>Exposición & Publicidad</h4>
+              <p>
+                Destaque prioritario en portada, recomendaciones directas a socios y difusión en
+                canales oficiales del club.
+              </p>
+            </div>
+
+            <div class="provider-benefit-card">
+              <span class="editorial-index">COMUNIDAD</span>
+              <h4>Socios Calificados</h4>
+              <p>
+                Comunidad privada de miembros que respetan la naturaleza, la cultura viva y el
+                esfuerzo del guía.
+              </p>
+            </div>
+
+            <div class="provider-benefit-card">
+              <span class="editorial-index">CONFIANZA</span>
+              <h4>Reputación & Reseñas</h4>
+              <p>
+                Construí un perfil verificado con calificaciones reales de tus socios y fidelizá
+                viajeros.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══════════════ CARD 3: ACTIVIDADES & CATEGORÍAS (OCULTO TEMPORALMENTE) ═══════════════ -->
+        @if (false) {
+          <div class="provider-section-card">
+            <div class="card-inner-header">
+              <span class="section-kicker">SERVICIOS HABILITADOS</span>
+              <h2 class="card-heading">¿Qué tipo de experiencias convocamos?</h2>
+              <p class="card-subheading">
+                Buscamos profesionales apasionados en los principales valles, diques y rincones de
+                la puna catamarqueña.
+              </p>
+            </div>
+
+            <div class="wishlist-chips-grid categories-chips-grid">
+              <button
+                type="button"
+                class="wishlist-chip category-chip"
+                [class.selected]="providerCategory() === 'guia_montaña'"
+                (click)="selectCategory('guia_montaña')"
+              >
+                <div class="chip-text-wrap">
+                  <span class="chip-title">Guía de Alta Montaña & Trekking</span>
+                  <span class="chip-desc"
+                    >Ascensos a volcanes (Pissis, Galán), senderos puneños y travesías de
+                    altura.</span
+                  >
+                </div>
+                <span class="chip-action">
+                  @if (providerCategory() === 'guia_montaña') {
+                    ✓
+                  } @else {
+                    +
+                  }
+                </span>
+              </button>
+
+              <button
+                type="button"
+                class="wishlist-chip category-chip"
+                [class.selected]="providerCategory() === 'kayak_nautica'"
+                (click)="selectCategory('kayak_nautica')"
+              >
+                <div class="chip-text-wrap">
+                  <span class="chip-title">Kayak & Travesías Náuticas</span>
+                  <span class="chip-desc"
+                    >Instrucción y paseos en diques (Las Pirquitas, El Jumeal) y lagunas de
+                    altura.</span
+                  >
+                </div>
+                <span class="chip-action">
+                  @if (providerCategory() === 'kayak_nautica') {
+                    ✓
+                  } @else {
+                    +
+                  }
+                </span>
+              </button>
+
+              <button
+                type="button"
+                class="wishlist-chip category-chip"
+                [class.selected]="providerCategory() === 'transporte_4x4'"
+                (click)="selectCategory('transporte_4x4')"
+              >
+                <div class="chip-text-wrap">
+                  <span class="chip-title">Transporte & Expedición 4x4</span>
+                  <span class="chip-desc"
+                    >Travesías en doble tracción por Campo de Piedra Pómez, dunas y caminos de
+                    cornisa.</span
+                  >
+                </div>
+                <span class="chip-action">
+                  @if (providerCategory() === 'transporte_4x4') {
+                    ✓
+                  } @else {
+                    +
+                  }
+                </span>
+              </button>
+
+              <button
+                type="button"
+                class="wishlist-chip category-chip"
+                [class.selected]="providerCategory() === 'alojamiento'"
+                (click)="selectCategory('alojamiento')"
+              >
+                <div class="chip-text-wrap">
+                  <span class="chip-title">Alojamiento & Refugio Puneño</span>
+                  <span class="chip-desc"
+                    >Hosterías rurales, refugios de altura y estancias con calidez de anfitriones
+                    andinos.</span
+                  >
+                </div>
+                <span class="chip-action">
+                  @if (providerCategory() === 'alojamiento') {
+                    ✓
+                  } @else {
+                    +
+                  }
+                </span>
+              </button>
+
+              <button
+                type="button"
+                class="wishlist-chip category-chip"
+                [class.selected]="providerCategory() === 'gastronomia'"
+                (click)="selectCategory('gastronomia')"
+              >
+                <div class="chip-text-wrap">
+                  <span class="chip-title">Gastronomía & Vinos de Altura</span>
+                  <span class="chip-desc"
+                    >Comidas tradicionales, bodegas andinas, cocina de fuegos y degustaciones
+                    locales.</span
+                  >
+                </div>
+                <span class="chip-action">
+                  @if (providerCategory() === 'gastronomia') {
+                    ✓
+                  } @else {
+                    +
+                  }
+                </span>
+              </button>
+
+              <button
+                type="button"
+                class="wishlist-chip category-chip"
+                [class.selected]="providerCategory() === 'fotografia'"
+                (click)="selectCategory('fotografia')"
+              >
+                <div class="chip-text-wrap">
+                  <span class="chip-title">Fotografía & Astroturismo</span>
+                  <span class="chip-desc"
+                    >Salidas nocturnas para observación astronómica, bitácoras y safaris
+                    fotográficos.</span
+                  >
+                </div>
+                <span class="chip-action">
+                  @if (providerCategory() === 'fotografia') {
+                    ✓
+                  } @else {
+                    +
+                  }
+                </span>
+              </button>
+
+              <button
+                type="button"
+                class="wishlist-chip category-chip"
+                [class.selected]="providerCategory() === 'cabalgatas'"
+                (click)="selectCategory('cabalgatas')"
+              >
+                <div class="chip-text-wrap">
+                  <span class="chip-title">Cabalgatas & Rutas Gauchas</span>
+                  <span class="chip-desc"
+                    >Travesías ecuestres por valles calchaquíes, huellas históricas y arriería
+                    tradicional.</span
+                  >
+                </div>
+                <span class="chip-action">
+                  @if (providerCategory() === 'cabalgatas') {
+                    ✓
+                  } @else {
+                    +
+                  }
+                </span>
+              </button>
+
+              <button
+                type="button"
+                class="wishlist-chip category-chip"
+                [class.selected]="providerCategory() === 'arqueologia'"
+                (click)="selectCategory('arqueologia')"
+              >
+                <div class="chip-text-wrap">
+                  <span class="chip-title">Arqueología & Arte Rupestre</span>
+                  <span class="chip-desc"
+                    >Visitas a poblados prehispánicos, Shincal de Quimivil, petroglifos y sitios
+                    sagrados.</span
+                  >
+                </div>
+                <span class="chip-action">
+                  @if (providerCategory() === 'arqueologia') {
+                    ✓
+                  } @else {
+                    +
+                  }
+                </span>
+              </button>
+            </div>
+          </div>
+        }
+
+        <!-- ═══════════════ CARD 4: FORMULARIO DE PRE-REGISTRO ═══════════════ -->
+        <div class="provider-section-card form-section-card" id="registro-form">
+          <div class="card-inner-header">
+            <span class="section-kicker">CONVOCATORIA ABIERTA</span>
+            <h2 class="card-heading">Postulate como Prestador Fundador</h2>
+            <p class="card-subheading">
+              Completá tus datos para ser de los primeros prestadores aprobados con
+              <strong>máxima exposición y publicidad prioritaria</strong> en la plataforma.
+            </p>
+          </div>
+
+          @if (!providerSuccess()) {
+            <form class="provider-full-form" (submit)="$event.preventDefault(); submitProvider()">
+              <div class="provider-form-grid">
+                <div class="provider-field">
+                  <label for="p-page-name"
+                    >Nombre y Apellido / Razón Social <span class="req">*</span></label
+                  >
+                  <input
+                    id="p-page-name"
+                    type="text"
+                    class="provider-input"
+                    placeholder="Ej. Lucas Albarracín - Travesías Puna"
+                    [value]="providerName()"
+                    (input)="providerName.set($any($event.target).value)"
+                    required
+                  />
+                </div>
+
+                <div class="provider-field">
+                  <label for="p-page-category"
+                    >Categoría Principal del Servicio <span class="req">*</span></label
+                  >
+                  <select
+                    id="p-page-category"
+                    class="provider-select"
+                    [value]="providerCategory()"
+                    (change)="providerCategory.set($any($event.target).value)"
+                    required
+                  >
+                    <option value="guia_montaña">Guía de Alta Montaña / Trekking</option>
+                    <option value="kayak_nautica">
+                      Kayak & Travesías Náuticas (Diques y Lagunas)
+                    </option>
+                    <option value="transporte_4x4">Transporte & Expedición 4x4</option>
+                    <option value="alojamiento">Alojamiento / Refugio Puneño</option>
+                    <option value="gastronomia">Gastronomía & Vinos de Altura</option>
+                    <option value="fotografia">Fotografía / Astroturismo</option>
+                    <option value="cabalgatas">Cabalgatas & Rutas Gauchas</option>
+                    <option value="arqueologia">Arqueología & Arte Rupestre</option>
+                    <option value="artesanias">Artesanías & Sabores Regionales</option>
+                  </select>
+                </div>
+
+                <div class="provider-field">
+                  <label for="p-page-region"
+                    >Región o Base Operativa <span class="req">*</span></label
+                  >
+                  <select
+                    id="p-page-region"
+                    class="provider-select"
+                    [value]="providerRegion()"
+                    (change)="providerRegion.set($any($event.target).value)"
+                    required
+                  >
+                    <option value="Puna & Fiambalá">Puna (Antofagasta, El Peñón) & Fiambalá</option>
+                    <option value="Fiambalá & Tinogasta">
+                      Tinogasta, Fiambalá & Paso San Francisco
+                    </option>
+                    <option value="Belén & Londres">Belén, Londres & Shincal de Quimivil</option>
+                    <option value="Valle Central & Diques">
+                      Valle Central (San Fernando, Las Pirquitas, El Jumeal)
+                    </option>
+                    <option value="Andalgalá & Santa María">
+                      Andalgalá, Santa María & Valles Calchaquíes
+                    </option>
+                    <option value="Toda la Provincia">Toda la Provincia de Catamarca</option>
+                  </select>
+                </div>
+
+                <div class="provider-field">
+                  <label for="p-page-email">Correo Electrónico <span class="req">*</span></label>
+                  <input
+                    id="p-page-email"
+                    type="email"
+                    class="provider-input"
+                    placeholder="tu-correo@ejemplo.com"
+                    [value]="providerEmail()"
+                    (input)="providerEmail.set($any($event.target).value)"
+                    required
+                  />
+                </div>
+
+                <div class="provider-field">
+                  <label for="p-page-phone"
+                    >Teléfono / WhatsApp de Contacto <span class="req">*</span></label
+                  >
+                  <input
+                    id="p-page-phone"
+                    type="tel"
+                    class="provider-input"
+                    placeholder="+54 9 3834..."
+                    [value]="providerPhone()"
+                    (input)="providerPhone.set($any($event.target).value)"
+                    required
+                  />
+                </div>
+
+                <div class="provider-field">
+                  <label for="p-page-website"
+                    >Sitio Web o Red Social de la Marca <span class="req">*</span></label
+                  >
+                  <input
+                    id="p-page-website"
+                    type="text"
+                    class="provider-input"
+                    placeholder="instagram.com/mitravesia o tuweb.com"
+                    [value]="providerWebsite()"
+                    (input)="providerWebsite.set($any($event.target).value)"
+                    required
+                  />
+                </div>
+
+                <div class="provider-field full-width">
+                  <label for="p-page-desc"
+                    >Breve descripción de tus salidas, flota o servicios
+                    <span class="req">*</span></label
+                  >
+                  <textarea
+                    id="p-page-desc"
+                    class="provider-textarea"
+                    rows="3"
+                    placeholder="Contanos brevemente qué recorridos realizás, cantidad de pasajeros o tipo de embarcaciones/vehículos..."
+                    [value]="providerDescription()"
+                    (input)="providerDescription.set($any($event.target).value)"
+                    required
+                  ></textarea>
+                </div>
+              </div>
+
+              <div class="form-submit-row">
+                <button
+                  type="submit"
+                  class="pill-action-btn provider-page-submit-btn"
+                  [disabled]="
+                    !providerName().trim() ||
+                    !providerCategory().trim() ||
+                    !providerRegion().trim() ||
+                    !providerEmail().trim() ||
+                    !providerPhone().trim() ||
+                    !providerWebsite().trim() ||
+                    !providerDescription().trim()
+                  "
+                >
+                  <span>Postularme como Prestador Fundador</span>
+                </button>
+              </div>
+            </form>
+          } @else {
+            <div class="provider-success-banner wide-success">
+              <div class="success-check-icon">
+                <mat-icon>check_circle</mat-icon>
+              </div>
+              <div class="success-content">
+                <h3>¡Postulación Recibida con Éxito!</h3>
+                <p>
+                  Gracias por sumarte, <strong>{{ providerName() }}</strong
+                  >. Nos pondremos en contacto con vos al correo
+                  <strong>{{ providerEmail() }}</strong> para validar habilitaciones y coordinar tu
+                  alta prioritaria en la plataforma.
+                </p>
+                <button
+                  class="pill-action-btn secondary-btn"
+                  (click)="resetForm()"
+                  style="margin-top: 1rem"
+                >
+                  Enviar otra postulación
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- ═══════════════ CARD 5: REQUISITOS & SEGURIDAD (OCULTO TEMPORALMENTE) ═══════════════ -->
+        @if (false) {
+          <div class="provider-section-card">
+            <div class="card-inner-header">
+              <span class="section-kicker">ESTÁNDARES DE CALIDAD</span>
+              <h2 class="card-heading">Compromiso de Seguridad & Conservación</h2>
+              <p class="card-subheading">
+                Garantizamos la excelencia de cada experiencia para cuidar a nuestros miembros y
+                proteger el patrimonio natural.
+              </p>
+            </div>
+
+            <div class="requirements-list-grid">
+              <div class="req-item">
+                <span class="req-number">01</span>
+                <div class="req-text">
+                  <h4>Habilitación Oficial Vigente</h4>
+                  <p>
+                    Registro ante el Ministerio de Cultura y Turismo de Catamarca o Parques
+                    Nacionales según corresponda.
+                  </p>
+                </div>
+              </div>
+
+              <div class="req-item">
+                <span class="req-number">02</span>
+                <div class="req-text">
+                  <h4>Seguros y Primeros Auxilios</h4>
+                  <p>
+                    Pólizas de accidentes personales / responsabilidad civil y botiquín de primeros
+                    auxilios en zonas remotas.
+                  </p>
+                </div>
+              </div>
+
+              <div class="req-item">
+                <span class="req-number">03</span>
+                <div class="req-text">
+                  <h4>Comunicaciones & Protocolos</h4>
+                  <p>
+                    Radio VHF o comunicador satelital (Garmin inReach / Spot) para salidas de alta
+                    montaña y Puna profunda.
+                  </p>
+                </div>
+              </div>
+
+              <div class="req-item">
+                <span class="req-number">04</span>
+                <div class="req-text">
+                  <h4>Impacto Cero (No Deje Rastro)</h4>
+                  <p>
+                    Compromiso irrestricto con la preservación de la flora, fauna, salares y respeto
+                    a las comunidades originarias.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    </main>
+  </div>
+
+  <!-- Footer Inferior Compartido -->
+  <app-footer />
+
+  <!-- Modales Compartidos (Niveles de Socio, Experiencias, Login) -->
+  @if (activeModal()) {
+    <div class="modal-backdrop" (click)="closeModal()">
+      <!-- Modal: Niveles de Socio y Membresías -->
+      @if (activeModal() === 'tiers') {
+        <div class="modal-card wide tiers-modal-card" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <div>
+              <span class="modal-kicker">PLAN DE MEMBRESÍAS Y EVOLUCIÓN</span>
+              <h3 class="modal-heading">Niveles de Socio del Club</h3>
+            </div>
+            <button class="modal-close-btn" (click)="closeModal()" aria-label="Cerrar modal">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+
+          <div class="tiers-grid">
+            <!-- 1. Socio Emergente -->
+            <div class="tier-card" [class.user-current-tier]="newsletter.isSubscribed()">
+              <div class="tier-card-header">
+                @if (newsletter.isSubscribed()) {
+                  <span class="tier-level-badge current">✓ TU NIVEL ACTUAL</span>
+                } @else {
+                  <span class="tier-level-badge initial">NIVEL 1 · PUNTO DE PARTIDA</span>
+                }
+                <h4 class="tier-name">Socio Emergente</h4>
+              </div>
+
+              <div class="tier-jump-card">
+                <span class="jump-tag">CÓMO ACCEDER</span>
+                <p>Registro gratuito con tu email a la lista de espera oficial del club.</p>
+              </div>
+
+              <ul class="tier-benefits">
+                <li>Acceso anticipado a preventa de temporada 2026</li>
+                <li>Código de invitación personal para referidos</li>
+                <li>Bitácoras exclusivas y novedades de rutas andinas</li>
+                <li>Prioridad en cupos de expediciones inaugurales</li>
+              </ul>
+
+              <div class="tier-card-footer">
+                @if (newsletter.isSubscribed()) {
+                  <button class="tier-cta-btn current-achieved" disabled>
+                    <span class="cta-title-row">
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2.5"
+                        class="btn-icon"
+                      >
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                      Nivel alcanzado
+                    </span>
+                    <span class="cta-sub-text">Suscripción confirmada</span>
+                  </button>
+                } @else {
+                  <button class="tier-cta-btn cta-emergent" (click)="goToHomeSubscribe()">
+                    <span class="cta-title-row">
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        class="btn-icon"
+                      >
+                        <path d="M5 12h14" />
+                        <path d="m12 5 7 7-7 7" />
+                      </svg>
+                      Suscribirme gratis
+                    </span>
+                    <span class="cta-sub-text">Unirme a la lista de espera</span>
+                  </button>
+                }
+              </div>
+            </div>
+
+            <!-- 2. Socio Pleno -->
+            <div class="tier-card highlight" [class.user-next-tier]="newsletter.isSubscribed()">
+              <div class="tier-card-header">
+                @if (newsletter.isSubscribed()) {
+                  <span class="tier-level-badge next">PRÓXIMO SALTO RECOMENDADO</span>
+                } @else {
+                  <span class="tier-level-badge">NIVEL 2 · MEMBRESÍA MENSUAL</span>
+                }
+                <h4 class="tier-name">Socio Pleno</h4>
+              </div>
+
+              <div class="tier-jump-card highlight">
+                <span class="jump-tag">ACTIVACIÓN INMEDIATA</span>
+                <p>
+                  Membresía mensual con acceso directo a cupos prioritarios y beneficios ($12.000
+                  ARS/mes · sin permanencia).
+                </p>
+              </div>
+
+              <ul class="tier-benefits">
+                <li><strong>10% de descuento directo</strong> en todas las expediciones</li>
+                <li>Prioridad de reserva con los mejores guías y prestadores</li>
+                <li>Historial de salidas con comprobantes respaldados</li>
+                <li>Acceso a la bitácora privada de recuerdos fotográficos</li>
+              </ul>
+
+              <div class="tier-card-footer">
+                <a
+                  routerLink="/socios/plenos"
+                  class="tier-cta-btn cta-active"
+                  (click)="closeModal()"
+                  style="text-decoration: none"
+                >
+                  <span class="cta-title-row">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      class="btn-icon"
+                    >
+                      <polygon
+                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
+                      />
+                    </svg>
+                    Activar Membresía Mensual
+                  </span>
+                  <span class="cta-sub-text">$12.000 ARS/mes · Cancelación libre</span>
+                </a>
+              </div>
+            </div>
+
+            <!-- 3. Socio Fundador -->
+            <div class="tier-card founder-card">
+              <div class="tier-card-header">
+                <span class="tier-level-badge founder">VITALICIO · CUPO LIMITADO (60)</span>
+                <h4 class="tier-name">Socio Fundador</h4>
+              </div>
+
+              <div class="tier-jump-card founder">
+                <span class="jump-tag">CÓMO DAR EL SALTO</span>
+                <p>Postulación aprobada por comité directivo + Membresía Vitalicia única.</p>
+              </div>
+
+              <ul class="tier-benefits">
+                <li><strong>Sin cuotas mensuales de por vida</strong> (pase perpetuo)</li>
+                <li><strong>20% de descuento vitalicio</strong> en todas las salidas</li>
+                <li>Acceso exclusivo a travesías secretas y seismiles</li>
+                <li>Kit de bienvenida oficial y merch del club de regalo</li>
+                <li>Voz y voto en nuevas rutas y expediciones a incorporar</li>
+              </ul>
+
+              <div class="tier-card-footer">
+                <button class="tier-cta-btn cta-founder" (click)="openFounderApplication()">
+                  <span class="cta-title-row">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      class="btn-icon"
+                    >
+                      <path d="M6 3h12l4 6-10 12L2 9z" />
+                      <path d="M11 3 8 9l4 12 4-12-3-6" />
+                      <path d="M2 9h20" />
+                    </svg>
+                    Postular a Fundador
+                  </span>
+                  <span class="cta-sub-text">Carta de admisión · Sin cuotas</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button class="pill-action-btn" (click)="closeModal()">Entendido</button>
+          </div>
+        </div>
+      }
+
+      <!-- Modal: Experiencias -->
+      @if (activeModal() === 'experiences') {
+        <div class="modal-card wide experiences-modal-card" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <div>
+              <span class="modal-kicker">CATÁLOGO DE SALIDAS</span>
+              <h3 class="modal-heading">Expediciones Destacadas</h3>
+            </div>
+            <button class="modal-close-btn" (click)="closeModal()" aria-label="Cerrar modal">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+          <p class="modal-lead">
+            Todas nuestras actividades son guiadas por prestadores locales matriculados con
+            estándares de seguridad internacional.
+          </p>
+          <div class="cards-grid">
+            @for (exp of experienceService.experiences(); track exp.id) {
+              <div class="exp-card">
+                <div
+                  class="exp-card-media"
+                  [style.background-image]="'url(' + exp.coverImage + ')'"
+                >
+                  <span class="exp-region-tag"
+                    >{{ exp.region }} ({{ exp.altitudeMeters }} msnm)</span
+                  >
+                </div>
+                <div class="exp-card-content">
+                  <h4 class="exp-title">{{ exp.title }}</h4>
+                  <p class="exp-tagline">{{ exp.tagline }}</p>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- Modal: Iniciar Sesión -->
+      @if (activeModal() === 'login') {
+        <div class="modal-card" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <div>
+              <span class="modal-kicker">ACCESO DE SOCIOS</span>
+              <h3 class="modal-heading">Iniciar Sesión</h3>
+            </div>
+            <button class="modal-close-btn" (click)="closeModal()" aria-label="Cerrar modal">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+          <p class="modal-lead">
+            Ingresá con tu correo electrónico registrado para acceder a tu perfil y beneficios.
+          </p>
+          <div class="modal-body-content">
+            <a
+              routerLink="/"
+              class="pill-action-btn"
+              (click)="closeModal()"
+              style="display: block; text-align: center; text-decoration: none"
+            >
+              Ir a Portada para Ingresar
+            </a>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

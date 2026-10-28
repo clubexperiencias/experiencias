@@ -29,6 +29,7 @@ export class EmergingSignupComponent {
   readonly router = inject(Router);
   readonly mobileMenuOpen = signal(false);
   readonly fullName = signal('');
+  readonly documentNumber = signal('');
   readonly email = signal('');
   readonly nationality = signal('');
   readonly selectedExperiences = signal<string[]>([]);
@@ -63,9 +64,15 @@ export class EmergingSignupComponent {
   async submit(): Promise<void> {
     this.submitError.set(null);
     const name = this.fullName().trim();
+    const documentNumber = this.documentNumber().replace(/\D/g, '').slice(0, 9);
     const cleanEmail = this.email().trim().toLowerCase();
 
-    if (!name || !cleanEmail) {
+    if (
+      !name ||
+      !cleanEmail ||
+      (this.documentNumber().trim() &&
+        documentNumber.length !== this.documentNumber().trim().length)
+    ) {
       this.submitError.set('Completá tu nombre y correo electrónico para crear tu cuenta.');
       return;
     }
@@ -73,10 +80,11 @@ export class EmergingSignupComponent {
     const result = await this.newsletter.joinWaitlist({
       email: cleanEmail,
       fullName: name,
-      nationality: this.nationality().trim(),
+      documentNumber,
+      nationality: this.nationality().trim().slice(0, 80),
       experiencesWishlist: this.selectedExperiences(),
-      wishlistNotes: this.notes().trim(),
-      bio: this.notes().trim(),
+      wishlistNotes: this.notes().trim().slice(0, 1000),
+      bio: this.notes().trim().slice(0, 1000),
     });
 
     if (result.success) {

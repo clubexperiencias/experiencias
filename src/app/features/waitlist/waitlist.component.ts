@@ -306,7 +306,7 @@ export class WaitlistComponent {
   }
 
   async confirmMembershipPayment(): Promise<void> {
-    if (this.subscribingMembership()) return;
+    if (this.subscribingMembership() || !this.newsletter.isSubscribed()) return;
     this.subscribingMembership.set(true);
 
     await new Promise((resolve) => setTimeout(resolve, 650));
@@ -374,7 +374,12 @@ export class WaitlistComponent {
       !this.founderName().trim() ||
       !this.founderEmail().trim() ||
       !this.founderLetter().trim() ||
-      !this.founderAgreedToPrice()
+      !this.founderAgreedToPrice() ||
+      this.founderName().trim().length > 100 ||
+      this.founderEmail().trim().length > 254 ||
+      this.founderPhone().trim().length > 25 ||
+      this.founderCity().trim().length > 100 ||
+      this.founderLetter().trim().length > 3000
     ) {
       return;
     }
@@ -480,7 +485,15 @@ export class WaitlistComponent {
   }
 
   submitProvider(): void {
-    if (!this.providerEmail().trim() || !this.providerName().trim()) return;
+    if (
+      !this.providerEmail().trim() ||
+      !this.providerName().trim() ||
+      this.providerName().trim().length > 120 ||
+      this.providerEmail().trim().length > 254 ||
+      this.providerPhone().trim().length > 25 ||
+      this.providerWebsite().trim().length > 2048
+    )
+      return;
     this.providerSuccess.set(true);
     setTimeout(() => {
       this.providerName.set('');

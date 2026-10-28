@@ -1,0 +1,91 @@
+<nav
+  class="breadcrumb-bar"
+  [class.hover-suppressed]="isHoverSuppressed()"
+  (mouseleave)="onBarMouseLeave()"
+  (mousemove)="onBarMouseMove($event)"
+  aria-label="Ruta de navegación"
+>
+  <div class="breadcrumb-container">
+    @for (
+      item of items();
+      track item.label;
+      let last = $last;
+      let first = $first;
+      let idx = $index
+    ) {
+      <div
+        class="bc-step-wrapper"
+        [class.has-dropdown]="canShowNextSteps(item, first, last)"
+        [class.is-mobile-active]="activeMobileIndex() === idx"
+      >
+        @if (item.url && !last) {
+          <a
+            [routerLink]="item.url"
+            class="bc-item bc-link"
+            (click)="onItemClick(idx, item, first, last, $event)"
+          >
+            <span>{{ item.label }}</span>
+          </a>
+        } @else {
+          <span
+            class="bc-item bc-current"
+            aria-current="page"
+            (click)="onItemClick(idx, item, first, last, $event)"
+          >
+            <span>{{ item.label }}</span>
+          </span>
+        }
+
+        <!-- Mega Menú Desplegable Estilo National Geographic -->
+        @if (canShowNextSteps(item, first, last)) {
+          @let data = getNextStepsData(item);
+          <div class="natgeo-mega-menu">
+            <div class="natgeo-menu-container">
+              <!-- Columna de Tópicos (Topics—) - Costado Izquierdo -->
+              <div class="natgeo-topics-col">
+                <span class="natgeo-col-kicker">{{ data.kicker }}</span>
+                <ul class="natgeo-topics-list">
+                  @for (step of data.steps; track step.url) {
+                    <li>
+                      <a
+                        [routerLink]="step.url"
+                        class="natgeo-topic-link"
+                        [class.is-back-step]="step.label === 'Volver atrás'"
+                        (click)="onNextStepClick(step, $event)"
+                      >
+                        {{ step.label }}
+                      </a>
+                    </li>
+                  }
+                </ul>
+                @if (data.viewAllLabel && data.viewAllUrl) {
+                  <a
+                    [routerLink]="data.viewAllUrl"
+                    class="natgeo-view-all-link"
+                    (click)="onLinkClick(data.viewAllUrl, $event)"
+                  >
+                    {{ data.viewAllLabel }}
+                  </a>
+                }
+              </div>
+
+              <app-menu-card
+                [card]="recommendedCard"
+                (navigate)="onLinkClick($event.url, $event.event)"
+              />
+              <app-menu-card
+                class="natgeo-founder-col"
+                [card]="membershipCard"
+                (navigate)="onLinkClick($event.url, $event.event)"
+              />
+            </div>
+          </div>
+        }
+      </div>
+
+      @if (!last) {
+        <mat-icon class="bc-sep">chevron_right</mat-icon>
+      }
+    }
+  </div>
+</nav>

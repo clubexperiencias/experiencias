@@ -1,0 +1,75 @@
+@import '../../experiences/kayak-experience/kayak-experience.component.css';
+@import '../../../shared/styles/panel-form.css';
+
+.form-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.form-section-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 1.3rem;
+}
+
+.date-adder {
+  display: flex;
+  gap: 0.6rem;
+  max-width: 380px;
+}
+
+.date-adder .pay-input {
+  color-scheme: dark;
+}
+
+.date-adder .pay-secondary-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.date-chips {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.date-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.4rem 0.35rem 0.75rem;
+  border: 1px solid rgba(255, 212, 42, 0.5);
+  font-size: 0.85rem;
+  text-transform: capitalize;
+}
+
+.date-chip button {
+  display: inline-flex;
+  color: var(--color-text-muted);
+}
+
+.date-chip button:hover {
+  color: var(--color-gold);
+}
+
+.date-chip mat-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .form-actions > * {
+    flex: 1 1 100%;
+  }
+}

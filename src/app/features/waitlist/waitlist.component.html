@@ -411,6 +411,7 @@
                     placeholder="Tu nombre completo"
                     [value]="founderName()"
                     (input)="founderName.set($any($event.target).value)"
+                    maxlength="100"
                     required
                   />
                 </div>
@@ -425,6 +426,7 @@
                     placeholder="tu-correo@ejemplo.com"
                     [value]="founderEmail()"
                     (input)="founderEmail.set($any($event.target).value)"
+                    maxlength="254"
                     required
                   />
                 </div>
@@ -442,6 +444,7 @@
                     placeholder="+54 9 11 ..."
                     [value]="founderPhone()"
                     (input)="founderPhone.set($any($event.target).value)"
+                    maxlength="25"
                     required
                   />
                 </div>
@@ -456,6 +459,7 @@
                     placeholder="Ej. Catamarca / Buenos Aires / Córdoba"
                     [value]="founderCity()"
                     (input)="founderCity.set($any($event.target).value)"
+                    maxlength="100"
                   />
                 </div>
               </div>
@@ -474,6 +478,7 @@
                   placeholder="Estimado Comité Directivo de EXPERIENCIAS.CLUB:&#10;&#10;Me dirijo a ustedes con el propósito de postularme formalmente como Socio Fundador. En mi trayectoria en... y mi motivación para acompañar el desarrollo del turismo náutico y de alta montaña en Catamarca se fundamenta en...&#10;&#10;Estaría honrado/a de aportar mi visión y acompañar el crecimiento del club..."
                   [value]="founderLetter()"
                   (input)="founderLetter.set($any($event.target).value)"
+                  maxlength="3000"
                   required
                 ></textarea>
                 <div class="textarea-callout">
@@ -911,6 +916,7 @@
                     placeholder="Ej. Lucas Albarracín - Travesías Puna"
                     [value]="providerName()"
                     (input)="providerName.set($any($event.target).value)"
+                    maxlength="120"
                   />
                 </div>
 
@@ -943,6 +949,7 @@
                     placeholder="tu-correo@ejemplo.com"
                     [value]="providerEmail()"
                     (input)="providerEmail.set($any($event.target).value)"
+                    maxlength="254"
                   />
                 </div>
 
@@ -955,6 +962,7 @@
                     placeholder="+54 9 3834..."
                     [value]="providerPhone()"
                     (input)="providerPhone.set($any($event.target).value)"
+                    maxlength="25"
                   />
                 </div>
 
@@ -967,6 +975,7 @@
                     placeholder="instagram.com/mitravesia o tuweb.com"
                     [value]="providerWebsite()"
                     (input)="providerWebsite.set($any($event.target).value)"
+                    maxlength="2048"
                   />
                 </div>
               </div>
