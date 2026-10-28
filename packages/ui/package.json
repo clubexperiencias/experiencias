@@ -11,7 +11,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "devDependencies": {
-    "@experiencias/config": "*",
+    "@experiencias/config": "workspace:*",
     "typescript": "~6.0.2"
   }
 }

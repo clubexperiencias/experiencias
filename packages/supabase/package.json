@@ -13,13 +13,13 @@
     "gen:types": "supabase gen types typescript --project-id \"$SUPABASE_PROJECT_ID\" --schema public > src/database.types.ts"
   },
   "dependencies": {
-    "@experiencias/domain": "*"
+    "@experiencias/domain": "workspace:*"
   },
   "peerDependencies": {
     "@supabase/supabase-js": "^2.118.0"
   },
   "devDependencies": {
-    "@experiencias/config": "*",
+    "@experiencias/config": "workspace:*",
     "@supabase/supabase-js": "^2.118.0",
     "typescript": "~6.0.2",
     "vitest": "^5.0.0"
