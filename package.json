@@ -2,20 +2,29 @@
   "name": "experiencias-monorepo",
   "version": "0.0.0",
   "private": true,
-  "packageManager": "pnpm@10.10.0",
   "scripts": {
-    "dev": "pnpm --filter public dev",
-    "build": "pnpm --filter public build",
-    "dev:public": "pnpm --filter public dev",
-    "build:public": "pnpm --filter public build",
-    "build:admin": "pnpm --filter admin build",
-    "build:providers": "pnpm --filter providers build",
-    "test": "pnpm -r test",
-    "typecheck": "pnpm -r typecheck",
+    "dev": "npm run dev --workspace=apps/public",
+    "build": "npm run build --workspace=apps/public",
+    "dev:public": "npm run dev --workspace=apps/public",
+    "build:public": "npm run build --workspace=apps/public",
+    "start": "npm run start --workspace=apps/public",
+    "test": "npm test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run typecheck",
     "format": "prettier --write ."
   },
   "devDependencies": {
     "prettier": "^3.8.1",
     "typescript": "~6.0.2"
-  }
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "trustedDependencies": [
+    "@parcel/watcher",
+    "esbuild",
+    "lmdb",
+    "msgpackr-extract"
+  ]
 }

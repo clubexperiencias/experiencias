@@ -9,7 +9,7 @@ import { filter } from 'rxjs';
   templateUrl: './app.html',
 })
 export class App {
-  protected readonly title = signal('experiencias');
+  protected readonly title = signal('Portal Prestadores · Club de Experiencias');
   private readonly router = inject(Router);
 
   constructor() {

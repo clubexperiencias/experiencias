@@ -1,4 +1,35 @@
-export type ExperienceStatus = 'borrador' | 'publicada';
+export type ExperienceStatus =
+  | 'borrador'
+  | 'pendiente_publicacion'
+  | 'publicada'
+  | 'pendiente_ocultar'
+  | 'oculta'
+  | 'pendiente_eliminar';
+
+export interface ExperienceModerationLog {
+  action: 'publicar' | 'ocultar' | 'eliminar';
+  requestedAt: string;
+  reason?: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
+  adminNote?: string;
+  status: 'pendiente' | 'aprobada' | 'rechazada';
+}
+
+export interface ProviderUser {
+  id: string;
+  email: string;
+  name: string;
+  agency: string;
+  phone: string;
+  cuitDni: string;
+  cbuAlias: string;
+  bankName: string;
+  verified: boolean;
+  role: 'prestador';
+  avatar?: string;
+  joinedAt: string;
+}
 
 export interface ProviderExperience {
   id: string;
@@ -15,7 +46,12 @@ export interface ProviderExperience {
   capacityPerDate: number;
   dates: string[];
   status: ExperienceStatus;
+  moderation?: ExperienceModerationLog;
+  providerId: string;
+  providerName: string;
+  coverImage?: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export type TransferStatus = 'pendiente' | 'aprobado' | 'rechazado';
