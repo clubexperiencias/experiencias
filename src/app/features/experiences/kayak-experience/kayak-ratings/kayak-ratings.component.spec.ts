@@ -32,7 +32,7 @@ describe('KayakRatingsComponent (/experiencias/kayak/calificaciones)', () => {
 
     const reviewsCount = fixture.nativeElement.querySelector('.score-reviews-count');
     expect(reviewsCount).toBeTruthy();
-    expect(reviewsCount.textContent).toContain('62 valoraciones verificadas');
+    expect(reviewsCount.textContent).toContain('4 valoraciones verificadas');
   });
 
   it('should render reviews with provider replies', () => {

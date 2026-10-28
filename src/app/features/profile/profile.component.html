@@ -336,12 +336,12 @@
           </div>
         }
 
-        <!-- ═══════════════ FILA 4: HISTORIAL DE ACTIVIDADES & COMPROBANTES ═══════════════ -->
+        <!-- ═══════════════ FILA 4: ACTIVIDADES & COMPROBANTES ═══════════════ -->
         <div class="profile-section-card" id="historial-seccion">
           <div class="section-header-row">
             <div>
               <span class="section-kicker">DOCUMENTOS OFICIALES</span>
-              <h3 class="section-title">Historial de Actividades & Comprobantes</h3>
+              <h3 class="section-title">Actividades & Comprobantes</h3>
             </div>
           </div>
 
@@ -374,46 +374,33 @@
                   <span class="receipt-amount-hint"
                     >${{ act.receipt.amountArs.toLocaleString('es-AR') }} ARS</span
                   >
-                  <div style="display: flex; gap: 0.5rem; flex-wrap: wrap">
-                    <a
-                      [routerLink]="['/perfil/actividades', act.slug]"
-                      class="receipt-btn"
-                      style="
-                        text-decoration: none;
-                        background: #ffd42a;
-                        color: #0b1120;
-                        border-color: #ffd42a;
-                        font-weight: 700;
-                      "
+                  <div class="activity-btns-group">
+                    <button
+                      type="button"
+                      class="receipt-btn btn-receipt-doc"
+                      (click)="openReceipt(act.receipt, $event)"
                     >
-                      Ver detalles →
-                    </a>
-                    <button class="receipt-btn" (click)="openReceipt(act.receipt, $event)">
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        style="width: 14px; height: 14px"
-                      >
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                        <polyline points="14 2 14 8 20 8" />
-                        <line x1="16" y1="13" x2="8" y2="13" />
-                        <line x1="16" y1="17" x2="8" y2="17" />
-                      </svg>
                       Comprobante
                     </button>
+                    <a
+                      [href]="getExperienceRoute(act.experienceId)"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="receipt-btn btn-view-details"
+                    >
+                      Ver detalles
+                    </a>
                   </div>
                 </div>
               </div>
             }
           </div>
 
-          <!-- Botón de Historial Completo con más presencia abajo -->
+          <!-- Botón de Actividades Completas con más presencia abajo -->
           <div class="view-all-activities-action">
             <a routerLink="/perfil/actividades" class="btn-view-all-activities">
               <span
-                >Ver historial completo ({{
+                >Ver actividades completas ({{
                   activityService.activities().length
                 }}
                 expediciones)</span
@@ -1383,85 +1370,5 @@
     </div>
   }
 
-  <!-- Modal Comprobante Oficial -->
-  @if (activityService.selectedReceipt()) {
-    <div class="modal-backdrop" (click)="closeReceipt()">
-      <div class="receipt-voucher-card" (click)="$event.stopPropagation()">
-        <div class="voucher-top">
-          <div>
-            <span class="voucher-brand-title">EXPERIENCIAS.CLUB</span>
-            <span class="voucher-subtitle">COMPROBANTE OFICIAL DE PAGO Y RESERVA</span>
-          </div>
-          <div class="voucher-seal"><span>✓</span> PAGO APROBADO</div>
-        </div>
-
-        <div class="voucher-grid">
-          <div class="voucher-field">
-            <span class="voucher-label">NÚMERO DE RECIBO</span>
-            <span class="voucher-val">{{ activityService.selectedReceipt()?.receiptNumber }}</span>
-          </div>
-
-          <div class="voucher-field">
-            <span class="voucher-label">FECHA Y HORA</span>
-            <span class="voucher-val">{{ activityService.selectedReceipt()?.paidAt }}</span>
-          </div>
-
-          <div class="voucher-field">
-            <span class="voucher-label">ID DE TRANSACCIÓN</span>
-            <span class="voucher-val">{{ activityService.selectedReceipt()?.transactionId }}</span>
-          </div>
-
-          <div class="voucher-field">
-            <span class="voucher-label">CÓDIGO DE AUTORIZACIÓN</span>
-            <span class="voucher-val">{{ activityService.selectedReceipt()?.authCode }}</span>
-          </div>
-
-          <div class="voucher-field">
-            <span class="voucher-label">MÉTODO DE PAGO</span>
-            <span class="voucher-val">{{
-              activityService.selectedReceipt()?.gatewayDisplayName
-            }}</span>
-          </div>
-
-          <div class="voucher-field">
-            <span class="voucher-label">PAGO A NOMBRE DE</span>
-            <span class="voucher-val">{{ activityService.selectedReceipt()?.payerName }}</span>
-          </div>
-        </div>
-
-        <div class="voucher-amount-box">
-          <div class="amount-display">
-            <span class="voucher-label">MONTO TOTAL ABONADO</span>
-            <span class="amount-main"
-              >${{
-                activityService.selectedReceipt()?.amountArs?.toLocaleString('es-AR')
-              }}
-              ARS</span
-            >
-          </div>
-          <div class="amount-sub">
-            Equivalente: ${{ activityService.selectedReceipt()?.amountUsd }} USD
-          </div>
-        </div>
-
-        <div class="voucher-meta-footer">
-          <p>
-            Comprobante emitido por <strong>EXPERIENCIAS.CLUB · Edición Catamarca</strong><br />
-            Este documento certifica la reserva para la expedición turística en la Provincia de
-            Catamarca. Válido ante las autoridades provinciales y prestadores habilitados.
-          </p>
-        </div>
-
-        <div
-          class="modal-footer"
-          style="margin-top: 0; display: flex; gap: 0.8rem; justify-content: flex-end"
-        >
-          <button class="pill-action-btn secondary" (click)="closeReceipt()">Cerrar</button>
-          <button class="pill-action-btn" (click)="printReceipt()">
-            Imprimir / Descargar Comprobante
-          </button>
-        </div>
-      </div>
-    </div>
-  }
+  <app-receipt-modal />
 </div>

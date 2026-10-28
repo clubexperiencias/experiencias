@@ -85,25 +85,13 @@
               </ul>
 
               <div class="tier-card-footer">
-                @if (newsletter.isSubscribed()) {
-                  <a routerLink="/perfil" class="tier-cta-btn current-achieved">
-                    <span class="cta-title-row">
-                      <mat-icon class="btn-icon">check_circle</mat-icon>
-                      <span>Ver mi Perfil</span>
-                    </span>
-                    <span class="cta-sub-text"
-                      >Socio Emergente #{{ newsletter.currentMember()?.position }}</span
-                    >
-                  </a>
-                } @else {
-                  <a routerLink="/socios/emergentes" class="tier-cta-btn default-action">
-                    <span class="cta-title-row">
-                      <span>Unirme Gratis</span>
-                      <mat-icon class="btn-icon">arrow_forward</mat-icon>
-                    </span>
-                    <span class="cta-sub-text">Pre-registro en lista de espera</span>
-                  </a>
-                }
+                <a routerLink="/socios/emergentes" class="tier-cta-btn default-action">
+                  <span class="cta-title-row">
+                    <span>Unirme Gratis</span>
+                    <mat-icon class="btn-icon">arrow_forward</mat-icon>
+                  </span>
+                  <span class="cta-sub-text">Pre-registro en lista de espera</span>
+                </a>
               </div>
             </div>
 

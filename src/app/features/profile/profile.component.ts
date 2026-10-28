@@ -17,6 +17,7 @@ import {
   BreadcrumbComponent,
   BreadcrumbItem,
 } from '../../shared/components/breadcrumb/breadcrumb.component';
+import { ReceiptModalComponent } from '../../shared/components/receipt-modal/receipt-modal.component';
 
 @Component({
   selector: 'app-profile',
@@ -28,6 +29,7 @@ import {
     FooterComponent,
     HeaderComponent,
     BreadcrumbComponent,
+    ReceiptModalComponent,
   ],
   templateUrl: './profile.component.html',
   styleUrl: './profile.component.css',
@@ -46,8 +48,12 @@ export class ProfileComponent implements OnInit {
   readonly copyStatus = signal<string | null>(null);
   readonly showSuccessNotification = signal(false);
 
-  // Historial: Solo las últimas dos actividades en la vista previa del perfil
+  // Actividades: Solo las últimas dos en la vista previa del perfil
   readonly recentActivities = () => this.activityService.activities().slice(0, 2);
+
+  getExperienceRoute(experienceId: string): string {
+    return experienceId === 'exp_kayak_pirquitas' ? '/experiencias/kayak' : '/experiencias';
+  }
 
   ngOnInit(): void {
     if (this.newsletter.consumeLoginSuccessFlag()) {

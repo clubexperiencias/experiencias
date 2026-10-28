@@ -145,6 +145,89 @@
   flex-wrap: wrap;
 }
 
+.date-filter-controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.date-filter-field {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1 1 150px;
+  min-width: 0;
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.date-filter-field input,
+.date-filter-field select {
+  width: 100%;
+  box-sizing: border-box;
+  height: 2.7rem;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid hsla(0, 0%, 100%, 0.22);
+  border-radius: 0;
+  background: rgba(18, 28, 70, 0.3);
+  color: #fff;
+  font: 0.86rem var(--font-sans);
+  outline: none;
+  color-scheme: dark;
+}
+
+.date-filter-field input:focus,
+.date-filter-field select:focus {
+  border-color: #668888;
+  background: rgba(102, 136, 136, 0.88);
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(139, 186, 186, 0.25);
+}
+
+.sort-field {
+  flex: 1.5 1 280px;
+  padding-right: 0;
+}
+
+.sort-field select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 2.5rem;
+  cursor: pointer;
+}
+
+.date-filter-field input[type='date'] {
+  color: #fff;
+  cursor: pointer;
+}
+
+.date-filter-field input:hover,
+.date-filter-field select:hover,
+.filter-search-box:hover {
+  background: #668888;
+}
+
+.clear-date-filter-btn {
+  height: 2.7rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid rgba(255, 212, 42, 0.45);
+  border-radius: 2px;
+  color: #ffd42a;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.clear-date-filter-btn:hover {
+  background: rgba(255, 212, 42, 0.12);
+}
+
 .filter-tab-pill {
   display: inline-flex;
   align-items: center;
@@ -170,7 +253,7 @@
 .filter-tab-pill.active {
   background: #ffd42a;
   border-color: #ffd42a;
-  color: #0b1120;
+  color: #ffffff;
   font-weight: 700;
 }
 
@@ -188,25 +271,42 @@
 
 .filter-tab-pill.active .count-badge {
   background: rgba(0, 0, 0, 0.2);
-  color: #0b1120;
+  color: #ffffff;
 }
 
 .filter-search-box {
   display: flex;
   align-items: center;
   gap: 0.55rem;
+  width: 100%;
+  box-sizing: border-box;
   background: rgba(0, 0, 0, 0.35);
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 2px;
-  padding: 0.45rem 0.85rem;
-  flex: 1;
-  max-width: 320px;
-  min-width: 220px;
+  height: 2.7rem;
+  padding: 0 0.85rem;
+  border-color: hsla(0, 0%, 100%, 0.22);
+  border-radius: 0;
+  background: rgba(18, 28, 70, 0.3);
+  flex: 1 1 100%;
+  max-width: none;
+  min-width: 0;
   transition: border-color 0.2s ease;
 }
 
 .filter-search-box:focus-within {
-  border-color: #ffd42a;
+  border-color: #668888;
+  background: #668888;
+  box-shadow: 0 0 12px rgba(139, 186, 186, 0.25);
+}
+
+.filter-search-box:focus-within .search-input {
+  color: #ffffff;
+}
+
+.filter-search-box:focus-within .search-input::placeholder {
+  color: rgba(255, 255, 255, 0.78);
+  opacity: 1;
 }
 
 .search-icon {
@@ -222,12 +322,13 @@
   outline: none;
   color: #ffffff;
   font-family: inherit;
-  font-size: 0.82rem;
+  font-size: 0.86rem;
   width: 100%;
 }
 
 .search-input::placeholder {
-  color: #94a3b8;
+  color: #c5d5f5;
+  opacity: 0.85;
 }
 
 .clear-search-btn {
@@ -277,28 +378,29 @@
 .activities-list {
   display: flex;
   flex-direction: column;
-  gap: 1.2rem;
-  margin-top: 1.8rem;
+  gap: 1rem;
 }
 
 .activity-card {
   display: grid;
   grid-template-columns: 140px 1fr auto;
   gap: 1.2rem;
-  background-color: #253B80 !important;
-  background: #253B80 !important;
+  background-color: #668888 !important;
+  background: #668888 !important;
   border: 1px solid rgba(255, 212, 42, 0.25);
   border-radius: 0;
   overflow: hidden;
   transition: all 0.25s ease;
   align-items: center;
-  box-shadow: none !important;
+  height: 190px;
+  min-height: 190px;
 }
 
 .activity-card:hover {
-  border-color: #ffd42a;
-  background-color: #2d4491 !important;
-  background: #2d4491 !important;
+  border-color: #779a9a;
+  background-color: #779a9a !important;
+  background: #779a9a !important;
+  box-shadow: 0 8px 20px rgba(119, 154, 154, 0.2);
 }
 
 .activity-media {
@@ -310,14 +412,14 @@
 }
 
 .activity-content {
-  padding: 0.9rem 0;
+  padding: 1.15rem 0;
 }
 
 .activity-tag-row {
   display: flex;
   align-items: center;
   gap: 0.65rem;
-  margin-bottom: 0.35rem;
+  margin-bottom: 0.65rem;
 }
 
 .activity-status {
@@ -350,14 +452,14 @@
   font-size: 1.05rem;
   font-weight: 600;
   color: #fff;
-  margin: 0 0 0.25rem;
+  margin: 0 0 0.55rem;
   line-height: 1.3;
 }
 
 .activity-provider {
   font-size: 0.8rem;
   color: var(--color-text-soft);
-  margin: 0 0 0.2rem;
+  margin: 0 0 0.55rem;
 }
 
 .activity-date {
@@ -419,14 +521,110 @@
 }
 
 .btn-receipt-doc {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: #8bbaba;
+  border: 1px solid #8bbaba;
   color: #ffffff;
+  font-weight: 700;
 }
 
 .btn-receipt-doc:hover {
-  background: rgba(255, 255, 255, 0.16);
-  border-color: rgba(255, 255, 255, 0.45);
+  background: #668888;
+  border-color: #ffffff;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(4, 8, 18, 0.78);
+  backdrop-filter: blur(6px);
+}
+
+.receipt-voucher-card {
+  width: min(100%, 680px);
+  max-height: 90vh;
+  overflow: auto;
+  padding: 1.8rem;
+  background: #668888;
+  border: 1px solid #ffffff;
+  color: #fff;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+}
+
+.voucher-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.voucher-modal-kicker {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: rgba(255, 255, 255, 0.78);
+  font: 700 0.62rem var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.voucher-modal-heading {
+  margin: 0;
+  color: #fff;
+  font: 600 1.35rem/1.2 var(--font-serif);
+}
+
+.voucher-modal-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 2px;
+  color: #fff;
+  background: transparent;
+  font-size: 1.45rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.voucher-modal-close:hover {
+  background: #779a9a;
+  border-color: #779a9a;
+}
+
+.voucher-top { display: flex; justify-content: space-between; gap: 1rem; padding-bottom: 1rem; border-bottom: 1px solid rgba(255, 255, 255, 0.15); }
+.voucher-brand-title, .voucher-subtitle, .voucher-label { display: block; font-family: var(--font-mono); }
+.voucher-brand-title { font-size: 1rem; font-weight: 800; color: #fff; }
+.voucher-subtitle, .voucher-label { font-size: 0.62rem; letter-spacing: 0.1em; color: var(--color-text-muted); }
+.voucher-seal { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.65rem; background: #80b3ff; border: none; color: #fff; font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
+.voucher-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; padding: 1.2rem 0; }
+.voucher-field { display: flex; flex-direction: column; gap: 0.25rem; }
+.voucher-val { color: #fff; font-size: 0.88rem; word-break: break-word; }
+.voucher-amount-box { display: flex; flex-direction: column; gap: 0.25rem; padding: 1rem; background: transparent; border: 1px solid #ffffff; }
+.voucher-amount-box .voucher-label,
+.voucher-amount-box strong,
+.voucher-amount-box span:last-child { color: #fff; }
+.voucher-amount-box .voucher-label,
+.voucher-amount-box strong { color: #fff; }
+.voucher-amount-box strong { font-size: 1.35rem; }
+.voucher-amount-box span:last-child, .voucher-meta-footer { font-size: 0.78rem; }
+.voucher-meta-footer { padding-top: 1rem; }
+.modal-footer { display: flex; justify-content: flex-end; gap: 0.7rem; margin-top: 1.4rem; }
+.pill-action-btn { padding: 0.65rem 0.9rem; border: 1px solid #8bbaba; background: #8bbaba; color: #fff; cursor: pointer; font-weight: 700; }
+.pill-action-btn:hover { background: #668888; border-color: #fff; }
+.pill-action-btn.secondary { background: #668888; color: #fff; }
+
+@media (max-width: 600px) {
+  .voucher-grid, .voucher-top, .modal-footer { grid-template-columns: 1fr; flex-direction: column; align-items: stretch; }
 }
 
 @media (max-width: 768px) {
@@ -455,9 +653,26 @@
     font-size: 1.5rem;
   }
 
+  .activities-filter-bar {
+    align-items: stretch;
+  }
+
+  .date-filter-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .date-filter-field,
+  .sort-field {
+    flex-basis: auto;
+    width: 100%;
+  }
+
   .activity-card {
     grid-template-columns: 1fr;
     gap: 0.8rem;
+    height: auto;
+    min-height: 0;
   }
 
   .activity-media {
@@ -476,10 +691,19 @@
 
   .activity-btns-group {
     width: 100%;
+    flex-direction: column;
   }
 
   .activity-btns-group .receipt-btn {
-    flex: 1;
+    width: 100%;
     justify-content: center;
+  }
+
+  .activity-btns-group .btn-view-details {
+    order: 1;
+  }
+
+  .activity-btns-group .btn-receipt-doc {
+    order: 2;
   }
 }

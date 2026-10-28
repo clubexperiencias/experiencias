@@ -1,0 +1,38 @@
+@if (activityService.selectedReceipt(); as receipt) {
+  <div class="modal-backdrop" (click)="closeReceipt()">
+    <div class="receipt-voucher-card" (click)="$event.stopPropagation()">
+      <div class="voucher-modal-header">
+        <div>
+          <span class="voucher-modal-kicker">DOCUMENTO OFICIAL</span>
+          <h3 class="voucher-modal-heading">Comprobante de pago</h3>
+        </div>
+        <button type="button" class="voucher-modal-close" (click)="closeReceipt()" aria-label="Cerrar comprobante">×</button>
+      </div>
+      <div class="voucher-top">
+        <div>
+          <span class="voucher-brand-title">EXPERIENCIAS.CLUB</span>
+          <span class="voucher-subtitle">COMPROBANTE OFICIAL DE PAGO Y RESERVA</span>
+        </div>
+        <div class="voucher-seal">PAGO APROBADO</div>
+      </div>
+      <div class="voucher-grid">
+        <div class="voucher-field"><span class="voucher-label">NÚMERO DE RECIBO</span><span class="voucher-val">{{ receipt.receiptNumber }}</span></div>
+        <div class="voucher-field"><span class="voucher-label">FECHA Y HORA</span><span class="voucher-val">{{ receipt.paidAt }}</span></div>
+        <div class="voucher-field"><span class="voucher-label">ID DE TRANSACCIÓN</span><span class="voucher-val">{{ receipt.transactionId }}</span></div>
+        <div class="voucher-field"><span class="voucher-label">CÓDIGO DE AUTORIZACIÓN</span><span class="voucher-val">{{ receipt.authCode }}</span></div>
+        <div class="voucher-field"><span class="voucher-label">MÉTODO DE PAGO</span><span class="voucher-val">{{ receipt.paymentMethodSummary }}</span></div>
+        <div class="voucher-field"><span class="voucher-label">PAGO A NOMBRE DE</span><span class="voucher-val">{{ receipt.payerName }}</span></div>
+      </div>
+      <div class="voucher-amount-box">
+        <span class="voucher-label">MONTO TOTAL ABONADO</span>
+        <strong>{{ receipt.amountArs.toLocaleString('es-AR') }} ARS</strong>
+        <span>Equivalente: ${{ receipt.amountUsd }} USD</span>
+      </div>
+      <div class="voucher-meta-footer">Comprobante emitido por <strong>EXPERIENCIAS.CLUB · Edición Catamarca</strong></div>
+      <div class="modal-footer">
+        <button type="button" class="pill-action-btn secondary" (click)="closeReceipt()">Cerrar</button>
+        <button type="button" class="pill-action-btn" (click)="printReceipt()">Imprimir / Descargar Comprobante</button>
+      </div>
+    </div>
+  </div>
+}

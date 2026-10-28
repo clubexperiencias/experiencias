@@ -36,7 +36,7 @@
                 <span class="star-icon">★</span>
                 <span class="star-icon">★</span>
               </div>
-              <div class="score-reviews-count">62 valoraciones verificadas</div>
+              <div class="score-reviews-count">4 valoraciones verificadas</div>
             </div>
 
             <div class="aspects-scores-grid">
@@ -69,31 +69,10 @@
 
         <!-- ═══════════════ CARD 2: LISTA DE RESEÑAS CON RESPUESTAS ═══════════════ -->
         <div class="ratings-section-card reviews-list-card">
-          <!-- Filtros interactivos -->
           <div class="list-controls-row">
             <div class="controls-left">
               <span class="section-kicker">OPINIONES VERIFICADAS</span>
               <h2 class="list-heading">Reseñas de Socios ({{ reviewsList().length }})</h2>
-            </div>
-
-            <!-- Filtros interactivos -->
-            <div class="filter-pills-row">
-              <button type="button" class="filter-pill" [class.active]="activeFilter() === 'all'"
-                (click)="setFilter('all')">
-                Todas ({{ reviewsList().length }})
-              </button>
-              <button type="button" class="filter-pill" [class.active]="activeFilter() === 'with-reply'"
-                (click)="setFilter('with-reply')">
-                Con respuesta del prestador
-              </button>
-              <button type="button" class="filter-pill" [class.active]="activeFilter() === '5-stars'"
-                (click)="setFilter('5-stars')">
-                5 Estrellas ★
-              </button>
-              <button type="button" class="filter-pill" [class.active]="activeFilter() === '4-stars'"
-                (click)="setFilter('4-stars')">
-                4 Estrellas ★
-              </button>
             </div>
           </div>
 
@@ -221,7 +200,6 @@
             @if (!hasProfileCompleted()) {
               <div class="profile-incomplete-notice">
                 <div class="notice-info">
-                  <mat-icon class="notice-icon">badge</mat-icon>
                   <div>
                     <strong class="notice-title">Completá tu perfil para publicar una reseña</strong>
                     <p class="notice-text">
@@ -230,7 +208,6 @@
                   </div>
                 </div>
                 <a href="/perfil" target="_blank" rel="noopener noreferrer" class="complete-profile-btn">
-                  <mat-icon>open_in_new</mat-icon>
                   <span>Completar Perfil</span>
                 </a>
               </div>
@@ -279,7 +256,6 @@
             <div class="form-actions-row">
               <button type="button" class="submit-review-btn" (click)="submitReview()"
                 [disabled]="!hasProfileCompleted() || !newTitle().trim() || !newComment().trim()">
-                <mat-icon>send</mat-icon>
                 <span>Publicar Reseña</span>
               </button>
             </div>

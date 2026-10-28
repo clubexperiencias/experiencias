@@ -17,12 +17,6 @@
           <div class="card-inner-header">
             <div class="tier-badge-row">
               <span class="emerging-badge-tag">Nivel 1 Gratuito</span>
-              @if (newsletter.isSubscribed()) {
-                <span class="member-status-tag">
-                  <mat-icon class="status-icon">verified</mat-icon>
-                  <span>Tu nivel actual Socio #{{ newsletter.currentMember()?.position }}</span>
-                </span>
-              }
             </div>
             <h1 class="card-heading">Membresía Socio Emergente</h1>
             <p class="card-subheading">
@@ -99,9 +93,6 @@
             </div>
           } @else {
             <div class="emerging-confirmed-box">
-              <div class="confirmed-seal">
-                <mat-icon class="seal-icon">verified</mat-icon>
-              </div>
               <div class="confirmed-text-group">
                 <span class="confirmed-kicker">MEMBRESÍA ACTIVA</span>
                 <h3 class="confirmed-title">

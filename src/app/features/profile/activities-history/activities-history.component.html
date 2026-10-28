@@ -13,40 +13,36 @@
         <div class="box-header-row">
           <div class="box-texts">
             <span class="section-kicker">DOCUMENTOS OFICIALES · REGISTRO DEL SOCIO</span>
-            <h1 class="page-title">Historial de Salidas & Expediciones</h1>
+            <h1 class="page-title">Actividades: Salidas & Expediciones</h1>
             <p class="page-subtitle">
               Accedé al registro certificado de tus travesías andinas en Catamarca, comprobantes oficiales respaldados con código de autorización bancaria y al álbum comunitario compartido con otros miembros del club.
             </p>
           </div>
         </div>
 
-        <!-- Barra de Filtrado de Actividades -->
+        <!-- Calendario y orden de actividades -->
         <div class="activities-filter-bar">
-          <div class="filter-pills-wrap">
-            <button
-              type="button"
-              class="filter-tab-pill"
-              [class.active]="selectedFilter() === 'all'"
-              (click)="setFilter('all')">
-              <span>Todas las salidas</span>
-              <span class="count-badge">{{ activityService.activities().length }}</span>
-            </button>
-            <button
-              type="button"
-              class="filter-tab-pill"
-              [class.active]="selectedFilter() === 'completada'"
-              (click)="setFilter('completada')">
-              <span>Completadas</span>
-              <span class="count-badge">{{ completedCount() }}</span>
-            </button>
-            <button
-              type="button"
-              class="filter-tab-pill"
-              [class.active]="selectedFilter() === 'confirmada'"
-              (click)="setFilter('confirmada')">
-              <span>Confirmadas / Próximas</span>
-              <span class="count-badge">{{ confirmedCount() }}</span>
-            </button>
+          <div class="date-filter-controls">
+            <label class="date-filter-field">
+              <span>Desde</span>
+              <input type="date" [value]="dateFrom()" (change)="dateFrom.set($any($event.target).value)" />
+            </label>
+            <label class="date-filter-field">
+              <span>Hasta</span>
+              <input type="date" [value]="dateTo()" (change)="dateTo.set($any($event.target).value)" />
+            </label>
+            <label class="date-filter-field sort-field">
+              <span>Ordenar por fecha</span>
+              <select [value]="sortOrder()" (change)="sortOrder.set($any($event.target).value)">
+                <option value="desc">Más recientes primero</option>
+                <option value="asc">Más antiguas primero</option>
+              </select>
+            </label>
+            @if (dateFrom() || dateTo()) {
+              <button type="button" class="clear-date-filter-btn" (click)="dateFrom.set(''); dateTo.set('')">
+                Limpiar fechas
+              </button>
+            }
           </div>
 
           <div class="filter-search-box">
@@ -85,26 +81,22 @@
               <p class="activity-provider">Prestador: <strong>{{ act.provider.name }}</strong></p>
               <p class="activity-date">
                 {{ act.dateLabel }} · Recibo Nº {{ act.receipt.receiptNumber }}
-                @if (act.communityPhotos?.length) {
-                  · <span class="photos-count-badge">{{ act.communityPhotos.length }} fotos en álbum</span>
-                }
               </p>
             </div>
 
             <div class="activity-actions">
               <span class="receipt-amount-hint">${{ act.receipt.amountArs.toLocaleString('es-AR') }} ARS</span>
               <div class="activity-btns-group">
-                <a [routerLink]="['/perfil/actividades', act.slug]" class="receipt-btn btn-view-details">
-                  Ver detalles →
-                </a>
-                <a [routerLink]="['/perfil/actividades', act.slug]" class="receipt-btn btn-receipt-doc">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                    <line x1="16" y1="13" x2="8" y2="13" />
-                    <line x1="16" y1="17" x2="8" y2="17" />
-                  </svg>
+                <button type="button" class="receipt-btn btn-receipt-doc" (click)="openReceipt(act.receipt)">
                   <span>Comprobante</span>
+                </button>
+                <a
+                  [href]="getExperienceRoute(act.experienceId)"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="receipt-btn btn-view-details"
+                >
+                  Ver detalles
                 </a>
               </div>
             </div>
@@ -118,3 +110,5 @@
   <!-- Footer Compartido -->
   <app-footer></app-footer>
 </div>
+
+<app-receipt-modal />

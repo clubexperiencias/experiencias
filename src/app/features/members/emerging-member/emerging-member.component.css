@@ -114,31 +114,6 @@
   text-transform: uppercase;
 }
 
-.member-status-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  height: 30px;
-  box-sizing: border-box;
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: #4ade80;
-  background: rgba(74, 222, 128, 0.15);
-  border: 1px solid rgba(74, 222, 128, 0.35);
-  padding: 0 0.75rem;
-  border-radius: 2px;
-  text-transform: uppercase;
-}
-
-.status-icon {
-  font-size: 15px !important;
-  width: 15px !important;
-  height: 15px !important;
-  line-height: 15px !important;
-}
-
 .card-heading {
   font-family: var(--font-serif);
   font-size: 1.85rem;
@@ -390,8 +365,8 @@
 }
 
 .emerging-confirmed-box {
-  background: rgba(74, 222, 128, 0.08);
-  border: 1px solid rgba(74, 222, 128, 0.35);
+  background: rgba(255, 204, 0, 0.08);
+  border: 1px solid rgba(255, 204, 0, 0.35);
   border-radius: 2px;
   padding: 1.4rem 1.6rem;
   display: flex;
@@ -407,25 +382,6 @@
   }
 }
 
-.confirmed-seal {
-  width: 44px;
-  height: 44px;
-  border-radius: 2px;
-  background: rgba(74, 222, 128, 0.15);
-  border: 1px solid rgba(74, 222, 128, 0.4);
-  color: #4ade80;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.seal-icon {
-  font-size: 24px !important;
-  width: 24px !important;
-  height: 24px !important;
-}
-
 .confirmed-text-group {
   display: flex;
   flex-direction: column;
@@ -438,7 +394,7 @@
   font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.14em;
-  color: #4ade80;
+  color: #ffcc00;
   text-transform: uppercase;
 }
 
@@ -462,9 +418,9 @@
   align-items: center;
   justify-content: center;
   gap: 0.6rem;
-  background: rgba(74, 222, 128, 0.15);
-  color: #4ade80;
-  border: 1px solid rgba(74, 222, 128, 0.4);
+  background: rgba(255, 204, 0, 0.15);
+  color: #ffcc00;
+  border: 1px solid rgba(255, 204, 0, 0.4);
   font-weight: 700;
   font-size: 0.88rem;
   letter-spacing: 0.04em;
@@ -477,7 +433,7 @@
 }
 
 .emerging-profile-btn:hover {
-  background: rgba(74, 222, 128, 0.25);
+  background: rgba(255, 204, 0, 0.25);
   color: #ffffff;
   transform: translateY(-2px);
 }

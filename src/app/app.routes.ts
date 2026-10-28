@@ -19,13 +19,6 @@ export const routes: Routes = [
       ),
   },
   {
-    path: 'perfil/actividades/:slug',
-    loadComponent: () =>
-      import('./features/profile/activity-detail/activity-detail.component').then(
-        (m) => m.ActivityDetailComponent,
-      ),
-  },
-  {
     path: 'ingresar',
     loadComponent: () => import('./features/login/login.component').then((m) => m.LoginComponent),
   },

@@ -41,7 +41,7 @@ export class ActivityDetailComponent implements OnInit {
     return [
       { label: 'Inicio', url: '/' },
       { label: 'Mi Perfil', url: '/perfil' },
-      { label: 'Historial', url: '/perfil/actividades' },
+      { label: 'Actividades', url: '/perfil/actividades' },
       { label: act ? act.title : 'Detalle de Actividad' }
     ];
   });

@@ -102,7 +102,7 @@
   animation-delay: 0.2s;
 }
 
-/* Fila 4: Historial de actividades y comprobantes */
+/* Fila 4: Actividades y comprobantes */
 #historial-seccion {
   animation-delay: 0.28s;
 }
@@ -362,12 +362,24 @@
   opacity: 0.85;
 }
 
+.field-input:hover,
+.field-textarea:hover {
+  background: #668888;
+}
+
 .field-input:focus,
 .field-textarea:focus {
   outline: none;
   border-color: var(--color-gold);
-  background: #2d4491;
-  box-shadow: 0 0 12px rgba(255, 212, 42, 0.25);
+  background: #668888;
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(139, 186, 186, 0.25);
+}
+
+.field-input:focus::placeholder,
+.field-textarea:focus::placeholder {
+  color: rgba(255, 255, 255, 0.78) !important;
+  opacity: 1;
 }
 
 .field-textarea {
@@ -399,15 +411,21 @@
 }
 
 .wishlist-chip:hover {
-  background: hsla(0, 0%, 100%, 0.1);
-  border-color: rgba(255, 212, 42, 0.35);
-  color: #fff;
+  background: #668888;
+  border-color: #668888;
+  color: #ffffff;
 }
 
 .wishlist-chip.selected {
-  background: rgba(255, 212, 42, 0.16);
-  border-color: var(--color-gold);
-  color: #fff;
+  background: #668888;
+  border-color: #668888;
+  color: #ffffff;
+}
+
+.wishlist-chip.selected:hover {
+  background: #779a9a;
+  border-color: #779a9a;
+  color: #ffffff;
 }
 
 .chip-icon {
@@ -443,6 +461,7 @@
   cursor: pointer;
   transition: all 0.2s ease;
   margin-top: 0.5rem;
+  min-height: 48px;
 }
 
 .save-profile-btn:hover:not(:disabled) {
@@ -458,15 +477,19 @@
 
 .profile-required-name-tag-wrap {
   display: flex;
-  justify-content: center;
-  margin-top: 0.95rem;
-  margin-bottom: -0.35rem;
+  width: 100%;
+  margin-top: 1.15rem;
+  margin-bottom: -0.8rem;
 }
 
 .profile-required-name-tag {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.35rem;
+  width: 100%;
+  min-height: 48px;
+  box-sizing: border-box;
   background: #ff5f00;
   border: 1px solid #ff5f00;
   color: #ffffff;
@@ -1010,7 +1033,7 @@
   font-style: italic;
 }
 
-/* Fila 3: Historial de Actividades & Comprobantes */
+/* Fila 3: Actividades & Comprobantes */
 .section-header-row {
   display: flex;
   justify-content: space-between;
@@ -1063,23 +1086,26 @@
   display: grid;
   grid-template-columns: 140px 1fr auto;
   gap: 1.2rem;
-  background-color: rgba(22, 33, 85, 0.25) !important;
-  background: rgba(22, 33, 85, 0.25) !important;
+  background-color: #668888 !important;
+  background: #668888 !important;
   border: 1px solid rgba(255, 212, 42, 0.25);
   border-radius: 0;
   overflow: hidden;
   transition: all 0.25s ease;
   align-items: center;
+  height: 190px;
+  min-height: 190px;
 }
 
 .activity-card:hover {
-  border-color: #ffd42a;
-  background-color: #2d4491 !important;
-  background: #2d4491 !important;
+  border-color: #779a9a;
+  background-color: #779a9a !important;
+  background: #779a9a !important;
+  box-shadow: 0 8px 20px rgba(139, 186, 186, 0.2);
 }
 
 /* ==========================================================================
-   Botón de Historial Completo con más presencia abajo (Full Width & Rectangular)
+  Botón de Actividades Completas con más presencia abajo (Full Width & Rectangular)
    ========================================================================== */
 .view-all-activities-action {
   margin-top: 1.4rem;
@@ -1144,14 +1170,14 @@
 }
 
 .activity-content {
-  padding: 0.8rem 0;
+  padding: 1.15rem 0;
 }
 
 .activity-tag-row {
   display: flex;
   align-items: center;
   gap: 0.65rem;
-  margin-bottom: 0.35rem;
+  margin-bottom: 0.65rem;
 }
 
 .activity-status {
@@ -1183,13 +1209,13 @@
   font-size: 1.05rem;
   font-weight: 600;
   color: #fff;
-  margin: 0 0 0.25rem;
+  margin: 0 0 0.55rem;
 }
 
 .activity-provider {
   font-size: 0.8rem;
   color: var(--color-text-soft);
-  margin: 0 0 0.2rem;
+  margin: 0 0 0.55rem;
 }
 
 .activity-date {
@@ -1219,21 +1245,48 @@
   align-items: center;
   gap: 0.4rem;
   padding: 0.45rem 0.9rem;
-  background: hsla(0, 0%, 100%, 0.08);
-  border: 1px solid hsla(0, 0%, 100%, 0.18);
-  border-radius: 2px;
+  border-radius: 0;
   color: #fff;
-  font-size: 0.76rem;
-  font-weight: 600;
+  font-size: 0.82rem;
+  font-weight: 700;
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
 }
 
 .receipt-btn:hover {
-  background: rgba(255, 212, 42, 0.2);
-  border-color: var(--color-gold);
-  color: var(--color-gold);
+  background: #668888;
+  border-color: #fff;
+  color: #fff;
+}
+
+.activity-btns-group {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.btn-view-details {
+  text-decoration: none;
+  background: #ffd42a;
+  color: #0b1120;
+  border: 1px solid #ffd42a;
+}
+
+.btn-view-details:hover {
+  background: #ffe066;
+  border-color: #ffe066;
+  color: #0b1120;
+}
+
+.btn-receipt-doc {
+  background: #8bbaba;
+  border: 1px solid #8bbaba;
+}
+
+.btn-receipt-doc:hover {
+  background: #668888;
+  border-color: #fff;
 }
 
 /* ==========================================================================
@@ -1284,6 +1337,78 @@
   color: #fff !important;
 }
 
+/* Modal de comprobante: misma estructura visual que /perfil/actividades */
+.receipt-voucher-card {
+  width: min(100%, 680px);
+  max-height: 90vh;
+  overflow: auto;
+  padding: 1.8rem;
+  background: rgba(102, 136, 136, 0.88);
+  border: 1px solid #fff;
+  color: #fff;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+}
+
+.voucher-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.voucher-modal-kicker {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: rgba(255, 255, 255, 0.78);
+  font: 700 0.62rem var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.voucher-modal-heading {
+  margin: 0;
+  color: #fff;
+  font: 600 1.35rem/1.2 var(--font-serif);
+}
+
+.voucher-modal-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 2px;
+  color: #fff;
+  background: transparent;
+  font-size: 1.45rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.voucher-modal-close:hover { background: #779a9a; border-color: #779a9a; }
+.voucher-top { display: flex; justify-content: space-between; gap: 1rem; padding-bottom: 1rem; border-bottom: 1px solid rgba(255, 255, 255, 0.15); }
+.voucher-brand-title, .voucher-subtitle, .voucher-label { display: block; font-family: var(--font-mono); }
+.voucher-brand-title { font-size: 1rem; font-weight: 800; color: #fff; }
+.voucher-subtitle, .voucher-label { font-size: 0.62rem; letter-spacing: 0.1em; color: var(--color-text-muted); }
+.voucher-seal { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.65rem; background: #80b3ff; border: none; color: #fff; font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
+.voucher-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; padding: 1.2rem 0; }
+.voucher-field { display: flex; flex-direction: column; gap: 0.25rem; }
+.voucher-val { color: #fff; font-size: 0.88rem; word-break: break-word; }
+.voucher-amount-box { display: flex; flex-direction: column; gap: 0.25rem; padding: 1rem; background: transparent; border: 1px solid #fff; }
+.voucher-amount-box .voucher-label, .voucher-amount-box strong, .voucher-amount-box span:last-child { color: #fff; }
+.voucher-amount-box strong { font-size: 1.35rem; }
+.voucher-amount-box span:last-child, .voucher-meta-footer { font-size: 0.78rem; }
+.voucher-meta-footer { padding-top: 1rem; }
+.receipt-voucher-card .modal-footer { display: flex; justify-content: flex-end; gap: 0.7rem; margin-top: 1.4rem; }
+.receipt-voucher-card .pill-action-btn { padding: 0.65rem 0.9rem; border: 1px solid #8bbaba; background: #8bbaba; color: #fff; cursor: pointer; font-weight: 700; }
+.receipt-voucher-card .pill-action-btn:hover { background: #668888; border-color: #fff; }
+.receipt-voucher-card .pill-action-btn.secondary { background: #668888; color: #fff; }
+
 /* Mobile Responsive */
 @media (max-width: 768px) {
   .profile-main-content {
@@ -1325,22 +1450,42 @@
 
   .activity-card {
     grid-template-columns: 1fr;
+    gap: 0.8rem;
+    height: auto;
+    min-height: 0;
   }
 
   .activity-media {
-    height: 130px;
-    min-height: 130px;
+    height: 180px;
+    min-height: 180px;
+  }
+
+  .activity-content {
+    padding: 0 1rem;
   }
 
   .activity-actions {
     border-left: none;
-    border-top: 1px solid hsla(0, 0%, 100%, 0.08);
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-    padding-left: 0.8rem;
-    padding-right: 0.8rem;
-    padding-bottom: 0.8rem;
+    align-items: stretch;
+    padding: 0 1rem 1rem;
+  }
+
+  .activity-btns-group {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .activity-btns-group .receipt-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .activity-btns-group .btn-view-details {
+    order: 1;
+  }
+
+  .activity-btns-group .btn-receipt-doc {
+    order: 2;
   }
 
   .profile-bottom-actions {

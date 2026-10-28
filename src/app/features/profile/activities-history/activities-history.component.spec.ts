@@ -24,7 +24,7 @@ describe('ActivitiesHistoryComponent (/perfil/actividades)', () => {
 
   it('should render page title and activity cards', () => {
     const el = fixture.nativeElement as HTMLElement;
-    expect(el.textContent).toContain('Historial de Salidas & Expediciones');
+    expect(el.textContent).toContain('Actividades: Salidas & Expediciones');
     expect(el.textContent).toContain('Travesía en Kayak & Sunset en Las Pirquitas');
   });
 
@@ -34,21 +34,19 @@ describe('ActivitiesHistoryComponent (/perfil/actividades)', () => {
     expect(returnBtn).toBeNull();
   });
 
-  it('should filter activities by status', () => {
-    component.setFilter('completada');
+  it('should filter by date and order activities chronologically', () => {
+    component.dateFrom.set('2026-11-01');
+    component.dateTo.set('2026-12-31');
     fixture.detectChanges();
-    const completed = component.filteredActivities();
-    expect(completed.length).toBe(1);
-    expect(completed[0].status).toBe('completada');
 
-    component.setFilter('confirmada');
-    fixture.detectChanges();
-    const confirmed = component.filteredActivities();
-    expect(confirmed.length).toBe(2);
-    expect(confirmed.every((a) => a.status === 'confirmada')).toBe(true);
+    expect(component.filteredActivities().length).toBe(2);
 
-    component.setFilter('all');
+    component.sortOrder.set('asc');
     fixture.detectChanges();
-    expect(component.filteredActivities().length).toBe(3);
+    expect(component.filteredActivities()[0].dateLabel).toContain('24 de Noviembre');
+
+    component.sortOrder.set('desc');
+    fixture.detectChanges();
+    expect(component.filteredActivities()[0].dateLabel).toContain('12 de Diciembre');
   });
 });

@@ -1,10 +1,15 @@
 import { Injectable, signal } from '@angular/core';
-import { ActivityRecord, PaymentReceipt, CommunityPhoto, ActivityReview } from '../models/activity-history.model';
+import {
+  ActivityRecord,
+  PaymentReceipt,
+  CommunityPhoto,
+  ActivityReview,
+} from '../models/activity-history.model';
 
 const STORAGE_KEY = 'catamarca_club_activity_history';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class ActivityHistoryService {
   private readonly defaultActivities: ActivityRecord[] = [
@@ -24,7 +29,7 @@ export class ActivityHistoryService {
       provider: {
         name: 'Travesías Náuticas Ambato (Guía Lucas Albarracín)',
         category: 'Kayak & Deportes Náuticos',
-        contactPhone: '+54 9 3834 89-2104'
+        contactPhone: '+54 9 3834 89-2104',
       },
       receipt: {
         receiptNumber: 'REC-2026-CAT-0104',
@@ -38,54 +43,60 @@ export class ActivityHistoryService {
         payerEmail: 'socio.fundador@catamarca.ar',
         payerName: 'Socio Fundador Catamarca',
         authCode: 'AUTH-MP-89214',
-        status: 'aprobado'
+        status: 'aprobado',
       },
       memoriesCount: 8,
-      memoryPhotos: ['/assets/images/kayak-club-de-experiencias.jpg', '/assets/images/laguna_blanca.jpg'],
+      memoryPhotos: [
+        '/assets/images/kayak-club-de-experiencias.jpg',
+        '/assets/images/laguna_blanca.jpg',
+      ],
       communityPhotos: [
         {
           id: 'photo_com_01',
           url: '/assets/images/kayak-club-de-experiencias.jpg',
           caption: 'Los kayaks ingresando al espejo de agua con el sol cayendo tras las sierras.',
           uploadedBy: 'Lucas A.',
-          uploadedAt: '18/10/2026 18:45'
+          uploadedAt: '18/10/2026 18:45',
         },
         {
           id: 'photo_com_02',
           url: '/assets/images/catamarca_hero.jpg',
           caption: 'Panorámica de los paredones rojizos desde el agua en la quebrada oeste.',
           uploadedBy: 'Mariana T.',
-          uploadedAt: '18/10/2026 19:10'
+          uploadedAt: '18/10/2026 19:10',
         },
         {
           id: 'photo_com_03',
           url: '/assets/images/laguna_blanca.jpg',
           caption: 'Brindis de cierre en el Club Náutico al anochecer.',
           uploadedBy: 'Ignacio B.',
-          uploadedAt: '19/10/2026 09:15'
-        }
+          uploadedAt: '19/10/2026 09:15',
+        },
       ],
       reviews: [
         {
           id: 'rev_com_01',
           authorSignature: 'Ignacio B.',
           rating: 5,
-          comment: 'Experiencia increíble al caer la tarde en el dique. Los kayaks impecables y la picada con quesos de cabra insuperable.',
-          createdAt: '19 de Octubre, 2026'
+          comment:
+            'Experiencia increíble al caer la tarde en el dique. Los kayaks impecables y la picada con quesos de cabra insuperable.',
+          createdAt: '19 de Octubre, 2026',
         },
         {
           id: 'rev_com_02',
           authorSignature: 'Mariana T.',
           rating: 5,
-          comment: 'La paz del agua al atardecer no tiene comparación. Lucas el guía transmitió una seguridad absoluta.',
-          createdAt: '20 de Octubre, 2026'
-        }
+          comment:
+            'La paz del agua al atardecer no tiene comparación. Lucas el guía transmitió una seguridad absoluta.',
+          createdAt: '20 de Octubre, 2026',
+        },
       ],
       userReview: {
         rating: 5,
-        comment: 'Experiencia increíble al caer la tarde en el dique. Los kayaks impecables y la picada con quesos de cabra insuperable.',
-        authorSignature: 'Ignacio B.'
-      }
+        comment:
+          'Experiencia increíble al caer la tarde en el dique. Los kayaks impecables y la picada con quesos de cabra insuperable.',
+        authorSignature: 'Ignacio B.',
+      },
     },
     {
       id: 'act_002',
@@ -103,7 +114,7 @@ export class ActivityHistoryService {
       provider: {
         name: 'Expediciones Puna 4x4 (Mariano Carrizo)',
         category: 'Transporte & Guía 4x4',
-        contactPhone: '+54 9 3834 55-9012'
+        contactPhone: '+54 9 3834 55-9012',
       },
       receipt: {
         receiptNumber: 'REC-2026-CAT-0238',
@@ -118,7 +129,7 @@ export class ActivityHistoryService {
         payerEmail: 'socio.fundador@catamarca.ar',
         payerName: 'Socio Fundador Catamarca',
         authCode: 'CBU-TRF-4910294',
-        status: 'aprobado'
+        status: 'aprobado',
       },
       memoriesCount: 3,
       memoryPhotos: ['/assets/images/piedra-pomez.png'],
@@ -128,18 +139,19 @@ export class ActivityHistoryService {
           url: '/assets/images/piedra-pomez.png',
           caption: 'Sombras alargadas sobre las formaciones de piedra pómez al mediodía.',
           uploadedBy: 'Carlos V.',
-          uploadedAt: '15/09/2026 13:20'
-        }
+          uploadedAt: '15/09/2026 13:20',
+        },
       ],
       reviews: [
         {
           id: 'rev_com_03',
           authorSignature: 'Carlos V.',
           rating: 5,
-          comment: 'Un paisaje lunar de otro planeta. La destreza del chofer en la arena es fundamental.',
-          createdAt: '16 de Septiembre, 2026'
-        }
-      ]
+          comment:
+            'Un paisaje lunar de otro planeta. La destreza del chofer en la arena es fundamental.',
+          createdAt: '16 de Septiembre, 2026',
+        },
+      ],
     },
     {
       id: 'act_003',
@@ -157,7 +169,7 @@ export class ActivityHistoryService {
       provider: {
         name: 'Guías de Cordillera Fiambalá (Valeria Morales)',
         category: 'Alta Montaña & Logística',
-        contactPhone: '+54 9 3834 33-8911'
+        contactPhone: '+54 9 3834 33-8911',
       },
       receipt: {
         receiptNumber: 'REC-2026-CAT-0319',
@@ -171,7 +183,7 @@ export class ActivityHistoryService {
         payerEmail: 'socio.fundador@catamarca.ar',
         payerName: 'Socio Fundador Catamarca',
         authCode: 'STRIPE-AUTH-7721',
-        status: 'aprobado'
+        status: 'aprobado',
       },
       memoriesCount: 2,
       memoryPhotos: ['/assets/images/laguna-verde.jpg'],
@@ -181,11 +193,11 @@ export class ActivityHistoryService {
           url: '/assets/images/laguna-verde.jpg',
           caption: 'El turquesa intenso de la Laguna Verde reflejando los seismiles.',
           uploadedBy: 'Valeria M.',
-          uploadedAt: '05/10/2026 15:00'
-        }
+          uploadedAt: '05/10/2026 15:00',
+        },
       ],
-      reviews: []
-    }
+      reviews: [],
+    },
   ];
 
   private readonly _activities = signal<ActivityRecord[]>(this.loadActivities());
@@ -232,7 +244,7 @@ export class ActivityHistoryService {
   uploadCommunityPhotos(
     slug: string,
     photos: { url: string; caption?: string }[],
-    authorSignature: string
+    authorSignature: string,
   ): boolean {
     const list = this._activities();
     const index = list.findIndex((a) => a.slug === slug || a.id === slug);
@@ -244,13 +256,13 @@ export class ActivityHistoryService {
       url: p.url,
       caption: p.caption || `Foto de travesía subida por ${authorSignature}`,
       uploadedBy: authorSignature,
-      uploadedAt: new Date().toLocaleDateString('es-AR')
+      uploadedAt: new Date().toLocaleDateString('es-AR'),
     }));
 
     const updatedActivity: ActivityRecord = {
       ...activity,
       communityPhotos: [...newPhotos, ...(activity.communityPhotos || [])],
-      memoriesCount: (activity.memoriesCount || 0) + newPhotos.length
+      memoriesCount: (activity.memoriesCount || 0) + newPhotos.length,
     };
 
     const updatedList = [...list];
@@ -264,7 +276,7 @@ export class ActivityHistoryService {
    */
   addReview(
     slug: string,
-    review: { rating: number; comment: string; authorSignature: string }
+    review: { rating: number; comment: string; authorSignature: string },
   ): boolean {
     const list = this._activities();
     const index = list.findIndex((a) => a.slug === slug || a.id === slug);
@@ -279,8 +291,8 @@ export class ActivityHistoryService {
       createdAt: new Date().toLocaleDateString('es-AR', {
         day: 'numeric',
         month: 'long',
-        year: 'numeric'
-      })
+        year: 'numeric',
+      }),
     };
 
     const updatedActivity: ActivityRecord = {
@@ -289,8 +301,8 @@ export class ActivityHistoryService {
       userReview: {
         rating: newReview.rating,
         comment: newReview.comment,
-        authorSignature: newReview.authorSignature
-      }
+        authorSignature: newReview.authorSignature,
+      },
     };
 
     const updatedList = [...list];
@@ -308,7 +320,7 @@ export class ActivityHistoryService {
           // Asegurar que tengan slugs y estructuras completas
           return parsed.map((item, idx) => ({
             ...this.defaultActivities[idx % this.defaultActivities.length],
-            ...item
+            ...item,
           }));
         }
       }
@@ -341,7 +353,7 @@ export class ActivityHistoryService {
       ...record,
       slug,
       communityPhotos: record.communityPhotos || [],
-      reviews: record.reviews || []
+      reviews: record.reviews || [],
     };
     const updated = [completeRecord, ...this._activities()];
     this.saveActivities(updated);
