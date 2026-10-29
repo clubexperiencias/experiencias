@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "ng": "ng",
-    "dev": "ng serve",
-    "start": "ng serve",
+    "dev": "sh -c 'PORT=3000 ng serve --host 0.0.0.0 --port 3000' --",
+    "start": "sh -c 'PORT=3000 ng serve --host 0.0.0.0 --port 3000' --",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test --watch=false"

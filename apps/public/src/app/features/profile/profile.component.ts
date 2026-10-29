@@ -10,7 +10,6 @@ import { PaymentManagerService } from '../../core/services/payment/payment-manag
 import { Experience } from '../../core/models/experience.model';
 import { PaymentGatewayType } from '../../core/models/payment.model';
 import { ModalType } from '../waitlist/waitlist.component';
-import { ReferralService } from '../../core/services/referral.service';
 import { FooterComponent } from '../../shared/components/footer/footer.component';
 import { HeaderComponent } from '../../shared/components/header/header.component';
 import {
@@ -39,7 +38,6 @@ export class ProfileComponent implements OnInit {
   readonly activityService = inject(ActivityHistoryService);
   readonly experienceService = inject(ExperienceService);
   readonly paymentManager = inject(PaymentManagerService);
-  readonly referralService = inject(ReferralService);
   readonly router = inject(Router);
 
   readonly breadcrumbs: BreadcrumbItem[] = [{ label: 'Inicio', url: '/' }, { label: 'Mi Perfil' }];
@@ -53,6 +51,14 @@ export class ProfileComponent implements OnInit {
 
   getExperienceRoute(experienceId: string): string {
     return experienceId === 'exp_kayak_pirquitas' ? '/experiencias/kayak' : '/experiencias';
+  }
+
+  readonly connectingGoogle = signal(false);
+
+  async connectGoogleAccount(): Promise<void> {
+    this.connectingGoogle.set(true);
+    await this.newsletter.signInWithGoogle();
+    this.connectingGoogle.set(false);
   }
 
   ngOnInit(): void {
@@ -246,8 +252,8 @@ export class ProfileComponent implements OnInit {
       if (!this.founderEmail().trim() && member.email) {
         this.founderEmail.set(member.email);
       }
-      if (!this.founderCity().trim() && member.nationality) {
-        this.founderCity.set(member.nationality);
+      if (!this.founderCity().trim()) {
+        this.founderCity.set('Catamarca');
       }
     }
     this.openModal('founder_application');
@@ -291,14 +297,10 @@ export class ProfileComponent implements OnInit {
     this.newsletter.currentMember()?.dni || this.newsletter.currentMember()?.documentNumber || '',
   );
   readonly memberPhone = signal(this.newsletter.currentMember()?.phone || '');
-  readonly memberNationality = signal(this.newsletter.currentMember()?.nationality || '');
   readonly selectedExperiences = signal<string[]>(
     this.newsletter.currentMember()?.experiencesWishlist || [],
   );
-  readonly memberNotes = signal(
-    this.newsletter.currentMember()?.wishlistNotes || this.newsletter.currentMember()?.bio || '',
-  );
-  readonly profileSaved = signal(this.newsletter.currentMember()?.profileCompleted || false);
+  readonly profileSaved = signal(Boolean(this.newsletter.currentMember()?.fullName));
 
   toggleExperienceWishlist(id: string): void {
     const current = this.selectedExperiences();
@@ -318,24 +320,25 @@ export class ProfileComponent implements OnInit {
     return found ? `${found.icon} ${found.title}` : id;
   }
 
-  saveMemberProfile(): void {
+  async saveMemberProfile(): Promise<void> {
     const dni = this.memberDni().replace(/\D/g, '').slice(0, 9);
     const phone = this.memberPhone().trim().slice(0, 25);
     if (!this.memberFullName().trim() || !/^\d{7,9}$/.test(dni) || !phone) {
       return;
     }
 
-    this.newsletter.updateMemberProfile({
+    const res = await this.newsletter.updateMemberProfile({
       fullName: this.memberFullName().trim().slice(0, 100),
       dni,
       phone,
-      nationality: this.memberNationality().trim().slice(0, 80),
       experiencesWishlist: this.selectedExperiences(),
-      wishlistNotes: this.memberNotes().trim().slice(0, 1000),
-      bio: this.memberNotes().trim().slice(0, 1000),
     });
 
-    this.profileSaved.set(true);
+    if (res.success) {
+      this.profileSaved.set(true);
+      this.copyStatus.set('¡Perfil de Socio guardado y sincronizado con éxito!');
+      setTimeout(() => this.copyStatus.set(null), 3000);
+    }
   }
 
   editMemberProfile(): void {
@@ -343,13 +346,11 @@ export class ProfileComponent implements OnInit {
   }
 
   copyLink(): void {
-    const member = this.newsletter.currentMember();
-    if (!member) return;
-    const url = `${location.origin}?ref=${member.referralCode}`;
+    const url = location.origin;
     navigator.clipboard
       ?.writeText(url)
       .then(() => {
-        this.copyStatus.set('¡Enlace de invitación copiado!');
+        this.copyStatus.set('¡Enlace de EXPERIENCIAS.CLUB copiado!');
         setTimeout(() => this.copyStatus.set(null), 2500);
       })
       .catch(() => {
@@ -359,19 +360,17 @@ export class ProfileComponent implements OnInit {
   }
 
   shareWhatsApp(): void {
-    const member = this.newsletter.currentMember();
     const text = encodeURIComponent(
-      `Me sumé como Socio Emergente a EXPERIENCIAS.CLUB (Edición Catamarca), el club privado de expediciones andinas y náuticas. ¡Unite a la lista de espera antes del lanzamiento! ${location.origin}?ref=${member?.referralCode ?? ''}`,
+      `Me sumé a EXPERIENCIAS.CLUB (Edición Catamarca), el club privado de expediciones andinas y náuticas. ${location.origin}`,
     );
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
   }
 
   shareX(): void {
-    const member = this.newsletter.currentMember();
     const text = encodeURIComponent(
-      'Acabo de registrarme como Socio Emergente en EXPERIENCIAS.CLUB (Edición Catamarca) — expediciones andinas y travesías náuticas.',
+      'Acabo de registrarme en EXPERIENCIAS.CLUB (Edición Catamarca) — expediciones andinas y travesías náuticas.',
     );
-    const url = encodeURIComponent(`${location.origin}?ref=${member?.referralCode ?? ''}`);
+    const url = encodeURIComponent(location.origin);
     window.open(`https://x.com/intent/tweet?text=${text}&url=${url}`, '_blank');
   }
 

@@ -176,8 +176,29 @@ mat-icon {
   overflow: clip;
 }
 
-/* En todas las rutas públicas y de socios (excepto perfil y admin), fondo limpio sin patrón de relieve ni overlay */
-.app-wallpaper-body::before,
+/* Oscurecimiento sutil y equilibrado en todas las subrutas */
+.app-wallpaper-body::before {
+  content: '' !important;
+  display: block !important;
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  background: linear-gradient(
+    180deg,
+    rgba(8, 14, 28, 0.2) 0%,
+    rgba(8, 14, 28, 0.26) 50%,
+    rgba(8, 14, 28, 0.32) 100%
+  ) !important;
+  z-index: 1 !important;
+  pointer-events: none !important;
+}
+
+.app-wallpaper-body > * {
+  position: relative;
+  z-index: 2;
+}
+
 .app-wallpaper-body .ambient-overlay {
   display: none !important;
   content: none !important;

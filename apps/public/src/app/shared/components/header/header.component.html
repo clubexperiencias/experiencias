@@ -41,7 +41,7 @@
       <span>Mi Perfil</span>
     </a>
     } @else {
-    <a routerLink="/ingresar" class="nav-pill-btn login-nav-btn" (click)="closeMobileMenu()">
+    <a routerLink="/ingresar" class="nav-pill-btn login-nav-btn" [class.highlight-green]="newsletter.profileSuccessHighlight()" (click)="closeMobileMenu()">
       <mat-icon class="btn-icon">login</mat-icon>
       <span>Iniciar Sesión</span>
     </a>
@@ -78,7 +78,7 @@
         <mat-icon class="row-arrow">chevron_right</mat-icon>
       </button>
       } @else {
-      <a routerLink="/ingresar" class="mobile-nav-row login-cta-row" (click)="closeMobileMenu()">
+      <a routerLink="/ingresar" class="mobile-nav-row login-cta-row" [class.highlight-green]="newsletter.profileSuccessHighlight()" (click)="closeMobileMenu()">
         <span class="row-title">Iniciar Sesión</span>
         <mat-icon class="row-arrow">arrow_forward</mat-icon>
       </a>

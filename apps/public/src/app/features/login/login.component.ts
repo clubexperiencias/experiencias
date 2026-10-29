@@ -1,39 +1,57 @@
 import { Component, HostListener, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterLink } from '@angular/router';
-import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { NewsletterService } from '../../core/services/newsletter.service';
 import { FooterComponent } from '../../shared/components/footer/footer.component';
 import { HeaderComponent } from '../../shared/components/header/header.component';
-import { BreadcrumbComponent, BreadcrumbItem } from '../../shared/components/breadcrumb/breadcrumb.component';
+import {
+  BreadcrumbComponent,
+  BreadcrumbItem,
+} from '../../shared/components/breadcrumb/breadcrumb.component';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule, MatIconModule, FooterComponent, HeaderComponent, BreadcrumbComponent],
+  imports: [
+    CommonModule,
+    MatIconModule,
+    FooterComponent,
+    HeaderComponent,
+    BreadcrumbComponent,
+  ],
   templateUrl: './login.component.html',
-  styleUrl: './login.component.css'
+  styleUrl: './login.component.css',
 })
 export class LoginComponent implements OnInit {
   readonly newsletter = inject(NewsletterService);
   readonly router = inject(Router);
 
-  readonly bg = signal('/assets/images/laguna_blanca.jpg');
-
   readonly breadcrumbs: BreadcrumbItem[] = [
     { label: 'Inicio', url: '/' },
-    { label: 'Iniciar Sesión' }
+    { label: 'Iniciar Sesión' },
   ];
 
   readonly mobileMenuOpen = signal(false);
   readonly email = signal('');
   readonly error = signal<string | null>(null);
+  readonly successMessage = signal<string | null>(null);
   readonly isLoading = signal(false);
+  readonly notFoundEmail = signal<string | null>(null);
 
   ngOnInit(): void {
     if (this.newsletter.isSubscribed()) {
       this.router.navigate(['/perfil']);
+    }
+  }
+
+  async signInGoogle(): Promise<void> {
+    this.isLoading.set(true);
+    this.error.set(null);
+    const res = await this.newsletter.signInWithGoogle();
+    this.isLoading.set(false);
+    if (!res.success) {
+      this.error.set(res.message);
     }
   }
 
@@ -48,7 +66,7 @@ export class LoginComponent implements OnInit {
   }
 
   async submitLogin(): Promise<void> {
-    const emailVal = this.email().trim();
+    const emailVal = this.email().trim().toLowerCase();
     if (!emailVal) {
       this.error.set('Por favor, ingresá tu correo electrónico.');
       return;
@@ -56,14 +74,40 @@ export class LoginComponent implements OnInit {
 
     this.isLoading.set(true);
     this.error.set(null);
+    this.successMessage.set(null);
+    this.notFoundEmail.set(null);
 
+    // Acceso Inmediato directo por correo
     try {
-      await this.newsletter.joinWaitlist({ email: emailVal });
+      const res = await this.newsletter.loginWithEmail(emailVal);
       this.isLoading.set(false);
-      this.router.navigate(['/perfil']);
+
+      if (res.success && res.entry) {
+        this.successMessage.set(res.message);
+        setTimeout(() => {
+          this.router.navigate(['/perfil']);
+        }, 350);
+      } else if (res.notFound) {
+        this.notFoundEmail.set(emailVal);
+        this.error.set(
+          res.message ||
+            'Guardamos tu correo en la lista de espera oficial. ¡Completá tus datos para ingresar como socio!',
+        );
+      } else {
+        this.error.set(res.message || 'Ocurrió un error al verificar tu membresía.');
+      }
     } catch {
       this.isLoading.set(false);
-      this.error.set('Ocurrió un error al ingresar. Intentá nuevamente.');
+      this.error.set('Error de conexión con el servicio. Intentá nuevamente.');
     }
+  }
+
+  registerNowWithEmail(): void {
+    const emailVal = (this.notFoundEmail() || this.email()).trim().toLowerCase();
+    if (!emailVal) return;
+
+    this.router.navigate(['/socios/emergentes/ingreso'], {
+      queryParams: { email: emailVal, from: 'waitlist' },
+    });
   }
 }

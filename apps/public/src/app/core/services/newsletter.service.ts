@@ -1,24 +1,48 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable, signal, computed, inject } from '@angular/core';
 import { WaitlistEntry, WaitlistSubmissionDto, WaitlistStats } from '../models/waitlist.model';
 import { DiscountCode } from '../models/bank-transfer.model';
+import { SUPABASE_CLIENT, isSupabaseConfigured } from '../supabase/supabase.client';
 
 const STORAGE_KEY = 'catamarca_club_waitlist';
 const SUBSCRIBED_KEY = 'catamarca_club_user_subscribed';
 const SPOTS_KEY = 'catamarca_club_reserved_spots';
 const USED_MEMBER_DISCOUNTS_KEY = 'catamarca_club_used_member_discounts';
+const PROSPECT_EMAIL_KEY = 'catamarca_club_prospect_email';
+
+function mapDbRowToEntry(row: any): WaitlistEntry {
+  return {
+    id: row.id,
+    email: row.email,
+    fullName: row.full_name || undefined,
+    dni: row.dni || undefined,
+    documentNumber: row.dni || undefined,
+    phone: row.phone || undefined,
+    experiencesWishlist: Array.isArray(row.experiences_wishlist) ? row.experiences_wishlist : [],
+    experiencesOther: row.experiences_other || undefined,
+    position: row.position,
+    createdAt: row.created_at ? new Date(row.created_at) : new Date(),
+    status: 'confirmed',
+    source: 'web_minimal_landing',
+    membershipTier: row.membership_tier || 'emergente',
+    authUserId: row.auth_user_id || undefined,
+  };
+}
 
 /**
- * NewsletterService — Modo Mock (localStorage)
+ * NewsletterService — Conexión a Supabase (separación de waitlist y socios)
  *
- * Cuando se active Supabase, este servicio se reemplazará por la versión
- * que usa el InjectionToken SUPABASE_CLIENT. Todo el contrato público
- * (signals, joinWaitlist, stats) se mantiene idéntico.
+ * 1. waitlist: Tabla sencilla de prospectos desde la landing page (/)
+ * 2. socios: Tabla oficial de miembros (arranca en 100) con DNI, Celular y experiencias
  */
 @Injectable({
   providedIn: 'root',
 })
 export class NewsletterService {
-  private readonly baseWaitlistCount = 142;
+  private readonly supabase = inject(SUPABASE_CLIENT);
+  private readonly baseWaitlistCount = 100;
+
+  readonly isSupabaseConnected = signal<boolean>(isSupabaseConfigured());
+  readonly lastProspectEmail = signal<string>(this.loadLastProspectEmail());
 
   private readonly _entries = signal<WaitlistEntry[]>(this.loadStoredEntries());
   private readonly _currentMember = signal<WaitlistEntry | null>(this.loadCurrentMember());
@@ -29,6 +53,74 @@ export class NewsletterService {
   private readonly usedMemberDiscounts = new Set(this.loadUsedMemberDiscounts());
 
   readonly profileSuccessHighlight = signal<boolean>(false);
+
+  constructor() {
+    this.initSupabaseData();
+  }
+
+  private async initSupabaseData(): Promise<void> {
+    if (!this.isSupabaseConnected()) return;
+
+    try {
+      const { data: statsData } = await this.supabase
+        .from('waitlist_stats')
+        .select('*')
+        .maybeSingle();
+
+      if (statsData?.total_members) {
+        const count = Number(statsData.total_members);
+        const spots = Math.min(60, Math.max(10, count));
+        this._reservedSpots.set(spots);
+      }
+
+      const current = this._currentMember();
+      if (current?.email) {
+        const { data: remoteSocio } = await this.supabase
+          .from('socios')
+          .select('*')
+          .eq('email', current.email.toLowerCase())
+          .maybeSingle();
+
+        if (remoteSocio) {
+          const mapped = mapDbRowToEntry(remoteSocio);
+          this._currentMember.set(mapped);
+          this.persistCurrentMember(mapped);
+        }
+      }
+
+      // Escuchar cambios de sesión en Supabase Auth (ej. Login con Google)
+      this.supabase.auth.onAuthStateChange(async (_event, session) => {
+        if (session?.user?.email) {
+          const authEmail = session.user.email.toLowerCase();
+          const authId = session.user.id;
+
+          try {
+            await this.supabase
+              .from('socios')
+              .update({ auth_user_id: authId })
+              .eq('email', authEmail);
+
+            const { data: remoteSocio } = await this.supabase
+              .from('socios')
+              .select('*')
+              .eq('email', authEmail)
+              .maybeSingle();
+
+            if (remoteSocio) {
+              const mapped = mapDbRowToEntry(remoteSocio);
+              this._currentMember.set(mapped);
+              this.persistCurrentMember(mapped);
+              this.setLoginSuccessFlag();
+            }
+          } catch {
+            // Manejo de error silencioso
+          }
+        }
+      });
+    } catch {
+      // Offline fallback
+    }
+  }
 
   setLoginSuccessFlag(): void {
     this._loginSuccessFlag.set(true);
@@ -90,137 +182,427 @@ export class NewsletterService {
         JSON.stringify([...this.usedMemberDiscounts]),
       );
     } catch {
-      // El descuento ya queda bloqueado durante esta sesión aunque no haya persistencia.
+      // Bloqueado en sesión
     }
   }
 
-  async joinWaitlist(
-    dto: WaitlistSubmissionDto,
-  ): Promise<{ success: boolean; entry?: WaitlistEntry; message: string }> {
+  /**
+   * 1. Paso Landing (/): Guarda correo ágilmente en la tabla waitlist
+   */
+  async recordWaitlistProspect(
+    email: string,
+  ): Promise<{ success: boolean; email: string; message: string }> {
     this._isLoading.set(true);
     this._errorMessage.set(null);
 
-    const cleanEmail = dto.email.trim().toLowerCase();
+    const cleanEmail = email.trim().toLowerCase();
     if (!this.isValidEmail(cleanEmail) || cleanEmail.length > 254) {
       this._isLoading.set(false);
       const msg = 'Por favor, ingresá un correo electrónico válido.';
       this._errorMessage.set(msg);
-      return { success: false, message: msg };
+      return { success: false, email: cleanEmail, message: msg };
     }
 
-    // Simular latencia de red
-    await new Promise((resolve) => setTimeout(resolve, 550));
+    this.lastProspectEmail.set(cleanEmail);
+    this.persistProspectEmail(cleanEmail);
 
-    const existing = this._entries().find((e) => e.email === cleanEmail);
-    if (existing) {
-      this._currentMember.set(existing);
-      this.persistCurrentMember(existing);
-      this._isLoading.set(false);
-      this.setLoginSuccessFlag();
-      return {
-        success: true,
-        entry: existing,
-        message: '¡Ya estás en la lista de espera exclusiva! Tu lugar está reservado.',
-      };
+    if (this.isSupabaseConnected()) {
+      try {
+        await this.supabase
+          .from('waitlist')
+          .upsert({ email: cleanEmail }, { onConflict: 'email' });
+      } catch (err) {
+        console.warn('[Supabase] Error registrando prospecto en waitlist:', err);
+      }
     }
 
-    const position = this.baseWaitlistCount + this._entries().length + 1;
-    const referralCode = 'CAT-' + Math.random().toString(36).substring(2, 7).toUpperCase();
-
-    const newEntry: WaitlistEntry = {
-      id: 'waitlist_' + Date.now().toString(),
+    this._isLoading.set(false);
+    return {
+      success: true,
       email: cleanEmail,
-      fullName: dto.fullName?.trim().slice(0, 100),
-      dni: (dto.dni ?? dto.documentNumber)?.replace(/\D/g, '').slice(0, 9),
-      documentNumber: (dto.documentNumber ?? dto.dni)?.replace(/\D/g, '').slice(0, 9),
-      phone: dto.phone?.trim().slice(0, 25),
-      nationality: dto.nationality?.trim().slice(0, 80),
+      message: 'Correo registrado en la lista de espera.',
+    };
+  }
+
+  /**
+   * 2. Paso Socios Emergentes (/socios/emergentes/ingreso):
+   * Crea o actualiza el socio en la tabla socios (DNI y Celular obligatorios)
+   */
+  async registerSocio(dto: {
+    fullName: string;
+    email: string;
+    dni: string;
+    phone: string;
+    experiencesWishlist?: string[];
+    experiencesOther?: string;
+  }): Promise<{ success: boolean; socio?: WaitlistEntry; message: string }> {
+    this._isLoading.set(true);
+    this._errorMessage.set(null);
+
+    const cleanEmail = dto.email.trim().toLowerCase();
+    const cleanName = dto.fullName.trim();
+    const cleanDni = dto.dni.replace(/\D/g, '').slice(0, 9);
+    const cleanPhone = dto.phone.trim().slice(0, 25);
+
+    if (!cleanName) {
+      this._isLoading.set(false);
+      return { success: false, message: 'Ingresá tu nombre y apellido.' };
+    }
+    if (!this.isValidEmail(cleanEmail)) {
+      this._isLoading.set(false);
+      return { success: false, message: 'Ingresá un correo electrónico válido.' };
+    }
+    if (!/^\d{7,9}$/.test(cleanDni)) {
+      this._isLoading.set(false);
+      return { success: false, message: 'El DNI debe contener entre 7 y 9 números.' };
+    }
+    if (!cleanPhone) {
+      this._isLoading.set(false);
+      return { success: false, message: 'Ingresá tu número de celular.' };
+    }
+
+    // 1. Guardar en Supabase si está conectado
+    if (this.isSupabaseConnected()) {
+      try {
+        // Verificar si ya existe socio con ese email
+        const { data: existing } = await this.supabase
+          .from('socios')
+          .select('*')
+          .eq('email', cleanEmail)
+          .maybeSingle();
+
+        if (existing) {
+          const { data: updated, error: updErr } = await this.supabase
+            .from('socios')
+            .update({
+              full_name: cleanName,
+              dni: cleanDni,
+              phone: cleanPhone,
+              experiences_wishlist: dto.experiencesWishlist || [],
+              experiences_other: dto.experiencesOther || null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('email', cleanEmail)
+            .select()
+            .single();
+
+          if (!updErr && updated) {
+            const entry = mapDbRowToEntry(updated);
+            this._currentMember.set(entry);
+            this.persistCurrentMember(entry);
+            this._isLoading.set(false);
+            this.setLoginSuccessFlag();
+            return {
+              success: true,
+              socio: entry,
+              message: `¡Datos actualizados con éxito, Socio #${entry.position}!`,
+            };
+          }
+        } else {
+          // Insertar nuevo socio con número secuencial automático (desde 100)
+          const { data: inserted, error: insErr } = await this.supabase
+            .from('socios')
+            .insert({
+              email: cleanEmail,
+              full_name: cleanName,
+              dni: cleanDni,
+              phone: cleanPhone,
+              experiences_wishlist: dto.experiencesWishlist || [],
+              experiences_other: dto.experiencesOther || null,
+              membership_tier: 'emergente',
+            })
+            .select()
+            .single();
+
+          if (!insErr && inserted) {
+            const entry = mapDbRowToEntry(inserted);
+            const updatedEntries = [entry, ...this._entries()];
+            this._entries.set(updatedEntries);
+            this._currentMember.set(entry);
+            this.persistEntries(updatedEntries);
+            this.persistCurrentMember(entry);
+
+            // Marcar en waitlist como convertido
+            this.supabase
+              .from('waitlist')
+              .update({ converted: true })
+              .eq('email', cleanEmail)
+              .then(() => {});
+
+            this._isLoading.set(false);
+            this.setLoginSuccessFlag();
+            return {
+              success: true,
+              socio: entry,
+              message: `¡Bienvenido al Club! Sos el Socio Emergente #${entry.position}.`,
+            };
+          }
+        }
+      } catch (err) {
+        console.warn('[Supabase] Error registrando socio en remoto:', err);
+      }
+    }
+
+    // 2. Fallback local / simulación si no está conectado
+    await new Promise((resolve) => setTimeout(resolve, 350));
+
+    const existingLocal = this._entries().find((e) => e.email === cleanEmail);
+    const position = existingLocal ? existingLocal.position : this.baseWaitlistCount + this._entries().length;
+
+    const newSocio: WaitlistEntry = {
+      id: existingLocal ? existingLocal.id : 'socio_' + Date.now().toString(),
+      email: cleanEmail,
+      fullName: cleanName,
+      dni: cleanDni,
+      documentNumber: cleanDni,
+      phone: cleanPhone,
       experiencesWishlist: dto.experiencesWishlist || [],
-      wishlistNotes: dto.wishlistNotes?.trim().slice(0, 1000),
-      bio: dto.bio?.trim().slice(0, 1000),
-      interest: dto.interest || 'all',
+      experiencesOther: dto.experiencesOther,
       position,
-      referralCode,
-      createdAt: new Date(),
+      createdAt: existingLocal ? existingLocal.createdAt : new Date(),
       status: 'confirmed',
       source: 'web_minimal_landing',
+      membershipTier: existingLocal?.membershipTier || 'emergente',
     };
 
-    const updated = [newEntry, ...this._entries()];
+    const updated = [newSocio, ...this._entries().filter((e) => e.email !== cleanEmail)];
     this._entries.set(updated);
-    this._currentMember.set(newEntry);
-
-    const nextSpots = Math.max(11, this._reservedSpots() + 1);
-    this._reservedSpots.set(nextSpots);
-    this.persistReservedSpots(nextSpots);
-
+    this._currentMember.set(newSocio);
     this.persistEntries(updated);
-    this.persistCurrentMember(newEntry);
+    this.persistCurrentMember(newSocio);
 
     this._isLoading.set(false);
     this.setLoginSuccessFlag();
 
     return {
       success: true,
-      entry: newEntry,
-      message: `¡Bienvenido al Club! Sos el miembro fundador #${position}.`,
+      socio: newSocio,
+      message: `¡Bienvenido al Club! Sos el Socio Emergente #${position}.`,
     };
   }
 
-  private loadUsedMemberDiscounts(): string[] {
+  /**
+   * Método compatible que maneja tanto prospecto por email como socio completo
+   */
+  async joinWaitlist(
+    dto: WaitlistSubmissionDto,
+  ): Promise<{ success: boolean; entry?: WaitlistEntry; message: string; isExisting?: boolean }> {
+    if (dto.fullName && (dto.dni || dto.documentNumber) && dto.phone) {
+      const res = await this.registerSocio({
+        fullName: dto.fullName,
+        email: dto.email,
+        dni: (dto.dni ?? dto.documentNumber) || '',
+        phone: dto.phone,
+        experiencesWishlist: dto.experiencesWishlist,
+        experiencesOther: dto.experiencesOther,
+      });
+      return {
+        success: res.success,
+        entry: res.socio,
+        message: res.message,
+      };
+    }
+
+    // Solo email (waitlist rápida)
+    const res = await this.recordWaitlistProspect(dto.email);
+    return {
+      success: res.success,
+      message: res.message,
+    };
+  }
+
+  /**
+   * Iniciar sesión directamente buscando en la tabla socios por email
+   */
+  async loginWithEmail(
+    email: string,
+  ): Promise<{
+    success: boolean;
+    entry?: WaitlistEntry;
+    notFound?: boolean;
+    isWaitlistOnly?: boolean;
+    message: string;
+  }> {
+    this._isLoading.set(true);
+    this._errorMessage.set(null);
+
+    const cleanEmail = email.trim().toLowerCase();
+    if (!this.isValidEmail(cleanEmail)) {
+      this._isLoading.set(false);
+      return { success: false, message: 'Por favor, ingresá un correo electrónico válido.' };
+    }
+
+    // 1. Buscar en tabla socios de Supabase
+    if (this.isSupabaseConnected()) {
+      try {
+        const { data: socio, error } = await this.supabase
+          .from('socios')
+          .select('*')
+          .eq('email', cleanEmail)
+          .maybeSingle();
+
+        if (!error && socio) {
+          const entry = mapDbRowToEntry(socio);
+          this._currentMember.set(entry);
+          this.persistCurrentMember(entry);
+          this._isLoading.set(false);
+          this.setLoginSuccessFlag();
+          return {
+            success: true,
+            entry,
+            message: `¡Hola de nuevo, ${entry.fullName || 'Socio'}!`,
+          };
+        }
+
+        // Si no está en socios, guardar el correo en la waitlist de paso
+        await this.recordWaitlistProspect(cleanEmail);
+        this._isLoading.set(false);
+        this.lastProspectEmail.set(cleanEmail);
+        return {
+          success: false,
+          notFound: true,
+          isWaitlistOnly: true,
+          message:
+            'Guardamos tu correo en la lista de espera oficial. ¡Completá tu perfil para recibir tu número oficial de socio!',
+        };
+      } catch (err) {
+        console.warn('[Supabase] Error en loginWithEmail:', err);
+      }
+    }
+
+    // 2. Buscar en caché local
+    const localEntry = this._entries().find((e) => e.email === cleanEmail);
+    if (localEntry) {
+      this._currentMember.set(localEntry);
+      this.persistCurrentMember(localEntry);
+      this._isLoading.set(false);
+      this.setLoginSuccessFlag();
+      return {
+        success: true,
+        entry: localEntry,
+        message: `¡Hola de nuevo, ${localEntry.fullName || 'Socio'}!`,
+      };
+    }
+
+    // Guardar correo en waitlist local de paso
+    await this.recordWaitlistProspect(cleanEmail);
+    this._isLoading.set(false);
+    return {
+      success: false,
+      notFound: true,
+      message:
+        'Guardamos tu correo en la lista de espera oficial. ¡Completá tu perfil para recibir tu número oficial de socio!',
+    };
+  }
+
+  async sendMagicLink(email: string): Promise<{ success: boolean; message: string }> {
+    const cleanEmail = email.trim().toLowerCase();
+    if (!this.isValidEmail(cleanEmail)) {
+      return { success: false, message: 'Ingresá un correo electrónico válido.' };
+    }
+
+    if (!this.isSupabaseConnected()) {
+      return {
+        success: true,
+        message: 'Modo local activo. Se iniciará sesión directamente con este correo.',
+      };
+    }
+
     try {
-      const stored = localStorage.getItem(USED_MEMBER_DISCOUNTS_KEY);
-      const parsed: unknown = stored ? JSON.parse(stored) : [];
-      return Array.isArray(parsed) && parsed.every((code) => typeof code === 'string')
-        ? parsed
-        : [];
-    } catch {
-      return [];
+      const redirectUrl =
+        typeof window !== 'undefined'
+          ? `${window.location.origin}/perfil`
+          : 'http://localhost:3000/perfil';
+
+      const { error } = await this.supabase.auth.signInWithOtp({
+        email: cleanEmail,
+        options: {
+          emailRedirectTo: redirectUrl,
+        },
+      });
+
+      if (error) {
+        return { success: false, message: error.message };
+      }
+
+      return {
+        success: true,
+        message: 'Te enviamos un enlace de acceso seguro a tu casilla de correo.',
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        message: err?.message || 'Error al enviar enlace de acceso.',
+      };
     }
   }
 
-  resetCurrentSubscription(): void {
-    this._currentMember.set(null);
-    localStorage.removeItem(SUBSCRIBED_KEY);
+  async signInWithGoogle(): Promise<{ success: boolean; message: string }> {
+    if (!this.isSupabaseConnected()) {
+      return {
+        success: false,
+        message: 'Modo local activo. Conexión a Supabase Auth no disponible.',
+      };
+    }
+
+    try {
+      const redirectUrl =
+        typeof window !== 'undefined'
+          ? `${window.location.origin}/perfil`
+          : 'http://localhost:3000/perfil';
+
+      const { error } = await this.supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectUrl,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        },
+      });
+
+      if (error) {
+        return { success: false, message: error.message };
+      }
+
+      return { success: true, message: 'Redirigiendo a Google para autenticación...' };
+    } catch (err: any) {
+      return {
+        success: false,
+        message: err?.message || 'Error al conectar con Google Auth.',
+      };
+    }
   }
 
-  updateMemberProfile(data: {
+  async updateMemberProfile(data: {
     fullName: string;
     dni?: string;
     phone?: string;
-    nationality: string;
-    experiencesWishlist: string[];
-    wishlistNotes?: string;
-    bio?: string;
-  }): { success: boolean; entry?: WaitlistEntry; message: string } {
+    nationality?: string;
+    experiencesWishlist?: string[];
+    experiencesOther?: string;
+  }): Promise<{ success: boolean; entry?: WaitlistEntry; message: string }> {
     const current = this._currentMember();
     if (!current) {
-      return { success: false, message: 'No hay una suscripción activa.' };
+      return { success: false, message: 'No hay una sesión activa.' };
     }
+
+    const cleanDni = data.dni ? data.dni.replace(/\D/g, '').slice(0, 9) : current.dni;
+    const cleanPhone = data.phone ? data.phone.trim().slice(0, 25) : current.phone;
 
     const updatedMember: WaitlistEntry = {
       ...current,
       fullName: data.fullName.slice(0, 100),
-      ...(data.dni
-        ? {
-            dni: data.dni.replace(/\D/g, '').slice(0, 9),
-            documentNumber: data.dni.replace(/\D/g, '').slice(0, 9),
-          }
-        : {}),
-      ...(data.phone ? { phone: data.phone.trim().slice(0, 25) } : {}),
-      nationality: data.nationality.slice(0, 80),
-      experiencesWishlist: data.experiencesWishlist,
-      wishlistNotes: data.wishlistNotes?.slice(0, 1000),
-      bio: data.bio?.slice(0, 1000),
-      profileCompleted: true,
+      dni: cleanDni,
+      documentNumber: cleanDni,
+      phone: cleanPhone,
+      experiencesWishlist: data.experiencesWishlist || current.experiencesWishlist,
+      experiencesOther: data.experiencesOther ?? current.experiencesOther,
     };
 
     this._currentMember.set(updatedMember);
     this.persistCurrentMember(updatedMember);
-
-    const nextSpots = Math.max(11, this._reservedSpots());
-    this._reservedSpots.set(nextSpots);
-    this.persistReservedSpots(nextSpots);
 
     const updatedEntries = this._entries().map((e) =>
       e.id === updatedMember.id || e.email === updatedMember.email ? updatedMember : e,
@@ -228,11 +610,40 @@ export class NewsletterService {
     this._entries.set(updatedEntries);
     this.persistEntries(updatedEntries);
 
+    if (this.isSupabaseConnected()) {
+      try {
+        const updatePayload: any = {
+          full_name: updatedMember.fullName,
+          dni: updatedMember.dni,
+          phone: updatedMember.phone,
+          experiences_wishlist: updatedMember.experiencesWishlist,
+          experiences_other: updatedMember.experiencesOther || null,
+          updated_at: new Date().toISOString(),
+        };
+
+        await this.supabase
+          .from('socios')
+          .update(updatePayload)
+          .eq('email', current.email.toLowerCase());
+      } catch (err) {
+        console.warn('[Supabase] Error sincronizando socio:', err);
+      }
+    }
+
     return {
       success: true,
       entry: updatedMember,
-      message: '¡Perfil de Socio Emergente guardado con éxito!',
+      message: '¡Perfil de Socio guardado con éxito!',
     };
+  }
+
+  resetCurrentSubscription(): void {
+    this._currentMember.set(null);
+    try {
+      localStorage.removeItem(SUBSCRIBED_KEY);
+    } catch {
+      /* ignore */
+    }
   }
 
   async activateMonthlySubscription(details?: {
@@ -290,6 +701,17 @@ export class NewsletterService {
     );
     this._entries.set(updatedEntries);
     this.persistEntries(updatedEntries);
+
+    if (this.isSupabaseConnected()) {
+      try {
+        await this.supabase
+          .from('socios')
+          .update({ membership_tier: 'activo' })
+          .eq('email', member.email.toLowerCase());
+      } catch {
+        // Ignorar
+      }
+    }
 
     this._isLoading.set(false);
     return { success: true, message: '¡Membresía Mensual activada con éxito!' };
@@ -398,14 +820,6 @@ export class NewsletterService {
     }
   }
 
-  private persistReservedSpots(spots: number): void {
-    try {
-      localStorage.setItem(SPOTS_KEY, spots.toString());
-    } catch {
-      /* modo privado */
-    }
-  }
-
   private loadStoredEntries(): WaitlistEntry[] {
     try {
       const data = localStorage.getItem(STORAGE_KEY);
@@ -419,7 +833,7 @@ export class NewsletterService {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
     } catch {
-      /* modo privado */
+      /* ignore */
     }
   }
 
@@ -436,7 +850,35 @@ export class NewsletterService {
     try {
       localStorage.setItem(SUBSCRIBED_KEY, JSON.stringify(entry));
     } catch {
-      /* modo privado */
+      /* ignore */
+    }
+  }
+
+  private loadUsedMemberDiscounts(): string[] {
+    try {
+      const stored = localStorage.getItem(USED_MEMBER_DISCOUNTS_KEY);
+      const parsed: unknown = stored ? JSON.parse(stored) : [];
+      return Array.isArray(parsed) && parsed.every((code) => typeof code === 'string')
+        ? parsed
+        : [];
+    } catch {
+      return [];
+    }
+  }
+
+  private loadLastProspectEmail(): string {
+    try {
+      return localStorage.getItem(PROSPECT_EMAIL_KEY) || '';
+    } catch {
+      return '';
+    }
+  }
+
+  private persistProspectEmail(email: string): void {
+    try {
+      localStorage.setItem(PROSPECT_EMAIL_KEY, email);
+    } catch {
+      /* ignore */
     }
   }
 }

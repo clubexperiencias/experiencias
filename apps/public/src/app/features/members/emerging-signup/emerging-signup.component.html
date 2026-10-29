@@ -1,20 +1,37 @@
 <div class="signup-page-container">
   <app-header [(mobileMenuOpen)]="mobileMenuOpen"></app-header>
-  <app-breadcrumb [items]="breadcrumbs"></app-breadcrumb>
 
-  <main class="signup-main-content">
+  <!-- Notificación en Verde (3.5 segundos) que reemplaza al Breadcrumb -->
+  @if (showSuccessNotification()) {
+    <aside class="registration-success-bar" role="status" aria-live="polite">
+      <div class="success-bar-container">
+        <div class="success-bar-content">
+          <span class="success-bar-tag">¡CORREO EN LISTA DE ESPERA!</span>
+          <span class="success-bar-sep">·</span>
+          <strong class="success-bar-title"
+            >Completa tu perfil para adelantar tu registro</strong
+          >
+        </div>
+      </div>
+    </aside>
+  } @else {
+    <app-breadcrumb [items]="breadcrumbs"></app-breadcrumb>
+  }
+
+  <div class="signup-wallpaper-body app-wallpaper-body">
+    <main class="signup-main-content">
     <section class="signup-card" aria-labelledby="signup-title">
       <div class="signup-header">
         <span class="signup-kicker">SOCIOS EMERGENTES · INGRESO</span>
         <h1 id="signup-title">Creá tu cuenta de socio</h1>
         <p>
-          Sumate gratis a la lista de espera y recibí tu número de socio. Estos datos también van a
-          formar tu perfil dentro del club.
+          Sumate gratis a la lista de espera oficial del club y recibí tu número correlativo de socio.
         </p>
       </div>
 
       <form class="signup-form" (submit)="$event.preventDefault(); submit()">
         <div class="signup-grid">
+          <!-- Fila 1 - Izquierda: Nombre y Apellido -->
           <label class="signup-field">
             <span>Nombre y Apellido <b>*</b></span>
             <input
@@ -28,26 +45,7 @@
             />
           </label>
 
-          <label class="signup-field">
-            <span>DNI <em>(opcional, hasta 9 dígitos)</em></span>
-            <input
-              type="text"
-              inputmode="numeric"
-              maxlength="9"
-              pattern="[0-9]{1,9}"
-              [value]="documentNumber()"
-              (input)="
-                documentNumber.set(
-                  $any($event.target)
-                    .value.replace(/[^0-9]/g, '')
-                    .slice(0, 9)
-                )
-              "
-              placeholder="Ej. 30123456"
-              autocomplete="off"
-            />
-          </label>
-
+          <!-- Fila 1 - Derecha: Correo Electrónico (autocompletado desde la waitlist) -->
           <label class="signup-field">
             <span>Correo Electrónico <b>*</b></span>
             <input
@@ -60,19 +58,44 @@
               required
             />
           </label>
-        </div>
 
-        <label class="signup-field">
-          <span>Nacionalidad <em>(opcional)</em></span>
-          <input
-            type="text"
-            [value]="nationality()"
-            (input)="nationality.set($any($event.target).value)"
-            maxlength="80"
-            placeholder="Ej. Argentina, Chilena, Uruguaya..."
-            autocomplete="country-name"
-          />
-        </label>
+          <!-- Fila 2 - Izquierda: DNI Obligatorio -->
+          <label class="signup-field">
+            <span>DNI <b>*</b> <em>(7 a 9 dígitos)</em></span>
+            <input
+              type="text"
+              inputmode="numeric"
+              maxlength="9"
+              pattern="[0-9]{7,9}"
+              [value]="documentNumber()"
+              (input)="
+                documentNumber.set(
+                  $any($event.target)
+                    .value.replace(/[^0-9]/g, '')
+                    .slice(0, 9)
+                )
+              "
+              placeholder="Ej. 30123456"
+              autocomplete="off"
+              required
+            />
+          </label>
+
+          <!-- Fila 2 - Derecha: Celular Obligatorio -->
+          <label class="signup-field">
+            <span>Celular <b>*</b> <em>(WhatsApp)</em></span>
+            <input
+              type="tel"
+              inputmode="tel"
+              maxlength="25"
+              [value]="phone()"
+              (input)="phone.set($any($event.target).value)"
+              placeholder="Ej. +54 9 3834 123456"
+              autocomplete="tel"
+              required
+            />
+          </label>
+        </div>
 
         <div class="signup-field">
           <span>¿Qué experiencias te gustaría vivir? <em>(opcional)</em></span>
@@ -91,18 +114,22 @@
               </button>
             }
           </div>
-        </div>
 
-        <label class="signup-field">
-          <span>Contanos sobre vos <em>(opcional)</em></span>
-          <textarea
-            rows="4"
-            [value]="notes()"
-            (input)="notes.set($any($event.target).value)"
-            maxlength="1000"
-            placeholder="Tus intereses, expectativas o la próxima aventura que imaginás..."
-          ></textarea>
-        </label>
+          @if (isSelected('otros')) {
+            <div class="other-exp-container" style="margin-top: 0.85rem">
+              <label class="signup-field">
+                <span>Especificá qué otra experiencia te interesa:</span>
+                <input
+                  type="text"
+                  [value]="otherExperience()"
+                  (input)="otherExperience.set($any($event.target).value)"
+                  maxlength="150"
+                  placeholder="Ej. Travesías 4x4, astroturismo, cabalgatas andinas..."
+                />
+              </label>
+            </div>
+          }
+        </div>
 
         @if (submitError()) {
           <p class="signup-error" role="alert">{{ submitError() }}</p>
@@ -122,6 +149,7 @@
       </form>
     </section>
   </main>
+  </div>
 
   <app-footer></app-footer>
 </div>

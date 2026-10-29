@@ -3,15 +3,15 @@
   "version": "0.0.0",
   "private": true,
   "packageManager": "pnpm@10.10.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "pnpm --filter public dev",
-    "build": "pnpm --filter public build",
-    "dev:public": "pnpm --filter public dev",
-    "build:public": "pnpm --filter public build",
-    "build:admin": "pnpm --filter admin build",
-    "build:providers": "pnpm --filter providers build",
-    "test": "pnpm -r test",
-    "typecheck": "pnpm -r typecheck",
+    "dev": "sh -c 'PORT=3000 npm run dev --workspace=apps/public' --",
+    "build": "npm run build --workspace=apps/public",
+    "dev:public": "npm run dev --workspace=apps/public",
+    "build:public": "npm run build --workspace=apps/public",
     "format": "prettier --write ."
   },
   "devDependencies": {

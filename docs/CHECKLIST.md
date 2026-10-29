@@ -35,7 +35,7 @@
 - [x] **Socios del Club**: Categorías de membresía (`explorador`, `aventurero`, `expedicionario`, `fundador`), descuentos y límite de reservas.
 - [x] **Prestadores de Servicios**: Razón social, CUIT/CUIL, categorías (guía de montaña, transporte 4x4, hospedaje, gastronomía, fotografía), estado de revisión (`pending_review`, `approved`, `suspended`) y datos bancarios para transferencias directas.
 - [x] **Administradores**: Permisos de aprobación de prestadores, resolución de soporte y auditoría.
-- [x] Script de migración SQL preparado en `supabase/migrations/001_waitlist_phase1.sql` con Row Level Security (RLS) e índices.
+- [x] Script de migración SQL consolidado en `supabase/migrations/002_waitlist_and_profiles.sql` con Row Level Security (RLS), auto-triggers para auth e índices.
 
 ---
 

@@ -78,10 +78,10 @@ export class KayakRatingsComponent {
     () => this.newsletter.currentMember()?.fullName?.trim() || '',
   );
   readonly memberProfileLocation = computed(
-    () => this.newsletter.currentMember()?.nationality?.trim() || '',
+    () => 'Catamarca, Argentina',
   );
   readonly hasProfileCompleted = computed(
-    () => !!(this.memberProfileName() && this.memberProfileLocation()),
+    () => !!this.memberProfileName(),
   );
 
   readonly reviewsList = signal<UserReview[]>([

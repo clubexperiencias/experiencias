@@ -22,10 +22,8 @@ export interface WaitlistEntry {
   fullName: string | null;
   interest: string | null;
   position: number;
-  referralCode: string;
   status: WaitlistStatus;
   source: string;
-  referredBy: string | null;
   createdAt: string;
 }
 
