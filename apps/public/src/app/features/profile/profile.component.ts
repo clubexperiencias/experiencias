@@ -62,6 +62,14 @@ export class ProfileComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    if (!this.newsletter.currentMember()) {
+      this.newsletter.isAuthenticated().then((authed) => {
+        if (!authed) {
+          this.router.navigate(['/ingresar']);
+        }
+      });
+    }
+
     if (this.newsletter.consumeLoginSuccessFlag()) {
       this.showSuccessNotification.set(true);
       this.newsletter.profileSuccessHighlight.set(true);

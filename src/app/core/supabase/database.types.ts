@@ -1,76 +1,181 @@
 /**
- * Tipos generados automáticamente desde el schema de Supabase.
- *
- * Para regenerarlos cuando modifiques tu schema corrés:
- *   pnpm dlx supabase gen types typescript --project-id TU_PROJECT_ID > src/app/core/supabase/database.types.ts
- *
- * Por ahora se define manualmente el shape inicial de la Fase 1 (newsletter/waitlist).
+ * Tipos de TypeScript para la base de datos de Supabase de EXPERIENCIAS.CLUB.
+ * Separación: 1. waitlist (prospectos) y 2. socios (miembros oficiales)
+ * Sincronizado con supabase/migrations/002_waitlist_and_profiles.sql
  */
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
+
+export type MembershipTier = 'emergente' | 'activo' | 'fundador';
 
 export interface Database {
   public: {
     Tables: {
       /**
-       * Lista de espera exclusiva para el Club de Experiencias Catamarca.
-       * Habilitada con Row Level Security (RLS):
-       *   - INSERT: todos los usuarios anónimos pueden insertarse.
-       *   - SELECT: solo el propio registro (por email) o admins.
+       * Tabla 1: Recopilación ágil de correos desde la landing page (/)
        */
-      waitlist_members: {
+      waitlist: {
         Row: {
-          id: string;               // UUID generado por Supabase
+          id: string;
           email: string;
-          full_name: string | null;
-          interest: string | null;  // 'puna_volcanes' | 'astroturismo_seismiles' | etc.
-          position: number;         // Número secuencial de lista de espera (SERIAL)
-          referral_code: string;    // Código único de invitación
-          status: 'pending' | 'confirmed' | 'invited';
-          source: string;           // 'web_minimal_landing' | 'referral' | etc.
-          referred_by: string | null; // Referral code del invitador, si aplica
-          created_at: string;       // ISO timestamp
+          converted: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          email: string;
+          converted?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          email?: string;
+          converted?: boolean;
+        };
+        Relationships: [];
+      };
+
+      /**
+       * Tabla 2: Socios Emergentes, Plenos y Fundadores
+       */
+      socios: {
+        Row: {
+          id: string;
+          email: string;
+          full_name: string;
+          dni: string;
+          phone: string;
+          experiences_wishlist: string[] | null;
+          experiences_other: string | null;
+          position: number;
+          membership_tier: MembershipTier;
+          auth_user_id: string | null;
+          created_at: string;
           updated_at: string;
         };
         Insert: {
+          id?: string;
           email: string;
-          full_name?: string | null;
-          interest?: string | null;
-          referral_code: string;
-          status?: 'pending' | 'confirmed' | 'invited';
-          source?: string;
-          referred_by?: string | null;
+          full_name: string;
+          dni: string;
+          phone: string;
+          experiences_wishlist?: string[] | null;
+          experiences_other?: string | null;
+          position?: number;
+          membership_tier?: MembershipTier;
+          auth_user_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
         };
         Update: {
-          status?: 'pending' | 'confirmed' | 'invited';
-          full_name?: string | null;
-          interest?: string | null;
+          email?: string;
+          full_name?: string;
+          dni?: string;
+          phone?: string;
+          experiences_wishlist?: string[] | null;
+          experiences_other?: string | null;
+          membership_tier?: MembershipTier;
+          auth_user_id?: string | null;
+          updated_at?: string;
         };
+        Relationships: [];
+      };
+
+      /**
+       * Tabla 3: Postulaciones de Socios Fundadores (/socios/fundadores)
+       */
+      postulaciones_fundadores: {
+        Row: {
+          id: string;
+          full_name: string;
+          email: string;
+          phone: string;
+          motivation_letter: string;
+          agreed_to_protocol: boolean;
+          status: 'en_evaluacion' | 'aprobada' | 'rechazada';
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          full_name: string;
+          email: string;
+          phone: string;
+          motivation_letter: string;
+          agreed_to_protocol?: boolean;
+          status?: 'en_evaluacion' | 'aprobada' | 'rechazada';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          full_name?: string;
+          email?: string;
+          phone?: string;
+          motivation_letter?: string;
+          agreed_to_protocol?: boolean;
+          status?: 'en_evaluacion' | 'aprobada' | 'rechazada';
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+
+      /**
+       * Tabla 4: Postulaciones de Prestadores & Guías Locales (/experiencias/prestadores)
+       */
+      postulaciones_prestadores: {
+        Row: {
+          id: string;
+          full_name: string;
+          category: string;
+          region: string;
+          email: string;
+          phone: string;
+          website: string;
+          description: string;
+          status: 'pendiente' | 'aprobado' | 'rechazado';
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          full_name: string;
+          category?: string;
+          region?: string;
+          email: string;
+          phone: string;
+          website: string;
+          description: string;
+          status?: 'pendiente' | 'aprobado' | 'rechazado';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          full_name?: string;
+          category?: string;
+          region?: string;
+          email?: string;
+          phone?: string;
+          website?: string;
+          description?: string;
+          status?: 'pendiente' | 'aprobado' | 'rechazado';
+          updated_at?: string;
+        };
+        Relationships: [];
       };
     };
+
     Views: {
-      /**
-       * Vista pública para mostrar el contador de miembros sin exponer datos sensibles.
-       */
       waitlist_stats: {
         Row: {
           total_members: number;
-          confirmed_members: number;
-          invited_members: number;
+          max_position: number | null;
         };
+        Relationships: [];
       };
     };
+
     Functions: Record<string, never>;
     Enums: {
-      experience_interest:
-        | 'puna_volcanes'
-        | 'astroturismo_seismiles'
-        | 'dunas_sandboard'
-        | 'termas_bienestar'
-        | 'ruta_adobe_cultura'
-        | 'gastronomia_vinos'
-        | 'all';
-      member_status: 'pending' | 'confirmed' | 'invited';
+      membership_tier: MembershipTier;
     };
   };
 }

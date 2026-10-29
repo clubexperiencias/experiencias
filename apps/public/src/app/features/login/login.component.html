@@ -29,23 +29,6 @@
             </div>
           }
 
-          @if (notFoundEmail()) {
-            <div class="not-found-prompt">
-              <p class="not-found-text">
-                Guardamos tu correo en la lista de espera oficial. ¿Querés completar tu perfil de <strong>Socio Emergente</strong> ahora para recibir tu credencial y número de socio?
-              </p>
-              <button
-                type="button"
-                class="onboard-now-btn"
-                [disabled]="isLoading()"
-                (click)="registerNowWithEmail()"
-              >
-                <mat-icon class="btn-icon">how_to_reg</mat-icon>
-                <span>Completar Perfil de Socio Ahora</span>
-              </button>
-            </div>
-          }
-
           @if (successMessage()) {
             <div class="login-alert-success">
               <mat-icon class="alert-icon">check_circle</mat-icon>
@@ -53,36 +36,55 @@
             </div>
           }
 
-          <form class="login-form" (submit)="submitLogin(); $event.preventDefault()">
-            <div class="form-field">
-              <label for="login-email-input" class="field-lbl">Correo Electrónico</label>
-              <input
-                id="login-email-input"
-                type="email"
-                class="field-input"
-                placeholder="socio@ejemplo.com"
-                [value]="email()"
-                (input)="email.set($any($event.target).value)"
-                maxlength="254"
-                required
-                autofocus
-              />
+          @if (notFoundEmail()) {
+            <div class="not-found-prompt">
+              <p class="not-found-text">
+                Guardamos tu correo en la lista de espera oficial. ¿Querés completar tu perfil de <strong>Socio Emergente</strong> ahora?
+              </p>
+              <button
+                type="button"
+                class="onboard-now-btn"
+                [disabled]="isLoading()"
+                (click)="registerNowWithEmail()"
+              >
+                <span>Completar Perfil de Socio</span>
+              </button>
             </div>
+          } @else {
+            <form class="login-form" (submit)="submitLogin(); $event.preventDefault()">
+              <div class="form-field">
+                <label for="login-email-input" class="field-lbl">Correo Electrónico</label>
+                <input
+                  id="login-email-input"
+                  type="email"
+                  class="field-input"
+                  placeholder="socio@ejemplo.com"
+                  [value]="email()"
+                  (input)="onEmailInput($event)"
+                  (invalid)="onEmailInvalid($event)"
+                  maxlength="254"
+                  required
+                  autofocus
+                />
+              </div>
 
-            <button
-              type="submit"
-              class="login-submit-btn"
-              [disabled]="!email().trim() || isLoading()"
-            >
-              <span>
-                {{ isLoading() ? 'Verificando membresía...' : 'Verificar e Ingresar' }}
-              </span>
-              <mat-icon class="btn-icon">arrow_forward</mat-icon>
-            </button>
-          </form>
+              <button
+                type="submit"
+                class="login-submit-btn"
+                [disabled]="!email().trim() || isLoading()"
+              >
+                <span>
+                  {{ isLoading() ? 'Verificando membresía...' : 'Verificar e Ingresar' }}
+                </span>
+                <mat-icon class="btn-icon">arrow_forward</mat-icon>
+              </button>
+            </form>
+          }
 
           <div class="google-auth-separator">
-            <span>o autenticate con tu cuenta oficial</span>
+            <span class="sep-line"></span>
+            <span class="sep-text">o autenticate con tu cuenta oficial</span>
+            <span class="sep-line"></span>
           </div>
 
           <button
@@ -117,5 +119,5 @@
   </div>
 
   <!-- Footer Compartido -->
-  <app-footer />
+  <app-footer [hideSessionBar]="true" />
 </div>

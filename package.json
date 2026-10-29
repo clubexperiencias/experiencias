@@ -8,10 +8,10 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "sh -c 'PORT=3000 npm run dev --workspace=apps/public' --",
-    "build": "npm run build --workspace=apps/public",
+    "dev": "sh -c 'PORT=4200 npm run dev --workspace=apps/public' --",
+    "build": "node ./scripts/set-env.js && npm run build --workspace=apps/public",
     "dev:public": "npm run dev --workspace=apps/public",
-    "build:public": "npm run build --workspace=apps/public",
+    "build:public": "node ./scripts/set-env.js && npm run build --workspace=apps/public",
     "format": "prettier --write ."
   },
   "devDependencies": {

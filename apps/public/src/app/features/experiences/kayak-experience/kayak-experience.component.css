@@ -343,10 +343,11 @@
   position: absolute;
   top: 12px;
   left: 12px;
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
   background: var(--color-gold);
   color: #0b1120;
   padding: 0.3rem 0.65rem;

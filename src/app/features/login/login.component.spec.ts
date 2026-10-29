@@ -40,14 +40,32 @@ describe('LoginComponent (/ingresar)', () => {
     expect(current.textContent).toContain('Iniciar Sesión');
   });
 
-  it('should log in and navigate to /perfil when submitting valid email', async () => {
+  it('should redirect to /socios/emergentes when email was already in waitlist', async () => {
     const navigateSpy = vi.spyOn(router, 'navigate');
-    component.email.set('socio.test@experiencias.club');
+    await component.newsletter.recordWaitlistProspect('waitlist.test@experiencias.club');
+    component.email.set('waitlist.test@experiencias.club');
 
     await component.submitLogin();
     fixture.detectChanges();
 
-    expect(component.newsletter.isSubscribed()).toBe(true);
-    expect(navigateSpy).toHaveBeenCalledWith(['/perfil']);
+    expect(navigateSpy).toHaveBeenCalledWith(['/socios/emergentes'], {
+      queryParams: { email: 'waitlist.test@experiencias.club', from: 'waitlist' },
+    });
+  });
+
+  it('should inform user to sign in via Google if they already completed the Socio form', async () => {
+    await component.newsletter.registerSocio({
+      fullName: 'Socio Existente',
+      email: 'socio.test@experiencias.club',
+      dni: '30123456',
+      phone: '3834123456',
+    });
+    component.newsletter.resetCurrentSubscription();
+
+    component.email.set('socio.test@experiencias.club');
+    await component.submitLogin();
+    fixture.detectChanges();
+
+    expect(component.error()).toContain('Google');
   });
 });

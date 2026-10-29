@@ -28,12 +28,13 @@ describe('FoundersComponent (/fundadores)', () => {
   it('should display the exclusive circle tag', () => {
     const circleTag = fixture.nativeElement.querySelector('.founder-exclusive-tag');
     expect(circleTag).toBeTruthy();
-    expect(circleTag.textContent).toContain('CÍRCULO VITALICIO EXCLUSIVO');
+    expect(circleTag.textContent).toContain('NIVEL 3: VITALICIO');
   });
 
   it('should submit founder application when valid form is provided', () => {
     component.founderName.set('Ignacio Balcarce');
     component.founderEmail.set('ignacio@fundador.com');
+    component.founderPhone.set('+54 9 3834 123456');
     component.founderLetter.set('Mi carta de motivación para el círculo vitalicio...');
     component.founderAgreedToPrice.set(true);
 

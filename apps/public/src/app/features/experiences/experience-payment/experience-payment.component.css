@@ -472,8 +472,8 @@
 }
 .pay-subtle-link:hover,
 .pay-subtle-link:focus-visible {
-  color: #80b3ff;
-  text-decoration-color: #80b3ff;
+  color: #ffcc00;
+  text-decoration-color: #ffcc00;
 }
 .pay-required {
   color: #ffcc00;

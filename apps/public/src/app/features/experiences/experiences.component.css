@@ -305,10 +305,11 @@
   position: absolute;
   top: 12px;
   left: 12px;
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
-  letter-spacing: 0.12em;
-  font-weight: 800;
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  line-height: 1.2;
   text-transform: uppercase;
   background: var(--color-gold);
   color: #0b1120;
@@ -323,7 +324,7 @@
   background: var(--color-gold);
   color: #0b1120;
   border: 1px solid var(--color-gold);
-  font-weight: 800;
+  font-weight: 700;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
@@ -332,11 +333,13 @@
   top: 12px;
   right: 12px;
   font-size: 0.7rem;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
   background: #ffffff;
   color: #0b1120;
-  padding: 0.25rem 0.55rem;
+  padding: 0.28rem 0.58rem;
   border-radius: 2px;
 }
 
@@ -526,13 +529,14 @@
 .exp-locked-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.45rem;
   padding: 0.65rem 1.1rem;
-  background: #ffcc00;
-  color: #000000;
-  border: 1px solid #ffcc00;
+  background: #d9a300;
+  color: #0b1120;
+  border: 1px solid #d9a300;
   font-size: 0.84rem;
-  font-weight: 600;
+  font-weight: 700;
   border-radius: 2px;
   cursor: not-allowed;
   font-family: inherit;
@@ -779,8 +783,11 @@
   color: #0b1120;
   border: 1px solid var(--color-gold);
   border-radius: 2px;
-  font: 800 0.65rem var(--font-mono);
-  letter-spacing: 0.12em;
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
@@ -800,8 +807,10 @@
   display: block;
   margin-bottom: 0.3rem;
   color: var(--color-gold);
-  font: 700 0.68rem var(--font-mono);
-  letter-spacing: 0.12em;
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 

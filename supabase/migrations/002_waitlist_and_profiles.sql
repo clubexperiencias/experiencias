@@ -173,3 +173,115 @@ GRANT SELECT, INSERT ON public.waitlist TO anon, authenticated;
 GRANT ALL ON public.socios TO anon, authenticated;
 GRANT SELECT ON public.waitlist_stats TO anon, authenticated;
 GRANT USAGE, SELECT ON SEQUENCE public.socios_position_seq TO anon, authenticated;
+
+-- ============================================================
+-- 3. TABLA Y COLUMNAS: Postulaciones de Socios Fundadores
+--    (con teléfono obligatorio y adhesión al protocolo)
+-- ============================================================
+ALTER TABLE public.socios
+  ADD COLUMN IF NOT EXISTS founder_motivation_letter TEXT,
+  ADD COLUMN IF NOT EXISTS founder_agreed_to_protocol BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS founder_application_status TEXT
+    CHECK (founder_application_status IN ('pendiente', 'aprobado', 'rechazado'));
+
+-- Asegurar que phone sea obligatorio (NOT NULL) en socios
+UPDATE public.socios SET phone = '' WHERE phone IS NULL;
+ALTER TABLE public.socios ALTER COLUMN phone SET NOT NULL;
+
+CREATE TABLE IF NOT EXISTS public.postulaciones_fundadores (
+  id                   UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  full_name            TEXT NOT NULL,
+  email                TEXT NOT NULL,
+  phone                TEXT NOT NULL, -- Obligatorio
+  motivation_letter    TEXT NOT NULL,
+  agreed_to_protocol   BOOLEAN NOT NULL DEFAULT true CHECK (agreed_to_protocol = true),
+  status               TEXT NOT NULL DEFAULT 'en_evaluacion'
+                       CHECK (status IN ('en_evaluacion', 'aprobada', 'rechazada')),
+  created_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at           TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Si la tabla ya existía con phone nullable, actualizarla a NOT NULL
+UPDATE public.postulaciones_fundadores SET phone = '' WHERE phone IS NULL;
+ALTER TABLE public.postulaciones_fundadores ALTER COLUMN phone SET NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_postulaciones_fundadores_email ON public.postulaciones_fundadores(email);
+
+DROP TRIGGER IF EXISTS postulaciones_fundadores_updated_at ON public.postulaciones_fundadores;
+CREATE TRIGGER postulaciones_fundadores_updated_at
+  BEFORE UPDATE ON public.postulaciones_fundadores
+  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+ALTER TABLE public.postulaciones_fundadores ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Permitir envío de postulaciones de fundadores" ON public.postulaciones_fundadores;
+CREATE POLICY "Permitir envío de postulaciones de fundadores"
+  ON public.postulaciones_fundadores
+  FOR INSERT
+  TO anon, authenticated
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Permitir consultar postulaciones de fundadores" ON public.postulaciones_fundadores;
+CREATE POLICY "Permitir consultar postulaciones de fundadores"
+  ON public.postulaciones_fundadores
+  FOR SELECT
+  TO anon, authenticated
+  USING (true);
+
+GRANT SELECT, INSERT ON public.postulaciones_fundadores TO anon, authenticated;
+
+-- ============================================================
+-- 4. TABLA: Postulaciones de Prestadores & Guías Locales (/experiencias/prestadores)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.postulaciones_prestadores (
+  id                   UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  full_name            TEXT NOT NULL, -- Nombre y Apellido / Razón Social
+  category             TEXT NOT NULL DEFAULT 'guia_montaña'
+                       CHECK (category IN (
+                         'guia_montaña',
+                         'kayak_nautica',
+                         'transporte_4x4',
+                         'alojamiento',
+                         'gastronomia',
+                         'fotografia',
+                         'cabalgatas',
+                         'arqueologia',
+                         'artesanias'
+                       )),
+  region               TEXT NOT NULL DEFAULT 'Puna & Fiambalá',
+  email                TEXT NOT NULL,
+  phone                TEXT NOT NULL,
+  website              TEXT NOT NULL,
+  description          TEXT NOT NULL,
+  status               TEXT NOT NULL DEFAULT 'pendiente'
+                       CHECK (status IN ('pendiente', 'aprobado', 'rechazado')),
+  created_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at           TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_postulaciones_prestadores_email    ON public.postulaciones_prestadores(email);
+CREATE INDEX IF NOT EXISTS idx_postulaciones_prestadores_category ON public.postulaciones_prestadores(category);
+CREATE INDEX IF NOT EXISTS idx_postulaciones_prestadores_region   ON public.postulaciones_prestadores(region);
+
+DROP TRIGGER IF EXISTS postulaciones_prestadores_updated_at ON public.postulaciones_prestadores;
+CREATE TRIGGER postulaciones_prestadores_updated_at
+  BEFORE UPDATE ON public.postulaciones_prestadores
+  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+ALTER TABLE public.postulaciones_prestadores ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Permitir envío de postulaciones de prestadores" ON public.postulaciones_prestadores;
+CREATE POLICY "Permitir envío de postulaciones de prestadores"
+  ON public.postulaciones_prestadores
+  FOR INSERT
+  TO anon, authenticated
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Permitir consultar postulaciones de prestadores" ON public.postulaciones_prestadores;
+CREATE POLICY "Permitir consultar postulaciones de prestadores"
+  ON public.postulaciones_prestadores
+  FOR SELECT
+  TO anon, authenticated
+  USING (true);
+
+GRANT SELECT, INSERT ON public.postulaciones_prestadores TO anon, authenticated;

@@ -56,6 +56,7 @@
               placeholder="Ingresá tu correo electrónico..."
               [value]="email()"
               (input)="email.set($any($event.target).value)"
+              maxlength="254"
               (keyup.enter)="submit()"
               [disabled]="newsletter.isLoading()"
               autocomplete="email"
@@ -118,6 +119,7 @@
                 placeholder="tu-correo@ejemplo.com"
                 [value]="loginEmail()"
                 (input)="loginEmail.set($any($event.target).value)"
+                maxlength="254"
                 (keyup.enter)="submitLogin()"
               />
             </div>
@@ -160,7 +162,7 @@
                 @if (newsletter.isSubscribed()) {
                   <span class="tier-level-badge current">✓ TU NIVEL ACTUAL</span>
                 } @else {
-                  <span class="tier-level-badge initial">NIVEL 1 · PUNTO DE PARTIDA</span>
+                  <span class="tier-level-badge initial">NIVEL 1: PUNTO DE PARTIDA</span>
                 }
                 <h4 class="tier-name">Socio Emergente</h4>
               </div>
@@ -172,7 +174,7 @@
 
               <ul class="tier-benefits">
                 <li>Acceso anticipado a preventa de temporada 2026</li>
-                <li>Código de invitación personal para referidos</li>
+                <li>Comunidad privada de expedicionarios andinos</li>
                 <li>Bitácoras exclusivas y novedades de rutas andinas</li>
                 <li>Prioridad en cupos de expediciones inaugurales</li>
               </ul>
@@ -219,9 +221,9 @@
             <div class="tier-card highlight" [class.user-next-tier]="newsletter.isSubscribed()">
               <div class="tier-card-header">
                 @if (newsletter.isSubscribed()) {
-                  <span class="tier-level-badge next">PRÓXIMO SALTO RECOMENDADO</span>
+                  <span class="tier-level-badge next">NIVEL 2: PRÓXIMAMENTE</span>
                 } @else {
-                  <span class="tier-level-badge">NIVEL 2 · MEMBRESÍA MENSUAL</span>
+                  <span class="tier-level-badge">NIVEL 2: PRÓXIMAMENTE</span>
                 }
                 <h4 class="tier-name">Socio Pleno</h4>
               </div>
@@ -270,7 +272,7 @@
             <!-- 3. Socio Fundador -->
             <div class="tier-card founder-card">
               <div class="tier-card-header">
-                <span class="tier-level-badge founder">VITALICIO · CUPO LIMITADO (60)</span>
+                <span class="tier-level-badge founder">NIVEL 3: VITALICIO</span>
                 <h4 class="tier-name">Socio Fundador</h4>
               </div>
 
@@ -518,7 +520,7 @@
                     }
                   </div>
                   <div class="agreement-text">
-                    <strong>Compromiso formal y adhesión al protocolo de admisión</strong>
+                    <strong>COMPROMISO FORMAL Y ADHESIÓN AL PROTOCOLO DE ADMISIÓN <b style="color: #ffcc00;">*</b></strong>
                     <p>
                       Declaro estar al tanto y en conformidad con el aporte patrimonial
                       correspondiente a la

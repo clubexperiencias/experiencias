@@ -8,6 +8,11 @@ export function getSupabaseConfig(): { url: string; anonKey: string } {
   let anonKey = environment.supabase?.anonKey || '';
 
   if (typeof window !== 'undefined') {
+    const win = window as any;
+    if (win.__SUPABASE_CONFIG__?.url && win.__SUPABASE_CONFIG__?.anonKey) {
+      url = win.__SUPABASE_CONFIG__.url;
+      anonKey = win.__SUPABASE_CONFIG__.anonKey;
+    }
     const customUrl = localStorage.getItem('CATAMARCA_SUPABASE_URL');
     const customKey = localStorage.getItem('CATAMARCA_SUPABASE_ANON_KEY');
     if (customUrl && customKey) {
@@ -24,9 +29,13 @@ export function isSupabaseConfigured(): boolean {
   return (
     Boolean(url) &&
     Boolean(anonKey) &&
+    anonKey.length > 20 &&
     !url.includes('TU_PROYECTO') &&
     !url.includes('mock.supabase.co') &&
-    !anonKey.includes('TU_ANON_PUBLIC_KEY')
+    !url.includes('test.supabase.co') &&
+    !url.includes('placeholder-project.supabase.co') &&
+    !anonKey.includes('TU_ANON_PUBLIC_KEY') &&
+    anonKey !== 'eyTest'
   );
 }
 

@@ -139,6 +139,55 @@ export class NewsletterService {
   readonly isLoading = this._isLoading.asReadonly();
   readonly errorMessage = this._errorMessage.asReadonly();
   readonly isSubscribed = computed(() => this._currentMember() !== null);
+
+  async isAuthenticated(): Promise<boolean> {
+    if (this._currentMember()) {
+      return true;
+    }
+
+    if (this.isSupabaseConnected()) {
+      try {
+        const { data } = await this.supabase.auth.getSession();
+        if (data?.session?.user?.email) {
+          const authEmail = data.session.user.email.toLowerCase();
+          const { data: remoteSocio } = await this.supabase
+            .from('socios')
+            .select('*')
+            .eq('email', authEmail)
+            .maybeSingle();
+
+          if (remoteSocio) {
+            const entry = mapDbRowToEntry(remoteSocio);
+            this._currentMember.set(entry);
+            this.persistCurrentMember(entry);
+            return true;
+          }
+
+          const fallbackEntry: WaitlistEntry = {
+            id: data.session.user.id,
+            email: authEmail,
+            fullName: data.session.user.user_metadata?.['full_name'] || authEmail.split('@')[0],
+            dni: '',
+            phone: '',
+            membershipTier: 'emergente',
+            authUserId: data.session.user.id,
+            position: 100,
+            status: 'confirmed',
+            source: 'supabase_auth',
+            createdAt: new Date(),
+          };
+          this._currentMember.set(fallbackEntry);
+          this.persistCurrentMember(fallbackEntry);
+          return true;
+        }
+      } catch (err) {
+        console.warn('[NewsletterService] Error comprobando sesión:', err);
+      }
+    }
+
+    return false;
+  }
+
   readonly isMonthlyActive = computed(() => {
     const member = this._currentMember();
     return member?.membershipTier === 'activo' || member?.subscription?.status === 'active';
@@ -208,9 +257,13 @@ export class NewsletterService {
 
     if (this.isSupabaseConnected()) {
       try {
-        await this.supabase
+        const { error } = await this.supabase
           .from('waitlist')
-          .upsert({ email: cleanEmail }, { onConflict: 'email' });
+          .upsert({ email: cleanEmail }, { onConflict: 'email', ignoreDuplicates: true });
+
+        if (error) {
+          console.warn('[Supabase] Advertencia guardando en waitlist:', error.message);
+        }
       } catch (err) {
         console.warn('[Supabase] Error registrando prospecto en waitlist:', err);
       }
@@ -225,7 +278,7 @@ export class NewsletterService {
   }
 
   /**
-   * 2. Paso Socios Emergentes (/socios/emergentes/ingreso):
+   * 2. Paso Socios Emergentes (/socios/emergentes):
    * Crea o actualiza el socio en la tabla socios (DNI y Celular obligatorios)
    */
   async registerSocio(dto: {
@@ -235,7 +288,12 @@ export class NewsletterService {
     phone: string;
     experiencesWishlist?: string[];
     experiencesOther?: string;
-  }): Promise<{ success: boolean; socio?: WaitlistEntry; message: string }> {
+  }): Promise<{
+    success: boolean;
+    socio?: WaitlistEntry;
+    alreadyRegistered?: boolean;
+    message: string;
+  }> {
     this._isLoading.set(true);
     this._errorMessage.set(null);
 
@@ -272,32 +330,13 @@ export class NewsletterService {
           .maybeSingle();
 
         if (existing) {
-          const { data: updated, error: updErr } = await this.supabase
-            .from('socios')
-            .update({
-              full_name: cleanName,
-              dni: cleanDni,
-              phone: cleanPhone,
-              experiences_wishlist: dto.experiencesWishlist || [],
-              experiences_other: dto.experiencesOther || null,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('email', cleanEmail)
-            .select()
-            .single();
-
-          if (!updErr && updated) {
-            const entry = mapDbRowToEntry(updated);
-            this._currentMember.set(entry);
-            this.persistCurrentMember(entry);
-            this._isLoading.set(false);
-            this.setLoginSuccessFlag();
-            return {
-              success: true,
-              socio: entry,
-              message: `¡Datos actualizados con éxito, Socio #${entry.position}!`,
-            };
-          }
+          this._isLoading.set(false);
+          return {
+            success: false,
+            alreadyRegistered: true,
+            message:
+              'Ya completaste el formulario de Socio con este correo. Por favor, iniciá sesión vía Google para ingresar a tu perfil.',
+          };
         } else {
           // Insertar nuevo socio con número secuencial automático (desde 100)
           const { data: inserted, error: insErr } = await this.supabase
@@ -347,6 +386,16 @@ export class NewsletterService {
     await new Promise((resolve) => setTimeout(resolve, 350));
 
     const existingLocal = this._entries().find((e) => e.email === cleanEmail);
+    if (existingLocal && existingLocal.dni) {
+      this._isLoading.set(false);
+      return {
+        success: false,
+        alreadyRegistered: true,
+        message:
+          'Ya completaste el formulario de Socio con este correo. Por favor, iniciá sesión vía Google para ingresar a tu perfil.',
+      };
+    }
+
     const position = existingLocal ? existingLocal.position : this.baseWaitlistCount + this._entries().length;
 
     const newSocio: WaitlistEntry = {
@@ -412,7 +461,10 @@ export class NewsletterService {
   }
 
   /**
-   * Iniciar sesión directamente buscando en la tabla socios por email
+   * Verificar estado del correo en /ingresar:
+   * - Si ya está en socios (completó /socios/emergentes): informa que debe iniciar sesión vía Google.
+   * - Si ya estaba en waitlist (sin completar socios): redirige directo a /socios/emergentes.
+   * - Si no estaba en ninguna: lo guarda en waitlist y ofrece completar perfil.
    */
   async loginWithEmail(
     email: string,
@@ -420,6 +472,8 @@ export class NewsletterService {
     success: boolean;
     entry?: WaitlistEntry;
     notFound?: boolean;
+    alreadyInWaitlist?: boolean;
+    alreadyRegisteredSocio?: boolean;
     isWaitlistOnly?: boolean;
     message: string;
   }> {
@@ -432,35 +486,50 @@ export class NewsletterService {
       return { success: false, message: 'Por favor, ingresá un correo electrónico válido.' };
     }
 
-    // 1. Buscar en tabla socios de Supabase
+    // 1. Consultar socios y waitlist en paralelo en Supabase
     if (this.isSupabaseConnected()) {
       try {
-        const { data: socio, error } = await this.supabase
-          .from('socios')
-          .select('*')
-          .eq('email', cleanEmail)
-          .maybeSingle();
+        const [socioRes, waitlistRes] = await Promise.all([
+          this.supabase.from('socios').select('*').eq('email', cleanEmail).maybeSingle(),
+          this.supabase
+            .from('waitlist')
+            .select('id, email, converted')
+            .eq('email', cleanEmail)
+            .maybeSingle(),
+        ]);
 
-        if (!error && socio) {
-          const entry = mapDbRowToEntry(socio);
-          this._currentMember.set(entry);
-          this.persistCurrentMember(entry);
+        if (!socioRes.error && socioRes.data) {
           this._isLoading.set(false);
-          this.setLoginSuccessFlag();
           return {
-            success: true,
-            entry,
-            message: `¡Hola de nuevo, ${entry.fullName || 'Socio'}!`,
+            success: false,
+            alreadyRegisteredSocio: true,
+            message:
+              'Ya completaste el formulario de Socio con este correo. Por favor, iniciá sesión vía Google para acceder a tu perfil.',
           };
         }
 
-        // Si no está en socios, guardar el correo en la waitlist de paso
-        await this.recordWaitlistProspect(cleanEmail);
+        if (!waitlistRes.error && waitlistRes.data) {
+          this._isLoading.set(false);
+          this.lastProspectEmail.set(cleanEmail);
+          this.persistProspectEmail(cleanEmail);
+          return {
+            success: false,
+            notFound: true,
+            alreadyInWaitlist: true,
+            isWaitlistOnly: true,
+            message:
+              'Tu correo ya está en la lista de espera. Redirigiendo para completar tu perfil de Socio Emergente...',
+          };
+        }
+
+        // Si no estaba ni en socios ni en waitlist, guardarlo en waitlist en segundo plano
+        void this.recordWaitlistProspect(cleanEmail);
         this._isLoading.set(false);
         this.lastProspectEmail.set(cleanEmail);
         return {
           success: false,
           notFound: true,
+          alreadyInWaitlist: false,
           isWaitlistOnly: true,
           message:
             'Guardamos tu correo en la lista de espera oficial. ¡Completá tu perfil para recibir tu número oficial de socio!',
@@ -473,23 +542,22 @@ export class NewsletterService {
     // 2. Buscar en caché local
     const localEntry = this._entries().find((e) => e.email === cleanEmail);
     if (localEntry) {
-      this._currentMember.set(localEntry);
-      this.persistCurrentMember(localEntry);
       this._isLoading.set(false);
-      this.setLoginSuccessFlag();
       return {
-        success: true,
-        entry: localEntry,
-        message: `¡Hola de nuevo, ${localEntry.fullName || 'Socio'}!`,
+        success: false,
+        alreadyRegisteredSocio: true,
+        message:
+          'Ya completaste el formulario de Socio con este correo. Por favor, iniciá sesión vía Google para acceder a tu perfil.',
       };
     }
 
-    // Guardar correo en waitlist local de paso
-    await this.recordWaitlistProspect(cleanEmail);
+    const wasAlreadyProspect = this.lastProspectEmail() === cleanEmail;
+    void this.recordWaitlistProspect(cleanEmail);
     this._isLoading.set(false);
     return {
       success: false,
       notFound: true,
+      alreadyInWaitlist: wasAlreadyProspect,
       message:
         'Guardamos tu correo en la lista de espera oficial. ¡Completá tu perfil para recibir tu número oficial de socio!',
     };
@@ -522,7 +590,7 @@ export class NewsletterService {
       });
 
       if (error) {
-        return { success: false, message: error.message };
+        return { success: false, message: this.translateSupabaseError(error.message) };
       }
 
       return {
@@ -532,7 +600,7 @@ export class NewsletterService {
     } catch (err: any) {
       return {
         success: false,
-        message: err?.message || 'Error al enviar enlace de acceso.',
+        message: this.translateSupabaseError(err?.message) || 'Error al enviar enlace de acceso.',
       };
     }
   }
@@ -563,16 +631,45 @@ export class NewsletterService {
       });
 
       if (error) {
-        return { success: false, message: error.message };
+        return { success: false, message: this.translateSupabaseError(error.message) };
       }
 
       return { success: true, message: 'Redirigiendo a Google para autenticación...' };
     } catch (err: any) {
       return {
         success: false,
-        message: err?.message || 'Error al conectar con Google Auth.',
+        message: this.translateSupabaseError(err?.message) || 'Error al conectar con Google Auth.',
       };
     }
+  }
+
+  private translateSupabaseError(rawMessage?: string): string {
+    if (!rawMessage) {
+      return 'Ocurrió un error al procesar la solicitud. Intentá nuevamente.';
+    }
+    const msg = rawMessage.toLowerCase();
+    if (msg.includes('invalid format') || msg.includes('unable to validate email')) {
+      return 'Por favor, ingresá un correo electrónico con formato válido.';
+    }
+    if (msg.includes('invalid login credentials')) {
+      return 'Las credenciales ingresadas no son válidas.';
+    }
+    if (msg.includes('rate limit') || msg.includes('too many requests')) {
+      return 'Demasiados intentos seguidos. Por favor, aguardá unos minutos e intentá nuevamente.';
+    }
+    if (msg.includes('provider is not enabled') || msg.includes('unsupported provider')) {
+      return 'El inicio de sesión con Google aún no está habilitado en el servidor.';
+    }
+    if (msg.includes('email not confirmed')) {
+      return 'Tu correo electrónico aún no fue confirmado. Revisá tu bandeja de entrada.';
+    }
+    if (msg.includes('user not found')) {
+      return 'No encontramos una cuenta asociada a este correo electrónico.';
+    }
+    if (msg.includes('failed to fetch') || msg.includes('network')) {
+      return 'Error de conexión con el servidor. Verificá tu conexión a internet.';
+    }
+    return 'No pudimos completar la autenticación. Por favor, verificá tus datos e intentá nuevamente.';
   }
 
   async updateMemberProfile(data: {
@@ -799,6 +896,56 @@ export class NewsletterService {
     this._currentMember.set(updated);
     this.persistCurrentMember(updated);
     return { success: true, message: 'Método de pago actualizado con éxito.' };
+  }
+
+  async submitProviderApplication(data: {
+    fullName: string;
+    category: string;
+    region: string;
+    email: string;
+    phone: string;
+    website: string;
+    description: string;
+  }): Promise<{ success: boolean }> {
+    if (this.isSupabaseConnected()) {
+      try {
+        await this.supabase.from('postulaciones_prestadores').insert({
+          full_name: data.fullName.trim(),
+          category: data.category.trim() || 'guia_montaña',
+          region: data.region.trim() || 'Puna & Fiambalá',
+          email: data.email.trim().toLowerCase(),
+          phone: data.phone.trim(),
+          website: data.website.trim(),
+          description: data.description.trim(),
+        });
+      } catch (err) {
+        console.warn('[Supabase] Error guardando postulación de prestador:', err);
+      }
+    }
+    return { success: true };
+  }
+
+  async submitFounderApplication(data: {
+    fullName: string;
+    email: string;
+    phone: string;
+    motivationLetter: string;
+    agreedToProtocol: boolean;
+  }): Promise<{ success: boolean }> {
+    if (this.isSupabaseConnected()) {
+      try {
+        await this.supabase.from('postulaciones_fundadores').insert({
+          full_name: data.fullName.trim(),
+          email: data.email.trim().toLowerCase(),
+          phone: data.phone.trim(),
+          motivation_letter: data.motivationLetter.trim(),
+          agreed_to_protocol: data.agreedToProtocol,
+        });
+      } catch (err) {
+        console.warn('[Supabase] Error guardando postulación de fundador:', err);
+      }
+    }
+    return { success: true };
   }
 
   // ── Helpers privados ────────────────────────────────────────────────────────

@@ -10,6 +10,7 @@ import {
   BreadcrumbComponent,
   BreadcrumbItem,
 } from '../../shared/components/breadcrumb/breadcrumb.component';
+import { FounderAdComponent } from '../../shared/components/founder-ad/founder-ad.component';
 
 @Component({
   selector: 'app-founders',
@@ -22,6 +23,7 @@ import {
     FooterComponent,
     HeaderComponent,
     BreadcrumbComponent,
+    FounderAdComponent,
   ],
   templateUrl: './founders.component.html',
   styleUrl: './founders.component.css',
@@ -56,6 +58,9 @@ export class FoundersComponent implements OnInit {
       if (current.fullName) {
         this.founderName.set(current.fullName);
       }
+      if (current.phone) {
+        this.founderPhone.set(current.phone);
+      }
     }
   }
 
@@ -73,12 +78,20 @@ export class FoundersComponent implements OnInit {
     if (
       !this.founderName().trim() ||
       !this.founderEmail().trim() ||
+      !this.founderPhone().trim() ||
       !this.founderLetter().trim() ||
       !this.founderAgreedToPrice()
     ) {
       return;
     }
     this.founderSuccess.set(true);
+    void this.newsletter.submitFounderApplication({
+      fullName: this.founderName(),
+      email: this.founderEmail(),
+      phone: this.founderPhone(),
+      motivationLetter: this.founderLetter(),
+      agreedToProtocol: this.founderAgreedToPrice(),
+    });
   }
 
   logout(): void {

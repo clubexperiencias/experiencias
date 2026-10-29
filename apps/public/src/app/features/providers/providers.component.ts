@@ -12,6 +12,7 @@ import {
   BreadcrumbComponent,
   BreadcrumbItem,
 } from '../../shared/components/breadcrumb/breadcrumb.component';
+import { FounderAdComponent } from '../../shared/components/founder-ad/founder-ad.component';
 
 @Component({
   selector: 'app-providers',
@@ -23,6 +24,7 @@ import {
     FooterComponent,
     HeaderComponent,
     BreadcrumbComponent,
+    FounderAdComponent,
   ],
   templateUrl: './providers.component.html',
   styleUrl: './providers.component.css',
@@ -108,17 +110,17 @@ export class ProvidersComponent {
   }
 
   submitProvider(): void {
-    if (
-      !this.providerName().trim() ||
-      !this.providerCategory().trim() ||
-      !this.providerRegion().trim() ||
-      !this.providerEmail().trim() ||
-      !this.providerPhone().trim() ||
-      !this.providerWebsite().trim() ||
-      !this.providerDescription().trim()
-    )
-      return;
+    if (!this.providerName().trim() || !this.providerEmail().trim()) return;
     this.providerSuccess.set(true);
+    void this.newsletter.submitProviderApplication({
+      fullName: this.providerName(),
+      category: this.providerCategory(),
+      region: this.providerRegion(),
+      email: this.providerEmail(),
+      phone: this.providerPhone(),
+      website: this.providerWebsite(),
+      description: this.providerDescription(),
+    });
   }
 
   resetForm(): void {

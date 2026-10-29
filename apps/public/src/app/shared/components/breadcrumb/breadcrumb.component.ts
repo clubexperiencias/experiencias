@@ -218,7 +218,7 @@ export class BreadcrumbComponent implements OnInit {
         steps: [
           { label: 'Membresías & Niveles de Socio', url: '/socios' },
           { label: 'Mi Perfil de Socio', url: '/perfil' },
-          { label: 'Volver atrás', url: '/' },
+          { label: 'Volver al inicio', url: '/' },
         ],
       };
     }
@@ -314,7 +314,7 @@ export class BreadcrumbComponent implements OnInit {
       steps: [
         { label: 'Membresías & Niveles de Socio', url: '/socios' },
         { label: 'Mi Perfil de Socio', url: '/perfil' },
-        { label: 'Volver al Inicio', url: '/' },
+        { label: 'Volver atrás', url: '/' },
       ],
     };
   }

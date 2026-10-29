@@ -424,11 +424,18 @@ export class WaitlistComponent {
   }
 
   async submitLogin(): Promise<void> {
-    const email = this.loginEmail().trim();
+    const email = this.loginEmail().trim().toLowerCase();
     if (!email || this.newsletter.isLoading()) return;
 
     const res = await this.newsletter.loginWithEmail(email);
-    if (res.success) {
+    if (res.alreadyRegisteredSocio) {
+      this.loginError.set(res.message);
+    } else if (res.alreadyInWaitlist || res.notFound) {
+      this.closeModal();
+      this.router.navigate(['/socios/emergentes'], {
+        queryParams: { email, from: 'waitlist' },
+      });
+    } else if (res.success) {
       this.closeModal();
       this.router.navigate(['/perfil']);
     } else {
@@ -440,9 +447,16 @@ export class WaitlistComponent {
     const cleanEmail = this.email().trim().toLowerCase();
     if (!cleanEmail || this.newsletter.isLoading()) return;
 
-    await this.newsletter.recordWaitlistProspect(cleanEmail);
+    const res = await this.newsletter.loginWithEmail(cleanEmail);
+    if (res.alreadyRegisteredSocio) {
+      this.router.navigate(['/ingresar'], {
+        queryParams: { email: cleanEmail, registered: 'true' },
+      });
+      return;
+    }
+
     this.email.set('');
-    this.router.navigate(['/socios/emergentes/ingreso'], {
+    this.router.navigate(['/socios/emergentes'], {
       queryParams: { email: cleanEmail, from: 'waitlist' },
     });
   }

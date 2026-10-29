@@ -74,12 +74,19 @@
                 <span class="activity-status" [class]="act.status">
                   {{ act.status === 'completada' ? 'Completada' : 'Confirmada' }}
                 </span>
-                <span class="activity-region">{{ act.region }} ({{ act.altitude }})</span>
+                <span class="activity-region" [title]="act.region + ' (' + act.altitude + ')'"
+                  >{{ act.region }} ({{ act.altitude }})</span
+                >
               </div>
 
-              <h2 class="activity-title">{{ act.title }}</h2>
-              <p class="activity-provider">Prestador: <strong>{{ act.provider.name }}</strong></p>
-              <p class="activity-date">
+              <h2 class="activity-title" [title]="act.title">{{ act.title }}</h2>
+              <p class="activity-provider" [title]="'Prestador: ' + act.provider.name">
+                Prestador: <strong>{{ act.provider.name }}</strong>
+              </p>
+              <p
+                class="activity-date"
+                [title]="act.dateLabel + ' · Recibo Nº ' + act.receipt.receiptNumber"
+              >
                 {{ act.dateLabel }} · Recibo Nº {{ act.receipt.receiptNumber }}
               </p>
             </div>
@@ -108,7 +115,7 @@
   </main>
 
   <!-- Footer Compartido -->
-  <app-footer></app-footer>
+  <app-footer [hideSessionBar]="true"></app-footer>
 </div>
 
 <app-receipt-modal />

@@ -14,7 +14,7 @@
         <!-- ═══════════════ HEADER CARD: TÍTULO Y DESCRIPCIÓN ═══════════════ -->
         <div class="kayak-section-card hero-gallery-card">
           <div class="card-inner-header">
-            <span class="section-kicker">REGISTRO VISUAL · EXPERIENCIAS PASADAS</span>
+            <span class="section-kicker">REGISTRO VISUAL DE EXPERIENCIAS PASADAS</span>
             <h1 class="card-heading">Galería de Travesías en Las Pirquitas</h1>
             <p class="card-subheading">
               Postales reales capturadas durante nuestras salidas de kayak al atardecer en el Valle
@@ -25,15 +25,12 @@
         </div>
 
         <!-- ═══════════════ FOTO PRINCIPAL DESTACADA ═══════════════ -->
-        <div
-          class="kayak-section-card featured-photo-card"
-          (click)="openPhotoModal(photos[0], featuredGroup)"
-        >
+        <div class="kayak-section-card featured-photo-card" (click)="openPhotoModal(photos[0], featuredGroup)">
           <div class="featured-media-wrap">
             <img [src]="photos[0].src" [alt]="photos[0].title" class="featured-img" />
             <span class="media-tag">{{ photos[0].tag }}</span>
             <div class="media-overlay-info">
-              <span class="media-caption-kicker">Fotógrafo: {{ photos[0].photographer }}</span>
+              <span class="media-caption-kicker">{{ photos[0].photographer }}</span>
               <h3 class="media-caption-title">{{ photos[0].title }}</h3>
               <p class="media-caption-desc">{{ photos[0].caption }}</p>
             </div>
@@ -43,17 +40,17 @@
         <!-- ═══════════════ DOS FOTOS DESTACADAS EN LA MISMA FILA ═══════════════ -->
         <div class="photos-grid photos-grid-2cols">
           @for (photo of secondaryPhotos; track $index) {
-            <div class="photo-card-item" (click)="openPhotoModal(photo, featuredGroup)">
-              <div class="photo-card-media">
-                <img [src]="photo.src" [alt]="photo.title" class="gallery-thumb-img" />
-                <span class="photo-tag">{{ photo.tag }}</span>
-              </div>
-              <div class="photo-card-body">
-                <span class="photo-item-credit">Fotógrafo: {{ photo.photographer }}</span>
-                <h3 class="photo-item-title">{{ photo.title }}</h3>
-                <p class="photo-item-caption">{{ photo.caption }}</p>
-              </div>
+          <div class="photo-card-item" (click)="openPhotoModal(photo, featuredGroup)">
+            <div class="photo-card-media">
+              <img [src]="photo.src" [alt]="photo.title" class="gallery-thumb-img" />
+              <span class="photo-tag">{{ photo.tag }}</span>
             </div>
+            <div class="photo-card-body">
+              <span class="photo-item-credit">{{ photo.photographer }}</span>
+              <h3 class="photo-item-title">{{ photo.title }}</h3>
+              <p class="photo-item-caption">{{ photo.caption }}</p>
+            </div>
+          </div>
           }
         </div>
 
@@ -68,74 +65,47 @@
 
   <!-- Modal Visor de Foto Ampliada -->
   @if (activePhotoModal()) {
-    <div class="photo-lightbox-backdrop" (click)="closePhotoModal()">
-      <div class="lightbox-content" (click)="$event.stopPropagation()">
-        <button
-          type="button"
-          class="lightbox-close-btn"
-          (click)="closePhotoModal()"
-          aria-label="Cerrar foto"
-          title="Cerrar"
-        >
-          <mat-icon>close</mat-icon>
+  <div class="photo-lightbox-backdrop" (click)="closePhotoModal()">
+    <div class="lightbox-content" (click)="$event.stopPropagation()">
+      <button type="button" class="lightbox-close-btn" (click)="closePhotoModal()" aria-label="Cerrar foto"
+        title="Cerrar">
+        <mat-icon>close</mat-icon>
+      </button>
+
+      @if (currentPhotoList().length > 1) {
+      <button type="button" class="lightbox-nav-btn prev-btn" (click)="prevPhoto($event)" aria-label="Foto anterior"
+        title="Foto anterior">
+        <mat-icon>chevron_left</mat-icon>
+      </button>
+      <button type="button" class="lightbox-nav-btn next-btn" (click)="nextPhoto($event)" aria-label="Foto siguiente"
+        title="Foto siguiente">
+        <mat-icon>chevron_right</mat-icon>
+      </button>
+      }
+
+      <div class="lightbox-media-wrap">
+        <img [src]="activePhotoModal()?.src" [alt]="activePhotoModal()?.title" class="lightbox-img"
+          [class.is-landscape]="isLandscape()" (load)="onImageLoad($event)" />
+      </div>
+
+      <div class="lightbox-caption">
+        <div class="lightbox-caption-text">
+          @if (activePhotoModal()?.photographer) {
+          <span class="lightbox-signature">{{ activePhotoModal()?.photographer }}</span>
+          }
+          @if (activePhotoModal()?.author) {
+          <span class="lightbox-signature">Autor: {{ activePhotoModal()?.author }}</span>
+          }
+          <h4>{{ activePhotoModal()?.title }}</h4>
+          @if (!activePhotoModal()?.author && activePhotoModal()?.caption) {
+          <p>{{ activePhotoModal()?.caption }}</p>
+          }
+        </div>
+        <button type="button" class="lightbox-download-action-btn" (click)="downloadPhoto(activePhotoModal())">
+          <span>Descargar Foto</span>
         </button>
-
-        @if (currentPhotoList().length > 1) {
-          <button
-            type="button"
-            class="lightbox-nav-btn prev-btn"
-            (click)="prevPhoto($event)"
-            aria-label="Foto anterior"
-            title="Foto anterior"
-          >
-            <mat-icon>chevron_left</mat-icon>
-          </button>
-          <button
-            type="button"
-            class="lightbox-nav-btn next-btn"
-            (click)="nextPhoto($event)"
-            aria-label="Foto siguiente"
-            title="Foto siguiente"
-          >
-            <mat-icon>chevron_right</mat-icon>
-          </button>
-        }
-
-        <div class="lightbox-media-wrap">
-          <img
-            [src]="activePhotoModal()?.src"
-            [alt]="activePhotoModal()?.title"
-            class="lightbox-img"
-            [class.is-landscape]="isLandscape()"
-            (load)="onImageLoad($event)"
-          />
-        </div>
-
-        <div class="lightbox-caption">
-          <div class="lightbox-caption-text">
-            @if (activePhotoModal()?.photographer) {
-              <span class="lightbox-signature"
-                >Fotógrafo: {{ activePhotoModal()?.photographer }}</span
-              >
-            }
-            @if (activePhotoModal()?.author) {
-              <span class="lightbox-signature">Autor: {{ activePhotoModal()?.author }}</span>
-            }
-            <h4>{{ activePhotoModal()?.title }}</h4>
-            @if (!activePhotoModal()?.author && activePhotoModal()?.caption) {
-              <p>{{ activePhotoModal()?.caption }}</p>
-            }
-          </div>
-          <button
-            type="button"
-            class="lightbox-download-action-btn"
-            (click)="downloadPhoto(activePhotoModal())"
-          >
-            <mat-icon>file_download</mat-icon>
-            <span>Descargar Foto</span>
-          </button>
-        </div>
       </div>
     </div>
+  </div>
   }
 </div>

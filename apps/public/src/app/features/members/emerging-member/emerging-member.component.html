@@ -2,8 +2,20 @@
   <!-- Barra Superior Unificada -->
   <app-header [(mobileMenuOpen)]="mobileMenuOpen"></app-header>
 
-  <!-- Breadcrumb debajo del Header con fondo #FFCC00 -->
+  <!-- Notificación en Verde (3.5 segundos) que reemplaza al Breadcrumb -->
+  @if (showSuccessNotification()) {
+  <aside class="registration-success-bar" role="status" aria-live="polite">
+    <div class="success-bar-container">
+      <div class="success-bar-content">
+        <span class="success-bar-tag">¡CORREO EN LISTA DE ESPERA!</span>
+        <span class="success-bar-sep">·</span>
+        <strong class="success-bar-title">Completá tu registro para obtener tu número correlativo</strong>
+      </div>
+    </div>
+  </aside>
+  } @else {
   <app-breadcrumb [items]="breadcrumbs"></app-breadcrumb>
+  }
 
   <!-- Contenedor Principal de /socios/emergentes -->
   <div class="emerging-wallpaper-body app-wallpaper-body">
@@ -12,105 +24,119 @@
     <!-- Contenido Principal -->
     <main class="emerging-main-content">
       <div class="emerging-wrapper">
-        <!-- ═══════════════ CARD: MEMBRESÍA SOCIO EMERGENTE ═══════════════ -->
-        <div class="emerging-section-card">
-          <div class="card-inner-header">
-            <div class="tier-badge-row">
-              <span class="emerging-badge-tag">Nivel 1 Gratuito</span>
-            </div>
-            <h1 class="card-heading">Membresía Socio Emergente</h1>
+        <!-- ═══════════════ CARD / BOX UNIFICADA DE SOCIO EMERGENTE ═══════════════ -->
+        <section class="emerging-section-card" aria-labelledby="emerging-title">
+          <div class="section-card-header">
+            <span class="section-kicker">NIVEL 1: PUNTO DE PARTIDA</span>
+            <h1 id="emerging-title" class="card-heading">Membresía Socio Emergente</h1>
             <p class="card-subheading">
               El primer paso para ser parte de la comunidad de exploradores de Catamarca. Una
-              membresía abierta y sin costos para ingresar a la lista de espera oficial, informarte
-              con anticipación sobre cada travesía náutica o de montaña y acceder a tu perfil
-              digital de socio.
+              membresía abierta y sin costos para ingresar a la lista de espera oficial y acceder
+              a tu perfil digital de socio.
             </p>
           </div>
 
-          <!-- Condiciones y Alcance de la Membresía Inicial -->
-          <div class="emerging-conditions-card">
-            <div class="conditions-header">
-              <div class="conditions-title-group">
-                <span class="conditions-kicker">CONDICIONES DE LA MEMBRESÍA INICIAL</span>
-                <h2 class="conditions-title">Pre-registro Oficial y Acceso Comunitario</h2>
-              </div>
+          <!-- Franja de condiciones simplificadas -->
+          <div class="emerging-highlights-strip">
+            @for (h of highlights; track h.title) {
+            <div class="highlight-item">
+              <strong class="highlight-title">{{ h.title }}</strong>
+              <span class="highlight-desc">{{ h.description }}</span>
             </div>
-
-            <div class="conditions-meta-grid">
-              <div class="meta-item">
-                <span class="meta-label">Costo de Ingreso</span>
-                <span class="meta-value highlight-free">Sin costo</span>
-                <span class="meta-note"
-                  >Activación libre sin datos bancarios ni cuotas mensuales</span
-                >
-              </div>
-              <div class="meta-item">
-                <span class="meta-label">Reserva de cupos</span>
-                <span class="meta-value">Lista de Espera</span>
-                <span class="meta-note">Por orden correlativo de pre-registro</span>
-              </div>
-              <div class="meta-item">
-                <span class="meta-label">Base Operativa</span>
-                <span class="meta-value">Las Pirquitas</span>
-                <span class="meta-note">Travesías de kayak y senderismo andino</span>
-              </div>
-              <div class="meta-item">
-                <span class="meta-label">Vigencia</span>
-                <span class="meta-value">Permanente</span>
-                <span class="meta-note">Sin vencimiento ni renovación</span>
-              </div>
-            </div>
+            }
           </div>
 
-          <!-- Beneficios de la Membresía -->
-          <div class="benefits-section-block">
-            <h3 class="benefits-block-title">Beneficios incluidos en tu membresía</h3>
-            <div class="benefits-simple-list">
-              @for (b of benefits; track b.title) {
-                <div class="benefit-card">
-                  <h4 class="benefit-title">{{ b.title }}</h4>
-                  <p class="benefit-desc">{{ b.description }}</p>
-                </div>
-              }
-            </div>
-          </div>
-
-          <!-- Bloque de Estado / CTA -->
+          <!-- Formulario de Registro o Confirmación de Membresía -->
           @if (!newsletter.isSubscribed()) {
-            <div class="emerging-cta-box">
-              <div class="cta-text-group">
-                <span class="cta-kicker">INCORPORACIÓN INMEDIATA</span>
-                <h3 class="cta-title">Asegurá tu lugar en la Lista de Espera</h3>
-                <p class="cta-desc">
-                  Completá el pre-registro en la portada para obtener tu número correlativo de socio
-                  y ser notificado de las primeras expediciones.
-                </p>
-              </div>
-              <a routerLink="/socios/emergentes/ingreso" class="emerging-cta-btn">
-                <span>Unirme a la Lista de Espera</span>
-                <mat-icon class="btn-icon">arrow_forward</mat-icon>
-              </a>
+          <form class="signup-form" novalidate (submit)="$event.preventDefault(); submit()">
+            @if (submitError()) {
+            <div class="signup-alert-error">
+              <mat-icon class="alert-icon">error_outline</mat-icon>
+              <span>{{ submitError() }}</span>
             </div>
+            }
+
+            <div class="signup-grid">
+              <!-- Fila 1 - Izquierda: Nombre y Apellido -->
+              <label class="signup-field">
+                <span>Nombre y Apellido <b>*</b></span>
+                <input type="text" [value]="fullName()" (input)="fullName.set($any($event.target).value)"
+                  maxlength="100" placeholder="Ej. Martín Rodríguez" autocomplete="name" required />
+              </label>
+
+              <!-- Fila 1 - Derecha: Correo Electrónico -->
+              <label class="signup-field">
+                <span>Correo Electrónico <b>*</b></span>
+                <input type="email" [value]="email()" (input)="email.set($any($event.target).value)" maxlength="254"
+                  placeholder="tu-correo@ejemplo.com" autocomplete="email" required />
+              </label>
+
+              <!-- Fila 2 - Izquierda: DNI -->
+              <label class="signup-field">
+                <span>DNI <b>*(7 a 9 dígitos)</b></span>
+                <input type="text" [value]="documentNumber()" (input)="documentNumber.set($any($event.target).value)"
+                  maxlength="9" placeholder="Ej. 30123456" inputmode="numeric" required />
+              </label>
+
+              <!-- Fila 2 - Derecha: Celular -->
+              <label class="signup-field">
+                <span>Celular <b>*(WhatsApp)</b></span>
+                <input type="tel" [value]="phone()" (input)="phone.set($any($event.target).value)" maxlength="25"
+                  placeholder="Ej. +54 9 3834 123456" autocomplete="tel" required />
+              </label>
+            </div>
+
+            <!-- Preferencias de Experiencias -->
+            <div class="signup-field">
+              <span>¿QUÉ EXPERIENCIAS TE GUSTARÍA VIVIR? <em>(opcional)</em></span>
+              <div class="experience-options">
+                @for (exp of experiences; track exp.id) {
+                <button type="button" class="experience-option" [class.selected]="isSelected(exp.id)"
+                  (click)="toggleExperience(exp.id)">
+                  <span class="checkbox-indicator">
+                    @if (isSelected(exp.id)) {
+                    <mat-icon class="indicator-icon">check</mat-icon>
+                    }
+                  </span>
+                  <span class="experience-title">{{ exp.title }}</span>
+                </button>
+                }
+              </div>
+            </div>
+
+            @if (isSelected('otros')) {
+            <label class="signup-field">
+              <span>Especificá qué otra experiencia buscás</span>
+              <textarea [value]="otherExperience()" (input)="otherExperience.set($any($event.target).value)" rows="3"
+                placeholder="Contanos qué travesía o actividad andina te gustaría realizar..."></textarea>
+            </label>
+            }
+
+            <div class="signup-actions">
+              <button type="submit" class="signup-submit-btn" [disabled]="isSubmitting()">
+                <span>{{ isSubmitting() ? 'Registrando membresía...' : 'Crear mi Cuenta de Socio' }}</span>
+              </button>
+            </div>
+          </form>
           } @else {
-            <div class="emerging-confirmed-box">
-              <div class="confirmed-text-group">
-                <span class="confirmed-kicker">MEMBRESÍA ACTIVA</span>
-                <h3 class="confirmed-title">
-                  Ya sos Socio Emergente #{{ newsletter.currentMember()?.position }}
-                </h3>
-                <p class="confirmed-desc">
-                  Tu registro está verificado con el correo
-                  <strong>{{ newsletter.currentMember()?.email }}</strong
-                  >.
-                </p>
-              </div>
-              <a routerLink="/perfil" class="emerging-profile-btn">
-                <span>Ver Mi Perfil</span>
-                <mat-icon class="btn-icon">arrow_forward</mat-icon>
-              </a>
+          <div class="emerging-confirmed-box">
+            <div class="confirmed-text-group">
+              <span class="confirmed-kicker">MEMBRESÍA ACTIVA</span>
+              <h3 class="confirmed-title">
+                Ya sos Socio Emergente #{{ newsletter.currentMember()?.position }}
+              </h3>
+              <p class="confirmed-desc">
+                Tu registro está verificado con el correo
+                <strong>{{ newsletter.currentMember()?.email }}</strong>.
+              </p>
             </div>
+            <a routerLink="/perfil" class="emerging-profile-btn">
+              <span>Ver Mi Perfil</span>
+              <mat-icon class="btn-icon">arrow_forward</mat-icon>
+            </a>
+          </div>
           }
-        </div>
+        </section>
 
         <!-- ═══════════════ AD BANNER: CONVOCATORIA SOCIO FUNDADOR ═══════════════ -->
         <app-founder-ad />

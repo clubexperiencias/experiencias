@@ -22,5 +22,51 @@ export class App {
           document.documentElement.scrollTop = 0;
         }
       });
+
+    if (typeof document !== 'undefined') {
+      const updateSpanishValidity = (event: Event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement)) {
+          return;
+        }
+        target.setCustomValidity('');
+        const val = target.value.trim();
+
+        if (target.validity.valueMissing) {
+          target.setCustomValidity('Por favor, completá este campo.');
+          return;
+        }
+
+        if (target instanceof HTMLInputElement && target.type === 'email' && val) {
+          if (!val.includes('@')) {
+            target.setCustomValidity(
+              `Por favor, incluí un '@' en la dirección de correo electrónico. A '${val}' le falta un '@'.`,
+            );
+            return;
+          }
+          const [localPart, domainPart] = val.split('@');
+          if (!localPart) {
+            target.setCustomValidity(
+              `Por favor, ingresá texto antes de '@'. '${val}' está incompleto.`,
+            );
+            return;
+          }
+          if (!domainPart) {
+            target.setCustomValidity(
+              `Por favor, ingresá la parte que sigue a '@'. '${val}' está incompleto.`,
+            );
+            return;
+          }
+          if (target.validity.typeMismatch || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(val)) {
+            target.setCustomValidity(
+              'Por favor, ingresá una dirección de correo electrónico válida.',
+            );
+          }
+        }
+      };
+
+      document.addEventListener('input', updateSpanishValidity, true);
+      document.addEventListener('invalid', updateSpanishValidity, true);
+    }
   }
 }

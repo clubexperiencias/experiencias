@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { authGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
   {
@@ -8,11 +9,13 @@ export const routes: Routes = [
   },
   {
     path: 'perfil',
+    canActivate: [authGuard],
     loadComponent: () =>
       import('./features/profile/profile.component').then((m) => m.ProfileComponent),
   },
   {
     path: 'perfil/actividades',
+    canActivate: [authGuard],
     loadComponent: () =>
       import('./features/profile/activities-history/activities-history.component').then(
         (m) => m.ActivitiesHistoryComponent,
@@ -183,10 +186,8 @@ export const routes: Routes = [
   },
   {
     path: 'socios/emergentes/ingreso',
-    loadComponent: () =>
-      import('./features/members/emerging-signup/emerging-signup.component').then(
-        (m) => m.EmergingSignupComponent,
-      ),
+    redirectTo: 'socios/emergentes',
+    pathMatch: 'full',
   },
   {
     path: 'emergentes',

@@ -79,6 +79,88 @@ export interface Database {
         };
         Relationships: [];
       };
+
+      /**
+       * Tabla 3: Postulaciones de Socios Fundadores (/socios/fundadores)
+       */
+      postulaciones_fundadores: {
+        Row: {
+          id: string;
+          full_name: string;
+          email: string;
+          phone: string;
+          motivation_letter: string;
+          agreed_to_protocol: boolean;
+          status: 'en_evaluacion' | 'aprobada' | 'rechazada';
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          full_name: string;
+          email: string;
+          phone: string;
+          motivation_letter: string;
+          agreed_to_protocol?: boolean;
+          status?: 'en_evaluacion' | 'aprobada' | 'rechazada';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          full_name?: string;
+          email?: string;
+          phone?: string;
+          motivation_letter?: string;
+          agreed_to_protocol?: boolean;
+          status?: 'en_evaluacion' | 'aprobada' | 'rechazada';
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+
+      /**
+       * Tabla 4: Postulaciones de Prestadores & Guías Locales (/experiencias/prestadores)
+       */
+      postulaciones_prestadores: {
+        Row: {
+          id: string;
+          full_name: string;
+          category: string;
+          region: string;
+          email: string;
+          phone: string;
+          website: string;
+          description: string;
+          status: 'pendiente' | 'aprobado' | 'rechazado';
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          full_name: string;
+          category?: string;
+          region?: string;
+          email: string;
+          phone: string;
+          website: string;
+          description: string;
+          status?: 'pendiente' | 'aprobado' | 'rechazado';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          full_name?: string;
+          category?: string;
+          region?: string;
+          email?: string;
+          phone?: string;
+          website?: string;
+          description?: string;
+          status?: 'pendiente' | 'aprobado' | 'rechazado';
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
 
     Views: {

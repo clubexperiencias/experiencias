@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { authGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
   {
@@ -8,11 +9,13 @@ export const routes: Routes = [
   },
   {
     path: 'perfil',
+    canActivate: [authGuard],
     loadComponent: () =>
       import('./features/profile/profile.component').then((m) => m.ProfileComponent),
   },
   {
     path: 'perfil/actividades',
+    canActivate: [authGuard],
     loadComponent: () =>
       import('./features/profile/activities-history/activities-history.component').then(
         (m) => m.ActivitiesHistoryComponent,
@@ -42,18 +45,6 @@ export const routes: Routes = [
   {
     path: 'fotos',
     redirectTo: 'experiencias/fotos',
-    pathMatch: 'full',
-  },
-  {
-    path: 'experiencias/calificaciones',
-    loadComponent: () =>
-      import('./features/experiences/experiences-ratings/experiences-ratings.component').then(
-        (m) => m.ExperiencesRatingsComponent,
-      ),
-  },
-  {
-    path: 'calificaciones',
-    redirectTo: 'experiencias/calificaciones',
     pathMatch: 'full',
   },
   {
@@ -113,6 +104,45 @@ export const routes: Routes = [
     pathMatch: 'full',
   },
   {
+    path: 'experiencias/kayak/pago',
+    data: { slug: 'kayak' },
+    loadComponent: () =>
+      import('./features/experiences/experience-payment/experience-payment.component').then(
+        (m) => m.ExperiencePaymentComponent,
+      ),
+  },
+  {
+    path: 'prestador',
+    loadComponent: () =>
+      import('./features/provider-panel/provider-panel.component').then(
+        (m) => m.ProviderPanelComponent,
+      ),
+    children: [
+      { path: '', redirectTo: 'experiencias', pathMatch: 'full' },
+      {
+        path: 'experiencias',
+        loadComponent: () =>
+          import('./features/provider-panel/provider-experiences/provider-experiences.component').then(
+            (m) => m.ProviderExperiencesComponent,
+          ),
+      },
+      {
+        path: 'experiencias/nueva',
+        loadComponent: () =>
+          import('./features/provider-panel/provider-experience-form/provider-experience-form.component').then(
+            (m) => m.ProviderExperienceFormComponent,
+          ),
+      },
+      {
+        path: 'comprobantes',
+        loadComponent: () =>
+          import('./features/provider-panel/provider-receipts/provider-receipts.component').then(
+            (m) => m.ProviderReceiptsComponent,
+          ),
+      },
+    ],
+  },
+  {
     path: 'experiencias/prestadores',
     loadComponent: () =>
       import('./features/providers/providers.component').then((m) => m.ProvidersComponent),
@@ -156,43 +186,13 @@ export const routes: Routes = [
   },
   {
     path: 'socios/emergentes/ingreso',
-    loadComponent: () =>
-      import('./features/members/emerging-signup/emerging-signup.component').then(
-        (m) => m.EmergingSignupComponent,
-      ),
+    redirectTo: 'socios/emergentes',
+    pathMatch: 'full',
   },
   {
     path: 'emergentes',
     redirectTo: 'socios/emergentes',
     pathMatch: 'full',
-  },
-  {
-    path: 'admin/login',
-    loadComponent: () =>
-      import('./features/admin/admin-login/admin-login.component').then(
-        (m) => m.AdminLoginComponent,
-      ),
-  },
-  {
-    path: 'admin',
-    loadComponent: () =>
-      import('./features/admin/admin-dashboard/admin-dashboard.component').then(
-        (m) => m.AdminDashboardComponent,
-      ),
-  },
-  {
-    path: 'admin/users',
-    loadComponent: () =>
-      import('./features/admin/admin-users/admin-users.component').then(
-        (m) => m.AdminUsersComponent,
-      ),
-  },
-  {
-    path: 'admin/users/:id',
-    loadComponent: () =>
-      import('./features/admin/admin-user-detail/admin-user-detail.component').then(
-        (m) => m.AdminUserDetailComponent,
-      ),
   },
   {
     path: '404',

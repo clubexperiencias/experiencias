@@ -50,7 +50,11 @@
                       <a
                         [routerLink]="step.url"
                         class="natgeo-topic-link"
-                        [class.is-back-step]="step.label === 'Volver atrás'"
+                        [class.is-back-step]="
+                          step.label === 'Volver atrás' ||
+                          step.label === 'Volver al inicio' ||
+                          step.label === 'Volver al Inicio'
+                        "
                         (click)="onNextStepClick(step, $event)"
                       >
                         {{ step.label }}

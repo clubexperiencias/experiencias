@@ -33,7 +33,7 @@
             <div class="quick-stat-divider"></div>
             <div class="quick-stat-item">
               <span class="stat-number">Sin Ataduras</span>
-              <span class="stat-label">Cancelá tu cuota activa cuando quieras</span>
+              <span class="stat-label">Cancelá tu cuota cuando quieras</span>
             </div>
             <div class="quick-stat-divider"></div>
             <div class="quick-stat-item">
@@ -59,15 +59,13 @@
             <div class="tier-card" [class.user-current-tier]="newsletter.isSubscribed()">
               <div class="tier-card-header">
                 @if (newsletter.isSubscribed()) {
-                  <span class="tier-level-badge current">✓ TU NIVEL ACTUAL</span>
+                <span class="tier-level-badge current">✓ TU NIVEL ACTUAL</span>
                 } @else {
-                  <span class="tier-level-badge initial">NIVEL 1 · PUNTO DE PARTIDA</span>
+                <span class="tier-level-badge initial">NIVEL 1: PUNTO DE PARTIDA</span>
                 }
                 <h4 class="tier-name">Socio Emergente</h4>
                 <div class="tier-price-wrap">
-                  <span class="tier-price tier-price-free" style="color: #ffffff !important"
-                    >$0</span
-                  >
+                  <span class="tier-price tier-price-free" style="color: #ffffff !important">$0</span>
                   <span class="tier-period">ARS / mes</span>
                 </div>
               </div>
@@ -79,7 +77,7 @@
 
               <ul class="tier-benefits">
                 <li>Acceso anticipado a preventa de temporada 2026</li>
-                <li>Código de invitación personal para referidos</li>
+                <li>Comunidad privada de expedicionarios andinos</li>
                 <li>Bitácoras exclusivas y novedades de rutas andinas</li>
                 <li>Prioridad en cupos de expediciones inaugurales</li>
               </ul>
@@ -96,23 +94,17 @@
             </div>
 
             <!-- 2. Socio Pleno -->
-            <div
-              class="tier-card featured-tier"
-              [class.tier-card-locked]="!newsletter.isMonthlyActive()"
-            >
+            <div class="tier-card featured-tier" [class.tier-card-locked]="!newsletter.isMonthlyActive()">
               <div class="tier-featured-glow"></div>
               <div class="tier-card-header">
                 @if (newsletter.isMonthlyActive()) {
-                  <span class="tier-level-badge current">✓ TU NIVEL ACTUAL</span>
+                <span class="tier-level-badge current">✓ TU NIVEL ACTUAL</span>
                 } @else {
-                  <span class="tier-level-badge locked-badge">
-                    <mat-icon class="badge-lock-icon">lock</mat-icon>
-                    <span>BLOQUEADO · PRÓXIMAMENTE</span>
-                  </span>
+                <span class="tier-level-badge locked-badge">NIVEL 2: PRÓXIMAMENTE</span>
                 }
                 <h4 class="tier-name">Socio Pleno</h4>
                 <div class="tier-price-wrap">
-                  <span class="tier-price">$12.000</span>
+                  <span class="tier-price">$23.000</span>
                   <span class="tier-period">ARS / mes</span>
                 </div>
               </div>
@@ -129,26 +121,29 @@
                 <li><strong>10% OFF directo</strong> en todas las expediciones y salidas</li>
                 <li>Cupo asegurado prioritario en fechas de alta demanda</li>
                 <li>Asistencia personalizada de viaje con guías locales</li>
-                <li>Acceso a la bitácora privada de fotos de cada travesía</li>
+                <li>
+                  Acceso a <strong>expediciones exclusivas</strong> y
+                  <strong>regalos sorpresa</strong> en cada temporada
+                </li>
               </ul>
 
               <div class="tier-card-footer">
                 @if (newsletter.isMonthlyActive()) {
-                  <a routerLink="/socios/plenos" class="tier-cta-btn current-achieved">
-                    <span class="cta-title-row">
-                      <mat-icon class="btn-icon">check</mat-icon>
-                      <span>Membresía Activa</span>
-                    </span>
-                    <span class="cta-sub-text">Gestionar suscripción</span>
-                  </a>
+                <a routerLink="/socios/plenos" class="tier-cta-btn current-achieved">
+                  <span class="cta-title-row">
+                    <mat-icon class="btn-icon">check</mat-icon>
+                    <span>Membresía Activa</span>
+                  </span>
+                  <span class="cta-sub-text">Gestionar suscripción</span>
+                </a>
                 } @else {
-                  <button type="button" class="tier-cta-btn locked-cta" disabled>
-                    <span class="cta-title-row">
-                      <span>Membresía Bloqueada</span>
-                      <mat-icon class="btn-icon">lock</mat-icon>
-                    </span>
-                    <span class="cta-sub-text">Se habilitará en el lanzamiento oficial</span>
-                  </button>
+                <button type="button" class="tier-cta-btn locked-cta" disabled>
+                  <span class="cta-title-row">
+                    <span>Membresía Bloqueada</span>
+                    <mat-icon class="btn-icon">lock</mat-icon>
+                  </span>
+                  <span class="cta-sub-text">Se habilitará en el lanzamiento oficial</span>
+                </button>
                 }
               </div>
             </div>
@@ -156,11 +151,11 @@
             <!-- 3. Socio Fundador Vitalicio -->
             <div class="tier-card founder-tier">
               <div class="tier-card-header">
-                <span class="tier-level-badge founder-badge">NIVEL 3 · PERPETUO</span>
+                <span class="tier-level-badge founder-badge">NIVEL 3: VITALICIO</span>
                 <h4 class="tier-name">Socio Fundador</h4>
                 <div class="tier-price-wrap">
                   <span class="tier-price">Vitalicio</span>
-                  <span class="tier-period">· Aporte único</span>
+                  <span class="tier-period">Aporte único</span>
                 </div>
               </div>
 
@@ -170,7 +165,7 @@
               </div>
 
               <ul class="tier-benefits">
-                <li><strong>Pase Libre Perpetuo:</strong> Sin cuotas mensuales de por vida</li>
+                <li>Todos los beneficios de Socio Pleno</li>
                 <li>
                   <strong>20% OFF permanente</strong> en todas las expediciones para titular y
                   acompañante
@@ -192,6 +187,8 @@
             </div>
           </div>
         </div>
+
+        <app-founder-ad />
       </div>
     </main>
   </div>
@@ -201,52 +198,42 @@
 
   <!-- Modal: Iniciar Sesión (si se abre desde el header) -->
   @if (activeModal() === 'login') {
-    <div class="modal-backdrop" (click)="closeModal()">
-      <div class="modal-card" (click)="$event.stopPropagation()">
-        <div class="modal-header">
-          <div>
-            <span class="modal-kicker">ACCESO DE SOCIOS</span>
-            <h3 class="modal-heading">Iniciar Sesión</h3>
-          </div>
-          <button class="modal-close-btn" (click)="closeModal()" aria-label="Cerrar modal">
-            <mat-icon>close</mat-icon>
-          </button>
+  <div class="modal-backdrop" (click)="closeModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <span class="modal-kicker">ACCESO DE SOCIOS</span>
+          <h3 class="modal-heading">Iniciar Sesión</h3>
+        </div>
+        <button class="modal-close-btn" (click)="closeModal()" aria-label="Cerrar modal">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <p class="modal-lead">
+        Ingresá tu correo electrónico para acceder a tu perfil de socio y comprobantes:
+      </p>
+
+      <div class="login-modal-box">
+        <div class="login-input-wrap">
+          <label for="login-email-members" class="login-field-lbl">Correo Electrónico</label>
+          <input id="login-email-members" type="email" class="login-modal-input" placeholder="tu-correo@ejemplo.com"
+            [value]="loginEmail()" (input)="loginEmail.set($any($event.target).value)" (keyup.enter)="submitLogin()" />
         </div>
 
-        <p class="modal-lead">
-          Ingresá tu correo electrónico para acceder a tu perfil de socio y comprobantes:
-        </p>
+        @if (loginError()) {
+        <p class="error-text" style="margin-top: 0.6rem">{{ loginError() }}</p>
+        }
 
-        <div class="login-modal-box">
-          <div class="login-input-wrap">
-            <label for="login-email-members" class="login-field-lbl">Correo Electrónico</label>
-            <input
-              id="login-email-members"
-              type="email"
-              class="login-modal-input"
-              placeholder="tu-correo@ejemplo.com"
-              [value]="loginEmail()"
-              (input)="loginEmail.set($any($event.target).value)"
-              (keyup.enter)="submitLogin()"
-            />
-          </div>
-
-          @if (loginError()) {
-            <p class="error-text" style="margin-top: 0.6rem">{{ loginError() }}</p>
-          }
-
-          <div class="modal-footer" style="margin-top: 1.4rem">
-            <button class="pill-action-btn secondary" (click)="closeModal()">Cancelar</button>
-            <button
-              class="pill-action-btn"
-              (click)="submitLogin()"
-              [disabled]="!loginEmail().trim() || newsletter.isLoading()"
-            >
-              Ingresar
-            </button>
-          </div>
+        <div class="modal-footer" style="margin-top: 1.4rem">
+          <button class="pill-action-btn secondary" (click)="closeModal()">Cancelar</button>
+          <button class="pill-action-btn" (click)="submitLogin()"
+            [disabled]="!loginEmail().trim() || newsletter.isLoading()">
+            Ingresar
+          </button>
         </div>
       </div>
     </div>
+  </div>
   }
 </div>

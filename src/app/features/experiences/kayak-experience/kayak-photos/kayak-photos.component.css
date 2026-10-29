@@ -112,7 +112,9 @@
 
 .featured-photo-card:hover {
   border-color: rgba(255, 255, 255, 0.45);
-  box-shadow: 0 12px 32px rgba(255, 255, 255, 0.18), 0 0 20px rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 12px 32px rgba(255, 255, 255, 0.18),
+    0 0 20px rgba(255, 255, 255, 0.12);
 }
 
 .featured-media-wrap {
@@ -139,9 +141,11 @@
   position: absolute;
   top: 14px;
   left: 14px;
-  font-size: 0.65rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
   background: var(--color-gold);
   color: #0b1120;
   border: 1px solid var(--color-gold);
@@ -157,7 +161,12 @@
   left: 0;
   right: 0;
   padding: 2rem 2rem 1.6rem;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.88) 0%, rgba(0, 0, 0, 0.4) 65%, transparent 100%);
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.88) 0%,
+    rgba(0, 0, 0, 0.4) 65%,
+    transparent 100%
+  );
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
@@ -200,7 +209,7 @@
   background: var(--color-gold) !important;
   color: #0b1120 !important;
   border: 1px solid var(--color-gold) !important;
-  font-weight: 800 !important;
+  font-weight: 700 !important;
 }
 
 .photo-card-item {
@@ -218,7 +227,9 @@
 .photo-card-item:hover {
   transform: translateY(-3px);
   border-color: rgba(255, 255, 255, 0.45);
-  box-shadow: 0 10px 24px rgba(255, 255, 255, 0.18), 0 0 16px rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 10px 24px rgba(255, 255, 255, 0.18),
+    0 0 16px rgba(255, 255, 255, 0.1);
 }
 
 .photo-card-media {
@@ -243,9 +254,11 @@
   position: absolute;
   top: 10px;
   left: 10px;
-  font-size: 0.62rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
+  font-family: var(--font-sans);
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
   background: var(--color-gold);
   color: #0b1120;
   border: 1px solid var(--color-gold);
@@ -329,7 +342,9 @@
 .community-card-item:hover {
   transform: translateY(-3px);
   border-color: rgba(255, 255, 255, 0.45);
-  box-shadow: 0 10px 24px rgba(255, 255, 255, 0.18), 0 0 16px rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 10px 24px rgba(255, 255, 255, 0.18),
+    0 0 16px rgba(255, 255, 255, 0.1);
 }
 
 .community-card-media {
@@ -435,17 +450,22 @@
   border-radius: 2px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.16);
-  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 10px 32px rgba(255, 255, 255, 0.28);
   text-decoration: none !important;
-  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+  transition:
+    transform 0.25s ease,
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
   cursor: pointer;
-  background: #000000;
+  background: #ffffff;
 }
 
 .ad-banner-link:hover {
   transform: translateY(-2px);
   border-color: rgba(255, 212, 42, 0.5);
-  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.6), 0 0 20px rgba(255, 212, 42, 0.15);
+  box-shadow:
+    0 16px 44px rgba(255, 255, 255, 0.4),
+    0 0 20px rgba(255, 212, 42, 0.15);
 }
 
 .ad-banner-img {
@@ -482,7 +502,9 @@
   border: 1px solid rgba(255, 212, 42, 0.45);
   border-radius: 4px;
   overflow: visible;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45), 0 0 25px rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 20px 50px rgba(0, 0, 0, 0.45),
+    0 0 25px rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
 }
@@ -562,7 +584,9 @@
   z-index: 35;
   transition: all 0.2s ease;
   padding: 0;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45), 0 0 16px rgba(255, 212, 42, 0.35);
+  box-shadow:
+    0 4px 18px rgba(0, 0, 0, 0.45),
+    0 0 16px rgba(255, 212, 42, 0.35);
 }
 
 .lightbox-nav-btn:hover {
@@ -666,10 +690,10 @@
 }
 
 .lightbox-tag {
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
   color: var(--color-gold);
   text-transform: uppercase;
 }

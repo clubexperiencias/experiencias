@@ -62,7 +62,7 @@ export class KayakPhotosComponent {
       caption:
         'Socios del Club navegando en aguas calmas frente al cordón de las Sierras de Ambato.',
       tag: 'DESTACADA',
-      photographer: 'Lucas N. · Equipo Fotográfico',
+      photographer: 'Lucas N: Equipo Fotográfico',
     },
   ];
 
@@ -73,14 +73,14 @@ export class KayakPhotosComponent {
       title: 'Navegación al Atardecer',
       caption: 'Remada en grupo en las bahías protegidas del dique Las Pirquitas.',
       tag: 'DESTACADA',
-      photographer: 'Marcos T. · Guía & Fotografía',
+      photographer: 'Marcos T: Guía & Fotografía',
     },
     {
       src: '/assets/images/kayak-club-de-experiencias.jpg',
       title: 'Entorno & Cordón de Ambato',
       caption: 'Panorámica de las sierras catamarqueñas reflejadas en el espejo de agua.',
       tag: 'DESTACADA',
-      photographer: 'Sofía L. · Producción Visual',
+      photographer: 'Sofía L: Producción Visual',
     },
   ];
 
