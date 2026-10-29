@@ -45,6 +45,9 @@ export class ProfileComponent implements OnInit {
   readonly bg = signal('/assets/images/laguna_blanca.jpg');
   readonly copyStatus = signal<string | null>(null);
   readonly showSuccessNotification = signal(false);
+  readonly profileJustSaved = signal(false);
+  readonly profileSaveError = signal<string | null>(null);
+  private successTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Actividades: Solo las últimas dos en la vista previa del perfil
   readonly recentActivities = () => this.activityService.activities().slice(0, 2);
@@ -66,18 +69,49 @@ export class ProfileComponent implements OnInit {
       this.newsletter.isAuthenticated().then((authed) => {
         if (!authed) {
           this.router.navigate(['/ingresar']);
+        } else {
+          this.syncFieldsFromMember();
         }
       });
+    } else {
+      this.syncFieldsFromMember();
     }
 
     if (this.newsletter.consumeLoginSuccessFlag()) {
-      this.showSuccessNotification.set(true);
-      this.newsletter.profileSuccessHighlight.set(true);
-      setTimeout(() => {
-        this.showSuccessNotification.set(false);
-        this.newsletter.profileSuccessHighlight.set(false);
-      }, 3000);
+      this.triggerProfileSuccessFeedback(false);
     }
+  }
+
+  private syncFieldsFromMember(): void {
+    const m = this.newsletter.currentMember();
+    if (!m) return;
+    if (m.fullName && !this.memberFullName()) this.memberFullName.set(m.fullName);
+    const dni = m.dni || m.documentNumber || '';
+    if (dni && !this.memberDni()) this.memberDni.set(dni);
+    if (m.phone && !this.memberPhone()) this.memberPhone.set(m.phone);
+    if (m.experiencesWishlist?.length && this.selectedExperiences().length === 0) {
+      this.selectedExperiences.set(m.experiencesWishlist);
+    }
+    if (m.experiencesOther && !this.memberOtherExperience()) {
+      this.memberOtherExperience.set(m.experiencesOther);
+    }
+  }
+
+  private triggerProfileSuccessFeedback(highlightSaveButton: boolean): void {
+    if (this.successTimer) {
+      clearTimeout(this.successTimer);
+    }
+    this.showSuccessNotification.set(true);
+    this.newsletter.profileSuccessHighlight.set(true);
+    if (highlightSaveButton) {
+      this.profileJustSaved.set(true);
+    }
+    this.successTimer = setTimeout(() => {
+      this.showSuccessNotification.set(false);
+      this.profileJustSaved.set(false);
+      this.newsletter.profileSuccessHighlight.set(false);
+      this.successTimer = null;
+    }, 3000);
   }
 
   // Menús de navegación idénticos a los de la landing /
@@ -333,6 +367,7 @@ export class ProfileComponent implements OnInit {
   }
 
   async saveMemberProfile(): Promise<void> {
+    this.profileSaveError.set(null);
     const dni = this.memberDni().replace(/\D/g, '').slice(0, 9);
     const phone = this.memberPhone().trim().slice(0, 25);
     if (!this.memberFullName().trim() || !/^\d{7,9}$/.test(dni) || !phone) {
@@ -353,8 +388,9 @@ export class ProfileComponent implements OnInit {
 
     if (res.success) {
       this.profileSaved.set(true);
-      this.copyStatus.set('¡Perfil de Socio guardado y sincronizado con éxito!');
-      setTimeout(() => this.copyStatus.set(null), 3000);
+      this.triggerProfileSuccessFeedback(true);
+    } else if (res.message) {
+      this.profileSaveError.set(res.message);
     }
   }
 

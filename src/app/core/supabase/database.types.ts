@@ -19,17 +19,20 @@ export interface Database {
           id: string;
           email: string;
           converted: boolean;
+          google_linked: boolean;
           created_at: string;
         };
         Insert: {
           id?: string;
           email: string;
           converted?: boolean;
+          google_linked?: boolean;
           created_at?: string;
         };
         Update: {
           email?: string;
           converted?: boolean;
+          google_linked?: boolean;
         };
         Relationships: [];
       };
@@ -49,6 +52,8 @@ export interface Database {
           position: number;
           membership_tier: MembershipTier;
           auth_user_id: string | null;
+          google_linked: boolean;
+          registration_token: string;
           created_at: string;
           updated_at: string;
         };
@@ -63,6 +68,8 @@ export interface Database {
           position?: number;
           membership_tier?: MembershipTier;
           auth_user_id?: string | null;
+          google_linked?: boolean;
+          registration_token?: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -75,6 +82,8 @@ export interface Database {
           experiences_other?: string | null;
           membership_tier?: MembershipTier;
           auth_user_id?: string | null;
+          google_linked?: boolean;
+          registration_token?: string;
           updated_at?: string;
         };
         Relationships: [];
@@ -173,7 +182,51 @@ export interface Database {
       };
     };
 
-    Functions: Record<string, never>;
+    Functions: {
+      record_waitlist_email: {
+        Args: {
+          p_email: string;
+          p_google_linked?: boolean;
+        };
+        Returns: Json;
+      };
+      check_email_registration_status: {
+        Args: {
+          p_email: string;
+        };
+        Returns: Json;
+      };
+      register_emergente_socio: {
+        Args: {
+          p_email: string;
+          p_full_name: string;
+          p_dni: string;
+          p_phone: string;
+          p_experiences_wishlist?: Json;
+          p_experiences_other?: string | null;
+        };
+        Returns: Json;
+      };
+      get_socio_by_session_or_token: {
+        Args: {
+          p_email: string;
+          p_registration_token?: string | null;
+        };
+        Returns: Json;
+      };
+      update_socio_profile_secure: {
+        Args: {
+          p_email: string;
+          p_registration_token?: string | null;
+          p_full_name?: string | null;
+          p_dni?: string | null;
+          p_phone?: string | null;
+          p_experiences_wishlist?: Json | null;
+          p_experiences_other?: string | null;
+        };
+        Returns: Json;
+      };
+    };
     Enums: {
       membership_tier: MembershipTier;
     };

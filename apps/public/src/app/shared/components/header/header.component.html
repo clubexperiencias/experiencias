@@ -34,11 +34,17 @@
       <span>Niveles de Socio</span>
     </a>
 
-    <!-- Menú Desktop: Si hay sesión iniciada muestra Cerrar Sesión, si no muestra Iniciar Sesión -->
+    <!-- Menú Desktop: En /perfil y subrutas muestra Cerrar Sesión; en las demás muestra Mi Perfil amarillo -->
     @if (newsletter.isSubscribed()) {
-    <button type="button" class="nav-pill-btn profile-btn logout-header-btn" [class.highlight-green]="newsletter.profileSuccessHighlight()" (click)="openLogoutModal($event)">
-      <span>Cerrar Sesión</span>
-    </button>
+      @if (isProfileRoute()) {
+      <button type="button" class="nav-pill-btn profile-btn logout-header-btn" (click)="openLogoutModal($event)">
+        <span>Cerrar Sesión</span>
+      </button>
+      } @else {
+      <a routerLink="/perfil" class="nav-pill-btn profile-btn" routerLinkActive="active-route" [class.highlight-green]="newsletter.profileSuccessHighlight()" (click)="closeMobileMenu()">
+        <span>Mi Perfil</span>
+      </a>
+      }
     } @else {
     <a routerLink="/ingresar" class="nav-pill-btn login-nav-btn" [class.highlight-green]="newsletter.profileSuccessHighlight()" (click)="closeMobileMenu()">
       <mat-icon class="btn-icon">login</mat-icon>
@@ -67,15 +73,22 @@
       </a>
 
       @if (newsletter.isSubscribed()) {
-      <a routerLink="/perfil" class="mobile-nav-row" (click)="closeMobileMenu()">
-        <span class="row-title">Mi Perfil</span>
-        <mat-icon class="row-arrow">chevron_right</mat-icon>
-      </a>
+        @if (isProfileRoute()) {
+        <a routerLink="/perfil" class="mobile-nav-row" (click)="closeMobileMenu()">
+          <span class="row-title">Mi Perfil</span>
+          <mat-icon class="row-arrow">chevron_right</mat-icon>
+        </a>
 
-      <button type="button" class="mobile-nav-row profile-cta-row logout-row logout-btn" [class.highlight-green]="newsletter.profileSuccessHighlight()" (click)="openLogoutModal($event)">
-        <span class="row-title">Cerrar Sesión</span>
-        <mat-icon class="row-arrow">arrow_forward</mat-icon>
-      </button>
+        <button type="button" class="mobile-nav-row profile-cta-row logout-row logout-btn" (click)="openLogoutModal($event)">
+          <span class="row-title">Cerrar Sesión</span>
+          <mat-icon class="row-arrow">arrow_forward</mat-icon>
+        </button>
+        } @else {
+        <a routerLink="/perfil" class="mobile-nav-row profile-cta-row" [class.highlight-green]="newsletter.profileSuccessHighlight()" (click)="closeMobileMenu()">
+          <span class="row-title">Mi Perfil</span>
+          <mat-icon class="row-arrow">arrow_forward</mat-icon>
+        </a>
+        }
       } @else {
       <a routerLink="/ingresar" class="mobile-nav-row login-cta-row" [class.highlight-green]="newsletter.profileSuccessHighlight()" (click)="closeMobileMenu()">
         <span class="row-title">Iniciar Sesión</span>

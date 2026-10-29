@@ -34,6 +34,11 @@ export class HeaderComponent {
     this.router.navigate(['/ingresar']);
   }
 
+  isProfileRoute(): boolean {
+    const path = (this.router.url || '').split('?')[0].split('#')[0];
+    return path === '/perfil' || path.startsWith('/perfil/');
+  }
+
   openLogoutModal(event?: Event): void {
     if (event) {
       event.stopPropagation();

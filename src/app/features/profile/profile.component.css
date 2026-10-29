@@ -452,7 +452,9 @@
   justify-content: center;
   gap: 0.55rem;
   width: 100%;
+  min-height: 48px;
   padding: 0.85rem 1.4rem;
+  box-sizing: border-box;
   background: var(--color-gold);
   border: none;
   border-radius: 2px;
@@ -463,12 +465,18 @@
   cursor: pointer;
   transition: all 0.2s ease;
   margin-top: 0.5rem;
-  min-height: 48px;
 }
 
 .save-profile-btn:hover:not(:disabled) {
   background: var(--color-gold-hover);
   box-shadow: 0 6px 20px rgba(255, 212, 42, 0.35);
+}
+
+.save-profile-btn.saved-success,
+.save-profile-btn.saved-success:hover:not(:disabled) {
+  background: #059669 !important;
+  color: #ffffff !important;
+  box-shadow: 0 6px 20px rgba(5, 150, 105, 0.35);
 }
 
 .save-profile-btn:disabled {
@@ -588,20 +596,23 @@
 }
 
 .connect-google-btn {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  height: 36px;
+  gap: 0.55rem;
+  width: 100%;
+  min-height: 48px;
+  padding: 0.85rem 1.4rem;
   box-sizing: border-box;
-  padding: 0 1rem;
+  margin-top: 0.65rem;
   background: #ffffff;
   color: #1f2937;
   border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 3px;
+  border-radius: 2px;
   font-family: var(--font-sans);
   font-weight: 700;
-  font-size: 0.78rem;
+  font-size: 0.88rem;
+  letter-spacing: 0.02em;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -618,17 +629,20 @@
 }
 
 .auth-sync-badge.connected {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  height: 36px;
+  justify-content: center;
+  width: 100%;
+  min-height: 48px;
+  padding: 0.85rem 1.4rem;
   box-sizing: border-box;
-  padding: 0 0.9rem;
+  margin-top: 0.65rem;
   background: rgba(5, 150, 105, 0.2);
   border: 1px solid #059669;
-  border-radius: 3px;
+  border-radius: 2px;
   color: #34d399;
   font-family: var(--font-sans);
-  font-size: 0.76rem;
+  font-size: 0.84rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;

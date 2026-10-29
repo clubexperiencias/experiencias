@@ -545,7 +545,6 @@ mat-icon.btn-icon {
   max-width: 420px;
   background: #141c2b;
   border: 1px solid rgba(255, 255, 255, 0.16);
-  border-top: 3.5px solid #ffcc00;
   border-radius: 4px;
   padding: 1.85rem 1.75rem;
   box-shadow: 0 20px 48px rgba(0, 0, 0, 0.55);
@@ -562,7 +561,7 @@ mat-icon.btn-icon {
   font-weight: 800;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: #ffcc00;
+  color: #ff5f00;
   margin-bottom: 0.4rem;
 }
 
@@ -586,7 +585,7 @@ mat-icon.btn-icon {
 .logout-modal-actions {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 0.75rem;
 }
 

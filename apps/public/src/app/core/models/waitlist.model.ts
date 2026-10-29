@@ -27,6 +27,8 @@ export interface WaitlistEntry {
   membershipTier?: MembershipTier;
   subscription?: SubscriptionDetails;
   authUserId?: string;
+  googleLinked?: boolean;
+  registrationToken?: string;
 }
 
 export interface WaitlistSubmissionDto {

@@ -25,6 +25,8 @@ function mapDbRowToEntry(row: any): WaitlistEntry {
     source: 'web_minimal_landing',
     membershipTier: row.membership_tier || 'emergente',
     authUserId: row.auth_user_id || undefined,
+    googleLinked: Boolean(row.google_linked || row.auth_user_id),
+    registrationToken: row.registration_token || undefined,
   };
 }
 
@@ -75,16 +77,33 @@ export class NewsletterService {
 
       const current = this._currentMember();
       if (current?.email) {
-        const { data: remoteSocio } = await this.supabase
-          .from('socios')
-          .select('*')
-          .eq('email', current.email.toLowerCase())
-          .maybeSingle();
+        const cleanCurrentEmail = current.email.toLowerCase();
+        const { data: rpcRes, error: rpcErr } = await this.supabase.rpc(
+          'get_socio_by_session_or_token',
+          {
+            p_email: cleanCurrentEmail,
+            p_registration_token: current.registrationToken || null,
+          },
+        );
 
-        if (remoteSocio) {
-          const mapped = mapDbRowToEntry(remoteSocio);
+        const rpcPayload = rpcRes as any;
+        if (!rpcErr && rpcPayload?.status === 'ok' && rpcPayload?.socio) {
+          const mapped = mapDbRowToEntry(rpcPayload.socio);
           this._currentMember.set(mapped);
           this.persistCurrentMember(mapped);
+        } else if (rpcErr) {
+          // Fallback si la función RPC aún no fue ejecutada en Supabase
+          const { data: remoteSocio } = await this.supabase
+            .from('socios')
+            .select('*')
+            .eq('email', cleanCurrentEmail)
+            .maybeSingle();
+
+          if (remoteSocio) {
+            const mapped = mapDbRowToEntry(remoteSocio);
+            this._currentMember.set(mapped);
+            this.persistCurrentMember(mapped);
+          }
         }
       }
 
@@ -95,9 +114,39 @@ export class NewsletterService {
           const authId = session.user.id;
 
           try {
+            // 1. Asegurar registro en waitlist con google_linked = true
+            const { error: wlRpcErr } = await this.supabase.rpc('record_waitlist_email', {
+              p_email: authEmail,
+              p_google_linked: true,
+            });
+            if (wlRpcErr) {
+              await this.supabase
+                .from('waitlist')
+                .upsert({ email: authEmail, google_linked: true }, { onConflict: 'email' });
+            }
+
+            // 2. Obtener y vincular socio existente mediante RPC segura
+            const { data: rpcRes, error: rpcErr } = await this.supabase.rpc(
+              'get_socio_by_session_or_token',
+              {
+                p_email: authEmail,
+                p_registration_token: this._currentMember()?.registrationToken || null,
+              },
+            );
+
+            const rpcPayload = rpcRes as any;
+            if (!rpcErr && rpcPayload?.status === 'ok' && rpcPayload?.socio) {
+              const mapped = mapDbRowToEntry(rpcPayload.socio);
+              this._currentMember.set(mapped);
+              this.persistCurrentMember(mapped);
+              this.setLoginSuccessFlag();
+              return;
+            }
+
+            // Fallback directo si la RPC aún no existe
             await this.supabase
               .from('socios')
-              .update({ auth_user_id: authId })
+              .update({ auth_user_id: authId, google_linked: true })
               .eq('email', authEmail);
 
             const { data: remoteSocio } = await this.supabase
@@ -150,6 +199,36 @@ export class NewsletterService {
         const { data } = await this.supabase.auth.getSession();
         if (data?.session?.user?.email) {
           const authEmail = data.session.user.email.toLowerCase();
+
+          // Registrar en waitlist con google_linked = true
+          const { error: wlRpcErr } = await this.supabase.rpc('record_waitlist_email', {
+            p_email: authEmail,
+            p_google_linked: true,
+          });
+          if (wlRpcErr) {
+            await this.supabase
+              .from('waitlist')
+              .upsert({ email: authEmail, google_linked: true }, { onConflict: 'email' });
+          }
+
+          // Consultar socio mediante RPC segura
+          const { data: rpcRes, error: rpcErr } = await this.supabase.rpc(
+            'get_socio_by_session_or_token',
+            {
+              p_email: authEmail,
+              p_registration_token: null,
+            },
+          );
+
+          const rpcPayload = rpcRes as any;
+          if (!rpcErr && rpcPayload?.status === 'ok' && rpcPayload?.socio) {
+            const entry = mapDbRowToEntry(rpcPayload.socio);
+            this._currentMember.set(entry);
+            this.persistCurrentMember(entry);
+            return true;
+          }
+
+          // Fallback si la RPC aún no fue ejecutada en Supabase
           const { data: remoteSocio } = await this.supabase
             .from('socios')
             .select('*')
@@ -171,6 +250,7 @@ export class NewsletterService {
             phone: '',
             membershipTier: 'emergente',
             authUserId: data.session.user.id,
+            googleLinked: true,
             position: 100,
             status: 'confirmed',
             source: 'supabase_auth',
@@ -257,12 +337,19 @@ export class NewsletterService {
 
     if (this.isSupabaseConnected()) {
       try {
-        const { error } = await this.supabase
-          .from('waitlist')
-          .upsert({ email: cleanEmail }, { onConflict: 'email', ignoreDuplicates: true });
+        const { error: rpcErr } = await this.supabase.rpc('record_waitlist_email', {
+          p_email: cleanEmail,
+          p_google_linked: false,
+        });
 
-        if (error) {
-          console.warn('[Supabase] Advertencia guardando en waitlist:', error.message);
+        if (rpcErr) {
+          const { error } = await this.supabase
+            .from('waitlist')
+            .upsert({ email: cleanEmail }, { onConflict: 'email', ignoreDuplicates: true });
+
+          if (error) {
+            console.warn('[Supabase] Advertencia guardando en waitlist:', error.message);
+          }
         }
       } catch (err) {
         console.warn('[Supabase] Error registrando prospecto en waitlist:', err);
@@ -319,10 +406,60 @@ export class NewsletterService {
       return { success: false, message: 'Ingresá tu número de celular.' };
     }
 
-    // 1. Guardar en Supabase si está conectado
+    // 1. Guardar en Supabase si está conectado (primero mediante RPC atómica y segura)
     if (this.isSupabaseConnected()) {
       try {
-        // Verificar si ya existe socio con ese email
+        const { data: rpcRes, error: rpcErr } = await this.supabase.rpc(
+          'register_emergente_socio',
+          {
+            p_email: cleanEmail,
+            p_full_name: cleanName,
+            p_dni: cleanDni,
+            p_phone: cleanPhone,
+            p_experiences_wishlist: dto.experiencesWishlist || [],
+            p_experiences_other: dto.experiencesOther || null,
+          },
+        );
+
+        const rpcPayload = rpcRes as any;
+        if (!rpcErr && rpcPayload?.status) {
+          if (rpcPayload.status === 'already_registered_email') {
+            this._isLoading.set(false);
+            return {
+              success: false,
+              alreadyRegistered: true,
+              message:
+                'Ya completaste el formulario de Socio con este correo. Por favor, iniciá sesión vía Google para ingresar a tu perfil.',
+            };
+          }
+
+          if (rpcPayload.status === 'already_registered_dni') {
+            this._isLoading.set(false);
+            return {
+              success: false,
+              message: 'Ya existe un socio registrado con este número de DNI.',
+            };
+          }
+
+          if (rpcPayload.status === 'created' && rpcPayload.socio) {
+            const entry = mapDbRowToEntry(rpcPayload.socio);
+            const updatedEntries = [entry, ...this._entries().filter((e) => e.email !== cleanEmail)];
+            this._entries.set(updatedEntries);
+            this._currentMember.set(entry);
+            this.persistEntries(updatedEntries);
+            this.persistCurrentMember(entry);
+
+            this._isLoading.set(false);
+            this.setLoginSuccessFlag();
+            return {
+              success: true,
+              socio: entry,
+              message: `¡Bienvenido al Club! Sos el Socio Emergente #${entry.position}.`,
+            };
+          }
+        }
+
+        // Fallback a tablas directas si la función RPC aún no fue ejecutada en Supabase
         const { data: existing } = await this.supabase
           .from('socios')
           .select('*')
@@ -338,8 +475,19 @@ export class NewsletterService {
               'Ya completaste el formulario de Socio con este correo. Por favor, iniciá sesión vía Google para ingresar a tu perfil.',
           };
         } else {
+          // Si ya hay sesión activa en Supabase Auth con este mismo correo, vincular automáticamente
+          let activeAuthId: string | null = null;
+          try {
+            const { data: sessData } = await this.supabase.auth.getSession();
+            if (sessData?.session?.user?.email?.toLowerCase() === cleanEmail) {
+              activeAuthId = sessData.session.user.id;
+            }
+          } catch {
+            // Sin sesión activa
+          }
+
           // Insertar nuevo socio con número secuencial automático (desde 100)
-          const { data: inserted, error: insErr } = await this.supabase
+          let { data: inserted, error: insErr } = await this.supabase
             .from('socios')
             .insert({
               email: cleanEmail,
@@ -349,9 +497,38 @@ export class NewsletterService {
               experiences_wishlist: dto.experiencesWishlist || [],
               experiences_other: dto.experiencesOther || null,
               membership_tier: 'emergente',
+              ...(activeAuthId ? { auth_user_id: activeAuthId, google_linked: true } : {}),
             })
             .select()
             .single();
+
+          if (insErr && activeAuthId) {
+            // Fallback por si la columna google_linked aún no se ejecutó en Supabase SQL
+            const retry = await this.supabase
+              .from('socios')
+              .insert({
+                email: cleanEmail,
+                full_name: cleanName,
+                dni: cleanDni,
+                phone: cleanPhone,
+                experiences_wishlist: dto.experiencesWishlist || [],
+                experiences_other: dto.experiencesOther || null,
+                membership_tier: 'emergente',
+                auth_user_id: activeAuthId,
+              })
+              .select()
+              .single();
+            inserted = retry.data;
+            insErr = retry.error;
+          }
+
+          if (insErr && insErr.message?.toLowerCase().includes('idx_socios_dni_unique')) {
+            this._isLoading.set(false);
+            return {
+              success: false,
+              message: 'Ya existe un socio registrado con este número de DNI.',
+            };
+          }
 
           if (!insErr && inserted) {
             const entry = mapDbRowToEntry(inserted);
@@ -361,12 +538,25 @@ export class NewsletterService {
             this.persistEntries(updatedEntries);
             this.persistCurrentMember(entry);
 
-            // Marcar en waitlist como convertido
-            this.supabase
+            // Marcar en waitlist como convertido (y google_linked si corresponde)
+            const isGoogleLinked = Boolean(entry.googleLinked || entry.authUserId);
+            const { error: wlErr } = await this.supabase
               .from('waitlist')
-              .update({ converted: true })
-              .eq('email', cleanEmail)
-              .then(() => {});
+              .upsert(
+                {
+                  email: cleanEmail,
+                  converted: true,
+                  ...(isGoogleLinked ? { google_linked: true } : {}),
+                },
+                { onConflict: 'email' },
+              );
+
+            if (wlErr) {
+              await this.supabase
+                .from('waitlist')
+                .update({ converted: true })
+                .eq('email', cleanEmail);
+            }
 
             this._isLoading.set(false);
             this.setLoginSuccessFlag();
@@ -486,9 +676,55 @@ export class NewsletterService {
       return { success: false, message: 'Por favor, ingresá un correo electrónico válido.' };
     }
 
-    // 1. Consultar socios y waitlist en paralelo en Supabase
+    // 1. Consultar estado en Supabase sin exponer datos sensibles mediante RPC segura
     if (this.isSupabaseConnected()) {
       try {
+        const { data: rpcRes, error: rpcErr } = await this.supabase.rpc(
+          'check_email_registration_status',
+          { p_email: cleanEmail },
+        );
+
+        const rpcStatus = rpcRes as any;
+        if (!rpcErr && rpcStatus && typeof rpcStatus.in_socios === 'boolean') {
+          if (rpcStatus.in_socios) {
+            this._isLoading.set(false);
+            return {
+              success: false,
+              alreadyRegisteredSocio: true,
+              message:
+                'Ya completaste el formulario de Socio con este correo. Por favor, iniciá sesión vía Google para acceder a tu perfil.',
+            };
+          }
+
+          if (rpcStatus.in_waitlist) {
+            this._isLoading.set(false);
+            this.lastProspectEmail.set(cleanEmail);
+            this.persistProspectEmail(cleanEmail);
+            return {
+              success: false,
+              notFound: true,
+              alreadyInWaitlist: true,
+              isWaitlistOnly: true,
+              message:
+                'Tu correo ya está en la lista de espera. Redirigiendo para completar tu perfil de Socio Emergente...',
+            };
+          }
+
+          // Si no estaba ni en socios ni en waitlist, guardarlo en waitlist en segundo plano
+          void this.recordWaitlistProspect(cleanEmail);
+          this._isLoading.set(false);
+          this.lastProspectEmail.set(cleanEmail);
+          return {
+            success: false,
+            notFound: true,
+            alreadyInWaitlist: false,
+            isWaitlistOnly: true,
+            message:
+              'Guardamos tu correo en la lista de espera oficial. ¡Completá tu perfil para recibir tu número oficial de socio!',
+          };
+        }
+
+        // Fallback si la RPC aún no fue ejecutada en Supabase
         const [socioRes, waitlistRes] = await Promise.all([
           this.supabase.from('socios').select('*').eq('email', cleanEmail).maybeSingle(),
           this.supabase
@@ -688,6 +924,38 @@ export class NewsletterService {
     const cleanDni = data.dni ? data.dni.replace(/\D/g, '').slice(0, 9) : current.dni;
     const cleanPhone = data.phone ? data.phone.trim().slice(0, 25) : current.phone;
 
+    // Si el usuario ingresó directo con Google OAuth sin haber creado aún su fila en `socios`,
+    // al guardar su perfil con DNI y celular lo registramos oficialmente en `socios`:
+    if (
+      current.source === 'supabase_auth' &&
+      !current.registrationToken &&
+      cleanDni &&
+      cleanPhone
+    ) {
+      const regRes = await this.registerSocio({
+        fullName: data.fullName.trim().slice(0, 100),
+        email: current.email,
+        dni: cleanDni,
+        phone: cleanPhone,
+        experiencesWishlist: data.experiencesWishlist || current.experiencesWishlist,
+        experiencesOther: data.experiencesOther ?? current.experiencesOther,
+      });
+
+      if (regRes.success && regRes.socio) {
+        return {
+          success: true,
+          entry: regRes.socio,
+          message: '¡Perfil de Socio guardado con éxito!',
+        };
+      }
+      if (!regRes.alreadyRegistered) {
+        return {
+          success: false,
+          message: regRes.message,
+        };
+      }
+    }
+
     const updatedMember: WaitlistEntry = {
       ...current,
       fullName: data.fullName.slice(0, 100),
@@ -698,17 +966,55 @@ export class NewsletterService {
       experiencesOther: data.experiencesOther ?? current.experiencesOther,
     };
 
-    this._currentMember.set(updatedMember);
-    this.persistCurrentMember(updatedMember);
-
-    const updatedEntries = this._entries().map((e) =>
-      e.id === updatedMember.id || e.email === updatedMember.email ? updatedMember : e,
-    );
-    this._entries.set(updatedEntries);
-    this.persistEntries(updatedEntries);
-
     if (this.isSupabaseConnected()) {
       try {
+        const { data: rpcRes, error: rpcErr } = await this.supabase.rpc(
+          'update_socio_profile_secure',
+          {
+            p_email: current.email.toLowerCase(),
+            p_registration_token: current.registrationToken || null,
+            p_full_name: updatedMember.fullName || null,
+            p_dni: updatedMember.dni || null,
+            p_phone: updatedMember.phone || null,
+            p_experiences_wishlist: updatedMember.experiencesWishlist || [],
+            p_experiences_other: updatedMember.experiencesOther || null,
+          },
+        );
+
+        const rpcPayload = rpcRes as any;
+        if (!rpcErr && rpcPayload?.status) {
+          if (rpcPayload.status === 'dni_conflict') {
+            return {
+              success: false,
+              message: 'Ya existe otro socio registrado con este número de DNI.',
+            };
+          }
+          if (rpcPayload.status === 'unauthorized') {
+            return {
+              success: false,
+              message: 'Por seguridad, iniciá sesión con Google para editar tu perfil.',
+            };
+          }
+          if (rpcPayload.status === 'updated' && rpcPayload.socio) {
+            const syncedEntry = mapDbRowToEntry(rpcPayload.socio);
+            this._currentMember.set(syncedEntry);
+            this.persistCurrentMember(syncedEntry);
+
+            const syncedList = this._entries().map((e) =>
+              e.id === syncedEntry.id || e.email === syncedEntry.email ? syncedEntry : e,
+            );
+            this._entries.set(syncedList);
+            this.persistEntries(syncedList);
+
+            return {
+              success: true,
+              entry: syncedEntry,
+              message: '¡Perfil de Socio guardado con éxito!',
+            };
+          }
+        }
+
+        // Fallback si la RPC aún no fue ejecutada en Supabase
         const updatePayload: any = {
           full_name: updatedMember.fullName,
           dni: updatedMember.dni,
@@ -726,6 +1032,15 @@ export class NewsletterService {
         console.warn('[Supabase] Error sincronizando socio:', err);
       }
     }
+
+    this._currentMember.set(updatedMember);
+    this.persistCurrentMember(updatedMember);
+
+    const updatedEntries = this._entries().map((e) =>
+      e.id === updatedMember.id || e.email === updatedMember.email ? updatedMember : e,
+    );
+    this._entries.set(updatedEntries);
+    this.persistEntries(updatedEntries);
 
     return {
       success: true,

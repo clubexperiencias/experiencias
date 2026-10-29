@@ -24,7 +24,7 @@ describe('ProfileComponent', () => {
 
     const notification = fixture.nativeElement.querySelector('.registration-success-bar');
     expect(notification).toBeTruthy();
-    expect(notification.textContent).toContain('¡REGISTRO EXITOSO!');
+    expect(notification.textContent).toContain('¡PERFIL DE SOCIO REGISTRADO CON ÉXITO!');
     expect(notification.textContent).toContain('Socio Emergente');
     expect(component.newsletter.profileSuccessHighlight()).toBe(true);
   });
