@@ -44,19 +44,37 @@ describe('WaitlistComponent All Desktop Modals & Navigation', () => {
     expect(loginBtn.getAttribute('routerlink') || loginBtn.getAttribute('href')).toBe('/ingresar');
   });
 
-  it('should show Perfil button when subscribed and link directly to /perfil without dropdown', async () => {
-    await component.newsletter.joinWaitlist({ email: 'socio@experiencias.club' });
+  it('should show Cerrar Sesión button when subscribed and open confirmation modal on click', async () => {
+    await component.newsletter.joinWaitlist({
+      email: 'socio@experiencias.club',
+      fullName: 'Socio Test',
+      dni: '30123456',
+      phone: '3834123456',
+    });
     fixture.detectChanges();
 
-    const profileBtn = fixture.nativeElement.querySelector('.profile-btn');
+    const profileBtn = fixture.nativeElement.querySelector('.profile-btn') as HTMLElement;
     expect(profileBtn).toBeTruthy();
-    expect(profileBtn.textContent).toContain('Perfil');
-    expect(profileBtn.getAttribute('routerlink') || profileBtn.getAttribute('href')).toBe('/perfil');
-    expect(fixture.nativeElement.querySelector('.profile-dropdown-menu')).toBeFalsy();
+    expect(profileBtn.textContent).toContain('Cerrar Sesión');
+
+    profileBtn.click();
+    fixture.detectChanges();
+
+    const confirmBtn = fixture.nativeElement.querySelector('.logout-confirm-btn') as HTMLElement;
+    expect(confirmBtn).toBeTruthy();
+    confirmBtn.click();
+    fixture.detectChanges();
+
+    expect(component.newsletter.isSubscribed()).toBe(false);
   });
 
-  it('should allow user to logout from mobile menu', async () => {
-    await component.newsletter.joinWaitlist({ email: 'socio@test.com' });
+  it('should allow user to logout from mobile menu with confirmation modal', async () => {
+    await component.newsletter.joinWaitlist({
+      email: 'socio@test.com',
+      fullName: 'Socio Test',
+      dni: '30123456',
+      phone: '3834123456',
+    });
     fixture.detectChanges();
 
     component.mobileMenuOpen.set(true);
@@ -67,6 +85,11 @@ describe('WaitlistComponent All Desktop Modals & Navigation', () => {
     expect(logoutBtn.textContent).toContain('Cerrar Sesión');
 
     logoutBtn.click();
+    fixture.detectChanges();
+
+    const confirmBtn = fixture.nativeElement.querySelector('.logout-confirm-btn') as HTMLElement;
+    expect(confirmBtn).toBeTruthy();
+    confirmBtn.click();
     fixture.detectChanges();
 
     expect(component.newsletter.isSubscribed()).toBe(false);

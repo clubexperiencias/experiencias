@@ -741,6 +741,9 @@ export class NewsletterService {
     } catch {
       /* ignore */
     }
+    if (this.isSupabaseConnected()) {
+      void this.supabase.auth.signOut().catch(() => {});
+    }
   }
 
   async activateMonthlySubscription(details?: {

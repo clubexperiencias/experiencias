@@ -82,6 +82,15 @@ export class EmergingMemberComponent implements OnInit {
     this.route.queryParams.subscribe((params) => {
       const paramEmail = ((params['email'] as string) || '').trim().toLowerCase();
       if (paramEmail) {
+        const currentEmail = this.newsletter.currentMember()?.email?.toLowerCase();
+        if (currentEmail && currentEmail !== paramEmail) {
+          this.newsletter.resetCurrentSubscription();
+          this.fullName.set('');
+          this.documentNumber.set('');
+          this.phone.set('');
+          this.selectedExperiences.set([]);
+          this.otherExperience.set('');
+        }
         this.email.set(paramEmail);
       } else if (this.newsletter.lastProspectEmail()) {
         this.email.set(this.newsletter.lastProspectEmail());

@@ -157,9 +157,6 @@
   display: flex;
   flex-direction: column;
   gap: 1.4rem;
-  border-left: 2px solid rgba(255, 212, 42, 0.35);
-  padding-left: 1.5rem;
-  margin-left: 0.5rem;
 }
 
 .timeline-step {
@@ -167,18 +164,6 @@
   flex-direction: column;
   gap: 0.3rem;
   position: relative;
-}
-
-.timeline-step::before {
-  content: '';
-  position: absolute;
-  left: -1.95rem;
-  top: 0.25rem;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--color-gold);
-  border: 2px solid #000;
 }
 
 .timeline-time {
@@ -280,13 +265,13 @@
   position: absolute;
   left: 0;
   top: 0;
-  color: var(--color-gold);
+  color: #ffffff;
   font-weight: 700;
 }
 
 .simple-logistics-col.traer-col .simple-check-list li::before,
 .simple-check-list.blue-checks li::before {
-  color: var(--color-gold);
+  color: #ffffff;
 }
 
 .simple-check-list li strong {
@@ -595,15 +580,6 @@
 
   .card-subheading {
     font-size: 0.9rem;
-  }
-
-  .timeline-list {
-    padding-left: 1.1rem;
-    margin-left: 0.3rem;
-  }
-
-  .timeline-step::before {
-    left: -1.55rem;
   }
 
   .timeline-body h4 {

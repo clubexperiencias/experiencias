@@ -447,6 +447,10 @@ export class WaitlistComponent {
     const cleanEmail = this.email().trim().toLowerCase();
     if (!cleanEmail || this.newsletter.isLoading()) return;
 
+    if (this.newsletter.isSubscribed()) {
+      this.newsletter.resetCurrentSubscription();
+    }
+
     const res = await this.newsletter.loginWithEmail(cleanEmail);
     if (res.alreadyRegisteredSocio) {
       this.router.navigate(['/ingresar'], {

@@ -292,12 +292,10 @@ export class ProfileComponent implements OnInit {
   }
 
   readonly wishlistExperiences = [
-    { id: 'galan', icon: '🌋', title: 'Volcán Galán & Caldera Gigante' },
-    { id: 'seismiles', icon: '🚙', title: 'Travesía 4x4 Paso San Francisco & Seismiles' },
-    { id: 'kayak', icon: '🚣', title: 'Kayak & Aguas Calmas en Diques Andinos' },
-    { id: 'pissis', icon: '🏔️', title: 'Trekking Balcón del Pissis & Lagunas' },
-    { id: 'astroturismo', icon: '🌌', title: 'Astrofotografía & Cielos de la Puna' },
-    { id: 'termas', icon: '🌿', title: 'Termas de Fiambalá & Valles Secretos' },
+    { id: 'kayak', title: 'Kayak y aguas calmas en diques andinos' },
+    { id: 'pissis', title: 'Trekking Balcón del Pissis y lagunas' },
+    { id: 'termas', title: 'Termas de Fiambalá y valles secretos' },
+    { id: 'otros', title: 'Otros (especificar a continuación)' },
   ];
 
   readonly memberFullName = signal(this.newsletter.currentMember()?.fullName || '');
@@ -307,6 +305,9 @@ export class ProfileComponent implements OnInit {
   readonly memberPhone = signal(this.newsletter.currentMember()?.phone || '');
   readonly selectedExperiences = signal<string[]>(
     this.newsletter.currentMember()?.experiencesWishlist || [],
+  );
+  readonly memberOtherExperience = signal(
+    this.newsletter.currentMember()?.experiencesOther || '',
   );
   readonly profileSaved = signal(Boolean(this.newsletter.currentMember()?.fullName));
 
@@ -324,8 +325,11 @@ export class ProfileComponent implements OnInit {
   }
 
   getExperienceTitle(id: string): string {
+    if (id === 'otros' && this.memberOtherExperience().trim()) {
+      return `Otros: ${this.memberOtherExperience().trim()}`;
+    }
     const found = this.wishlistExperiences.find((e) => e.id === id);
-    return found ? `${found.icon} ${found.title}` : id;
+    return found ? found.title : id;
   }
 
   async saveMemberProfile(): Promise<void> {
@@ -335,11 +339,16 @@ export class ProfileComponent implements OnInit {
       return;
     }
 
+    const otherText = this.isExperienceSelected('otros')
+      ? this.memberOtherExperience().trim()
+      : '';
+
     const res = await this.newsletter.updateMemberProfile({
       fullName: this.memberFullName().trim().slice(0, 100),
       dni,
       phone,
       experiencesWishlist: this.selectedExperiences(),
+      experiencesOther: otherText,
     });
 
     if (res.success) {

@@ -216,6 +216,7 @@ export class BreadcrumbComponent implements OnInit {
       return {
         kicker: 'Explorar',
         steps: [
+          { label: 'Experiencias & Expediciones', url: '/experiencias' },
           { label: 'Membresías & Niveles de Socio', url: '/socios' },
           { label: 'Mi Perfil de Socio', url: '/perfil' },
           { label: 'Volver al inicio', url: '/' },
@@ -312,6 +313,7 @@ export class BreadcrumbComponent implements OnInit {
     return {
       kicker: 'Explorar',
       steps: [
+        { label: 'Experiencias & Expediciones', url: '/experiencias' },
         { label: 'Membresías & Niveles de Socio', url: '/socios' },
         { label: 'Mi Perfil de Socio', url: '/perfil' },
         { label: 'Volver atrás', url: '/' },

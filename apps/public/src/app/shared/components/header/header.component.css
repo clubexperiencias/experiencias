@@ -197,6 +197,20 @@ mat-icon.btn-icon {
   color: #000000 !important;
 }
 
+/* Botón Cerrar Sesión en Header (#ff5f00) */
+.nav-pill-btn.logout-header-btn,
+.nav-pill-btn.logout-header-btn:hover,
+.nav-pill-btn.logout-header-btn:active {
+  background: #ff5f00 !important;
+  border-color: #ff5f00 !important;
+  color: #ffffff !important;
+}
+
+.nav-pill-btn.logout-header-btn *,
+.nav-pill-btn.logout-header-btn:hover * {
+  color: #ffffff !important;
+}
+
 /* ==========================================================================
    Highlight Verde de Éxito al Iniciar Sesión (Sincronizado con la alerta verde)
    ========================================================================== */
@@ -474,6 +488,19 @@ mat-icon.btn-icon {
     border-color: #ffcc00 !important;
     transform: none;
   }
+
+  .mobile-nav-row.profile-cta-row.logout-row,
+  .mobile-nav-row.profile-cta-row.logout-row:hover,
+  .mobile-nav-row.profile-cta-row.logout-row:active {
+    background: #ff5f00 !important;
+    border-color: #ff5f00 !important;
+    color: #ffffff !important;
+  }
+
+  .mobile-nav-row.profile-cta-row.logout-row .row-title,
+  .mobile-nav-row.profile-cta-row.logout-row .row-arrow {
+    color: #ffffff !important;
+  }
 }
 
 @keyframes slideDownPanel {
@@ -494,4 +521,113 @@ mat-icon.btn-icon {
   to {
     opacity: 1;
   }
+}
+
+/* ==========================================================================
+   Modal de Confirmación de Cerrar Sesión
+   ========================================================================== */
+.logout-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2500;
+  background: rgba(8, 12, 20, 0.72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  animation: fadeIn 0.18s ease-out;
+}
+
+.logout-modal-card {
+  width: 100%;
+  max-width: 420px;
+  background: #141c2b;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-top: 3.5px solid #ffcc00;
+  border-radius: 4px;
+  padding: 1.85rem 1.75rem;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.55);
+  color: #ffffff;
+  text-align: left;
+  box-sizing: border-box;
+  animation: slideDownPanel 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.logout-modal-kicker {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #ffcc00;
+  margin-bottom: 0.4rem;
+}
+
+.logout-modal-title {
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0 0 0.65rem;
+  line-height: 1.2;
+}
+
+.logout-modal-desc {
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0 0 1.5rem;
+}
+
+.logout-modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.logout-cancel-btn {
+  padding: 0.68rem 1.15rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 3px;
+  color: #ffffff;
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.logout-cancel-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.logout-confirm-btn {
+  padding: 0.68rem 1.25rem;
+  background: #ff5f00;
+  border: 1px solid #ff5f00;
+  border-radius: 3px;
+  color: #ffffff;
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.logout-confirm-btn:hover {
+  background: #ff7420;
+  border-color: #ff7420;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(255, 95, 0, 0.35);
 }
