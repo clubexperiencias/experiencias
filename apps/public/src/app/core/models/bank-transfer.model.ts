@@ -25,6 +25,8 @@ export interface TransferReceipt {
   mimeType: string;
   sizeBytes: number;
   url: string;
+  storageKey?: string;
+  provider?: 'r2' | 'supabase' | 'local';
 }
 
 export interface TransferSubmission {

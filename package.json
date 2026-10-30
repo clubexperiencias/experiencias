@@ -12,9 +12,11 @@
     "build": "node ./scripts/set-env.js && npm run build --workspace=apps/public",
     "dev:public": "npm run dev --workspace=apps/public",
     "build:public": "node ./scripts/set-env.js && npm run build --workspace=apps/public",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "prepare": "husky"
   },
   "devDependencies": {
+    "husky": "^9.1.7",
     "prettier": "^3.8.1",
     "typescript": "~6.0.2"
   }

@@ -9,6 +9,89 @@
   gap: 1.5rem;
 }
 
+.pay-checkout-shell {
+  width: 100%;
+  max-width: 1080px;
+}
+
+.pay-checkout-shell:has(.pay-google-gate) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 1.5rem;
+}
+
+.pay-google-gate {
+  position: relative;
+  z-index: 2;
+  grid-column: 1;
+}
+
+.pay-google-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  min-height: 3rem;
+  padding: 0.75rem 1.25rem;
+  margin-top: 0.75rem;
+  border: 1px solid #dadce0;
+  border-radius: 3px;
+  background: #fff;
+  color: #202124;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    box-shadow var(--transition-fast),
+    background var(--transition-fast);
+}
+
+.pay-google-btn:hover {
+  background: #f8fafd;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
+}
+
+.pay-google-icon {
+  flex: 0 0 auto;
+}
+
+.pay-form-content {
+  transition:
+    filter var(--transition-fast),
+    opacity var(--transition-fast);
+}
+
+.pay-checkout-shell:has(.pay-google-gate) .pay-form-content,
+.pay-checkout-shell:has(.pay-google-gate) .pay-layout {
+  display: contents;
+}
+
+.pay-checkout-shell:has(.pay-google-gate) .pay-steps {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.pay-checkout-shell:has(.pay-google-gate) .pay-summary {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: start;
+}
+
+.pay-checkout-shell:has(.pay-google-gate) .pay-steps,
+.pay-checkout-shell:has(.pay-google-gate) .pay-summary {
+  filter: blur(2px);
+  opacity: 0.72;
+  pointer-events: none;
+  user-select: none;
+}
+
+.pay-form-locked {
+  filter: blur(2px);
+  opacity: 0.72;
+  pointer-events: none;
+  user-select: none;
+}
+
 .pay-steps {
   display: flex;
   flex-direction: column;
@@ -25,6 +108,21 @@
   .pay-layout {
     flex-direction: row;
     align-items: flex-start;
+  }
+
+  @media (max-width: 959px) {
+    .pay-checkout-shell:has(.pay-google-gate) {
+      display: block;
+    }
+
+    .pay-checkout-shell:has(.pay-google-gate) .pay-form-content,
+    .pay-checkout-shell:has(.pay-google-gate) .pay-layout {
+      display: block;
+    }
+
+    .pay-google-gate {
+      margin-bottom: 1.5rem;
+    }
   }
   .pay-summary {
     width: 340px;
@@ -61,6 +159,17 @@
   font-size: 1.15rem;
   font-weight: 600;
   color: var(--color-text-white);
+}
+
+.pay-account-confirmed {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0;
+}
+
+.pay-account-confirmed mat-icon {
+  color: var(--color-gold);
 }
 
 .pay-fieldset {
@@ -115,7 +224,10 @@
 .pay-transfer-box {
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   border: 1px solid rgba(255, 212, 42, 0.45);
+  border-radius: 4px;
+  background: rgba(10, 17, 29, 0.22);
 }
 
 .pay-transfer-row {
@@ -128,6 +240,32 @@
 
 .pay-transfer-row + .pay-transfer-row {
   border-top: 1px solid var(--glass-border);
+}
+
+.pay-amount-row {
+  align-items: flex-end;
+  padding-bottom: 0.35rem;
+  background: transparent;
+}
+
+.pay-amount-row .pay-amount {
+  font-size: 1.85rem;
+}
+
+.pay-amount-row .pay-copy-btn {
+  margin-bottom: 0.15rem;
+}
+
+.pay-transfer-box .pay-discount-block {
+  margin-top: 0;
+  padding: 0 1.2rem 0.6rem;
+  background: transparent;
+}
+
+.pay-transfer-box .pay-cbu-row {
+  align-items: flex-end;
+  background: transparent;
+  border-top: 0;
 }
 
 .pay-cbu {
@@ -332,6 +470,7 @@
 .pay-discount-input {
   flex: 1;
   min-width: 0;
+  height: 42px;
   text-transform: uppercase;
 }
 
@@ -346,6 +485,12 @@
   font-weight: 600;
   font-size: 0.85rem;
   cursor: pointer;
+}
+
+.pay-discount-apply {
+  width: 104px;
+  height: 42px;
+  padding: 0;
 }
 
 .pay-discount-apply:hover,

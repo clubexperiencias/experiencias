@@ -14,6 +14,8 @@ import {
 import { TransactionalEmailService } from './transactional-email.service';
 import { NewsletterService } from './newsletter.service';
 import { ActivityHistoryService } from './activity-history.service';
+import { CloudflareR2Service } from './cloudflare-r2.service';
+import { SUPABASE_CLIENT, isSupabaseConfigured } from '../supabase/supabase.client';
 
 const PROVIDER_CONTACT_EMAIL = 'prestadores@experiencias.club';
 const SAMPLE_RECEIPT_URL = '/assets/images/comprobante-ejemplo.png';
@@ -59,7 +61,7 @@ const SEED_EXPERIENCES: ProviderExperience[] = [
     description:
       'Remada guiada en kayak en aguas calmas rodeadas de quebradas y vegetación de yungas andinas. Presenciamos la caída del sol reflejada en el dique y cerramos con un brindis.',
     region: 'Valle Central y Ambato',
-    meetingPoint: 'Club Náutico Dique Las Pirquitas',
+    meetingPoint: 'Club Náutico Dique El Jumeal',
     difficulty: 'Baja',
     durationLabel: '4 horas',
     priceArs: 65000,
@@ -83,7 +85,12 @@ const SEED_SUBMISSIONS: TransferSubmission[] = [
     email: 'lucia.fernandez@ejemplo.com',
     dni: '32458190',
     phone: '+54 383 455 1290',
-    receipt: { fileName: 'transferencia-lucia.png', mimeType: 'image/png', sizeBytes: 412_000, url: SAMPLE_RECEIPT_URL },
+    receipt: {
+      fileName: 'transferencia-lucia.png',
+      mimeType: 'image/png',
+      sizeBytes: 412_000,
+      url: SAMPLE_RECEIPT_URL,
+    },
     status: 'pendiente',
     submittedAt: hoursAgo(3),
   },
@@ -99,7 +106,12 @@ const SEED_SUBMISSIONS: TransferSubmission[] = [
     email: 'mquiroga@ejemplo.com',
     dni: '28771034',
     phone: '+54 11 5021 7781',
-    receipt: { fileName: 'comprobante.png', mimeType: 'image/png', sizeBytes: 388_000, url: SAMPLE_RECEIPT_URL },
+    receipt: {
+      fileName: 'comprobante.png',
+      mimeType: 'image/png',
+      sizeBytes: 388_000,
+      url: SAMPLE_RECEIPT_URL,
+    },
     status: 'pendiente',
     submittedAt: hoursAgo(20),
   },
@@ -115,7 +127,12 @@ const SEED_SUBMISSIONS: TransferSubmission[] = [
     email: 'carla.ahumada@ejemplo.com',
     dni: '35120988',
     phone: '+54 383 412 0033',
-    receipt: { fileName: 'pago-kayak.png', mimeType: 'image/png', sizeBytes: 401_000, url: SAMPLE_RECEIPT_URL },
+    receipt: {
+      fileName: 'pago-kayak.png',
+      mimeType: 'image/png',
+      sizeBytes: 401_000,
+      url: SAMPLE_RECEIPT_URL,
+    },
     status: 'aprobado',
     submittedAt: hoursAgo(52),
     reviewedAt: hoursAgo(48),
@@ -131,6 +148,8 @@ export class ProviderStoreService {
   private readonly emails = inject(TransactionalEmailService);
   private readonly newsletter = inject(NewsletterService);
   private readonly activities = inject(ActivityHistoryService);
+  private readonly receiptStorage = inject(CloudflareR2Service);
+  private readonly supabase = inject(SUPABASE_CLIENT);
 
   private readonly _experiences = signal<ProviderExperience[]>(SEED_EXPERIENCES);
   private readonly _submissions = signal<TransferSubmission[]>(SEED_SUBMISSIONS);
@@ -139,7 +158,9 @@ export class ProviderStoreService {
   readonly submissions = computed(() =>
     [...this._submissions()].sort((a, b) => b.submittedAt.localeCompare(a.submittedAt)),
   );
-  readonly pendingCount = computed(() => this._submissions().filter((s) => s.status === 'pendiente').length);
+  readonly pendingCount = computed(
+    () => this._submissions().filter((s) => s.status === 'pendiente').length,
+  );
 
   getExperienceBySlug(slug: string): ProviderExperience | undefined {
     return this._experiences().find((e) => e.slug === slug);
@@ -180,10 +201,12 @@ export class ProviderStoreService {
   }
 
   setExperienceStatus(experienceId: string, status: ProviderExperience['status']): void {
-    this._experiences.update((list) => list.map((e) => (e.id === experienceId ? { ...e, status } : e)));
+    this._experiences.update((list) =>
+      list.map((e) => (e.id === experienceId ? { ...e, status } : e)),
+    );
   }
 
-  submitTransfer(input: NewTransferSubmission): TransferSubmission {
+  async submitTransfer(input: NewTransferSubmission): Promise<TransferSubmission> {
     const experience = this._experiences().find((e) => e.id === input.experienceId);
     if (!experience || experience.status !== 'publicada') {
       throw new Error('La experiencia no está disponible.');
@@ -191,7 +214,11 @@ export class ProviderStoreService {
     if (!experience.dates.includes(input.date)) {
       throw new Error('La fecha elegida no está disponible.');
     }
-    if (!Number.isInteger(input.participants) || input.participants < 1 || input.participants > MAX_PARTICIPANTS_PER_BOOKING) {
+    if (
+      !Number.isInteger(input.participants) ||
+      input.participants < 1 ||
+      input.participants > MAX_PARTICIPANTS_PER_BOOKING
+    ) {
       throw new Error('Cantidad de personas inválida.');
     }
     if (input.participants > this.availableSeats(experience, input.date)) {
@@ -202,17 +229,20 @@ export class ProviderStoreService {
       throw new Error(fileError);
     }
     const discount = input.discountCode
-      ? (findDiscountCode(input.discountCode) ?? this.newsletter.findMemberDiscount(input.discountCode))
+      ? (findDiscountCode(input.discountCode) ??
+        this.newsletter.findMemberDiscount(input.discountCode))
       : undefined;
     if (input.discountCode && !discount) {
       throw new Error('El código de descuento no es válido.');
     }
     const subtotal = experience.priceArs * input.participants;
     const discountArs = discountAmount(subtotal, discount);
+    const reference = this.buildReference(experience.slug);
+    const receipt = await this.receiptStorage.uploadReceipt(input.receiptFile, reference);
 
     const submission: TransferSubmission = {
       id: `sub-${crypto.randomUUID()}`,
-      reference: this.buildReference(experience.slug),
+      reference,
       experienceId: experience.id,
       experienceTitle: experience.title,
       date: input.date,
@@ -227,15 +257,55 @@ export class ProviderStoreService {
         fileName: input.receiptFile.name,
         mimeType: input.receiptFile.type,
         sizeBytes: input.receiptFile.size,
-        url: URL.createObjectURL(input.receiptFile),
+        url: receipt.url,
+        storageKey: receipt.storageKey,
+        provider: receipt.provider,
       },
       status: 'pendiente',
       submittedAt: new Date().toISOString(),
     };
 
+    if (isSupabaseConfigured()) {
+      const { data, error } = await this.supabase.rpc('submit_experience_transfer', {
+        p_reference: submission.reference,
+        p_experience_id: submission.experienceId,
+        p_experience_title: submission.experienceTitle,
+        p_date: submission.date,
+        p_participants: submission.participants,
+        p_amount_ars: submission.amountArs,
+        p_discount_code: submission.discountCode ?? null,
+        p_discount_ars: submission.discountArs ?? 0,
+        p_full_name: submission.fullName,
+        p_email: submission.email,
+        p_dni: submission.dni,
+        p_phone: submission.phone,
+        p_receipt_file_name: submission.receipt.fileName,
+        p_receipt_mime_type: submission.receipt.mimeType,
+        p_receipt_size_bytes: submission.receipt.sizeBytes,
+        p_receipt_url: submission.receipt.url,
+        p_receipt_storage_key: submission.receipt.storageKey ?? null,
+        p_receipt_storage_provider: submission.receipt.provider ?? 'r2',
+      });
+      if (error) {
+        throw new Error(`No pudimos registrar el comprobante: ${error.message}`);
+      }
+      const payload = data as { status?: string };
+      if (payload?.status !== 'created') {
+        throw new Error(
+          payload?.status === 'no_seats_available'
+            ? 'No quedan cupos suficientes para esa fecha.'
+            : 'No pudimos registrar el comprobante. Intentá nuevamente.',
+        );
+      }
+    }
+
     this._submissions.update((list) => [submission, ...list]);
     if (submission.discountCode) {
-      this.newsletter.markMemberDiscountUsed(submission.discountCode, submission.reference, experience.title);
+      this.newsletter.markMemberDiscountUsed(
+        submission.discountCode,
+        submission.reference,
+        experience.title,
+      );
     }
     this.recordMemberActivity(experience, submission);
     this.emails.notifyReceiptReceived(submission);
@@ -243,7 +313,11 @@ export class ProviderStoreService {
     return submission;
   }
 
-  reviewSubmission(submissionId: string, status: Exclude<TransferStatus, 'pendiente'>, rejectionReason?: string): void {
+  reviewSubmission(
+    submissionId: string,
+    status: Exclude<TransferStatus, 'pendiente'>,
+    rejectionReason?: string,
+  ): void {
     let reviewed: TransferSubmission | undefined;
     this._submissions.update((list) =>
       list.map((s) => {
@@ -251,7 +325,8 @@ export class ProviderStoreService {
         reviewed = {
           ...s,
           status,
-          rejectionReason: status === 'rechazado' ? rejectionReason?.trim() || undefined : undefined,
+          rejectionReason:
+            status === 'rechazado' ? rejectionReason?.trim() || undefined : undefined,
           reviewedAt: new Date().toISOString(),
         };
         return reviewed;
@@ -265,12 +340,17 @@ export class ProviderStoreService {
     }
   }
 
-  private recordMemberActivity(experience: ProviderExperience, submission: TransferSubmission): void {
+  private recordMemberActivity(
+    experience: ProviderExperience,
+    submission: TransferSubmission,
+  ): void {
     const member = this.newsletter.currentMember();
     if (!member) return;
-    const dateLabel = new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'long', year: 'numeric' }).format(
-      new Date(`${submission.date}T12:00:00`),
-    );
+    const dateLabel = new Intl.DateTimeFormat('es-AR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }).format(new Date(`${submission.date}T12:00:00`));
     this.activities.addActivity({
       id: `act_${submission.id}`,
       slug: `${experience.slug}-${submission.reference.toLowerCase()}`,
@@ -282,7 +362,11 @@ export class ProviderStoreService {
       coverImage: '/assets/images/laguna_blanca.jpg',
       dateLabel,
       status: 'pendiente_pago',
-      provider: { name: experience.shortTitle ?? experience.title, category: experience.difficulty, contactPhone: '' },
+      provider: {
+        name: experience.shortTitle ?? experience.title,
+        category: experience.difficulty,
+        contactPhone: '',
+      },
       receipt: {
         receiptNumber: submission.reference,
         transactionId: submission.id,

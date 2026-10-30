@@ -170,6 +170,132 @@ export interface Database {
         };
         Relationships: [];
       };
+
+      /**
+       * Tabla 5: Experiencias Oficiales del Club
+       */
+      experiencias_club: {
+        Row: {
+          id: string;
+          slug: string;
+          title: string;
+          short_title: string | null;
+          tagline: string;
+          description: string;
+          region: string;
+          meeting_point: string;
+          difficulty: 'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña';
+          duration_label: string;
+          price_ars: number;
+          capacity_per_date: number;
+          dates: string[];
+          status: 'borrador' | 'publicada';
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id: string;
+          slug: string;
+          title: string;
+          short_title?: string | null;
+          tagline?: string;
+          description?: string;
+          region?: string;
+          meeting_point?: string;
+          difficulty?: 'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña';
+          duration_label?: string;
+          price_ars?: number;
+          capacity_per_date?: number;
+          dates?: string[];
+          status?: 'borrador' | 'publicada';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          slug?: string;
+          title?: string;
+          short_title?: string | null;
+          tagline?: string;
+          description?: string;
+          region?: string;
+          meeting_point?: string;
+          difficulty?: 'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña';
+          duration_label?: string;
+          price_ars?: number;
+          capacity_per_date?: number;
+          dates?: string[];
+          status?: 'borrador' | 'publicada';
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+
+      /**
+       * Tabla 6: Pagos por Transferencia & Comprobantes en Cloudflare R2
+       */
+      pagos_transferencias: {
+        Row: {
+          id: string;
+          reference: string;
+          experience_id: string;
+          experience_title: string;
+          date: string;
+          participants: number;
+          amount_ars: number;
+          discount_code: string | null;
+          discount_ars: number | null;
+          full_name: string;
+          email: string;
+          dni: string;
+          phone: string;
+          socio_id: string | null;
+          receipt_file_name: string;
+          receipt_mime_type: string;
+          receipt_size_bytes: number;
+          receipt_url: string;
+          receipt_storage_key: string | null;
+          receipt_storage_provider: 'r2' | 'supabase' | 'local';
+          status: 'pendiente' | 'aprobado' | 'rechazado';
+          rejection_reason: string | null;
+          submitted_at: string;
+          reviewed_at: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          reference: string;
+          experience_id: string;
+          experience_title: string;
+          date: string;
+          participants: number;
+          amount_ars: number;
+          discount_code?: string | null;
+          discount_ars?: number | null;
+          full_name: string;
+          email: string;
+          dni: string;
+          phone: string;
+          socio_id?: string | null;
+          receipt_file_name: string;
+          receipt_mime_type: string;
+          receipt_size_bytes: number;
+          receipt_url: string;
+          receipt_storage_key?: string | null;
+          receipt_storage_provider?: 'r2' | 'supabase' | 'local';
+          status?: 'pendiente' | 'aprobado' | 'rechazado';
+          rejection_reason?: string | null;
+          submitted_at?: string;
+          reviewed_at?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          status?: 'pendiente' | 'aprobado' | 'rechazado';
+          rejection_reason?: string | null;
+          reviewed_at?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
 
     Views: {
@@ -223,6 +349,54 @@ export interface Database {
           p_phone?: string | null;
           p_experiences_wishlist?: Json | null;
           p_experiences_other?: string | null;
+        };
+        Returns: Json;
+      };
+      submit_experience_transfer: {
+        Args: {
+          p_reference: string;
+          p_experience_id: string;
+          p_experience_title: string;
+          p_date: string;
+          p_participants: number;
+          p_amount_ars: number;
+          p_discount_code?: string | null;
+          p_discount_ars?: number;
+          p_full_name?: string;
+          p_email?: string;
+          p_dni?: string;
+          p_phone?: string;
+          p_receipt_file_name?: string;
+          p_receipt_mime_type?: string;
+          p_receipt_size_bytes?: number;
+          p_receipt_url?: string;
+          p_receipt_storage_key?: string | null;
+          p_receipt_storage_provider?: string;
+        };
+        Returns: Json;
+      };
+      get_reserved_seats_by_experience: {
+        Args: {
+          p_experience_id: string;
+        };
+        Returns: Json;
+      };
+      get_member_transfer_submissions: {
+        Args: {
+          p_email: string;
+          p_registration_token?: string | null;
+        };
+        Returns: Json;
+      };
+      list_provider_transfer_submissions: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
+      review_transfer_submission: {
+        Args: {
+          p_submission_id: string;
+          p_status: string;
+          p_rejection_reason?: string | null;
         };
         Returns: Json;
       };

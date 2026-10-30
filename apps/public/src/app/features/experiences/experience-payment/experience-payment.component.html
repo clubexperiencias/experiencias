@@ -62,380 +62,449 @@
         </div>
       } @else {
         @let exp = experience()!;
-        <form class="pay-layout" [formGroup]="form" (ngSubmit)="submit()" novalidate>
-          <div class="pay-steps">
-            <header class="kayak-section-card pay-intro">
-              <span class="section-kicker">PAGO POR TRANSFERENCIA</span>
-              <h1 class="card-heading text-balance">{{ exp.title }}</h1>
-              <p class="card-subheading">
-                Elegí la fecha, transferí el total al CBU y subí el comprobante. El prestador lo
-                valida y te confirmamos por email.
-              </p>
-            </header>
-
-            <!-- Paso 1 -->
-            <section class="kayak-section-card" aria-labelledby="step-1-title">
-              <div class="pay-step-head">
-                <span class="pay-step-index" aria-hidden="true">1</span>
-                <h2 id="step-1-title" class="pay-step-title">Fecha y personas</h2>
-              </div>
-
-              <fieldset class="pay-fieldset">
-                <legend class="pay-label">Fecha de salida</legend>
-                <div class="pay-date-grid">
-                  @for (option of dateOptions(); track option.date) {
-                    <button
-                      type="button"
-                      class="pay-date-tile"
-                      [class.is-selected]="form.controls.date.value === option.date"
-                      [disabled]="option.available === 0"
-                      [attr.aria-pressed]="form.controls.date.value === option.date"
-                      (click)="selectDate(option.date)"
-                    >
-                      <span class="pay-date-day">{{ option.date | fecha }}</span>
-                      <span class="pay-date-seats">
-                        {{ option.available === 0 ? 'Sin cupo' : option.available + ' lugares' }}
-                      </span>
-                    </button>
-                  }
-                </div>
-                @if (
-                  fieldInvalid('date') || (form.controls.date.touched && !form.controls.date.value)
-                ) {
-                  <p class="pay-error">Elegí una fecha.</p>
-                }
-              </fieldset>
-
-              <div class="pay-field">
-                <label for="pay-participants" class="pay-label">Cantidad de personas</label>
-                <select
-                  id="pay-participants"
-                  class="pay-input pay-select-plain"
-                  formControlName="participants"
-                >
-                  @for (n of participantOptions(); track n) {
-                    <option [ngValue]="n">{{ n }} {{ n === 1 ? 'persona' : 'personas' }}</option>
-                  }
-                </select>
-              </div>
-            </section>
-
-            <!-- Paso 2 -->
-            <section class="kayak-section-card" aria-labelledby="step-2-title">
-              <div class="pay-step-head">
-                <span class="pay-step-index" aria-hidden="true">2</span>
-                <h2 id="step-2-title" class="pay-step-title">Descuento</h2>
-              </div>
-
-              <div class="pay-discount">
-                <label for="pay-discount" class="pay-label">¿Tenés un código de descuento?</label>
-                <p class="pay-hint pay-discount-hint">
-                  Desde tu <a routerLink="/perfil" class="pay-subtle-link">perfil de socio</a> podés
-                  generar periódicamente códigos de descuento.
-                </p>
-                @if (appliedDiscount(); as discount) {
-                  <div class="pay-discount-applied">
-                    <span
-                      ><mat-icon aria-hidden="true">sell</mat-icon>{{ discount.code }} ·
-                      {{ discount.label }}</span
-                    >
-                    <button type="button" class="pay-discount-remove" (click)="removeDiscount()">
-                      Quitar
-                    </button>
-                  </div>
-                } @else {
-                  <div class="pay-discount-row">
-                    <input
-                      id="pay-discount"
-                      class="pay-input pay-discount-input"
-                      autocomplete="off"
-                      [value]="discountInput()"
-                      (input)="discountInput.set($any($event.target).value)"
-                      (keydown)="onDiscountKeydown($event)"
-                      placeholder="Ej: SOCIOFUNDADOR7"
-                      [attr.aria-invalid]="discountError() ? true : null"
-                      aria-describedby="pay-discount-error"
-                    />
-                    <button type="button" class="pay-discount-apply" (click)="applyDiscount()">
-                      APLICAR
-                    </button>
-                  </div>
-                }
-                @if (discountError()) {
-                  <p id="pay-discount-error" class="pay-error" role="alert">
-                    {{ discountError() }}
-                  </p>
-                }
-              </div>
-            </section>
-
-            <!-- Paso 3 -->
-            <section class="kayak-section-card" aria-labelledby="step-3-title">
-              <div class="pay-step-head">
-                <span class="pay-step-index" aria-hidden="true">3</span>
-                <h2 id="step-3-title" class="pay-step-title">Transferí el total</h2>
-              </div>
-
-              <div class="pay-transfer-box">
-                <div class="pay-transfer-row">
-                  <div>
-                    <span class="pay-label">CBU</span>
-                    <p class="pay-cbu pay-mono" [attr.aria-label]="'CBU ' + cbu">
-                      @for (group of cbuGroups; track $index) {
-                        <span>{{ group }}</span>
-                      }
-                    </p>
-                  </div>
-                  <button type="button" class="pay-copy-btn" (click)="copy(cbu, 'cbu')">
-                    <mat-icon aria-hidden="true">{{
-                      copied() === 'cbu' ? 'check' : 'content_copy'
-                    }}</mat-icon>
-                    {{ copied() === 'cbu' ? 'Copiado' : 'Copiar' }}
-                  </button>
-                </div>
-
-                <div class="pay-transfer-row">
-                  <div>
-                    <span class="pay-label">Monto exacto</span>
-                    <p class="pay-amount">{{ total() | ars }}</p>
-                  </div>
-                  <button
-                    type="button"
-                    class="pay-copy-btn"
-                    (click)="copy(total().toString(), 'monto')"
-                  >
-                    <mat-icon aria-hidden="true">{{
-                      copied() === 'monto' ? 'check' : 'content_copy'
-                    }}</mat-icon>
-                    {{ copied() === 'monto' ? 'Copiado' : 'Copiar' }}
-                  </button>
-                </div>
-              </div>
-
-              <p class="pay-hint">
-                Transferí el monto exacto desde una cuenta a tu nombre. Si el monto no coincide, el
-                prestador puede rechazar el comprobante.
-              </p>
-            </section>
-
-            <!-- Paso 4 -->
-            <section class="kayak-section-card" aria-labelledby="step-4-title">
-              <div class="pay-step-head">
-                <span class="pay-step-index" aria-hidden="true">4</span>
-                <h2 id="step-4-title" class="pay-step-title">Tus datos y el comprobante</h2>
-              </div>
-
-              <div class="pay-fields-grid">
-                <div class="pay-field pay-span-2">
-                  <label for="pay-name" class="pay-label"
-                    >Nombre y apellido <span class="pay-required" aria-hidden="true">*</span></label
-                  >
-                  <input
-                    id="pay-name"
-                    class="pay-input"
-                    formControlName="fullName"
-                    autocomplete="name"
-                    required
-                    placeholder="Ej: Juan Pérez"
-                    [attr.aria-invalid]="fieldInvalid('fullName')"
-                  />
-                  @if (fieldInvalid('fullName')) {
-                    <p class="pay-error">Ingresá tu nombre completo.</p>
-                  }
-                </div>
-                <div class="pay-field">
-                  <label for="pay-email" class="pay-label"
-                    >Email <span class="pay-required" aria-hidden="true">*</span></label
-                  >
-                  <input
-                    id="pay-email"
-                    type="email"
-                    class="pay-input"
-                    formControlName="email"
-                    autocomplete="email"
-                    required
-                    placeholder="Ej: juan@email.com"
-                    [class.is-locked]="memberEmail()"
-                    [attr.aria-invalid]="fieldInvalid('email')"
-                    [attr.aria-describedby]="memberEmail() ? 'pay-email-locked' : null"
-                  />
-                  @if (memberEmail()) {
-                    <p id="pay-email-locked" class="pay-hint pay-locked-hint">
-                      <mat-icon aria-hidden="true">lock</mat-icon>Email de tu cuenta de socio
-                    </p>
-                  }
-                  @if (fieldInvalid('email')) {
-                    <p class="pay-error">Ingresá un email válido.</p>
-                  }
-                </div>
-                <div class="pay-field">
-                  <label for="pay-phone" class="pay-label"
-                    >Teléfono <span class="pay-required" aria-hidden="true">*</span></label
-                  >
-                  <input
-                    id="pay-phone"
-                    type="tel"
-                    class="pay-input"
-                    formControlName="phone"
-                    autocomplete="tel"
-                    required
-                    placeholder="Ej: 11 2345 6789"
-                    [class.is-locked]="memberPhone()"
-                    [attr.aria-invalid]="fieldInvalid('phone')"
-                    [attr.aria-describedby]="memberPhone() ? 'pay-phone-locked' : null"
-                  />
-                  @if (memberPhone()) {
-                    <p id="pay-phone-locked" class="pay-hint pay-locked-hint">
-                      <mat-icon aria-hidden="true">lock</mat-icon>Celular de tu perfil de socio
-                    </p>
-                  }
-                  @if (fieldInvalid('phone')) {
-                    <p class="pay-error">Ingresá un teléfono válido.</p>
-                  }
-                </div>
-                <div class="pay-field">
-                  <label for="pay-dni" class="pay-label"
-                    >DNI <span class="pay-required" aria-hidden="true">*</span></label
-                  >
-                  <input
-                    id="pay-dni"
-                    inputmode="numeric"
-                    class="pay-input"
-                    formControlName="dni"
-                    required
-                    placeholder="Ej: 35123456"
-                    [class.is-locked]="memberDni()"
-                    [attr.aria-invalid]="fieldInvalid('dni')"
-                    [attr.aria-describedby]="memberDni() ? 'pay-dni-locked' : null"
-                  />
-                  @if (memberDni()) {
-                    <p id="pay-dni-locked" class="pay-hint pay-locked-hint">
-                      <mat-icon aria-hidden="true">lock</mat-icon>DNI de tu perfil de socio
-                    </p>
-                  }
-                  @if (fieldInvalid('dni')) {
-                    <p class="pay-error">Solo números, entre 7 y 9 dígitos.</p>
-                  }
-                </div>
-              </div>
-
-              <div class="pay-field">
-                <span class="pay-label" id="receipt-label"
-                  >Comprobante de transferencia
-                  <span class="pay-required" aria-hidden="true">*</span></span
-                >
-                @if (receiptFile(); as file) {
-                  <div class="pay-file-card">
-                    @if (receiptPreview(); as preview) {
-                      <img
-                        [src]="preview"
-                        alt="Vista previa del comprobante"
-                        class="pay-file-thumb"
-                      />
-                    }
-                    <div class="pay-file-meta">
-                      <span class="pay-file-name">{{ file.name }}</span>
-                      <span class="pay-file-size">{{ formatSize(file.size) }}</span>
-                    </div>
-                    <button type="button" class="pay-copy-btn" (click)="removeReceipt()">
-                      <mat-icon aria-hidden="true">close</mat-icon>
-                      Quitar
-                    </button>
-                  </div>
-                } @else {
-                  <label
-                    class="pay-dropzone"
-                    [class.is-dragging]="isDragging()"
-                    (dragover)="onDragOver($event)"
-                    (dragleave)="isDragging.set(false)"
-                    (drop)="onDrop($event)"
-                  >
-                    <input
-                      type="file"
-                      class="sr-only"
-                      [accept]="acceptedTypes"
-                      (change)="onFileInput($event)"
-                      aria-labelledby="receipt-label"
-                    />
-                    <span class="pay-dropzone-title"
-                      >Arrastrá el archivo o hacé click para elegirlo</span
-                    >
-                    <span class="pay-dropzone-hint">JPG, PNG, WEBP o PDF · máximo 5 MB</span>
-                  </label>
-                }
-                @if (receiptError()) {
-                  <p class="pay-error" role="alert">{{ receiptError() }}</p>
-                }
-              </div>
+        @if (!authReady()) {
+          <div class="kayak-wrapper">
+            <section class="kayak-section-card" aria-live="polite">
+              <span class="section-kicker">VERIFICANDO CUENTA</span>
+              <h1 class="card-heading">Estamos verificando tu cuenta</h1>
+              <p class="card-subheading">Esperá un momento para continuar con la reserva.</p>
             </section>
           </div>
-
-          <!-- Resumen -->
-          <aside class="pay-summary" aria-label="Resumen del pago">
-            <div class="kayak-section-card pay-summary-card">
-              <span class="section-kicker">RESUMEN</span>
-              <dl class="pay-summary-list">
-                <div>
-                  <dt>Fecha</dt>
-                  <dd>
-                    {{
-                      form.controls.date.value
-                        ? (form.controls.date.value | fecha: 'larga')
-                        : 'A elegir'
-                    }}
-                  </dd>
+        } @else {
+          <div class="pay-checkout-shell">
+            @if (requiresGoogle()) {
+              <section class="kayak-section-card pay-google-gate" aria-live="polite">
+                <div class="pay-step-head">
+                  <span class="pay-step-index" aria-hidden="true">0</span>
+                  <h1 class="pay-step-title">Vincular cuenta</h1>
                 </div>
-                <div>
-                  <dt>Arancel por persona</dt>
-                  <dd>{{ exp.priceArs | ars }}</dd>
-                </div>
-                <div>
-                  <dt>Personas</dt>
-                  <dd>{{ form.controls.participants.value }}</dd>
-                </div>
-                <div>
-                  <dt>Punto de encuentro</dt>
-                  <dd>{{ exp.meetingPoint }}</dd>
-                </div>
-                @if (appliedDiscount(); as discount) {
-                  <div>
-                    <dt>Subtotal</dt>
-                    <dd>{{ subtotal() | ars }}</dd>
-                  </div>
-                  <div class="pay-discount-line">
-                    <dt>Descuento ({{ discount.code }})</dt>
-                    <dd>- {{ discountArs() | ars }}</dd>
-                  </div>
+                <p class="card-subheading">
+                  Antes de completar el checkout necesitamos confirmar el email al que vamos a
+                  asociar esta experiencia y su comprobante.
+                </p>
+                @if (authError()) {
+                  <p class="pay-error" role="alert">{{ authError() }}</p>
                 }
-              </dl>
+                <button type="button" class="pay-google-btn" (click)="linkGoogleAccount()">
+                  <svg
+                    class="pay-google-icon"
+                    viewBox="0 0 24 24"
+                    width="20"
+                    height="20"
+                    aria-hidden="true"
+                  >
+                    <path
+                      fill="#4285F4"
+                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                    />
+                    <path
+                      fill="#EA4335"
+                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                    />
+                  </svg>
+                  Iniciar sesión con Google
+                </button>
+              </section>
+            }
+            <div class="pay-form-content" [class.pay-form-locked]="requiresGoogle()">
+              <form class="pay-layout" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+                <div class="pay-steps">
+                  @if (!requiresGoogle()) {
+                    <header class="kayak-section-card pay-intro">
+                      <span class="section-kicker">PAGO POR TRANSFERENCIA</span>
+                      <h1 class="card-heading text-balance">{{ exp.title }}</h1>
+                      <p class="card-subheading">
+                        Elegí la fecha, transferí el total al CBU y subí el comprobante. El
+                        prestador lo valida y te confirmamos por email.
+                      </p>
+                    </header>
+                  }
 
-              <div class="pay-total">
-                <span>Total a transferir</span>
-                <strong>{{ total() | ars }}</strong>
-              </div>
+                  <!-- Paso 1 -->
+                  <section class="kayak-section-card" aria-labelledby="step-1-title">
+                    <div class="pay-step-head">
+                      <span class="pay-step-index" aria-hidden="true">1</span>
+                      <h2 id="step-1-title" class="pay-step-title">Fecha y personas</h2>
+                    </div>
 
-              @if (submitError()) {
-                <p class="pay-error" role="alert">{{ submitError() }}</p>
-              }
+                    <fieldset class="pay-fieldset">
+                      <legend class="pay-label">Fecha de salida</legend>
+                      <div class="pay-date-grid">
+                        @for (option of dateOptions(); track option.date) {
+                          <button
+                            type="button"
+                            class="pay-date-tile"
+                            [class.is-selected]="form.controls.date.value === option.date"
+                            [disabled]="option.available === 0"
+                            [attr.aria-pressed]="form.controls.date.value === option.date"
+                            (click)="selectDate(option.date)"
+                          >
+                            <span class="pay-date-day">{{ option.date | fecha }}</span>
+                            <span class="pay-date-seats">
+                              {{
+                                option.available === 0 ? 'Sin cupo' : option.available + ' lugares'
+                              }}
+                            </span>
+                          </button>
+                        }
+                      </div>
+                      @if (
+                        fieldInvalid('date') ||
+                        (form.controls.date.touched && !form.controls.date.value)
+                      ) {
+                        <p class="pay-error">Elegí una fecha.</p>
+                      }
+                    </fieldset>
 
-              <button
-                type="submit"
-                class="cta-primary-btn cta-blue-btn pay-submit"
-                [disabled]="submitting() || !canSubmit()"
-                aria-describedby="pay-submit-hint"
-              >
-                {{ submitting() ? 'Enviando...' : 'Enviar comprobante' }}
-              </button>
-              <p id="pay-submit-hint" class="pay-hint">
-                {{
-                  canSubmit()
-                    ? 'Te enviamos un email con el detalle apenas lo recibimos.'
-                    : 'Completá la fecha, tus datos y cargá el comprobante para habilitar el envío.'
-                }}
-              </p>
+                    <div class="pay-field">
+                      <label for="pay-participants" class="pay-label">Cantidad de personas</label>
+                      <select
+                        id="pay-participants"
+                        class="pay-input pay-select-plain"
+                        formControlName="participants"
+                      >
+                        @for (n of participantOptions(); track n) {
+                          <option [ngValue]="n">
+                            {{ n }} {{ n === 1 ? 'persona' : 'personas' }}
+                          </option>
+                        }
+                      </select>
+                    </div>
+                  </section>
+
+                  <!-- Paso 2 -->
+                  <section class="kayak-section-card" aria-labelledby="step-2-title">
+                    <div class="pay-step-head">
+                      <span class="pay-step-index" aria-hidden="true">2</span>
+                      <h2 id="step-2-title" class="pay-step-title">Monto y transferencia</h2>
+                    </div>
+
+                    <div class="pay-transfer-box">
+                      <div class="pay-transfer-row pay-amount-row">
+                        <div>
+                          <span class="pay-label">Monto a pagar</span>
+                          <p class="pay-amount">{{ total() | ars }}</p>
+                        </div>
+                        <button
+                          type="button"
+                          class="pay-copy-btn"
+                          (click)="copy(total().toString(), 'monto')"
+                        >
+                          <mat-icon aria-hidden="true">{{
+                            copied() === 'monto' ? 'check' : 'content_copy'
+                          }}</mat-icon>
+                          {{ copied() === 'monto' ? 'Copiado' : 'Copiar' }}
+                        </button>
+                      </div>
+
+                      <div class="pay-discount pay-discount-block">
+                        <label for="pay-discount" class="pay-label">Descuento a aplicar</label>
+                        @if (appliedDiscount(); as discount) {
+                          <div class="pay-discount-applied">
+                            <span
+                              ><mat-icon aria-hidden="true">sell</mat-icon>{{ discount.code }} ·
+                              {{ discount.label }}</span
+                            >
+                            <button
+                              type="button"
+                              class="pay-discount-remove"
+                              (click)="removeDiscount()"
+                            >
+                              Quitar
+                            </button>
+                          </div>
+                        } @else {
+                          <div class="pay-discount-row">
+                            <input
+                              id="pay-discount"
+                              class="pay-input pay-discount-input"
+                              autocomplete="off"
+                              [value]="discountInput()"
+                              (input)="discountInput.set($any($event.target).value)"
+                              (keydown)="onDiscountKeydown($event)"
+                              placeholder="Ej: SOCIOFUNDADOR7"
+                              [attr.aria-invalid]="discountError() ? true : null"
+                              aria-describedby="pay-discount-error"
+                            />
+                            <button
+                              type="button"
+                              class="pay-discount-apply"
+                              (click)="applyDiscount()"
+                            >
+                              APLICAR
+                            </button>
+                          </div>
+                        }
+                        @if (discountError()) {
+                          <p id="pay-discount-error" class="pay-error" role="alert">
+                            {{ discountError() }}
+                          </p>
+                        }
+                      </div>
+
+                      <div class="pay-transfer-row pay-cbu-row">
+                        <div>
+                          <span class="pay-label">CBU a transferir</span>
+                          <p class="pay-cbu pay-mono" [attr.aria-label]="'CBU ' + cbu">
+                            @for (group of cbuGroups; track $index) {
+                              <span>{{ group }}</span>
+                            }
+                          </p>
+                        </div>
+                        <button type="button" class="pay-copy-btn" (click)="copy(cbu, 'cbu')">
+                          <mat-icon aria-hidden="true">{{
+                            copied() === 'cbu' ? 'check' : 'content_copy'
+                          }}</mat-icon>
+                          {{ copied() === 'cbu' ? 'Copiado' : 'Copiar' }}
+                        </button>
+                      </div>
+                    </div>
+
+                    <p class="pay-hint">
+                      Transferí el monto exacto desde una cuenta a tu nombre. Si el monto no
+                      coincide, el prestador puede rechazar el comprobante.
+                    </p>
+                  </section>
+
+                  <!-- Paso 3 -->
+                  <section class="kayak-section-card" aria-labelledby="step-3-title">
+                    <div class="pay-step-head">
+                      <span class="pay-step-index" aria-hidden="true">3</span>
+                      <h2 id="step-3-title" class="pay-step-title">Tus datos y el comprobante</h2>
+                    </div>
+
+                    <div class="pay-fields-grid">
+                      <div class="pay-field pay-span-2">
+                        <label for="pay-name" class="pay-label"
+                          >Nombre y apellido
+                          <span class="pay-required" aria-hidden="true">*</span></label
+                        >
+                        <input
+                          id="pay-name"
+                          class="pay-input"
+                          formControlName="fullName"
+                          autocomplete="name"
+                          required
+                          placeholder="Ej: Juan Pérez"
+                          [class.is-locked]="memberFullName()"
+                          [attr.aria-invalid]="fieldInvalid('fullName')"
+                          [attr.aria-describedby]="memberFullName() ? 'pay-name-locked' : null"
+                        />
+                        @if (memberFullName()) {
+                          <p id="pay-name-locked" class="pay-hint pay-locked-hint">
+                            <mat-icon aria-hidden="true">lock</mat-icon>Nombre de tu cuenta de
+                            Google
+                          </p>
+                        }
+                        @if (fieldInvalid('fullName')) {
+                          <p class="pay-error">Ingresá tu nombre completo.</p>
+                        }
+                      </div>
+                      <div class="pay-field">
+                        <label for="pay-email" class="pay-label"
+                          >Email <span class="pay-required" aria-hidden="true">*</span></label
+                        >
+                        <input
+                          id="pay-email"
+                          type="email"
+                          class="pay-input"
+                          formControlName="email"
+                          autocomplete="email"
+                          required
+                          placeholder="Ej: juan@email.com"
+                          [class.is-locked]="memberEmail()"
+                          [attr.aria-invalid]="fieldInvalid('email')"
+                          [attr.aria-describedby]="memberEmail() ? 'pay-email-locked' : null"
+                        />
+                        @if (memberEmail()) {
+                          <p id="pay-email-locked" class="pay-hint pay-locked-hint">
+                            <mat-icon aria-hidden="true">lock</mat-icon>Email de tu cuenta de socio
+                          </p>
+                        }
+                        @if (fieldInvalid('email')) {
+                          <p class="pay-error">Ingresá un email válido.</p>
+                        }
+                      </div>
+                      <div class="pay-field">
+                        <label for="pay-phone" class="pay-label"
+                          >Teléfono <span class="pay-required" aria-hidden="true">*</span></label
+                        >
+                        <input
+                          id="pay-phone"
+                          type="tel"
+                          class="pay-input"
+                          formControlName="phone"
+                          autocomplete="tel"
+                          required
+                          placeholder="Ej: 11 2345 6789"
+                          [class.is-locked]="memberPhone()"
+                          [attr.aria-invalid]="fieldInvalid('phone')"
+                          [attr.aria-describedby]="memberPhone() ? 'pay-phone-locked' : null"
+                        />
+                        @if (memberPhone()) {
+                          <p id="pay-phone-locked" class="pay-hint pay-locked-hint">
+                            <mat-icon aria-hidden="true">lock</mat-icon>Celular de tu perfil de
+                            socio
+                          </p>
+                        }
+                        @if (fieldInvalid('phone')) {
+                          <p class="pay-error">Ingresá un teléfono válido.</p>
+                        }
+                      </div>
+                      <div class="pay-field">
+                        <label for="pay-dni" class="pay-label"
+                          >DNI <span class="pay-required" aria-hidden="true">*</span></label
+                        >
+                        <input
+                          id="pay-dni"
+                          inputmode="numeric"
+                          class="pay-input"
+                          formControlName="dni"
+                          required
+                          placeholder="Ej: 35123456"
+                          [class.is-locked]="memberDni()"
+                          [attr.aria-invalid]="fieldInvalid('dni')"
+                          [attr.aria-describedby]="memberDni() ? 'pay-dni-locked' : null"
+                        />
+                        @if (memberDni()) {
+                          <p id="pay-dni-locked" class="pay-hint pay-locked-hint">
+                            <mat-icon aria-hidden="true">lock</mat-icon>DNI de tu perfil de socio
+                          </p>
+                        }
+                        @if (fieldInvalid('dni')) {
+                          <p class="pay-error">Solo números, entre 7 y 9 dígitos.</p>
+                        }
+                      </div>
+                    </div>
+
+                    <div class="pay-field">
+                      <span class="pay-label" id="receipt-label"
+                        >Comprobante de transferencia
+                        <span class="pay-required" aria-hidden="true">*</span></span
+                      >
+                      @if (receiptFile(); as file) {
+                        <div class="pay-file-card">
+                          @if (receiptPreview(); as preview) {
+                            <img
+                              [src]="preview"
+                              alt="Vista previa del comprobante"
+                              class="pay-file-thumb"
+                            />
+                          }
+                          <div class="pay-file-meta">
+                            <span class="pay-file-name">{{ file.name }}</span>
+                            <span class="pay-file-size">{{ formatSize(file.size) }}</span>
+                          </div>
+                          <button type="button" class="pay-copy-btn" (click)="removeReceipt()">
+                            <mat-icon aria-hidden="true">close</mat-icon>
+                            Quitar
+                          </button>
+                        </div>
+                      } @else {
+                        <label
+                          class="pay-dropzone"
+                          [class.is-dragging]="isDragging()"
+                          (dragover)="onDragOver($event)"
+                          (dragleave)="isDragging.set(false)"
+                          (drop)="onDrop($event)"
+                        >
+                          <input
+                            type="file"
+                            class="sr-only"
+                            [accept]="acceptedTypes"
+                            (change)="onFileInput($event)"
+                            aria-labelledby="receipt-label"
+                          />
+                          <span class="pay-dropzone-title"
+                            >Arrastrá el archivo o hacé click para elegirlo</span
+                          >
+                          <span class="pay-dropzone-hint">JPG, PNG, WEBP o PDF · máximo 5 MB</span>
+                        </label>
+                      }
+                      @if (receiptError()) {
+                        <p class="pay-error" role="alert">{{ receiptError() }}</p>
+                      }
+                    </div>
+                  </section>
+                </div>
+
+                <!-- Resumen -->
+                <aside class="pay-summary" aria-label="Resumen del pago">
+                  <div class="kayak-section-card pay-summary-card">
+                    <span class="section-kicker">RESUMEN</span>
+                    <dl class="pay-summary-list">
+                      <div>
+                        <dt>Fecha</dt>
+                        <dd>
+                          {{
+                            form.controls.date.value
+                              ? (form.controls.date.value | fecha: 'larga')
+                              : 'A elegir'
+                          }}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Arancel por persona</dt>
+                        <dd>{{ exp.priceArs | ars }}</dd>
+                      </div>
+                      <div>
+                        <dt>Personas</dt>
+                        <dd>{{ form.controls.participants.value }}</dd>
+                      </div>
+                      <div>
+                        <dt>Punto de encuentro</dt>
+                        <dd>{{ exp.meetingPoint }}</dd>
+                      </div>
+                      @if (appliedDiscount(); as discount) {
+                        <div>
+                          <dt>Subtotal</dt>
+                          <dd>{{ subtotal() | ars }}</dd>
+                        </div>
+                        <div class="pay-discount-line">
+                          <dt>Descuento ({{ discount.code }})</dt>
+                          <dd>- {{ discountArs() | ars }}</dd>
+                        </div>
+                      }
+                    </dl>
+
+                    <div class="pay-total">
+                      <span>Total a transferir</span>
+                      <strong>{{ total() | ars }}</strong>
+                    </div>
+
+                    @if (submitError()) {
+                      <p class="pay-error" role="alert">{{ submitError() }}</p>
+                    }
+
+                    <button
+                      type="submit"
+                      class="cta-primary-btn cta-blue-btn pay-submit"
+                      [disabled]="submitting() || !canSubmit()"
+                      aria-describedby="pay-submit-hint"
+                    >
+                      {{ submitting() ? 'Enviando...' : 'Enviar comprobante' }}
+                    </button>
+                    <p id="pay-submit-hint" class="pay-hint">
+                      {{
+                        canSubmit()
+                          ? 'Te enviamos un email con el detalle apenas lo recibimos.'
+                          : 'Completá la fecha, tus datos y cargá el comprobante para habilitar el envío.'
+                      }}
+                    </p>
+                  </div>
+                </aside>
+              </form>
             </div>
-          </aside>
-        </form>
+          </div>
+        }
       }
     </main>
   </div>
