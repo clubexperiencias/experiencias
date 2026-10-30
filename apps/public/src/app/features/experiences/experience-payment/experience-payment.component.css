@@ -179,7 +179,7 @@
     width: 340px;
     flex-shrink: 0;
     position: sticky;
-    top: 1.5rem;
+    top: calc(68px + 44px + 1.5rem);
   }
 }
 
@@ -465,6 +465,10 @@
   width: 100%;
 }
 
+.pay-submit + .pay-hint {
+  margin-top: 0.65rem;
+}
+
 .pay-confirmation {
   display: flex;
   flex-direction: column;
@@ -473,25 +477,6 @@
 
 .pay-confirmation .card-subheading {
   margin: 0;
-}
-
-.pay-status-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  align-self: flex-start;
-  padding: 0.35rem 0.75rem;
-  border: 1px solid var(--color-gold);
-  color: var(--color-gold);
-  font-size: 0.78rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.pay-status-chip mat-icon {
-  font-size: 16px;
-  width: 16px;
-  height: 16px;
 }
 
 .pay-actions-row {

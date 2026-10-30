@@ -8,6 +8,7 @@ const SUBSCRIBED_KEY = 'catamarca_club_user_subscribed';
 const SPOTS_KEY = 'catamarca_club_reserved_spots';
 const USED_MEMBER_DISCOUNTS_KEY = 'catamarca_club_used_member_discounts';
 const PROSPECT_EMAIL_KEY = 'catamarca_club_prospect_email';
+export const AUTH_SUCCESS_FEEDBACK_DURATION_MS = 3000;
 
 function mapDbRowToEntry(row: any): WaitlistEntry {
   return {

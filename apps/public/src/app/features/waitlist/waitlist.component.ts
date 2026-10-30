@@ -474,17 +474,18 @@ export class WaitlistComponent {
   }
 
   shareWhatsApp(): void {
+    const url = location.href;
     const text = encodeURIComponent(
-      `Me sumé como Socio a EXPERIENCIAS.CLUB (Edición Catamarca), el club privado de expediciones andinas y náuticas. ${location.origin}`,
+      `Conocé el Club de Experiencias: expediciones andinas y travesías náuticas en Catamarca. Sumate y descubrí tu próxima experiencia: ${url}`,
     );
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
   }
 
   shareX(): void {
     const text = encodeURIComponent(
-      'Acabo de registrarme en EXPERIENCIAS.CLUB (Edición Catamarca) — expediciones andinas y travesías náuticas.',
+      'Club de Experiencias: expediciones andinas y travesías náuticas en Catamarca.',
     );
-    const url = encodeURIComponent(location.origin);
+    const url = encodeURIComponent(location.href);
     window.open(`https://x.com/intent/tweet?text=${text}&url=${url}`, '_blank');
   }
 

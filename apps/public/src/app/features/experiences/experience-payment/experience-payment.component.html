@@ -27,11 +27,9 @@
         </div>
       } @else if (confirmation(); as sub) {
         <div class="kayak-wrapper">
+          @let exp = experience()!;
           <section class="kayak-section-card pay-confirmation" aria-live="polite">
-            <span class="pay-status-chip">
-              <mat-icon aria-hidden="true">schedule</mat-icon>
-              Comprobante en revisión
-            </span>
+            <span class="section-kicker">COMPROBANTE EN REVISIÓN</span>
             <h1 class="card-heading">Recibimos tu comprobante</h1>
             <p class="card-subheading">
               El prestador va a verificar la transferencia y te vamos a escribir a
@@ -63,12 +61,21 @@
             </dl>
 
             <div class="pay-actions-row">
-              <a [routerLink]="['/experiencias', experience()!.slug]" class="pay-secondary-btn"
-                >Volver a la experiencia</a
+              <a
+                [routerLink]="['/experiencias', exp.slug]"
+                class="pay-secondary-btn"
+                >VOLVER A LA EXPERIENCIA</a
               >
-              <a routerLink="/perfil" class="cta-primary-btn">Ir a mi perfil</a>
+              <a
+                routerLink="/perfil"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="cta-primary-btn"
+                >Ir a mi perfil</a
+              >
             </div>
           </section>
+          <app-founder-ad />
         </div>
       } @else {
         @let exp = experience()!;
@@ -306,16 +313,8 @@
                           autocomplete="name"
                           required
                           placeholder="Ej: Juan Pérez"
-                          [class.is-locked]="memberFullName()"
                           [attr.aria-invalid]="fieldInvalid('fullName')"
-                          [attr.aria-describedby]="memberFullName() ? 'pay-name-locked' : null"
                         />
-                        @if (memberFullName()) {
-                          <p id="pay-name-locked" class="pay-hint pay-locked-hint">
-                            <mat-icon aria-hidden="true">lock</mat-icon>Nombre de tu cuenta de
-                            Google
-                          </p>
-                        }
                         @if (fieldInvalid('fullName')) {
                           <p class="pay-error">Ingresá tu nombre completo.</p>
                         }
@@ -357,16 +356,8 @@
                           autocomplete="tel"
                           required
                           placeholder="Ej: 11 2345 6789"
-                          [class.is-locked]="memberPhone()"
                           [attr.aria-invalid]="fieldInvalid('phone')"
-                          [attr.aria-describedby]="memberPhone() ? 'pay-phone-locked' : null"
                         />
-                        @if (memberPhone()) {
-                          <p id="pay-phone-locked" class="pay-hint pay-locked-hint">
-                            <mat-icon aria-hidden="true">lock</mat-icon>Celular de tu perfil de
-                            socio
-                          </p>
-                        }
                         @if (fieldInvalid('phone')) {
                           <p class="pay-error">Ingresá un teléfono válido.</p>
                         }
@@ -382,15 +373,8 @@
                           formControlName="dni"
                           required
                           placeholder="Ej: 35123456"
-                          [class.is-locked]="memberDni()"
                           [attr.aria-invalid]="fieldInvalid('dni')"
-                          [attr.aria-describedby]="memberDni() ? 'pay-dni-locked' : null"
                         />
-                        @if (memberDni()) {
-                          <p id="pay-dni-locked" class="pay-hint pay-locked-hint">
-                            <mat-icon aria-hidden="true">lock</mat-icon>DNI de tu perfil de socio
-                          </p>
-                        }
                         @if (fieldInvalid('dni')) {
                           <p class="pay-error">Solo números, entre 7 y 9 dígitos.</p>
                         }

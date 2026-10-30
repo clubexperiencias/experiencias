@@ -1,5 +1,8 @@
 import { Component, computed, effect, inject, signal, OnInit } from '@angular/core';
-import { NewsletterService } from '../../../core/services/newsletter.service';
+import {
+  AUTH_SUCCESS_FEEDBACK_DURATION_MS,
+  NewsletterService,
+} from '../../../core/services/newsletter.service';
 import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -8,6 +11,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { FooterComponent } from '../../../shared/components/footer/footer.component';
 import { HeaderComponent } from '../../../shared/components/header/header.component';
+import { FounderAdComponent } from '../../../shared/components/founder-ad/founder-ad.component';
 import {
   BreadcrumbComponent,
   BreadcrumbItem,
@@ -37,6 +41,7 @@ import {
     ArsPipe,
     FechaPipe,
     FooterComponent,
+    FounderAdComponent,
     HeaderComponent,
     BreadcrumbComponent,
   ],
@@ -235,7 +240,7 @@ export class ExperiencePaymentComponent implements OnInit {
       this.showAuthSuccessNotification.set(false);
       this.newsletter.profileSuccessHighlight.set(false);
       this.authSuccessTimer = null;
-    }, 3000);
+    }, AUTH_SUCCESS_FEEDBACK_DURATION_MS);
   }
 
   readonly requiresGoogle = computed(() => !this.checkoutMember());

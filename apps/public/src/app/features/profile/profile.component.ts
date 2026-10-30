@@ -2,7 +2,10 @@ import { Component, HostListener, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
-import { NewsletterService } from '../../core/services/newsletter.service';
+import {
+  AUTH_SUCCESS_FEEDBACK_DURATION_MS,
+  NewsletterService,
+} from '../../core/services/newsletter.service';
 import { ActivityHistoryService } from '../../core/services/activity-history.service';
 import { PaymentReceipt } from '../../core/models/activity-history.model';
 import { ExperienceService } from '../../core/services/experience.service';
@@ -111,7 +114,7 @@ export class ProfileComponent implements OnInit {
       this.profileJustSaved.set(false);
       this.newsletter.profileSuccessHighlight.set(false);
       this.successTimer = null;
-    }, 3000);
+    }, AUTH_SUCCESS_FEEDBACK_DURATION_MS);
   }
 
   // Menús de navegación idénticos a los de la landing /
