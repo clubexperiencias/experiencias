@@ -229,9 +229,8 @@
               </div>
 
               <div class="tier-jump-card highlight">
-                <span class="jump-tag">ACTIVACIÓN INMEDIATA</span>
                 <p>
-                  Membresía mensual con acceso directo a cupos prioritarios y beneficios ($12.000
+                  Membresía mensual con acceso directo a cupos prioritarios y beneficios ($23.000
                   ARS/mes · sin permanencia).
                 </p>
               </div>
@@ -264,7 +263,7 @@
                     </svg>
                     Activar Membresía Mensual
                   </span>
-                  <span class="cta-sub-text">$12.000 ARS/mes · Cancelación libre</span>
+                  <span class="cta-sub-text">$23.000 ARS/mes · Cancelación libre</span>
                 </a>
               </div>
             </div>
@@ -520,7 +519,10 @@
                     }
                   </div>
                   <div class="agreement-text">
-                    <strong>COMPROMISO FORMAL Y ADHESIÓN AL PROTOCOLO DE ADMISIÓN <b style="color: #ffcc00;">*</b></strong>
+                    <strong
+                      >COMPROMISO FORMAL Y ADHESIÓN AL PROTOCOLO DE ADMISIÓN
+                      <b style="color: #ffcc00">*</b></strong
+                    >
                     <p>
                       Declaro estar al tanto y en conformidad con el aporte patrimonial
                       correspondiente a la
@@ -751,7 +753,7 @@
                   </div>
                   <div class="exp-card-content">
                     @if (
-                      exp.detailRoute === '/experiencias/kayak' || exp.id === 'exp_kayak_pirquitas'
+                      exp.detailRoute === '/experiencias/kayak' || exp.id === 'exp_kayak_jumeal'
                     ) {
                       <a
                         routerLink="/experiencias/kayak/calificaciones"
@@ -1019,7 +1021,7 @@
                     color: var(--color-gold);
                     border: 1px solid rgba(255, 212, 42, 0.35);
                   "
-                  >$12.000 ARS / mes</span
+                  >$23.000 ARS / mes</span
                 >
               </div>
             </div>
@@ -1052,7 +1054,7 @@
                         Débito automático mensual con saldo disponible o tarjetas de crédito y
                         débito.
                       } @else if (gw.type === 'stripe') {
-                        Tarjetas internacionales Visa / Mastercard con cobro equivalente en USD ($12
+                        Tarjetas internacionales Visa / Mastercard con cobro equivalente en USD ($23
                         USD aprox.).
                       }
                     </div>
@@ -1066,7 +1068,7 @@
               <p>
                 Procesando con: <strong>{{ paymentManager.activeGateway().displayName }}</strong> ·
                 Cuota mensual:
-                <strong>$12.000 ARS</strong>
+                <strong>$23.000 ARS</strong>
               </p>
             </div>
 
@@ -1080,7 +1082,7 @@
                 @if (subscribingMembership()) {
                   <span>Procesando pago...</span>
                 } @else {
-                  <span>Confirmar y Activar Membresía ($12.000 ARS/mes)</span>
+                  <span>Confirmar y Activar Membresía ($23.000 ARS/mes)</span>
                 }
               </button>
             </div>
@@ -1124,7 +1126,7 @@
                   line-height: 1.5;
                 "
               >
-                Registramos tu pago de <strong>$12.000 ARS</strong> mediante
+                Registramos tu pago de <strong>$23.000 ARS</strong> mediante
                 <strong>{{ paymentManager.activeGateway().displayName }}</strong
                 >. Ya contás con el 10% de descuento y prioridad de reserva.
               </p>

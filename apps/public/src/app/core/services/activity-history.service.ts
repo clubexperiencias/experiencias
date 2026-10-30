@@ -36,15 +36,17 @@ export class ActivityHistoryService {
       return;
     }
 
-    const [{ data: payments, error: paymentsError }, { data: experiences, error: experiencesError }] =
-      await Promise.all([
-        this.supabase
-          .from('pagos_transferencias')
-          .select('*')
-          .eq('email', email)
-          .order('submitted_at', { ascending: false }),
-        this.supabase.from('experiencias_club').select('*'),
-      ]);
+    const [
+      { data: payments, error: paymentsError },
+      { data: experiences, error: experiencesError },
+    ] = await Promise.all([
+      this.supabase
+        .from('pagos_transferencias')
+        .select('*')
+        .eq('email', email)
+        .order('submitted_at', { ascending: false }),
+      this.supabase.from('experiencias_club').select('*'),
+    ]);
 
     if (paymentsError || experiencesError) {
       console.warn('[ActivityHistoryService] No se pudo cargar el historial remoto.', {
@@ -54,7 +56,9 @@ export class ActivityHistoryService {
       return;
     }
 
-    const experienceById = new Map((experiences ?? []).map((experience) => [experience.id, experience]));
+    const experienceById = new Map(
+      (experiences ?? []).map((experience) => [experience.id, experience]),
+    );
     this._activities.set(
       (payments ?? []).map((payment) => {
         const experience = experienceById.get(payment.experience_id);
@@ -116,9 +120,9 @@ export class ActivityHistoryService {
   /*
     {
       id: 'act_001',
-      slug: 'kayak-las-pirquitas',
+      slug: 'kayak-las-jumeal',
       userId: 'user_current',
-      experienceId: 'exp_kayak_pirquitas',
+      experienceId: 'exp_kayak_jumeal',
       title: 'Travesía en Kayak & Sunset en el Dique El Jumeal',
       region: 'Valle Central y Ambato',
       altitude: '850 msnm',

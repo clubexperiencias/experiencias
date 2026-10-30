@@ -6,7 +6,7 @@ const ADMIN_AUTH_KEY = 'catamarca_club_admin_session';
 const ADMIN_USERS_STORAGE_KEY = 'catamarca_club_admin_users';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class AdminService {
   // Estado de sesión admin
@@ -31,9 +31,13 @@ export class AdminService {
         zone: 'Fiambalá & Paso de San Francisco',
         vehicleDescription: 'Toyota Land Cruiser Prado 4x4 preparada con auxilio doble y snorkel',
         licenseNumber: 'GUI-CAT-2024-0412',
-        certifications: ['WFR Socorrismo en Zonas Agrestes', 'Radioaficionado VHF Cordillera', 'Mecánica de Emergencia 4x4'],
+        certifications: [
+          'WFR Socorrismo en Zonas Agrestes',
+          'Radioaficionado VHF Cordillera',
+          'Mecánica de Emergencia 4x4',
+        ],
         status: 'habilitado',
-        registeredDate: '12/03/2026'
+        registeredDate: '12/03/2026',
       },
       registeredAt: '12/03/2026',
       subscription: {
@@ -44,25 +48,26 @@ export class AdminService {
         startedAt: '12/03/2026',
         nextBillingDate: 'Vitalicio Anual (Exento de cuota mensual)',
         autoRenew: true,
-        lastPaymentReceipt: 'REC-2026-FND-0012'
+        lastPaymentReceipt: 'REC-2026-FND-0012',
       },
       activities: [
         {
           id: 'act_654_01',
-          slug: 'kayak-las-pirquitas',
+          slug: 'kayak-las-jumeal',
           userId: '654',
-          experienceId: 'exp_kayak_pirquitas',
-          title: 'Travesía en Kayak & Sunset en Las Pirquitas',
+          experienceId: 'exp_kayak_jumeal',
+          title: 'Travesía en Kayak & Sunset en El Jumeal',
           region: 'Valle Central y Ambato',
           altitude: '850 msnm',
           coverImage: '/assets/images/kayak-club-de-experiencias.jpg',
           dateLabel: '18 de Octubre, 2026',
           status: 'completada',
-          description: 'Navegación en kayak de travesía por el dique Las Pirquitas al atardecer, exploración de quebradas rojizas y cierre con tertulia y degustación de vinos catamarqueños.',
+          description:
+            'Navegación en kayak de travesía por el dique El Jumeal al atardecer, exploración de quebradas rojizas y cierre con tertulia y degustación de vinos catamarqueños.',
           provider: {
             name: 'Travesías Náuticas Ambato (Guía Lucas Albarracín)',
             category: 'Kayak & Deportes Náuticos',
-            contactPhone: '+54 9 3834 89-2104'
+            contactPhone: '+54 9 3834 89-2104',
           },
           receipt: {
             receiptNumber: 'REC-2026-CAT-0104',
@@ -76,7 +81,7 @@ export class AdminService {
             payerEmail: 'ignacio.balcarce@cordillera.ar',
             payerName: 'Ignacio Balcarce',
             authCode: 'AUTH-MP-89214',
-            status: 'aprobado'
+            status: 'aprobado',
           },
           memoriesCount: 4,
           memoryPhotos: ['/assets/images/kayak-club-de-experiencias.jpg'],
@@ -84,39 +89,42 @@ export class AdminService {
             {
               id: 'cp_101',
               url: '/assets/images/kayak-club-de-experiencias.jpg',
-              caption: 'Atardecer dorado sobre el espejo de agua de Las Pirquitas',
+              caption: 'Atardecer dorado sobre el espejo de agua de El Jumeal',
               uploadedBy: 'Lucas A.',
-              uploadedAt: '18/10/2026'
+              uploadedAt: '18/10/2026',
             },
             {
               id: 'cp_102',
               url: '/assets/images/laguna_blanca.jpg',
               caption: 'Preparando las palas antes del ingreso al lago',
               uploadedBy: 'Sofía M.',
-              uploadedAt: '18/10/2026'
-            }
+              uploadedAt: '18/10/2026',
+            },
           ],
           reviews: [
             {
               id: 'rev_101',
               authorSignature: 'Ignacio B.',
               rating: 5,
-              comment: 'Remada excelente con el sunset sobre el dique. Una gran experiencia para conectar con el agua en Catamarca.',
-              createdAt: '19/10/2026'
+              comment:
+                'Remada excelente con el sunset sobre el dique. Una gran experiencia para conectar con el agua en Catamarca.',
+              createdAt: '19/10/2026',
             },
             {
               id: 'rev_102',
               authorSignature: 'Clara S.',
               rating: 5,
-              comment: 'La tranquilidad del dique y el silencio entre las quebradas fue mágico. El guía Lucas súper atento en todo momento.',
-              createdAt: '19/10/2026'
-            }
+              comment:
+                'La tranquilidad del dique y el silencio entre las quebradas fue mágico. El guía Lucas súper atento en todo momento.',
+              createdAt: '19/10/2026',
+            },
           ],
           userReview: {
             rating: 5,
-            comment: 'Remada excelente con el sunset sobre el dique. Una gran experiencia para conectar con el agua en Catamarca.',
-            authorSignature: 'Ignacio B.'
-          }
+            comment:
+              'Remada excelente con el sunset sobre el dique. Una gran experiencia para conectar con el agua en Catamarca.',
+            authorSignature: 'Ignacio B.',
+          },
         },
         {
           id: 'act_654_02',
@@ -129,11 +137,12 @@ export class AdminService {
           coverImage: '/assets/images/piedra-pomez.png',
           dateLabel: '24 de Noviembre, 2026 (Próxima salida)',
           status: 'confirmada',
-          description: 'Expedición en vehículos 4x4 cruzando el mar de ceniza volcánica blanca petrificada en la Puna catamarqueña y ascenso a la duna gigante.',
+          description:
+            'Expedición en vehículos 4x4 cruzando el mar de ceniza volcánica blanca petrificada en la Puna catamarqueña y ascenso a la duna gigante.',
           provider: {
             name: 'Expediciones Puna 4x4 (Mariano Carrizo)',
             category: 'Transporte & Guía 4x4',
-            contactPhone: '+54 9 3834 55-9012'
+            contactPhone: '+54 9 3834 55-9012',
           },
           receipt: {
             receiptNumber: 'REC-2026-CAT-0238',
@@ -148,7 +157,7 @@ export class AdminService {
             payerEmail: 'ignacio.balcarce@cordillera.ar',
             payerName: 'Ignacio Balcarce',
             authCode: 'CBU-TRF-4910294',
-            status: 'aprobado'
+            status: 'aprobado',
           },
           memoriesCount: 2,
           memoryPhotos: ['/assets/images/piedra-pomez.png'],
@@ -158,16 +167,17 @@ export class AdminService {
               url: '/assets/images/piedra-pomez.png',
               caption: 'Laberinto de esculturas naturales de piedra pómez',
               uploadedBy: 'Mariano C.',
-              uploadedAt: '20/10/2026'
-            }
+              uploadedAt: '20/10/2026',
+            },
           ],
           reviews: [],
-          userReview: undefined
-        }
+          userReview: undefined,
+        },
       ],
       totalSpentArs: 500000,
       totalSpentUsd: 510,
-      adminNotes: 'Socio Fundador certificado. Validado en registro de prestadores de turismo aventura de Catamarca.'
+      adminNotes:
+        'Socio Fundador certificado. Validado en registro de prestadores de turismo aventura de Catamarca.',
     },
     {
       id: '102',
@@ -189,12 +199,12 @@ export class AdminService {
         startedAt: '04/05/2026',
         nextBillingDate: '04/11/2026',
         autoRenew: true,
-        lastPaymentReceipt: 'REC-2026-SUB-0491'
+        lastPaymentReceipt: 'REC-2026-SUB-0491',
       },
       activities: [],
       totalSpentArs: 74000,
       totalSpentUsd: 78,
-      adminNotes: 'Membresía activa al día. Sin incidencias de cobro.'
+      adminNotes: 'Membresía activa al día. Sin incidencias de cobro.',
     },
     {
       id: '205',
@@ -214,13 +224,13 @@ export class AdminService {
         licenseNumber: 'BAQ-ANT-2025-0089',
         certifications: ['Guía Local Habilitado', 'Primeros Auxilios Cruz Roja'],
         status: 'habilitado',
-        registeredDate: '15/06/2026'
+        registeredDate: '15/06/2026',
       },
       registeredAt: '15/06/2026',
       activities: [],
       totalSpentArs: 0,
       totalSpentUsd: 0,
-      adminNotes: 'Prestador habilitado en red local. Registro gratuito verificado.'
+      adminNotes: 'Prestador habilitado en red local. Registro gratuito verificado.',
     },
     {
       id: '318',
@@ -237,8 +247,8 @@ export class AdminService {
       activities: [],
       totalSpentArs: 0,
       totalSpentUsd: 0,
-      adminNotes: 'Registrado en lista de espera para la próxima temporada de astroturismo.'
-    }
+      adminNotes: 'Registrado en lista de espera para la próxima temporada de astroturismo.',
+    },
   ];
 
   private readonly _users = signal<AdminUser[]>(this.loadStoredUsers());
@@ -246,7 +256,9 @@ export class AdminService {
 
   readonly metrics = computed<AdminDashboardMetrics>(() => {
     const list = this._users();
-    const activeSub = list.filter((u) => u.membershipTier === 'activo' || u.subscription?.status === 'active').length;
+    const activeSub = list.filter(
+      (u) => u.membershipTier === 'activo' || u.subscription?.status === 'active',
+    ).length;
     const founders = list.filter((u) => u.membershipTier === 'fundador').length;
     const emergents = list.filter((u) => u.membershipTier === 'emergente').length;
     const providers = list.filter((u) => u.isProvider).length;
@@ -262,13 +274,17 @@ export class AdminService {
       registeredProviders: providers,
       totalRevenueArs: revArs,
       totalRevenueUsd: revUsd,
-      recentActivityCount: totalActs
+      recentActivityCount: totalActs,
     };
   });
 
   login(password: string): boolean {
     // Clave administrativa por defecto para pruebas y acceso seguro
-    if (password === 'admin2026' || password === 'experiencias' || password.trim().toLowerCase() === 'admin') {
+    if (
+      password === 'admin2026' ||
+      password === 'experiencias' ||
+      password.trim().toLowerCase() === 'admin'
+    ) {
       this._isAdminLoggedIn.set(true);
       try {
         localStorage.setItem(ADMIN_AUTH_KEY, 'true');
@@ -286,7 +302,9 @@ export class AdminService {
   }
 
   getUserById(id: string): AdminUser | undefined {
-    return this._users().find((u) => u.id === id || u.memberNumber === id || u.email.toLowerCase() === id.toLowerCase());
+    return this._users().find(
+      (u) => u.id === id || u.memberNumber === id || u.email.toLowerCase() === id.toLowerCase(),
+    );
   }
 
   updateUser(id: string, updates: Partial<AdminUser>): void {

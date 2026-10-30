@@ -58,7 +58,7 @@ export class KayakPhotosComponent {
   readonly photos: GalleryPhoto[] = [
     {
       src: '/assets/images/kayak-club-de-experiencias.jpg',
-      title: 'Travesía en Las Pirquitas',
+      title: 'Travesía en El Jumeal',
       caption:
         'Socios del Club navegando en aguas calmas frente al cordón de las Sierras de Ambato.',
       tag: 'DESTACADA',
@@ -71,7 +71,7 @@ export class KayakPhotosComponent {
     {
       src: '/assets/images/kayak-club-de-experiencias.jpg',
       title: 'Navegación al Atardecer',
-      caption: 'Remada en grupo en las bahías protegidas del dique Las Pirquitas.',
+      caption: 'Remada en grupo en las bahías protegidas del dique El Jumeal.',
       tag: 'DESTACADA',
       photographer: 'Marcos T: Guía & Fotografía',
     },
@@ -123,7 +123,7 @@ export class KayakPhotosComponent {
     },
     {
       src: '/assets/images/kayak-club-de-experiencias.jpg',
-      title: 'Reflejos Dorados en Las Pirquitas',
+      title: 'Reflejos Dorados en El Jumeal',
       caption: '',
       tag: 'DESTACADA POR EL EQUIPO',
       author: 'Federico S. · Socio Fundador',

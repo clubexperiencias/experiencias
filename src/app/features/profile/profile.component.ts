@@ -53,7 +53,7 @@ export class ProfileComponent implements OnInit {
   readonly recentActivities = () => this.activityService.activities().slice(0, 2);
 
   getExperienceRoute(experienceId: string): string {
-    return experienceId === 'exp_kayak_pirquitas' ? '/experiencias/kayak' : '/experiencias';
+    return experienceId === 'exp_kayak_jumeal' ? '/experiencias/kayak' : '/experiencias';
   }
 
   readonly connectingGoogle = signal(false);
@@ -268,8 +268,8 @@ export class ProfileComponent implements OnInit {
         transactionId: 'SUB-' + Math.random().toString(36).substring(2, 9).toUpperCase(),
         gateway: this.paymentManager.activeGatewayType(),
         gatewayDisplayName: this.paymentManager.activeGateway().displayName,
-        amountArs: 12000,
-        amountUsd: 12,
+        amountArs: 23000,
+        amountUsd: 23,
         paidAt: new Date().toLocaleString('es-AR'),
         paymentMethodSummary: `Cuota Mensual · ${this.paymentManager.activeGateway().displayName}`,
         payerEmail: this.newsletter.currentMember()?.email || 'socio@experiencias.club',
@@ -340,9 +340,7 @@ export class ProfileComponent implements OnInit {
   readonly selectedExperiences = signal<string[]>(
     this.newsletter.currentMember()?.experiencesWishlist || [],
   );
-  readonly memberOtherExperience = signal(
-    this.newsletter.currentMember()?.experiencesOther || '',
-  );
+  readonly memberOtherExperience = signal(this.newsletter.currentMember()?.experiencesOther || '');
   readonly profileSaved = signal(Boolean(this.newsletter.currentMember()?.fullName));
 
   toggleExperienceWishlist(id: string): void {
@@ -374,9 +372,7 @@ export class ProfileComponent implements OnInit {
       return;
     }
 
-    const otherText = this.isExperienceSelected('otros')
-      ? this.memberOtherExperience().trim()
-      : '';
+    const otherText = this.isExperienceSelected('otros') ? this.memberOtherExperience().trim() : '';
 
     const res = await this.newsletter.updateMemberProfile({
       fullName: this.memberFullName().trim().slice(0, 100),

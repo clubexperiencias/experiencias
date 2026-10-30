@@ -61,10 +61,10 @@ export class ExperiencesPhotosComponent {
     {
       id: 'photo_kayak_1',
       src: '/assets/images/kayak-club-de-experiencias.jpg',
-      title: 'Sunset de Espejos en Las Pirquitas',
+      title: 'Sunset de Espejos en El Jumeal',
       caption:
         'Navegación en kayak doble durante la hora dorada sobre las aguas calmas del dique, con el telón de fondo de las Sierras de Ambato.',
-      experienceName: 'Travesía en Kayak & Sunset en Las Pirquitas',
+      experienceName: 'Travesía en Kayak & Sunset en El Jumeal',
       experienceSlug: 'kayak',
       experienceRoute: '/experiencias/kayak',
       region: 'Valle Central y Ambato',

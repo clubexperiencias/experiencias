@@ -1139,7 +1139,7 @@ export class NewsletterService {
     const subscription = {
       status: 'active' as const,
       tier: 'activo' as const,
-      amountArs: 12000,
+      amountArs: 23000,
       paymentMethod: details?.paymentMethod || 'Tarjeta de Débito (•••• 4821)',
       startedAt: today.toISOString(),
       nextBillingDate: nextMonth.toLocaleDateString('es-AR', {

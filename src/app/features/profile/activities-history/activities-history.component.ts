@@ -2,7 +2,10 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivityHistoryService } from '../../../core/services/activity-history.service';
 import { ActivityRecord, PaymentReceipt } from '../../../core/models/activity-history.model';
-import { BreadcrumbComponent, BreadcrumbItem } from '../../../shared/components/breadcrumb/breadcrumb.component';
+import {
+  BreadcrumbComponent,
+  BreadcrumbItem,
+} from '../../../shared/components/breadcrumb/breadcrumb.component';
 import { HeaderComponent } from '../../../shared/components/header/header.component';
 import { FooterComponent } from '../../../shared/components/footer/footer.component';
 import { ReceiptModalComponent } from '../../../shared/components/receipt-modal/receipt-modal.component';
@@ -12,9 +15,15 @@ export type ActivitySort = 'desc' | 'asc';
 @Component({
   selector: 'app-activities-history',
   standalone: true,
-  imports: [CommonModule, BreadcrumbComponent, HeaderComponent, FooterComponent, ReceiptModalComponent],
+  imports: [
+    CommonModule,
+    BreadcrumbComponent,
+    HeaderComponent,
+    FooterComponent,
+    ReceiptModalComponent,
+  ],
   templateUrl: './activities-history.component.html',
-  styleUrls: ['./activities-history.component.css']
+  styleUrls: ['./activities-history.component.css'],
 })
 export class ActivitiesHistoryComponent {
   readonly activityService = inject(ActivityHistoryService);
@@ -23,7 +32,7 @@ export class ActivitiesHistoryComponent {
   readonly breadcrumbs: BreadcrumbItem[] = [
     { label: 'Inicio', url: '/' },
     { label: 'Mi Perfil', url: '/perfil' },
-    { label: 'Actividades' }
+    { label: 'Actividades' },
   ];
 
   readonly searchQuery = signal<string>('');
@@ -32,7 +41,7 @@ export class ActivitiesHistoryComponent {
   readonly sortOrder = signal<ActivitySort>('desc');
 
   getExperienceRoute(experienceId: string): string {
-    return experienceId === 'exp_kayak_pirquitas' ? '/experiencias/kayak' : '/experiencias';
+    return experienceId === 'exp_kayak_jumeal' ? '/experiencias/kayak' : '/experiencias';
   }
 
   openReceipt(receipt: PaymentReceipt): void {
@@ -54,7 +63,7 @@ export class ActivitiesHistoryComponent {
           a.title.toLowerCase().includes(query) ||
           a.region.toLowerCase().includes(query) ||
           a.provider.name.toLowerCase().includes(query) ||
-          (a.description ? a.description.toLowerCase().includes(query) : false)
+          (a.description ? a.description.toLowerCase().includes(query) : false),
       );
     }
 
@@ -80,7 +89,7 @@ export class ActivitiesHistoryComponent {
       septiembre: 8,
       octubre: 9,
       noviembre: 10,
-      diciembre: 11
+      diciembre: 11,
     };
     const month = months[match[2].toLowerCase()];
     return month === undefined ? 0 : new Date(Number(match[3]), month, Number(match[1])).getTime();

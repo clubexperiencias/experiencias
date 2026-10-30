@@ -137,15 +137,6 @@ export class ProvidersComponent {
     this.router.navigate(['/']);
   }
 
-  openMembershipPayment(tier?: string): void {
-    this.closeModal();
-    if (this.newsletter.isSubscribed()) {
-      this.router.navigate(['/perfil'], { queryParams: { modal: 'payments' } });
-    } else {
-      this.router.navigate(['/'], { queryParams: { modal: 'payments' } });
-    }
-  }
-
   openFounderApplication(): void {
     this.closeModal();
     this.router.navigate(['/'], { queryParams: { modal: 'founder_application' } });

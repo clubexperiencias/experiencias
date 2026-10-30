@@ -93,7 +93,7 @@ export class KayakRatingsComponent {
       activityDate: 'Marzo 2026',
       rating: 5,
       date: '14 de Marzo, 2026',
-      title: 'Una experiencia única, el atardecer en Las Pirquitas es surreal',
+      title: 'Una experiencia única, el atardecer en El Jumeal es surreal',
       comment:
         'Hicimos la remada con mi pareja el sábado al atardecer. Los kayaks son comodísimos y súper estables, no nos mojamos nada salvo las manos al remar. El momento de la pausa sunset cuando el sol cae sobre las Sierras de Ambato te deja sin palabras. La picada de quesos de cabra y vino catamarqueño al final fue el broche de oro.',
       providerReply: {
@@ -101,7 +101,7 @@ export class KayakRatingsComponent {
         badge: 'Prestador Oficial Habilitado',
         date: '15 de Marzo, 2026',
         message:
-          '¡Muchas gracias Valentina! Un placer enorme recibirlos en Las Pirquitas. El atardecer de marzo estuvo especialmente calmo y con una luz dorada increíble. Nos alegra mucho que hayan disfrutado tanto los kayaks como la degustación de productores locales de Fray Mamerto Esquiú. ¡Los esperamos en la próxima expedición andina!',
+          '¡Muchas gracias Valentina! Un placer enorme recibirlos en El Jumeal. El atardecer de marzo estuvo especialmente calmo y con una luz dorada increíble. Nos alegra mucho que hayan disfrutado tanto los kayaks como la degustación de productores locales de Fray Mamerto Esquiú. ¡Los esperamos en la próxima expedición andina!',
       },
     },
     {
@@ -238,7 +238,7 @@ export class KayakRatingsComponent {
         responderName: 'Lucas Nieto • Guía Náutico & Prestador Habilitado',
         badge: 'Prestador Oficial Habilitado',
         date: 'En proceso de moderación',
-        message: `¡Hola ${name}! Agradecemos profundamente tu reseña y el tiempo dedicado a compartir tu experiencia lacustre en Las Pirquitas. ¡Nos alegra contar con vos en el Club!`,
+        message: `¡Hola ${name}! Agradecemos profundamente tu reseña y el tiempo dedicado a compartir tu experiencia lacustre en El Jumeal. ¡Nos alegra contar con vos en el Club!`,
       },
     };
 

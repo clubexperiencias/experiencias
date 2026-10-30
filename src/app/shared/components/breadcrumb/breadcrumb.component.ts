@@ -1,10 +1,7 @@
 import { Component, input, signal, inject, OnInit } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
-import {
-  MenuCardComponent,
-  RECOMMENDED_CARD,
-} from './menu-card/menu-card.component';
+import { MenuCardComponent, RECOMMENDED_CARD } from './menu-card/menu-card.component';
 
 export interface BreadcrumbNextStep {
   label: string;
@@ -165,9 +162,7 @@ export class BreadcrumbComponent implements OnInit {
       event.preventDefault();
       event.stopPropagation();
       this.closeMobileMenu();
-      const previousItem = [...this.items()]
-        .reverse()
-        .find((item) => item.url);
+      const previousItem = [...this.items()].reverse().find((item) => item.url);
       const previousUrl = previousItem?.url ?? '/';
       globalSuppressBreadcrumbHover = true;
       if (typeof window !== 'undefined') {
@@ -229,7 +224,7 @@ export class BreadcrumbComponent implements OnInit {
       return {
         kicker: 'Expediciones',
         steps: [
-          { label: 'Kayak & Sunset Las Pirquitas', url: '/experiencias/kayak' },
+          { label: 'Kayak & Sunset El Jumeal', url: '/experiencias/kayak' },
           { label: 'Fotos de Travesías', url: '/experiencias/fotos' },
           { label: 'Volver atrás', url: '/' },
         ],

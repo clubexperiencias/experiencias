@@ -21,11 +21,11 @@ describe('ActivityDetailComponent (/perfil/actividades/:slug)', () => {
           provide: ActivatedRoute,
           useValue: {
             paramMap: of({
-              get: (key: string) => (key === 'slug' ? 'kayak-las-pirquitas' : null)
-            })
-          }
-        }
-      ]
+              get: (key: string) => (key === 'slug' ? 'kayak-las-jumeal' : null),
+            }),
+          },
+        },
+      ],
     }).compileComponents();
 
     activityService = TestBed.inject(ActivityHistoryService);
@@ -77,7 +77,7 @@ describe('ActivityDetailComponent (/perfil/actividades/:slug)', () => {
     component.stagedPhotos.set([
       { previewUrl: 'url1', caption: 'c1', name: 'n1' },
       { previewUrl: 'url2', caption: 'c2', name: 'n2' },
-      { previewUrl: 'url3', caption: 'c3', name: 'n3' }
+      { previewUrl: 'url3', caption: 'c3', name: 'n3' },
     ]);
     expect(component.stagedPhotos().length).toBe(3);
 
@@ -87,8 +87,12 @@ describe('ActivityDetailComponent (/perfil/actividades/:slug)', () => {
   });
 
   it('should format upload dates cleanly with month names and time', () => {
-    expect(component.formatUploadDate('18/10/2026 19:10')).toBe('18 de Octubre de 2026 a las 19:10');
-    expect(component.formatUploadDate('19/10/2026 09:15')).toBe('19 de Octubre de 2026 a las 09:15');
+    expect(component.formatUploadDate('18/10/2026 19:10')).toBe(
+      '18 de Octubre de 2026 a las 19:10',
+    );
+    expect(component.formatUploadDate('19/10/2026 09:15')).toBe(
+      '19 de Octubre de 2026 a las 09:15',
+    );
     expect(component.formatUploadDate('18/10/2026')).toBe('18 de Octubre de 2026');
   });
 });

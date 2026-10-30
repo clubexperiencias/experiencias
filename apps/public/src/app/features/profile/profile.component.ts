@@ -9,9 +9,7 @@ import {
 import { ActivityHistoryService } from '../../core/services/activity-history.service';
 import { PaymentReceipt } from '../../core/models/activity-history.model';
 import { ExperienceService } from '../../core/services/experience.service';
-import { PaymentManagerService } from '../../core/services/payment/payment-manager.service';
 import { Experience } from '../../core/models/experience.model';
-import { PaymentGatewayType } from '../../core/models/payment.model';
 import { ModalType } from '../waitlist/waitlist.component';
 import { FooterComponent } from '../../shared/components/footer/footer.component';
 import { HeaderComponent } from '../../shared/components/header/header.component';
@@ -40,7 +38,6 @@ export class ProfileComponent implements OnInit {
   readonly newsletter = inject(NewsletterService);
   readonly activityService = inject(ActivityHistoryService);
   readonly experienceService = inject(ExperienceService);
-  readonly paymentManager = inject(PaymentManagerService);
   readonly router = inject(Router);
 
   readonly breadcrumbs: BreadcrumbItem[] = [{ label: 'Inicio', url: '/' }, { label: 'Mi Perfil' }];
@@ -57,7 +54,7 @@ export class ProfileComponent implements OnInit {
   readonly recentActivities = () => this.activityService.activities().slice(0, 2);
 
   getExperienceRoute(experienceId: string): string {
-    return experienceId === 'exp_kayak_pirquitas' ? '/experiencias/kayak' : '/experiencias';
+    return experienceId === 'exp_kayak_jumeal' ? '/experiencias/kayak' : '/experiencias';
   }
 
   readonly connectingGoogle = signal(false);
@@ -77,7 +74,6 @@ export class ProfileComponent implements OnInit {
         } else {
           this.syncFieldsFromMember();
         }
-
       });
     } else {
       this.syncFieldsFromMember();
@@ -160,9 +156,6 @@ export class ProfileComponent implements OnInit {
   readonly founderSuccess = signal(false);
 
   // Suscripción de Membresía Mensual
-  readonly subscribingMembership = signal(false);
-  readonly membershipPaymentSuccess = signal(false);
-
   // Acceso de Socios (Login Modal)
   readonly loginEmail = signal('');
   readonly loginError = signal<string | null>(null);
@@ -249,60 +242,6 @@ export class ProfileComponent implements OnInit {
     }
   }
 
-  openMembershipPayment(tier?: string): void {
-    this.openModal('payments');
-  }
-
-  selectGateway(type: PaymentGatewayType): void {
-    this.paymentManager.setGateway(type);
-  }
-
-  async confirmMembershipPayment(): Promise<void> {
-    this.subscribingMembership.set(true);
-    await new Promise((resolve) => setTimeout(resolve, 800));
-
-    const receiptNumber = 'REC-2026-CAT-' + Math.floor(1000 + Math.random() * 9000);
-
-    this.activityService.addActivity({
-      id: 'act_' + Date.now(),
-      userId: this.newsletter.currentMember()?.id || 'user_current',
-      experienceId: 'membership_monthly',
-      title: 'Membresía Mensual · Socio Pleno (Temporada Inaugural)',
-      region: 'Catamarca · Club de Experiencias',
-      altitude: 'Sede Central',
-      dateLabel: new Intl.DateTimeFormat('es-AR', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-      }).format(new Date()),
-      status: 'completada',
-      coverImage: '/assets/images/laguna_blanca.jpg',
-      provider: {
-        name: 'EXPERIENCIAS.CLUB Oficial',
-        category: 'Membresía & Cuota Social',
-        contactPhone: '+54 9 3834 89-2104',
-      },
-      receipt: {
-        receiptNumber,
-        transactionId: 'SUB-' + Math.random().toString(36).substring(2, 9).toUpperCase(),
-        gateway: this.paymentManager.activeGatewayType(),
-        gatewayDisplayName: this.paymentManager.activeGateway().displayName,
-        amountArs: 12000,
-        amountUsd: 12,
-        paidAt: new Date().toLocaleString('es-AR'),
-        paymentMethodSummary: `Cuota Mensual · ${this.paymentManager.activeGateway().displayName}`,
-        payerEmail: this.newsletter.currentMember()?.email || 'socio@experiencias.club',
-        payerName: this.newsletter.currentMember()?.fullName || 'Socio Pleno Catamarca',
-        authCode: 'AUTH-' + Math.random().toString(36).substring(2, 8).toUpperCase(),
-        status: 'aprobado',
-      },
-      memoriesCount: 0,
-      memoryPhotos: [],
-    });
-
-    this.subscribingMembership.set(false);
-    this.membershipPaymentSuccess.set(true);
-  }
 
   openFounderApplication(): void {
     const member = this.newsletter.currentMember();
@@ -359,9 +298,7 @@ export class ProfileComponent implements OnInit {
   readonly selectedExperiences = signal<string[]>(
     this.newsletter.currentMember()?.experiencesWishlist || [],
   );
-  readonly memberOtherExperience = signal(
-    this.newsletter.currentMember()?.experiencesOther || '',
-  );
+  readonly memberOtherExperience = signal(this.newsletter.currentMember()?.experiencesOther || '');
   readonly profileSaved = signal(Boolean(this.newsletter.currentMember()?.fullName));
 
   toggleExperienceWishlist(id: string): void {
@@ -393,9 +330,7 @@ export class ProfileComponent implements OnInit {
       return;
     }
 
-    const otherText = this.isExperienceSelected('otros')
-      ? this.memberOtherExperience().trim()
-      : '';
+    const otherText = this.isExperienceSelected('otros') ? this.memberOtherExperience().trim() : '';
 
     const res = await this.newsletter.updateMemberProfile({
       fullName: this.memberFullName().trim().slice(0, 100),

@@ -11,7 +11,7 @@ import {
 } from '../../shared/components/breadcrumb/breadcrumb.component';
 import { KayakAdComponent } from '../../shared/components/kayak-ad/kayak-ad.component';
 
-export type MembersModalType = 'login' | 'payments' | null;
+export type MembersModalType = 'login' | null;
 
 @Component({
   selector: 'app-members',

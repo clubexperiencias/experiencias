@@ -11,15 +11,15 @@
 
     <main class="ratings-main-content">
       <div class="ratings-wrapper">
-
         <!-- Encabezado Editorial Estilo National Geographic -->
         <header class="editorial-header-card">
           <div class="editorial-header-content">
             <span class="editorial-kicker">FEEDBACK REAL DE SOCIOS · CATAMARCA</span>
             <h1 class="editorial-title">Calificaciones Verificadas del Club</h1>
             <p class="editorial-lead">
-              Reseñas auténticas y experiencias compartidas por socios que vivieron nuestras travesías en Catamarca.
-              Cada salida cuenta con guías habilitados, protocolo médico de montaña y trazabilidad completa.
+              Reseñas auténticas y experiencias compartidas por socios que vivieron nuestras
+              travesías en Catamarca. Cada salida cuenta con guías habilitados, protocolo médico de
+              montaña y trazabilidad completa.
             </p>
           </div>
         </header>
@@ -47,7 +47,7 @@
               <!-- Kayak -->
               <a routerLink="/experiencias/kayak/calificaciones" class="exp-score-mini-card">
                 <div class="mini-card-top">
-                  <span class="mini-exp-name">Kayak & Sunset Las Pirquitas</span>
+                  <span class="mini-exp-name">Kayak & Sunset El Jumeal</span>
                   <span class="mini-score-val">4.95 ★</span>
                 </div>
                 <div class="mini-card-bottom">
@@ -86,22 +86,52 @@
         <!-- Barra de Filtros y Acción de Escribir Reseña -->
         <div class="filters-action-bar">
           <div class="filter-pills-row">
-            <button type="button" class="filter-pill-btn" [class.active]="activeFilter() === 'all'" (click)="setFilter('all')">
+            <button
+              type="button"
+              class="filter-pill-btn"
+              [class.active]="activeFilter() === 'all'"
+              (click)="setFilter('all')"
+            >
               Todas ({{ reviewsList().length }})
             </button>
-            <button type="button" class="filter-pill-btn" [class.active]="activeFilter() === 'kayak'" (click)="setFilter('kayak')">
-              Kayak Las Pirquitas
+            <button
+              type="button"
+              class="filter-pill-btn"
+              [class.active]="activeFilter() === 'kayak'"
+              (click)="setFilter('kayak')"
+            >
+              Kayak Dique El Jumeal
             </button>
-            <button type="button" class="filter-pill-btn" [class.active]="activeFilter() === 'pomez'" (click)="setFilter('pomez')">
+            <button
+              type="button"
+              class="filter-pill-btn"
+              [class.active]="activeFilter() === 'pomez'"
+              (click)="setFilter('pomez')"
+            >
               Piedra Pómez
             </button>
-            <button type="button" class="filter-pill-btn" [class.active]="activeFilter() === 'seismiles'" (click)="setFilter('seismiles')">
+            <button
+              type="button"
+              class="filter-pill-btn"
+              [class.active]="activeFilter() === 'seismiles'"
+              (click)="setFilter('seismiles')"
+            >
               Seismiles
             </button>
-            <button type="button" class="filter-pill-btn" [class.active]="activeFilter() === 'with-reply'" (click)="setFilter('with-reply')">
+            <button
+              type="button"
+              class="filter-pill-btn"
+              [class.active]="activeFilter() === 'with-reply'"
+              (click)="setFilter('with-reply')"
+            >
               Con Respuesta Oficial
             </button>
-            <button type="button" class="filter-pill-btn" [class.active]="activeFilter() === '5-stars'" (click)="setFilter('5-stars')">
+            <button
+              type="button"
+              class="filter-pill-btn"
+              [class.active]="activeFilter() === '5-stars'"
+              (click)="setFilter('5-stars')"
+            >
               5 Estrellas ★
             </button>
           </div>
@@ -116,14 +146,20 @@
         @if (showNewReviewForm()) {
           <div class="new-review-form-card">
             <h3 class="form-title">Dejá tu Reseña como Socio</h3>
-            <p class="form-sub">Tu comentario ayuda a futuros socios a preparar sus travesías por Catamarca.</p>
+            <p class="form-sub">
+              Tu comentario ayuda a futuros socios a preparar sus travesías por Catamarca.
+            </p>
 
             <form (ngSubmit)="submitReview()" class="review-inputs-form">
               <div class="form-grid-2col">
                 <div class="form-group">
                   <label class="form-lbl">Expedición que realizaste</label>
-                  <select class="form-select" [value]="newExperience()" (change)="newExperience.set($any($event.target).value)">
-                    <option value="kayak">Travesía en Kayak & Sunset en Las Pirquitas</option>
+                  <select
+                    class="form-select"
+                    [value]="newExperience()"
+                    (change)="newExperience.set($any($event.target).value)"
+                  >
+                    <option value="kayak">Travesía en Kayak & Sunset en El Jumeal</option>
                     <option value="pomez">Campo de Piedra Pómez & Duna Gigante</option>
                     <option value="seismiles">Ruta de los Seismiles & Laguna Verde</option>
                   </select>
@@ -137,12 +173,22 @@
                     [class.is-readonly]="hasProfileName()"
                     [class.is-missing-profile]="!hasProfileName()"
                     [value]="hasProfileName() ? memberProfileName() : ''"
-                    [placeholder]="hasProfileName() ? '' : 'Completá tu perfil para poder calificar...'"
+                    [placeholder]="
+                      hasProfileName() ? '' : 'Completá tu perfil para poder calificar...'
+                    "
                     readonly
                   />
                   @if (!hasProfileName()) {
                     <p class="profile-required-hint">
-                      Debés <a href="/perfil" target="_blank" rel="noopener noreferrer" class="profile-link">completar tu perfil de socio</a> para poder publicar una calificación.
+                      Debés
+                      <a
+                        href="/perfil"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="profile-link"
+                        >completar tu perfil de socio</a
+                      >
+                      para poder publicar una calificación.
                     </p>
                   }
                 </div>
@@ -151,15 +197,26 @@
               <div class="form-grid-2col">
                 <div class="form-group">
                   <label class="form-lbl">Título de la Reseña</label>
-                  <input type="text" class="form-input" placeholder="Ej. Remada inolvidable y excelente atención"
-                    [value]="newTitle()" (input)="newTitle.set($any($event.target).value)" required />
+                  <input
+                    type="text"
+                    class="form-input"
+                    placeholder="Ej. Remada inolvidable y excelente atención"
+                    [value]="newTitle()"
+                    (input)="newTitle.set($any($event.target).value)"
+                    required
+                  />
                 </div>
 
                 <div class="form-group">
                   <label class="form-lbl">Puntuación General</label>
                   <div class="star-rating-selector">
                     @for (star of [1, 2, 3, 4, 5]; track star) {
-                      <button type="button" class="star-btn" [class.active]="newRating() >= star" (click)="newRating.set(star)">
+                      <button
+                        type="button"
+                        class="star-btn"
+                        [class.active]="newRating() >= star"
+                        (click)="newRating.set(star)"
+                      >
                         ★
                       </button>
                     }
@@ -170,13 +227,22 @@
 
               <div class="form-group">
                 <label class="form-lbl">Tu Experiencia y Detalles de la Salida</label>
-                <textarea class="form-textarea" rows="4"
+                <textarea
+                  class="form-textarea"
+                  rows="4"
                   placeholder="Contanos sobre el estado del equipo, los guías, la dificultad o los paisajes..."
-                  [value]="newComment()" (input)="newComment.set($any($event.target).value)" required></textarea>
+                  [value]="newComment()"
+                  (input)="newComment.set($any($event.target).value)"
+                  required
+                ></textarea>
               </div>
 
               <div class="form-submit-row">
-                <button type="submit" class="submit-review-action-btn" [disabled]="!hasProfileName() || !newTitle().trim() || !newComment().trim()">
+                <button
+                  type="submit"
+                  class="submit-review-action-btn"
+                  [disabled]="!hasProfileName() || !newTitle().trim() || !newComment().trim()"
+                >
                   <mat-icon>send</mat-icon>
                   <span>Publicar Calificación Verificada</span>
                 </button>
@@ -267,7 +333,8 @@
             <span class="cta-kicker">¿LISTO PARA TU PRÓXIMA AVENTURA?</span>
             <h2 class="cta-title">Vivilo con tus propios ojos</h2>
             <p class="cta-text">
-              Explorá las expediciones andinas y náuticas disponibles para socios y sumate con cupo prioritario.
+              Explorá las expediciones andinas y náuticas disponibles para socios y sumate con cupo
+              prioritario.
             </p>
             <div class="cta-actions-row">
               <a routerLink="/experiencias" class="cta-btn primary">
@@ -284,7 +351,6 @@
             </div>
           </div>
         </div>
-
       </div>
     </main>
   </div>
