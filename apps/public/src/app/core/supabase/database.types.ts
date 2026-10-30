@@ -184,6 +184,7 @@ export interface Database {
           description: string;
           region: string;
           meeting_point: string;
+          cover_image: string;
           difficulty: 'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña';
           duration_label: string;
           price_ars: number;
@@ -202,6 +203,7 @@ export interface Database {
           description?: string;
           region?: string;
           meeting_point?: string;
+          cover_image?: string;
           difficulty?: 'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña';
           duration_label?: string;
           price_ars?: number;
@@ -219,6 +221,7 @@ export interface Database {
           description?: string;
           region?: string;
           meeting_point?: string;
+          cover_image?: string;
           difficulty?: 'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña';
           duration_label?: string;
           price_ars?: number;

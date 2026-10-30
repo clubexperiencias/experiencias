@@ -4,7 +4,7 @@ export interface Experience {
   title: string;
   tagline: string;
   description: string;
-  region: 'Puna de Atacama' | 'Antofagasta de la Sierra' | 'Fiambalá y Seismiles' | 'Belén y Ruta del Telar' | 'Valle Central y Ambato';
+  region: string;
   difficulty: 'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña';
   durationDays: number;
   durationLabel: string;

@@ -64,6 +64,7 @@ const SEED_EXPERIENCES: ProviderExperience[] = [
     meetingPoint: 'Club Náutico Dique El Jumeal',
     difficulty: 'Baja',
     durationLabel: '4 horas',
+    coverImage: '/assets/images/kayak-club-de-experiencias.jpg',
     priceArs: 65000,
     capacityPerDate: 12,
     dates: [upcomingDate(9), upcomingDate(16), upcomingDate(23)],
@@ -161,6 +162,46 @@ export class ProviderStoreService {
   readonly pendingCount = computed(
     () => this._submissions().filter((s) => s.status === 'pendiente').length,
   );
+
+  constructor() {
+    if (isSupabaseConfigured()) {
+      void this.loadExperiencesFromSupabase();
+    }
+  }
+
+  private async loadExperiencesFromSupabase(): Promise<void> {
+    const { data, error } = await this.supabase
+      .from('experiencias_club')
+      .select('*')
+      .eq('status', 'publicada')
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.warn('[ProviderStoreService] No se pudieron cargar las experiencias remotas.', error);
+      return;
+    }
+
+    this._experiences.set(
+      (data ?? []).map((experience) => ({
+        id: experience.id,
+        slug: experience.slug,
+        title: experience.title,
+        shortTitle: experience.short_title ?? undefined,
+        tagline: experience.tagline,
+        description: experience.description,
+        region: experience.region,
+        meetingPoint: experience.meeting_point,
+        difficulty: experience.difficulty,
+        durationLabel: experience.duration_label,
+        coverImage: experience.cover_image,
+        priceArs: experience.price_ars,
+        capacityPerDate: experience.capacity_per_date,
+        dates: Array.isArray(experience.dates) ? experience.dates.map(String) : [],
+        status: experience.status,
+        createdAt: experience.created_at,
+      })),
+    );
+  }
 
   getExperienceBySlug(slug: string): ProviderExperience | undefined {
     return this._experiences().find((e) => e.slug === slug);
@@ -359,7 +400,7 @@ export class ProviderStoreService {
       title: experience.title,
       region: experience.region,
       altitude: experience.meetingPoint,
-      coverImage: '/assets/images/laguna_blanca.jpg',
+      coverImage: experience.coverImage ?? '/assets/images/kayak-club-de-experiencias.jpg',
       dateLabel,
       status: 'pendiente_pago',
       provider: {

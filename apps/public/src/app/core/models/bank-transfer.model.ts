@@ -11,6 +11,7 @@ export interface ProviderExperience {
   meetingPoint: string;
   difficulty: 'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña';
   durationLabel: string;
+  coverImage?: string;
   priceArs: number;
   capacityPerDate: number;
   dates: string[];
