@@ -245,7 +245,10 @@ export class NewsletterService {
           const fallbackEntry: WaitlistEntry = {
             id: data.session.user.id,
             email: authEmail,
-            fullName: data.session.user.user_metadata?.['full_name'] || authEmail.split('@')[0],
+            fullName:
+              data.session.user.user_metadata?.['full_name'] ||
+              data.session.user.user_metadata?.['name'] ||
+              '',
             dni: '',
             phone: '',
             membershipTier: 'emergente',

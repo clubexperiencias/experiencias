@@ -336,6 +336,24 @@ export class ExperiencePaymentComponent implements OnInit {
         );
         return;
       }
+      if (isSupabaseConfigured() && authenticatedMember) {
+        const profileResult = await this.newsletter.updateMemberProfile({
+          fullName: value.fullName,
+          dni: value.dni,
+          phone: value.phone,
+          experiencesWishlist: authenticatedMember.experiencesWishlist,
+          experiencesOther: authenticatedMember.experiencesOther,
+        });
+        if (!profileResult.success) {
+          this.submitError.set(
+            profileResult.message || 'No pudimos actualizar tus datos de perfil.',
+          );
+          return;
+        }
+        if (profileResult.entry) {
+          this.checkoutMember.set(profileResult.entry);
+        }
+      }
       const submission = await this.store.submitTransfer({
         experienceId: exp.id,
         date: value.date,
