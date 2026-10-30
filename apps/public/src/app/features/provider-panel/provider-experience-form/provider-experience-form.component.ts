@@ -30,7 +30,12 @@ export class ProviderExperienceFormComponent implements OnInit {
   readonly editingExpId = signal<string | null>(null);
   readonly currentStatus = signal<ExperienceStatus>('borrador');
 
-  readonly difficulties: ProviderExperience['difficulty'][] = ['Baja', 'Moderada', 'Exigente', 'Alta Montaña'];
+  readonly difficulties: ProviderExperience['difficulty'][] = [
+    'Baja',
+    'Moderada',
+    'Exigente',
+    'Alta Montaña',
+  ];
   readonly regions = [
     'Valle Central y Ambato',
     'Puna de Atacama',
@@ -42,7 +47,7 @@ export class ProviderExperienceFormComponent implements OnInit {
   readonly today = new Date().toISOString().slice(0, 10);
 
   readonly presetImages: PresetImage[] = [
-    { url: '/assets/images/kayak-club-de-experiencias.jpg', label: 'Kayak en Dique Las Pirquitas' },
+    { url: '/assets/images/kayak-club-de-experiencias.jpg', label: 'Kayak en Dique El Jumeal' },
     { url: '/assets/images/catamarca_pomez.jpg', label: 'Campo de Piedra Pómez' },
     { url: '/assets/images/laguna_blanca.jpg', label: 'Laguna Blanca y Vicuñas' },
     { url: '/assets/images/laguna-verde.jpg', label: 'Laguna Verde y Seismiles' },
@@ -58,7 +63,10 @@ export class ProviderExperienceFormComponent implements OnInit {
     description: ['', [Validators.required, Validators.minLength(30), Validators.maxLength(2500)]],
     region: [this.regions[0], Validators.required],
     meetingPoint: ['', [Validators.required, Validators.maxLength(160)]],
-    difficulty: this.fb.nonNullable.control<ProviderExperience['difficulty']>('Baja', Validators.required),
+    difficulty: this.fb.nonNullable.control<ProviderExperience['difficulty']>(
+      'Baja',
+      Validators.required,
+    ),
     durationLabel: ['', [Validators.required, Validators.maxLength(50)]],
     priceArs: [65000, [Validators.required, Validators.min(1000), Validators.max(20_000_000)]],
     capacityPerDate: [12, [Validators.required, Validators.min(1), Validators.max(200)]],

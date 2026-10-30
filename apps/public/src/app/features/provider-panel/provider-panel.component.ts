@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { ProviderStoreService } from '../../core/services/provider-store.service';
@@ -14,12 +14,7 @@ import { ProviderLoginComponent } from './provider-login/provider-login.componen
       <div class="subdomain-strip">
         <div class="subdomain-content">
           <div class="subdomain-left">
-            <span class="live-dot"></span>
             <span class="subdomain-host">prestadores.experiencias.club</span>
-            <span class="subdomain-sep">·</span>
-            <span class="subdomain-tag"
-              >Portal Operativo para Prestadores y Guías de Catamarca</span
-            >
           </div>
           <div class="subdomain-right">
             <a
@@ -27,7 +22,7 @@ import { ProviderLoginComponent } from './provider-login/provider-login.componen
               class="back-public-link"
               target="_blank"
               rel="noopener"
-              title="Ir al sitio público de experiencias"
+              title="Ir a experiencias.club"
             >
               <mat-icon>open_in_new</mat-icon>
               <span>Ir a experiencias.club</span>
@@ -58,18 +53,8 @@ import { ProviderLoginComponent } from './provider-login/provider-login.componen
               </a>
             </div>
 
-            <!-- Acciones del Header: Botón Nueva Experiencia + Menú de Perfil Ampliado -->
+            <!-- Menú de perfil -->
             <div class="header-right">
-              <!-- Botón Nueva Experiencia en azul 80b3ff rectangular -->
-              <a
-                routerLink="/experiencias/nueva"
-                class="new-exp-btn"
-                title="Publicar o proponer una nueva experiencia"
-              >
-                <mat-icon class="btn-icon">add</mat-icon>
-                <span>Nueva Experiencia</span>
-              </a>
-
               <!-- Menú de Prestador activo -->
               <div class="user-pill" (click)="toggleUserMenu()">
                 <img
@@ -116,69 +101,10 @@ import { ProviderLoginComponent } from './provider-login/provider-login.componen
                         <mat-icon class="menu-item-icon">dashboard</mat-icon>
                         <div class="menu-item-info">
                           <strong class="menu-item-title">Panel de Control</strong>
-                          <span class="menu-item-desc"
-                            >Métricas de socios, recaudación y catálogo</span
-                          >
                         </div>
                       </a>
 
-                      <a
-                        routerLink="/experiencias"
-                        class="dropdown-item enlarged-item"
-                        (click)="userMenuOpen.set(false)"
-                      >
-                        <mat-icon class="menu-item-icon">hiking</mat-icon>
-                        <div class="menu-item-info">
-                          <strong class="menu-item-title">Mis Experiencias</strong>
-                          <span class="menu-item-desc"
-                            >Catálogo activo, cupos y estado de publicación</span
-                          >
-                        </div>
-                      </a>
-
-                      <a
-                        routerLink="/comprobantes"
-                        class="dropdown-item enlarged-item"
-                        (click)="userMenuOpen.set(false)"
-                      >
-                        <mat-icon class="menu-item-icon">receipt_long</mat-icon>
-                        <div class="menu-item-info">
-                          <strong class="menu-item-title">Comprobantes y Socios</strong>
-                          <span class="menu-item-desc">Validación de transferencias bancarias</span>
-                        </div>
-                      </a>
-
-                      <a
-                        routerLink="/perfil"
-                        class="dropdown-item enlarged-item"
-                        (click)="userMenuOpen.set(false)"
-                      >
-                        <mat-icon class="menu-item-icon">account_balance</mat-icon>
-                        <div class="menu-item-info">
-                          <strong class="menu-item-title">Cobros, CBU y Perfil</strong>
-                          <span class="menu-item-desc"
-                            >Datos fiscales y cuenta bancaria de destino</span
-                          >
-                        </div>
-                      </a>
                     </div>
-
-                    <div class="dropdown-divider"></div>
-
-                    <span class="dropdown-section-title">Cambiar prestador demo:</span>
-
-                    @for (p of allDemoProviders; track p.id) {
-                      @if (p.id !== provider()?.id) {
-                        <button
-                          type="button"
-                          class="dropdown-item switch-item"
-                          (click)="switchProvider(p.id)"
-                        >
-                          <mat-icon class="menu-item-icon">swap_horiz</mat-icon>
-                          <span>{{ p.name }}</span>
-                        </button>
-                      }
-                    }
 
                     <div class="dropdown-divider"></div>
 
@@ -190,7 +116,6 @@ import { ProviderLoginComponent } from './provider-login/provider-login.componen
                       <mat-icon class="menu-item-icon">logout</mat-icon>
                       <div class="menu-item-info">
                         <strong class="menu-item-title">Cerrar sesión</strong>
-                        <span class="menu-item-desc">Salir del portal de prestadores</span>
                       </div>
                     </button>
                   </div>
@@ -222,16 +147,6 @@ import { ProviderLoginComponent } from './provider-login/provider-login.componen
               Portal Oficial de Prestadores y Guías del Club de Experiencias Catamarca
             </p>
           </div>
-          <div class="footer-links">
-            <a routerLink="/prestadores/dashboard">Dashboard</a>
-            <a routerLink="/prestadores/experiencias">Experiencias</a>
-            <a routerLink="/prestadores/comprobantes">Comprobantes y Socios</a>
-            <a routerLink="/prestadores/perfil">Datos de Cobro</a>
-            <a routerLink="/">Web de Socios</a>
-          </div>
-          <div class="footer-bottom-copy">
-            <span>prestadores.experiencias.club · Todos los derechos reservados</span>
-          </div>
         </div>
       </footer>
     </div>
@@ -243,7 +158,6 @@ export class ProviderPanelComponent {
   private readonly router = inject(Router);
 
   readonly provider = this.store.currentProvider;
-  readonly allDemoProviders = this.store.allProviders();
   readonly userMenuOpen = signal(false);
 
   constructor() {
@@ -266,9 +180,12 @@ export class ProviderPanelComponent {
     this.userMenuOpen.update((v) => !v);
   }
 
-  switchProvider(providerId: string): void {
-    this.store.loginAs(providerId);
-    this.userMenuOpen.set(false);
+  @HostListener('document:click', ['$event'])
+  closeMenuOutside(event: Event): void {
+    const target = event.target;
+    if (target instanceof Element && !target.closest('.user-pill')) {
+      this.userMenuOpen.set(false);
+    }
   }
 
   logout(): void {

@@ -30,7 +30,10 @@ const STORAGE_KEYS = {
 function upcomingDate(daysFromNow: number): string {
   const date = new Date();
   date.setDate(date.getDate() + daysFromNow);
-  return date.toISOString().slice(0, 10);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function hoursAgo(hours: number): string {
@@ -60,12 +63,12 @@ export const SEED_PROVIDERS: ProviderUser[] = [
   {
     id: 'prov-patricio',
     email: 'patricio@experiencias.club',
-    name: 'Patricio Facundo',
+    name: 'Patricio Facundo Diaz Tillar',
     agency: 'Catamarca Kayak & Aventura Náutica',
     phone: '+54 383 455 8812',
     cuitDni: '20-30456123-4',
-    cbuAlias: 'KAYAK.CATAMARCA.MP',
-    bankName: 'Banco Nación / Mercado Pago',
+    cbuAlias: '3840200500000056402423',
+    bankName: 'Uala Bank S.A.U',
     verified: true,
     role: 'prestador',
     avatar: '/assets/aistudio/patricio.jpg',
@@ -95,13 +98,13 @@ const SEED_EXPERIENCES: ProviderExperience[] = [
   {
     id: KAYAK_ID,
     slug: 'kayak',
-    title: 'Travesía en Kayak & Sunset en Las Pirquitas',
+    title: 'Travesía en Kayak & Sunset en El Jumeal',
     shortTitle: 'Travesía en Kayak',
     tagline: 'Remada guiada al atardecer con brindis de productos catamarqueños.',
     description:
       'Remada guiada en kayak en aguas calmas rodeadas de quebradas y vegetación de yungas andinas. Presenciamos la caída del sol reflejada en el dique y cerramos con un brindis.',
     region: 'Valle Central y Ambato',
-    meetingPoint: 'Club Náutico Dique Las Pirquitas',
+    meetingPoint: 'Club Náutico Dique El Jumeal',
     difficulty: 'Baja',
     durationLabel: '4 horas',
     priceArs: 65000,
@@ -211,7 +214,9 @@ export class ProviderStoreService {
   private readonly supabase = inject(SUPABASE_CLIENT);
 
   private readonly _providers = signal<ProviderUser[]>(this.loadStoredProviders());
-  private readonly _currentProvider = signal<ProviderUser | null>(null);
+  private readonly _currentProvider = signal<ProviderUser | null>(
+    isSupabaseConfigured() ? null : SEED_PROVIDERS[0],
+  );
   private readonly _experiences = signal<ProviderExperience[]>(this.loadStoredExperiences());
   private readonly _submissions = signal<TransferSubmission[]>(this.loadStoredSubmissions());
 
@@ -285,7 +290,8 @@ export class ProviderStoreService {
 
   async restoreSupabaseSession(): Promise<void> {
     if (!isSupabaseConfigured()) {
-      this._currentProvider.set(null);
+      this._currentProvider.set(SEED_PROVIDERS[0]);
+      this.saveSession(SEED_PROVIDERS[0]);
       return;
     }
 
@@ -330,7 +336,9 @@ export class ProviderStoreService {
 
   async signInWithGoogle(): Promise<{ success: boolean; message: string }> {
     if (!isSupabaseConfigured()) {
-      return { success: false, message: 'La autenticación no está configurada.' };
+      this._currentProvider.set(SEED_PROVIDERS[0]);
+      this.saveSession(SEED_PROVIDERS[0]);
+      return { success: true, message: '' };
     }
 
     const { error } = await this.supabase.auth.signInWithOAuth({

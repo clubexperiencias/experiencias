@@ -1,13 +1,13 @@
-import { Component, computed, inject } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Component, computed, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { ProviderStoreService } from '../../../core/services/provider-store.service';
+import { TransferSubmission } from '../../../core/models/bank-transfer.model';
 import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
 
 @Component({
   selector: 'app-provider-dashboard',
   standalone: true,
-  imports: [RouterLink, MatIconModule, ArsPipe, FechaPipe],
+  imports: [MatIconModule, ArsPipe, FechaPipe],
   template: `
     <div class="dash-container">
       <!-- Welcome & Agency Header -->
@@ -32,43 +32,36 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
           </div>
         </div>
 
-        <div class="welcome-actions">
-          <a routerLink="../comprobantes" class="cta-blue-btn"> Ver comprobantes </a>
-        </div>
       </section>
 
       <!-- KPI Metrics Grid - Boxes rectangulares sobrias sin iconos -->
       <section class="metrics-grid">
-        <!-- 1. Socios Anotados en la experiencia más cercana a realizarse -->
-        <div class="metric-card">
-          <div class="metric-content">
-            <span class="metric-label">Socios Anotados</span>
-            <strong class="metric-value">{{ nearestExperienceEnrolled() }}</strong>
-            <span class="metric-hint">
-              @if (nearestSlot(); as slot) {
-                {{ slot.experienceTitle }} · {{ slot.date | fecha }}
-              } @else {
-                Sin salidas programadas
-              }
-            </span>
-          </div>
-        </div>
-
-        <!-- 2. Socios Totales -->
-        <div class="metric-card">
-          <div class="metric-content">
-            <span class="metric-label">Socios Totales</span>
-            <strong class="metric-value">{{ stats().totalEnrolled }}</strong>
-            <span class="metric-hint">Inscriptos en el histórico de experiencias</span>
-          </div>
-        </div>
-
-        <!-- 3. Experiencias Activas -->
+        <!-- 1. Experiencias Activas -->
         <div class="metric-card">
           <div class="metric-content">
             <span class="metric-label">Experiencias Activas</span>
             <strong class="metric-value">{{ activeExperiences().length }}</strong>
             <span class="metric-hint">Publicadas en el catálogo oficial</span>
+          </div>
+        </div>
+
+        <!-- 2. Socios Anotados Totales -->
+        <div class="metric-card">
+          <div class="metric-content">
+            <span class="metric-label">Socios Anotados Totales</span>
+            <strong class="metric-value">{{ stats().totalEnrolled }}</strong>
+            <span class="metric-hint">Inscriptos en el histórico de experiencias</span>
+          </div>
+        </div>
+
+        <!-- 3. Recaudación Total -->
+        <div class="metric-card">
+          <div class="metric-content">
+            <span class="metric-label">Recaudación Total</span>
+            <strong class="metric-value">{{
+              stats().confirmedRevenue + stats().pendingRevenue | ars
+            }}</strong>
+            <span class="metric-hint">Confirmados + pendientes</span>
           </div>
         </div>
 
@@ -101,21 +94,11 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
             <span class="card-kicker">CATÁLOGO ACTIVO</span>
             <h2 class="card-title">Experiencias Activas</h2>
           </div>
-          <div class="card-head-actions">
-            <span class="active-count-badge">
-              {{ activeExperiences().length }}
-              {{ activeExperiences().length === 1 ? 'experiencia activa' : 'experiencias activas' }}
-            </span>
-            <a routerLink="../experiencias" class="card-link">
-              <span>Gestionar catálogo</span>
-            </a>
-          </div>
         </div>
 
         @if (activeExperiences().length === 0) {
           <div class="empty-active-box">
             <p class="empty-text">No tenés experiencias activas publicadas actualmente.</p>
-            <a routerLink="../experiencias/nueva" class="cta-blue-btn"> Nueva Experiencia </a>
           </div>
         } @else {
           <div class="active-experiences-list">
@@ -155,13 +138,6 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                     </div>
 
                     <div class="kpi-mini-col">
-                      <span class="kpi-mini-lbl">Socios Inscriptos</span>
-                      <strong class="kpi-mini-val"
-                        >{{ getExperienceEnrolled(exp.id) }} socios</strong
-                      >
-                    </div>
-
-                    <div class="kpi-mini-col">
                       <span class="kpi-mini-lbl">Próximas Salidas</span>
                       <div class="exp-mini-dates">
                         @for (d of exp.dates; track d) {
@@ -179,156 +155,45 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                   </div>
                 </div>
 
-                <div class="active-exp-btns">
-                  <a
-                    routerLink="../experiencias/editar"
-                    [queryParams]="{ id: exp.id }"
-                    class="active-action-btn edit-action"
-                    title="Editar detalles de la experiencia"
-                  >
-                    Editar
-                  </a>
-                  <a
-                    routerLink="../comprobantes"
-                    [queryParams]="{ experiencia: exp.id }"
-                    class="active-action-btn socios-action"
-                    title="Ver socios inscriptos y comprobantes"
-                  >
-                    Socios ({{ getExperienceEnrolled(exp.id) }})
-                  </a>
-                </div>
               </div>
             }
           </div>
         }
       </section>
 
-      <!-- Moderation Status Notice if any experiences are in review -->
-      @if (pendingModerationExperiences().length > 0) {
-        <section class="moderation-alert-card">
-          <div class="alert-body">
-            <h3>Solicitudes en revisión por el Admin</h3>
-            <p>
-              Tenés {{ pendingModerationExperiences().length }} solicitud(es) enviadas al equipo de
-              administración de <strong>experiencias.club</strong>. Una vez aprobadas, se aplicarán
-              en la web pública.
-            </p>
-            <div class="moderation-items">
-              @for (exp of pendingModerationExperiences(); track exp.id) {
-                <div class="mod-item">
-                  <div class="mod-item-info">
-                    <strong>{{ exp.title }}</strong>
-                    <span class="mod-pill">
-                      @if (exp.status === 'pendiente_publicacion') {
-                        Solicitud de Publicación
-                      } @else if (exp.status === 'pendiente_ocultar') {
-                        Solicitud de Ocultación
-                      } @else if (exp.status === 'pendiente_eliminar') {
-                        Solicitud de Eliminación
-                      }
-                    </span>
-                  </div>
-                  <!-- Admin Simulation Button for instant testing -->
-                  <div class="mod-actions">
-                    <button
-                      type="button"
-                      class="sim-admin-btn"
-                      (click)="store.adminApproveAction(exp.id)"
-                      title="Simular que el Admin de experiencias.club aprueba la acción"
-                    >
-                      Aprobar (Simulador Admin)
-                    </button>
-                  </div>
-                </div>
-              }
-            </div>
-          </div>
-        </section>
-      }
-
       <!-- Finanzas y Conciliación de Pagos - Expanded Full Width Section -->
       <section class="dash-card full-width-card finanzas-section">
         <div class="card-head">
           <div>
             <span class="card-kicker">FINANZAS Y RECAUDACIÓN</span>
-            <h2 class="card-title">Últimos Pagos y Conciliación de Comprobantes</h2>
-          </div>
-          <div class="card-head-actions">
-            <span
-              class="active-count-badge"
-              [class.badge-pending]="stats().pendingReceiptsCount > 0"
-            >
-              {{ stats().pendingReceiptsCount }} por revisar
-            </span>
-            <a routerLink="../comprobantes" class="card-link">
-              <span>Ver todos los comprobantes ({{ store.providerSubmissions().length }})</span>
-            </a>
-          </div>
-        </div>
-
-        <!-- Stats de Ingresos Reubicadas -->
-        <div class="metrics-grid fin-metrics-grid">
-          <div class="metric-card">
-            <div class="metric-content">
-              <span class="metric-label">Ingresos Confirmados</span>
-              <strong class="metric-value text-blue">{{ stats().confirmedRevenue | ars }}</strong>
-              <span class="metric-hint">Transferencias bancarias acreditadas</span>
-            </div>
-          </div>
-
-          <div class="metric-card">
-            <div class="metric-content">
-              <span class="metric-label">En Revisión / Pendientes</span>
-              <strong class="metric-value">{{ stats().pendingRevenue | ars }}</strong>
-              <span class="metric-hint"
-                >{{ stats().pendingReceiptsCount }} comprobante(s) por validar</span
-              >
-            </div>
-          </div>
-
-          <div class="metric-card">
-            <div class="metric-content">
-              <span class="metric-label">Recaudación Estimada</span>
-              <strong class="metric-value">{{
-                stats().confirmedRevenue + stats().pendingRevenue | ars
-              }}</strong>
-              <span class="metric-hint">Confirmados + En revisión</span>
-            </div>
-          </div>
-
-          <div class="metric-card">
-            <div class="metric-content">
-              <span class="metric-label">Comprobantes Recibidos</span>
-              <strong class="metric-value">{{ store.providerSubmissions().length }}</strong>
-              <span class="metric-hint"
-                >{{ stats().pendingReceiptsCount }} pendientes ·
-                {{
-                  store.providerSubmissions().length - stats().pendingReceiptsCount
-                }}
-                aprobados</span
-              >
-            </div>
+            <h2 class="card-title">Últimos Pagos de Socios del Club</h2>
           </div>
         </div>
 
         <!-- Bank Details Info Strip -->
         <div class="fin-bank-banner">
           <div class="fin-bank-item">
-            <span class="fin-bank-lbl">Cuenta Recaudadora</span>
-            <strong class="fin-bank-val">{{
-              provider()?.agency || 'Catamarca Kayak & Aventura Náutica'
-            }}</strong>
-          </div>
-          <div class="fin-bank-item">
-            <span class="fin-bank-lbl">CBU / Alias</span>
+            <span class="fin-bank-lbl">CBU</span>
             <strong class="fin-bank-val code-font">{{
-              provider()?.cbuAlias || 'KAYAK.CATAMARCA.MP'
+              provider()?.cbuAlias || '3840200500000056402423'
             }}</strong>
           </div>
           <div class="fin-bank-item">
-            <span class="fin-bank-lbl">Entidad Receptora</span>
+            <span class="fin-bank-lbl">Nombre</span>
             <strong class="fin-bank-val">{{
-              provider()?.bankName || 'Mercado Pago / Banco Nación'
+              provider()?.name || 'Patricio Facundo Diaz Tillar'
+            }}</strong>
+          </div>
+          <div class="fin-bank-item">
+            <span class="fin-bank-lbl">CUIT/CUIL</span>
+            <strong class="fin-bank-val code-font">{{
+              provider()?.cuitDni || '20-38628297-9'
+            }}</strong>
+          </div>
+          <div class="fin-bank-item">
+            <span class="fin-bank-lbl">Entidad</span>
+            <strong class="fin-bank-val">{{
+              provider()?.bankName || 'Uala Bank S.A.U'
             }}</strong>
           </div>
         </div>
@@ -340,11 +205,9 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
             <table class="fin-data-table">
               <thead>
                 <tr>
-                  <th class="col-th-status">Estado</th>
-                  <th class="col-th-socio">Socio / Titular</th>
+                  <th class="col-th-socio">Socio</th>
                   <th class="col-th-exp">Experiencia</th>
-                  <th class="col-th-date">Fecha Salida</th>
-                  <th class="col-th-ref">Comprobante / Ref</th>
+                  <th class="col-th-date">Fecha</th>
                   <th class="col-th-seats">Cupos</th>
                   <th class="col-th-amount">Importe</th>
                   <th class="col-th-action">Acción</th>
@@ -353,17 +216,6 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
               <tbody>
                 @for (sub of recentSubmissions(); track sub.id) {
                   <tr [class.row-pending]="sub.status === 'pendiente'">
-                    <td>
-                      <span class="fin-status-pill" [class]="'status-' + sub.status">
-                        {{
-                          sub.status === 'pendiente'
-                            ? 'PENDIENTE'
-                            : sub.status === 'aprobado'
-                              ? 'APROBADO'
-                              : 'RECHAZADO'
-                        }}
-                      </span>
-                    </td>
                     <td>
                       <div class="cell-stack">
                         <strong class="socio-name">{{ sub.fullName }}</strong>
@@ -378,12 +230,6 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                     <td>
                       <span class="cell-date">{{ sub.date | fecha }}</span>
                     </td>
-                    <td>
-                      <div class="cell-stack">
-                        <span class="ref-code">{{ sub.reference }}</span>
-                        <span class="cell-sub">{{ sub.submittedAt | fecha }}</span>
-                      </div>
-                    </td>
                     <td class="text-center">
                       <span class="seats-badge">{{ sub.participants }}</span>
                     </td>
@@ -392,13 +238,12 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                     </td>
                     <td class="text-right">
                       <a
-                        routerLink="../comprobantes"
-                        [queryParams]="{ ref: sub.reference }"
+                        type="button"
+                        (click)="openReceipt(sub)"
                         class="fin-review-btn"
-                        [class.btn-pending]="sub.status === 'pendiente'"
                         title="Revisar comprobante de pago"
                       >
-                        {{ sub.status === 'pendiente' ? 'Revisar' : 'Ver Detalle' }}
+                        Revisar
                       </a>
                     </td>
                   </tr>
@@ -408,6 +253,42 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
           </div>
         }
       </section>
+      @if (selectedSubmission(); as sub) {
+        <div class="dashboard-modal-backdrop" (click)="closeReceipt()">
+          <div class="dashboard-receipt-modal" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+            <div class="dashboard-receipt-preview">
+              <img [src]="sub.receipt.url" [alt]="'Comprobante de ' + sub.fullName" />
+            </div>
+            <div class="dashboard-receipt-details">
+              <div class="dashboard-modal-head">
+                <div>
+                  <span class="card-kicker">COMPROBANTE</span>
+                  <h2 class="card-title">{{ sub.fullName }}</h2>
+                </div>
+                <button type="button" class="dashboard-modal-close" (click)="closeReceipt()">×</button>
+              </div>
+              <p><strong>Importe:</strong> {{ sub.amountArs | ars }}</p>
+              <p><strong>Experiencia:</strong> {{ sub.experienceTitle }}</p>
+              <p><strong>Fecha:</strong> {{ sub.date | fecha: 'larga' }}</p>
+              <p><strong>Email:</strong> {{ sub.email }}</p>
+              <p><strong>Celular:</strong> {{ sub.phone }}</p>
+              <p><strong>DNI:</strong> {{ sub.dni }}</p>
+              @if (sub.status !== 'pendiente') {
+                <p class="dashboard-receipt-status">Pago {{ sub.status }}.</p>
+              }
+              <a
+                class="dashboard-receipt-download"
+                [href]="sub.receipt.url"
+                [download]="sub.receipt.fileName"
+                target="_blank"
+                rel="noopener"
+              >
+                DESCARGAR COMPROBANTE
+              </a>
+            </div>
+          </div>
+        </div>
+      }
     </div>
   `,
   styles: [
@@ -569,7 +450,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         line-height: 1.2;
       }
       .text-blue {
-        color: #80b3ff !important;
+        color: #ffffff !important;
       }
       .metric-hint {
         font-size: 0.75rem;
@@ -689,7 +570,10 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
       .finanzas-section {
         display: flex;
         flex-direction: column;
-        gap: 1.25rem;
+        gap: 0.75rem;
+      }
+      .finanzas-section .card-head {
+        margin-bottom: 0;
       }
       .badge-pending {
         background: rgba(128, 179, 255, 0.25) !important;
@@ -726,7 +610,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
       }
       .code-font {
         font-family: monospace;
-        color: #80b3ff;
+        color: #ffffff;
         letter-spacing: 0.04em;
       }
 
@@ -821,7 +705,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
       }
       .cell-date {
         font-size: 0.82rem;
-        color: rgba(128, 179, 255, 0.9);
+        color: #ffffff;
         white-space: nowrap;
       }
       .ref-code {
@@ -866,6 +750,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         color: #80b3ff;
         text-align: center;
         white-space: nowrap;
+        cursor: pointer;
       }
       .fin-review-btn:hover {
         background: #80b3ff;
@@ -927,11 +812,6 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         padding: 0;
         align-items: stretch;
         overflow: hidden;
-        transition: all 0.2s ease;
-      }
-      .active-exp-row:hover {
-        border-color: rgba(128, 179, 255, 0.45);
-        background: rgba(7, 13, 28, 0.7);
       }
       .active-exp-cover-wrap {
         position: relative;
@@ -1045,12 +925,12 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         font-size: 0.72rem;
         background: rgba(128, 179, 255, 0.1);
         border: 1px solid rgba(128, 179, 255, 0.25);
-        color: rgba(255, 255, 255, 0.85);
+        color: #ffffff;
         padding: 0.15rem 0.45rem;
         border-radius: 2px;
       }
       .date-occupancy {
-        color: #80b3ff;
+        color: #ffffff;
         font-weight: 700;
       }
       .active-exp-btns {
@@ -1092,7 +972,100 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         background: rgba(128, 179, 255, 0.25);
         border-color: #80b3ff;
       }
+      .dashboard-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 3000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        background: rgba(4, 8, 19, 0.82);
+        backdrop-filter: blur(5px);
+      }
+      .dashboard-receipt-modal {
+        display: grid;
+        grid-template-columns: minmax(240px, 0.9fr) minmax(320px, 1.1fr);
+        width: min(900px, 100%);
+        max-height: min(680px, 92vh);
+        overflow: auto;
+        background: #101a35;
+        border: 1px solid rgba(128, 179, 255, 0.4);
+        border-radius: 2px;
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+      }
+      .dashboard-receipt-preview {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 320px;
+        height: 100%;
+        padding: 0;
+        background: #070d18;
+      }
+      .dashboard-receipt-preview img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        min-height: 320px;
+        object-fit: cover;
+      }
+      .dashboard-receipt-download {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        align-self: flex-end;
+        margin-top: auto;
+        padding: 0.6rem 0.9rem;
+        background: #ffffff;
+        color: #070d18;
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        text-decoration: none;
+        border-radius: 2px;
+      }
+      .dashboard-receipt-download:hover {
+        background: rgba(255, 255, 255, 0.85);
+      }
+      .dashboard-receipt-details {
+        display: flex;
+        flex-direction: column;
+        padding: 1.5rem;
+        color: #ffffff;
+      }
+      .dashboard-modal-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1.25rem;
+      }
+      .dashboard-modal-close {
+        color: #ffffff;
+        font-size: 1.75rem;
+        line-height: 1;
+        cursor: pointer;
+      }
+      .dashboard-receipt-details p {
+        margin: 0 0 0.7rem;
+        color: rgba(255, 255, 255, 0.75);
+      }
+      .dashboard-receipt-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.7rem;
+        margin-top: 1.5rem;
+      }
+      .dashboard-receipt-status {
+        margin-top: 1.5rem !important;
+        color: #80b3ff !important;
+        font-weight: 700;
+      }
       @media (max-width: 768px) {
+        .dashboard-receipt-modal {
+          grid-template-columns: 1fr;
+        }
         .active-exp-row {
           grid-template-columns: 1fr;
         }
@@ -1121,23 +1094,13 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
 })
 export class ProviderDashboardComponent {
   readonly store = inject(ProviderStoreService);
+  readonly selectedSubmission = signal<TransferSubmission | null>(null);
 
   readonly provider = this.store.currentProvider;
   readonly stats = this.store.providerStats;
 
   readonly activeExperiences = computed(() =>
     this.store.providerExperiences().filter((e) => e.status === 'publicada'),
-  );
-
-  readonly pendingModerationExperiences = computed(() =>
-    this.store
-      .providerExperiences()
-      .filter(
-        (e) =>
-          e.status === 'pendiente_publicacion' ||
-          e.status === 'pendiente_ocultar' ||
-          e.status === 'pendiente_eliminar',
-      ),
   );
 
   readonly recentSubmissions = computed(() => this.store.providerSubmissions().slice(0, 8));
@@ -1181,5 +1144,13 @@ export class ProviderDashboardComponent {
       .providerSubmissions()
       .filter((s) => s.experienceId === experienceId && s.status !== 'rechazado')
       .reduce((sum, s) => sum + s.participants, 0);
+  }
+
+  openReceipt(submission: TransferSubmission): void {
+    this.selectedSubmission.set(submission);
+  }
+
+  closeReceipt(): void {
+    this.selectedSubmission.set(null);
   }
 }
