@@ -11,16 +11,15 @@
 
     <main class="ratings-main-content">
       <div class="ratings-wrapper">
-
         <!-- ═══════════════ CARD 1: CABECERA & MÉTRICAS DE CALIFICACIÓN ═══════════════ -->
         <div class="ratings-section-card summary-card">
           <div class="summary-header-row">
             <div>
-              <span class="section-kicker">VALORACIONES LACUSTRES · DIQUE LAS PIRQUITAS</span>
+              <span class="section-kicker">VALORACIONES LACUSTRES · DIQUE EL JUMEAL</span>
               <h1 class="page-title">Calificaciones & Reseñas de la Travesía</h1>
               <p class="page-lead">
-                Experiencias compartidas por socios del club que ya navegaron las bahías de Las Pirquitas con nuestros
-                prestadores náuticos habilitados.
+                Experiencias compartidas por socios del club que ya navegaron las bahías de Las
+                Pirquitas con nuestros prestadores náuticos habilitados.
               </p>
             </div>
           </div>
@@ -45,7 +44,9 @@
                   <span class="aspect-label">Entorno Natural & Travesía en Kayak</span>
                   <span class="aspect-val">5.0 ★</span>
                 </div>
-                <div class="progress-track"><div class="progress-fill" style="width: 100%;"></div></div>
+                <div class="progress-track">
+                  <div class="progress-fill" style="width: 100%"></div>
+                </div>
               </div>
 
               <div class="aspect-tile">
@@ -53,7 +54,9 @@
                   <span class="aspect-label">Equipamiento Náutico</span>
                   <span class="aspect-val">4.9 ★</span>
                 </div>
-                <div class="progress-track"><div class="progress-fill" style="width: 98%;"></div></div>
+                <div class="progress-track">
+                  <div class="progress-fill" style="width: 98%"></div>
+                </div>
               </div>
 
               <div class="aspect-tile">
@@ -61,7 +64,9 @@
                   <span class="aspect-label">Guías & Asistencia Técnica</span>
                   <span class="aspect-val">5.0 ★</span>
                 </div>
-                <div class="progress-track"><div class="progress-fill" style="width: 100%;"></div></div>
+                <div class="progress-track">
+                  <div class="progress-fill" style="width: 100%"></div>
+                </div>
               </div>
             </div>
           </div>
@@ -79,60 +84,60 @@
           <!-- Listado de Reseñas -->
           <div class="reviews-stack">
             @for (rev of filteredReviews(); track rev.id) {
-            <article class="review-item-card">
-              <!-- Cabecera de la Reseña -->
-              <div class="review-item-header">
-                <div class="user-meta-left">
-                  <div class="user-avatar-initials">
-                    {{ rev.userName.charAt(0) }}
-                  </div>
-                  <div class="user-info-text">
-                    <div class="name-tier-row">
-                      <span class="user-name">{{ rev.userName }}</span>
-                      <span class="user-tier-tag">{{ rev.userTier }}</span>
+              <article class="review-item-card">
+                <!-- Cabecera de la Reseña -->
+                <div class="review-item-header">
+                  <div class="user-meta-left">
+                    <div class="user-avatar-initials">
+                      {{ rev.userName.charAt(0) }}
                     </div>
-                    <span class="user-location">{{ rev.userLocation }}</span>
-                  </div>
-                </div>
-
-                <div class="review-meta-right">
-                  <div class="stars-row">
-                    @for (star of [1, 2, 3, 4, 5]; track star) {
-                    <span class="star-badge" [class.active]="star <= rev.rating">★</span>
-                    }
-                  </div>
-                  <span class="review-date">{{ rev.date }}</span>
-                </div>
-              </div>
-
-              <!-- Contenido de la Reseña -->
-              <div class="review-item-body">
-                <h3 class="review-title">{{ rev.title }}</h3>
-                <p class="review-comment">{{ rev.comment }}</p>
-              </div>
-
-              <!-- RESPUESTA DEL PRESTADOR -->
-              @if (rev.providerReply) {
-              <div class="provider-reply-box">
-                <div class="reply-header-row">
-                  <div class="provider-badge-wrap">
-                    <div class="provider-avatar-initials">
-                      {{ rev.providerReply.responderName.charAt(0) }}
-                    </div>
-                    <div>
-                      <span class="responder-name">{{ rev.providerReply.responderName }}</span>
-                      <span class="official-tag">{{ rev.providerReply.badge }}</span>
+                    <div class="user-info-text">
+                      <div class="name-tier-row">
+                        <span class="user-name">{{ rev.userName }}</span>
+                        <span class="user-tier-tag">{{ rev.userTier }}</span>
+                      </div>
+                      <span class="user-location">{{ rev.userLocation }}</span>
                     </div>
                   </div>
-                  <span class="reply-date">{{ rev.providerReply.date }}</span>
+
+                  <div class="review-meta-right">
+                    <div class="stars-row">
+                      @for (star of [1, 2, 3, 4, 5]; track star) {
+                        <span class="star-badge" [class.active]="star <= rev.rating">★</span>
+                      }
+                    </div>
+                    <span class="review-date">{{ rev.date }}</span>
+                  </div>
                 </div>
 
-                <div class="reply-message-body">
-                  <p>{{ rev.providerReply.message }}</p>
+                <!-- Contenido de la Reseña -->
+                <div class="review-item-body">
+                  <h3 class="review-title">{{ rev.title }}</h3>
+                  <p class="review-comment">{{ rev.comment }}</p>
                 </div>
-              </div>
-              }
-            </article>
+
+                <!-- RESPUESTA DEL PRESTADOR -->
+                @if (rev.providerReply) {
+                  <div class="provider-reply-box">
+                    <div class="reply-header-row">
+                      <div class="provider-badge-wrap">
+                        <div class="provider-avatar-initials">
+                          {{ rev.providerReply.responderName.charAt(0) }}
+                        </div>
+                        <div>
+                          <span class="responder-name">{{ rev.providerReply.responderName }}</span>
+                          <span class="official-tag">{{ rev.providerReply.badge }}</span>
+                        </div>
+                      </div>
+                      <span class="reply-date">{{ rev.providerReply.date }}</span>
+                    </div>
+
+                    <div class="reply-message-body">
+                      <p>{{ rev.providerReply.message }}</p>
+                    </div>
+                  </div>
+                }
+              </article>
             }
           </div>
         </div>
@@ -141,7 +146,9 @@
         <div class="ratings-section-card create-review-card">
           <div class="create-review-header">
             <span class="section-kicker">VALORÁ TU SALIDA</span>
-            <h2 id="create-review-title" class="create-review-title">Escribí tu Reseña de la Travesía</h2>
+            <h2 id="create-review-title" class="create-review-title">
+              Escribí tu Reseña de la Travesía
+            </h2>
             <p class="create-review-desc">
               Compartí tu experiencia en el lago y calificá cada aspecto para la comunidad del club:
             </p>
@@ -156,10 +163,15 @@
               </div>
               <div class="aspect-stars-picker">
                 @for (s of [1, 2, 3, 4, 5]; track s) {
-                <button type="button" class="aspect-star-btn" [class.selected]="ratingNature() >= s"
-                  (click)="setAspectRating('nature', s)" [attr.aria-label]="s + ' estrellas en Entorno Natural'">
-                  ★
-                </button>
+                  <button
+                    type="button"
+                    class="aspect-star-btn"
+                    [class.selected]="ratingNature() >= s"
+                    (click)="setAspectRating('nature', s)"
+                    [attr.aria-label]="s + ' estrellas en Entorno Natural'"
+                  >
+                    ★
+                  </button>
                 }
               </div>
             </div>
@@ -171,10 +183,15 @@
               </div>
               <div class="aspect-stars-picker">
                 @for (s of [1, 2, 3, 4, 5]; track s) {
-                <button type="button" class="aspect-star-btn" [class.selected]="ratingEquipment() >= s"
-                  (click)="setAspectRating('equipment', s)" [attr.aria-label]="s + ' estrellas en Equipamiento Náutico'">
-                  ★
-                </button>
+                  <button
+                    type="button"
+                    class="aspect-star-btn"
+                    [class.selected]="ratingEquipment() >= s"
+                    (click)="setAspectRating('equipment', s)"
+                    [attr.aria-label]="s + ' estrellas en Equipamiento Náutico'"
+                  >
+                    ★
+                  </button>
                 }
               </div>
             </div>
@@ -186,10 +203,15 @@
               </div>
               <div class="aspect-stars-picker">
                 @for (s of [1, 2, 3, 4, 5]; track s) {
-                <button type="button" class="aspect-star-btn" [class.selected]="ratingGuides() >= s"
-                  (click)="setAspectRating('guides', s)" [attr.aria-label]="s + ' estrellas en Guías & Asistencia Técnica'">
-                  ★
-                </button>
+                  <button
+                    type="button"
+                    class="aspect-star-btn"
+                    [class.selected]="ratingGuides() >= s"
+                    (click)="setAspectRating('guides', s)"
+                    [attr.aria-label]="s + ' estrellas en Guías & Asistencia Técnica'"
+                  >
+                    ★
+                  </button>
                 }
               </div>
             </div>
@@ -201,13 +223,21 @@
               <div class="profile-incomplete-notice">
                 <div class="notice-info">
                   <div>
-                    <strong class="notice-title">Completá tu perfil para publicar una reseña</strong>
+                    <strong class="notice-title"
+                      >Completá tu perfil para publicar una reseña</strong
+                    >
                     <p class="notice-text">
-                      Tu Nombre, Apellido y Ciudad de procedencia se vinculan directamente desde tu perfil de socio verificado.
+                      Tu Nombre, Apellido y Ciudad de procedencia se vinculan directamente desde tu
+                      perfil de socio verificado.
                     </p>
                   </div>
                 </div>
-                <a href="/perfil" target="_blank" rel="noopener noreferrer" class="complete-profile-btn">
+                <a
+                  href="/perfil"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="complete-profile-btn"
+                >
                   <span>Completar Perfil</span>
                 </a>
               </div>
@@ -217,58 +247,97 @@
               <div class="input-field">
                 <label for="rev-inline-name" class="field-label">
                   Nombre y Apellido
-                  <mat-icon class="locked-indicator-icon" title="Campo bloqueado: proviene de tu perfil">lock</mat-icon>
+                  <mat-icon
+                    class="locked-indicator-icon"
+                    title="Campo bloqueado: proviene de tu perfil"
+                    >lock</mat-icon
+                  >
                 </label>
-                <input id="rev-inline-name" type="text" class="standard-input is-locked"
+                <input
+                  id="rev-inline-name"
+                  type="text"
+                  class="standard-input is-locked"
                   [value]="memberProfileName()"
                   placeholder="Se completa desde tu perfil..."
                   readonly
-                  disabled />
+                  disabled
+                />
               </div>
 
               <div class="input-field">
                 <label for="rev-inline-loc" class="field-label">
                   Ciudad / Procedencia
-                  <mat-icon class="locked-indicator-icon" title="Campo bloqueado: proviene de tu perfil">lock</mat-icon>
+                  <mat-icon
+                    class="locked-indicator-icon"
+                    title="Campo bloqueado: proviene de tu perfil"
+                    >lock</mat-icon
+                  >
                 </label>
-                <input id="rev-inline-loc" type="text" class="standard-input is-locked"
+                <input
+                  id="rev-inline-loc"
+                  type="text"
+                  class="standard-input is-locked"
                   [value]="memberProfileLocation()"
                   placeholder="Se completa desde tu perfil..."
                   readonly
-                  disabled />
+                  disabled
+                />
               </div>
             </div>
 
             <div class="input-field">
-              <label for="rev-inline-title" class="field-label">Título de la Reseña <span class="req">*</span></label>
-              <input id="rev-inline-title" type="text" class="standard-input"
-                placeholder="Ej. Una experiencia inolvidable en las aguas del dique..." [value]="newTitle()"
-                (input)="newTitle.set($any($event.target).value)" required />
+              <label for="rev-inline-title" class="field-label"
+                >Título de la Reseña <span class="req">*</span></label
+              >
+              <input
+                id="rev-inline-title"
+                type="text"
+                class="standard-input"
+                placeholder="Ej. Una experiencia inolvidable en las aguas del dique..."
+                [value]="newTitle()"
+                (input)="newTitle.set($any($event.target).value)"
+                required
+              />
             </div>
 
             <div class="input-field">
-              <label for="rev-inline-comment" class="field-label">Tu Opinión Detallada <span class="req">*</span></label>
-              <textarea id="rev-inline-comment" rows="3" class="standard-textarea"
+              <label for="rev-inline-comment" class="field-label"
+                >Tu Opinión Detallada <span class="req">*</span></label
+              >
+              <textarea
+                id="rev-inline-comment"
+                rows="3"
+                class="standard-textarea"
                 placeholder="Contanos sobre la remada, la seguridad, los guías náuticos y el cierre al atardecer..."
-                [value]="newComment()" (input)="newComment.set($any($event.target).value)" required></textarea>
+                [value]="newComment()"
+                (input)="newComment.set($any($event.target).value)"
+                required
+              ></textarea>
             </div>
 
             <div class="form-actions-row">
-              <button type="button" class="submit-review-btn" (click)="submitReview()"
-                [disabled]="!hasProfileCompleted() || !newTitle().trim() || !newComment().trim()">
+              <button
+                type="button"
+                class="submit-review-btn"
+                (click)="submitReview()"
+                [disabled]="!hasProfileCompleted() || !newTitle().trim() || !newComment().trim()"
+              >
                 <span>Publicar Reseña</span>
               </button>
             </div>
           </form>
 
           @if (reviewSubmitted()) {
-          <div class="submitted-notification" role="status">
-            <mat-icon class="check-icon">check_circle</mat-icon>
-            <div>
-              <strong>¡Reseña registrada con éxito!</strong>
-              <p>Tu opinión ya fue incorporada al historial de la travesía y notificada al prestador náutico.</p>
+            <div class="submitted-notification" role="status">
+              <mat-icon class="check-icon">check_circle</mat-icon>
+              <div>
+                <strong>¡Reseña registrada con éxito!</strong>
+                <p>
+                  Tu opinión ya fue incorporada al historial de la travesía y notificada al
+                  prestador náutico.
+                </p>
+              </div>
             </div>
-          </div>
           }
         </div>
 
@@ -278,11 +347,18 @@
             <span class="ad-label-pill">Publicidad</span>
             <span class="ad-sponsor-text">Club de Experiencias</span>
           </div>
-          <a routerLink="/socios/fundadores" class="ad-banner-link" aria-label="Convocatoria Socio Fundador">
-            <img src="/assets/images/ad.png" alt="Socio Fundador Convocatoria Oficial" class="ad-banner-img" />
+          <a
+            routerLink="/socios/fundadores"
+            class="ad-banner-link"
+            aria-label="Convocatoria Socio Fundador"
+          >
+            <img
+              src="/assets/images/ad.png"
+              alt="Socio Fundador Convocatoria Oficial"
+              class="ad-banner-img"
+            />
           </a>
         </div>
-
       </div>
     </main>
 
