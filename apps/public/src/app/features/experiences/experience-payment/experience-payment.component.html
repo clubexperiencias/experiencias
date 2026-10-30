@@ -1,6 +1,16 @@
 <div class="kayak-page-container">
   <app-header [(mobileMenuOpen)]="mobileMenuOpen"></app-header>
-  <app-breadcrumb [items]="breadcrumbs()"></app-breadcrumb>
+  @if (showAuthSuccessNotification()) {
+    <aside class="pay-auth-success-bar" role="status" aria-live="polite">
+      <div class="pay-auth-success-content">
+        <span class="pay-auth-success-tag">¡INGRESO EXITOSO!</span>
+        <span class="pay-auth-success-sep">·</span>
+        <strong class="pay-auth-success-title">Cuenta de Google vinculada correctamente</strong>
+      </div>
+    </aside>
+  } @else {
+    <app-breadcrumb [items]="breadcrumbs()"></app-breadcrumb>
+  }
 
   <div class="kayak-wallpaper-body app-wallpaper-body">
     <main class="kayak-main-content">
@@ -64,9 +74,11 @@
         @let exp = experience()!;
         @if (!authReady()) {
           <div class="kayak-wrapper">
-            <section class="kayak-section-card" aria-live="polite">
-              <span class="section-kicker">VERIFICANDO CUENTA</span>
-              <h1 class="card-heading">Estamos verificando tu cuenta</h1>
+            <section class="kayak-section-card pay-google-gate pay-account-verifying" aria-live="polite">
+              <div class="pay-step-head">
+                <span class="pay-step-index" aria-hidden="true">0</span>
+                <h1 class="pay-step-title">Estamos verificando tu cuenta</h1>
+              </div>
               <p class="card-subheading">Esperá un momento para continuar con la reserva.</p>
             </section>
           </div>

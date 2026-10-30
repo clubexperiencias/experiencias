@@ -56,6 +56,8 @@ export class ExperiencePaymentComponent implements OnInit {
   readonly checkoutMember =
     signal<Awaited<ReturnType<NewsletterService['getAuthenticatedMember']>>>(null);
   readonly authError = signal<string | null>(null);
+  readonly showAuthSuccessNotification = signal(false);
+  private authSuccessTimer: ReturnType<typeof setTimeout> | null = null;
 
   private readonly slug = toSignal(
     this.route.paramMap.pipe(
@@ -204,12 +206,30 @@ export class ExperiencePaymentComponent implements OnInit {
     }
 
     try {
-      this.checkoutMember.set(await this.newsletter.getAuthenticatedMember());
+      const member = await this.newsletter.getAuthenticatedMember();
+      this.checkoutMember.set(member);
+      if (member) {
+        this.triggerAuthSuccessFeedback();
+      }
     } catch {
       this.authError.set('No pudimos verificar tu cuenta. Intentá nuevamente.');
     } finally {
       this.authReady.set(true);
     }
+  }
+
+  private triggerAuthSuccessFeedback(): void {
+    if (this.authSuccessTimer) {
+      clearTimeout(this.authSuccessTimer);
+    }
+
+    this.showAuthSuccessNotification.set(true);
+    this.newsletter.profileSuccessHighlight.set(true);
+    this.authSuccessTimer = setTimeout(() => {
+      this.showAuthSuccessNotification.set(false);
+      this.newsletter.profileSuccessHighlight.set(false);
+      this.authSuccessTimer = null;
+    }, 3000);
   }
 
   readonly requiresGoogle = computed(() => !this.checkoutMember());
