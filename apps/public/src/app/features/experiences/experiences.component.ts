@@ -55,7 +55,7 @@ export class ExperiencesComponent {
     maxSpotsPerGroup: 0,
     rating: 0,
     reviewsCount: 0,
-    coverImage: '/assets/images/laguna_blanca.jpg',
+    coverImage: '/assets/images/laguna-verde.jpg',
     galleryImages: [],
     highlights: [],
     included: [],
@@ -63,14 +63,11 @@ export class ExperiencesComponent {
     isLocked: true,
   };
 
-  readonly featuredExperiences = () => [
-    ...this.experienceService.experiences().slice(0, 1),
-    ...(this.experienceService.hasRemoteExperiences() ? [] : [this.comingSoonExperience]),
-  ];
-  readonly otherExperiences = () =>
-    this.experienceService.hasRemoteExperiences()
-      ? this.experienceService.experiences().slice(1)
-      : [this.comingSoonExperience];
+  readonly featuredExperiences = () => this.experienceService.experiences().slice(0, 1);
+  readonly otherExperiences = () => {
+    const otherExperiences = this.experienceService.experiences().slice(1);
+    return otherExperiences.length > 0 ? otherExperiences : [this.comingSoonExperience];
+  };
 
   toggleMobileMenu(event: Event): void {
     event.stopPropagation();

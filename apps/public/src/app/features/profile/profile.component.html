@@ -65,6 +65,7 @@
                   id="member-name"
                   type="text"
                   class="field-input"
+                  [class.incomplete-required]="!memberFullName().trim()"
                   placeholder="Ej. Martín Rodríguez"
                   [value]="memberFullName()"
                   (input)="memberFullName.set($any($event.target).value)"
@@ -81,6 +82,9 @@
                   id="member-email-display"
                   type="email"
                   class="field-input"
+                  [class.incomplete-required]="
+                    !(authenticatedEmail() || newsletter.currentMember()?.email || '').trim()
+                  "
                   [value]="authenticatedEmail() || newsletter.currentMember()?.email || ''"
                   disabled
                   style="opacity: 0.75; cursor: not-allowed"
@@ -96,6 +100,7 @@
                   type="text"
                   inputmode="numeric"
                   class="field-input"
+                  [class.incomplete-required]="!memberDni()"
                   placeholder="Ej. 30123456"
                   [value]="memberDni()"
                   (input)="
@@ -112,17 +117,18 @@
               </div>
 
               <div class="form-field">
-                <label for="member-phone" class="field-label"
-                  >Celular <span class="req">*</span></label
-                >
+                <label for="member-phone" class="field-label">Celular <span class="req">*</span></label>
                 <input
                   id="member-phone"
                   type="tel"
                   class="field-input"
+                  [class.incomplete-required]="!memberPhone().trim()"
                   placeholder="Ej. +54 9 383 4123456"
                   [value]="memberPhone()"
                   (input)="memberPhone.set($any($event.target).value.slice(0, 25))"
                   maxlength="25"
+                  autocomplete="tel"
+                  aria-required="true"
                   required
                 />
               </div>
@@ -179,11 +185,7 @@
               <span>{{ profileJustSaved() ? 'Perfil guardado con éxito' : 'Guardar Perfil' }}</span>
             </button>
 
-            @if (newsletter.currentMember()?.authUserId || newsletter.currentMember()?.googleLinked) {
-              <div class="auth-sync-badge connected">
-                Cuenta de Google vinculada
-              </div>
-            } @else {
+            @if (!newsletter.currentMember()?.authUserId && !newsletter.currentMember()?.googleLinked) {
               <button
                 type="button"
                 class="connect-google-btn"

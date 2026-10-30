@@ -9,7 +9,7 @@ import {
   BreadcrumbComponent,
   BreadcrumbItem,
 } from '../../../shared/components/breadcrumb/breadcrumb.component';
-import { FounderAdComponent } from '../../../shared/components/founder-ad/founder-ad.component';
+import { KayakAdComponent } from '../../../shared/components/kayak-ad/kayak-ad.component';
 
 export interface EmergingHighlight {
   title: string;
@@ -26,7 +26,7 @@ export interface EmergingHighlight {
     FooterComponent,
     HeaderComponent,
     BreadcrumbComponent,
-    FounderAdComponent,
+    KayakAdComponent,
   ],
   templateUrl: './emerging-member.component.html',
   styleUrl: './emerging-member.component.css',
@@ -58,6 +58,20 @@ export class EmergingMemberComponent implements OnInit {
   readonly isSubmitting = signal(false);
   readonly showSuccessNotification = signal(false);
   readonly requiresGoogle = computed(() => !this.authReady());
+  readonly isProfileComplete = computed(() => {
+    const name = this.fullName().trim();
+    const email = this.email().trim();
+    const dni = this.documentNumber().replace(/\D/g, '');
+    const phone = this.phone().trim();
+
+    return (
+      name.length > 0 &&
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) &&
+      dni.length >= 7 &&
+      dni.length <= 9 &&
+      phone.length > 0
+    );
+  });
 
   readonly experiences = [
     { id: 'kayak', title: 'Kayak y aguas calmas en diques andinos' },

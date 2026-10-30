@@ -358,6 +358,16 @@
   box-sizing: border-box;
 }
 
+.field-input.incomplete-required {
+  border-color: #ff5f00;
+  box-shadow: 0 0 0 1px rgba(255, 95, 0, 0.2);
+}
+
+.field-input.incomplete-required:focus {
+  border-color: #ff5f00;
+  box-shadow: 0 0 12px rgba(255, 95, 0, 0.35);
+}
+
 .field-input::placeholder,
 .field-textarea::placeholder {
   color: #c5d5f5 !important;

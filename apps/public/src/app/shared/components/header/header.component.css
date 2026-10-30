@@ -197,12 +197,12 @@ mat-icon.btn-icon {
   color: #000000 !important;
 }
 
-/* Botón Cerrar Sesión en Header (#ff5f00) */
+/* Botón Cerrar Sesión en Header */
 .nav-pill-btn.logout-header-btn,
 .nav-pill-btn.logout-header-btn:hover,
 .nav-pill-btn.logout-header-btn:active {
-  background: #ff5f00 !important;
-  border-color: #ff5f00 !important;
+  background: #000000 !important;
+  border-color: #000000 !important;
   color: #ffffff !important;
 }
 
@@ -501,8 +501,8 @@ mat-icon.btn-icon {
   .mobile-nav-row.profile-cta-row.logout-row,
   .mobile-nav-row.profile-cta-row.logout-row:hover,
   .mobile-nav-row.profile-cta-row.logout-row:active {
-    background: #ff5f00 !important;
-    border-color: #ff5f00 !important;
+    background: #000000 !important;
+    border-color: #000000 !important;
     color: #ffffff !important;
   }
 
@@ -620,8 +620,8 @@ mat-icon.btn-icon {
 
 .logout-confirm-btn {
   padding: 0.68rem 1.25rem;
-  background: #ff5f00;
-  border: 1px solid #ff5f00;
+  background: #000000;
+  border: 1px solid #000000;
   border-radius: 3px;
   color: #ffffff;
   font-family: var(--font-sans);
@@ -634,8 +634,8 @@ mat-icon.btn-icon {
 }
 
 .logout-confirm-btn:hover {
-  background: #ff7420;
-  border-color: #ff7420;
+  background: #1f1f1f;
+  border-color: #1f1f1f;
   transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(255, 95, 0, 0.35);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
 }

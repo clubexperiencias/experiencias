@@ -9,7 +9,7 @@ import {
   BreadcrumbComponent,
   BreadcrumbItem,
 } from '../../shared/components/breadcrumb/breadcrumb.component';
-import { FounderAdComponent } from '../../shared/components/founder-ad/founder-ad.component';
+import { KayakAdComponent } from '../../shared/components/kayak-ad/kayak-ad.component';
 
 export type MembersModalType = 'login' | 'payments' | null;
 
@@ -23,7 +23,7 @@ export type MembersModalType = 'login' | 'payments' | null;
     FooterComponent,
     HeaderComponent,
     BreadcrumbComponent,
-    FounderAdComponent,
+    KayakAdComponent,
   ],
   templateUrl: './members.component.html',
   styleUrl: './members.component.css',
