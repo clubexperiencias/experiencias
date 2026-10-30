@@ -10,7 +10,7 @@ describe('ActivitiesHistoryComponent (/perfil/actividades)', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [ActivitiesHistoryComponent],
-      providers: [provideRouter([]), ActivityHistoryService]
+      providers: [provideRouter([]), ActivityHistoryService],
     }).compileComponents();
 
     fixture = TestBed.createComponent(ActivitiesHistoryComponent);
@@ -25,7 +25,7 @@ describe('ActivitiesHistoryComponent (/perfil/actividades)', () => {
   it('should render page title and activity cards', () => {
     const el = fixture.nativeElement as HTMLElement;
     expect(el.textContent).toContain('Actividades: Salidas & Expediciones');
-    expect(el.textContent).toContain('Travesía en Kayak & Sunset en Las Pirquitas');
+    expect(el.textContent).toContain('Travesía en Kayak & Sunset en El Jumeal');
   });
 
   it('should not contain the Mi Perfil return button in box header', () => {

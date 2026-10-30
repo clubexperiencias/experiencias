@@ -100,7 +100,7 @@ describe('KayakRatingsComponent (/experiencias/kayak/calificaciones)', () => {
 
     const initialCount = component.reviewsList().length;
     component.newTitle.set('Travesía maravillosa en Catamarca');
-    component.newComment.set('Excelente atención y kayak de primera calidad en Las Pirquitas.');
+    component.newComment.set('Excelente atención y kayak de primera calidad en el Dique El Jumeal.');
     component.submitReview();
     fixture.detectChanges();
 

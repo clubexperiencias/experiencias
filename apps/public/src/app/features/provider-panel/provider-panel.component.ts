@@ -246,6 +246,10 @@ export class ProviderPanelComponent {
   readonly allDemoProviders = this.store.allProviders();
   readonly userMenuOpen = signal(false);
 
+  constructor() {
+    void this.store.restoreSupabaseSession();
+  }
+
   readonly pendingModerationCount = computed(
     () =>
       this.store

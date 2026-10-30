@@ -50,36 +50,15 @@
         </div>
 
         <p class="modal-lead">
-          Ingresá tu correo electrónico para acceder a tu perfil y cupos reservados:
+          Iniciá sesión con Google para acceder a tu perfil y cupos reservados:
         </p>
 
         <div class="login-modal-box">
-          <div class="login-input-wrap">
-            <label for="nf-modal-email" class="login-field-lbl">Correo Electrónico</label>
-            <input
-              id="nf-modal-email"
-              type="email"
-              class="login-modal-input"
-              placeholder="socio@ejemplo.com"
-              [value]="loginEmail()"
-              (input)="loginEmail.set($any($event.target).value)"
-              (keyup.enter)="submitLogin()"
-            />
-          </div>
-
-          @if (loginError()) {
-            <p class="error-text" style="margin-top: 0.6rem">{{ loginError() }}</p>
-          }
-
           <div class="modal-footer" style="margin-top: 1.4rem">
             <button class="pill-action-btn secondary" (click)="closeModal()">Cancelar</button>
-            <button
-              class="pill-action-btn"
-              (click)="submitLogin()"
-              [disabled]="!loginEmail().trim() || newsletter.isLoading()"
-            >
-              Ingresar
-            </button>
+            <a routerLink="/ingresar" class="pill-action-btn" (click)="closeModal()">
+              Iniciar sesión con Google
+            </a>
           </div>
         </div>
       </div>

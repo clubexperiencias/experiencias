@@ -113,15 +113,10 @@ export class WaitlistComponent {
 
   // Formulario Perfil de Socio Emergente
   readonly memberFullName = signal(this.newsletter.currentMember()?.fullName || '');
-  readonly memberNationality = signal(this.newsletter.currentMember()?.nationality || '');
   readonly selectedExperiences = signal<string[]>(
     this.newsletter.currentMember()?.experiencesWishlist || [],
   );
-  readonly memberBio = signal(this.newsletter.currentMember()?.bio || '');
-  readonly memberNotes = signal(
-    this.newsletter.currentMember()?.wishlistNotes || this.newsletter.currentMember()?.bio || '',
-  );
-  readonly profileSaved = signal(this.newsletter.currentMember()?.profileCompleted || false);
+  readonly profileSaved = signal(Boolean(this.newsletter.currentMember()?.fullName));
 
   readonly wishlistExperiences = [
     { id: 'galan', icon: '🌋', title: 'Volcán Galán & Caldera Gigante' },
@@ -336,8 +331,8 @@ export class WaitlistComponent {
         transactionId: 'SUB-' + Math.random().toString(36).substring(2, 9).toUpperCase(),
         gateway: this.paymentManager.activeGatewayType(),
         gatewayDisplayName: this.paymentManager.activeGateway().displayName,
-        amountArs: 12000,
-        amountUsd: 12,
+        amountArs: 23000,
+        amountUsd: 23,
         paidAt: new Date().toLocaleString('es-AR'),
         paymentMethodSummary: `Cuota Mensual · ${this.paymentManager.activeGateway().displayName}`,
         payerEmail: this.newsletter.currentMember()?.email || 'socio@experiencias.club',
@@ -362,8 +357,8 @@ export class WaitlistComponent {
       if (!this.founderEmail().trim() && member.email) {
         this.founderEmail.set(member.email);
       }
-      if (!this.founderCity().trim() && member.nationality) {
-        this.founderCity.set(member.nationality);
+      if (!this.founderCity().trim()) {
+        this.founderCity.set('Catamarca');
       }
     }
     this.openModal('founder_application');
@@ -401,22 +396,20 @@ export class WaitlistComponent {
     return found ? `${found.icon} ${found.title}` : id;
   }
 
-  saveMemberProfile(): void {
+  async saveMemberProfile(): Promise<void> {
     if (
       !this.memberFullName().trim() ||
-      !this.memberNationality().trim() ||
       this.selectedExperiences().length === 0
     ) {
       return;
     }
-    this.newsletter.updateMemberProfile({
+    const res = await this.newsletter.updateMemberProfile({
       fullName: this.memberFullName().trim(),
-      nationality: this.memberNationality().trim(),
       experiencesWishlist: this.selectedExperiences(),
-      wishlistNotes: this.memberNotes().trim(),
-      bio: this.memberNotes().trim(),
     });
-    this.profileSaved.set(true);
+    if (res.success) {
+      this.profileSaved.set(true);
+    }
   }
 
   editMemberProfile(): void {
@@ -431,11 +424,18 @@ export class WaitlistComponent {
   }
 
   async submitLogin(): Promise<void> {
-    const email = this.loginEmail().trim();
+    const email = this.loginEmail().trim().toLowerCase();
     if (!email || this.newsletter.isLoading()) return;
 
-    const res = await this.newsletter.joinWaitlist({ email });
-    if (res.success) {
+    const res = await this.newsletter.loginWithEmail(email);
+    if (res.alreadyRegisteredSocio) {
+      this.loginError.set(res.message);
+    } else if (res.alreadyInWaitlist || res.notFound) {
+      this.closeModal();
+      this.router.navigate(['/socios/emergentes'], {
+        queryParams: { email, from: 'waitlist' },
+      });
+    } else if (res.success) {
       this.closeModal();
       this.router.navigate(['/perfil']);
     } else {
@@ -444,39 +444,47 @@ export class WaitlistComponent {
   }
 
   async submit(): Promise<void> {
-    if (!this.email().trim() || this.newsletter.isLoading()) return;
+    const cleanEmail = this.email().trim().toLowerCase();
+    if (!cleanEmail || this.newsletter.isLoading()) return;
 
-    const res = await this.newsletter.joinWaitlist({ email: this.email() });
-    if (res.success) {
-      this.email.set('');
-      this.router.navigate(['/perfil']);
+    if (this.newsletter.isSubscribed()) {
+      this.newsletter.resetCurrentSubscription();
     }
+
+    const res = await this.newsletter.loginWithEmail(cleanEmail);
+    if (res.alreadyRegisteredSocio) {
+      this.router.navigate(['/ingresar'], {
+        queryParams: { email: cleanEmail, registered: 'true' },
+      });
+      return;
+    }
+
+    this.email.set('');
+    this.router.navigate(['/socios/emergentes'], {
+      queryParams: { email: cleanEmail, from: 'waitlist' },
+    });
   }
 
   copyLink(): void {
-    const member = this.newsletter.currentMember();
-    if (!member) return;
-    const url = `${location.origin}?ref=${member.referralCode}`;
+    const url = location.origin;
     navigator.clipboard.writeText(url).then(() => {
-      this.copyStatus.set('¡Enlace de invitación copiado!');
+      this.copyStatus.set('¡Enlace de EXPERIENCIAS.CLUB copiado!');
       setTimeout(() => this.copyStatus.set(null), 2500);
     });
   }
 
   shareWhatsApp(): void {
-    const member = this.newsletter.currentMember();
     const text = encodeURIComponent(
-      `Me sumé como Socio Emergente a EXPERIENCIAS.CLUB (Edición Catamarca), el club privado de expediciones andinas y náuticas. ¡Unite a la lista de espera antes del lanzamiento! ${location.origin}?ref=${member?.referralCode ?? ''}`,
+      `Me sumé como Socio a EXPERIENCIAS.CLUB (Edición Catamarca), el club privado de expediciones andinas y náuticas. ${location.origin}`,
     );
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
   }
 
   shareX(): void {
-    const member = this.newsletter.currentMember();
     const text = encodeURIComponent(
-      'Acabo de registrarme como Socio Emergente en EXPERIENCIAS.CLUB (Edición Catamarca) — expediciones andinas y travesías náuticas.',
+      'Acabo de registrarme en EXPERIENCIAS.CLUB (Edición Catamarca) — expediciones andinas y travesías náuticas.',
     );
-    const url = encodeURIComponent(`${location.origin}?ref=${member?.referralCode ?? ''}`);
+    const url = encodeURIComponent(location.origin);
     window.open(`https://x.com/intent/tweet?text=${text}&url=${url}`, '_blank');
   }
 

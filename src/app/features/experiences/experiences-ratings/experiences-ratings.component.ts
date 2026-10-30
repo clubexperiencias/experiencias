@@ -84,7 +84,7 @@ export class ExperiencesRatingsComponent {
       userLocation: 'Córdoba Capital',
       userTier: 'Socio Fundador #014',
       verifiedBooking: true,
-      experienceName: 'Travesía en Kayak & Sunset en Las Pirquitas',
+      experienceName: 'Travesía en Kayak & Sunset en El Jumeal',
       experienceSlug: 'kayak',
       experienceRoute: '/experiencias/kayak',
       activityDate: '12 de Octubre, 2026',
@@ -92,7 +92,7 @@ export class ExperiencesRatingsComponent {
       date: '14 de Octubre, 2026',
       title: 'Una experiencia transformadora en aguas calmas',
       comment:
-        'El espejo de agua de Las Pirquitas con el atardecer cayendo sobre el cordón de Ambato es impresionante. Los kayaks son de travesía profesional, livianos y estables. Lucas, el guía, nos explicó la hidrografía de la cuenca y la picada regional con quesos de cabra fue el broche de oro.',
+        'El espejo de agua de El Jumeal con el atardecer cayendo sobre el cordón de Ambato es impresionante. Los kayaks son de travesía profesional, livianos y estables. Lucas, el guía, nos explicó la hidrografía de la cuenca y la picada regional con quesos de cabra fue el broche de oro.',
       providerReply: {
         responderName: 'Lucas Nieto',
         badge: 'Guía Náutico Homologado',
@@ -153,7 +153,7 @@ export class ExperiencesRatingsComponent {
       userLocation: 'Buenos Aires',
       userTier: 'Socio Pleno Mensual',
       verifiedBooking: true,
-      experienceName: 'Travesía en Kayak & Sunset en Las Pirquitas',
+      experienceName: 'Travesía en Kayak & Sunset en El Jumeal',
       experienceSlug: 'kayak',
       experienceRoute: '/experiencias/kayak',
       activityDate: '5 de Octubre, 2026',
@@ -220,7 +220,7 @@ export class ExperiencesRatingsComponent {
     const effectiveName = this.memberProfileName() || this.newUserName().trim();
     if (!effectiveName || !this.newTitle().trim() || !this.newComment().trim()) return;
 
-    let expName = 'Travesía en Kayak & Sunset en Las Pirquitas';
+    let expName = 'Travesía en Kayak & Sunset en El Jumeal';
     let expRoute = '/experiencias/kayak';
     if (this.newExperience() === 'pomez') {
       expName = 'Campo de Piedra Pómez & Duna Gigante';

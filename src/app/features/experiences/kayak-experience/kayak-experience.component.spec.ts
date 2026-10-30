@@ -10,7 +10,7 @@ describe('KayakExperienceComponent (/experiencias/kayak)', () => {
     localStorage.clear();
     await TestBed.configureTestingModule({
       imports: [KayakExperienceComponent],
-      providers: [provideRouter([])]
+      providers: [provideRouter([])],
     }).compileComponents();
 
     fixture = TestBed.createComponent(KayakExperienceComponent);
@@ -22,7 +22,7 @@ describe('KayakExperienceComponent (/experiencias/kayak)', () => {
     expect(component).toBeTruthy();
     const heading = fixture.nativeElement.querySelector('.card-heading');
     expect(heading).toBeTruthy();
-    expect(heading.textContent).toContain('Travesía en Kayak & Sunset en Las Pirquitas');
+    expect(heading.textContent).toContain('Travesía en Kayak & Sunset en El Jumeal');
   });
 
   it('should render breadcrumb with links to / and /experiencias', () => {
@@ -30,7 +30,9 @@ describe('KayakExperienceComponent (/experiencias/kayak)', () => {
     expect(breadcrumb).toBeTruthy();
 
     const links = breadcrumb.querySelectorAll('.bc-link');
-    const hrefs = Array.from(links).map((l: any) => l.getAttribute('routerlink') || l.getAttribute('href'));
+    const hrefs = Array.from(links).map(
+      (l: any) => l.getAttribute('routerlink') || l.getAttribute('href'),
+    );
     expect(hrefs).toContain('/');
     expect(hrefs).toContain('/experiencias');
 
@@ -57,6 +59,8 @@ describe('KayakExperienceComponent (/experiencias/kayak)', () => {
 
     const galleryBtn = fixture.nativeElement.querySelector('.gallery-btn');
     expect(galleryBtn).toBeTruthy();
-    expect(galleryBtn.getAttribute('routerlink') || galleryBtn.getAttribute('href')).toBe('/experiencias/kayak/fotos');
+    expect(galleryBtn.getAttribute('routerlink') || galleryBtn.getAttribute('href')).toBe(
+      '/experiencias/kayak/fotos',
+    );
   });
 });

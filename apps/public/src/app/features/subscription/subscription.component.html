@@ -16,34 +16,28 @@
         @if (newsletter.isMonthlyActive()) {
           <div class="sub-section-card active-management-card">
             <div class="section-card-header">
-              <div class="status-seal-active">
-                <mat-icon class="seal-icon">verified</mat-icon>
+              <div class="status-badge-row">
+                <span class="active-pill">
+                  {{
+                    newsletter.activeSubscription()?.status === 'paused'
+                      ? '⏸ SUSCRIPCIÓN PAUSADA'
+                      : '✓ SUSCRIPCIÓN ACTIVA'
+                  }}
+                </span>
+                <span class="tier-pill">NIVEL 2 · SOCIO PLENO</span>
               </div>
-              <div>
-                <div class="status-badge-row">
-                  <span class="active-pill">
-                    {{
-                      newsletter.activeSubscription()?.status === 'paused'
-                        ? '⏸ SUSCRIPCIÓN PAUSADA'
-                        : '✓ SUSCRIPCIÓN ACTIVA'
-                    }}
-                  </span>
-                  <span class="tier-pill">NIVEL 2 · SOCIO PLENO</span>
-                </div>
-                <h1 class="section-main-title">Gestión de Membresía Mensual</h1>
-              </div>
+              <h1 class="section-main-title card-heading">Gestión de Membresía Mensual</h1>
+              <p class="card-subheading">
+                Tu membresía se encuentra vinculada a tu cuenta de socio. Tenés acceso a todos los
+                beneficios exclusivos, tarifas con descuento y prioridad en expediciones.
+              </p>
             </div>
-
-            <p class="section-lead-text">
-              Tu membresía se encuentra vinculada a tu cuenta de socio. Tenés acceso a todos los
-              beneficios exclusivos, tarifas con descuento y prioridad en expediciones.
-            </p>
 
             <!-- Grilla de Detalles de Suscripción -->
             <div class="subscription-details-grid">
               <div class="detail-box">
                 <span class="detail-lbl">Cuota Mensual</span>
-                <span class="detail-val price-highlight">$12.000 ARS</span>
+                <span class="detail-val price-highlight">$23.000 ARS</span>
                 <span class="detail-sub">Sin permanencia</span>
               </div>
 
@@ -87,10 +81,10 @@
             <div class="active-perks-box">
               <h4 class="perks-heading">Beneficios plenos incluidos:</h4>
               <div class="perks-pills-row">
-                <span class="active-perk-pill">✓ 10% OFF en todas las salidas</span>
-                <span class="active-perk-pill">✓ Cupo garantizado preferencial</span>
-                <span class="active-perk-pill">✓ Asistencia directa de viaje</span>
-                <span class="active-perk-pill">✓ Bitácora privada de fotos HD</span>
+                <span class="active-perk-pill">✓ 10% OFF directo en todas las salidas</span>
+                <span class="active-perk-pill">✓ Cupo asegurado prioritario</span>
+                <span class="active-perk-pill">✓ Asistencia personalizada con guías locales</span>
+                <span class="active-perk-pill">✓ Expediciones exclusivas y regalos sorpresa</span>
               </div>
             </div>
 
@@ -120,103 +114,83 @@
             </div>
           </div>
 
-          <!-- ═══════════════ CASO 2: FORMULARIO DE ALTA / PAGO ═══════════════ -->
+          <!-- ═══════════════ CASO 2: CARD UNIFICADA DE SOCIO PLENO (DESHABILITADO) ═══════════════ -->
         } @else {
-          <div class="sub-section-card hero-sub-card">
+          <section class="sub-section-card hero-sub-card" aria-labelledby="pleno-title">
             <div class="section-card-header">
-              <div>
-                <span class="section-kicker">MEMBRESÍA MENSUAL · SOCIO PLENO</span>
-                <h1 class="section-main-title">Activar Suscripción Mensual</h1>
-              </div>
-            </div>
-
-            <p class="section-lead-text">
-              Formá parte activa de <strong>EXPERIENCIAS.CLUB</strong> con cupos prioritarios, 10%
-              de bonificación en todas las expediciones andinas y náuticas en Catamarca, y bitácora
-              privada. Sin permanencia mínima.
-            </p>
-
-            <!-- Tarjeta de Precio y Beneficios -->
-            <div class="plan-price-banner">
-              <div class="plan-price-left">
-                <div class="badge-status-wrap">
-                  <span class="plan-badge">NIVEL 2</span>
-                  <span class="plan-status-pill">PAUSADO</span>
-                </div>
-                <div class="price-figures">
-                  <span class="price-val">$12.000</span>
-                  <span class="price-sub">ARS / mes</span>
-                </div>
-                <span class="price-hint">Inscripciones online en pausa por el momento</span>
-              </div>
-
-              <div class="plan-perks-list">
-                <div class="plan-perk-item">
-                  <span class="check-icon">✓</span>
-                  <span><strong>10% OFF directo</strong> en todas las expediciones y salidas</span>
-                </div>
-                <div class="plan-perk-item">
-                  <span class="check-icon">✓</span>
-                  <span>Cupo reservado con prioridad en fechas de alta demanda</span>
-                </div>
-                <div class="plan-perk-item">
-                  <span class="check-icon">✓</span>
-                  <span>Asistencia y asesoramiento personalizado para tus travesías</span>
-                </div>
-                <div class="plan-perk-item">
-                  <span class="check-icon">✓</span>
-                  <span>Bitácora fotográfica de expediciones en alta resolución</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Card: Formulario y Pasarela de Pago (Bloqueado) -->
-          <div class="sub-section-card payment-flow-card">
-            <div class="card-inner-header blocked-header">
-              <span class="section-kicker">MÉTODO DE PAGO Y FACTURACIÓN · DESHABILITADO</span>
-              <h2 class="card-heading">Formulario de Suscripción en Pausa</h2>
+              <span class="section-kicker">NIVEL 2: PRÓXIMAMENTE</span>
+              <h1 id="pleno-title" class="section-main-title card-heading">
+                Membresía Socio Pleno · Activar Suscripción Mensual
+              </h1>
               <p class="card-subheading">
-                El procesamiento de cobro online para este nivel no admite nuevas solicitudes
-                actualmente.
+                Sumate como miembro activo del <strong>Club de Experiencias</strong> con
+                <strong>10% OFF directo</strong> en expediciones por Catamarca, cupos prioritarios,
+                salidas exclusivas y regalos sorpresa.
               </p>
             </div>
 
+            <!-- Franja de condiciones simplificadas (Look & Feel de Emergentes y Fundadores) -->
+            <div class="sub-highlights-strip">
+              <div class="highlight-item">
+                <strong class="highlight-title">$23.000 ARS / mes</strong>
+                <span class="highlight-desc">Suscripción flexible. </span>
+              </div>
+              <div class="highlight-item">
+                <strong class="highlight-title">10% OFF & Prioridad</strong>
+                <span class="highlight-desc">Descuento directo y cupo asegurado en salidas.</span>
+              </div>
+              <div class="highlight-item">
+                <strong class="highlight-title">Salidas Exclusivas & Regalos</strong>
+                <span class="highlight-desc">Travesías para socios y sorpresas de temporada.</span>
+              </div>
+            </div>
+
+            <!-- Aviso de estado pausado / próximamente -->
+            <div class="sub-paused-banner" role="status">
+              <mat-icon class="paused-banner-icon">lock</mat-icon>
+              <div class="paused-banner-text">
+                <strong>Inscripciones en pausa hasta el lanzamiento de temporada</strong>
+                <span>
+                  Se habilitará con la apertura del calendario oficial. Mientras tanto, podés
+                  sumarte gratis como <a routerLink="/socios/emergentes">Socio Emergente</a>.
+                </span>
+              </div>
+            </div>
+
+            <!-- Formulario Integrado (Deshabilitado) -->
             <form class="payment-form form-is-blocked" (ngSubmit)="$event.preventDefault()">
               <fieldset disabled class="form-blocked-fieldset">
-                <!-- Paso 1: Datos del Socio -->
-                <div class="form-step-block">
-                  <h4 class="step-title">1. Datos del Titular</h4>
-                  <div class="form-grid-2col">
-                    <div class="form-field">
-                      <label for="sub-email" class="field-lbl">Correo Electrónico del Socio</label>
-                      <input
-                        id="sub-email"
-                        type="email"
-                        class="field-input"
-                        placeholder="tu-correo@ejemplo.com"
-                        [value]="subscriberEmail()"
-                        disabled
-                      />
-                    </div>
+                <div class="form-grid-2col">
+                  <label class="form-field">
+                    <span class="field-lbl">Nombre y Apellido del Titular <b>*</b></span>
+                    <input
+                      id="sub-name"
+                      type="text"
+                      class="field-input"
+                      placeholder="Ej. Valentina Morales"
+                      [value]="subscriberName()"
+                      disabled
+                    />
+                  </label>
 
-                    <div class="form-field">
-                      <label for="sub-name" class="field-lbl">Nombre y Apellido</label>
-                      <input
-                        id="sub-name"
-                        type="text"
-                        class="field-input"
-                        placeholder="Ej. Valentina Morales"
-                        [value]="subscriberName()"
-                        disabled
-                      />
-                    </div>
-                  </div>
+                  <label class="form-field">
+                    <span class="field-lbl">Correo Electrónico del Socio <b>*</b></span>
+                    <input
+                      id="sub-email"
+                      type="email"
+                      class="field-input"
+                      placeholder="tu-correo@ejemplo.com"
+                      [value]="subscriberEmail()"
+                      disabled
+                    />
+                  </label>
                 </div>
 
-                <!-- Paso 2: Selección de Método de Pago -->
-                <div class="form-step-block">
-                  <h4 class="step-title">2. Método de Pago</h4>
+                <!-- Selección de Método de Pago -->
+                <div class="form-field">
+                  <span class="field-lbl">
+                    Método de Pago Preferido <em>(se habilitará en el lanzamiento)</em>
+                  </span>
 
                   <div class="payment-methods-selector">
                     <button
@@ -241,7 +215,7 @@
                       <mat-icon class="method-icon">account_balance_wallet</mat-icon>
                       <div class="method-info">
                         <strong>Mercado Pago</strong>
-                        <span>Débito en cuenta o dinero en cuenta</span>
+                        <span>Débito automático o dinero en cuenta</span>
                       </div>
                     </button>
 
@@ -254,7 +228,7 @@
                       <mat-icon class="method-icon">account_balance</mat-icon>
                       <div class="method-info">
                         <strong>Transferencia CBU / Alias</strong>
-                        <span>Sin intermediarios</span>
+                        <span>Acreditación directa sin intermediarios</span>
                       </div>
                     </button>
                   </div>
@@ -263,20 +237,13 @@
                 <!-- Botón de Activación Bloqueado -->
                 <div class="submit-action-row">
                   <button type="button" class="activate-submit-btn is-blocked" disabled>
+                    <mat-icon class="btn-lock-icon">lock</mat-icon>
                     <span>Suscripción Temporalmente Deshabilitada</span>
                   </button>
                 </div>
-
-                <div class="security-guarantee-row">
-                  <mat-icon class="lock-icon">info</mat-icon>
-                  <span
-                    >El registro de nuevas membresías se reabrirá con la nueva agenda de
-                    expediciones.</span
-                  >
-                </div>
               </fieldset>
             </form>
-          </div>
+          </section>
         }
 
         <!-- Publicidad al final del contenido -->

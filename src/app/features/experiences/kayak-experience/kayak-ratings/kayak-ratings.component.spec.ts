@@ -10,7 +10,7 @@ describe('KayakRatingsComponent (/experiencias/kayak/calificaciones)', () => {
     localStorage.clear();
     await TestBed.configureTestingModule({
       imports: [KayakRatingsComponent],
-      providers: [provideRouter([])]
+      providers: [provideRouter([])],
     }).compileComponents();
 
     fixture = TestBed.createComponent(KayakRatingsComponent);
@@ -87,7 +87,7 @@ describe('KayakRatingsComponent (/experiencias/kayak/calificaciones)', () => {
     await component.newsletter.joinWaitlist({
       email: 'juan@ejemplo.com',
       fullName: 'Juan Pérez',
-      nationality: 'Córdoba, Argentina'
+      nationality: 'Córdoba, Argentina',
     });
     fixture.detectChanges();
 
@@ -100,7 +100,7 @@ describe('KayakRatingsComponent (/experiencias/kayak/calificaciones)', () => {
 
     const initialCount = component.reviewsList().length;
     component.newTitle.set('Travesía maravillosa en Catamarca');
-    component.newComment.set('Excelente atención y kayak de primera calidad en Las Pirquitas.');
+    component.newComment.set('Excelente atención y kayak de primera calidad en El Jumeal.');
     component.submitReview();
     fixture.detectChanges();
 
@@ -120,7 +120,9 @@ describe('KayakRatingsComponent (/experiencias/kayak/calificaciones)', () => {
     expect(adWrapper).toBeTruthy();
     const adLink = fixture.nativeElement.querySelector('.ad-banner-link');
     expect(adLink).toBeTruthy();
-    expect(adLink.getAttribute('routerlink') || adLink.getAttribute('href')).toBe('/socios/fundadores');
+    expect(adLink.getAttribute('routerlink') || adLink.getAttribute('href')).toBe(
+      '/socios/fundadores',
+    );
     const adImg = fixture.nativeElement.querySelector('.ad-banner-img');
     expect(adImg).toBeTruthy();
     expect(adImg.getAttribute('src')).toContain('ad.png');

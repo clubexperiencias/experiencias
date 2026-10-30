@@ -48,12 +48,10 @@
                   <p class="photo-summary">{{ photo.caption }}</p>
                   <div class="photo-footer-meta">
                     <div class="admin-attribution">
-                      <mat-icon class="author-icon">person</mat-icon>
-                      <span>{{ photo.adminName }} · {{ photo.adminRole }}</span>
+                      <span>{{ photo.adminName }}: {{ photo.adminRole }}</span>
                     </div>
                     <span class="view-hd-hint">
-                      <mat-icon class="zoom-icon">zoom_in</mat-icon>
-                      <span>Ver HD</span>
+                      <span>VER EN HD</span>
                     </span>
                   </div>
                 </div>
@@ -106,7 +104,7 @@
           <div class="lightbox-caption">
             <div class="lightbox-caption-text">
               <span class="lightbox-signature"
-                >Fotógrafo: {{ photo.adminName }} · {{ photo.adminRole }}</span
+                >{{ photo.adminName }}: {{ photo.adminRole }}</span
               >
               <h4>{{ photo.title }}</h4>
               <p>{{ photo.caption }}</p>
@@ -116,7 +114,6 @@
               class="lightbox-download-action-btn"
               (click)="downloadPhoto(photo)"
             >
-              <mat-icon aria-hidden="true">file_download</mat-icon>
               <span>Descargar Foto</span>
             </button>
           </div>

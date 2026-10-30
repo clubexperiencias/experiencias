@@ -2,29 +2,22 @@
   "name": "experiencias-monorepo",
   "version": "0.0.0",
   "private": true,
-  "scripts": {
-    "dev": "npm run dev --workspace=apps/public",
-    "build": "npm run build --workspace=apps/public",
-    "dev:public": "npm run dev --workspace=apps/public",
-    "build:public": "npm run build --workspace=apps/public",
-    "start": "npm run start --workspace=apps/public",
-    "test": "npm test --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present",
-    "lint": "npm run typecheck",
-    "format": "prettier --write ."
-  },
-  "devDependencies": {
-    "prettier": "^3.8.1",
-    "typescript": "~6.0.2"
-  },
+  "packageManager": "pnpm@10.10.0",
   "workspaces": [
     "apps/*",
     "packages/*"
   ],
-  "trustedDependencies": [
-    "@parcel/watcher",
-    "esbuild",
-    "lmdb",
-    "msgpackr-extract"
-  ]
+  "scripts": {
+    "dev": "sh -c 'PORT=4200 npm run dev --workspace=apps/public' --",
+    "build": "node ./scripts/set-env.js && npm run build --workspace=apps/public",
+    "dev:public": "npm run dev --workspace=apps/public",
+    "build:public": "node ./scripts/set-env.js && npm run build --workspace=apps/public",
+    "format": "prettier --write .",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "prettier": "^3.8.1",
+    "typescript": "~6.0.2"
+  }
 }

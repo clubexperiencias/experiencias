@@ -56,6 +56,7 @@
               placeholder="Ingresá tu correo electrónico..."
               [value]="email()"
               (input)="email.set($any($event.target).value)"
+              maxlength="254"
               (keyup.enter)="submit()"
               [disabled]="newsletter.isLoading()"
               autocomplete="email"
@@ -118,6 +119,7 @@
                 placeholder="tu-correo@ejemplo.com"
                 [value]="loginEmail()"
                 (input)="loginEmail.set($any($event.target).value)"
+                maxlength="254"
                 (keyup.enter)="submitLogin()"
               />
             </div>
@@ -160,7 +162,7 @@
                 @if (newsletter.isSubscribed()) {
                   <span class="tier-level-badge current">✓ TU NIVEL ACTUAL</span>
                 } @else {
-                  <span class="tier-level-badge initial">NIVEL 1 · PUNTO DE PARTIDA</span>
+                  <span class="tier-level-badge initial">NIVEL 1: PUNTO DE PARTIDA</span>
                 }
                 <h4 class="tier-name">Socio Emergente</h4>
               </div>
@@ -172,7 +174,7 @@
 
               <ul class="tier-benefits">
                 <li>Acceso anticipado a preventa de temporada 2026</li>
-                <li>Código de invitación personal para referidos</li>
+                <li>Comunidad privada de expedicionarios andinos</li>
                 <li>Bitácoras exclusivas y novedades de rutas andinas</li>
                 <li>Prioridad en cupos de expediciones inaugurales</li>
               </ul>
@@ -219,17 +221,16 @@
             <div class="tier-card highlight" [class.user-next-tier]="newsletter.isSubscribed()">
               <div class="tier-card-header">
                 @if (newsletter.isSubscribed()) {
-                  <span class="tier-level-badge next">PRÓXIMO SALTO RECOMENDADO</span>
+                  <span class="tier-level-badge next">NIVEL 2: PRÓXIMAMENTE</span>
                 } @else {
-                  <span class="tier-level-badge">NIVEL 2 · MEMBRESÍA MENSUAL</span>
+                  <span class="tier-level-badge">NIVEL 2: PRÓXIMAMENTE</span>
                 }
                 <h4 class="tier-name">Socio Pleno</h4>
               </div>
 
               <div class="tier-jump-card highlight">
-                <span class="jump-tag">ACTIVACIÓN INMEDIATA</span>
                 <p>
-                  Membresía mensual con acceso directo a cupos prioritarios y beneficios ($12.000
+                  Membresía mensual con acceso directo a cupos prioritarios y beneficios ($23.000
                   ARS/mes · sin permanencia).
                 </p>
               </div>
@@ -262,7 +263,7 @@
                     </svg>
                     Activar Membresía Mensual
                   </span>
-                  <span class="cta-sub-text">$12.000 ARS/mes · Cancelación libre</span>
+                  <span class="cta-sub-text">$23.000 ARS/mes · Cancelación libre</span>
                 </a>
               </div>
             </div>
@@ -270,7 +271,7 @@
             <!-- 3. Socio Fundador -->
             <div class="tier-card founder-card">
               <div class="tier-card-header">
-                <span class="tier-level-badge founder">VITALICIO · CUPO LIMITADO (60)</span>
+                <span class="tier-level-badge founder">NIVEL 3: VITALICIO</span>
                 <h4 class="tier-name">Socio Fundador</h4>
               </div>
 
@@ -518,7 +519,10 @@
                     }
                   </div>
                   <div class="agreement-text">
-                    <strong>Compromiso formal y adhesión al protocolo de admisión</strong>
+                    <strong
+                      >COMPROMISO FORMAL Y ADHESIÓN AL PROTOCOLO DE ADMISIÓN
+                      <b style="color: #ffcc00">*</b></strong
+                    >
                     <p>
                       Declaro estar al tanto y en conformidad con el aporte patrimonial
                       correspondiente a la
@@ -749,7 +753,7 @@
                   </div>
                   <div class="exp-card-content">
                     @if (
-                      exp.detailRoute === '/experiencias/kayak' || exp.id === 'exp_kayak_pirquitas'
+                      exp.detailRoute === '/experiencias/kayak' || exp.id === 'exp_kayak_jumeal'
                     ) {
                       <a
                         routerLink="/experiencias/kayak/calificaciones"
@@ -1017,7 +1021,7 @@
                     color: var(--color-gold);
                     border: 1px solid rgba(255, 212, 42, 0.35);
                   "
-                  >$12.000 ARS / mes</span
+                  >$23.000 ARS / mes</span
                 >
               </div>
             </div>
@@ -1050,7 +1054,7 @@
                         Débito automático mensual con saldo disponible o tarjetas de crédito y
                         débito.
                       } @else if (gw.type === 'stripe') {
-                        Tarjetas internacionales Visa / Mastercard con cobro equivalente en USD ($12
+                        Tarjetas internacionales Visa / Mastercard con cobro equivalente en USD ($23
                         USD aprox.).
                       }
                     </div>
@@ -1064,7 +1068,7 @@
               <p>
                 Procesando con: <strong>{{ paymentManager.activeGateway().displayName }}</strong> ·
                 Cuota mensual:
-                <strong>$12.000 ARS</strong>
+                <strong>$23.000 ARS</strong>
               </p>
             </div>
 
@@ -1078,7 +1082,7 @@
                 @if (subscribingMembership()) {
                   <span>Procesando pago...</span>
                 } @else {
-                  <span>Confirmar y Activar Membresía ($12.000 ARS/mes)</span>
+                  <span>Confirmar y Activar Membresía ($23.000 ARS/mes)</span>
                 }
               </button>
             </div>
@@ -1122,7 +1126,7 @@
                   line-height: 1.5;
                 "
               >
-                Registramos tu pago de <strong>$12.000 ARS</strong> mediante
+                Registramos tu pago de <strong>$23.000 ARS</strong> mediante
                 <strong>{{ paymentManager.activeGateway().displayName }}</strong
                 >. Ya contás con el 10% de descuento y prioridad de reserva.
               </p>
@@ -1216,7 +1220,7 @@
 
         <div class="voucher-meta-footer">
           <p>
-            Comprobante emitido por <strong>EXPERIENCIAS.CLUB · Edición Catamarca</strong><br />
+            Comprobante emitido por <strong>Club de Experiencias: Edición Catamarca</strong><br />
             Este documento certifica la reserva irrevocable y cobertura de seguro en la actividad
             seleccionada.
           </p>

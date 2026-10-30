@@ -64,8 +64,6 @@ export interface ClubMemberProfile {
   memberSince: Date;
   membershipExpiresAt: Date | null; // null = vitalicio (fundadores)
   isAutoRenew: boolean;
-  referralCode: string;
-  referredBy: string | null; // Referral code del invitador
   totalBookings: number;
   totalSpent: number;
   favoritedExperienceIds: string[];
@@ -155,7 +153,7 @@ export const MEMBERSHIP_TIERS: MembershipTierInfo[] = [
     benefits: [
       'Newsletter semanal con historias de expedición y secretos de la Puna',
       'Acceso al catálogo completo de travesías andinas y náuticas',
-      'Código personal de invitación para referidos',
+      'Comunidad privada de expedicionarios andinos',
       'Prioridad de acceso anticipado a la temporada de aperturas',
     ],
     discountPercent: 0,

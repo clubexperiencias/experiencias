@@ -21,6 +21,21 @@ export class FooterComponent {
   readonly newsletter = inject(NewsletterService);
 
   @Input() landscape?: FooterLandscape;
+  @Input() hideSessionBar = false;
+
+  get shouldHideSessionBar(): boolean {
+    if (this.hideSessionBar) return true;
+    const url = this.router.url || '';
+    const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
+    return (
+      url.startsWith('/ingresar') ||
+      url.startsWith('/login') ||
+      url.startsWith('/perfil') ||
+      pathname.startsWith('/ingresar') ||
+      pathname.startsWith('/login') ||
+      pathname.startsWith('/perfil')
+    );
+  }
 
   readonly defaultLandscape: FooterLandscape = {
     name: 'Laguna Blanca',

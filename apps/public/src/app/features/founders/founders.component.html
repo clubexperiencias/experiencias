@@ -14,10 +14,8 @@
       <div class="founders-wrapper">
         <!-- ═══════════════ CARD: CARTA DE POSTULACIÓN · SOCIO FUNDADOR ═══════════════ -->
         <div class="founders-section-card founder-application-card">
-          <div class="card-inner-header">
-            <div class="founder-badge-row">
-              <span class="founder-exclusive-tag">CÍRCULO VITALICIO EXCLUSIVO</span>
-            </div>
+          <div class="card-inner-header section-card-header">
+            <span class="section-kicker founder-exclusive-tag">NIVEL 3: VITALICIO</span>
             <h1 class="card-heading">Carta de Postulación para Socio Fundador</h1>
             <p class="card-subheading">
               El círculo de Socios Fundadores reúne a exploradores, benefactores y líderes
@@ -26,51 +24,34 @@
             </p>
           </div>
 
-          <!-- Condiciones de Membresía Absoluta -->
-          <div class="founder-certificate-card">
-            <div class="certificate-header">
-              <div class="cert-title-group">
-                <span class="cert-kicker">CONDICIONES DE LA MEMBRESÍA ABSOLUTA</span>
-                <h2 class="cert-title">Aporte Patrimonial Vitalicio Perpetuo</h2>
-                <span class="cert-amount-badge"
-                  >Valuación estimada: $5.000.000 ARS · Pago único sin cuotas de por vida</span
-                >
-              </div>
+          <!-- Franja de condiciones simplificadas -->
+          <div class="founder-certificate-card founder-highlights-strip">
+            <div class="highlight-item">
+              <strong class="highlight-title">Beneficios de Socio Pleno</strong>
+              <span class="highlight-desc">
+                Todos los beneficios de Socio Pleno sin cuotas mensuales de por vida.
+              </span>
             </div>
-
-            <div class="cert-perks-grid">
-              <div class="cert-perk-item">
-                <span class="perk-check">✓</span>
-                <div>
-                  <strong>Pase Libre Perpetuo</strong>
-                  <p>Sin cuotas mensuales de mantenimiento ni renovación en ningún año.</p>
-                </div>
-              </div>
-              <div class="cert-perk-item">
-                <span class="perk-check">✓</span>
-                <div>
-                  <strong>20% OFF Perpetuo</strong>
-                  <p>
-                    Bonificación de por vida en todas las expediciones, extensible a acompañantes.
-                  </p>
-                </div>
-              </div>
-              <div class="cert-perk-item">
-                <span class="perk-check">✓</span>
-                <div>
-                  <strong>Consejo Consultivo</strong>
-                  <p>Acceso anticipado y prioritario a aperturas de rutas andinas secretas.</p>
-                </div>
-              </div>
+            <div class="highlight-item">
+              <strong class="highlight-title">20% OFF Perpetuo</strong>
+              <span class="highlight-desc">
+                Bonificación de por vida en todas las expediciones, extensible a acompañantes.
+              </span>
+            </div>
+            <div class="highlight-item">
+              <strong class="highlight-title">Consejo Consultivo</strong>
+              <span class="highlight-desc">
+                Acceso anticipado y prioritario a aperturas de rutas andinas secretas.
+              </span>
             </div>
           </div>
 
           <!-- Formulario de Postulación -->
           @if (!founderSuccess()) {
-            <form class="founder-form-body" (ngSubmit)="submitFounder()">
+            <form class="founder-form-body" novalidate (ngSubmit)="submitFounder()">
               <div class="form-grid-2col">
-                <div class="form-field">
-                  <label for="f-name" class="field-lbl">Nombre y Apellido Completo</label>
+                <label class="form-field">
+                  <span class="field-lbl">Nombre y Apellido Completo <b>*</b></span>
                   <input
                     id="f-name"
                     type="text"
@@ -80,10 +61,10 @@
                     (input)="founderName.set($any($event.target).value)"
                     required
                   />
-                </div>
+                </label>
 
-                <div class="form-field">
-                  <label for="f-email" class="field-lbl">Correo Electrónico</label>
+                <label class="form-field">
+                  <span class="field-lbl">Correo Electrónico <b>*</b></span>
                   <input
                     id="f-email"
                     type="email"
@@ -93,27 +74,28 @@
                     (input)="founderEmail.set($any($event.target).value)"
                     required
                   />
-                </div>
+                </label>
               </div>
 
-              <div class="form-field">
-                <label for="f-phone" class="field-lbl"
-                  >Teléfono / WhatsApp de Contacto Confidencial</label
-                >
+              <label class="form-field">
+                <span class="field-lbl">
+                  Teléfono / WhatsApp de Contacto Confidencial <b>*</b>
+                </span>
                 <input
                   id="f-phone"
                   type="tel"
                   class="field-input"
-                  placeholder="+54 9 11 4455-6677"
+                  placeholder="Ej. +54 9 3834 123456"
                   [value]="founderPhone()"
                   (input)="founderPhone.set($any($event.target).value)"
+                  required
                 />
-              </div>
+              </label>
 
-              <div class="form-field">
-                <label for="f-letter" class="field-lbl">
-                  Carta de Motivación & Vínculo con Catamarca / Turismo Andino
-                </label>
+              <label class="form-field">
+                <span class="field-lbl">
+                  Carta de Motivación & Vínculo con Catamarca / Turismo Andino <b>*</b>
+                </span>
                 <textarea
                   id="f-letter"
                   class="field-textarea"
@@ -123,17 +105,21 @@
                   (input)="founderLetter.set($any($event.target).value)"
                   required
                 ></textarea>
-              </div>
+              </label>
 
               <!-- Checkbox de Compromiso Patrimonial -->
-              <div class="founder-agreement-box" (click)="founderAgreedToPrice.update((v) => !v)">
+              <div
+                class="founder-agreement-box"
+                [class.selected]="founderAgreedToPrice()"
+                (click)="founderAgreedToPrice.update((v) => !v)"
+              >
                 <div class="custom-checkbox" [class.checked]="founderAgreedToPrice()">
                   @if (founderAgreedToPrice()) {
                     <mat-icon class="chk-check-icon">check</mat-icon>
                   }
                 </div>
                 <div class="agreement-text">
-                  <strong>Compromiso formal y adhesión al protocolo de admisión</strong>
+                  <strong class="agreement-title">COMPROMISO FORMAL Y ADHESIÓN AL PROTOCOLO DE ADMISIÓN <b class="req-star">*</b></strong>
                   <p>
                     Declaro estar al tanto y en conformidad con el aporte patrimonial
                     correspondiente a la
@@ -151,12 +137,12 @@
                   [disabled]="
                     !founderName().trim() ||
                     !founderEmail().trim() ||
+                    !founderPhone().trim() ||
                     !founderLetter().trim() ||
                     !founderAgreedToPrice()
                   "
                 >
                   <span>Enviar Carta al Comité Directivo</span>
-                  <mat-icon class="btn-icon">arrow_forward</mat-icon>
                 </button>
               </div>
             </form>

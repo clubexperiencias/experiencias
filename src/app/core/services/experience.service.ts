@@ -2,16 +2,17 @@ import { Injectable, signal } from '@angular/core';
 import { Experience } from '../models/experience.model';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class ExperienceService {
   private readonly _experiences = signal<Experience[]>([
     {
-      id: 'exp_kayak_pirquitas',
-      slug: 'kayak-sunset-dique-las-pirquitas',
-      title: 'Travesía en Kayak & Sunset en Las Pirquitas',
+      id: 'exp_kayak_jumeal',
+      slug: 'kayak-sunset-dique-las-jumeal',
+      title: 'Travesía en Kayak & Sunset en El Jumeal',
       tagline: 'Navegación al atardecer en espejo de agua entre las Sierras de Ambato',
-      description: 'Remada en kayak doble o individual en aguas calmas rodeadas de quebradas y vegetación de yungas. Finalizamos con un brindis al atardecer y picada de quesos y embutidos regionales.',
+      description:
+        'Remada en kayak doble o individual en aguas calmas rodeadas de quebradas y vegetación de yungas. Finalizamos con un brindis al atardecer y picada de quesos y embutidos regionales.',
       region: 'Valle Central y Ambato',
       difficulty: 'Baja',
       durationDays: 1,
@@ -28,19 +29,25 @@ export class ExperienceService {
       highlights: [
         'Navegación guiada por instructores certificados en aguas mansas',
         'Puntos panorámicos inaccesibles por tierra firme',
-        'Atardecer con degustación de dulces y quesos de cabra catamarqueños'
+        'Atardecer con degustación de dulces y quesos de cabra catamarqueños',
       ],
-      included: ['Kayaks de travesía y remos de carbono', 'Chaleco salvavidas reglamentario', 'Guía náutico certificado', 'Snack y bebidas'],
+      included: [
+        'Kayaks de travesía y remos de carbono',
+        'Chaleco salvavidas reglamentario',
+        'Guía náutico certificado',
+        'Snack y bebidas',
+      ],
       isExclusiveClub: true,
       isLocked: false,
-      detailRoute: '/experiencias/kayak'
+      detailRoute: '/experiencias/kayak',
     },
     {
       id: 'exp_pomez',
       slug: 'campo-de-piedra-pomez',
       title: 'Campo de Piedra Pómez & Duna Gigante',
       tagline: 'Un océano blanco de olas petrificadas en el corazón de la Puna',
-      description: 'Expedición 4x4 guiada por geólogos y guías locales hacia el paisaje más surrealista de Argentina. Formaciones de piedra pómez labradas por el viento andino a más de 3.000 metros de altitud.',
+      description:
+        'Expedición 4x4 guiada por geólogos y guías locales hacia el paisaje más surrealista de Argentina. Formaciones de piedra pómez labradas por el viento andino a más de 3.000 metros de altitud.',
       region: 'Antofagasta de la Sierra',
       difficulty: 'Moderada',
       durationDays: 2,
@@ -57,18 +64,24 @@ export class ExperienceService {
       highlights: [
         'Atardecer y noche estrellada bajo el cielo más limpio de América del Sur',
         'Caminata silenciosa por las gargantas de piedra pómez blanca',
-        'Degustación de vinos de altura y empanadas tradicionales catamarqueñas'
+        'Degustación de vinos de altura y empanadas tradicionales catamarqueñas',
       ],
-      included: ['Camioneta 4x4 equipada', 'Guía certificado WFR', 'Alojamiento en refugio puneño', 'Pensión completa'],
+      included: [
+        'Camioneta 4x4 equipada',
+        'Guía certificado WFR',
+        'Alojamiento en refugio puneño',
+        'Pensión completa',
+      ],
       isExclusiveClub: true,
-      isLocked: true
+      isLocked: true,
     },
     {
       id: 'exp_seismiles',
       slug: 'ruta-de-los-seismiles-laguna-verde',
       title: 'Ruta de los Seismiles & Laguna Verde',
       tagline: 'Expedición de alta montaña entre gigantes andinos de más de 6.000 metros',
-      description: 'Travesía escénica por la mítica Ruta Nacional 60 ascendiendo hacia el Paso de San Francisco, avistando el Volcán Pissis, Ojos del Salado e hipnóticas lagunas turquesas de altura.',
+      description:
+        'Travesía escénica por la mítica Ruta Nacional 60 ascendiendo hacia el Paso de San Francisco, avistando el Volcán Pissis, Ojos del Salado e hipnóticas lagunas turquesas de altura.',
       region: 'Fiambalá y Seismiles',
       difficulty: 'Exigente',
       durationDays: 3,
@@ -85,12 +98,17 @@ export class ExperienceService {
       highlights: [
         'Vistas a las cumbres más altas de la Cordillera de los Andes después del Aconcagua',
         'Termas naturales de Fiambalá bajo el cielo estrellado',
-        'Avistaje de vicuñas, flamencos andinos y salares de altura'
+        'Avistaje de vicuñas, flamencos andinos y salares de altura',
       ],
-      included: ['Transporte 4x4 especializado', 'Guía matriculado de montaña', 'Alojamiento en hosterías de cordillera', 'Seguro de aventura'],
+      included: [
+        'Transporte 4x4 especializado',
+        'Guía matriculado de montaña',
+        'Alojamiento en hosterías de cordillera',
+        'Seguro de aventura',
+      ],
       isExclusiveClub: true,
-      isLocked: true
-    }
+      isLocked: true,
+    },
   ]);
 
   readonly experiences = this._experiences.asReadonly();

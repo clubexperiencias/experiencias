@@ -145,7 +145,7 @@
   font-family: var(--font-mono);
   font-size: 1.15rem;
   font-weight: 700;
-  color: var(--color-gold);
+  color: #ffffff;
 }
 
 .stat-label {
@@ -207,28 +207,54 @@
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
 }
 
+.tier-card:not(.featured-tier):not(.founder-tier) {
+  background: #779A9A;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+}
+
+.tier-card:not(.featured-tier):not(.founder-tier):hover {
+  transform: translateY(-4px);
+  border-color: #8BBABA;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+
 .tier-card.user-current-tier {
   border-color: #ffffff;
   background: rgba(255, 255, 255, 0.05);
 }
 
+.tier-card:not(.featured-tier):not(.founder-tier).user-current-tier {
+  background: #779A9A;
+  border-color: rgba(255, 255, 255, 0.65);
+}
+
 .tier-card.featured-tier {
-  border-color: rgba(255, 212, 42, 0.6);
-  background: rgba(255, 212, 42, 0.08);
+  background: #d9a300;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+}
+
+.tier-card.featured-tier:hover {
+  transform: translateY(-4px);
+  border-color: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
 }
 
 .tier-featured-glow {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, transparent, var(--color-gold), transparent);
+  display: none;
 }
 
 .tier-card.founder-tier {
-  border-color: rgba(186, 218, 255, 0.4);
-  background: rgba(80, 140, 255, 0.08);
+  background: #6ea6f7;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+}
+
+.tier-card.founder-tier:hover {
+  transform: translateY(-4px);
+  border-color: rgba(255, 255, 255, 0.75);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
 }
 
 .tier-card-header {
@@ -247,21 +273,21 @@
 }
 
 .tier-level-badge.initial {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--color-text-soft);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(15, 28, 45, 0.28);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.28);
 }
 
 .tier-level-badge.current {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(15, 28, 45, 0.35);
   color: #ffffff;
   border: 1px solid rgba(255, 255, 255, 0.6);
 }
 
 .tier-level-badge.locked-badge {
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.75);
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(15, 28, 45, 0.32);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.32);
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
@@ -282,9 +308,9 @@
 }
 
 .tier-level-badge.founder-badge {
-  background: rgba(128, 179, 255, 0.25);
-  color: #bad6ff;
-  border: 1px solid rgba(128, 179, 255, 0.5);
+  background: rgba(15, 28, 45, 0.28);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.28);
 }
 
 .tier-name {
@@ -313,8 +339,41 @@
   color: #ffffff !important;
 }
 
+.tier-card.featured-tier .tier-name {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
 .tier-card.featured-tier .tier-price {
-  color: var(--color-gold);
+  color: #ffffff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
+}
+
+.tier-card.featured-tier .tier-period {
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+}
+
+.tier-card.featured-tier .tier-jump-card {
+  background: rgba(15, 28, 45, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 3px;
+}
+
+.tier-card.featured-tier .jump-tag {
+  color: #ffffff;
+}
+
+.tier-card.featured-tier .tier-jump-card p {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.tier-card.featured-tier .tier-benefits li {
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.tier-card.featured-tier .tier-benefits li::before {
+  color: #ffffff;
 }
 
 .tier-period {
@@ -340,7 +399,29 @@
   margin-bottom: 0.2rem;
 }
 
-/* Columna 1: Socio Emergente (lo amarillo es blanco) */
+/* Columna 1: Socio Emergente (look & feel de /socios/emergentes con #779A9A) */
+.tier-card:not(.featured-tier):not(.founder-tier) .tier-name {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.tier-card:not(.featured-tier):not(.founder-tier) .tier-period {
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.tier-card:not(.featured-tier):not(.founder-tier) .tier-jump-card {
+  background: rgba(15, 28, 45, 0.26);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 3px;
+}
+
+.tier-card:not(.featured-tier):not(.founder-tier) .tier-jump-card p {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.tier-card:not(.featured-tier):not(.founder-tier) .tier-benefits li {
+  color: rgba(255, 255, 255, 0.95);
+}
+
 .tier-card:not(.featured-tier):not(.founder-tier) .jump-tag,
 .tier-card:first-child .jump-tag {
   color: #ffffff;
@@ -352,22 +433,39 @@
   color: #ffffff !important;
 }
 
-/* Columna 3: Vitalicio / Socio Fundador (todo en celeste 80b3ff) */
+/* Columna 3: Vitalicio / Socio Fundador (rellena de #80b3ff y estilo similar a Socio Emergente) */
+.tier-card.founder-tier .tier-name {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.tier-card.founder-tier .tier-jump-card {
+  background: rgba(15, 28, 45, 0.26);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 3px;
+}
+
+.tier-card.founder-tier .tier-jump-card p {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.tier-card.founder-tier .tier-benefits li {
+  color: rgba(255, 255, 255, 0.95);
+}
+
 .tier-card.founder-tier .tier-price {
   font-family: var(--font-sans);
   font-size: 1.35rem;
   font-weight: 700;
   letter-spacing: -0.015em;
-  color: #80b3ff;
+  color: #ffffff;
 }
 
 .tier-card.founder-tier .tier-period {
-  color: #bad6ff;
-  opacity: 0.85;
+  color: rgba(255, 255, 255, 0.88);
 }
 
 .tier-card.founder-tier .jump-tag {
-  color: #80b3ff;
+  color: #ffffff;
 }
 
 .tier-jump-card p {
@@ -408,9 +506,9 @@
   color: #ffffff;
 }
 
-/* Tildes celestes 80b3ff para Socio Fundador */
+/* Tildes blancos para Socio Fundador */
 .tier-card.founder-tier .tier-benefits li::before {
-  color: #80b3ff;
+  color: #ffffff;
 }
 
 .tier-card-footer {
@@ -483,22 +581,23 @@
 }
 
 .tier-cta-btn.locked-cta {
-  background: rgba(255, 255, 255, 0.08) !important;
-  color: rgba(255, 255, 255, 0.55) !important;
-  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+  color: #000000 !important;
+  border: 1px solid rgba(255, 255, 255, 0.4) !important;
   cursor: not-allowed !important;
-  opacity: 0.85;
+  opacity: 0.92;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
 }
 
 .tier-cta-btn.locked-cta .btn-icon {
   font-size: 18px !important;
   width: 18px !important;
   height: 18px !important;
-  color: rgba(255, 255, 255, 0.55) !important;
+  color: #000000 !important;
 }
 
 .tier-cta-btn.locked-cta .cta-sub-text {
-  color: rgba(255, 255, 255, 0.45) !important;
+  color: rgba(0, 0, 0, 0.72) !important;
 }
 
 .tier-cta-btn.active-cta {
@@ -513,13 +612,13 @@
 }
 
 .tier-cta-btn.founder-cta {
-  background: #80B3FF;
+  background: #ffffff;
   color: #000000;
   font-weight: 600;
 }
 
 .tier-cta-btn.founder-cta:hover {
-  background: #99c2ff;
+  background: #f0f4f8;
   transform: translateY(-2px);
 }
 

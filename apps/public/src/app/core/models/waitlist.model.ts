@@ -18,41 +18,27 @@ export interface WaitlistEntry {
   dni?: string;
   phone?: string;
   documentNumber?: string;
-  nationality?: string;
   experiencesWishlist?: string[];
-  wishlistNotes?: string;
-  bio?: string;
-  profileCompleted?: boolean;
-  interest?: ExperienceInterest;
+  experiencesOther?: string;
   position: number;
-  referralCode: string;
   createdAt: Date;
   status: 'pending' | 'confirmed' | 'invited';
   source: string;
   membershipTier?: MembershipTier;
   subscription?: SubscriptionDetails;
+  authUserId?: string;
+  googleLinked?: boolean;
+  registrationToken?: string;
 }
-
-export type ExperienceInterest =
-  | 'puna_volcanes'
-  | 'astroturismo_seismiles'
-  | 'dunas_sandboard'
-  | 'termas_bienestar'
-  | 'ruta_adobe_cultura'
-  | 'gastronomia_vinos'
-  | 'all';
 
 export interface WaitlistSubmissionDto {
   email: string;
-  interest?: ExperienceInterest;
   fullName?: string;
   dni?: string;
   phone?: string;
   documentNumber?: string;
-  nationality?: string;
   experiencesWishlist?: string[];
-  wishlistNotes?: string;
-  bio?: string;
+  experiencesOther?: string;
 }
 
 export interface WaitlistStats {

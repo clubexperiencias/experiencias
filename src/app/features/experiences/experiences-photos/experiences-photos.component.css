@@ -47,7 +47,7 @@
   box-sizing: border-box;
   background: hsla(220, 24%, 9%, 0.35);
   border: 1px solid rgba(255, 204, 0, 0.45);
-  border-left: 4px solid #FFCC00;
+  border-left: 4px solid #ffcc00;
   border-radius: 2px;
   padding: 2.2rem;
   backdrop-filter: blur(12px);
@@ -59,7 +59,7 @@
   font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.16em;
-  color: #FFCC00;
+  color: #ffcc00;
   text-transform: uppercase;
   display: block;
   margin-bottom: 0.5rem;
@@ -110,7 +110,7 @@
   font-size: 16px;
   width: 16px;
   height: 16px;
-  color: #FFCC00;
+  color: #ffcc00;
 }
 
 /* ==========================================================================
@@ -131,7 +131,7 @@
   font-family: var(--font-sans);
   font-size: 0.78rem;
   font-weight: 800;
-  color: #FFCC00;
+  color: #ffcc00;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   white-space: nowrap;
@@ -150,7 +150,7 @@
   border-radius: 2px;
   padding: 0.45rem 0.9rem;
   font-family: var(--font-sans);
-  font-size: 0.80rem;
+  font-size: 0.8rem;
   font-weight: 700;
   color: #ffffff;
   cursor: pointer;
@@ -163,9 +163,9 @@
 }
 
 .filter-chip-btn.active {
-  background: #FFCC00;
+  background: #ffcc00;
   color: #000000;
-  border-color: #FFCC00;
+  border-color: #ffcc00;
 }
 
 /* ==========================================================================
@@ -180,18 +180,21 @@
 
 .collage-card {
   position: relative;
-  background: #000000;
+  background: #3A506B;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 2px;
   overflow: hidden;
   cursor: pointer;
-  transition: border-color 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
+  transition:
+    border-color 0.25s ease,
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
 }
 
 .collage-card:hover {
-  border-color: #FFCC00;
+  border-color: #ffcc00;
   transform: translateY(-3px);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 12px 28px rgba(255, 255, 255, 0.32);
 }
 
 /* Spans para el efecto Collage */
@@ -239,10 +242,10 @@
   inset: 0;
   background: linear-gradient(
     180deg,
-    rgba(0, 0, 0, 0.35) 0%,
-    rgba(0, 0, 0, 0.1) 40%,
-    rgba(0, 0, 0, 0.85) 85%,
-    rgba(0, 0, 0, 0.95) 100%
+    rgba(58, 80, 107, 0.35) 0%,
+    rgba(58, 80, 107, 0.1) 40%,
+    rgba(58, 80, 107, 0.85) 85%,
+    rgba(58, 80, 107, 0.95) 100%
   );
   pointer-events: none;
 }
@@ -253,7 +256,7 @@
   left: 14px;
   right: 14px;
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   z-index: 5;
 }
@@ -262,15 +265,19 @@
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  background: #FFCC00;
-  color: #000000;
+  background: #ffcc00;
+  color: #0b1120;
+  border: 1px solid #ffcc00;
   font-family: var(--font-sans);
-  font-size: 0.65rem;
-  font-weight: 800;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.2;
   letter-spacing: 0.08em;
-  padding: 0.25rem 0.6rem;
-  border-radius: 0;
+  padding: 0.3rem 0.65rem;
+  border-radius: 2px;
+  box-sizing: border-box;
   text-transform: uppercase;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 .badge-mini-icon {
@@ -279,16 +286,20 @@
   height: 14px;
 }
 
-.altitude-tag {
-  background: rgba(0, 0, 0, 0.65);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  color: #ffffff;
-  font-family: var(--font-mono);
-  font-size: 0.70rem;
+.photo-location-tag {
+  background: var(--color-gold);
+  border: 1px solid var(--color-gold);
+  color: #0b1120;
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
   font-weight: 700;
-  padding: 0.25rem 0.6rem;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.65rem;
   border-radius: 2px;
   backdrop-filter: blur(4px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 .photo-overlay-content {
@@ -310,7 +321,7 @@
   font-family: var(--font-sans);
   font-size: 0.72rem;
   font-weight: 700;
-  color: #FFCC00;
+  color: #ffcc00;
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
@@ -360,7 +371,7 @@
   font-size: 14px;
   width: 14px;
   height: 14px;
-  color: #FFCC00;
+  color: #ffcc00;
 }
 
 .view-hd-hint {
@@ -370,7 +381,7 @@
   font-family: var(--font-sans);
   font-size: 0.72rem;
   font-weight: 800;
-  color: #FFCC00;
+  color: #ffcc00;
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
@@ -396,10 +407,10 @@
 
 .cta-kicker {
   font-family: var(--font-sans);
-  font-size: 0.70rem;
+  font-size: 0.7rem;
   font-weight: 800;
   letter-spacing: 0.14em;
-  color: #FFCC00;
+  color: #ffcc00;
   text-transform: uppercase;
   display: block;
   margin-bottom: 0.4rem;
@@ -443,7 +454,7 @@
 }
 
 .cta-action-btn.primary {
-  background: #FFCC00;
+  background: #ffcc00;
   color: #000000;
 }
 
@@ -479,7 +490,7 @@
 .lightbox-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.88);
+  background: rgba(0, 0, 0, 0.62);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   z-index: 2000;
@@ -534,9 +545,9 @@
 }
 
 .lightbox-close-btn:hover {
-  background: #FFCC00;
+  background: #ffcc00;
   color: #000000;
-  border-color: #FFCC00;
+  border-color: #ffcc00;
 }
 
 .lightbox-media-box {
@@ -575,7 +586,7 @@
   font-family: var(--font-sans);
   font-size: 0.78rem;
   font-weight: 700;
-  color: #FFCC00;
+  color: #ffcc00;
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
@@ -637,7 +648,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  background: #FFCC00;
+  background: #ffcc00;
   color: #000000;
   font-family: var(--font-sans);
   font-size: 0.82rem;
@@ -709,5 +720,283 @@
   .lightbox-details-grid {
     grid-template-columns: 1fr;
     gap: 0.8rem;
+  }
+}
+
+/* Galería uniforme y visor compartido con /experiencias/kayak/fotos */
+.photos-grid-3cols {
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.4rem;
+}
+
+.photo-card-item {
+  position: relative;
+  background: hsla(220, 24%, 9%, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+  overflow: hidden;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  transition:
+    transform 0.25s ease,
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.photo-card-item:hover {
+  transform: translateY(-3px);
+  border-color: rgba(255, 204, 0, 0.7);
+  box-shadow: 0 10px 24px rgba(255, 255, 255, 0.28);
+}
+
+.photo-card-media {
+  position: relative;
+  width: 100%;
+  height: 220px;
+  overflow: hidden;
+}
+
+.gallery-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.35s ease;
+}
+
+.photo-card-item:hover .gallery-thumb-img {
+  transform: scale(1.04);
+}
+
+.photo-card-media .admin-curated-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1;
+}
+
+.photo-card-media .photo-location-tag {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: var(--color-gold);
+  border: 1px solid var(--color-gold);
+  color: #0b1120;
+  padding: 0.3rem 0.65rem;
+  border-radius: 2px;
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  z-index: 1;
+}
+
+.photo-card-body {
+  padding: 1rem 1.1rem 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1;
+}
+
+.photo-item-credit {
+  color: var(--color-gold);
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.photo-item-title {
+  color: #ffffff;
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 0;
+}
+
+.photo-lightbox-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.5rem;
+  background: rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.photo-lightbox-backdrop .lightbox-content {
+  position: relative;
+  width: min(100%, 960px);
+  max-height: 90vh;
+  overflow: visible;
+  background: rgba(13, 18, 26, 0.34);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 204, 0, 0.45);
+  border-radius: 2px;
+}
+
+.photo-lightbox-backdrop .lightbox-media-wrap {
+  width: 100%;
+  max-height: 520px;
+  background: rgba(0, 0, 0, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.photo-lightbox-backdrop .lightbox-img {
+  width: 100%;
+  max-height: 520px;
+  height: 520px;
+  object-fit: cover;
+  display: block;
+}
+
+.photo-lightbox-backdrop .lightbox-close-btn,
+.photo-lightbox-backdrop .lightbox-nav-btn {
+  position: absolute;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 2px;
+  color: #ffffff;
+  background: rgba(0, 0, 0, 0.7);
+  cursor: pointer;
+}
+
+.photo-lightbox-backdrop .lightbox-close-btn {
+  top: 14px;
+  right: 14px;
+}
+
+.photo-lightbox-backdrop .lightbox-nav-btn {
+  top: 50%;
+  width: 44px;
+  height: 44px;
+  border: 2px solid #ffcc00;
+  border-radius: 50%;
+  background: #ffcc00;
+  color: #000000;
+  transform: translateY(-50%);
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease;
+}
+
+.photo-lightbox-backdrop .prev-btn {
+  left: -58px;
+}
+.photo-lightbox-backdrop .next-btn {
+  right: -58px;
+}
+
+.photo-lightbox-backdrop .lightbox-nav-btn:hover {
+  background: #ffdc33;
+  border-color: #ffdc33;
+  color: #000000;
+  transform: translateY(-50%) scale(1.06);
+}
+
+.photo-lightbox-backdrop .lightbox-close-btn:hover,
+.photo-lightbox-backdrop .lightbox-nav-btn:hover {
+  background: #ffcc00;
+  border-color: #ffcc00;
+  color: #000000;
+}
+
+.photo-lightbox-backdrop .lightbox-caption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.2rem;
+  padding: 1.4rem 1.6rem;
+  background: #171d29;
+  flex-wrap: wrap;
+}
+
+.photo-lightbox-backdrop .lightbox-caption-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1;
+  min-width: 260px;
+}
+
+.photo-lightbox-backdrop .lightbox-signature {
+  color: #ffcc00;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.photo-lightbox-backdrop .lightbox-caption h4 {
+  color: #ffffff;
+  font-family: var(--font-serif);
+  font-size: 1.35rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.photo-lightbox-backdrop .lightbox-caption p {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.86rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.lightbox-download-action-btn {
+  flex-shrink: 0;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.6rem 1.2rem;
+  border: 1px solid #ffcc00;
+  border-radius: 2px;
+  background: #ffcc00;
+  color: #000000;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.lightbox-download-action-btn mat-icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+}
+
+@media (max-width: 768px) {
+  .photo-lightbox-backdrop .lightbox-nav-btn {
+    width: 38px;
+    height: 38px;
+  }
+  .photo-lightbox-backdrop .prev-btn {
+    left: 10px;
+  }
+  .photo-lightbox-backdrop .next-btn {
+    right: 10px;
+  }
+  .photo-lightbox-backdrop .lightbox-img {
+    height: 360px;
+  }
+  .photo-lightbox-backdrop .lightbox-caption {
+    flex-direction: column;
+  }
+  .lightbox-download-action-btn {
+    width: 100%;
+    min-width: 0;
   }
 }

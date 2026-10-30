@@ -34,6 +34,18 @@ import { ProviderStoreService, SEED_PROVIDERS } from '../../../core/services/pro
           </p>
         </div>
 
+        <button type="button" class="submit-btn google-submit-btn" (click)="signInGoogle()">
+          <span class="google-mark">G</span>
+          {{ connectingGoogle() ? 'Conectando con Google...' : 'Iniciar sesión con Google' }}
+        </button>
+
+        @if (errorMessage()) {
+          <div class="alert-error">
+            <span>{{ errorMessage() }}</span>
+          </div>
+        }
+
+        @if (false) {
         <!-- Quick Demo Profiles for 1-click testing -->
         <div class="demo-box">
           <div class="demo-title">
@@ -162,6 +174,7 @@ import { ProviderStoreService, SEED_PROVIDERS } from '../../../core/services/pro
               </button>
             </div>
           </form>
+        }
         }
       </div>
     </div>
@@ -440,6 +453,11 @@ export class ProviderLoginComponent {
   readonly demoProviders = SEED_PROVIDERS;
   readonly showRegister = signal(false);
   readonly errorMessage = signal<string | null>(null);
+  readonly connectingGoogle = signal(false);
+
+  constructor() {
+    void this.store.restoreSupabaseSession();
+  }
 
   readonly loginForm = this.fb.nonNullable.group({
     email: ['guia@experiencias.club', [Validators.required, Validators.email]],
@@ -459,6 +477,14 @@ export class ProviderLoginComponent {
   quickLogin(providerId: string): void {
     this.store.loginAs(providerId);
     this.router.navigate(['/prestadores/dashboard']);
+  }
+
+  async signInGoogle(): Promise<void> {
+    this.errorMessage.set(null);
+    this.connectingGoogle.set(true);
+    const result = await this.store.signInWithGoogle();
+    this.connectingGoogle.set(false);
+    if (!result.success) this.errorMessage.set(result.message);
   }
 
   onLogin(): void {

@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Output, inject, model } from '@angular/core';
+import { Component, EventEmitter, HostListener, Output, inject, model, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { NewsletterService } from '../../../core/services/newsletter.service';
@@ -15,6 +15,7 @@ export class HeaderComponent {
   private readonly router = inject(Router);
 
   readonly mobileMenuOpen = model<boolean>(false);
+  readonly logoutModalOpen = signal<boolean>(false);
   @Output() loginClick = new EventEmitter<void>();
 
   toggleMobileMenu(event?: Event): void {
@@ -33,8 +34,40 @@ export class HeaderComponent {
     this.router.navigate(['/ingresar']);
   }
 
-  logout(): void {
+  isProfileRoute(): boolean {
+    const path = (this.router.url || '').split('?')[0].split('#')[0];
+    return path === '/perfil' || path.startsWith('/perfil/');
+  }
+
+  openLogoutModal(event?: Event): void {
+    if (event) {
+      event.stopPropagation();
+    }
+    this.closeMobileMenu();
+    this.logoutModalOpen.set(true);
+  }
+
+  closeLogoutModal(): void {
+    this.logoutModalOpen.set(false);
+  }
+
+  confirmLogout(): void {
+    this.logoutModalOpen.set(false);
     this.closeMobileMenu();
     this.newsletter.resetCurrentSubscription();
+    if (this.router.url.startsWith('/perfil')) {
+      this.router.navigate(['/']);
+    }
+  }
+
+  logout(): void {
+    this.openLogoutModal();
+  }
+
+  @HostListener('window:keydown.escape')
+  onEscape(): void {
+    if (this.logoutModalOpen()) {
+      this.closeLogoutModal();
+    }
   }
 }

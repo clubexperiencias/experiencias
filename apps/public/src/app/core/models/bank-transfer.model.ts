@@ -61,6 +61,8 @@ export interface TransferReceipt {
   mimeType: string;
   sizeBytes: number;
   url: string;
+  storageKey?: string;
+  provider?: 'r2' | 'supabase' | 'local';
 }
 
 export interface TransferSubmission {
@@ -121,6 +123,9 @@ export type NewProviderExperience = Omit<ProviderExperience, 'id' | 'slug' | 'cr
 
 export const BANK_TRANSFER_DESTINATION = {
   cbu: '3840200500000056402423',
+  accountHolder: 'Patricio Facundo Diaz Tillar',
+  taxId: '20-38628297-9',
+  entity: 'Uala Bank S.A.U',
 } as const;
 
 export const RECEIPT_ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'] as const;

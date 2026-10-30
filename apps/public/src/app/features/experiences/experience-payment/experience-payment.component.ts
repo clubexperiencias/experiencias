@@ -1,5 +1,8 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
-import { NewsletterService } from '../../../core/services/newsletter.service';
+import { Component, computed, effect, inject, signal, OnInit } from '@angular/core';
+import {
+  AUTH_SUCCESS_FEEDBACK_DURATION_MS,
+  NewsletterService,
+} from '../../../core/services/newsletter.service';
 import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -8,8 +11,16 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { FooterComponent } from '../../../shared/components/footer/footer.component';
 import { HeaderComponent } from '../../../shared/components/header/header.component';
-import { BreadcrumbComponent, BreadcrumbItem } from '../../../shared/components/breadcrumb/breadcrumb.component';
-import { ProviderStoreService, validateReceiptFile } from '../../../core/services/provider-store.service';
+import { FounderAdComponent } from '../../../shared/components/founder-ad/founder-ad.component';
+import {
+  BreadcrumbComponent,
+  BreadcrumbItem,
+} from '../../../shared/components/breadcrumb/breadcrumb.component';
+import {
+  ProviderStoreService,
+  validateReceiptFile,
+} from '../../../core/services/provider-store.service';
+import { isSupabaseConfigured } from '../../../core/supabase/supabase.client';
 import {
   BANK_TRANSFER_DESTINATION,
   DiscountCode,
@@ -23,23 +34,45 @@ import {
 @Component({
   selector: 'app-experience-payment',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink, MatIconModule, ArsPipe, FechaPipe, FooterComponent, HeaderComponent, BreadcrumbComponent],
+  imports: [
+    ReactiveFormsModule,
+    RouterLink,
+    MatIconModule,
+    ArsPipe,
+    FechaPipe,
+    FooterComponent,
+    FounderAdComponent,
+    HeaderComponent,
+    BreadcrumbComponent,
+  ],
   templateUrl: './experience-payment.component.html',
   styleUrl: './experience-payment.component.css',
 })
-export class ExperiencePaymentComponent {
+export class ExperiencePaymentComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly store = inject(ProviderStoreService);
   private readonly fb = inject(FormBuilder);
   private readonly newsletter = inject(NewsletterService);
 
   readonly cbu = BANK_TRANSFER_DESTINATION.cbu;
+  readonly transferDestination = BANK_TRANSFER_DESTINATION;
   readonly acceptedTypes = RECEIPT_ACCEPTED_TYPES.join(',');
   readonly mobileMenuOpen = signal(false);
+  readonly authReady = signal(!isSupabaseConfigured());
+  readonly checkoutMember =
+    signal<Awaited<ReturnType<NewsletterService['getAuthenticatedMember']>>>(null);
+  readonly authError = signal<string | null>(null);
+  readonly showAuthSuccessNotification = signal(false);
+  private authSuccessTimer: ReturnType<typeof setTimeout> | null = null;
 
   private readonly slug = toSignal(
-    this.route.paramMap.pipe(map((params) => params.get('slug') ?? this.route.snapshot.data['slug'] ?? '')),
-    { initialValue: this.route.snapshot.paramMap.get('slug') ?? this.route.snapshot.data['slug'] ?? '' },
+    this.route.paramMap.pipe(
+      map((params) => params.get('slug') ?? this.route.snapshot.data['slug'] ?? ''),
+    ),
+    {
+      initialValue:
+        this.route.snapshot.paramMap.get('slug') ?? this.route.snapshot.data['slug'] ?? '',
+    },
   );
 
   readonly experience = computed(() => {
@@ -59,7 +92,10 @@ export class ExperiencePaymentComponent {
 
   readonly form = this.fb.nonNullable.group({
     date: ['', Validators.required],
-    participants: [1, [Validators.required, Validators.min(1), Validators.max(MAX_PARTICIPANTS_PER_BOOKING)]],
+    participants: [
+      1,
+      [Validators.required, Validators.min(1), Validators.max(MAX_PARTICIPANTS_PER_BOOKING)],
+    ],
     fullName: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(120)]],
     email: ['', [Validators.required, Validators.email, Validators.maxLength(160)]],
     dni: ['', [Validators.required, Validators.pattern(/^\d{7,9}$/)]],
@@ -67,16 +103,20 @@ export class ExperiencePaymentComponent {
   });
 
   readonly memberEmail = computed(() => this.newsletter.currentMember()?.email ?? null);
+  readonly memberFullName = computed(
+    () => this.newsletter.currentMember()?.fullName?.trim() || null,
+  );
   readonly memberDni = computed(() => this.newsletter.currentMember()?.dni?.trim() || null);
   readonly memberPhone = computed(() => this.newsletter.currentMember()?.phone?.trim() || null);
 
   private readonly lockMemberFields = effect(() => {
     this.lockControl('email', this.memberEmail());
-    this.lockControl('dni', this.memberDni());
-    this.lockControl('phone', this.memberPhone());
+    this.fillControl('fullName', this.memberFullName());
+    this.fillControl('dni', this.memberDni());
+    this.fillControl('phone', this.memberPhone());
   });
 
-  private lockControl(name: 'email' | 'dni' | 'phone', value: string | null): void {
+  private lockControl(name: 'fullName' | 'email' | 'dni' | 'phone', value: string | null): void {
     const control = this.form.controls[name];
     if (value) {
       control.setValue(value);
@@ -87,7 +127,15 @@ export class ExperiencePaymentComponent {
     }
   }
 
-  private readonly formValue = toSignal(this.form.valueChanges, { initialValue: this.form.getRawValue() });
+  private fillControl(name: 'fullName' | 'dni' | 'phone', value: string | null): void {
+    if (value && !this.form.controls[name].value) {
+      this.form.controls[name].setValue(value);
+    }
+  }
+
+  private readonly formValue = toSignal(this.form.valueChanges, {
+    initialValue: this.form.getRawValue(),
+  });
 
   readonly dateOptions = computed(() => {
     const exp = this.experience();
@@ -101,11 +149,16 @@ export class ExperiencePaymentComponent {
   });
 
   readonly participantOptions = computed(() => {
-    const max = Math.min(MAX_PARTICIPANTS_PER_BOOKING, this.seatsForSelectedDate() || MAX_PARTICIPANTS_PER_BOOKING);
+    const max = Math.min(
+      MAX_PARTICIPANTS_PER_BOOKING,
+      this.seatsForSelectedDate() || MAX_PARTICIPANTS_PER_BOOKING,
+    );
     return Array.from({ length: max }, (_, i) => i + 1);
   });
 
-  readonly subtotal = computed(() => (this.experience()?.priceArs ?? 0) * (Number(this.formValue().participants) || 1));
+  readonly subtotal = computed(
+    () => (this.experience()?.priceArs ?? 0) * (Number(this.formValue().participants) || 1),
+  );
 
   readonly discountInput = signal('');
   readonly appliedDiscount = signal<DiscountCode | undefined>(undefined);
@@ -141,7 +194,9 @@ export class ExperiencePaymentComponent {
   readonly receiptError = signal<string | null>(null);
   readonly isDragging = signal(false);
 
-  private readonly formStatus = toSignal(this.form.statusChanges, { initialValue: this.form.status });
+  private readonly formStatus = toSignal(this.form.statusChanges, {
+    initialValue: this.form.status,
+  });
 
   readonly canSubmit = computed(() => this.formStatus() === 'VALID' && this.receiptFile() !== null);
 
@@ -151,6 +206,58 @@ export class ExperiencePaymentComponent {
   readonly confirmation = signal<TransferSubmission | null>(null);
 
   readonly cbuGroups = this.cbu.match(/.{1,4}/g) ?? [this.cbu];
+
+  ngOnInit(): void {
+    void this.initializeCheckout();
+  }
+
+  private async initializeCheckout(): Promise<void> {
+    if (!isSupabaseConfigured()) {
+      this.authReady.set(true);
+      return;
+    }
+
+    try {
+      const member = await this.newsletter.getAuthenticatedMember();
+      this.checkoutMember.set(member);
+      if (member) {
+        this.triggerAuthSuccessFeedback();
+      }
+    } catch {
+      this.authError.set('No pudimos verificar tu cuenta. Intentá nuevamente.');
+    } finally {
+      this.authReady.set(true);
+    }
+  }
+
+  private triggerAuthSuccessFeedback(): void {
+    if (this.authSuccessTimer) {
+      clearTimeout(this.authSuccessTimer);
+    }
+
+    this.showAuthSuccessNotification.set(true);
+    this.newsletter.profileSuccessHighlight.set(true);
+    this.authSuccessTimer = setTimeout(() => {
+      this.showAuthSuccessNotification.set(false);
+      this.newsletter.profileSuccessHighlight.set(false);
+      this.authSuccessTimer = null;
+    }, AUTH_SUCCESS_FEEDBACK_DURATION_MS);
+  }
+
+  readonly requiresGoogle = computed(() => !this.checkoutMember());
+
+  async linkGoogleAccount(): Promise<void> {
+    this.authError.set(null);
+    const exp = this.experience();
+    const redirectTo =
+      exp && typeof window !== 'undefined'
+        ? `${window.location.origin}/experiencias/${exp.slug}/pago`
+        : undefined;
+    const result = await this.newsletter.signInWithGoogle(redirectTo);
+    if (!result.success) {
+      this.authError.set(result.message);
+    }
+  }
 
   async copy(value: string, kind: 'cbu' | 'monto'): Promise<void> {
     try {
@@ -212,10 +319,12 @@ export class ExperiencePaymentComponent {
   }
 
   formatSize(bytes: number): string {
-    return bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+    return bytes < 1024 * 1024
+      ? `${Math.round(bytes / 1024)} KB`
+      : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
   }
 
-  submit(): void {
+  async submit(): Promise<void> {
     this.submitError.set(null);
     this.form.markAllAsTouched();
     const exp = this.experience();
@@ -228,12 +337,41 @@ export class ExperiencePaymentComponent {
     this.submitting.set(true);
     try {
       const value = this.form.getRawValue();
-      const submission = this.store.submitTransfer({
+      const authenticatedMember = await this.newsletter.getAuthenticatedMember();
+      const normalizedEmail = value.email.trim().toLowerCase();
+      if (
+        isSupabaseConfigured() &&
+        (!authenticatedMember || authenticatedMember.email.toLowerCase() !== normalizedEmail)
+      ) {
+        this.submitError.set(
+          'La sesión no coincide con el email de la reserva. Volvé a vincular Google e intentá nuevamente.',
+        );
+        return;
+      }
+      if (isSupabaseConfigured() && authenticatedMember) {
+        const profileResult = await this.newsletter.updateMemberProfile({
+          fullName: value.fullName,
+          dni: value.dni,
+          phone: value.phone,
+          experiencesWishlist: authenticatedMember.experiencesWishlist,
+          experiencesOther: authenticatedMember.experiencesOther,
+        });
+        if (!profileResult.success) {
+          this.submitError.set(
+            profileResult.message || 'No pudimos actualizar tus datos de perfil.',
+          );
+          return;
+        }
+        if (profileResult.entry) {
+          this.checkoutMember.set(profileResult.entry);
+        }
+      }
+      const submission = await this.store.submitTransfer({
         experienceId: exp.id,
         date: value.date,
         participants: Number(value.participants),
         fullName: value.fullName,
-        email: value.email,
+        email: authenticatedMember?.email ?? normalizedEmail,
         dni: value.dni,
         phone: value.phone,
         discountCode: this.appliedDiscount()?.code,
@@ -242,7 +380,11 @@ export class ExperiencePaymentComponent {
       this.confirmation.set(submission);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
-      this.submitError.set(error instanceof Error ? error.message : 'No pudimos registrar el pago. Intentá nuevamente.');
+      this.submitError.set(
+        error instanceof Error
+          ? error.message
+          : 'No pudimos registrar el pago. Intentá nuevamente.',
+      );
     } finally {
       this.submitting.set(false);
     }

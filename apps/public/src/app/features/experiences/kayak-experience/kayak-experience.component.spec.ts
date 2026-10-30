@@ -22,7 +22,7 @@ describe('KayakExperienceComponent (/experiencias/kayak)', () => {
     expect(component).toBeTruthy();
     const heading = fixture.nativeElement.querySelector('.card-heading');
     expect(heading).toBeTruthy();
-    expect(heading.textContent).toContain('Travesía en Kayak & Sunset en Las Pirquitas');
+    expect(heading.textContent).toContain('Travesía en Kayak & Sunset en el Dique El Jumeal');
   });
 
   it('should render breadcrumb with links to / and /experiencias', () => {

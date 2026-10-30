@@ -1,6 +1,6 @@
 import { Component, HostListener, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { NewsletterService } from '../../../../core/services/newsletter.service';
 import { FooterComponent } from '../../../../shared/components/footer/footer.component';
@@ -9,6 +9,7 @@ import {
   BreadcrumbComponent,
   BreadcrumbItem,
 } from '../../../../shared/components/breadcrumb/breadcrumb.component';
+import { FounderAdComponent } from '../../../../shared/components/founder-ad/founder-ad.component';
 
 export interface GalleryPhoto {
   src: string;
@@ -24,11 +25,11 @@ export interface GalleryPhoto {
   standalone: true,
   imports: [
     CommonModule,
-    RouterLink,
     MatIconModule,
     FooterComponent,
     HeaderComponent,
     BreadcrumbComponent,
+    FounderAdComponent,
   ],
   templateUrl: './kayak-photos.component.html',
   styleUrl: './kayak-photos.component.css',
@@ -57,11 +58,11 @@ export class KayakPhotosComponent {
   readonly photos: GalleryPhoto[] = [
     {
       src: '/assets/images/kayak-club-de-experiencias.jpg',
-      title: 'Travesía en Las Pirquitas',
+      title: 'Travesía en El Jumeal',
       caption:
         'Socios del Club navegando en aguas calmas frente al cordón de las Sierras de Ambato.',
       tag: 'DESTACADA',
-      photographer: 'Lucas N. · Equipo Fotográfico',
+      photographer: 'Lucas N: Equipo Fotográfico',
     },
   ];
 
@@ -70,16 +71,16 @@ export class KayakPhotosComponent {
     {
       src: '/assets/images/kayak-club-de-experiencias.jpg',
       title: 'Navegación al Atardecer',
-      caption: 'Remada en grupo en las bahías protegidas del dique Las Pirquitas.',
+      caption: 'Remada en grupo en las bahías protegidas del dique El Jumeal.',
       tag: 'DESTACADA',
-      photographer: 'Marcos T. · Guía & Fotografía',
+      photographer: 'Marcos T: Guía & Fotografía',
     },
     {
       src: '/assets/images/kayak-club-de-experiencias.jpg',
       title: 'Entorno & Cordón de Ambato',
       caption: 'Panorámica de las sierras catamarqueñas reflejadas en el espejo de agua.',
       tag: 'DESTACADA',
-      photographer: 'Sofía L. · Producción Visual',
+      photographer: 'Sofía L: Producción Visual',
     },
   ];
 
@@ -122,7 +123,7 @@ export class KayakPhotosComponent {
     },
     {
       src: '/assets/images/kayak-club-de-experiencias.jpg',
-      title: 'Reflejos Dorados en Las Pirquitas',
+      title: 'Reflejos Dorados en El Jumeal',
       caption: '',
       tag: 'DESTACADA POR EL EQUIPO',
       author: 'Federico S. · Socio Fundador',

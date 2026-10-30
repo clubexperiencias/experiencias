@@ -1,10 +1,10 @@
 export type ActivityStatus = 'completada' | 'confirmada' | 'pendiente_pago' | 'cancelada';
 
 export interface PaymentReceipt {
-  receiptNumber: string;        // Ej. REC-2026-CAT-0482
-  transactionId: string;        // Ej. TX-PROP-784219 / MP-928174
+  receiptNumber: string; // Ej. REC-2026-CAT-0482
+  transactionId: string; // Ej. TX-PROP-784219 / MP-928174
   gateway: 'custom' | 'mercadopago' | 'stripe';
-  gatewayDisplayName: string;   // Ej. "Mercado Pago (Transferencia & Débito)"
+  gatewayDisplayName: string; // Ej. "Mercado Pago (Transferencia & Débito)"
   amountArs: number;
   amountUsd: number;
   paidAt: string;
@@ -27,14 +27,14 @@ export interface CommunityPhoto {
 export interface ActivityReview {
   id: string;
   authorSignature: string; // Ej. "Gonzalo G." (Nombre y la inicial del apellido)
-  rating: number;          // 1 a 5 estrellas
+  rating: number; // 1 a 5 estrellas
   comment: string;
   createdAt: string;
 }
 
 export interface ActivityRecord {
   id: string;
-  slug?: string;                 // Ej. 'kayak-las-pirquitas'
+  slug?: string; // Ej. 'kayak-las-jumeal'
   userId: string;
   experienceId: string;
   title: string;

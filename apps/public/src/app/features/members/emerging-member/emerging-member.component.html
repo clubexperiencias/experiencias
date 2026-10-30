@@ -2,8 +2,22 @@
   <!-- Barra Superior Unificada -->
   <app-header [(mobileMenuOpen)]="mobileMenuOpen"></app-header>
 
-  <!-- Breadcrumb debajo del Header con fondo #FFCC00 -->
-  <app-breadcrumb [items]="breadcrumbs"></app-breadcrumb>
+  <!-- Notificación en Verde (3.5 segundos) que reemplaza al Breadcrumb -->
+  @if (showSuccessNotification()) {
+    <aside class="registration-success-bar" role="status" aria-live="polite">
+      <div class="success-bar-container">
+        <div class="success-bar-content">
+          <span class="success-bar-tag">¡CORREO EN LISTA DE ESPERA!</span>
+          <span class="success-bar-sep">·</span>
+          <strong class="success-bar-title"
+            >Completá tu registro para obtener tu número correlativo</strong
+          >
+        </div>
+      </div>
+    </aside>
+  } @else {
+    <app-breadcrumb [items]="breadcrumbs"></app-breadcrumb>
+  }
 
   <!-- Contenedor Principal de /socios/emergentes -->
   <div class="emerging-wallpaper-body app-wallpaper-body">
@@ -12,85 +26,189 @@
     <!-- Contenido Principal -->
     <main class="emerging-main-content">
       <div class="emerging-wrapper">
-        <!-- ═══════════════ CARD: MEMBRESÍA SOCIO EMERGENTE ═══════════════ -->
-        <div class="emerging-section-card">
-          <div class="card-inner-header">
-            <div class="tier-badge-row">
-              <span class="emerging-badge-tag">Nivel 1 Gratuito</span>
-            </div>
-            <h1 class="card-heading">Membresía Socio Emergente</h1>
+        <!-- ═══════════════ CARD / BOX UNIFICADA DE SOCIO EMERGENTE ═══════════════ -->
+        <section class="emerging-section-card" aria-labelledby="emerging-title">
+          <div class="section-card-header">
+            <span class="section-kicker">NIVEL 1: PUNTO DE PARTIDA</span>
+            <h1 id="emerging-title" class="card-heading">Membresía Socio Emergente</h1>
             <p class="card-subheading">
               El primer paso para ser parte de la comunidad de exploradores de Catamarca. Una
-              membresía abierta y sin costos para ingresar a la lista de espera oficial, informarte
-              con anticipación sobre cada travesía náutica o de montaña y acceder a tu perfil
-              digital de socio.
+              membresía abierta y sin costos para ingresar a la lista de espera oficial y acceder a
+              tu perfil digital de socio.
             </p>
           </div>
 
-          <!-- Condiciones y Alcance de la Membresía Inicial -->
-          <div class="emerging-conditions-card">
-            <div class="conditions-header">
-              <div class="conditions-title-group">
-                <span class="conditions-kicker">CONDICIONES DE LA MEMBRESÍA INICIAL</span>
-                <h2 class="conditions-title">Pre-registro Oficial y Acceso Comunitario</h2>
+          <!-- Franja de condiciones simplificadas -->
+          <div class="emerging-highlights-strip">
+            @for (h of highlights; track h.title) {
+              <div class="highlight-item">
+                <strong class="highlight-title">{{ h.title }}</strong>
+                <span class="highlight-desc">{{ h.description }}</span>
               </div>
-            </div>
-
-            <div class="conditions-meta-grid">
-              <div class="meta-item">
-                <span class="meta-label">Costo de Ingreso</span>
-                <span class="meta-value highlight-free">Sin costo</span>
-                <span class="meta-note"
-                  >Activación libre sin datos bancarios ni cuotas mensuales</span
-                >
-              </div>
-              <div class="meta-item">
-                <span class="meta-label">Reserva de cupos</span>
-                <span class="meta-value">Lista de Espera</span>
-                <span class="meta-note">Por orden correlativo de pre-registro</span>
-              </div>
-              <div class="meta-item">
-                <span class="meta-label">Base Operativa</span>
-                <span class="meta-value">Las Pirquitas</span>
-                <span class="meta-note">Travesías de kayak y senderismo andino</span>
-              </div>
-              <div class="meta-item">
-                <span class="meta-label">Vigencia</span>
-                <span class="meta-value">Permanente</span>
-                <span class="meta-note">Sin vencimiento ni renovación</span>
-              </div>
-            </div>
+            }
           </div>
 
-          <!-- Beneficios de la Membresía -->
-          <div class="benefits-section-block">
-            <h3 class="benefits-block-title">Beneficios incluidos en tu membresía</h3>
-            <div class="benefits-simple-list">
-              @for (b of benefits; track b.title) {
-                <div class="benefit-card">
-                  <h4 class="benefit-title">{{ b.title }}</h4>
-                  <p class="benefit-desc">{{ b.description }}</p>
+          @if (requiresGoogle()) {
+            <section class="google-link-gate" aria-live="polite">
+              <div class="google-link-gate-head">
+                <h2>Vincular cuenta</h2>
+              </div>
+              <p>
+                Antes de proceder con tu registro necesitamos confirmar el email al que vamos a
+                asociar tu membresía.
+              </p>
+              @if (authError()) {
+                <div class="signup-alert-error" role="alert">
+                  <mat-icon class="alert-icon">error_outline</mat-icon>
+                  <span>{{ authError() }}</span>
                 </div>
               }
-            </div>
-          </div>
+              <button type="button" class="google-link-btn" (click)="linkGoogleAccount()">
+                <svg
+                  class="google-link-icon"
+                  viewBox="0 0 24 24"
+                  width="20"
+                  height="20"
+                  aria-hidden="true"
+                >
+                  <path
+                    fill="#4285F4"
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                  />
+                </svg>
+                Iniciar sesión con Google
+              </button>
+            </section>
+          }
 
-          <!-- Bloque de Estado / CTA -->
-          @if (!newsletter.isSubscribed()) {
-            <div class="emerging-cta-box">
-              <div class="cta-text-group">
-                <span class="cta-kicker">INCORPORACIÓN INMEDIATA</span>
-                <h3 class="cta-title">Asegurá tu lugar en la Lista de Espera</h3>
-                <p class="cta-desc">
-                  Completá el pre-registro en la portada para obtener tu número correlativo de socio
-                  y ser notificado de las primeras expediciones.
-                </p>
+          <!-- Formulario de Registro o Confirmación de Membresía -->
+          @if (!newsletter.isSubscribed() || !isProfileComplete()) {
+            <form
+              class="signup-form"
+              [class.signup-form-locked]="requiresGoogle()"
+              novalidate
+              (submit)="$event.preventDefault(); submit()"
+            >
+              @if (submitError()) {
+                <div class="signup-alert-error">
+                  <mat-icon class="alert-icon">error_outline</mat-icon>
+                  <span>{{ submitError() }}</span>
+                </div>
+              }
+
+              <div class="signup-grid">
+                <!-- Fila 1 - Izquierda: Nombre y Apellido -->
+                <label class="signup-field">
+                  <span>Nombre y Apellido <b>*</b></span>
+                  <input
+                    type="text"
+                    [value]="fullName()"
+                    (input)="fullName.set($any($event.target).value)"
+                    maxlength="100"
+                    placeholder="Ej. Martín Rodríguez"
+                    autocomplete="name"
+                    required
+                  />
+                </label>
+
+                <!-- Fila 1 - Derecha: Correo Electrónico -->
+                <label class="signup-field">
+                  <span>Correo Electrónico <b>*</b></span>
+                  <input
+                    type="email"
+                    [value]="email()"
+                    (input)="email.set($any($event.target).value)"
+                    maxlength="254"
+                    placeholder="tu-correo@ejemplo.com"
+                    autocomplete="email"
+                    [readonly]="!!authenticatedEmail()"
+                    required
+                  />
+                </label>
+
+                <!-- Fila 2 - Izquierda: DNI -->
+                <label class="signup-field">
+                  <span>DNI <b>*(7 a 9 dígitos)</b></span>
+                  <input
+                    type="text"
+                    [value]="documentNumber()"
+                    (input)="documentNumber.set($any($event.target).value)"
+                    maxlength="9"
+                    placeholder="Ej. 30123456"
+                    inputmode="numeric"
+                    required
+                  />
+                </label>
+
+                <!-- Fila 2 - Derecha: Celular -->
+                <label class="signup-field">
+                  <span>Celular <b>*(WhatsApp)</b></span>
+                  <input
+                    type="tel"
+                    [value]="phone()"
+                    (input)="phone.set($any($event.target).value)"
+                    maxlength="25"
+                    placeholder="Ej. +54 9 3834 123456"
+                    autocomplete="tel"
+                    required
+                  />
+                </label>
               </div>
-              <a routerLink="/socios/emergentes/ingreso" class="emerging-cta-btn">
-                <span>Unirme a la Lista de Espera</span>
-                <mat-icon class="btn-icon">arrow_forward</mat-icon>
-              </a>
-            </div>
+
+              <!-- Preferencias de Experiencias -->
+              <div class="signup-field">
+                <span>¿QUÉ EXPERIENCIAS TE GUSTARÍA VIVIR? <em>(opcional)</em></span>
+                <div class="experience-options">
+                  @for (exp of experiences; track exp.id) {
+                    <button
+                      type="button"
+                      class="experience-option"
+                      [class.selected]="isSelected(exp.id)"
+                      (click)="toggleExperience(exp.id)"
+                    >
+                      <span class="checkbox-indicator">
+                        @if (isSelected(exp.id)) {
+                          <mat-icon class="indicator-icon">check</mat-icon>
+                        }
+                      </span>
+                      <span class="experience-title">{{ exp.title }}</span>
+                    </button>
+                  }
+                </div>
+              </div>
+
+              @if (isSelected('otros')) {
+                <label class="signup-field">
+                  <span>Especificá qué otra experiencia buscás</span>
+                  <textarea
+                    [value]="otherExperience()"
+                    (input)="otherExperience.set($any($event.target).value)"
+                    rows="3"
+                    placeholder="Contanos qué travesía o actividad andina te gustaría realizar..."
+                  ></textarea>
+                </label>
+              }
+
+              <div class="signup-actions">
+                <button type="submit" class="signup-submit-btn" [disabled]="isSubmitting()">
+                  <span>{{
+                    isSubmitting() ? 'Registrando membresía...' : 'Crear mi Cuenta de Socio'
+                  }}</span>
+                </button>
+              </div>
+            </form>
           } @else {
             <div class="emerging-confirmed-box">
               <div class="confirmed-text-group">
@@ -106,14 +224,13 @@
               </div>
               <a routerLink="/perfil" class="emerging-profile-btn">
                 <span>Ver Mi Perfil</span>
-                <mat-icon class="btn-icon">arrow_forward</mat-icon>
               </a>
             </div>
           }
-        </div>
+        </section>
 
         <!-- ═══════════════ AD BANNER: CONVOCATORIA SOCIO FUNDADOR ═══════════════ -->
-        <app-founder-ad />
+        <app-kayak-ad />
       </div>
     </main>
   </div>

@@ -8,14 +8,26 @@ import { Experience } from '../../core/models/experience.model';
 import { ModalType } from '../waitlist/waitlist.component';
 import { FooterComponent } from '../../shared/components/footer/footer.component';
 import { HeaderComponent } from '../../shared/components/header/header.component';
-import { BreadcrumbComponent, BreadcrumbItem } from '../../shared/components/breadcrumb/breadcrumb.component';
+import {
+  BreadcrumbComponent,
+  BreadcrumbItem,
+} from '../../shared/components/breadcrumb/breadcrumb.component';
+import { FounderAdComponent } from '../../shared/components/founder-ad/founder-ad.component';
 
 @Component({
   selector: 'app-providers',
   standalone: true,
-  imports: [CommonModule, RouterLink, MatIconModule, FooterComponent, HeaderComponent, BreadcrumbComponent],
+  imports: [
+    CommonModule,
+    RouterLink,
+    MatIconModule,
+    FooterComponent,
+    HeaderComponent,
+    BreadcrumbComponent,
+    FounderAdComponent,
+  ],
   templateUrl: './providers.component.html',
-  styleUrl: './providers.component.css'
+  styleUrl: './providers.component.css',
 })
 export class ProvidersComponent {
   readonly newsletter = inject(NewsletterService);
@@ -27,7 +39,7 @@ export class ProvidersComponent {
   readonly breadcrumbs: BreadcrumbItem[] = [
     { label: 'Inicio', url: '/' },
     { label: 'Experiencias', url: '/experiencias' },
-    { label: 'Prestadores & Guías' }
+    { label: 'Prestadores & Guías' },
   ];
 
   // Menús de navegación idénticos a los de /perfil y /
@@ -98,8 +110,17 @@ export class ProvidersComponent {
   }
 
   submitProvider(): void {
-    if (!this.providerEmail().trim() || !this.providerName().trim()) return;
+    if (!this.providerName().trim() || !this.providerEmail().trim()) return;
     this.providerSuccess.set(true);
+    void this.newsletter.submitProviderApplication({
+      fullName: this.providerName(),
+      category: this.providerCategory(),
+      region: this.providerRegion(),
+      email: this.providerEmail(),
+      phone: this.providerPhone(),
+      website: this.providerWebsite(),
+      description: this.providerDescription(),
+    });
   }
 
   resetForm(): void {

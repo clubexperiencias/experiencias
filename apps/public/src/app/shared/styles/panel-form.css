@@ -96,13 +96,18 @@ select.pay-input option {
 .pay-copy-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.35rem;
   flex-shrink: 0;
+  width: 104px;
+  height: 42px;
   padding: 0.5rem 0.85rem;
   border: 1px solid var(--glass-border);
   font-size: 0.82rem;
   color: var(--color-text-soft);
-  transition: border-color var(--transition-fast), color var(--transition-fast);
+  transition:
+    border-color var(--transition-fast),
+    color var(--transition-fast);
 }
 
 .pay-copy-btn:hover {
@@ -126,7 +131,9 @@ select.pay-input option {
   font-size: 0.9rem;
   font-weight: 600;
   color: var(--color-text-white);
-  transition: border-color var(--transition-fast), color var(--transition-fast);
+  transition:
+    border-color var(--transition-fast),
+    color var(--transition-fast);
 }
 
 .pay-secondary-btn:hover {

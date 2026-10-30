@@ -15,6 +15,7 @@ import {
 import { TransactionalEmailService } from './transactional-email.service';
 import { NewsletterService } from './newsletter.service';
 import { ActivityHistoryService } from './activity-history.service';
+import { SUPABASE_CLIENT, isSupabaseConfigured } from '../supabase/supabase.client';
 
 const PROVIDER_CONTACT_EMAIL = 'prestadores@experiencias.club';
 const SAMPLE_RECEIPT_URL = '/assets/images/comprobante-ejemplo.png';
@@ -207,9 +208,10 @@ export class ProviderStoreService {
   private readonly emails = inject(TransactionalEmailService);
   private readonly newsletter = inject(NewsletterService);
   private readonly activities = inject(ActivityHistoryService);
+  private readonly supabase = inject(SUPABASE_CLIENT);
 
   private readonly _providers = signal<ProviderUser[]>(this.loadStoredProviders());
-  private readonly _currentProvider = signal<ProviderUser | null>(this.loadStoredSession());
+  private readonly _currentProvider = signal<ProviderUser | null>(null);
   private readonly _experiences = signal<ProviderExperience[]>(this.loadStoredExperiences());
   private readonly _submissions = signal<TransferSubmission[]>(this.loadStoredSubmissions());
 
@@ -280,6 +282,66 @@ export class ProviderStoreService {
       pendingReceiptsCount: subs.filter((s) => s.status === 'pendiente').length,
     };
   });
+
+  async restoreSupabaseSession(): Promise<void> {
+    if (!isSupabaseConfigured()) {
+      this._currentProvider.set(null);
+      return;
+    }
+
+    const { data } = await this.supabase.auth.getUser();
+    const email = data.user?.email?.trim().toLowerCase();
+    if (!email) {
+      this._currentProvider.set(null);
+      return;
+    }
+
+    const { data: access, error } = await this.supabase
+      .from('provider_access')
+      .select('email, name, agency, active')
+      .eq('email', email)
+      .eq('active', true)
+      .maybeSingle();
+
+    if (error || !access) {
+      this._currentProvider.set(null);
+      return;
+    }
+
+    const existing = this._providers().find((provider) => provider.email.toLowerCase() === email);
+    const provider: ProviderUser = existing ?? {
+      id: `provider-${email.replace(/[^a-z0-9]+/g, '-')}`,
+      email,
+      name: access.name || email,
+      agency: access.agency || 'Prestador EXPERIENCIAS.CLUB',
+      phone: '',
+      cuitDni: '',
+      cbuAlias: '',
+      bankName: '',
+      verified: true,
+      role: 'prestador',
+      joinedAt: new Date().toISOString(),
+    };
+
+    if (!existing) this._providers.update((providers) => [...providers, provider]);
+    this._currentProvider.set(provider);
+    this.saveSession(provider);
+  }
+
+  async signInWithGoogle(): Promise<{ success: boolean; message: string }> {
+    if (!isSupabaseConfigured()) {
+      return { success: false, message: 'La autenticación no está configurada.' };
+    }
+
+    const { error } = await this.supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/` },
+    });
+
+    return error
+      ? { success: false, message: error.message }
+      : { success: true, message: 'Redirigiendo a Google...' };
+  }
 
   // ==========================================
   // Auth & Session
@@ -355,11 +417,12 @@ export class ProviderStoreService {
     return newUser;
   }
 
-  logout(): void {
-    this._currentProvider.set(null);
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem(STORAGE_KEYS.session);
+  async logout(): Promise<void> {
+    if (isSupabaseConfigured()) {
+      await this.supabase.auth.signOut();
     }
+    this._currentProvider.set(null);
+    this.saveSession(null);
   }
 
   updateProfile(updates: Partial<ProviderUser>): void {

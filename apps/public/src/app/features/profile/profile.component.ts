@@ -2,15 +2,15 @@ import { Component, HostListener, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
-import { NewsletterService } from '../../core/services/newsletter.service';
+import {
+  AUTH_SUCCESS_FEEDBACK_DURATION_MS,
+  NewsletterService,
+} from '../../core/services/newsletter.service';
 import { ActivityHistoryService } from '../../core/services/activity-history.service';
 import { PaymentReceipt } from '../../core/models/activity-history.model';
 import { ExperienceService } from '../../core/services/experience.service';
-import { PaymentManagerService } from '../../core/services/payment/payment-manager.service';
 import { Experience } from '../../core/models/experience.model';
-import { PaymentGatewayType } from '../../core/models/payment.model';
 import { ModalType } from '../waitlist/waitlist.component';
-import { ReferralService } from '../../core/services/referral.service';
 import { FooterComponent } from '../../shared/components/footer/footer.component';
 import { HeaderComponent } from '../../shared/components/header/header.component';
 import {
@@ -38,8 +38,6 @@ export class ProfileComponent implements OnInit {
   readonly newsletter = inject(NewsletterService);
   readonly activityService = inject(ActivityHistoryService);
   readonly experienceService = inject(ExperienceService);
-  readonly paymentManager = inject(PaymentManagerService);
-  readonly referralService = inject(ReferralService);
   readonly router = inject(Router);
 
   readonly breadcrumbs: BreadcrumbItem[] = [{ label: 'Inicio', url: '/' }, { label: 'Mi Perfil' }];
@@ -47,23 +45,88 @@ export class ProfileComponent implements OnInit {
   readonly bg = signal('/assets/images/laguna_blanca.jpg');
   readonly copyStatus = signal<string | null>(null);
   readonly showSuccessNotification = signal(false);
+  readonly profileJustSaved = signal(false);
+  readonly profileSaveError = signal<string | null>(null);
+  readonly authenticatedEmail = signal<string | null>(null);
+  private successTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Actividades: Solo las últimas dos en la vista previa del perfil
   readonly recentActivities = () => this.activityService.activities().slice(0, 2);
 
   getExperienceRoute(experienceId: string): string {
-    return experienceId === 'exp_kayak_pirquitas' ? '/experiencias/kayak' : '/experiencias';
+    return experienceId === 'exp_kayak_jumeal' ? '/experiencias/kayak' : '/experiencias';
+  }
+
+  readonly connectingGoogle = signal(false);
+
+  async connectGoogleAccount(): Promise<void> {
+    this.connectingGoogle.set(true);
+    await this.newsletter.signInWithGoogle();
+    this.connectingGoogle.set(false);
   }
 
   ngOnInit(): void {
-    if (this.newsletter.consumeLoginSuccessFlag()) {
-      this.showSuccessNotification.set(true);
-      this.newsletter.profileSuccessHighlight.set(true);
-      setTimeout(() => {
-        this.showSuccessNotification.set(false);
-        this.newsletter.profileSuccessHighlight.set(false);
-      }, 3000);
+    void this.loadAuthenticatedEmail();
+    if (!this.newsletter.currentMember()) {
+      this.newsletter.isAuthenticated().then((authed) => {
+        if (!authed) {
+          this.router.navigate(['/ingresar']);
+        } else {
+          this.syncFieldsFromMember();
+        }
+      });
+    } else {
+      this.syncFieldsFromMember();
     }
+
+    if (this.newsletter.consumeLoginSuccessFlag()) {
+      this.triggerProfileSuccessFeedback(false);
+    }
+  }
+
+  private async loadAuthenticatedEmail(): Promise<void> {
+    const [email, name] = await Promise.all([
+      this.newsletter.getAuthenticatedEmail(),
+      this.newsletter.getAuthenticatedName(),
+    ]);
+    if (email) {
+      this.authenticatedEmail.set(email);
+    }
+    if (name && !this.memberFullName()) {
+      this.memberFullName.set(name);
+    }
+  }
+
+  private syncFieldsFromMember(): void {
+    const m = this.newsletter.currentMember();
+    if (!m) return;
+    if (m.fullName && !this.memberFullName()) this.memberFullName.set(m.fullName);
+    const dni = m.dni || m.documentNumber || '';
+    if (dni && !this.memberDni()) this.memberDni.set(dni);
+    if (m.phone && !this.memberPhone()) this.memberPhone.set(m.phone);
+    if (m.experiencesWishlist?.length && this.selectedExperiences().length === 0) {
+      this.selectedExperiences.set(m.experiencesWishlist);
+    }
+    if (m.experiencesOther && !this.memberOtherExperience()) {
+      this.memberOtherExperience.set(m.experiencesOther);
+    }
+  }
+
+  private triggerProfileSuccessFeedback(highlightSaveButton: boolean): void {
+    if (this.successTimer) {
+      clearTimeout(this.successTimer);
+    }
+    this.showSuccessNotification.set(true);
+    this.newsletter.profileSuccessHighlight.set(true);
+    if (highlightSaveButton) {
+      this.profileJustSaved.set(true);
+    }
+    this.successTimer = setTimeout(() => {
+      this.showSuccessNotification.set(false);
+      this.profileJustSaved.set(false);
+      this.newsletter.profileSuccessHighlight.set(false);
+      this.successTimer = null;
+    }, AUTH_SUCCESS_FEEDBACK_DURATION_MS);
   }
 
   // Menús de navegación idénticos a los de la landing /
@@ -93,9 +156,6 @@ export class ProfileComponent implements OnInit {
   readonly founderSuccess = signal(false);
 
   // Suscripción de Membresía Mensual
-  readonly subscribingMembership = signal(false);
-  readonly membershipPaymentSuccess = signal(false);
-
   // Acceso de Socios (Login Modal)
   readonly loginEmail = signal('');
   readonly loginError = signal<string | null>(null);
@@ -182,60 +242,6 @@ export class ProfileComponent implements OnInit {
     }
   }
 
-  openMembershipPayment(tier?: string): void {
-    this.openModal('payments');
-  }
-
-  selectGateway(type: PaymentGatewayType): void {
-    this.paymentManager.setGateway(type);
-  }
-
-  async confirmMembershipPayment(): Promise<void> {
-    this.subscribingMembership.set(true);
-    await new Promise((resolve) => setTimeout(resolve, 800));
-
-    const receiptNumber = 'REC-2026-CAT-' + Math.floor(1000 + Math.random() * 9000);
-
-    this.activityService.addActivity({
-      id: 'act_' + Date.now(),
-      userId: this.newsletter.currentMember()?.id || 'user_current',
-      experienceId: 'membership_monthly',
-      title: 'Membresía Mensual · Socio Pleno (Temporada Inaugural)',
-      region: 'Catamarca · Club de Experiencias',
-      altitude: 'Sede Central',
-      dateLabel: new Intl.DateTimeFormat('es-AR', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-      }).format(new Date()),
-      status: 'completada',
-      coverImage: '/assets/images/laguna_blanca.jpg',
-      provider: {
-        name: 'EXPERIENCIAS.CLUB Oficial',
-        category: 'Membresía & Cuota Social',
-        contactPhone: '+54 9 3834 89-2104',
-      },
-      receipt: {
-        receiptNumber,
-        transactionId: 'SUB-' + Math.random().toString(36).substring(2, 9).toUpperCase(),
-        gateway: this.paymentManager.activeGatewayType(),
-        gatewayDisplayName: this.paymentManager.activeGateway().displayName,
-        amountArs: 12000,
-        amountUsd: 12,
-        paidAt: new Date().toLocaleString('es-AR'),
-        paymentMethodSummary: `Cuota Mensual · ${this.paymentManager.activeGateway().displayName}`,
-        payerEmail: this.newsletter.currentMember()?.email || 'socio@experiencias.club',
-        payerName: this.newsletter.currentMember()?.fullName || 'Socio Pleno Catamarca',
-        authCode: 'AUTH-' + Math.random().toString(36).substring(2, 8).toUpperCase(),
-        status: 'aprobado',
-      },
-      memoriesCount: 0,
-      memoryPhotos: [],
-    });
-
-    this.subscribingMembership.set(false);
-    this.membershipPaymentSuccess.set(true);
-  }
 
   openFounderApplication(): void {
     const member = this.newsletter.currentMember();
@@ -246,8 +252,8 @@ export class ProfileComponent implements OnInit {
       if (!this.founderEmail().trim() && member.email) {
         this.founderEmail.set(member.email);
       }
-      if (!this.founderCity().trim() && member.nationality) {
-        this.founderCity.set(member.nationality);
+      if (!this.founderCity().trim()) {
+        this.founderCity.set('Catamarca');
       }
     }
     this.openModal('founder_application');
@@ -278,12 +284,10 @@ export class ProfileComponent implements OnInit {
   }
 
   readonly wishlistExperiences = [
-    { id: 'galan', icon: '🌋', title: 'Volcán Galán & Caldera Gigante' },
-    { id: 'seismiles', icon: '🚙', title: 'Travesía 4x4 Paso San Francisco & Seismiles' },
-    { id: 'kayak', icon: '🚣', title: 'Kayak & Aguas Calmas en Diques Andinos' },
-    { id: 'pissis', icon: '🏔️', title: 'Trekking Balcón del Pissis & Lagunas' },
-    { id: 'astroturismo', icon: '🌌', title: 'Astrofotografía & Cielos de la Puna' },
-    { id: 'termas', icon: '🌿', title: 'Termas de Fiambalá & Valles Secretos' },
+    { id: 'kayak', title: 'Kayak y aguas calmas en diques andinos' },
+    { id: 'pissis', title: 'Trekking Balcón del Pissis y lagunas' },
+    { id: 'termas', title: 'Termas de Fiambalá y valles secretos' },
+    { id: 'otros', title: 'Otros (especificar a continuación)' },
   ];
 
   readonly memberFullName = signal(this.newsletter.currentMember()?.fullName || '');
@@ -291,14 +295,11 @@ export class ProfileComponent implements OnInit {
     this.newsletter.currentMember()?.dni || this.newsletter.currentMember()?.documentNumber || '',
   );
   readonly memberPhone = signal(this.newsletter.currentMember()?.phone || '');
-  readonly memberNationality = signal(this.newsletter.currentMember()?.nationality || '');
   readonly selectedExperiences = signal<string[]>(
     this.newsletter.currentMember()?.experiencesWishlist || [],
   );
-  readonly memberNotes = signal(
-    this.newsletter.currentMember()?.wishlistNotes || this.newsletter.currentMember()?.bio || '',
-  );
-  readonly profileSaved = signal(this.newsletter.currentMember()?.profileCompleted || false);
+  readonly memberOtherExperience = signal(this.newsletter.currentMember()?.experiencesOther || '');
+  readonly profileSaved = signal(Boolean(this.newsletter.currentMember()?.fullName));
 
   toggleExperienceWishlist(id: string): void {
     const current = this.selectedExperiences();
@@ -314,28 +315,37 @@ export class ProfileComponent implements OnInit {
   }
 
   getExperienceTitle(id: string): string {
+    if (id === 'otros' && this.memberOtherExperience().trim()) {
+      return `Otros: ${this.memberOtherExperience().trim()}`;
+    }
     const found = this.wishlistExperiences.find((e) => e.id === id);
-    return found ? `${found.icon} ${found.title}` : id;
+    return found ? found.title : id;
   }
 
-  saveMemberProfile(): void {
+  async saveMemberProfile(): Promise<void> {
+    this.profileSaveError.set(null);
     const dni = this.memberDni().replace(/\D/g, '').slice(0, 9);
     const phone = this.memberPhone().trim().slice(0, 25);
     if (!this.memberFullName().trim() || !/^\d{7,9}$/.test(dni) || !phone) {
       return;
     }
 
-    this.newsletter.updateMemberProfile({
+    const otherText = this.isExperienceSelected('otros') ? this.memberOtherExperience().trim() : '';
+
+    const res = await this.newsletter.updateMemberProfile({
       fullName: this.memberFullName().trim().slice(0, 100),
       dni,
       phone,
-      nationality: this.memberNationality().trim().slice(0, 80),
       experiencesWishlist: this.selectedExperiences(),
-      wishlistNotes: this.memberNotes().trim().slice(0, 1000),
-      bio: this.memberNotes().trim().slice(0, 1000),
+      experiencesOther: otherText,
     });
 
-    this.profileSaved.set(true);
+    if (res.success) {
+      this.profileSaved.set(true);
+      this.triggerProfileSuccessFeedback(true);
+    } else if (res.message) {
+      this.profileSaveError.set(res.message);
+    }
   }
 
   editMemberProfile(): void {
@@ -343,13 +353,11 @@ export class ProfileComponent implements OnInit {
   }
 
   copyLink(): void {
-    const member = this.newsletter.currentMember();
-    if (!member) return;
-    const url = `${location.origin}?ref=${member.referralCode}`;
+    const url = location.origin;
     navigator.clipboard
       ?.writeText(url)
       .then(() => {
-        this.copyStatus.set('¡Enlace de invitación copiado!');
+        this.copyStatus.set('¡Enlace de EXPERIENCIAS.CLUB copiado!');
         setTimeout(() => this.copyStatus.set(null), 2500);
       })
       .catch(() => {
@@ -359,19 +367,17 @@ export class ProfileComponent implements OnInit {
   }
 
   shareWhatsApp(): void {
-    const member = this.newsletter.currentMember();
     const text = encodeURIComponent(
-      `Me sumé como Socio Emergente a EXPERIENCIAS.CLUB (Edición Catamarca), el club privado de expediciones andinas y náuticas. ¡Unite a la lista de espera antes del lanzamiento! ${location.origin}?ref=${member?.referralCode ?? ''}`,
+      `Me sumé a EXPERIENCIAS.CLUB (Edición Catamarca), el club privado de expediciones andinas y náuticas. ${location.origin}`,
     );
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
   }
 
   shareX(): void {
-    const member = this.newsletter.currentMember();
     const text = encodeURIComponent(
-      'Acabo de registrarme como Socio Emergente en EXPERIENCIAS.CLUB (Edición Catamarca) — expediciones andinas y travesías náuticas.',
+      'Acabo de registrarme en EXPERIENCIAS.CLUB (Edición Catamarca) — expediciones andinas y travesías náuticas.',
     );
-    const url = encodeURIComponent(`${location.origin}?ref=${member?.referralCode ?? ''}`);
+    const url = encodeURIComponent(location.origin);
     window.open(`https://x.com/intent/tweet?text=${text}&url=${url}`, '_blank');
   }
 

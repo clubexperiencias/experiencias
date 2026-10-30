@@ -22,7 +22,7 @@
           <p class="section-lead-text">
             Diseñado para exploradores comprometidos con la naturaleza, el patrimonio andino y las
             travesías irrepetibles. Evolucioná en la comunidad para acceder a preventas exclusivas,
-            tarifas bonificadas y expediciones privadas sin permanencia.
+            tarifas bonificadas y expediciones privadas.
           </p>
 
           <div class="hero-quick-stats">
@@ -33,7 +33,7 @@
             <div class="quick-stat-divider"></div>
             <div class="quick-stat-item">
               <span class="stat-number">Sin Ataduras</span>
-              <span class="stat-label">Cancelá tu cuota activa cuando quieras</span>
+              <span class="stat-label">Cancelá tu cuota cuando quieras</span>
             </div>
             <div class="quick-stat-divider"></div>
             <div class="quick-stat-item">
@@ -61,7 +61,7 @@
                 @if (newsletter.isSubscribed()) {
                   <span class="tier-level-badge current">✓ TU NIVEL ACTUAL</span>
                 } @else {
-                  <span class="tier-level-badge initial">NIVEL 1 · PUNTO DE PARTIDA</span>
+                  <span class="tier-level-badge initial">NIVEL 1: PUNTO DE PARTIDA</span>
                 }
                 <h4 class="tier-name">Socio Emergente</h4>
                 <div class="tier-price-wrap">
@@ -79,7 +79,7 @@
 
               <ul class="tier-benefits">
                 <li>Acceso anticipado a preventa de temporada 2026</li>
-                <li>Código de invitación personal para referidos</li>
+                <li>Comunidad privada de expedicionarios andinos</li>
                 <li>Bitácoras exclusivas y novedades de rutas andinas</li>
                 <li>Prioridad en cupos de expediciones inaugurales</li>
               </ul>
@@ -105,14 +105,11 @@
                 @if (newsletter.isMonthlyActive()) {
                   <span class="tier-level-badge current">✓ TU NIVEL ACTUAL</span>
                 } @else {
-                  <span class="tier-level-badge locked-badge">
-                    <mat-icon class="badge-lock-icon">lock</mat-icon>
-                    <span>BLOQUEADO · PRÓXIMAMENTE</span>
-                  </span>
+                  <span class="tier-level-badge locked-badge">NIVEL 2: PRÓXIMAMENTE</span>
                 }
                 <h4 class="tier-name">Socio Pleno</h4>
                 <div class="tier-price-wrap">
-                  <span class="tier-price">$12.000</span>
+                  <span class="tier-price">$23.000</span>
                   <span class="tier-period">ARS / mes</span>
                 </div>
               </div>
@@ -129,7 +126,10 @@
                 <li><strong>10% OFF directo</strong> en todas las expediciones y salidas</li>
                 <li>Cupo asegurado prioritario en fechas de alta demanda</li>
                 <li>Asistencia personalizada de viaje con guías locales</li>
-                <li>Acceso a la bitácora privada de fotos de cada travesía</li>
+                <li>
+                  Acceso a <strong>expediciones exclusivas</strong> y
+                  <strong>regalos sorpresa</strong> en cada temporada
+                </li>
               </ul>
 
               <div class="tier-card-footer">
@@ -156,11 +156,11 @@
             <!-- 3. Socio Fundador Vitalicio -->
             <div class="tier-card founder-tier">
               <div class="tier-card-header">
-                <span class="tier-level-badge founder-badge">NIVEL 3 · PERPETUO</span>
+                <span class="tier-level-badge founder-badge">NIVEL 3: VITALICIO</span>
                 <h4 class="tier-name">Socio Fundador</h4>
                 <div class="tier-price-wrap">
                   <span class="tier-price">Vitalicio</span>
-                  <span class="tier-period">· Aporte único</span>
+                  <span class="tier-period">Aporte único</span>
                 </div>
               </div>
 
@@ -170,7 +170,7 @@
               </div>
 
               <ul class="tier-benefits">
-                <li><strong>Pase Libre Perpetuo:</strong> Sin cuotas mensuales de por vida</li>
+                <li>Todos los beneficios de Socio Pleno</li>
                 <li>
                   <strong>20% OFF permanente</strong> en todas las expediciones para titular y
                   acompañante
@@ -193,7 +193,7 @@
           </div>
         </div>
 
-        <app-founder-ad />
+        <app-kayak-ad />
       </div>
     </main>
   </div>
@@ -216,36 +216,15 @@
         </div>
 
         <p class="modal-lead">
-          Ingresá tu correo electrónico para acceder a tu perfil de socio y comprobantes:
+          Iniciá sesión con Google para acceder a tu perfil de socio y comprobantes:
         </p>
 
         <div class="login-modal-box">
-          <div class="login-input-wrap">
-            <label for="login-email-members" class="login-field-lbl">Correo Electrónico</label>
-            <input
-              id="login-email-members"
-              type="email"
-              class="login-modal-input"
-              placeholder="tu-correo@ejemplo.com"
-              [value]="loginEmail()"
-              (input)="loginEmail.set($any($event.target).value)"
-              (keyup.enter)="submitLogin()"
-            />
-          </div>
-
-          @if (loginError()) {
-            <p class="error-text" style="margin-top: 0.6rem">{{ loginError() }}</p>
-          }
-
           <div class="modal-footer" style="margin-top: 1.4rem">
             <button class="pill-action-btn secondary" (click)="closeModal()">Cancelar</button>
-            <button
-              class="pill-action-btn"
-              (click)="submitLogin()"
-              [disabled]="!loginEmail().trim() || newsletter.isLoading()"
-            >
-              Ingresar
-            </button>
+            <a routerLink="/ingresar" class="pill-action-btn" (click)="closeModal()">
+              Iniciar sesión con Google
+            </a>
           </div>
         </div>
       </div>

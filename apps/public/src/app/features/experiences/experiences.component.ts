@@ -38,8 +38,36 @@ export class ExperiencesComponent {
   readonly loginEmail = signal('');
   readonly loginError = signal<string | null>(null);
 
-  readonly featuredExperiences = () => this.experienceService.experiences().slice(0, 2);
-  readonly otherExperiences = () => this.experienceService.experiences().slice(2);
+  private readonly comingSoonExperience: Experience = {
+    id: 'exp-coming-soon',
+    slug: 'proximamente',
+    title: 'Nueva experiencia en Catamarca',
+    tagline: 'Estamos preparando una nueva salida para compartir con el Club.',
+    description: 'Muy pronto vas a poder conocer todos los detalles de esta experiencia.',
+    region: 'Catamarca',
+    difficulty: 'Moderada',
+    durationDays: 1,
+    durationLabel: 'Próximamente',
+    altitudeMeters: 0,
+    bestSeason: 'Próximamente',
+    priceArs: 0,
+    priceUsd: 0,
+    maxSpotsPerGroup: 0,
+    rating: 0,
+    reviewsCount: 0,
+    coverImage: '/assets/images/laguna-verde.jpg',
+    galleryImages: [],
+    highlights: [],
+    included: [],
+    isExclusiveClub: true,
+    isLocked: true,
+  };
+
+  readonly featuredExperiences = () => this.experienceService.experiences().slice(0, 1);
+  readonly otherExperiences = () => {
+    const otherExperiences = this.experienceService.experiences().slice(1);
+    return otherExperiences.length > 0 ? otherExperiences : [this.comingSoonExperience];
+  };
 
   toggleMobileMenu(event: Event): void {
     event.stopPropagation();
