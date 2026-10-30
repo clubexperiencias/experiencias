@@ -54,6 +54,20 @@ ng e2e
 
 Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
 
+## Comprobantes en Cloudflare R2
+
+El endpoint [`api/upload-receipt.js`](./api/upload-receipt.js) recibe el comprobante desde el flujo de pago y lo guarda en R2 mediante la API S3. En Vercel, configurá estas variables para `Preview` y `Production`:
+
+```text
+R2_ACCOUNT_ID=<Account ID de Cloudflare>
+R2_ACCESS_KEY_ID=<Access Key ID del token R2>
+R2_SECRET_ACCESS_KEY=<Secret Access Key del token R2>
+R2_BUCKET_NAME=experiencias-comprobantes
+R2_PUBLIC_URL=https://cdn.experiencias.club
+```
+
+El token debe tener únicamente permisos `Object Read & Write` sobre el bucket elegido. `R2_PUBLIC_URL` debe ser un dominio público conectado al bucket; no uses las credenciales R2 en variables expuestas al navegador. Si R2 no está disponible, la aplicación conserva el respaldo configurado en Supabase Storage.
+
 ## Additional Resources
 
 For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.

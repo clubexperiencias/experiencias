@@ -4,6 +4,19 @@ const path = require('path');
 // Normalizar búsqueda de variables en process.env (case-insensitive y prefijos habituales)
 let supabaseUrl = '';
 let supabaseAnonKey = '';
+let r2PublicBaseUrl =
+  (
+    process.env.R2_PUBLIC_URL ||
+    process.env.R2_PUBLIC_BASE_URL ||
+    process.env.CLOUDFLARE_R2_PUBLIC_URL ||
+    'https://cdn.experiencias.club'
+  ).trim();
+let r2BucketName =
+  (
+    process.env.R2_BUCKET_NAME ||
+    process.env.CLOUDFLARE_R2_BUCKET_NAME ||
+    'experiencias-comprobantes'
+  ).trim();
 
 for (const [key, value] of Object.entries(process.env)) {
   const upper = key.toUpperCase();
@@ -36,7 +49,7 @@ for (const [key, value] of Object.entries(process.env)) {
   }
 }
 
-console.log('[set-env] Analizando variables de entorno para Supabase...');
+console.log('[set-env] Analizando variables de entorno para Supabase y Cloudflare R2...');
 
 if (supabaseUrl && supabaseAnonKey) {
   console.log(`[set-env] Supabase URL detectada: ${supabaseUrl.substring(0, 15)}...`);
@@ -49,6 +62,11 @@ if (supabaseUrl && supabaseAnonKey) {
     url: '${supabaseUrl}',
     anonKey: '${supabaseAnonKey}',
   },
+
+  cloudflare: {
+    r2PublicBaseUrl: '${r2PublicBaseUrl}',
+    r2BucketName: '${r2BucketName}',
+  },
 };
 `;
 
@@ -58,6 +76,11 @@ if (supabaseUrl && supabaseAnonKey) {
   supabase: {
     url: '${supabaseUrl}',
     anonKey: '${supabaseAnonKey}',
+  },
+
+  cloudflare: {
+    r2PublicBaseUrl: '${r2PublicBaseUrl}',
+    r2BucketName: '${r2BucketName}',
   },
 };
 `;

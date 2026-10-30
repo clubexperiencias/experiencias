@@ -16,6 +16,8 @@ export interface PaymentReceipt {
   status: 'aprobado' | 'pendiente_verificacion';
   discountCode?: string;
   discountArs?: number;
+  receiptFileUrl?: string;
+  receiptFileName?: string;
 }
 
 export interface CommunityPhoto {
