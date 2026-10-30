@@ -104,10 +104,10 @@ export class ExperiencePaymentComponent implements OnInit {
   readonly memberPhone = computed(() => this.newsletter.currentMember()?.phone?.trim() || null);
 
   private readonly lockMemberFields = effect(() => {
-    this.lockControl('fullName', this.memberFullName());
     this.lockControl('email', this.memberEmail());
-    this.lockControl('dni', this.memberDni());
-    this.lockControl('phone', this.memberPhone());
+    this.fillControl('fullName', this.memberFullName());
+    this.fillControl('dni', this.memberDni());
+    this.fillControl('phone', this.memberPhone());
   });
 
   private lockControl(name: 'fullName' | 'email' | 'dni' | 'phone', value: string | null): void {
@@ -118,6 +118,12 @@ export class ExperiencePaymentComponent implements OnInit {
     } else if (control.disabled) {
       control.enable();
       control.setValue('');
+    }
+  }
+
+  private fillControl(name: 'fullName' | 'dni' | 'phone', value: string | null): void {
+    if (value && !this.form.controls[name].value) {
+      this.form.controls[name].setValue(value);
     }
   }
 
