@@ -229,7 +229,7 @@ export class BreadcrumbComponent implements OnInit {
       return {
         kicker: 'Expediciones',
         steps: [
-          { label: 'Kayak & Sunset Las Pirquitas', url: '/experiencias/kayak' },
+          { label: 'Kayak & Sunset Dique El Jumeal', url: '/experiencias/kayak' },
           { label: 'Fotos de Travesías', url: '/experiencias/fotos' },
           { label: 'Volver atrás', url: '/' },
         ],

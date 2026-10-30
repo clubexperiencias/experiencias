@@ -55,7 +55,7 @@ const SEED_EXPERIENCES: ProviderExperience[] = [
   {
     id: KAYAK_ID,
     slug: 'kayak',
-    title: 'Travesía en Kayak & Sunset en Las Pirquitas',
+    title: 'Travesía en Kayak & Sunset en el Dique El Jumeal',
     shortTitle: 'Travesía en Kayak',
     tagline: 'Remada guiada al atardecer con brindis de productos catamarqueños.',
     description:

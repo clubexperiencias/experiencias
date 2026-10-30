@@ -55,6 +55,7 @@ export class ExperiencePaymentComponent implements OnInit {
   private readonly newsletter = inject(NewsletterService);
 
   readonly cbu = BANK_TRANSFER_DESTINATION.cbu;
+  readonly transferDestination = BANK_TRANSFER_DESTINATION;
   readonly acceptedTypes = RECEIPT_ACCEPTED_TYPES.join(',');
   readonly mobileMenuOpen = signal(false);
   readonly authReady = signal(!isSupabaseConfigured());

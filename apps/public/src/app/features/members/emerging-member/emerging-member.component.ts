@@ -1,4 +1,4 @@
-import { Component, HostListener, OnInit, inject, signal } from '@angular/core';
+import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
@@ -43,10 +43,13 @@ export class EmergingMemberComponent implements OnInit {
   ];
 
   readonly mobileMenuOpen = signal(false);
+  readonly authReady = signal(!this.newsletter.isSupabaseConnected());
+  readonly authError = signal<string | null>(null);
 
   // Form Signals
   readonly fullName = signal('');
   readonly email = signal('');
+  readonly authenticatedEmail = signal<string | null>(null);
   readonly documentNumber = signal('');
   readonly phone = signal('');
   readonly selectedExperiences = signal<string[]>([]);
@@ -54,6 +57,7 @@ export class EmergingMemberComponent implements OnInit {
   readonly submitError = signal<string | null>(null);
   readonly isSubmitting = signal(false);
   readonly showSuccessNotification = signal(false);
+  readonly requiresGoogle = computed(() => !this.authReady());
 
   readonly experiences = [
     { id: 'kayak', title: 'Kayak y aguas calmas en diques andinos' },
@@ -78,6 +82,7 @@ export class EmergingMemberComponent implements OnInit {
   ];
 
   ngOnInit(): void {
+    void this.refreshGoogleAccount();
     // Autocompletar correo desde query params, prospecto de waitlist o sesión actual
     this.route.queryParams.subscribe((params) => {
       const paramEmail = ((params['email'] as string) || '').trim().toLowerCase();
@@ -91,6 +96,7 @@ export class EmergingMemberComponent implements OnInit {
           this.selectedExperiences.set([]);
           this.otherExperience.set('');
         }
+
         this.email.set(paramEmail);
       } else if (this.newsletter.lastProspectEmail()) {
         this.email.set(this.newsletter.lastProspectEmail());
@@ -130,6 +136,36 @@ export class EmergingMemberComponent implements OnInit {
     }
   }
 
+  private async refreshGoogleAccount(): Promise<void> {
+    const authenticatedEmail = await this.newsletter.getAuthenticatedEmail();
+    if (authenticatedEmail) {
+      this.email.set(authenticatedEmail);
+      this.authenticatedEmail.set(authenticatedEmail);
+      this.authReady.set(true);
+      await this.newsletter.getAuthenticatedMember();
+      const current = this.newsletter.currentMember();
+      if (
+        current?.email.toLowerCase() === authenticatedEmail &&
+        current.fullName &&
+        !this.fullName()
+      ) {
+        this.fullName.set(current.fullName);
+      }
+    } else {
+      this.authReady.set(!this.newsletter.isSupabaseConnected());
+    }
+  }
+
+  async linkGoogleAccount(): Promise<void> {
+    this.authError.set(null);
+    const result = await this.newsletter.signInWithGoogle(
+      typeof window !== 'undefined' ? `${window.location.origin}/socios/emergentes` : undefined,
+    );
+    if (!result.success) {
+      this.authError.set(result.message);
+    }
+  }
+
   toggleExperience(id: string): void {
     const selected = this.selectedExperiences();
     this.selectedExperiences.set(
@@ -142,6 +178,11 @@ export class EmergingMemberComponent implements OnInit {
   }
 
   async submit(): Promise<void> {
+    if (this.requiresGoogle()) {
+      this.submitError.set('Primero vinculá tu cuenta de Google para continuar.');
+      return;
+    }
+
     this.submitError.set(null);
     const name = this.fullName().trim();
     const cleanEmail = this.email().trim().toLowerCase();

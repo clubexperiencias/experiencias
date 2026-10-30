@@ -7,7 +7,7 @@ const KAYAK_IMAGE = '/assets/images/kayak-club-de-experiencias.jpg';
 const KAYAK_FALLBACK: Experience = {
   id: 'exp-kayak',
   slug: 'kayak',
-  title: 'Travesía en Kayak & Sunset en Las Pirquitas',
+  title: 'Travesía en Kayak & Sunset en el Dique El Jumeal',
   tagline: 'Remada guiada al atardecer con brindis de productos catamarqueños.',
   description:
     'Remada guiada en kayak en aguas calmas rodeadas de quebradas y vegetación de yungas andinas.',
@@ -37,8 +37,10 @@ const KAYAK_FALLBACK: Experience = {
 export class ExperienceService {
   private readonly supabase = inject(SUPABASE_CLIENT);
   private readonly _experiences = signal<Experience[]>([KAYAK_FALLBACK]);
+  private readonly _hasRemoteExperiences = signal(false);
 
   readonly experiences = this._experiences.asReadonly();
+  readonly hasRemoteExperiences = this._hasRemoteExperiences.asReadonly();
 
   constructor() {
     if (isSupabaseConfigured()) {
@@ -58,8 +60,7 @@ export class ExperienceService {
       return;
     }
 
-    this._experiences.set(
-      (data ?? []).map((experience) => {
+    const remoteExperiences = (data ?? []).map((experience) => {
         const image = experience.cover_image || KAYAK_IMAGE;
         return {
           id: experience.id,
@@ -86,7 +87,9 @@ export class ExperienceService {
           isLocked: false,
           detailRoute: `/experiencias/${experience.slug}`,
         };
-      }),
-    );
+      });
+
+    this._hasRemoteExperiences.set(remoteExperiences.length > 0);
+    this._experiences.set(remoteExperiences.length > 0 ? remoteExperiences : [KAYAK_FALLBACK]);
   }
 }

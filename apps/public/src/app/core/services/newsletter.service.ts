@@ -908,6 +908,26 @@ export class NewsletterService {
       : null;
   }
 
+  async getAuthenticatedEmail(): Promise<string | null> {
+    if (!this.isSupabaseConnected()) {
+      return null;
+    }
+
+    const { data } = await this.supabase.auth.getSession();
+    return data.session?.user.email?.trim().toLowerCase() || null;
+  }
+
+  async getAuthenticatedName(): Promise<string | null> {
+    if (!this.isSupabaseConnected()) {
+      return null;
+    }
+
+    const { data } = await this.supabase.auth.getSession();
+    const metadata = data.session?.user.user_metadata;
+    const name = metadata?.['full_name'] || metadata?.['name'];
+    return typeof name === 'string' && name.trim() ? name.trim() : null;
+  }
+
   private translateSupabaseError(rawMessage?: string): string {
     if (!rawMessage) {
       return 'Ocurrió un error al procesar la solicitud. Intentá nuevamente.';

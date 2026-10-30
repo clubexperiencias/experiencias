@@ -119,14 +119,14 @@ export class ActivityHistoryService {
       slug: 'kayak-las-pirquitas',
       userId: 'user_current',
       experienceId: 'exp_kayak_pirquitas',
-      title: 'Travesía en Kayak & Sunset en Las Pirquitas',
+      title: 'Travesía en Kayak & Sunset en el Dique El Jumeal',
       region: 'Valle Central y Ambato',
       altitude: '850 msnm',
       coverImage: '/assets/images/kayak-club-de-experiencias.jpg',
       dateLabel: '18 de Octubre, 2026',
       status: 'completada',
       description:
-        'Navegación silenciosa en kayak de travesía por el dique Las Pirquitas a 28 km de la capital provincial. Exploración de quebradas rojizas al atardecer, avistaje de aves acuáticas y cierre con tertulia y degustación de vinos de altura y quesos de cabra.',
+        'Navegación silenciosa en kayak de travesía por el Dique El Jumeal. Exploración de sus bahías al atardecer, avistaje de aves acuáticas y cierre con tertulia y degustación de vinos de altura y quesos de cabra.',
       provider: {
         name: 'Travesías Náuticas Ambato (Guía Lucas Albarracín)',
         category: 'Kayak & Deportes Náuticos',

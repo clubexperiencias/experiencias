@@ -81,7 +81,7 @@
                   id="member-email-display"
                   type="email"
                   class="field-input"
-                  [value]="newsletter.currentMember()?.email || ''"
+                  [value]="authenticatedEmail() || newsletter.currentMember()?.email || ''"
                   disabled
                   style="opacity: 0.75; cursor: not-allowed"
                 />

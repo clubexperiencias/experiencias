@@ -742,7 +742,7 @@ INSERT INTO public.experiencias_club (
 VALUES (
   'exp-kayak',
   'kayak',
-  'Travesía en Kayak & Sunset en Las Pirquitas',
+  'Travesía en Kayak & Sunset en el Dique El Jumeal',
   'Travesía en Kayak',
   'Remada guiada al atardecer con brindis de productos catamarqueños.',
   'Remada guiada en kayak en aguas calmas rodeadas de quebradas y vegetación de yungas andinas. Presenciamos la caída del sol reflejada en el dique y cerramos con un brindis.',

@@ -25,7 +25,7 @@ describe('ActivitiesHistoryComponent (/perfil/actividades)', () => {
   it('should render page title and activity cards', () => {
     const el = fixture.nativeElement as HTMLElement;
     expect(el.textContent).toContain('Actividades: Salidas & Expediciones');
-    expect(el.textContent).toContain('Travesía en Kayak & Sunset en Las Pirquitas');
+    expect(el.textContent).toContain('Travesía en Kayak & Sunset en el Dique El Jumeal');
   });
 
   it('should not contain the Mi Perfil return button in box header', () => {

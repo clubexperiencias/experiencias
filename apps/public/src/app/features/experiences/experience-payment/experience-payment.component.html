@@ -61,9 +61,7 @@
             </dl>
 
             <div class="pay-actions-row">
-              <a
-                [routerLink]="['/experiencias', exp.slug]"
-                class="pay-secondary-btn"
+              <a [routerLink]="['/experiencias', exp.slug]" class="pay-secondary-btn"
                 >VOLVER A LA EXPERIENCIA</a
               >
               <a
@@ -81,7 +79,10 @@
         @let exp = experience()!;
         @if (!authReady()) {
           <div class="kayak-wrapper">
-            <section class="kayak-section-card pay-google-gate pay-account-verifying" aria-live="polite">
+            <section
+              class="kayak-section-card pay-google-gate pay-account-verifying"
+              aria-live="polite"
+            >
               <div class="pay-step-head">
                 <span class="pay-step-index" aria-hidden="true">0</span>
                 <h1 class="pay-step-title">Estamos verificando tu cuenta</h1>
@@ -98,7 +99,7 @@
                   <h1 class="pay-step-title">Vincular cuenta</h1>
                 </div>
                 <p class="card-subheading">
-                  Antes de completar el checkout necesitamos confirmar el email al que vamos a
+                  Antes de proceder con el pago necesitamos confirmar el email al que vamos a
                   asociar esta experiencia y su comprobante.
                 </p>
                 @if (authError()) {
@@ -284,6 +285,18 @@
                           }}</mat-icon>
                           {{ copied() === 'cbu' ? 'Copiado' : 'Copiar' }}
                         </button>
+                      </div>
+                      <div class="pay-transfer-row pay-transfer-detail">
+                        <span class="pay-label">Nombre</span>
+                        <strong>{{ transferDestination.accountHolder }}</strong>
+                      </div>
+                      <div class="pay-transfer-row pay-transfer-detail">
+                        <span class="pay-label">CUIT/CUIL</span>
+                        <strong class="pay-mono">{{ transferDestination.taxId }}</strong>
+                      </div>
+                      <div class="pay-transfer-row pay-transfer-detail">
+                        <span class="pay-label">Entidad</span>
+                        <strong>{{ transferDestination.entity }}</strong>
                       </div>
                     </div>
 

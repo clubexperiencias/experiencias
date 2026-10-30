@@ -50,6 +50,7 @@ export class ProfileComponent implements OnInit {
   readonly showSuccessNotification = signal(false);
   readonly profileJustSaved = signal(false);
   readonly profileSaveError = signal<string | null>(null);
+  readonly authenticatedEmail = signal<string | null>(null);
   private successTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Actividades: Solo las últimas dos en la vista previa del perfil
@@ -68,6 +69,7 @@ export class ProfileComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    void this.loadAuthenticatedEmail();
     if (!this.newsletter.currentMember()) {
       this.newsletter.isAuthenticated().then((authed) => {
         if (!authed) {
@@ -75,6 +77,7 @@ export class ProfileComponent implements OnInit {
         } else {
           this.syncFieldsFromMember();
         }
+
       });
     } else {
       this.syncFieldsFromMember();
@@ -82,6 +85,19 @@ export class ProfileComponent implements OnInit {
 
     if (this.newsletter.consumeLoginSuccessFlag()) {
       this.triggerProfileSuccessFeedback(false);
+    }
+  }
+
+  private async loadAuthenticatedEmail(): Promise<void> {
+    const [email, name] = await Promise.all([
+      this.newsletter.getAuthenticatedEmail(),
+      this.newsletter.getAuthenticatedName(),
+    ]);
+    if (email) {
+      this.authenticatedEmail.set(email);
+    }
+    if (name && !this.memberFullName()) {
+      this.memberFullName.set(name);
     }
   }
 

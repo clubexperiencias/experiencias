@@ -12,7 +12,7 @@ export interface MenuCard {
 
 export const RECOMMENDED_CARD: MenuCard = {
   kicker: 'Recomendada',
-  title: 'Travesía en Kayak & Sunset en Las Pirquitas',
+  title: 'Travesía en Kayak & Sunset en el Dique El Jumeal',
   subtitle: 'Dique El Jumeal · 850 msnm · Calificación 4.95 ★',
   url: '/experiencias/kayak',
   imageUrl: '/assets/images/kayak-club-de-experiencias.jpg',

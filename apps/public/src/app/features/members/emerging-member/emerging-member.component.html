@@ -46,9 +46,37 @@
             }
           </div>
 
+          @if (requiresGoogle()) {
+          <section class="google-link-gate" aria-live="polite">
+            <div class="google-link-gate-head">
+              <span class="google-link-gate-index" aria-hidden="true">0</span>
+              <h2>Vincular cuenta</h2>
+            </div>
+            <p>
+              Antes de completar tu registro necesitamos confirmar el email al que vamos a asociar
+              tu membresía.
+            </p>
+            @if (authError()) {
+            <div class="signup-alert-error" role="alert">
+              <mat-icon class="alert-icon">error_outline</mat-icon>
+              <span>{{ authError() }}</span>
+            </div>
+            }
+            <button type="button" class="google-link-btn" (click)="linkGoogleAccount()">
+              <span class="google-link-icon">G</span>
+              Iniciar sesión con Google
+            </button>
+          </section>
+          }
+
           <!-- Formulario de Registro o Confirmación de Membresía -->
           @if (!newsletter.isSubscribed()) {
-          <form class="signup-form" novalidate (submit)="$event.preventDefault(); submit()">
+          <form
+            class="signup-form"
+            [class.signup-form-locked]="requiresGoogle()"
+            novalidate
+            (submit)="$event.preventDefault(); submit()"
+          >
             @if (submitError()) {
             <div class="signup-alert-error">
               <mat-icon class="alert-icon">error_outline</mat-icon>
@@ -68,7 +96,8 @@
               <label class="signup-field">
                 <span>Correo Electrónico <b>*</b></span>
                 <input type="email" [value]="email()" (input)="email.set($any($event.target).value)" maxlength="254"
-                  placeholder="tu-correo@ejemplo.com" autocomplete="email" required />
+                  placeholder="tu-correo@ejemplo.com" autocomplete="email"
+                  [readonly]="!!authenticatedEmail()" required />
               </label>
 
               <!-- Fila 2 - Izquierda: DNI -->

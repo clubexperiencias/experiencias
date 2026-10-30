@@ -113,11 +113,11 @@ export class App {
     if (path === '/' || path === '') return DEFAULT_PAGE_METADATA;
     if (path.startsWith('/experiencias/kayak')) {
       return {
-        section: 'Kayak & Sunset en Las Pirquitas',
+        section: 'Kayak & Sunset en el Dique El Jumeal',
         description:
           'Viví una travesía guiada en kayak al atardecer, con aguas calmas y paisaje catamarqueño.',
         image: '/assets/images/kayak-club-de-experiencias.jpg',
-        imageAlt: 'Travesía en kayak en Las Pirquitas',
+        imageAlt: 'Travesía en kayak en el Dique El Jumeal',
       };
     }
     if (path.startsWith('/experiencias')) {

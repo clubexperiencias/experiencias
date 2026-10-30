@@ -58,29 +58,43 @@ export class KayakPhotosComponent {
   readonly photos: GalleryPhoto[] = [
     {
       src: '/assets/images/kayak-club-de-experiencias.jpg',
-      title: 'Travesía en Las Pirquitas',
+      title: 'Travesía en el Dique El Jumeal',
       caption:
         'Socios del Club navegando en aguas calmas frente al cordón de las Sierras de Ambato.',
       tag: 'DESTACADA',
-      photographer: 'Lucas N: Equipo Fotográfico',
+      photographer: 'Equipo Fotográfico',
     },
   ];
 
-  // Exactamente dos boxes destacadas
+  // Cuatro fotos del Dique El Jumeal para acompañar la portada.
   readonly secondaryPhotos: GalleryPhoto[] = [
     {
-      src: '/assets/images/kayak-club-de-experiencias.jpg',
-      title: 'Navegación al Atardecer',
-      caption: 'Remada en grupo en las bahías protegidas del dique Las Pirquitas.',
+      src: '/assets/images/dron.jpg',
+      title: 'Dique El Jumeal desde el aire',
+      caption: 'Vista aérea del Dique El Jumeal y su entorno natural.',
       tag: 'DESTACADA',
-      photographer: 'Marcos T: Guía & Fotografía',
+      photographer: 'Equipo Fotográfico',
     },
     {
-      src: '/assets/images/kayak-club-de-experiencias.jpg',
-      title: 'Entorno & Cordón de Ambato',
-      caption: 'Panorámica de las sierras catamarqueñas reflejadas en el espejo de agua.',
+      src: '/assets/images/amigos.jpg',
+      title: 'Travesía compartida',
+      caption: 'Una salida en kayak junto a los socios del Club.',
       tag: 'DESTACADA',
-      photographer: 'Sofía L: Producción Visual',
+      photographer: 'Equipo Fotográfico',
+    },
+    {
+      src: '/assets/images/dique.jpg',
+      title: 'Kayaks en el Dique El Jumeal',
+      caption: 'Punto de encuentro para nuestras travesías náuticas.',
+      tag: 'DESTACADA',
+      photographer: 'Equipo Fotográfico',
+    },
+    {
+      src: '/assets/images/amigas.jpg',
+      title: 'Navegación en el Dique El Jumeal',
+      caption: 'Remada tranquila por las aguas del Dique El Jumeal.',
+      tag: 'DESTACADA',
+      photographer: 'Equipo Fotográfico',
     },
   ];
 
@@ -123,7 +137,7 @@ export class KayakPhotosComponent {
     },
     {
       src: '/assets/images/kayak-club-de-experiencias.jpg',
-      title: 'Reflejos Dorados en Las Pirquitas',
+      title: 'Reflejos Dorados en el Dique El Jumeal',
       caption: '',
       tag: 'DESTACADA POR EL EQUIPO',
       author: 'Federico S. · Socio Fundador',

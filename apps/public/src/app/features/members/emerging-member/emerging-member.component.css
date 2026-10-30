@@ -183,6 +183,73 @@
   margin-bottom: 2rem;
 }
 
+.google-link-gate {
+  display: grid;
+  gap: 0.8rem;
+  margin-bottom: 2rem;
+  padding: 1.25rem 1.4rem;
+  border: 1px solid rgba(255, 212, 42, 0.55);
+  background: rgba(15, 28, 45, 0.3);
+}
+
+.google-link-gate-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.google-link-gate-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--color-gold);
+  color: var(--color-gold);
+  font-family: var(--font-mono);
+}
+
+.google-link-gate h2 {
+  margin: 0;
+  color: #fff;
+  font-size: 1.15rem;
+}
+
+.google-link-gate p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.9rem;
+}
+
+.google-link-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  width: fit-content;
+  min-height: 3rem;
+  padding: 0.75rem 1.2rem;
+  border: 1px solid #dadce0;
+  border-radius: 3px;
+  background: #fff;
+  color: #202124;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.google-link-icon {
+  color: #4285f4;
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.signup-form-locked {
+  filter: blur(2px);
+  opacity: 0.72;
+  pointer-events: none;
+  user-select: none;
+}
+
 .highlight-item {
   display: flex;
   flex-direction: column;

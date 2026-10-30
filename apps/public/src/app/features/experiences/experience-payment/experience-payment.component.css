@@ -319,6 +319,15 @@
   border-top: 0;
 }
 
+.pay-transfer-box .pay-transfer-detail {
+  justify-content: flex-start;
+  align-items: baseline;
+}
+
+.pay-transfer-detail strong {
+  text-align: left;
+}
+
 .pay-cbu {
   display: flex;
   flex-wrap: wrap;
