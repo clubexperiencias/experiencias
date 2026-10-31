@@ -1,5 +1,4 @@
 import { Component, input, signal, inject, OnInit } from '@angular/core';
-import { Location } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import {
@@ -39,7 +38,6 @@ export class BreadcrumbComponent implements OnInit {
   readonly recommendedCard = RECOMMENDED_CARD;
 
   private readonly router = inject(Router);
-  private readonly location = inject(Location);
 
   readonly items = input<BreadcrumbItem[]>([]);
   readonly activeMobileIndex = signal<number | null>(null);
@@ -323,21 +321,37 @@ export class BreadcrumbComponent implements OnInit {
     };
   }
 
+  readonly supportWhatsappUrl =
+    'https://wa.me/5493515490431?text=' +
+    encodeURIComponent(
+      'Hola! Tengo una duda y necesito asistencia con el Club de Experiencias, ¿me podrían ayudar?'
+    );
+
   canShowBackButton(): boolean {
     const list = this.items();
     return !!(list && list.length > 1);
   }
 
   goBack(): void {
-    if (typeof window !== 'undefined' && window.history.length > 1) {
-      this.location.back();
-    } else {
-      const list = this.items();
-      if (list.length > 1 && list[list.length - 2]?.url) {
-        this.router.navigateByUrl(list[list.length - 2].url!);
-      } else {
-        this.router.navigateByUrl('/');
+    const list = this.items();
+    // 1. Navegar al paso jerárquico anterior en el breadcrumb que tenga URL definida
+    if (list && list.length > 1) {
+      for (let i = list.length - 2; i >= 0; i--) {
+        if (list[i]?.url) {
+          this.router.navigateByUrl(list[i].url!);
+          return;
+        }
       }
+    }
+
+    // 2. Fallback: subir un nivel jerárquico en la URL de la ruta
+    const currentUrl = this.router.url.split('?')[0].split('#')[0];
+    const segments = currentUrl.split('/').filter(Boolean);
+    if (segments.length > 1) {
+      segments.pop();
+      this.router.navigateByUrl('/' + segments.join('/'));
+    } else {
+      this.router.navigateByUrl('/');
     }
   }
 }

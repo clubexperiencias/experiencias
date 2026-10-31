@@ -2,6 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
+import { RouterLink } from '@angular/router';
 import { AdminStoreService, AdminMember } from '../../../core/services/admin-store.service';
 import { FechaPipe } from '../../../shared/pipes/format.pipes';
 
@@ -10,16 +11,18 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
 @Component({
   selector: 'app-admin-members',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, FechaPipe],
+  imports: [CommonModule, FormsModule, MatIconModule, FechaPipe, RouterLink],
   template: `
     <div class="members-container">
       <div class="members-header">
         <div>
           <span class="section-kicker">NÓMINA GENERAL DEL CLUB</span>
-          <h1 class="card-heading">Lista Completa de Socios & Waitlist</h1>
+          <div class="title-row">
+            <h1 class="card-heading">Lista Completa de Socios</h1>
+            <a routerLink="/dashboard" class="btn-back-panel">Volver al Panel</a>
+          </div>
           <p class="card-subheading">
             Padrón consolidado de socios emergentes, plenos, fundadores y prospectos de la lista de espera.
-            La conversión refleja a los miembros que han pagado por al menos una experiencia o enviado su comprobante.
           </p>
         </div>
       </div>
@@ -196,13 +199,13 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
                   <td>
                     <div class="status-tags-row">
                       @if (m.googleLinked) {
-                        <span class="google-linked-pill" title="Cuenta vinculada vía Google OAuth">Google</span>
+                        <span class="google-linked-pill" title="Cuenta vinculada vía Google OAuth">GOOGLE</span>
                       }
 
                       @if (m.converted) {
                         <span class="converted-pill" title="Pagó al menos una experiencia / envió comprobante">Pago OK</span>
                       } @else {
-                        <span class="pending-conversion-pill" title="Sin comprobante ni pago registrado">Sin Pago Aún</span>
+                        <span class="pending-conversion-pill" title="Sin comprobante ni pago registrado">Sin pago</span>
                       }
                     </div>
                   </td>
@@ -289,12 +292,45 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
         line-height: 1;
       }
 
+      .title-row {
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+        margin: 0 0 0.5rem;
+        flex-wrap: wrap;
+      }
+
       .card-heading {
         font-size: 1.75rem;
         font-weight: 800;
         color: #ffffff;
-        margin: 0 0 0.5rem;
+        margin: 0;
         letter-spacing: -0.02em;
+        line-height: 1.15;
+      }
+
+      .btn-back-panel {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.42rem 0.85rem;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 95, 0, 0.45);
+        color: #ffffff;
+        border-radius: 4px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        text-decoration: none;
+        letter-spacing: 0.02em;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .btn-back-panel:hover {
+        background: rgba(255, 95, 0, 0.2);
+        border-color: #ff5f00;
+        color: #ffaa73;
+        transform: translateY(-1px);
       }
 
       .card-subheading {
@@ -560,11 +596,15 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
         border: 1px solid rgba(255, 95, 0, 0.35);
         border-radius: 2px;
         overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        width: 100%;
+        max-width: 100%;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
       }
 
       .members-table {
         width: 100%;
+        min-width: 780px;
         border-collapse: collapse;
         text-align: left;
         font-size: 0.82rem;
@@ -608,6 +648,7 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
         font-family: var(--font-mono, monospace);
         font-size: 0.85rem;
         border-radius: 2px;
+        white-space: nowrap;
       }
 
       .socio-hash {
@@ -626,6 +667,7 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
         text-transform: uppercase;
         letter-spacing: 0.06em;
         border-radius: 2px;
+        white-space: nowrap;
       }
 
       .member-identity {
@@ -654,6 +696,7 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
         color: #ffffff;
         font-family: var(--font-mono, monospace);
         font-size: 0.78rem;
+        white-space: nowrap;
       }
 
       .contact-whatsapp {
@@ -664,6 +707,7 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
         text-decoration: none;
         font-size: 0.75rem;
         font-family: var(--font-mono, monospace);
+        white-space: nowrap;
       }
 
       .contact-whatsapp:hover {
@@ -681,6 +725,10 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
         font-family: var(--font-mono, monospace);
       }
 
+      .member-dni {
+        white-space: nowrap;
+      }
+
       .tier-badge {
         display: inline-block;
         padding: 0.2rem 0.55rem;
@@ -692,15 +740,24 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
         background: rgba(255, 255, 255, 0.08);
         border: 1px solid rgba(255, 255, 255, 0.25);
         color: #ffffff;
+        white-space: nowrap;
+      }
+
+      .tier-badge[data-tier='fundador'] {
+        background: rgba(128, 179, 255, 0.14);
+        border: 1px solid rgba(128, 179, 255, 0.4);
+        color: #80b3ff;
       }
 
       .status-tags-row {
         display: flex;
         flex-direction: column;
         gap: 0.3rem;
+        white-space: nowrap;
       }
 
-      .google-linked-pill {
+      .google-linked-pill,
+      .pending-conversion-pill {
         display: inline-flex;
         align-items: center;
         padding: 0.15rem 0.45rem;
@@ -712,6 +769,7 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
         letter-spacing: 0.04em;
         border-radius: 2px;
         width: fit-content;
+        white-space: nowrap;
       }
 
       .converted-pill {
@@ -719,24 +777,13 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
         align-items: center;
         padding: 0.15rem 0.45rem;
         background: rgba(16, 185, 129, 0.2);
-        border: 1px solid rgba(16, 185, 129, 0.45);
+        border: 1px solid rgba(52, 211, 153, 0.45);
         color: #34d399;
         font-size: 0.68rem;
         font-weight: 800;
         border-radius: 2px;
         width: fit-content;
-      }
-
-      .converted-pill mat-icon {
-        font-size: 12px;
-        width: 12px;
-        height: 12px;
-      }
-
-      .pending-conversion-pill {
-        font-size: 0.68rem;
-        color: rgba(255, 255, 255, 0.45);
-        font-weight: 600;
+        white-space: nowrap;
       }
 
       .member-date {
@@ -769,6 +816,17 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
       .empty-box p {
         color: rgba(255, 255, 255, 0.6);
         margin: 0;
+      }
+
+      @media (max-width: 600px) {
+        .table-footer-actions {
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+        .table-footer-actions .btn-footer-action {
+          width: 100%;
+          justify-content: center;
+        }
       }
     `,
   ],

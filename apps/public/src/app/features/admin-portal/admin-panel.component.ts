@@ -55,39 +55,15 @@ import { AdminLoginComponent } from './admin-login/admin-login.component';
 
             <!-- Menú de administrador -->
             <div class="header-right">
-              <div class="user-pill" (click)="toggleUserMenu()">
-                <img
-                  src="/assets/images/gonza.jpg"
-                  [alt]="admin()?.name || 'Gonzalo Gramaglia'"
-                  class="user-avatar"
-                  referrerpolicy="no-referrer"
-                />
+              <div class="user-pill" [class.is-open]="userMenuOpen()" (click)="toggleUserMenu()">
+                <mat-icon class="user-pill-icon">{{ userMenuOpen() ? 'close' : 'menu' }}</mat-icon>
                 <div class="user-meta">
                   <strong class="user-name">{{ admin()?.name || 'Gonzalo Gramaglia' }}</strong>
                   <span class="user-agency">Superadmin</span>
                 </div>
-                <mat-icon class="dropdown-chevron">expand_more</mat-icon>
 
                 @if (userMenuOpen()) {
                   <div class="dropdown-menu enlarged-menu" (click)="$event.stopPropagation()">
-                    <div class="dropdown-header">
-                      <div class="dropdown-user-row">
-                        <img
-                          src="/assets/images/gonza.jpg"
-                          [alt]="admin()?.name || 'Gonzalo Gramaglia'"
-                          class="dropdown-avatar-lg"
-                          referrerpolicy="no-referrer"
-                        />
-                        <div class="dropdown-user-details">
-                          <strong class="dropdown-user-name">{{ admin()?.name || 'Gonzalo Gramaglia' }}</strong>
-                          <span class="dropdown-user-email">{{ admin()?.email || 'gonzagramaglia@gmail.com' }}</span>
-                          <span class="dropdown-user-tag">Superadmin</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div class="dropdown-divider"></div>
-
                     <!-- Navegación mínima del administrador -->
                     <div class="dropdown-nav-list">
                       <a

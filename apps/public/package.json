@@ -6,7 +6,7 @@
     "ng": "ng",
     "dev": "sh -c 'PORT=4200 ng serve --host 0.0.0.0 --port 3000' --",
     "start": "sh -c 'PORT=4200 ng serve --host 0.0.0.0 --port 3000' --",
-    "build": "node ../../scripts/set-env.js && ng build",
+    "build": "node ../../scripts/set-env.js && ng build && node ../../scripts/post-build.js",
     "watch": "ng build --watch --configuration development",
     "test": "ng test --watch=false"
   },

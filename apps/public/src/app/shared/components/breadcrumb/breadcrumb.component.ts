@@ -321,6 +321,12 @@ export class BreadcrumbComponent implements OnInit {
     };
   }
 
+  readonly supportWhatsappUrl =
+    'https://wa.me/5493515490431?text=' +
+    encodeURIComponent(
+      'Hola! Tengo una duda y necesito asistencia con el Club de Experiencias, ¿me podrían ayudar?'
+    );
+
   canShowBackButton(): boolean {
     const list = this.items();
     return !!(list && list.length > 1);

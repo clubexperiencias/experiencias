@@ -2,7 +2,9 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { SUPABASE_CLIENT, isSupabaseConfigured } from '../supabase/supabase.client';
 import { TransferSubmission, TransferStatus } from '../models/bank-transfer.model';
 import { NewsletterService } from './newsletter.service';
-import { ProviderStoreService } from './provider-store.service';
+import { ProviderStoreService, ExperienceProposalRequest } from './provider-store.service';
+
+export type { ExperienceProposalRequest } from './provider-store.service';
 
 export interface AdminUser {
   id: string;
@@ -88,6 +90,20 @@ export class AdminStoreService {
   readonly isLoadingSubmissions = this._isLoadingSubmissions.asReadonly();
   readonly isLoadingApplications = this._isLoadingApplications.asReadonly();
   readonly lastRefreshedAt = this._lastRefreshedAt.asReadonly();
+
+  // Solicitudes de Nuevas Experiencias enviadas por Prestadores
+  readonly experienceRequests = this.providerStore.experienceRequests;
+  readonly pendingExperienceRequestsCount = computed(
+    () => this.providerStore.experienceRequests().filter((r) => r.status === 'pendiente').length,
+  );
+
+  approveExperienceRequest(id: string): void {
+    this.providerStore.approveExperienceRequest(id);
+  }
+
+  rejectExperienceRequest(id: string): void {
+    this.providerStore.rejectExperienceRequest(id);
+  }
 
   // Estadísticas de Postulaciones (Prestadores y Fundadores)
   readonly applicationStats = computed(() => {
@@ -583,11 +599,11 @@ export class AdminStoreService {
       list.map((s) =>
         s.id === submissionId
           ? {
-              ...s,
-              status,
-              rejectionReason: status === 'rechazado' ? rejectionReason : undefined,
-              reviewedAt: new Date().toISOString(),
-            }
+            ...s,
+            status,
+            rejectionReason: status === 'rechazado' ? rejectionReason : undefined,
+            reviewedAt: new Date().toISOString(),
+          }
           : s,
       ),
     );
@@ -653,8 +669,8 @@ export class AdminStoreService {
           status: (f.status === 'aprobada' || f.status === 'aprobado')
             ? 'aprobado'
             : (f.status === 'rechazada' || f.status === 'rechazado')
-            ? 'rechazado'
-            : 'pendiente',
+              ? 'rechazado'
+              : 'pendiente',
           createdAt: f.created_at || new Date().toISOString(),
         }));
 
@@ -903,7 +919,7 @@ export class AdminStoreService {
         id: 'sub-1',
         reference: 'KAY-4F7Q',
         experienceId: 'exp-kayak',
-        experienceTitle: 'Travesía en Kayak & Sunset en Las Pirquitas',
+        experienceTitle: 'Travesía en Kayak & Sunset en El Jumeal',
         date: '2026-11-08',
         participants: 2,
         amountArs: 130000,
@@ -924,7 +940,7 @@ export class AdminStoreService {
         id: 'sub-2',
         reference: 'KAY-9M2D',
         experienceId: 'exp-kayak',
-        experienceTitle: 'Travesía en Kayak & Sunset en Las Pirquitas',
+        experienceTitle: 'Travesía en Kayak & Sunset en El Jumeal',
         date: '2026-11-08',
         participants: 1,
         amountArs: 65000,
@@ -946,7 +962,7 @@ export class AdminStoreService {
         id: 'sub-3',
         reference: 'KAY-2X8B',
         experienceId: 'exp-kayak',
-        experienceTitle: 'Travesía en Kayak & Sunset en Las Pirquitas',
+        experienceTitle: 'Travesía en Kayak & Sunset en El Jumeal',
         date: '2026-11-15',
         participants: 3,
         amountArs: 195000,

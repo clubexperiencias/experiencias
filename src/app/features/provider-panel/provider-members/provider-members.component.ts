@@ -449,16 +449,33 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         white-space: nowrap;
       }
       .filter-select {
-        background: rgba(7, 13, 28, 0.7);
-        border: 1px solid rgba(128, 179, 255, 0.3);
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        background: rgba(24, 42, 85, 0.72);
+        border: 1px solid rgba(128, 179, 255, 0.42);
         border-radius: 2px;
         padding: 0.55rem 0.85rem;
-        color: #ffffff;
+        color: #f0f4ff;
         font-size: 0.82rem;
+        cursor: pointer;
+        transition: background-color 0.2s ease, border-color 0.2s ease;
+      }
+      .filter-select::-ms-expand {
+        display: none;
+      }
+      .filter-select:hover {
+        background: rgba(32, 54, 108, 0.82);
+        border-color: rgba(128, 179, 255, 0.65);
       }
       .filter-select:focus {
         outline: none;
+        background: rgba(28, 48, 98, 0.9);
         border-color: #80b3ff;
+      }
+      .filter-select option {
+        background: #0d1b38;
+        color: #ffffff;
       }
       .summary-strip {
         display: grid;

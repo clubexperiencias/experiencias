@@ -25,7 +25,80 @@ const STORAGE_KEYS = {
   submissions: 'catamarca_provider_submissions_v5',
   session: 'catamarca_provider_session_v5',
   providers: 'catamarca_providers_registry_v5',
+  experienceRequests: 'catamarca_experience_requests_v1',
 };
+
+export interface ExperienceProposalRequest {
+  id: string;
+  providerId: string;
+  providerName: string;
+  providerAgency: string;
+  providerEmail: string;
+  providerPhone?: string;
+  title: string;
+  kicker: string;
+  subheading: string;
+  region: string;
+  difficulty: string;
+  duration: string;
+  altitude?: string;
+  capacity: number;
+  season: string;
+  dates: string;
+  priceArs: number;
+  priceUsd?: number | null;
+  promosAndPricing?: string;
+  itinerary: string;
+  meetingPoint: string;
+  includedServices: string;
+  participantRequirements: string;
+  notes?: string;
+  coverImage?: string;
+  coverImageName?: string;
+  coverVideoName?: string;
+  status: 'pendiente' | 'aprobada' | 'rechazada';
+  createdAt: string;
+  reviewedAt?: string;
+}
+
+const SEED_EXPERIENCE_REQUESTS: ExperienceProposalRequest[] = [
+  {
+    id: 'req-sunset-las-pirquitas',
+    providerId: 'prov-patricio',
+    providerName: 'Patricio Facundo Diaz Tillar',
+    providerAgency: 'Catamarca Kayak & Aventura Náutica',
+    providerEmail: 'patricio@experiencias.club',
+    providerPhone: '+54 383 455 8812',
+    title: 'Travesía en Kayak Nocturna & Luna Llena en El Jumeal',
+    kicker: 'EXPEDICIÓN NÁUTICA: VALLE CENTRAL',
+    subheading:
+      'Remada nocturna bajo el cielo estrellado y la luna llena en el espejo de agua de El Jumeal, con fogón criollo y degustación de vinos de altura.',
+    region: 'Valle Central y Ambato',
+    difficulty: 'Baja (Sin experiencia previa)',
+    duration: '5 Horas (Jornada Nocturna)',
+    altitude: '920 msnm',
+    capacity: 14,
+    season: 'Primavera y Verano (noches de Luna Llena)',
+    dates: 'Viernes y Sábados de Luna Llena 19:30 hs',
+    priceArs: 72000,
+    priceUsd: 75,
+    promosAndPricing:
+      '10% de descuento abonando en efectivo o para grupos de 4 o más personas.',
+    itinerary:
+      '19:30 hs Recepción y equipamiento en Club Náutico\n20:15 hs Zarpada con balizas acuáticas\n22:00 hs Desembarco en ensenada y fogón bajo las estrellas\n23:30 hs Brindis de cierre',
+    meetingPoint: 'Club Náutico El Jumeal (Fray Mamerto Esquiú, RP 1)',
+    includedServices:
+      'Kayaks de travesía, remos, chalecos homologados, balizas estancas, lancha de apoyo y cena rústica al fuego.',
+    participantRequirements:
+      'Muda de ropa seca para recambio, campera térmica/rompevientos y calzado para agua.',
+    notes: 'Fotos de alta resolución y ruta GPS cargadas.',
+    coverImage: '/assets/images/kayak-club-de-experiencias.jpg',
+    coverImageName: 'kayak-nocturno-pirquitas.jpg',
+    coverVideoName: 'kayak-trailer.mp4',
+    status: 'pendiente',
+    createdAt: hoursAgo(14),
+  },
+];
 
 function upcomingDate(daysFromNow: number): string {
   const date = new Date();
@@ -219,12 +292,16 @@ export class ProviderStoreService {
   );
   private readonly _experiences = signal<ProviderExperience[]>(this.loadStoredExperiences());
   private readonly _submissions = signal<TransferSubmission[]>(this.loadStoredSubmissions());
+  private readonly _experienceRequests = signal<ExperienceProposalRequest[]>(this.loadStoredRequests());
 
   // Public readonly signals
   readonly currentProvider = this._currentProvider.asReadonly();
   readonly isAuthenticated = computed(() => this._currentProvider() !== null);
   readonly allProviders = this._providers.asReadonly();
   readonly experiences = this._experiences.asReadonly();
+  readonly experienceRequests = computed(() =>
+    [...this._experienceRequests()].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+  );
   readonly submissions = computed(() =>
     [...this._submissions()].sort((a, b) => b.submittedAt.localeCompare(a.submittedAt)),
   );
@@ -513,10 +590,10 @@ export class ProviderStoreService {
       status: requestPublication ? 'pendiente_publicacion' : 'borrador',
       moderation: requestPublication
         ? {
-            action: 'publicar',
-            requestedAt: new Date().toISOString(),
-            status: 'pendiente',
-          }
+          action: 'publicar',
+          requestedAt: new Date().toISOString(),
+          status: 'pendiente',
+        }
         : undefined,
       coverImage: input.coverImage || '/assets/images/laguna_blanca.jpg',
       createdAt: new Date().toISOString(),
@@ -567,15 +644,15 @@ export class ProviderStoreService {
       list.map((e) =>
         e.id === experienceId
           ? {
-              ...e,
-              status: 'pendiente_publicacion',
-              moderation: {
-                action: 'publicar',
-                requestedAt: new Date().toISOString(),
-                status: 'pendiente',
-              },
-              updatedAt: new Date().toISOString(),
-            }
+            ...e,
+            status: 'pendiente_publicacion',
+            moderation: {
+              action: 'publicar',
+              requestedAt: new Date().toISOString(),
+              status: 'pendiente',
+            },
+            updatedAt: new Date().toISOString(),
+          }
           : e,
       ),
     );
@@ -590,16 +667,16 @@ export class ProviderStoreService {
       list.map((e) =>
         e.id === experienceId
           ? {
-              ...e,
-              status: 'pendiente_ocultar',
-              moderation: {
-                action: 'ocultar',
-                requestedAt: new Date().toISOString(),
-                reason: reason?.trim(),
-                status: 'pendiente',
-              },
-              updatedAt: new Date().toISOString(),
-            }
+            ...e,
+            status: 'pendiente_ocultar',
+            moderation: {
+              action: 'ocultar',
+              requestedAt: new Date().toISOString(),
+              reason: reason?.trim(),
+              status: 'pendiente',
+            },
+            updatedAt: new Date().toISOString(),
+          }
           : e,
       ),
     );
@@ -619,16 +696,16 @@ export class ProviderStoreService {
       list.map((e) =>
         e.id === experienceId
           ? {
-              ...e,
-              status: 'pendiente_eliminar',
-              moderation: {
-                action: 'eliminar',
-                requestedAt: new Date().toISOString(),
-                reason: reason?.trim(),
-                status: 'pendiente',
-              },
-              updatedAt: new Date().toISOString(),
-            }
+            ...e,
+            status: 'pendiente_eliminar',
+            moderation: {
+              action: 'eliminar',
+              requestedAt: new Date().toISOString(),
+              reason: reason?.trim(),
+              status: 'pendiente',
+            },
+            updatedAt: new Date().toISOString(),
+          }
           : e,
       ),
     );
@@ -669,17 +746,17 @@ export class ProviderStoreService {
       list.map((e) =>
         e.id === experienceId
           ? {
-              ...e,
-              status: newStatus,
-              moderation: {
-                ...e.moderation!,
-                status: 'aprobada',
-                reviewedAt: new Date().toISOString(),
-                reviewedBy: 'Admin experiencias.club',
-                adminComment,
-              },
-              updatedAt: new Date().toISOString(),
-            }
+            ...e,
+            status: newStatus,
+            moderation: {
+              ...e.moderation!,
+              status: 'aprobada',
+              reviewedAt: new Date().toISOString(),
+              reviewedBy: 'Admin experiencias.club',
+              adminComment,
+            },
+            updatedAt: new Date().toISOString(),
+          }
           : e,
       ),
     );
@@ -950,6 +1027,95 @@ export class ProviderStoreService {
     if (typeof window === 'undefined') return;
     try {
       localStorage.setItem(STORAGE_KEYS.submissions, JSON.stringify(this._submissions()));
+    } catch {
+      // quota
+    }
+  }
+
+  submitExperienceRequest(
+    data: Omit<ExperienceProposalRequest, 'id' | 'status' | 'createdAt'>,
+  ): ExperienceProposalRequest {
+    const newReq: ExperienceProposalRequest = {
+      ...data,
+      id: 'req-' + Date.now(),
+      status: 'pendiente',
+      createdAt: new Date().toISOString(),
+    };
+    this._experienceRequests.update((list) => [newReq, ...list]);
+    this.saveRequests();
+    return newReq;
+  }
+
+  approveExperienceRequest(requestId: string): void {
+    const req = this._experienceRequests().find((r) => r.id === requestId);
+    this._experienceRequests.update((list) =>
+      list.map((r) =>
+        r.id === requestId
+          ? { ...r, status: 'aprobada' as const, reviewedAt: new Date().toISOString() }
+          : r,
+      ),
+    );
+    this.saveRequests();
+
+    if (req) {
+      const exists = this._experiences().some(
+        (e) => e.title.toLowerCase() === req.title.toLowerCase(),
+      );
+      if (!exists) {
+        const newExp: ProviderExperience = {
+          id: 'exp-' + slugify(req.title),
+          slug: slugify(req.title),
+          title: req.title,
+          shortTitle: req.title.split('&')[0].trim(),
+          tagline: req.subheading.length > 90 ? req.subheading.slice(0, 90) + '...' : req.subheading,
+          description: req.subheading,
+          region: req.region,
+          meetingPoint: req.meetingPoint,
+          difficulty: (req.difficulty.split('(')[0].trim() as 'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña') || 'Moderada',
+          durationLabel: req.duration,
+          priceArs: req.priceArs,
+          capacityPerDate: req.capacity,
+          dates: [upcomingDate(7), upcomingDate(14), upcomingDate(21)],
+          status: 'publicada',
+          providerId: req.providerId,
+          providerName: `${req.providerName} · ${req.providerAgency}`,
+          coverImage: req.coverImage || '/assets/images/kayak-club-de-experiencias.jpg',
+          createdAt: new Date().toISOString(),
+        };
+        this._experiences.update((exps) => [newExp, ...exps]);
+        this.saveExperiences();
+      }
+    }
+  }
+
+  rejectExperienceRequest(requestId: string): void {
+    this._experienceRequests.update((list) =>
+      list.map((r) =>
+        r.id === requestId
+          ? { ...r, status: 'rechazada' as const, reviewedAt: new Date().toISOString() }
+          : r,
+      ),
+    );
+    this.saveRequests();
+  }
+
+  private loadStoredRequests(): ExperienceProposalRequest[] {
+    if (typeof window === 'undefined') return SEED_EXPERIENCE_REQUESTS;
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.experienceRequests);
+      return raw ? JSON.parse(raw) : SEED_EXPERIENCE_REQUESTS;
+    } catch {
+      return SEED_EXPERIENCE_REQUESTS;
+    }
+  }
+
+  private saveRequests(): void {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(
+        STORAGE_KEYS.experienceRequests,
+        JSON.stringify(this._experienceRequests()),
+      );
     } catch {
       // quota
     }

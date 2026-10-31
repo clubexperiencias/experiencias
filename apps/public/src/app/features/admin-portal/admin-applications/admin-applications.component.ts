@@ -1,34 +1,36 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
+import { ActivatedRoute } from '@angular/router';
 import {
   AdminStoreService,
   AdminApplication,
   ApplicationType,
   ApplicationStatus,
+  ExperienceProposalRequest,
 } from '../../../core/services/admin-store.service';
-import { FechaPipe } from '../../../shared/pipes/format.pipes';
+import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
 
-type ApplicationFilterTab = 'todas' | 'prestadores' | 'fundadores' | 'pendientes' | 'aprobadas';
+type ApplicationFilterTab = 'todas' | 'prestadores' | 'fundadores' | 'experiencias' | 'pendientes' | 'aprobadas';
 
 @Component({
   selector: 'app-admin-applications',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, FechaPipe],
+  imports: [CommonModule, FormsModule, MatIconModule, ArsPipe, FechaPipe],
   template: `
     <div class="applications-container">
       <div class="applications-header">
         <div>
-          <span class="section-kicker">CONVOCATORIAS & POSTULACIONES</span>
-          <h1 class="card-heading">Postulaciones del Club</h1>
+          <span class="section-kicker">CONVOCATORIAS, POSTULACIONES & PROPUESTAS</span>
+          <h1 class="card-heading">Postulaciones y Propuestas</h1>
           <p class="card-subheading">
-            Padrón consolidado de solicitudes recibidas para sumarse como prestadores de servicios turísticos o miembros del cuadro de Socios Fundadores.
+            Padrón consolidado de solicitudes recibidas para sumarse como prestadores de servicios turísticos, propuestas de nuevas experiencias para el catálogo y aspirantes al cuadro de Socios Fundadores.
           </p>
         </div>
       </div>
 
-      <!-- Resumen Métrico de Postulaciones (4 Boxes sobrias) -->
+      <!-- Resumen Métrico de Postulaciones (5 Boxes sobrias) -->
       <div class="summary-strip">
         <div class="summary-item">
           <span class="sum-label">Total Postulaciones</span>
@@ -45,9 +47,14 @@ type ApplicationFilterTab = 'todas' | 'prestadores' | 'fundadores' | 'pendientes
           <strong class="sum-value">{{ store.applicationStats().fundadoresCount }}</strong>
           <span class="sum-sub">Aspirantes al padrón vitalicio</span>
         </div>
+        <div class="summary-item highlight-box">
+          <span class="sum-label">Nuevas Experiencias</span>
+          <strong class="sum-value text-orange">{{ store.experienceRequests().length }}</strong>
+          <span class="sum-sub">{{ store.pendingExperienceRequestsCount() }} pendientes de revisión</span>
+        </div>
         <div class="summary-item">
-          <span class="sum-label">Pendientes de Revisión</span>
-          <strong class="sum-value">{{ store.applicationStats().pendientesCount }}</strong>
+          <span class="sum-label">Pendientes Totales</span>
+          <strong class="sum-value">{{ store.applicationStats().pendientesCount + store.pendingExperienceRequestsCount() }}</strong>
           <span class="sum-sub">Requieren evaluación</span>
         </div>
       </div>
@@ -59,7 +66,7 @@ type ApplicationFilterTab = 'todas' | 'prestadores' | 'fundadores' | 'pendientes
           <input
             type="text"
             class="search-input"
-            placeholder="Buscar por postulante, email, teléfono, rubro o región..."
+            [placeholder]="activeTab() === 'experiencias' ? 'Buscar por experiencia, prestador, región, kicker...' : 'Buscar por postulante, email, teléfono, rubro o región...'"
             [ngModel]="searchQuery()"
             (ngModelChange)="searchQuery.set($event)"
           />
@@ -98,6 +105,18 @@ type ApplicationFilterTab = 'todas' | 'prestadores' | 'fundadores' | 'pendientes
 
           <button
             type="button"
+            class="filter-tab exp-tab"
+            [class.is-active]="activeTab() === 'experiencias'"
+            (click)="activeTab.set('experiencias')"
+          >
+            Nuevas Experiencias ({{ store.experienceRequests().length }})
+            @if (store.pendingExperienceRequestsCount() > 0) {
+              <span class="tab-badge">{{ store.pendingExperienceRequestsCount() }}</span>
+            }
+          </button>
+
+          <button
+            type="button"
             class="filter-tab"
             [class.is-active]="activeTab() === 'pendientes'"
             (click)="activeTab.set('pendientes')"
@@ -116,120 +135,237 @@ type ApplicationFilterTab = 'todas' | 'prestadores' | 'fundadores' | 'pendientes
         </div>
       </div>
 
-      <!-- Tabla Principal de Postulaciones -->
-      @if (filteredApplications().length === 0) {
-        <div class="empty-box">
-          <mat-icon>assignment_late</mat-icon>
-          <h3>No se encontraron postulaciones</h3>
-          <p>Probá cambiando la búsqueda o seleccionando otra pestaña de filtro.</p>
-        </div>
-      } @else {
-        <div class="table-wrapper">
-          <table class="applications-table">
-            <thead>
-              <tr>
-                <th class="col-type">Tipo</th>
-                <th class="col-postulante">Postulante</th>
-                <th class="col-rubro">Detalles</th>
-                <th class="col-fecha">Fecha</th>
-                <th class="col-actions">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (app of filteredApplications(); track app.id) {
-                <tr [class.is-prestador]="app.type === 'prestador'" [class.is-fundador]="app.type === 'fundador'">
-                  <!-- Tipo -->
-                  <td>
-                    @if (app.type === 'prestador') {
-                      <span class="badge-type badge-prestador">PRESTADOR</span>
-                    } @else {
-                      <span class="badge-type badge-fundador">SOCIO FUNDADOR</span>
-                    }
-                  </td>
-
-                  <!-- Postulante -->
-                  <td>
-                    <div class="postulante-cell">
-                      <strong class="postulante-name">{{ app.fullName }}</strong>
-                      <span class="postulante-email">{{ app.email }}</span>
-                      @if (app.phone && app.phone !== '—') {
-                        <a
-                          [href]="getWhatsappLink(app.phone, app.fullName)"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          class="contact-whatsapp"
-                          title="Contactar vía WhatsApp"
-                        >
-                          <span>{{ app.phone }}</span>
-                        </a>
-                      }
-                    </div>
-                  </td>
-
-                  <!-- Rubro / Detalle -->
-                  <td>
-                    <div class="detail-cell">
-                      @if (app.type === 'prestador') {
-                        <strong class="rubro-title">{{ formatCategory(app.category) }}</strong>
-                        <span class="rubro-sub">{{ app.region || 'Catamarca' }}</span>
-                        @if (app.website) {
-                          <a [href]="app.website" target="_blank" rel="noopener noreferrer" class="rubro-link">
-                            {{ app.website }}
+      <!-- VISTA CONDICIONAL: Pestaña Nuevas Experiencias -->
+      @if (activeTab() === 'experiencias') {
+        @if (filteredExperienceRequests().length === 0) {
+          <div class="empty-box">
+            <mat-icon>explore_off</mat-icon>
+            <h3>No se encontraron propuestas de experiencias</h3>
+            <p>Probá cambiando la búsqueda o aguardá nuevas propuestas enviadas desde el portal de prestadores.</p>
+          </div>
+        } @else {
+          <div class="table-wrapper">
+            <table class="applications-table exp-table">
+              <thead>
+                <tr>
+                  <th>Prestador</th>
+                  <th>Experiencia Propuesta</th>
+                  <th>Región & Dificultad</th>
+                  <th>Arancel</th>
+                  <th>Fecha</th>
+                  <th class="col-actions">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (req of filteredExperienceRequests(); track req.id) {
+                  <tr [class.row-pending]="req.status === 'pendiente'">
+                    <!-- Prestador -->
+                    <td>
+                      <div class="postulante-cell">
+                        <strong class="postulante-name">{{ req.providerName }}</strong>
+                        <span class="rubro-sub">{{ req.providerAgency }}</span>
+                        @if (req.providerPhone) {
+                          <a
+                            [href]="getWhatsappLink(req.providerPhone, req.providerName)"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="contact-whatsapp"
+                            title="Contactar vía WhatsApp"
+                          >
+                            <span>{{ req.providerPhone }}</span>
                           </a>
                         }
-                      } @else {
-                        <strong class="rubro-title">Cuadro Fundacional</strong>
-                        <span class="rubro-snippet" [title]="app.motivationLetter">
-                          {{ getSnippet(app.motivationLetter) }}
-                        </span>
-                      }
-                    </div>
-                  </td>
+                      </div>
+                    </td>
 
-                  <!-- Fecha -->
-                  <td>
-                    <span class="date-text">{{ app.createdAt | fecha: 'corta' }}</span>
-                  </td>
+                    <!-- Experiencia Propuesta -->
+                    <td>
+                      <div class="exp-cell-wrap">
+                        @if (req.coverImage) {
+                          <img [src]="req.coverImage" alt="Portada" class="exp-cell-thumb" />
+                        }
+                        <div class="exp-cell-text">
+                          <strong class="exp-title-cell">{{ req.title }}</strong>
+                          <span class="exp-kicker-sub font-mono">{{ req.kicker }}</span>
+                        </div>
+                      </div>
+                    </td>
 
-                  <!-- Acciones -->
-                  <td>
-                    <button
-                      type="button"
-                      class="btn-view"
-                      (click)="openDetailModal(app)"
-                      title="Ver postulación completa"
-                    >
-                      Ver Detalle
-                    </button>
-                  </td>
+                    <!-- Región & Dificultad -->
+                    <td>
+                      <div class="detail-cell">
+                        <strong class="rubro-title">{{ req.region }}</strong>
+                        <span class="rubro-sub">Dificultad: {{ req.difficulty }}</span>
+                      </div>
+                    </td>
+
+                    <!-- Arancel -->
+                    <td>
+                      <div class="price-cell">
+                        <strong class="amount-val">{{ req.priceArs | ars }}</strong>
+                        @if (req.priceUsd) {
+                          <span class="usd-val">USD {{ req.priceUsd }}</span>
+                        }
+                      </div>
+                    </td>
+
+                    <!-- Fecha -->
+                    <td>
+                      <span class="date-text">{{ req.createdAt | fecha: 'corta' }}</span>
+                    </td>
+
+                    <!-- Acciones -->
+                    <td>
+                      <button
+                        type="button"
+                        class="btn-view"
+                        (click)="openExperienceRequest(req)"
+                        title="Revisar propuesta"
+                      >
+                        Revisar
+                      </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <div class="table-footer-actions">
+            <button
+              type="button"
+              class="btn-footer-action"
+              (click)="refresh()"
+              [disabled]="store.isLoadingApplications()"
+            >
+              {{ store.isLoadingApplications() ? 'Actualizando...' : 'Refrescar' }}
+            </button>
+
+            <button
+              type="button"
+              class="btn-footer-action"
+              (click)="downloadExperienceRequestsCsv()"
+            >
+              Descargar
+            </button>
+          </div>
+        }
+      } @else {
+        <!-- VISTA CONDICIONAL: Pestañas de Postulaciones Generales -->
+        @if (filteredApplications().length === 0) {
+          <div class="empty-box">
+            <mat-icon>assignment_late</mat-icon>
+            <h3>No se encontraron postulaciones</h3>
+            <p>Probá cambiando la búsqueda o seleccionando otra pestaña de filtro.</p>
+          </div>
+        } @else {
+          <div class="table-wrapper">
+            <table class="applications-table">
+              <thead>
+                <tr>
+                  <th class="col-type">Tipo</th>
+                  <th class="col-postulante">Postulante</th>
+                  <th class="col-rubro">Detalles</th>
+                  <th class="col-fecha">Fecha</th>
+                  <th class="col-actions">Acciones</th>
                 </tr>
-              }
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                @for (app of filteredApplications(); track app.id) {
+                  <tr [class.is-prestador]="app.type === 'prestador'" [class.is-fundador]="app.type === 'fundador'">
+                    <!-- Tipo -->
+                    <td>
+                      @if (app.type === 'prestador') {
+                        <span class="badge-type badge-prestador">PRESTADOR</span>
+                      } @else {
+                        <span class="badge-type badge-fundador">SOCIO FUNDADOR</span>
+                      }
+                    </td>
 
-        <!-- Botones de Acción al Pie de la Tabla -->
-        <div class="table-footer-actions">
-          <button
-            type="button"
-            class="btn-footer-action"
-            (click)="refresh()"
-            [disabled]="store.isLoadingApplications()"
-          >
-            {{ store.isLoadingApplications() ? 'Actualizando...' : 'Refrescar Postulaciones' }}
-          </button>
+                    <!-- Postulante -->
+                    <td>
+                      <div class="postulante-cell">
+                        <strong class="postulante-name">{{ app.fullName }}</strong>
+                        <span class="postulante-email">{{ app.email }}</span>
+                        @if (app.phone && app.phone !== '—') {
+                          <a
+                            [href]="getWhatsappLink(app.phone, app.fullName)"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="contact-whatsapp"
+                            title="Contactar vía WhatsApp"
+                          >
+                            <span>{{ app.phone }}</span>
+                          </a>
+                        }
+                      </div>
+                    </td>
 
-          <button
-            type="button"
-            class="btn-footer-action"
-            (click)="downloadRoster()"
-          >
-            Descargar Planilla
-          </button>
-        </div>
+                    <!-- Rubro / Detalle -->
+                    <td>
+                      <div class="detail-cell">
+                        @if (app.type === 'prestador') {
+                          <strong class="rubro-title">{{ formatCategory(app.category) }}</strong>
+                          <span class="rubro-sub">{{ app.region || 'Catamarca' }}</span>
+                          @if (app.website) {
+                            <a [href]="app.website" target="_blank" rel="noopener noreferrer" class="rubro-link">
+                              {{ app.website }}
+                            </a>
+                          }
+                        } @else {
+                          <strong class="rubro-title">Cuadro Fundacional</strong>
+                          <span class="rubro-snippet" [title]="app.motivationLetter">
+                            {{ getSnippet(app.motivationLetter) }}
+                          </span>
+                        }
+                      </div>
+                    </td>
+
+                    <!-- Fecha -->
+                    <td>
+                      <span class="date-text">{{ app.createdAt | fecha: 'corta' }}</span>
+                    </td>
+
+                    <!-- Acciones -->
+                    <td>
+                      <button
+                        type="button"
+                        class="btn-view"
+                        (click)="openDetailModal(app)"
+                        title="Ver postulación completa"
+                      >
+                        Ver Detalle
+                      </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Botones de Acción al Pie de la Tabla -->
+          <div class="table-footer-actions">
+            <button
+              type="button"
+              class="btn-footer-action"
+              (click)="refresh()"
+              [disabled]="store.isLoadingApplications()"
+            >
+              {{ store.isLoadingApplications() ? 'Actualizando...' : 'Refrescar' }}
+            </button>
+
+            <button
+              type="button"
+              class="btn-footer-action"
+              (click)="downloadRoster()"
+            >
+              Descargar
+            </button>
+          </div>
+        }
       }
 
-      <!-- Modal de Detalle de Postulación -->
+      <!-- Modal de Detalle de Postulación General -->
       @if (selectedApp()) {
         <div class="modal-backdrop" (click)="closeDetailModal()">
           <div class="modal-dialog" (click)="$event.stopPropagation()">
@@ -335,6 +471,140 @@ type ApplicationFilterTab = 'todas' | 'prestadores' | 'fundadores' | 'pendientes
           </div>
         </div>
       }
+
+      <!-- Modal de Revisión de Ficha de Nueva Experiencia -->
+      @if (selectedExperienceRequest(); as expReq) {
+        <div class="modal-backdrop" (click)="closeExperienceRequest()">
+          <div class="modal-dialog exp-req-modal-card" (click)="$event.stopPropagation()">
+            <div class="modal-head">
+              <div>
+                <span class="modal-kicker">{{ expReq.kicker }}</span>
+                <h2 class="modal-title">{{ expReq.title }}</h2>
+                <p class="modal-sub-author">
+                  Propuesta presentada por <strong>{{ expReq.providerName }}</strong> ({{ expReq.providerAgency }})
+                </p>
+              </div>
+              <button type="button" class="modal-close-btn" (click)="closeExperienceRequest()">×</button>
+            </div>
+
+            <div class="modal-body">
+              <!-- Media Banner -->
+              <div class="exp-req-media-banner">
+                @if (expReq.coverImage) {
+                  <img [src]="expReq.coverImage" alt="Portada de la propuesta" class="exp-req-cover-img" />
+                }
+                <div class="exp-req-media-tags">
+                  @if (expReq.coverImageName) {
+                    <span class="exp-media-tag"><mat-icon>image</mat-icon> {{ expReq.coverImageName }}</span>
+                  }
+                  @if (expReq.coverVideoName) {
+                    <span class="exp-media-tag"><mat-icon>videocam</mat-icon> Video: {{ expReq.coverVideoName }}</span>
+                  }
+                </div>
+              </div>
+
+              <!-- 1. Síntesis descriptiva -->
+              <div class="app-desc-box quote-accent">
+                <span class="desc-heading">Síntesis descriptiva</span>
+                <p class="desc-content">{{ expReq.subheading }}</p>
+              </div>
+
+              <!-- 2. Ficha Técnica en Grid -->
+              <div class="exp-req-specs-grid">
+                <div class="spec-cell">
+                  <span class="spec-lbl">Región</span>
+                  <strong>{{ expReq.region }}</strong>
+                </div>
+                <div class="spec-cell">
+                  <span class="spec-lbl">Dificultad</span>
+                  <strong>{{ expReq.difficulty }}</strong>
+                </div>
+                <div class="spec-cell">
+                  <span class="spec-lbl">Duración</span>
+                  <strong>{{ expReq.duration }}</strong>
+                </div>
+                <div class="spec-cell">
+                  <span class="spec-lbl">Altitud</span>
+                  <strong>{{ expReq.altitude || '—' }}</strong>
+                </div>
+                <div class="spec-cell">
+                  <span class="spec-lbl">Cupo Máx.</span>
+                  <strong>{{ expReq.capacity }} personas</strong>
+                </div>
+                <div class="spec-cell">
+                  <span class="spec-lbl">Temporada</span>
+                  <strong>{{ expReq.season }}</strong>
+                </div>
+              </div>
+
+              <!-- 3. Arancel & Promociones Card Premium -->
+              <div class="exp-tariff-card">
+                <div class="tariff-main-col">
+                  <span class="tariff-kicker">Arancel por Persona</span>
+                  <div class="tariff-figures">
+                    <span class="tariff-ars">{{ expReq.priceArs | ars }}</span>
+                    @if (expReq.priceUsd) {
+                      <span class="tariff-usd-pill">Referencia: USD {{ expReq.priceUsd }}</span>
+                    }
+                  </div>
+                </div>
+
+                @if (expReq.capacity) {
+                  <div class="tariff-capacity-col">
+                    <span class="tariff-cap-lbl">Cupo Máximo</span>
+                    <strong class="tariff-cap-val">{{ expReq.capacity }} participantes</strong>
+                  </div>
+                }
+              </div>
+
+              @if (expReq.promosAndPricing) {
+                <div class="app-desc-box promo-accent">
+                  <span class="desc-heading">Promociones, descuentos y consideraciones tarifarias</span>
+                  <p class="desc-content">{{ expReq.promosAndPricing }}</p>
+                </div>
+              }
+
+              <!-- 4. Cronograma & Itinerario -->
+              <div class="app-desc-box">
+                <span class="desc-heading">Cronograma e itinerario propuesto</span>
+                <p class="desc-content" style="white-space: pre-line;">{{ expReq.itinerary }}</p>
+              </div>
+
+              <!-- 5. Logística, Seguridad & Requisitos -->
+              <dl class="modal-dl">
+                <div><dt>Punto de Encuentro:</dt><dd>{{ expReq.meetingPoint }}</dd></div>
+                <div><dt>Fechas / Frecuencia:</dt><dd>{{ expReq.dates }}</dd></div>
+                <div><dt>Provisto por el Prestador:</dt><dd>{{ expReq.includedServices }}</dd></div>
+                <div><dt>Requisitos del usuario:</dt><dd>{{ expReq.participantRequirements }}</dd></div>
+                @if (expReq.notes) {
+                  <div><dt>Notas / Enlaces:</dt><dd><a [href]="expReq.notes" target="_blank" rel="noopener" class="dt-link">{{ expReq.notes }}</a></dd></div>
+                }
+                <div><dt>Contacto prestador:</dt><dd><a [href]="'mailto:' + expReq.providerEmail" class="dt-link">{{ expReq.providerEmail }}</a></dd></div>
+              </dl>
+            </div>
+
+            <!-- Acciones al Pie -->
+            <div class="modal-actions">
+              <div class="state-buttons">
+                @if (expReq.providerPhone) {
+                  <a
+                    [href]="getWhatsappLink(expReq.providerPhone, expReq.providerName)"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="btn-state btn-whatsapp"
+                  >
+                    <span>Contactar prestador por Whatsapp</span>
+                  </a>
+                }
+              </div>
+
+              <button type="button" class="btn-close" (click)="closeExperienceRequest()">
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      }
     </div>
   `,
   styles: [
@@ -389,7 +659,7 @@ type ApplicationFilterTab = 'todas' | 'prestadores' | 'fundadores' | 'pendientes
       /* Summary Strip */
       .summary-strip {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
         gap: 1rem;
       }
 
@@ -423,6 +693,11 @@ type ApplicationFilterTab = 'todas' | 'prestadores' | 'fundadores' | 'pendientes
         backdrop-filter: blur(12px);
       }
 
+      .summary-item.highlight-box {
+        border-color: rgba(255, 95, 0, 0.55);
+        background: rgba(36, 18, 10, 0.88);
+      }
+
       .sum-label {
         font-size: 0.72rem;
         font-weight: 700;
@@ -444,8 +719,6 @@ type ApplicationFilterTab = 'todas' | 'prestadores' | 'fundadores' | 'pendientes
       }
 
       .text-orange { color: #ff5f00 !important; }
-      .text-amber { color: #f59e0b !important; }
-      .text-blue { color: #80b3ff !important; }
 
       /* Filters & Search */
       .filters-bar {
@@ -506,6 +779,7 @@ type ApplicationFilterTab = 'todas' | 'prestadores' | 'fundadores' | 'pendientes
       }
 
       .filter-tab {
+        position: relative;
         padding: 0.45rem 0.85rem;
         background: rgba(30, 16, 9, 0.6);
         border: 1px solid rgba(255, 95, 0, 0.25);
@@ -515,6 +789,9 @@ type ApplicationFilterTab = 'todas' | 'prestadores' | 'fundadores' | 'pendientes
         border-radius: 2px;
         cursor: pointer;
         transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
       }
 
       .filter-tab:hover {
@@ -528,17 +805,38 @@ type ApplicationFilterTab = 'todas' | 'prestadores' | 'fundadores' | 'pendientes
         border-color: #ff5f00;
       }
 
+      .tab-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #ff5f00;
+        color: #0b0704;
+        font-size: 0.65rem;
+        font-weight: 800;
+        padding: 0.1rem 0.35rem;
+        border-radius: 2px;
+      }
+
+      .filter-tab.is-active .tab-badge {
+        background: #0b0704;
+        color: #ff5f00;
+      }
+
       /* Applications Table */
       .table-wrapper {
         background: rgba(20, 10, 5, 0.82);
         border: 1px solid rgba(255, 95, 0, 0.35);
         border-radius: 2px;
         overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        width: 100%;
+        max-width: 100%;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
       }
 
       .applications-table {
         width: 100%;
+        min-width: 780px;
         border-collapse: collapse;
         text-align: left;
         font-size: 0.82rem;
@@ -577,15 +875,15 @@ type ApplicationFilterTab = 'todas' | 'prestadores' | 'fundadores' | 'pendientes
       }
 
       .badge-prestador {
-        background: rgba(128, 179, 255, 0.18);
-        border: 1px solid rgba(128, 179, 255, 0.45);
-        color: #80b3ff;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: rgba(255, 255, 255, 0.75);
       }
 
       .badge-fundador {
-        background: rgba(245, 158, 11, 0.18);
-        border: 1px solid rgba(245, 158, 11, 0.45);
-        color: #fbbf24;
+        background: rgba(128, 179, 255, 0.14);
+        border: 1px solid rgba(128, 179, 255, 0.4);
+        color: #80b3ff;
       }
 
       .postulante-cell {
@@ -601,16 +899,17 @@ type ApplicationFilterTab = 'todas' | 'prestadores' | 'fundadores' | 'pendientes
       }
 
       .postulante-email {
-        color: #ffffff;
+        color: rgba(255, 255, 255, 0.65);
         font-family: var(--font-mono, monospace);
         font-size: 0.78rem;
       }
 
-      .contact-whatsapp {
+      .contact-whatsapp,
+      .contact-whatsapp:visited {
         display: inline-flex;
         align-items: center;
         gap: 0.3rem;
-        color: rgba(255, 255, 255, 0.5);
+        color: rgba(255, 255, 255, 0.55);
         text-decoration: none;
         font-size: 0.75rem;
         font-family: var(--font-mono, monospace);
@@ -634,11 +933,12 @@ type ApplicationFilterTab = 'todas' | 'prestadores' | 'fundadores' | 'pendientes
       }
 
       .rubro-sub {
-        color: #ffffff;
+        color: rgba(255, 255, 255, 0.55);
         font-size: 0.75rem;
       }
 
-      .rubro-link {
+      .rubro-link,
+      .rubro-link:visited {
         color: rgba(255, 255, 255, 0.55);
         font-size: 0.72rem;
         text-decoration: none;
@@ -653,13 +953,31 @@ type ApplicationFilterTab = 'todas' | 'prestadores' | 'fundadores' | 'pendientes
       }
 
       .rubro-snippet {
-        color: rgba(255, 255, 255, 0.6);
+        color: rgba(255, 255, 255, 0.55);
         font-size: 0.74rem;
         line-height: 1.35;
         display: -webkit-box;
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
         overflow: hidden;
+      }
+
+      .price-cell {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+      }
+
+      .amount-val {
+        color: #ffffff;
+        font-size: 0.88rem;
+        font-weight: 700;
+      }
+
+      .usd-val {
+        color: rgba(255, 255, 255, 0.55);
+        font-size: 0.74rem;
+        font-weight: 600;
       }
 
       .status-badge {
@@ -672,9 +990,9 @@ type ApplicationFilterTab = 'todas' | 'prestadores' | 'fundadores' | 'pendientes
       }
 
       .status-badge[data-status='pendiente'] {
-        background: rgba(245, 158, 11, 0.18);
-        border: 1px solid rgba(245, 158, 11, 0.45);
-        color: #fbbf24;
+        background: rgba(255, 95, 0, 0.15);
+        border: 1px solid rgba(255, 95, 0, 0.45);
+        color: #ff5f00;
       }
 
       .status-badge[data-status='aprobado'] {
@@ -711,6 +1029,40 @@ type ApplicationFilterTab = 'todas' | 'prestadores' | 'fundadores' | 'pendientes
       .btn-view:hover {
         background: #ff5f00;
         color: #0b0704;
+      }
+
+      .exp-cell-wrap {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .exp-cell-thumb {
+        width: 44px;
+        height: 44px;
+        border-radius: 2px;
+        object-fit: cover;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        flex-shrink: 0;
+      }
+
+      .exp-cell-text {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+      }
+
+      .exp-title-cell {
+        color: #ffffff;
+        font-size: 0.86rem;
+        font-weight: 700;
+      }
+
+      .exp-kicker-sub {
+        font-size: 0.68rem;
+        color: rgba(255, 255, 255, 0.55);
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
       }
 
       .table-footer-actions {
@@ -781,35 +1133,43 @@ type ApplicationFilterTab = 'todas' | 'prestadores' | 'fundadores' | 'pendientes
         left: 0;
         right: 0;
         bottom: 0;
-        background: rgba(0, 0, 0, 0.82);
+        background: rgba(4, 2, 1, 0.65);
         backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
         display: flex;
         align-items: center;
         justify-content: center;
         z-index: 1000;
         padding: 1.5rem;
-        animation: fadeIn 0.15s ease;
       }
 
       .modal-dialog {
-        background: #140b06;
-        border: 1px solid rgba(255, 95, 0, 0.5);
-        border-radius: 2px;
+        background: rgba(18, 9, 4, 0.78);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 95, 0, 0.35);
+        border-radius: 4px;
         width: 600px;
         max-width: 95vw;
         max-height: 90vh;
         overflow-y: auto;
         display: flex;
         flex-direction: column;
-        box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9);
+        box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85);
+      }
+
+      .exp-req-modal-card {
+        width: 800px;
+        max-width: 95vw;
       }
 
       .modal-head {
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        padding: 1.25rem 1.5rem;
-        border-bottom: 1px solid rgba(255, 95, 0, 0.3);
+        padding: 1.25rem 1.5rem 0.6rem;
+        border-bottom: none;
+        background: transparent;
       }
 
       .modal-kicker {
@@ -824,6 +1184,12 @@ type ApplicationFilterTab = 'todas' | 'prestadores' | 'fundadores' | 'pendientes
         color: #ffffff;
         font-size: 1.35rem;
         margin: 0.2rem 0 0;
+      }
+
+      .modal-sub-author {
+        font-size: 0.82rem;
+        color: rgba(255, 255, 255, 0.7);
+        margin: 0.3rem 0 0 0;
       }
 
       .modal-close-btn {
@@ -841,7 +1207,241 @@ type ApplicationFilterTab = 'todas' | 'prestadores' | 'fundadores' | 'pendientes
 
       .modal-body {
         padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.15rem;
       }
+
+      .exp-req-media-banner {
+        position: relative;
+        width: 100%;
+        height: 240px;
+        border-radius: 3px;
+        overflow: hidden;
+        background: #080402;
+        border: 1px solid rgba(255, 95, 0, 0.25);
+        margin-bottom: 0.25rem;
+      }
+
+      .exp-req-cover-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .exp-req-media-tags {
+        position: absolute;
+        bottom: 0.75rem;
+        left: 0.75rem;
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+
+      .exp-media-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.25rem 0.65rem;
+        background: rgba(10, 5, 2, 0.88);
+        backdrop-filter: blur(6px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 2px;
+        color: #ffffff;
+        font-size: 0.74rem;
+        font-weight: 600;
+      }
+
+      .exp-media-tag mat-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+        color: rgba(255, 255, 255, 0.65);
+      }
+
+      .exp-req-specs-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+        gap: 0.75rem;
+      }
+
+      .spec-cell {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        padding: 0.75rem 0.85rem;
+        background: rgba(20, 10, 5, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 2px;
+        font-size: 0.8rem;
+      }
+
+      .spec-lbl {
+        font-size: 0.68rem;
+        color: rgba(255, 255, 255, 0.55);
+        text-transform: uppercase;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+      }
+
+      /* Tarifa Card Premium */
+      .exp-tariff-card {
+        background: rgba(24, 12, 6, 0.6);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 95, 0, 0.35);
+        padding: 1.15rem 1.35rem;
+        border-radius: 3px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1.5rem;
+        flex-wrap: wrap;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      }
+
+      .tariff-main-col {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+      }
+
+      .tariff-kicker {
+        font-size: 0.72rem;
+        color: rgba(255, 255, 255, 0.55);
+        text-transform: uppercase;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+      }
+
+      .tariff-figures {
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
+        flex-wrap: wrap;
+      }
+
+      .tariff-ars {
+        font-size: 1.95rem;
+        color: #34d399;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        line-height: 1;
+      }
+
+      .tariff-usd-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.3rem 0.65rem;
+        background: rgba(255, 255, 255, 0.07);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 999px;
+        color: rgba(255, 255, 255, 0.8);
+        font-size: 0.78rem;
+        font-weight: 600;
+        line-height: 1;
+        font-family: var(--font-mono, monospace);
+      }
+
+      .tariff-capacity-col {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        padding-left: 1.5rem;
+        border-left: 1px solid rgba(255, 95, 0, 0.25);
+      }
+
+      @media (max-width: 650px) {
+        .tariff-capacity-col {
+          padding-left: 0;
+          border-left: none;
+          padding-top: 0.75rem;
+          border-top: 1px solid rgba(255, 95, 0, 0.25);
+          width: 100%;
+        }
+      }
+
+      .tariff-cap-lbl {
+        font-size: 0.68rem;
+        color: rgba(255, 255, 255, 0.55);
+        text-transform: uppercase;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+      }
+
+      .tariff-cap-val {
+        color: #ffffff;
+        font-size: 0.95rem;
+        font-weight: 700;
+      }
+
+      .quote-accent {
+        border-left: 3px solid #ff5f00;
+      }
+
+      .promo-accent {
+        background: rgba(255, 95, 0, 0.08);
+        border: 1px dashed rgba(255, 95, 0, 0.45);
+      }
+
+      .btn-whatsapp {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.55rem;
+        background: #25d366;
+        border: 1px solid #25d366;
+        color: #0b0704;
+        font-weight: 800;
+        font-size: 0.85rem;
+        padding: 0.65rem 1.35rem;
+        border-radius: 2px;
+        text-decoration: none;
+        cursor: pointer;
+        transition: background 0.2s ease, transform 0.15s ease;
+      }
+
+      .btn-whatsapp:hover {
+        background: #1eb956;
+        border-color: #1eb956;
+        transform: translateY(-1px);
+      }
+
+      .app-desc-box {
+        padding: 0.85rem 1rem;
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 2px;
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+      }
+
+      .desc-heading {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        color: rgba(255, 255, 255, 0.5);
+      }
+
+      .desc-content {
+        margin: 0;
+        font-size: 0.82rem;
+        color: rgba(255, 255, 255, 0.9);
+        white-space: pre-wrap;
+        line-height: 1.45;
+      }
+
+      .modal-dl {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.65rem;
+        font-size: 0.78rem;
+        margin: 0;
+      }
+
+      .modal-dl dt { color: rgba(255, 255, 255, 0.5); }
+      .modal-dl dd { color: #ffffff; margin: 0; }
 
       .detail-grid {
         display: grid;
@@ -852,6 +1452,69 @@ type ApplicationFilterTab = 'todas' | 'prestadores' | 'fundadores' | 'pendientes
       @media (max-width: 600px) {
         .detail-grid {
           grid-template-columns: 1fr;
+        }
+
+        .modal-backdrop {
+          padding: 0.5rem;
+        }
+
+        .modal-dialog,
+        .exp-req-modal-card {
+          width: 100%;
+          max-width: 100%;
+          max-height: 94vh;
+        }
+
+        .modal-head {
+          padding: 1rem;
+        }
+
+        .modal-title {
+          font-size: 1.15rem;
+        }
+
+        .modal-body {
+          padding: 1rem;
+          gap: 0.85rem;
+        }
+
+        .exp-req-specs-grid {
+          grid-template-columns: repeat(2, 1fr);
+          gap: 0.5rem;
+        }
+
+        .exp-tariff-card {
+          padding: 1rem;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 0.75rem;
+        }
+
+        .tariff-figures {
+          gap: 0.5rem;
+        }
+
+        .tariff-ars {
+          font-size: 1.55rem;
+        }
+
+        .modal-actions {
+          padding: 0.85rem 1rem;
+          flex-direction: column;
+          gap: 0.5rem;
+          align-items: stretch;
+        }
+
+        .modal-actions .state-buttons {
+          width: 100%;
+        }
+
+        .modal-actions .btn-state,
+        .modal-actions .btn-close {
+          width: 100%;
+          justify-content: center;
+          text-align: center;
+          box-sizing: border-box;
         }
       }
 
@@ -894,29 +1557,6 @@ type ApplicationFilterTab = 'todas' | 'prestadores' | 'fundadores' | 'pendientes
         text-decoration: underline;
       }
 
-      .dt-phone-row {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        color: #ffffff;
-        font-size: 0.88rem;
-      }
-
-      .dt-wa-btn {
-        padding: 0.2rem 0.5rem;
-        background: rgba(37, 211, 102, 0.2);
-        border: 1px solid rgba(37, 211, 102, 0.5);
-        color: #4ade80;
-        font-size: 0.72rem;
-        font-weight: 700;
-        border-radius: 2px;
-        text-decoration: none;
-      }
-
-      .dt-wa-btn:hover {
-        background: rgba(37, 211, 102, 0.35);
-      }
-
       .dt-text-box {
         background: rgba(8, 4, 2, 0.7);
         border: 1px solid rgba(255, 95, 0, 0.25);
@@ -934,8 +1574,10 @@ type ApplicationFilterTab = 'todas' | 'prestadores' | 'fundadores' | 'pendientes
         justify-content: space-between;
         align-items: center;
         padding: 1.15rem 1.5rem;
-        border-top: 1px solid rgba(255, 95, 0, 0.3);
-        background: rgba(18, 9, 4, 0.95);
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(12, 6, 3, 0.65);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
         flex-wrap: wrap;
         gap: 0.75rem;
       }
@@ -961,7 +1603,7 @@ type ApplicationFilterTab = 'todas' | 'prestadores' | 'fundadores' | 'pendientes
         color: #34d399;
       }
 
-      .btn-approve:hover {
+      .btn-approve:hover:not(:disabled) {
         background: #10b981;
         color: #0b0704;
       }
@@ -972,7 +1614,7 @@ type ApplicationFilterTab = 'todas' | 'prestadores' | 'fundadores' | 'pendientes
         color: #fca5a5;
       }
 
-      .btn-reject:hover {
+      .btn-reject:hover:not(:disabled) {
         background: #ef4444;
         color: #ffffff;
       }
@@ -983,9 +1625,14 @@ type ApplicationFilterTab = 'todas' | 'prestadores' | 'fundadores' | 'pendientes
         color: #fbbf24;
       }
 
-      .btn-pending:hover {
+      .btn-pending:hover:not(:disabled) {
         background: #f59e0b;
         color: #0b0704;
+      }
+
+      .btn-state:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
       }
 
       .btn-close {
@@ -1005,12 +1652,22 @@ type ApplicationFilterTab = 'todas' | 'prestadores' | 'fundadores' | 'pendientes
     `,
   ],
 })
-export class AdminApplicationsComponent {
+export class AdminApplicationsComponent implements OnInit {
   readonly store = inject(AdminStoreService);
+  private readonly route = inject(ActivatedRoute);
 
   readonly searchQuery = signal<string>('');
   readonly activeTab = signal<ApplicationFilterTab>('todas');
   readonly selectedApp = signal<AdminApplication | null>(null);
+  readonly selectedExperienceRequest = signal<ExperienceProposalRequest | null>(null);
+
+  ngOnInit(): void {
+    this.route.queryParams.subscribe((params) => {
+      if (params['tab'] === 'experiencias') {
+        this.activeTab.set('experiencias');
+      }
+    });
+  }
 
   readonly filteredApplications = computed(() => {
     let list = this.store.applications();
@@ -1043,6 +1700,22 @@ export class AdminApplicationsComponent {
     return list;
   });
 
+  readonly filteredExperienceRequests = computed(() => {
+    let list = this.store.experienceRequests();
+    const query = this.searchQuery().trim().toLowerCase();
+    if (query) {
+      list = list.filter((r) => {
+        const titleMatch = r.title.toLowerCase().includes(query);
+        const nameMatch = r.providerName.toLowerCase().includes(query);
+        const agencyMatch = r.providerAgency.toLowerCase().includes(query);
+        const kickerMatch = r.kicker.toLowerCase().includes(query);
+        const regionMatch = r.region.toLowerCase().includes(query);
+        return titleMatch || nameMatch || agencyMatch || kickerMatch || regionMatch;
+      });
+    }
+    return list;
+  });
+
   refresh(): void {
     void this.store.loadAllApplications();
   }
@@ -1055,6 +1728,38 @@ export class AdminApplicationsComponent {
     this.selectedApp.set(null);
   }
 
+  openExperienceRequest(req: ExperienceProposalRequest): void {
+    this.selectedExperienceRequest.set(req);
+  }
+
+  closeExperienceRequest(): void {
+    this.selectedExperienceRequest.set(null);
+  }
+
+  approveExperience(id: string): void {
+    this.store.approveExperienceRequest(id);
+    const current = this.selectedExperienceRequest();
+    if (current && current.id === id) {
+      this.selectedExperienceRequest.set({
+        ...current,
+        status: 'aprobada',
+        reviewedAt: new Date().toISOString(),
+      });
+    }
+  }
+
+  rejectExperience(id: string): void {
+    this.store.rejectExperienceRequest(id);
+    const current = this.selectedExperienceRequest();
+    if (current && current.id === id) {
+      this.selectedExperienceRequest.set({
+        ...current,
+        status: 'rechazada',
+        reviewedAt: new Date().toISOString(),
+      });
+    }
+  }
+
   changeStatus(status: ApplicationStatus): void {
     const current = this.selectedApp();
     if (!current) return;
@@ -1065,7 +1770,7 @@ export class AdminApplicationsComponent {
   getWhatsappLink(phone?: string, name?: string): string {
     const cleanDigits = (phone || '').replace(/\D/g, '');
     const cleanName = encodeURIComponent(name || 'Postulante');
-    return `https://wa.me/${cleanDigits}?text=Hola%20${cleanName},%20nos%20comunicamos%20desde%20la%20administraci%C3%B3n%20de%20EXPERIENCIAS.CLUB%20respecto%20a%20tu%20postulaci%C3%B3n`;
+    return `https://wa.me/${cleanDigits}?text=Hola%20${cleanName},%20nos%20comunicamos%20desde%20la%20administraci%C3%B3n%20de%20EXPERIENCIAS.CLUB%20respecto%20a%20tu%20propuesta`;
   }
 
   formatCategory(category?: string): string {
@@ -1133,6 +1838,59 @@ export class AdminApplicationsComponent {
     const link = document.createElement('a');
     link.href = url;
     link.download = `postulaciones_experiencias_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  downloadExperienceRequestsCsv(): void {
+    const list = this.store.experienceRequests();
+    const headers = [
+      'Título Propuesta',
+      'Kicker',
+      'Prestador',
+      'Agencia',
+      'Email',
+      'Teléfono',
+      'Región',
+      'Dificultad',
+      'Duración',
+      'Cupo Máximo',
+      'Precio ARS',
+      'Precio USD',
+      'Estado',
+      'Fecha',
+      'Síntesis',
+      'Itinerario',
+      'Promociones',
+    ];
+    const escapeCsv = (val: any) => `"${(val != null ? String(val) : '').replace(/"/g, '""')}"`;
+    const rows = [
+      headers.map(escapeCsv).join(','),
+      ...list.map((r) => [
+        escapeCsv(r.title),
+        escapeCsv(r.kicker),
+        escapeCsv(r.providerName),
+        escapeCsv(r.providerAgency),
+        escapeCsv(r.providerEmail),
+        escapeCsv(r.providerPhone),
+        escapeCsv(r.region),
+        escapeCsv(r.difficulty),
+        escapeCsv(r.duration),
+        escapeCsv(r.capacity),
+        escapeCsv(r.priceArs),
+        escapeCsv(r.priceUsd),
+        escapeCsv(r.status.toUpperCase()),
+        escapeCsv(new Date(r.createdAt).toLocaleDateString('es-AR')),
+        escapeCsv(r.subheading),
+        escapeCsv(r.itinerary),
+        escapeCsv(r.promosAndPricing),
+      ].join(',')),
+    ];
+    const blob = new Blob(['\uFEFF' + rows.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `propuestas_experiencias_${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   }

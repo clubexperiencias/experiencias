@@ -568,11 +568,15 @@ type StatusFilter = TransferStatus | 'todos';
         border: 1px solid rgba(255, 95, 0, 0.35);
         border-radius: 2px;
         overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        width: 100%;
+        max-width: 100%;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
       }
 
       .receipts-table {
         width: 100%;
+        min-width: 780px;
         border-collapse: collapse;
         text-align: left;
         font-size: 0.82rem;
@@ -764,8 +768,9 @@ type StatusFilter = TransferStatus | 'todos';
       .modal-backdrop {
         position: fixed;
         inset: 0;
-        background: rgba(5, 3, 2, 0.88);
+        background: rgba(4, 2, 1, 0.65);
         backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -778,15 +783,17 @@ type StatusFilter = TransferStatus | 'todos';
         grid-template-columns: minmax(320px, 1fr) minmax(360px, 1.2fr);
         width: min(960px, 100%);
         max-height: min(720px, 92vh);
-        background: #140b06;
-        border: 1px solid rgba(255, 95, 0, 0.45);
+        background: rgba(20, 10, 5, 0.78);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 95, 0, 0.35);
         border-radius: 3px;
         box-shadow: 0 25px 70px rgba(0, 0, 0, 0.7);
         overflow: hidden;
       }
 
       .receipt-modal-preview {
-        background: #090503;
+        background: rgba(8, 4, 2, 0.55);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -923,7 +930,7 @@ type StatusFilter = TransferStatus | 'todos';
       }
 
       .btn-approve {
-        flex: 1.5;
+        flex: 1;
         padding: 0.75rem;
         background: #10b981;
         border: 1px solid #10b981;
@@ -1061,11 +1068,67 @@ type StatusFilter = TransferStatus | 'todos';
       }
 
       @media (max-width: 768px) {
-        .receipt-modal-card {
-          grid-template-columns: 1fr;
+        .modal-backdrop {
+          padding: 0.5rem !important;
         }
+
+        .receipt-modal-card {
+          grid-template-columns: 1fr !important;
+          max-height: 94vh !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          overflow-y: auto !important;
+        }
+
+        .receipt-modal-preview {
+          max-height: 260px !important;
+          padding: 0.75rem !important;
+          background: rgba(8, 4, 2, 0.7) !important;
+          overflow-y: auto !important;
+          border-bottom: 1px solid rgba(255, 95, 0, 0.25) !important;
+        }
+
+        .receipt-img {
+          max-height: 240px !important;
+          width: auto !important;
+          max-width: 100% !important;
+          margin: 0 auto !important;
+          display: block !important;
+        }
+
+        .receipt-modal-details {
+          padding: 1rem 1rem 1.25rem !important;
+          gap: 0.75rem !important;
+          overflow-y: visible !important;
+        }
+
         .meta-data-list {
-          grid-template-columns: 1fr;
+          grid-template-columns: 1fr !important;
+          gap: 0.4rem !important;
+        }
+
+        .modal-actions-row {
+          flex-direction: column !important;
+          width: 100% !important;
+          gap: 0.5rem !important;
+        }
+
+        .modal-actions-row button,
+        .modal-actions-row a {
+          width: 100% !important;
+          justify-content: center !important;
+          text-align: center !important;
+          box-sizing: border-box !important;
+        }
+
+        .table-footer-actions {
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+
+        .table-footer-actions .btn-footer-action {
+          width: 100%;
+          justify-content: center;
         }
       }
     `,

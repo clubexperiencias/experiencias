@@ -56,41 +56,15 @@ import { ProviderLoginComponent } from './provider-login/provider-login.componen
             <!-- Menú de perfil -->
             <div class="header-right">
               <!-- Menú de Prestador activo -->
-              <div class="user-pill" (click)="toggleUserMenu()">
-                <img
-                  [src]="provider()?.avatar || '/assets/aistudio/patricio.jpg'"
-                  [alt]="provider()?.name || 'Patricio Facundo'"
-                  class="user-avatar"
-                  referrerpolicy="no-referrer"
-                />
+              <div class="user-pill" [class.is-open]="userMenuOpen()" (click)="toggleUserMenu()">
+                <mat-icon class="user-pill-icon">{{ userMenuOpen() ? 'close' : 'menu' }}</mat-icon>
                 <div class="user-meta">
                   <strong class="user-name">{{ provider()?.name || 'Patricio Facundo' }}</strong>
                   <span class="user-agency">{{ provider()?.agency }}</span>
                 </div>
-                <mat-icon class="dropdown-chevron">expand_more</mat-icon>
 
                 @if (userMenuOpen()) {
                   <div class="dropdown-menu enlarged-menu" (click)="$event.stopPropagation()">
-                    <div class="dropdown-header">
-                      <div class="dropdown-user-row">
-                        <img
-                          [src]="provider()?.avatar || '/assets/aistudio/patricio.jpg'"
-                          [alt]="provider()?.name || 'Patricio Facundo'"
-                          class="dropdown-avatar-lg"
-                          referrerpolicy="no-referrer"
-                        />
-                        <div class="dropdown-user-details">
-                          <strong class="dropdown-user-name">{{
-                            provider()?.name || 'Patricio Facundo'
-                          }}</strong>
-                          <span class="dropdown-user-email">{{ provider()?.email }}</span>
-                          <span class="dropdown-user-tag">{{ provider()?.agency }}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div class="dropdown-divider"></div>
-
                     <!-- Opciones de Navegación del Menú Agrandadas -->
                     <div class="dropdown-nav-list">
                       <a
@@ -130,6 +104,26 @@ import { ProviderLoginComponent } from './provider-login/provider-login.componen
           <div class="portal-content-container">
             <router-outlet />
           </div>
+
+          <!-- Box de Asistencia y Soporte Técnico abajo de todo -->
+          <section class="support-box" aria-label="Soporte y Asistencia Técnica">
+            <div class="support-box-inner">
+              <div class="support-text-col">
+                <span class="support-kicker">MESA DE AYUDA & ASISTENCIA TÉCNICA</span>
+                <p class="support-message">
+                  Si tenés alguna duda o precisás asistencia técnica, mandá un mail a
+                  <span class="support-email-text">ayuda&#64;experiencias.club</span> o directamente
+                  <a
+                    [href]="supportWhatsappUrl"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="support-wa-link"
+                    >escribinos a WhatsApp haciendo click aquí</a
+                  >.
+                </p>
+              </div>
+            </div>
+          </section>
         </main>
       }
 
@@ -159,6 +153,9 @@ export class ProviderPanelComponent {
 
   readonly provider = this.store.currentProvider;
   readonly userMenuOpen = signal(false);
+  readonly supportWhatsappUrl =
+    'https://wa.me/5493515490431?text=' +
+    encodeURIComponent('Hola! Tengo una duda y necesito asistencia con el Portal de Prestadores, ¿me podrían ayudar?');
 
   constructor() {
     void this.store.restoreSupabaseSession();

@@ -9,9 +9,9 @@
   ],
   "scripts": {
     "dev": "sh -c 'PORT=4200 npm run dev --workspace=apps/public' --",
-    "build": "node ./scripts/set-env.js && npm run build --workspace=apps/public",
+    "build": "node ./scripts/set-env.js && npm run build --workspace=apps/public && node ./scripts/post-build.js",
     "dev:public": "npm run dev --workspace=apps/public",
-    "build:public": "node ./scripts/set-env.js && npm run build --workspace=apps/public",
+    "build:public": "node ./scripts/set-env.js && npm run build --workspace=apps/public && node ./scripts/post-build.js",
     "format": "prettier --write .",
     "prepare": "husky"
   },

@@ -3,6 +3,8 @@
 # Compiled output
 /dist
 **/dist
+/browser
+**/browser
 /tmp
 /out-tsc
 /bazel-out
