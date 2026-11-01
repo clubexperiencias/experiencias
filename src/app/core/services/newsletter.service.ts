@@ -123,7 +123,7 @@ export class NewsletterService {
             if (wlRpcErr) {
               await this.supabase
                 .from('waitlist')
-                .upsert({ email: authEmail, google_linked: true, converted: true }, { onConflict: 'email' });
+                .upsert({ email: authEmail, google_linked: true }, { onConflict: 'email' });
             }
 
             // 2. Obtener y vincular socio existente mediante RPC segura
@@ -472,6 +472,22 @@ export class NewsletterService {
           .maybeSingle();
 
         if (existing) {
+          let activeEmail: string | null = null;
+          try {
+            const { data: sessData } = await this.supabase.auth.getSession();
+            activeEmail = sessData?.session?.user?.email?.toLowerCase().trim() || null;
+          } catch {
+            // Sin sesión activa
+          }
+
+          if (activeEmail !== cleanEmail) {
+            this._isLoading.set(false);
+            return {
+              success: false,
+              message: 'Ya existe un socio registrado con este email. Iniciá sesión para acceder a tu cuenta.',
+            };
+          }
+
           const { data: updatedSocio } = await this.supabase
             .from('socios')
             .update({
@@ -730,14 +746,12 @@ export class NewsletterService {
         if (!rpcErr && rpcStatus && typeof rpcStatus.in_socios === 'boolean') {
           if (rpcStatus.in_socios) {
             this._isLoading.set(false);
-            this.lastProspectEmail.set(cleanEmail);
-            this.persistProspectEmail(cleanEmail);
             return {
-              success: true,
+              success: false,
               alreadyRegisteredSocio: true,
-              alreadyInWaitlist: true,
+              alreadyInWaitlist: false,
               message:
-                '¡Correo verificado con éxito! Redirigiendo a tu ficha de Socio Emergente...',
+                'Este correo pertenece a un socio del Club. Por seguridad, iniciá sesión con Google para acceder a tu perfil.',
             };
           }
 
@@ -781,17 +795,12 @@ export class NewsletterService {
 
         if (!socioRes.error && socioRes.data) {
           this._isLoading.set(false);
-          this.lastProspectEmail.set(cleanEmail);
-          this.persistProspectEmail(cleanEmail);
-          const socioData = mapDbRowToEntry(socioRes.data);
-          this._currentMember.set(socioData);
-          this.persistCurrentMember(socioData);
           return {
-            success: true,
+            success: false,
             alreadyRegisteredSocio: true,
-            alreadyInWaitlist: true,
+            alreadyInWaitlist: false,
             message:
-              '¡Correo verificado con éxito! Redirigiendo a tu ficha de Socio Emergente...',
+              'Este correo pertenece a un socio del Club. Por seguridad, iniciá sesión con Google para acceder a tu perfil.',
           };
         }
 

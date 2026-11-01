@@ -842,12 +842,12 @@ export class ProviderStoreService {
             upsert: false,
           });
 
-        if (!uploadErr) {
-          const { data: urlData } = this.supabase.storage
-            .from('comprobantes')
-            .getPublicUrl(storageKey);
-          receiptUrl = urlData?.publicUrl || '';
+        if (uploadErr) {
+          console.warn('[ProviderStore] Error al subir comprobante a Supabase Storage:', uploadErr);
+          throw new Error('No se pudo subir el archivo del comprobante. Por favor intentá nuevamente.');
         }
+
+        receiptUrl = storageKey;
 
         const { data: rpcRes, error: rpcErr } = await this.supabase.rpc(
           'submit_experience_transfer' as any,
@@ -867,8 +867,8 @@ export class ProviderStoreService {
             p_receipt_file_name: input.receiptFile.name,
             p_receipt_mime_type: input.receiptFile.type,
             p_receipt_size_bytes: input.receiptFile.size,
-            p_receipt_url: receiptUrl || 'https://experiencias.club/assets/images/comprobante-ejemplo.png',
-            p_receipt_storage_key: storageKey || null,
+            p_receipt_url: receiptUrl,
+            p_receipt_storage_key: storageKey,
             p_receipt_storage_provider: 'supabase',
           },
         );

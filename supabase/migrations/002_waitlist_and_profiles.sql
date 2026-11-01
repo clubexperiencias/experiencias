@@ -1205,7 +1205,25 @@ BEGIN
       ON storage.objects
       FOR SELECT
       TO authenticated
-      USING (bucket_id = 'comprobantes');
+      USING (
+        bucket_id = 'comprobantes'
+        AND (
+          EXISTS (
+            SELECT 1 FROM public.pagos_transferencias
+            WHERE receipt_storage_key = storage.objects.name
+              AND (
+                LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+                OR socio_id IN (SELECT id FROM public.socios WHERE auth_user_id = auth.uid())
+              )
+          )
+          OR LOWER(COALESCE(auth.jwt() ->> 'email', '')) IN (
+            'gonzagramaglia@gmail.com',
+            'admin@experiencias.club',
+            'patricio@experiencias.club',
+            'puna@experiencias.club'
+          )
+        )
+      );
   END IF;
 EXCEPTION
   WHEN OTHERS THEN
@@ -1690,7 +1708,25 @@ BEGIN
       ON storage.objects
       FOR SELECT
       TO authenticated
-      USING (bucket_id = 'comprobantes');
+      USING (
+        bucket_id = 'comprobantes'
+        AND (
+          EXISTS (
+            SELECT 1 FROM public.pagos_transferencias
+            WHERE receipt_storage_key = storage.objects.name
+              AND (
+                LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+                OR socio_id IN (SELECT id FROM public.socios WHERE auth_user_id = auth.uid())
+              )
+          )
+          OR LOWER(COALESCE(auth.jwt() ->> 'email', '')) IN (
+            'gonzagramaglia@gmail.com',
+            'admin@experiencias.club',
+            'patricio@experiencias.club',
+            'puna@experiencias.club'
+          )
+        )
+      );
   END IF;
 EXCEPTION
   WHEN OTHERS THEN

@@ -321,6 +321,15 @@ export class AdminStoreService {
   logout(): void {
     this._currentAdmin.set(null);
     this.clearSession();
+    this._members.set([]);
+    this._submissions.set([]);
+    this._applications.set([]);
+    try {
+      localStorage.removeItem(STORAGE_KEYS.adminMembersCache);
+      localStorage.removeItem(STORAGE_KEYS.adminApplicationsCache);
+    } catch {
+      // ignore
+    }
     if (isSupabaseConfigured()) {
       void this.supabase.auth.signOut();
     }
@@ -766,6 +775,7 @@ export class AdminStoreService {
   }
 
   private persistApplications(apps: AdminApplication[]): void {
+    if (isSupabaseConfigured()) return;
     try {
       localStorage.setItem(STORAGE_KEYS.adminApplicationsCache, JSON.stringify(apps));
     } catch {
@@ -854,6 +864,7 @@ export class AdminStoreService {
   // ============================================================
 
   private persistMembers(members: AdminMember[]): void {
+    if (isSupabaseConfigured()) return;
     try {
       localStorage.setItem(STORAGE_KEYS.adminMembersCache, JSON.stringify(members));
     } catch {
