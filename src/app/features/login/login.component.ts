@@ -154,7 +154,10 @@ export class LoginComponent implements OnInit {
       const res = await this.newsletter.loginWithEmail(emailVal);
       this.isLoading.set(false);
 
-      if (res.alreadyRegisteredSocio || res.alreadyInWaitlist) {
+      if (res.alreadyRegisteredSocio) {
+        this.alreadyRegisteredEmail.set(emailVal);
+        this.error.set(res.message);
+      } else if (res.alreadyInWaitlist) {
         this.successMessage.set(res.message || '¡Correo verificado con éxito! Redirigiendo a tu ficha...');
         this.router.navigate(['/socios/emergentes'], {
           queryParams: { email: emailVal, from: 'waitlist' },

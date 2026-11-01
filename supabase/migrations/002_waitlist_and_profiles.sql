@@ -1216,11 +1216,10 @@ BEGIN
                 OR socio_id IN (SELECT id FROM public.socios WHERE auth_user_id = auth.uid())
               )
           )
-          OR LOWER(COALESCE(auth.jwt() ->> 'email', '')) IN (
-            'gonzagramaglia@gmail.com',
-            'admin@experiencias.club',
-            'patricio@experiencias.club',
-            'puna@experiencias.club'
+          OR EXISTS (
+            SELECT 1 FROM public.admin_access
+            WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+              AND active = true
           )
         )
       );
@@ -1719,11 +1718,10 @@ BEGIN
                 OR socio_id IN (SELECT id FROM public.socios WHERE auth_user_id = auth.uid())
               )
           )
-          OR LOWER(COALESCE(auth.jwt() ->> 'email', '')) IN (
-            'gonzagramaglia@gmail.com',
-            'admin@experiencias.club',
-            'patricio@experiencias.club',
-            'puna@experiencias.club'
+          OR EXISTS (
+            SELECT 1 FROM public.admin_access
+            WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+              AND active = true
           )
         )
       );
