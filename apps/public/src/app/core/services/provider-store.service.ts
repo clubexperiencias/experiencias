@@ -18,6 +18,7 @@ import { TransactionalEmailService } from './transactional-email.service';
 import { NewsletterService } from './newsletter.service';
 import { ActivityHistoryService } from './activity-history.service';
 import { ExperienceService, KAYAK_ALBUM_PHOTOS } from './experience.service';
+import { CloudflareR2Service } from './cloudflare-r2.service';
 import { SUPABASE_CLIENT, isSupabaseConfigured } from '../supabase/supabase.client';
 
 const PROVIDER_CONTACT_EMAIL = 'prestadores@experiencias.club';
@@ -58,6 +59,7 @@ export interface ExperienceProposalRequest {
   notes?: string;
   coverImage?: string;
   coverImageName?: string;
+  coverVideoUrl?: string;
   coverVideoName?: string;
   status: 'pendiente' | 'aprobada' | 'rechazada';
   createdAt: string;
@@ -70,7 +72,7 @@ const SEED_EXPERIENCE_REQUESTS: ExperienceProposalRequest[] = [
     providerId: 'prov-patricio',
     providerName: 'Patricio Facundo Diaz Tillar',
     providerAgency: 'Catamarca Kayak & Aventura Náutica',
-    providerEmail: 'patricio@experiencias.club',
+    providerEmail: 'patriciofacundodiaztillar@gmail.com',
     providerPhone: '+54 383 455 8812',
     title: 'Travesía en Kayak Nocturna & Luna Llena en El Jumeal',
     kicker: 'EXPEDICIÓN NÁUTICA: VALLE CENTRAL',
@@ -173,7 +175,7 @@ export function mapLiveExperienceToProvider(live: Experience): ProviderExperienc
 export const SEED_PROVIDERS: ProviderUser[] = [
   {
     id: 'prov-patricio',
-    email: 'patricio@experiencias.club',
+    email: 'patriciofacundodiaztillar@gmail.com',
     name: 'Patricio Facundo Diaz Tillar',
     agency: 'Catamarca Kayak & Aventura Náutica',
     phone: '+54 383 455 8812',
@@ -187,20 +189,34 @@ export const SEED_PROVIDERS: ProviderUser[] = [
     joinedAt: '2024-03-15T10:00:00Z',
   },
   {
-    id: 'prov-marcos',
-    email: 'puna@experiencias.club',
-    name: 'Marcos Albarracín',
-    agency: 'Expediciones Puna Secreta 4x4',
-    phone: '+54 383 499 3301',
-    cuitDni: '20-28114920-7',
-    cbuAlias: 'PUNA.EXPEDICIONES',
-    bankName: 'Banco Galicia',
+    id: 'prov-vegvarel',
+    email: 'vegvarel@gmail.com',
+    name: 'vegvarel',
+    agency: 'Catamarca Expediciones & Trekking',
+    phone: '+54 383 488 9900',
+    cuitDni: '20-33221144-5',
+    cbuAlias: 'VEGVAREL.EXPERIENCIAS',
+    bankName: 'Banco Nación',
     verified: true,
     status: 'aprobado',
     role: 'prestador',
-    avatar:
-      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
-    joinedAt: '2024-06-20T14:30:00Z',
+    avatar: '/assets/aistudio/patricio.jpg',
+    joinedAt: '2024-05-10T11:00:00Z',
+  },
+  {
+    id: 'prov-gonza',
+    email: 'gonzagramaglia@gmail.com',
+    name: 'Gonzalo Gramaglia',
+    agency: 'Catamarca Experiencias & Expediciones',
+    phone: '+54 9 11 5566 7788',
+    cuitDni: '20-33445566-7',
+    cbuAlias: 'EXPERIENCIAS.CLUB.MP',
+    bankName: 'Banco Nación / Mercado Pago',
+    verified: true,
+    status: 'aprobado',
+    role: 'prestador',
+    avatar: '/assets/images/gonza.jpg',
+    joinedAt: '2024-01-01T00:00:00Z',
   },
 ];
 
@@ -357,6 +373,7 @@ export class ProviderStoreService {
   private readonly activities = inject(ActivityHistoryService);
   private readonly expService = inject(ExperienceService);
   private readonly supabase = inject(SUPABASE_CLIENT);
+  private readonly r2Service = inject(CloudflareR2Service);
 
   private readonly _providers = signal<ProviderUser[]>(this.loadStoredProviders());
   private readonly _currentProvider = signal<ProviderUser | null>(
@@ -521,13 +538,27 @@ export class ProviderStoreService {
       return { success: true, message: '' };
     }
 
-    const origin =
-      typeof window !== 'undefined'
-        ? window.location.origin
-        : 'https://prestadores.experiencias.club';
+    const isBrowser = typeof window !== 'undefined';
+    const host = isBrowser ? window.location.hostname.toLowerCase() : '';
+    const search = isBrowser ? window.location.search.toLowerCase() : '';
+    const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local');
+    const isProviderHost =
+      host.startsWith('prestadores.') ||
+      host.includes('prestadores.experiencias') ||
+      (isLocalHost && (search.includes('portal=prestador') || search.includes('prestador=true')));
+
+    const origin = isBrowser ? window.location.origin : 'https://prestadores.experiencias.club';
+    const redirectPath = isProviderHost ? '/dashboard' : '/prestadores/panel/dashboard';
+
     const { error } = await this.supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${origin}/dashboard` },
+      options: {
+        redirectTo: `${origin}${redirectPath}`,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        },
+      },
     });
 
     return error
@@ -1067,29 +1098,19 @@ export class ProviderStoreService {
 
     let receiptUrl = '';
     let storageKey: string | undefined;
+    let storageProvider: 'r2' | 'supabase' | 'local' = 'r2';
+
+    try {
+      const uploadRes = await this.r2Service.uploadReceipt(input.receiptFile, ref);
+      receiptUrl = uploadRes.url;
+      storageKey = uploadRes.storageKey;
+      storageProvider = uploadRes.provider;
+    } catch (uploadErr) {
+      console.warn('[ProviderStore] Error al subir comprobante a Cloudflare R2 / Storage:', uploadErr);
+    }
 
     if (isSupabaseConfigured()) {
       try {
-        const fileExt = input.receiptFile.name.split('.').pop() || 'jpg';
-        const cleanRef = ref.toLowerCase().replace(/[^a-z0-9]/g, '');
-        storageKey = `receipt_${cleanRef}_${Date.now()}.${fileExt}`;
-
-        const { error: uploadErr } = await this.supabase.storage
-          .from('comprobantes')
-          .upload(storageKey, input.receiptFile, {
-            contentType: input.receiptFile.type,
-            upsert: false,
-          });
-
-        if (uploadErr) {
-          console.warn('[ProviderStore] Error al subir comprobante a Supabase Storage:', uploadErr);
-          throw new Error(
-            'No se pudo subir el archivo del comprobante. Por favor intentá nuevamente.',
-          );
-        }
-
-        receiptUrl = storageKey;
-
         const { data: rpcRes, error: rpcErr } = await this.supabase.rpc(
           'submit_experience_transfer' as any,
           {
@@ -1106,11 +1127,11 @@ export class ProviderStoreService {
             p_dni: input.dni.trim(),
             p_phone: input.phone.trim(),
             p_receipt_file_name: input.receiptFile.name,
-            p_receipt_mime_type: input.receiptFile.type,
+            p_receipt_mime_type: input.receiptFile.type || 'image/jpeg',
             p_receipt_size_bytes: input.receiptFile.size,
             p_receipt_url: receiptUrl,
-            p_receipt_storage_key: storageKey,
-            p_receipt_storage_provider: 'supabase',
+            p_receipt_storage_key: storageKey || null,
+            p_receipt_storage_provider: storageProvider,
           },
         );
 
@@ -1164,7 +1185,7 @@ export class ProviderStoreService {
         sizeBytes: input.receiptFile.size,
         url: receiptUrl,
         storageKey,
-        provider: isSupabaseConfigured() ? 'supabase' : undefined,
+        provider: storageProvider,
       },
       status: 'pendiente',
       submittedAt: new Date().toISOString(),
@@ -1413,6 +1434,7 @@ export class ProviderStoreService {
       detailRoute: `/experiencias/${generatedSlug}`,
       coverImage: req.coverImage || '/assets/images/kayak-club-de-experiencias.jpg',
       galleryImages: [req.coverImage || '/assets/images/kayak-club-de-experiencias.jpg'],
+      videoUrl: req.coverVideoUrl || '',
       isExclusiveClub: true,
       isLocked: false,
       albumPhotos: [],

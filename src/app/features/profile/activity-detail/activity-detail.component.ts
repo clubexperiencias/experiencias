@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ActivityHistoryService } from '../../../core/services/activity-history.service';
 import { NewsletterService } from '../../../core/services/newsletter.service';
+import { CloudflareR2Service } from '../../../core/services/cloudflare-r2.service';
 import { ActivityRecord, CommunityPhoto } from '../../../core/models/activity-history.model';
 import {
   BreadcrumbComponent,
@@ -13,6 +14,7 @@ import { HeaderComponent } from '../../../shared/components/header/header.compon
 import { FooterComponent } from '../../../shared/components/footer/footer.component';
 
 interface StagedPhoto {
+  file?: File;
   previewUrl: string;
   caption: string;
   name: string;
@@ -36,6 +38,7 @@ export class ActivityDetailComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   readonly activityService = inject(ActivityHistoryService);
   private readonly newsletter = inject(NewsletterService);
+  private readonly r2Service = inject(CloudflareR2Service);
 
   mobileMenuOpen = false;
   readonly slug = signal<string>('');
@@ -166,6 +169,7 @@ export class ActivityDetailComponent implements OnInit {
         this.stagedPhotos.update((prev) => [
           ...prev,
           {
+            file,
             previewUrl,
             caption: '',
             name: file.name,
@@ -183,7 +187,7 @@ export class ActivityDetailComponent implements OnInit {
     this.stagedPhotos.update((prev) => prev.filter((_, i) => i !== index));
   }
 
-  submitPhotos(): void {
+  async submitPhotos(): Promise<void> {
     const photos = this.stagedPhotos();
     if (photos.length === 0) {
       this.uploadErrorMessage.set('Por favor seleccioná al menos una foto antes de subir.');
@@ -193,10 +197,20 @@ export class ActivityDetailComponent implements OnInit {
     this.isUploading.set(true);
     this.uploadErrorMessage.set(null);
 
-    setTimeout(() => {
+    try {
+      const uploadedPhotos: { url: string; caption?: string }[] = [];
+      for (const p of photos) {
+        if (p.file) {
+          const res = await this.r2Service.uploadFile(p.file, 'COMMUNITY');
+          uploadedPhotos.push({ url: res.url, caption: p.caption });
+        } else {
+          uploadedPhotos.push({ url: p.previewUrl, caption: p.caption });
+        }
+      }
+
       const success = this.activityService.uploadCommunityPhotos(
         this.slug(),
-        photos.map((p) => ({ url: p.previewUrl, caption: p.caption })),
+        uploadedPhotos,
         this.authorSignature(),
       );
 
@@ -209,7 +223,10 @@ export class ActivityDetailComponent implements OnInit {
       } else {
         this.uploadErrorMessage.set('No se pudieron guardar las fotos. Intentá nuevamente.');
       }
-    }, 600);
+    } catch (err: any) {
+      this.isUploading.set(false);
+      this.uploadErrorMessage.set(err?.message || 'No se pudieron subir las fotos a Cloudflare R2.');
+    }
   }
 
   submitReview(): void {

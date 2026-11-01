@@ -2,6 +2,7 @@ import { Injectable, signal, computed, inject } from '@angular/core';
 import { WaitlistEntry, WaitlistSubmissionDto, WaitlistStats } from '../models/waitlist.model';
 import { DiscountCode } from '../models/bank-transfer.model';
 import { SUPABASE_CLIENT, isSupabaseConfigured } from '../supabase/supabase.client';
+import { NotificationService } from './notification.service';
 
 const STORAGE_KEY = 'catamarca_club_waitlist';
 const SUBSCRIBED_KEY = 'catamarca_club_user_subscribed';
@@ -42,6 +43,7 @@ function mapDbRowToEntry(row: any): WaitlistEntry {
 })
 export class NewsletterService {
   private readonly supabase = inject(SUPABASE_CLIENT);
+  private readonly notificationService = inject(NotificationService);
   private readonly baseWaitlistCount = 100;
 
   readonly isSupabaseConnected = signal<boolean>(isSupabaseConfigured());
@@ -457,6 +459,13 @@ export class NewsletterService {
 
             this._isLoading.set(false);
             this.setLoginSuccessFlag();
+            this.notificationService
+              .notifyWelcomeMember({
+                fullName: entry.fullName || cleanName,
+                email: entry.email,
+                position: entry.position,
+              })
+              .catch((err) => console.warn('[NewsletterService] Error enviando bienvenida:', err));
             return {
               success: true,
               socio: entry,
@@ -602,6 +611,13 @@ export class NewsletterService {
 
             this._isLoading.set(false);
             this.setLoginSuccessFlag();
+            this.notificationService
+              .notifyWelcomeMember({
+                fullName: entry.fullName || cleanName,
+                email: entry.email,
+                position: entry.position,
+              })
+              .catch((err) => console.warn('[NewsletterService] Error enviando bienvenida:', err));
             return {
               success: true,
               socio: entry,
@@ -671,6 +687,15 @@ export class NewsletterService {
 
     this._isLoading.set(false);
     this.setLoginSuccessFlag();
+    if (!existingLocal) {
+      this.notificationService
+        .notifyWelcomeMember({
+          fullName: newSocio.fullName || cleanName,
+          email: newSocio.email,
+          position: newSocio.position,
+        })
+        .catch((err) => console.warn('[NewsletterService] Error enviando bienvenida:', err));
+    }
 
     return {
       success: true,

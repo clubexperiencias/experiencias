@@ -68,6 +68,10 @@ R2_PUBLIC_URL=https://cdn.experiencias.club
 
 El token debe tener únicamente permisos `Object Read & Write` sobre el bucket elegido. `R2_PUBLIC_URL` debe ser un dominio público conectado al bucket; no uses las credenciales R2 en variables expuestas al navegador. Si R2 no está disponible, la aplicación conserva el respaldo configurado en Supabase Storage.
 
+## Ambientes: Desarrollo vs Producción
+
+Consultá la guía completa en [**`docs/DEV_VS_PROD.md`**](./docs/DEV_VS_PROD.md) para conocer el flujo detallado de variables de entorno, semilla de datos (`supabase/seed.sql`) y configuración de Google OAuth entre local y Vercel.
+
 ## Additional Resources
 
 For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.

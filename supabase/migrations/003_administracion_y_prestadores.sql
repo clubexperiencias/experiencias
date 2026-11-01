@@ -61,6 +61,67 @@ CREATE POLICY "Admins can manage provider_access"
 
 GRANT ALL ON public.provider_access TO authenticated;
 
+-- Prestadores iniciales autorizados
+INSERT INTO public.provider_access (
+  email,
+  name,
+  agency,
+  active,
+  status,
+  cbu_alias,
+  cuit_dni,
+  bank_name,
+  account_holder,
+  phone
+)
+VALUES
+  (
+    'patriciofacundodiaztillar@gmail.com',
+    'Patricio Facundo Díaz Tillar',
+    'Catamarca Kayak & Aventura Náutica',
+    true,
+    'aprobado',
+    '3840200500000056402423',
+    '20-30456123-4',
+    'Ualá Bank S.A.U.',
+    'Patricio Facundo Díaz Tillar',
+    '+54 383 455 8812'
+  ),
+  (
+    'vegvarel@gmail.com',
+    'vegvarel',
+    'Catamarca Expediciones & Trekking',
+    true,
+    'aprobado',
+    'VEGVAREL.EXPERIENCIAS',
+    '20-33221144-5',
+    'Banco Nación',
+    'vegvarel',
+    '+54 383 488 9900'
+  ),
+  (
+    'gonzagramaglia@gmail.com',
+    'Gonzalo Gramaglia',
+    'Catamarca Experiencias & Expediciones',
+    true,
+    'aprobado',
+    'EXPERIENCIAS.CLUB.MP',
+    '20-33445566-7',
+    'Banco Nación / Mercado Pago',
+    'Gonzalo Gramaglia',
+    '+54 9 11 5566 7788'
+  )
+ON CONFLICT (email) DO UPDATE
+SET active = EXCLUDED.active,
+    status = EXCLUDED.status,
+    agency = EXCLUDED.agency,
+    cbu_alias = EXCLUDED.cbu_alias,
+    cuit_dni = EXCLUDED.cuit_dni,
+    bank_name = EXCLUDED.bank_name,
+    account_holder = EXCLUDED.account_holder,
+    phone = EXCLUDED.phone,
+    updated_at = now();
+
 -- ============================================================
 -- 2. TRIGGERS REACTIVOS DE CONVERSIÓN (Pagos <-> Waitlist <-> Socios)
 -- ============================================================

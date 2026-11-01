@@ -3,6 +3,7 @@ import { SUPABASE_CLIENT, isSupabaseConfigured } from '../supabase/supabase.clie
 import { TransferSubmission, TransferStatus } from '../models/bank-transfer.model';
 import { NewsletterService } from './newsletter.service';
 import { ProviderStoreService, ExperienceProposalRequest } from './provider-store.service';
+import { NotificationService } from './notification.service';
 
 export type { ExperienceProposalRequest } from './provider-store.service';
 
@@ -76,6 +77,7 @@ export class AdminStoreService {
   private readonly supabase = inject(SUPABASE_CLIENT);
   private readonly newsletter = inject(NewsletterService);
   private readonly providerStore = inject(ProviderStoreService);
+  private readonly notificationService = inject(NotificationService);
 
   private readonly _currentAdmin = signal<AdminUser | null>(null);
   private readonly _members = signal<AdminMember[]>(this.loadStoredMembers());
@@ -297,12 +299,21 @@ export class AdminStoreService {
     }
 
     try {
-      const redirectOrigin =
-        typeof window !== 'undefined' ? window.location.origin : 'https://admin.experiencias.club';
+      const isBrowser = typeof window !== 'undefined';
+      const host = isBrowser ? window.location.hostname.toLowerCase() : '';
+      const search = isBrowser ? window.location.search.toLowerCase() : '';
+      const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local');
+      const isAdminHost =
+        host.startsWith('admin.') ||
+        host.includes('admin.experiencias') ||
+        (isLocalHost && (search.includes('portal=admin') || search.includes('admin=true')));
+
+      const redirectOrigin = isBrowser ? window.location.origin : 'https://admin.experiencias.club';
+      const targetPath = isAdminHost ? '/dashboard' : '/admin/dashboard';
       const { error } = await this.supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${redirectOrigin}/dashboard`,
+          redirectTo: `${redirectOrigin}${targetPath}`,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
@@ -700,10 +711,10 @@ export class AdminStoreService {
       ),
     );
 
-    // Si se aprueba, actualizar al socio a "activo" en la lista de miembros
-    if (status === 'aprobado') {
-      const targetSub = this._submissions().find((s) => s.id === submissionId);
-      if (targetSub) {
+    // Si se aprueba o rechaza, actualizar estado y notificar vía email (Resend)
+    const targetSub = this._submissions().find((s) => s.id === submissionId);
+    if (targetSub) {
+      if (status === 'aprobado') {
         this._members.update((list) =>
           list.map((m) =>
             m.email.toLowerCase() === targetSub.email.toLowerCase() &&
@@ -712,6 +723,18 @@ export class AdminStoreService {
               : m,
           ),
         );
+        this.notificationService.notifyPaymentApproved(targetSub).catch((err) => {
+          console.warn('[AdminStore] Error al enviar email de aprobación:', err);
+        });
+      } else if (status === 'rechazado') {
+        this.notificationService
+          .notifyPaymentRejected(
+            targetSub,
+            rejectionReason?.trim() || 'Comprobante no verificado.',
+          )
+          .catch((err) => {
+            console.warn('[AdminStore] Error al enviar email de rechazo:', err);
+          });
       }
     }
 

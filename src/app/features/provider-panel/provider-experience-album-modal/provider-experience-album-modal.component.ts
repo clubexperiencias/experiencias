@@ -282,7 +282,7 @@ export class ProviderExperienceAlbumModalComponent {
       }
 
       try {
-        const uploadRes = await this.r2Service.uploadReceipt(file, 'ALBUM');
+        const uploadRes = await this.r2Service.uploadFile(file, 'ALBUM');
         const currentTotal = this.photos().length;
         if (currentTotal >= 12) break;
 

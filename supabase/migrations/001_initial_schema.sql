@@ -194,6 +194,8 @@ GRANT SELECT ON public.admin_access TO authenticated;
 INSERT INTO public.admin_access (email, name, role, active)
 VALUES 
   ('gonzagramaglia@gmail.com', 'Gonzalo Gramaglia', 'superadmin', true),
+  ('vegvarel@gmail.com', 'Administrador Experiencias', 'superadmin', true),
+  ('patriciofacundodiaztillar@gmail.com', 'Patricio Facundo Díaz Tillar', 'superadmin', true),
   ('admin@experiencias.club', 'Administrador Experiencias', 'superadmin', true)
 ON CONFLICT (email) DO UPDATE 
 SET active = true,

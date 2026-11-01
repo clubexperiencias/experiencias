@@ -1,12 +1,15 @@
 import { Injectable, inject } from '@angular/core';
 import { SUPABASE_CLIENT, isSupabaseConfigured } from '../supabase/supabase.client';
 
-export interface ReceiptUploadResult {
+export interface StorageUploadResult {
   url: string;
   storageKey: string;
   provider: 'r2' | 'supabase' | 'local';
 }
-const DIRECT_SERVER_UPLOAD_MAX_BYTES = 3.2 * 1024 * 1024; // ~3.2 MB (bajo límite de payload JSON de Vercel)
+
+export type ReceiptUploadResult = StorageUploadResult;
+
+const DIRECT_SERVER_UPLOAD_MAX_BYTES = 3.5 * 1024 * 1024; // ~3.5 MB (bajo el límite body serverless de Vercel)
 
 @Injectable({
   providedIn: 'root',
@@ -15,81 +18,94 @@ export class CloudflareR2Service {
   private readonly supabase = inject(SUPABASE_CLIENT);
 
   /**
-   * Sube un archivo a Cloudflare R2 o storage de respaldo.
+   * Sube cualquier archivo o foto a Cloudflare R2 con respaldo en Supabase Storage.
    */
-  async uploadFile(file: File, reference = 'MEDIA'): Promise<ReceiptUploadResult> {
-    return this.uploadReceipt(file, reference);
+  async uploadFile(file: File, reference = 'MEDIA'): Promise<StorageUploadResult> {
+    return this.uploadToCloudflare(file, reference);
   }
 
   /**
-   * Sube un comprobante de pago (imagen o PDF) a Cloudflare R2 a través de /api/upload-receipt.
-   * Si R2 aún no tiene credenciales configuradas o se ejecuta en ng serve local,
-   * utiliza automáticamente el bucket 'comprobantes' de Supabase Storage como respaldo.
+   * Sube un comprobante de pago a Cloudflare R2 con respaldo en Supabase Storage.
    */
-  async uploadReceipt(file: File, reference: string): Promise<ReceiptUploadResult> {
-    const safeRef = (reference || 'PAY').replace(/[^a-zA-Z0-9_-]/g, '').toUpperCase();
+  async uploadReceipt(file: File, reference = 'PAY'): Promise<StorageUploadResult> {
+    return this.uploadToCloudflare(file, reference);
+  }
 
-    // 1. Intentar subida a Cloudflare R2 vía endpoint serverless (/api/upload-receipt)
+  /**
+   * Manejo unificado de subida: Cloudflare R2 (vía direct o presigned PUT) -> Supabase Storage -> Local fallback.
+   */
+  private async uploadToCloudflare(file: File, reference: string): Promise<StorageUploadResult> {
+    const safeRef = (reference || 'MEDIA').replace(/[^a-zA-Z0-9_-]/g, '').toUpperCase();
+
+    // 1. Intentar subida a Cloudflare R2 vía serverless (/api/upload o /api/upload-receipt)
     try {
-      if (file.size <= DIRECT_SERVER_UPLOAD_MAX_BYTES) {
-        const fileBase64 = await this.fileToBase64(file);
-        const response = await fetch('/api/upload-receipt', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'upload',
-            reference: safeRef,
-            fileName: file.name,
-            mimeType: file.type,
-            sizeBytes: file.size,
-            fileBase64,
-          }),
-        });
+      const endpoints = ['/api/upload', '/api/upload-receipt'];
 
-        if (response.ok) {
-          const data = await response.json();
-          if (data?.success && data?.url) {
-            return {
-              url: data.url,
-              storageKey: data.key || '',
-              provider: 'r2',
-            };
-          }
-        }
-      } else {
-        // Archivo entre 3.2 MB y 5 MB: usar Presigned PUT URL hacia Cloudflare R2
-        const presignRes = await fetch('/api/upload-receipt', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'presign',
-            reference: safeRef,
-            fileName: file.name,
-            mimeType: file.type,
-            sizeBytes: file.size,
-          }),
-        });
-
-        if (presignRes.ok) {
-          const presignData = await presignRes.json();
-          if (presignData?.success && presignData?.uploadUrl && presignData?.url) {
-            const putRes = await fetch(presignData.uploadUrl, {
-              method: 'PUT',
-              headers: { 'Content-Type': file.type },
-              body: file,
+      for (const endpoint of endpoints) {
+        try {
+          if (file.size <= DIRECT_SERVER_UPLOAD_MAX_BYTES) {
+            const fileBase64 = await this.fileToBase64(file);
+            const response = await fetch(endpoint, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'upload',
+                reference: safeRef,
+                fileName: file.name,
+                mimeType: file.type || 'application/octet-stream',
+                sizeBytes: file.size,
+                fileBase64,
+              }),
             });
-            if (putRes.ok) {
-              return {
-                url: presignData.url,
-                storageKey: presignData.key || '',
-                provider: 'r2',
-              };
+
+            if (response.ok) {
+              const data = await response.json();
+              if (data?.success && data?.url) {
+                return {
+                  url: data.url,
+                  storageKey: data.key || '',
+                  provider: 'r2',
+                };
+              }
+            }
+          } else {
+            // Archivo mayor a 3.5 MB: Presigned PUT URL directamente a Cloudflare R2
+            const presignRes = await fetch(endpoint, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'presign',
+                reference: safeRef,
+                fileName: file.name,
+                mimeType: file.type || 'application/octet-stream',
+                sizeBytes: file.size,
+              }),
+            });
+
+            if (presignRes.ok) {
+              const presignData = await presignRes.json();
+              if (presignData?.success && presignData?.uploadUrl && presignData?.url) {
+                const putRes = await fetch(presignData.uploadUrl, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': file.type || 'application/octet-stream' },
+                  body: file,
+                });
+                if (putRes.ok) {
+                  return {
+                    url: presignData.url,
+                    storageKey: presignData.key || '',
+                    provider: 'r2',
+                  };
+                }
+              }
             }
           }
+        } catch {
+          // Continuar al siguiente endpoint o fallback
         }
       }
     } catch (err) {
-      console.warn('[CloudflareR2Service] Fallback tras intento en /api/upload-receipt:', err);
+      console.warn('[CloudflareR2Service] Fallback tras intento en R2 endpoints:', err);
     }
 
     // 2. Respaldo automático en Supabase Storage (bucket 'comprobantes')
@@ -106,13 +122,17 @@ export class CloudflareR2Service {
         const { error: uploadErr } = await this.supabase.storage
           .from('comprobantes')
           .upload(storageKey, file, {
-            contentType: file.type,
+            contentType: file.type || 'application/octet-stream',
             upsert: true,
           });
 
         if (!uploadErr) {
+          const { data: pubData } = this.supabase.storage
+            .from('comprobantes')
+            .getPublicUrl(storageKey);
+
           return {
-            url: storageKey,
+            url: pubData?.publicUrl || storageKey,
             storageKey,
             provider: 'supabase',
           };

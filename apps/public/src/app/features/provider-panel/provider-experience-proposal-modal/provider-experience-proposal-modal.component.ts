@@ -1362,7 +1362,7 @@ export class ProviderExperienceProposalModalComponent {
 
     if (coverFile) {
       try {
-        const uploadRes = await this.r2Service.uploadReceipt(coverFile, 'PROPOSAL');
+        const uploadRes = await this.r2Service.uploadFile(coverFile, 'PROPOSAL');
         if (uploadRes?.url) {
           coverImageUrl = uploadRes.url;
         }
@@ -1371,12 +1371,25 @@ export class ProviderExperienceProposalModalComponent {
       }
     }
 
+    let coverVideoUrl: string | undefined = undefined;
+    const videoFile = this.coverVideoFile();
+    if (videoFile) {
+      try {
+        const uploadRes = await this.r2Service.uploadFile(videoFile, 'VIDEO');
+        if (uploadRes?.url) {
+          coverVideoUrl = uploadRes.url;
+        }
+      } catch (err) {
+        console.warn('[ProposalModal] No se pudo subir video a storage:', err);
+      }
+    }
+
     try {
       this.store.submitExperienceRequest({
         providerId: prov?.id || 'prov-patricio',
         providerName: prov?.name || 'Patricio Facundo Diaz Tillar',
         providerAgency: prov?.agency || 'Catamarca Kayak & Aventura Náutica',
-        providerEmail: prov?.email || 'patricio@experiencias.club',
+        providerEmail: prov?.email || 'patriciofacundodiaztillar@gmail.com',
         providerPhone: prov?.phone || '+54 383 455 8812',
         title,
         kicker: this.reqForm.kicker.trim(),
@@ -1398,7 +1411,8 @@ export class ProviderExperienceProposalModalComponent {
         notes: this.reqForm.notes,
         coverImage: coverImageUrl,
         coverImageName: coverFile?.name,
-        coverVideoName: this.coverVideoFile()?.name,
+        coverVideoUrl,
+        coverVideoName: videoFile?.name,
       });
 
       this.successTimer = setTimeout(() => {

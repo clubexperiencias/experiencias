@@ -1,15 +1,53 @@
 const fs = require('fs');
 const path = require('path');
 
-// Normalizar búsqueda de variables en process.env (case-insensitive y prefijos habituales)
+const rootDir = path.resolve(__dirname, '..');
+
+// Cargar .env.local y .env si existen (para desarrollo local sin dependencias externas)
+function loadEnvFile(filePath) {
+  if (!fs.existsSync(filePath)) return;
+  try {
+    const raw = fs.readFileSync(filePath, 'utf8');
+    for (const line of raw.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const eqIdx = trimmed.indexOf('=');
+      if (eqIdx <= 0) continue;
+      const key = trimmed.slice(0, eqIdx).trim();
+      let val = trimmed.slice(eqIdx + 1).trim();
+      if (
+        (val.startsWith('"') && val.endsWith('"')) ||
+        (val.startsWith("'") && val.endsWith("'"))
+      ) {
+        val = val.slice(1, -1);
+      }
+      if (!process.env[key]) {
+        process.env[key] = val;
+      }
+    }
+  } catch (err) {
+    console.warn(`[set-env] No se pudo leer ${filePath}:`, err.message);
+  }
+}
+
+loadEnvFile(path.join(rootDir, '.env.local'));
+loadEnvFile(path.join(rootDir, '.env'));
+
+// Normalizar búsqueda de variables en process.env
 let supabaseUrl = '';
 let supabaseAnonKey = '';
+let supabaseDevUrl = '';
+let supabaseDevAnonKey = '';
+let supabaseProdUrl = '';
+let supabaseProdAnonKey = '';
+
 let r2PublicBaseUrl = (
   process.env.R2_PUBLIC_URL ||
   process.env.R2_PUBLIC_BASE_URL ||
   process.env.CLOUDFLARE_R2_PUBLIC_URL ||
-  'https://cdn.experiencias.club'
+  'https://cdn.catamarcasecreta.com'
 ).trim();
+
 let r2BucketName = (
   process.env.R2_BUCKET_NAME ||
   process.env.CLOUDFLARE_R2_BUCKET_NAME ||
@@ -18,6 +56,16 @@ let r2BucketName = (
 
 for (const [key, value] of Object.entries(process.env)) {
   const upper = key.toUpperCase();
+
+  // Dev explicit overrides
+  if (upper === 'SUPABASE_DEV_URL') supabaseDevUrl = value.trim();
+  if (upper === 'SUPABASE_DEV_ANON_KEY') supabaseDevAnonKey = value.trim();
+
+  // Prod explicit overrides
+  if (upper === 'SUPABASE_PROD_URL') supabaseProdUrl = value.trim();
+  if (upper === 'SUPABASE_PROD_ANON_KEY') supabaseProdAnonKey = value.trim();
+
+  // General fallbacks
   if (
     upper === 'SUPABASE_URL' ||
     upper === 'NEXT_PUBLIC_SUPABASE_URL' ||
@@ -47,18 +95,23 @@ for (const [key, value] of Object.entries(process.env)) {
   }
 }
 
+const activeProdUrl = supabaseProdUrl || supabaseUrl;
+const activeProdAnonKey = supabaseProdAnonKey || supabaseAnonKey;
+const activeDevUrl = supabaseDevUrl || supabaseUrl;
+const activeDevAnonKey = supabaseDevAnonKey || supabaseAnonKey;
+
 console.log('[set-env] Analizando variables de entorno para Supabase y Cloudflare R2...');
 
-if (supabaseUrl && supabaseAnonKey) {
-  console.log(`[set-env] Supabase URL detectada: ${supabaseUrl.substring(0, 15)}...`);
-  console.log('[set-env] Supabase Anon Key detectada. Generando archivos de entorno...');
+if (activeProdUrl && activeProdAnonKey) {
+  console.log(`[set-env] Supabase Prod URL: ${activeProdUrl.substring(0, 18)}...`);
+  console.log(`[set-env] Supabase Dev URL: ${activeDevUrl.substring(0, 18)}...`);
 
-  const content = `export const environment = {
+  const prodContent = `export const environment = {
   production: true,
 
   supabase: {
-    url: '${supabaseUrl}',
-    anonKey: '${supabaseAnonKey}',
+    url: '${activeProdUrl}',
+    anonKey: '${activeProdAnonKey}',
   },
 
   cloudflare: {
@@ -72,8 +125,8 @@ if (supabaseUrl && supabaseAnonKey) {
   production: false,
 
   supabase: {
-    url: '${supabaseUrl}',
-    anonKey: '${supabaseAnonKey}',
+    url: '${activeDevUrl}',
+    anonKey: '${activeDevAnonKey}',
   },
 
   cloudflare: {
@@ -83,17 +136,16 @@ if (supabaseUrl && supabaseAnonKey) {
 };
 `;
 
-  const rootDir = path.resolve(__dirname, '..');
   const targets = [
     {
       file: path.join(rootDir, 'apps', 'public', 'src', 'environments', 'environment.prod.ts'),
-      content,
+      content: prodContent,
     },
     {
       file: path.join(rootDir, 'apps', 'public', 'src', 'environments', 'environment.ts'),
       content: devContent,
     },
-    { file: path.join(rootDir, 'src', 'environments', 'environment.prod.ts'), content },
+    { file: path.join(rootDir, 'src', 'environments', 'environment.prod.ts'), content: prodContent },
     { file: path.join(rootDir, 'src', 'environments', 'environment.ts'), content: devContent },
   ];
 
@@ -108,10 +160,10 @@ if (supabaseUrl && supabaseAnonKey) {
     }
   }
 
-  // También generar script runtime-env.js en las carpetas public para respaldo
+  // Generar script runtime-env.js en las carpetas public para respaldo
   const runtimeScript = `window.__SUPABASE_CONFIG__ = {
-  url: '${supabaseUrl}',
-  anonKey: '${supabaseAnonKey}'
+  url: '${activeDevUrl}',
+  anonKey: '${activeDevAnonKey}'
 };
 `;
   const publicDirs = [path.join(rootDir, 'apps', 'public', 'public'), path.join(rootDir, 'public')];
@@ -130,9 +182,9 @@ if (supabaseUrl && supabaseAnonKey) {
   console.log('[set-env] ¡Configuración de Supabase inyectada con éxito!');
 } else {
   console.warn(
-    '[set-env] ADVERTENCIA: No se detectaron SUPABASE_URL y/o SUPABASE_ANON_KEY en las variables de entorno de Vercel.',
+    '[set-env] ADVERTENCIA: No se detectaron SUPABASE_URL y/o SUPABASE_ANON_KEY (ni en .env.local ni en process.env).',
   );
   console.warn(
-    '[set-env] Asegurate de haberlas nombrado SUPABASE_URL y SUPABASE_ANON_KEY en Vercel -> Project Settings -> Environment Variables.',
+    '[set-env] Para desarrollo local podés crear un archivo .env.local a partir de .env.example.',
   );
 }

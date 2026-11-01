@@ -21,6 +21,7 @@ import {
   validateReceiptFile,
 } from '../../../core/services/provider-store.service';
 import { ExperienceService } from '../../../core/services/experience.service';
+import { NotificationService } from '../../../core/services/notification.service';
 import { isSupabaseConfigured } from '../../../core/supabase/supabase.client';
 import {
   BANK_TRANSFER_DESTINATION,
@@ -56,6 +57,7 @@ export class ExperiencePaymentComponent implements OnInit {
   private readonly expService = inject(ExperienceService);
   private readonly fb = inject(FormBuilder);
   private readonly newsletter = inject(NewsletterService);
+  private readonly notificationService = inject(NotificationService);
 
   readonly cbu = BANK_TRANSFER_DESTINATION.cbu;
   readonly transferDestination = BANK_TRANSFER_DESTINATION;
@@ -417,5 +419,9 @@ export class ExperiencePaymentComponent implements OnInit {
     } finally {
       this.submitting.set(false);
     }
+  }
+
+  getWhatsAppUrl(sub: TransferSubmission): string {
+    return this.notificationService.getWhatsAppNotificationUrl(sub);
   }
 }

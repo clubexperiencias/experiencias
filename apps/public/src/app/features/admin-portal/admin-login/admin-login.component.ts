@@ -1,8 +1,8 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { Title } from '@angular/platform-browser';
 import { MatIconModule } from '@angular/material/icon';
 import { AdminStoreService } from '../../../core/services/admin-store.service';
-import { isSupabaseConfigured } from '../../../core/supabase/supabase.client';
+import { SUPABASE_CLIENT, isSupabaseConfigured } from '../../../core/supabase/supabase.client';
 
 @Component({
   selector: 'app-admin-login',
@@ -335,9 +335,10 @@ import { isSupabaseConfigured } from '../../../core/supabase/supabase.client';
     `,
   ],
 })
-export class AdminLoginComponent {
+export class AdminLoginComponent implements OnInit {
   private readonly store = inject(AdminStoreService);
   private readonly pageTitle = inject(Title);
+  private readonly supabase = inject(SUPABASE_CLIENT);
 
   readonly isDevelopmentMode = !isSupabaseConfigured();
   readonly connectingGoogle = signal(false);
@@ -345,6 +346,23 @@ export class AdminLoginComponent {
 
   constructor() {
     this.pageTitle.setTitle('Portal de Admin del Club de Experiencias');
+  }
+
+  async ngOnInit(): Promise<void> {
+    if (isSupabaseConfigured()) {
+      try {
+        const { data } = await this.supabase.auth.getUser();
+        const email = data.user?.email;
+        if (email && !this.store.isAuthenticated()) {
+          this.errorMessage.set(
+            `La cuenta de Google (${email}) no tiene permisos de administrador en la plataforma.`,
+          );
+          await this.supabase.auth.signOut();
+        }
+      } catch {
+        // Ignorar
+      }
+    }
   }
 
   async signInGoogle(): Promise<void> {

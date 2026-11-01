@@ -1,16 +1,16 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import {
   ProviderStoreService,
   SEED_PROVIDERS,
 } from '../../../core/services/provider-store.service';
+import { SUPABASE_CLIENT, isSupabaseConfigured } from '../../../core/supabase/supabase.client';
 
 @Component({
   selector: 'app-provider-login',
   standalone: true,
-  imports: [ReactiveFormsModule, MatIconModule],
+  imports: [MatIconModule],
   template: `
     <div class="login-container">
       <div class="login-card">
@@ -29,12 +29,16 @@ import {
           </div>
           <h1 class="login-title">Ingreso al Panel Operativo</h1>
           <p class="login-sub">
-            Gestioná tus expediciones andinas, revisá los ingresos de tus salidas y validá
-            comprobantes de los socios.
+            Ingreso exclusivo con Google para prestadores, guías y agencias oficiales habilitadas.
           </p>
         </div>
 
-        <button type="button" class="submit-btn google-submit-btn" (click)="signInGoogle()">
+        <button
+          type="button"
+          class="submit-btn google-submit-btn"
+          (click)="signInGoogle()"
+          [disabled]="connectingGoogle()"
+        >
           <svg class="google-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
             <path
               fill="#4285F4"
@@ -53,180 +57,70 @@ import {
               d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
             />
           </svg>
-          {{ connectingGoogle() ? 'Conectando con Google...' : 'Iniciar sesión con Google' }}
+          {{
+            connectingGoogle()
+              ? 'Conectando con Google...'
+              : 'Iniciar sesión con Google (Prestadores)'
+          }}
         </button>
 
         @if (errorMessage()) {
           <div class="alert-error">
+            <mat-icon>error_outline</mat-icon>
             <span>{{ errorMessage() }}</span>
           </div>
         }
 
-        @if (false) {
-          <!-- Quick Demo Profiles for 1-click testing -->
-          <div class="demo-box">
-            <div class="demo-title">ACCESO RÁPIDO PARA PRUEBAS</div>
-            <div class="demo-buttons">
-              @for (p of demoProviders; track p.id) {
-                <button type="button" class="demo-btn" (click)="quickLogin(p.id)">
-                  <img
-                    [src]="p.avatar"
-                    [alt]="p.name"
-                    class="demo-avatar"
-                    referrerpolicy="no-referrer"
-                  />
-                  <div class="demo-info">
-                    <strong>{{ p.name }}</strong>
-                    <span>{{ p.agency }}</span>
-                  </div>
-                  <span class="demo-enter-label">Ingresar</span>
-                </button>
-              }
-            </div>
-          </div>
-
+        @if (isDevelopmentMode) {
           <div class="divider">
-            <span>o ingresá con tu cuenta</span>
+            <span>O ACCESO DIRECTO DE DESARROLLO</span>
           </div>
 
-          @if (!showRegister()) {
-            <!-- Login Form -->
-            <form [formGroup]="loginForm" (ngSubmit)="onLogin()" class="login-form">
-              <div class="form-group">
-                <label for="email" class="form-label">Correo electrónico corporativo</label>
-                <input
-                  id="email"
-                  type="email"
-                  formControlName="email"
-                  class="form-input"
-                  placeholder="ejemplo@prestador.com"
-                  autocomplete="email"
+          <div class="demo-buttons">
+            @for (p of demoProviders; track p.id) {
+              <button type="button" class="demo-btn" (click)="quickLogin(p.id)">
+                <img
+                  [src]="p.avatar"
+                  [alt]="p.name"
+                  class="demo-avatar"
+                  referrerpolicy="no-referrer"
                 />
-              </div>
-
-              <div class="form-group">
-                <label for="password" class="form-label">Contraseña</label>
-                <input
-                  id="password"
-                  type="password"
-                  formControlName="password"
-                  class="form-input"
-                  placeholder="••••••••"
-                  autocomplete="current-password"
-                />
-              </div>
-
-              @if (errorMessage()) {
-                <div class="alert-error">
-                  <span>{{ errorMessage() }}</span>
+                <div class="demo-info">
+                  <strong>{{ p.name }}</strong>
+                  <span>{{ p.agency }}</span>
                 </div>
-              }
-
-              <button type="submit" class="submit-btn" [disabled]="loginForm.invalid">
-                Ingresar al Panel
+                <span class="demo-enter-label">Acceder</span>
               </button>
-
-              <div class="switch-action">
-                ¿Sos un nuevo prestador o guía en Catamarca?
-                <button type="button" class="link-btn" (click)="showRegister.set(true)">
-                  Registrar emprendimiento
-                </button>
-              </div>
-            </form>
-          } @else {
-            <!-- Register Form -->
-            <form [formGroup]="registerForm" (ngSubmit)="onRegister()" class="login-form">
-              <div class="form-group">
-                <label class="form-label">Nombre y Apellido del responsable</label>
-                <input
-                  type="text"
-                  formControlName="name"
-                  class="form-input"
-                  placeholder="Ej: Marcos Albarracín"
-                />
-              </div>
-
-              <div class="form-group">
-                <label class="form-label">Nombre del Emprendimiento / Agencia</label>
-                <input
-                  type="text"
-                  formControlName="agency"
-                  class="form-input"
-                  placeholder="Ej: Puna Secreta 4x4"
-                />
-              </div>
-
-              <div class="form-row">
-                <div class="form-group">
-                  <label class="form-label">CUIT o DNI</label>
-                  <input
-                    type="text"
-                    formControlName="cuitDni"
-                    class="form-input"
-                    placeholder="20-33445566-7"
-                  />
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Teléfono / WhatsApp</label>
-                  <input
-                    type="text"
-                    formControlName="phone"
-                    class="form-input"
-                    placeholder="+54 383 4..."
-                  />
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label class="form-label">Correo electrónico</label>
-                <input
-                  type="email"
-                  formControlName="email"
-                  class="form-input"
-                  placeholder="contacto@agencia.com"
-                />
-              </div>
-
-              <div class="form-row">
-                <div class="form-group">
-                  <label class="form-label">CBU o Alias de cobro</label>
-                  <input
-                    type="text"
-                    formControlName="cbuAlias"
-                    class="form-input"
-                    placeholder="ALIAS.COBRO.MP"
-                  />
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Banco / Billetera</label>
-                  <input
-                    type="text"
-                    formControlName="bankName"
-                    class="form-input"
-                    placeholder="Ej: Banco Nación"
-                  />
-                </div>
-              </div>
-
-              @if (errorMessage()) {
-                <div class="alert-error">
-                  <span>{{ errorMessage() }}</span>
-                </div>
-              }
-
-              <button type="submit" class="submit-btn" [disabled]="registerForm.invalid">
-                Registrar Emprendimiento
-              </button>
-
-              <div class="switch-action">
-                ¿Ya tenés cuenta?
-                <button type="button" class="link-btn" (click)="showRegister.set(false)">
-                  Volver al inicio de sesión
-                </button>
-              </div>
-            </form>
-          }
+            }
+          </div>
         }
+
+        <div class="provider-perks-box">
+          <div class="perk-item">
+            <mat-icon>check_circle</mat-icon>
+            <span>Gestión integral de expediciones, cupos y convocatorias</span>
+          </div>
+          <div class="perk-item">
+            <mat-icon>check_circle</mat-icon>
+            <span>Conciliación directa de transferencias y comprobantes de socios</span>
+          </div>
+          <div class="perk-item">
+            <mat-icon>check_circle</mat-icon>
+            <span>Subida de fotos y videos a Cloudflare R2 con enlace directo</span>
+          </div>
+        </div>
+
+        <div class="provider-footer-help">
+          ¿Aún no tenés cuenta de prestador aprobada?
+          <a
+            href="https://experiencias.club/prestadores"
+            target="_blank"
+            rel="noopener"
+            class="link-btn"
+          >
+            Postulate acá
+          </a>
+        </div>
       </div>
     </div>
   `,
@@ -236,19 +130,22 @@ import {
         display: flex;
         justify-content: center;
         align-items: center;
-        padding: 1.75rem 1rem;
-        min-height: calc(100vh - 200px);
+        padding: 2rem 1rem;
+        min-height: calc(100dvh - 160px);
+        box-sizing: border-box;
       }
       .login-card {
         width: 100%;
         max-width: 520px;
-        background: rgba(18, 28, 64, 0.75);
+        background: rgba(18, 28, 64, 0.85);
         backdrop-filter: blur(20px);
         -webkit-backdrop-filter: blur(20px);
         border: 1px solid rgba(128, 179, 255, 0.35);
-        border-radius: 2px;
-        padding: 2.5rem;
-        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.65);
+        border-radius: 3px;
+        padding: 2.25rem;
+        box-shadow:
+          0 20px 50px rgba(0, 0, 0, 0.65),
+          0 0 25px rgba(128, 179, 255, 0.12);
       }
       .login-header {
         margin-bottom: 2rem;
@@ -286,7 +183,7 @@ import {
       }
       .brand-tag {
         font-family: var(--font-sans, system-ui, sans-serif);
-        font-size: 1.15rem;
+        font-size: 0.85rem;
         letter-spacing: 0.16em;
         color: #80b3ff;
         font-weight: 700;
@@ -294,7 +191,7 @@ import {
         text-transform: uppercase;
       }
       .login-title {
-        font-size: 1.6rem;
+        font-size: 1.55rem;
         font-weight: 700;
         color: #ffffff;
         margin-bottom: 0.4rem;
@@ -302,24 +199,73 @@ import {
       }
       .login-sub {
         font-size: 0.85rem;
-        color: rgba(255, 255, 255, 0.7);
+        color: rgba(255, 255, 255, 0.72);
         line-height: 1.5;
         margin: 0;
       }
-      .demo-box {
-        background: rgba(128, 179, 255, 0.05);
-        border: 1px solid rgba(128, 179, 255, 0.25);
-        border-radius: 2px;
-        padding: 1.25rem;
-        margin-bottom: 1.75rem;
-      }
-      .demo-title {
-        font-size: 0.72rem;
+      .submit-btn {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        padding: 0.85rem 1.25rem;
+        background: #80b3ff;
+        color: #060b17;
         font-weight: 700;
-        color: #80b3ff;
+        font-size: 0.92rem;
+        border-radius: 2px;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .google-submit-btn {
+        background: #ffffff;
+        color: #202124;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+      }
+      .google-submit-btn:hover:not(:disabled) {
+        background: #f1f3f4;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+      }
+      .google-submit-btn:disabled {
+        opacity: 0.65;
+        cursor: not-allowed;
+      }
+      .google-icon {
+        flex: 0 0 auto;
+      }
+      .alert-error {
+        margin-top: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1rem;
+        background: rgba(239, 68, 68, 0.2);
+        border: 1px solid rgba(239, 68, 68, 0.45);
+        border-radius: 2px;
+        color: #fca5a5;
+        font-size: 0.82rem;
+      }
+      .divider {
+        display: flex;
+        align-items: center;
+        text-align: center;
+        margin: 1.75rem 0 1.25rem;
+        color: rgba(255, 255, 255, 0.45);
+        font-size: 0.7rem;
+        font-weight: 700;
         letter-spacing: 0.08em;
-        margin-bottom: 0.75rem;
-        text-transform: uppercase;
+      }
+      .divider::before,
+      .divider::after {
+        content: '';
+        flex: 1;
+        border-bottom: 1px solid rgba(128, 179, 255, 0.25);
+      }
+      .divider span {
+        padding: 0 0.85rem;
       }
       .demo-buttons {
         display: flex;
@@ -331,7 +277,7 @@ import {
         align-items: center;
         gap: 0.75rem;
         width: 100%;
-        padding: 0.65rem 0.85rem;
+        padding: 0.75rem 0.85rem;
         background: rgba(7, 13, 28, 0.6);
         border: 1px solid rgba(128, 179, 255, 0.2);
         border-radius: 2px;
@@ -343,6 +289,7 @@ import {
       .demo-btn:hover {
         background: rgba(128, 179, 255, 0.15);
         border-color: #80b3ff;
+        transform: translateY(-1px);
       }
       .demo-avatar {
         width: 34px;
@@ -365,127 +312,50 @@ import {
         color: #80b3ff;
       }
       .demo-enter-label {
-        font-size: 0.75rem;
-        font-weight: 700;
-        color: #80b3ff;
-        border: 1px solid rgba(128, 179, 255, 0.4);
-        padding: 0.2rem 0.6rem;
-        border-radius: 2px;
-      }
-      .divider {
-        display: flex;
-        align-items: center;
-        text-align: center;
-        margin: 1.5rem 0;
-        color: rgba(255, 255, 255, 0.4);
-        font-size: 0.8rem;
-      }
-      .divider::before,
-      .divider::after {
-        content: '';
-        flex: 1;
-        border-bottom: 1px solid rgba(128, 179, 255, 0.15);
-      }
-      .divider span {
-        padding: 0 0.75rem;
-      }
-      .login-form {
-        display: flex;
-        flex-direction: column;
-        gap: 1.25rem;
-      }
-      .form-row {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 1rem;
-      }
-      @media (max-width: 480px) {
-        .form-row {
-          grid-template-columns: 1fr;
-        }
-      }
-      .form-group {
-        display: flex;
-        flex-direction: column;
-        gap: 0.4rem;
-      }
-      .form-label {
-        font-size: 0.8rem;
-        font-weight: 600;
-        color: rgba(255, 255, 255, 0.85);
-      }
-      .form-input {
-        width: 100%;
-        background: rgba(7, 13, 28, 0.65);
-        border: 1px solid rgba(128, 179, 255, 0.25);
-        border-radius: 2px;
-        padding: 0.75rem 0.85rem;
-        color: #ffffff;
-        font-size: 0.9rem;
-        transition: all 0.2s ease;
-      }
-      .form-input:focus {
-        outline: none;
-        border-color: #80b3ff;
-        background: rgba(12, 22, 48, 0.85);
-      }
-      .alert-error {
-        padding: 0.75rem;
-        background: rgba(255, 80, 80, 0.15);
-        border: 1px solid rgba(255, 80, 80, 0.3);
-        border-radius: 2px;
-        color: #ff8080;
-        font-size: 0.85rem;
-      }
-      .submit-btn {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0.85rem;
-        background: #80b3ff;
+        font-size: 0.72rem;
+        font-weight: 800;
         color: #060b17;
-        font-weight: 700;
-        font-size: 0.92rem;
-        border-radius: 2px;
-        border: none;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        margin-top: 0.5rem;
+        background: #80b3ff;
+        padding: 0.25rem 0.6rem;
+        border-radius: 1px;
+        text-transform: uppercase;
       }
-      .google-submit-btn {
-        width: min(100%, 360px);
-        margin: 0.9rem auto 0;
-        gap: 0.75rem;
-        background: #ffffff;
-        color: #202124;
+      .provider-perks-box {
+        margin-top: 1.75rem;
+        padding-top: 1.25rem;
+        border-top: 1px solid rgba(128, 179, 255, 0.2);
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
       }
-      .google-submit-btn:hover:not(:disabled) {
-        background: #f1f3f4;
+      .perk-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+        font-size: 0.78rem;
+        color: rgba(255, 255, 255, 0.75);
       }
-      .google-icon {
-        flex: 0 0 auto;
+      .perk-item mat-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+        color: #80b3ff;
+        margin-top: 1px;
+        flex-shrink: 0;
       }
-      .submit-btn:hover:not(:disabled) {
-        background: #a6c8ff;
-      }
-      .submit-btn:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
-      .switch-action {
+      .provider-footer-help {
+        margin-top: 1.25rem;
         text-align: center;
-        font-size: 0.82rem;
+        font-size: 0.8rem;
         color: rgba(255, 255, 255, 0.65);
-        margin-top: 0.5rem;
       }
       .link-btn {
         background: none;
         border: none;
         color: #80b3ff;
-        font-weight: 600;
-        cursor: pointer;
+        font-weight: 700;
         text-decoration: underline;
-        margin-left: 0.25rem;
+        margin-left: 0.35rem;
       }
       .link-btn:hover {
         color: #a6c8ff;
@@ -493,38 +363,31 @@ import {
     `,
   ],
 })
-export class ProviderLoginComponent {
-  private readonly fb = inject(FormBuilder);
+export class ProviderLoginComponent implements OnInit {
   private readonly store = inject(ProviderStoreService);
   private readonly router = inject(Router);
+  private readonly supabase = inject(SUPABASE_CLIENT);
 
+  readonly isDevelopmentMode = !isSupabaseConfigured();
   readonly demoProviders = SEED_PROVIDERS;
-  readonly showRegister = signal(false);
   readonly errorMessage = signal<string | null>(null);
   readonly connectingGoogle = signal(false);
 
-  constructor() {
-    void this.store.restoreSupabaseSession();
-  }
-
-  readonly loginForm = this.fb.nonNullable.group({
-    email: ['guia@experiencias.club', [Validators.required, Validators.email]],
-    password: ['prestador2026', [Validators.required, Validators.minLength(4)]],
-  });
-
-  readonly registerForm = this.fb.nonNullable.group({
-    name: ['', [Validators.required, Validators.minLength(3)]],
-    agency: ['', [Validators.required, Validators.minLength(4)]],
-    cuitDni: ['', [Validators.required, Validators.minLength(7)]],
-    phone: ['', [Validators.required, Validators.minLength(8)]],
-    email: ['', [Validators.required, Validators.email]],
-    cbuAlias: ['', [Validators.required, Validators.minLength(6)]],
-    bankName: ['Banco Nación / Mercado Pago', Validators.required],
-  });
-
-  quickLogin(providerId: string): void {
-    this.store.loginAs(providerId);
-    this.router.navigate(['/prestadores/dashboard']);
+  async ngOnInit(): Promise<void> {
+    if (isSupabaseConfigured()) {
+      try {
+        const { data } = await this.supabase.auth.getUser();
+        const email = data.user?.email;
+        if (email && (!this.store.isAuthenticated() || !this.store.isProviderApproved())) {
+          this.errorMessage.set(
+            `La cuenta de Google (${email}) no tiene un perfil de prestador aprobado en la plataforma.`,
+          );
+          await this.supabase.auth.signOut();
+        }
+      } catch {
+        // Ignorar
+      }
+    }
   }
 
   async signInGoogle(): Promise<void> {
@@ -532,24 +395,25 @@ export class ProviderLoginComponent {
     this.connectingGoogle.set(true);
     const result = await this.store.signInWithGoogle();
     this.connectingGoogle.set(false);
-    if (!result.success) this.errorMessage.set(result.message);
-  }
-
-  onLogin(): void {
-    if (this.loginForm.invalid) return;
-    const { email } = this.loginForm.getRawValue();
-    const res = this.store.login(email);
-    if (!res.success) {
-      this.errorMessage.set(res.message);
-      return;
+    if (!result.success) {
+      this.errorMessage.set(result.message);
     }
-    this.router.navigate(['/prestadores/dashboard']);
   }
 
-  onRegister(): void {
-    if (this.registerForm.invalid) return;
-    const data = this.registerForm.getRawValue();
-    this.store.register(data);
-    this.router.navigate(['/prestadores/dashboard']);
+  quickLogin(providerId: string): void {
+    if (this.isDevelopmentMode) {
+      this.store.loginAs(providerId);
+      const isBrowser = typeof window !== 'undefined';
+      const host = isBrowser ? window.location.hostname.toLowerCase() : '';
+      const search = isBrowser ? window.location.search.toLowerCase() : '';
+      const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local');
+      const isProviderHost =
+        host.startsWith('prestadores.') ||
+        host.includes('prestadores.experiencias') ||
+        (isLocalHost && (search.includes('portal=prestador') || search.includes('prestador=true')));
+
+      const targetPath = isProviderHost ? '/dashboard' : '/prestadores/panel/dashboard';
+      this.router.navigate([targetPath]);
+    }
   }
 }
