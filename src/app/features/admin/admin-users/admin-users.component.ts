@@ -10,7 +10,7 @@ import { AdminUser } from '../../../core/models/admin.model';
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './admin-users.component.html',
-  styleUrls: ['./admin-users.component.css']
+  styleUrls: ['./admin-users.component.css'],
 })
 export class AdminUsersComponent {
   private readonly adminService = inject(AdminService);

@@ -10,7 +10,7 @@ describe('NotFoundComponent (404)', () => {
     localStorage.clear();
     await TestBed.configureTestingModule({
       imports: [NotFoundComponent],
-      providers: [provideRouter([])]
+      providers: [provideRouter([])],
     }).compileComponents();
 
     fixture = TestBed.createComponent(NotFoundComponent);

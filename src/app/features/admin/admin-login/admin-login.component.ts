@@ -9,7 +9,7 @@ import { AdminService } from '../../../core/services/admin.service';
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './admin-login.component.html',
-  styleUrls: ['./admin-login.component.css']
+  styleUrls: ['./admin-login.component.css'],
 })
 export class AdminLoginComponent {
   private readonly adminService = inject(AdminService);

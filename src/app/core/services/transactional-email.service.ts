@@ -2,10 +2,7 @@ import { Injectable, signal } from '@angular/core';
 import { TransferSubmission } from '../models/bank-transfer.model';
 
 export type TransactionalEmailTemplate =
-  | 'comprobante_recibido'
-  | 'nuevo_comprobante_prestador'
-  | 'pago_aprobado'
-  | 'pago_rechazado';
+  'comprobante_recibido' | 'nuevo_comprobante_prestador' | 'pago_aprobado' | 'pago_rechazado';
 
 export interface QueuedEmail {
   template: TransactionalEmailTemplate;

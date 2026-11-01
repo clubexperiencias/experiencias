@@ -4,19 +4,17 @@ const path = require('path');
 // Normalizar búsqueda de variables en process.env (case-insensitive y prefijos habituales)
 let supabaseUrl = '';
 let supabaseAnonKey = '';
-let r2PublicBaseUrl =
-  (
-    process.env.R2_PUBLIC_URL ||
-    process.env.R2_PUBLIC_BASE_URL ||
-    process.env.CLOUDFLARE_R2_PUBLIC_URL ||
-    'https://cdn.experiencias.club'
-  ).trim();
-let r2BucketName =
-  (
-    process.env.R2_BUCKET_NAME ||
-    process.env.CLOUDFLARE_R2_BUCKET_NAME ||
-    'experiencias-comprobantes'
-  ).trim();
+let r2PublicBaseUrl = (
+  process.env.R2_PUBLIC_URL ||
+  process.env.R2_PUBLIC_BASE_URL ||
+  process.env.CLOUDFLARE_R2_PUBLIC_URL ||
+  'https://cdn.experiencias.club'
+).trim();
+let r2BucketName = (
+  process.env.R2_BUCKET_NAME ||
+  process.env.CLOUDFLARE_R2_BUCKET_NAME ||
+  'experiencias-comprobantes'
+).trim();
 
 for (const [key, value] of Object.entries(process.env)) {
   const upper = key.toUpperCase();
@@ -87,8 +85,14 @@ if (supabaseUrl && supabaseAnonKey) {
 
   const rootDir = path.resolve(__dirname, '..');
   const targets = [
-    { file: path.join(rootDir, 'apps', 'public', 'src', 'environments', 'environment.prod.ts'), content },
-    { file: path.join(rootDir, 'apps', 'public', 'src', 'environments', 'environment.ts'), content: devContent },
+    {
+      file: path.join(rootDir, 'apps', 'public', 'src', 'environments', 'environment.prod.ts'),
+      content,
+    },
+    {
+      file: path.join(rootDir, 'apps', 'public', 'src', 'environments', 'environment.ts'),
+      content: devContent,
+    },
     { file: path.join(rootDir, 'src', 'environments', 'environment.prod.ts'), content },
     { file: path.join(rootDir, 'src', 'environments', 'environment.ts'), content: devContent },
   ];
@@ -110,10 +114,7 @@ if (supabaseUrl && supabaseAnonKey) {
   anonKey: '${supabaseAnonKey}'
 };
 `;
-  const publicDirs = [
-    path.join(rootDir, 'apps', 'public', 'public'),
-    path.join(rootDir, 'public'),
-  ];
+  const publicDirs = [path.join(rootDir, 'apps', 'public', 'public'), path.join(rootDir, 'public')];
 
   for (const pDir of publicDirs) {
     try {

@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
@@ -103,8 +103,15 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
       <!-- Banner de Filtro Activo por Experiencia -->
       @if (selectedExpName(); as expName) {
         <div class="active-filter-chip">
-          <span>Filtrando por experiencia: <strong>{{ expName }}</strong></span>
-          <button type="button" class="clear-filter-btn" (click)="selectedExpId.set('')" title="Quitar filtro de experiencia">
+          <span
+            >Filtrando por experiencia: <strong>{{ expName }}</strong></span
+          >
+          <button
+            type="button"
+            class="clear-filter-btn"
+            (click)="selectedExpId.set('')"
+            title="Quitar filtro de experiencia"
+          >
             Ver todas las experiencias
           </button>
         </div>
@@ -514,7 +521,9 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         color: #f0f4ff;
         font-size: 0.82rem;
         cursor: pointer;
-        transition: background-color 0.2s ease, border-color 0.2s ease;
+        transition:
+          background-color 0.2s ease,
+          border-color 0.2s ease;
       }
       .filter-select::-ms-expand {
         display: none;
@@ -1149,7 +1158,9 @@ export class ProviderMembersComponent {
         this.selectedExpId.set(qp['experiencia'] || '');
       }
       if (qp?.['ref']) {
-        const match = this.store.providerSubmissions().find((s) => s.reference === qp['ref']);
+        const match = untracked(() => this.store.providerSubmissions()).find(
+          (s) => s.reference === qp['ref'],
+        );
         if (match) {
           this.selectedSubmission.set(match);
         }
@@ -1192,7 +1203,9 @@ export class ProviderMembersComponent {
   });
 
   readonly totalParticipants = computed(() =>
-    this.filteredMembers().reduce((sum, item) => sum + item.participants, 0),
+    this.filteredMembers()
+      .filter((item) => item.status !== 'rechazado')
+      .reduce((sum, item) => sum + item.participants, 0),
   );
 
   readonly totalAmount = computed(() =>
@@ -1244,10 +1257,14 @@ export class ProviderMembersComponent {
     if (cleanPhone.startsWith('0')) {
       cleanPhone = cleanPhone.slice(1);
     }
-    if (cleanPhone.length === 10 && !cleanPhone.startsWith('54')) {
-      cleanPhone = '549' + cleanPhone;
-    } else if (cleanPhone.length > 0 && !cleanPhone.startsWith('54')) {
-      cleanPhone = '54' + cleanPhone;
+    const isExplicitlyInternational =
+      (phone || '').trim().startsWith('+') && !cleanPhone.startsWith('54');
+    if (!isExplicitlyInternational) {
+      if (cleanPhone.length === 10 && !cleanPhone.startsWith('54')) {
+        cleanPhone = '549' + cleanPhone;
+      } else if (cleanPhone.length > 0 && !cleanPhone.startsWith('54')) {
+        cleanPhone = '54' + cleanPhone;
+      }
     }
     const message = encodeURIComponent(
       `Hola ${name}, te escribo desde la coordinación de la expedición "${experience}" para la salida del ${date}.`,

@@ -8,7 +8,7 @@ export const environment = {
   // Settings → API → Project URL / anon key
   supabase: {
     url: 'https://TU_PROYECTO.supabase.co',
-    anonKey: 'TU_ANON_PUBLIC_KEY'
+    anonKey: 'TU_ANON_PUBLIC_KEY',
   },
 
   // ==============================
@@ -16,6 +16,6 @@ export const environment = {
   // ==============================
   cloudflare: {
     r2PublicBaseUrl: 'https://cdn.catamarcasecreta.com', // dominio personalizado sobre R2
-    r2BucketName: 'catamarca-memories'
-  }
+    r2BucketName: 'catamarca-memories',
+  },
 };

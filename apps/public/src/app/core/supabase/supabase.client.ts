@@ -39,31 +39,26 @@ export function isSupabaseConfigured(): boolean {
   );
 }
 
-export const SUPABASE_CLIENT = new InjectionToken<SupabaseClient<Database>>(
-  'SupabaseClient',
-  {
-    providedIn: 'root',
-    factory: () => {
-      const config = getSupabaseConfig();
-      const safeUrl = isSupabaseConfigured()
-        ? config.url
-        : 'https://placeholder-project.supabase.co';
-      const safeKey = isSupabaseConfigured()
-        ? config.anonKey
-        : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.placeholder';
+export const SUPABASE_CLIENT = new InjectionToken<SupabaseClient<Database>>('SupabaseClient', {
+  providedIn: 'root',
+  factory: () => {
+    const config = getSupabaseConfig();
+    const safeUrl = isSupabaseConfigured() ? config.url : 'https://placeholder-project.supabase.co';
+    const safeKey = isSupabaseConfigured()
+      ? config.anonKey
+      : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.placeholder';
 
-      return createClient<Database>(safeUrl, safeKey, {
-        auth: {
-          autoRefreshToken: true,
-          persistSession: true,
-          detectSessionInUrl: true,
+    return createClient<Database>(safeUrl, safeKey, {
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: true,
+      },
+      global: {
+        headers: {
+          'x-client-info': 'experiencias-club-angular',
         },
-        global: {
-          headers: {
-            'x-client-info': 'experiencias-club-angular',
-          },
-        },
-      });
-    },
+      },
+    });
   },
-);
+});

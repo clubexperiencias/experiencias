@@ -730,22 +730,6 @@
                     >
                   </div>
                   <div class="exp-card-content">
-                    @if (
-                      exp.detailRoute === '/experiencias/kayak' || exp.id === 'exp_kayak_jumeal'
-                    ) {
-                      <a
-                        routerLink="/experiencias/kayak/calificaciones"
-                        class="exp-rating rating-link-yellow"
-                      >
-                        Puntaje de {{ exp.rating }}
-                        <span class="reviews">({{ exp.reviewsCount }} reseñas)</span>
-                      </a>
-                    } @else {
-                      <div class="exp-rating">
-                        Puntaje de {{ exp.rating }}
-                        <span class="reviews">({{ exp.reviewsCount }} reseñas)</span>
-                      </div>
-                    }
                     <h4 class="exp-title">{{ exp.title }}</h4>
                     <p class="exp-tagline">{{ exp.tagline }}</p>
 
@@ -983,7 +967,6 @@
           }
         </div>
       }
-
     </div>
   }
 

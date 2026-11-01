@@ -4,11 +4,11 @@ import {
   PaymentGatewayType,
   PaymentRequest,
   PaymentResult,
-  CurrencyCode
+  CurrencyCode,
 } from '../../models/payment.model';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class MercadoPagoGatewayService implements IPaymentGateway {
   readonly gatewayType: PaymentGatewayType = 'mercadopago';
@@ -36,7 +36,7 @@ export class MercadoPagoGatewayService implements IPaymentGateway {
       currency: 'ARS',
       paidAt: new Date(),
       authorizationCode: 'AUTH-' + Math.random().toString(36).substring(2, 8).toUpperCase(),
-      receiptUrl: `https://mercadopago.com.ar/comprobante/${transactionId}`
+      receiptUrl: `https://mercadopago.com.ar/comprobante/${transactionId}`,
     };
   }
 
@@ -48,7 +48,7 @@ export class MercadoPagoGatewayService implements IPaymentGateway {
       status: 'approved',
       amount: 150000,
       currency: 'ARS',
-      paidAt: new Date()
+      paidAt: new Date(),
     };
   }
 }

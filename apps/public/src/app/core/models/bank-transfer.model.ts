@@ -1,3 +1,6 @@
+import type { ExperienceAlbumPhoto } from './experience.model';
+export type { ExperienceAlbumPhoto };
+
 export type ExperienceStatus =
   | 'borrador'
   | 'pendiente_publicacion'
@@ -52,6 +55,7 @@ export interface ProviderExperience {
   providerId: string;
   providerName: string;
   coverImage?: string;
+  albumPhotos?: ExperienceAlbumPhoto[];
   createdAt: string;
   updatedAt?: string;
 }
@@ -130,6 +134,11 @@ export const BANK_TRANSFER_DESTINATION = {
   entity: 'Uala Bank S.A.U',
 } as const;
 
-export const RECEIPT_ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'] as const;
+export const RECEIPT_ACCEPTED_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'application/pdf',
+] as const;
 export const RECEIPT_MAX_BYTES = 5 * 1024 * 1024;
 export const MAX_PARTICIPANTS_PER_BOOKING = 6;

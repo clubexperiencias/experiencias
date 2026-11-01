@@ -19,7 +19,8 @@ type StatusFilter = TransferStatus | 'todos';
           <span class="section-kicker">CONCILIACIÓN BANCARIA Y COMPROBANTES</span>
           <h1 class="card-heading">Comprobantes de Pago Enviados</h1>
           <p class="card-subheading">
-            Registro unificado de transferencias de reservas recibidas. Validá el CBU, comprobá el monto transferido y acreditá los cupos de las expediciones.
+            Registro unificado de transferencias de reservas recibidas. Validá el CBU, comprobá el
+            monto transferido y acreditá los cupos de las expediciones.
           </p>
         </div>
       </div>
@@ -152,21 +153,32 @@ type StatusFilter = TransferStatus | 'todos';
                     <div class="cell-stack">
                       <strong class="amount-val">{{ sub.amountArs | ars }}</strong>
                       @if (sub.discountCode) {
-                        <span class="discount-meta">Desc: {{ sub.discountCode }} (-{{ sub.discountArs | ars }})</span>
+                        <span class="discount-meta"
+                          >Desc: {{ sub.discountCode }} (-{{ sub.discountArs | ars }})</span
+                        >
                       }
                     </div>
                   </td>
 
                   <!-- Miniatura de comprobante -->
                   <td>
-                    <button type="button" class="thumb-btn" (click)="openReceipt(sub)" title="Ver comprobante adjunto">
+                    <button
+                      type="button"
+                      class="thumb-btn"
+                      (click)="openReceipt(sub)"
+                      title="Ver comprobante adjunto"
+                    >
                       @if (isPdf(sub.receipt.mimeType)) {
                         <div class="pdf-thumb">
                           <mat-icon>picture_as_pdf</mat-icon>
                           <span>PDF</span>
                         </div>
                       } @else {
-                        <img [src]="sub.receipt.url" [alt]="sub.receipt.fileName" class="receipt-thumb-img" />
+                        <img
+                          [src]="sub.receipt.url"
+                          [alt]="sub.receipt.fileName"
+                          class="receipt-thumb-img"
+                        />
                       }
                     </button>
                   </td>
@@ -185,7 +197,12 @@ type StatusFilter = TransferStatus | 'todos';
 
         <!-- Acciones al pie de la tabla -->
         <div class="table-footer-actions">
-          <button type="button" class="btn-footer-action" (click)="refresh()" [disabled]="store.isLoadingSubmissions()">
+          <button
+            type="button"
+            class="btn-footer-action"
+            (click)="refresh()"
+            [disabled]="store.isLoadingSubmissions()"
+          >
             {{ store.isLoadingSubmissions() ? 'Actualizando...' : 'Refrescar Comprobantes' }}
           </button>
 
@@ -198,7 +215,12 @@ type StatusFilter = TransferStatus | 'todos';
       <!-- Modal de Revisión y Validación de Comprobante -->
       @if (selected(); as sub) {
         <div class="modal-backdrop" (click)="closeReceipt()">
-          <div class="receipt-modal-card" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+          <div
+            class="receipt-modal-card"
+            (click)="$event.stopPropagation()"
+            role="dialog"
+            aria-modal="true"
+          >
             <!-- Columna Izquierda: Vista Previa del Archivo -->
             <div class="receipt-modal-preview">
               @if (isPdf(sub.receipt.mimeType)) {
@@ -212,7 +234,11 @@ type StatusFilter = TransferStatus | 'todos';
                 </div>
               } @else {
                 <div class="img-preview-box">
-                  <img [src]="sub.receipt.url" [alt]="'Comprobante de ' + sub.fullName" class="preview-img" />
+                  <img
+                    [src]="sub.receipt.url"
+                    [alt]="'Comprobante de ' + sub.fullName"
+                    class="preview-img"
+                  />
                 </div>
               }
             </div>
@@ -224,34 +250,78 @@ type StatusFilter = TransferStatus | 'todos';
                   <span class="section-kicker">DETALLE DE COMPROBANTE</span>
                   <h2 class="modal-title font-mono">{{ sub.reference }}</h2>
                 </div>
-                <button type="button" class="modal-close-btn" (click)="closeReceipt()" aria-label="Cerrar">×</button>
+                <button
+                  type="button"
+                  class="modal-close-btn"
+                  (click)="closeReceipt()"
+                  aria-label="Cerrar"
+                >
+                  ×
+                </button>
               </div>
 
               <!-- Cuadro de Monto Esperado -->
               <div class="expected-amount-card">
                 <span class="exp-lbl">Importe Transferido</span>
                 <strong class="exp-val text-green">{{ sub.amountArs | ars }}</strong>
-                <span class="exp-hint">Verificá que el comprobante adjunto coincida con este importe.</span>
+                <span class="exp-hint"
+                  >Verificá que el comprobante adjunto coincida con este importe.</span
+                >
               </div>
 
               <!-- Lista de Datos -->
               <dl class="meta-data-list">
-                <div><dt>Titular:</dt><dd><strong>{{ sub.fullName }}</strong></dd></div>
-                <div><dt>DNI:</dt><dd class="font-mono">{{ sub.dni }}</dd></div>
-                <div><dt>Email:</dt><dd>{{ sub.email }}</dd></div>
-                <div><dt>Teléfono:</dt><dd>{{ sub.phone }}</dd></div>
-                <div><dt>Experiencia:</dt><dd>{{ sub.experienceTitle }}</dd></div>
-                <div><dt>Fecha Salida:</dt><dd>{{ sub.date | fecha: 'larga' }}</dd></div>
-                <div><dt>Cupos:</dt><dd>{{ sub.participants }} personas</dd></div>
-                <div><dt>Enviado el:</dt><dd>{{ sub.submittedAt | fecha: 'corta' }}</dd></div>
+                <div>
+                  <dt>Titular:</dt>
+                  <dd>
+                    <strong>{{ sub.fullName }}</strong>
+                  </dd>
+                </div>
+                <div>
+                  <dt>DNI:</dt>
+                  <dd class="font-mono">{{ sub.dni }}</dd>
+                </div>
+                <div>
+                  <dt>Email:</dt>
+                  <dd>{{ sub.email }}</dd>
+                </div>
+                <div>
+                  <dt>Teléfono:</dt>
+                  <dd>{{ sub.phone }}</dd>
+                </div>
+                <div>
+                  <dt>Experiencia:</dt>
+                  <dd>{{ sub.experienceTitle }}</dd>
+                </div>
+                <div>
+                  <dt>Fecha Salida:</dt>
+                  <dd>{{ sub.date | fecha: 'larga' }}</dd>
+                </div>
+                <div>
+                  <dt>Cupos:</dt>
+                  <dd>{{ sub.participants }} personas</dd>
+                </div>
+                <div>
+                  <dt>Enviado el:</dt>
+                  <dd>{{ sub.submittedAt | fecha: 'corta' }}</dd>
+                </div>
                 @if (sub.discountCode) {
-                  <div><dt>Descuento:</dt><dd>{{ sub.discountCode }} (-{{ sub.discountArs | ars }})</dd></div>
+                  <div>
+                    <dt>Descuento:</dt>
+                    <dd>{{ sub.discountCode }} (-{{ sub.discountArs | ars }})</dd>
+                  </div>
                 }
               </dl>
 
               <!-- Estado del Comprobante -->
               <div class="status-summary-box" [attr.data-status]="sub.status">
-                <mat-icon>{{ sub.status === 'aprobado' ? 'verified' : (sub.status === 'rechazado' ? 'cancel' : 'schedule') }}</mat-icon>
+                <mat-icon>{{
+                  sub.status === 'aprobado'
+                    ? 'verified'
+                    : sub.status === 'rechazado'
+                      ? 'cancel'
+                      : 'schedule'
+                }}</mat-icon>
                 <div>
                   <strong>Pago {{ sub.status | uppercase }}</strong>
                   @if (sub.reviewedAt) {
@@ -303,7 +373,13 @@ type StatusFilter = TransferStatus | 'todos';
               }
 
               <!-- Descarga Directa -->
-              <a [href]="sub.receipt.url" [download]="sub.receipt.fileName" target="_blank" rel="noopener" class="download-link-btn">
+              <a
+                [href]="sub.receipt.url"
+                [download]="sub.receipt.fileName"
+                target="_blank"
+                rel="noopener"
+                class="download-link-btn"
+              >
                 <mat-icon>download</mat-icon>
                 <span>Descargar archivo original ({{ sub.receipt.fileName }})</span>
               </a>
@@ -406,7 +482,10 @@ type StatusFilter = TransferStatus | 'todos';
         font-size: 0.82rem;
         font-weight: 700;
         cursor: pointer;
-        transition: background 0.2s ease, border-color 0.2s ease, filter 0.2s ease;
+        transition:
+          background 0.2s ease,
+          border-color 0.2s ease,
+          filter 0.2s ease;
         background: rgba(30, 15, 8, 0.75);
         border: 1px solid rgba(255, 95, 0, 0.35);
         color: #ffffff;
@@ -455,8 +534,12 @@ type StatusFilter = TransferStatus | 'todos';
       }
 
       @keyframes spin {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
+        from {
+          transform: rotate(0deg);
+        }
+        to {
+          transform: rotate(360deg);
+        }
       }
 
       /* Summary Strip */
@@ -516,8 +599,12 @@ type StatusFilter = TransferStatus | 'todos';
         color: rgba(255, 255, 255, 0.5);
       }
 
-      .text-orange { color: #ff5f00 !important; }
-      .text-green { color: #34d399 !important; }
+      .text-orange {
+        color: #ff5f00 !important;
+      }
+      .text-green {
+        color: #34d399 !important;
+      }
 
       /* Filters & Search */
       .filters-bar {
@@ -1211,7 +1298,20 @@ export class AdminReceiptsComponent {
 
   downloadReceiptsList(): void {
     const list = this.store.submissions();
-    const headers = ['Referencia', 'Socio', 'DNI', 'Email', 'Teléfono', 'Experiencia', 'Fecha Salida', 'Cupos', 'Importe', 'Descuento', 'Estado', 'Fecha Envío'];
+    const headers = [
+      'Referencia',
+      'Socio',
+      'DNI',
+      'Email',
+      'Teléfono',
+      'Experiencia',
+      'Fecha Salida',
+      'Cupos',
+      'Importe',
+      'Descuento',
+      'Estado',
+      'Fecha Envío',
+    ];
     const escapeCsv = (val: any) => {
       let str = val != null ? String(val) : '';
       if (/^[=+\-@\t\r]/.test(str)) {
@@ -1221,20 +1321,22 @@ export class AdminReceiptsComponent {
     };
     const rows = [
       headers.map(escapeCsv).join(','),
-      ...list.map((s) => [
-        escapeCsv(s.reference),
-        escapeCsv(s.fullName),
-        escapeCsv(s.dni),
-        escapeCsv(s.email),
-        escapeCsv(s.phone),
-        escapeCsv(s.experienceTitle),
-        escapeCsv(s.date),
-        escapeCsv(s.participants),
-        escapeCsv(s.amountArs),
-        escapeCsv(s.discountCode || '—'),
-        escapeCsv(s.status.toUpperCase()),
-        escapeCsv(new Date(s.submittedAt).toLocaleDateString('es-AR')),
-      ].join(',')),
+      ...list.map((s) =>
+        [
+          escapeCsv(s.reference),
+          escapeCsv(s.fullName),
+          escapeCsv(s.dni),
+          escapeCsv(s.email),
+          escapeCsv(s.phone),
+          escapeCsv(s.experienceTitle),
+          escapeCsv(s.date),
+          escapeCsv(s.participants),
+          escapeCsv(s.amountArs),
+          escapeCsv(s.discountCode || '—'),
+          escapeCsv(s.status.toUpperCase()),
+          escapeCsv(new Date(s.submittedAt).toLocaleDateString('es-AR')),
+        ].join(','),
+      ),
     ];
     const blob = new Blob(['\uFEFF' + rows.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -1272,4 +1374,3 @@ export class AdminReceiptsComponent {
     return mimeType === 'application/pdf';
   }
 }
-

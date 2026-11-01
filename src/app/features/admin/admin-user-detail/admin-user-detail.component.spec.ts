@@ -18,11 +18,11 @@ describe('AdminUserDetailComponent (/admin/users/:id)', () => {
           provide: ActivatedRoute,
           useValue: {
             paramMap: of({
-              get: (key: string) => (key === 'id' ? '654' : null)
-            })
-          }
-        }
-      ]
+              get: (key: string) => (key === 'id' ? '654' : null),
+            }),
+          },
+        },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(AdminUserDetailComponent);

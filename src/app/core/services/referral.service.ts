@@ -20,7 +20,7 @@ export interface ReferredMember {
 const STORAGE_REFERRALS_KEY = 'catamarca_club_referrals_v4';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class ReferralService {
   // Un solo referido mockeado de demo
@@ -37,10 +37,10 @@ export class ReferralService {
           discountPercent: 10,
           experienceTitle: 'Volcán Galán & Caldera Gigante',
           generatedAt: '26 de Octubre',
-          isUsed: false
-        }
-      ]
-    }
+          isUsed: false,
+        },
+      ],
+    },
   ];
 
   readonly referrals = signal<ReferredMember[]>(this.loadStoredReferrals());
@@ -48,15 +48,17 @@ export class ReferralService {
   readonly totalReferred = computed(() => this.referrals().length);
 
   readonly totalExperiencesPurchased = computed(() =>
-    this.referrals().reduce((acc, r) => acc + r.experiencesPurchasedCount, 0)
+    this.referrals().reduce((acc, r) => acc + r.experiencesPurchasedCount, 0),
   );
 
   readonly totalCouponsEarned = computed(() =>
-    this.referrals().reduce((acc, r) => acc + r.couponsEarned.length, 0)
+    this.referrals().reduce((acc, r) => acc + r.couponsEarned.length, 0),
   );
 
   readonly availableCoupons = computed(() =>
-    this.referrals().flatMap((r) => r.couponsEarned).filter((c) => !c.isUsed)
+    this.referrals()
+      .flatMap((r) => r.couponsEarned)
+      .filter((c) => !c.isUsed),
   );
 
   private loadStoredReferrals(): ReferredMember[] {

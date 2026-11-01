@@ -44,14 +44,14 @@ describe('EmergingMemberComponent (/socios/emergentes)', () => {
     expect(current.textContent).toContain('Socios Emergentes');
   });
 
-  it('should display ad banner linking to /socios/fundadores', () => {
-    const adLink = fixture.nativeElement.querySelector('.ad-banner-link');
+  it('should display ad banner linking to /experiencias/kayak', () => {
+    const adLink = fixture.nativeElement.querySelector('.founder-ad-link');
     expect(adLink).toBeTruthy();
     expect(adLink.getAttribute('routerlink') || adLink.getAttribute('href')).toBe(
-      '/socios/fundadores',
+      '/experiencias/kayak',
     );
     const adImg = adLink.querySelector('img');
     expect(adImg).toBeTruthy();
-    expect(adImg.getAttribute('src')).toContain('ad.png');
+    expect(adImg.getAttribute('src')).toContain('ad-kayak.png');
   });
 });

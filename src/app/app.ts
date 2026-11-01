@@ -76,7 +76,6 @@ export class App {
               'Por favor, ingresá una dirección de correo electrónico válida.',
             );
           }
-
         }
       };
 
@@ -198,8 +197,7 @@ export class App {
     if (path.startsWith('/comprobantes')) {
       return {
         section: 'Conciliación de Comprobantes de Pago',
-        description:
-          'Validación y control de transferencias bancarias de expediciones.',
+        description: 'Validación y control de transferencias bancarias de expediciones.',
         image: '/assets/images/logo-admin-experiencias-club.png',
         imageAlt: 'Comprobantes de Pago EXPERIENCIAS.CLUB',
       };
@@ -216,8 +214,7 @@ export class App {
     if (path.startsWith('/socios')) {
       return {
         section: 'Socios del Club',
-        description:
-          'Conocé los niveles de socio y accedé a experiencias privadas en Catamarca.',
+        description: 'Conocé los niveles de socio y accedé a experiencias privadas en Catamarca.',
         image: '/assets/images/catamarca_hero.jpg',
         imageAlt: 'Socios del Club de Experiencias',
       };

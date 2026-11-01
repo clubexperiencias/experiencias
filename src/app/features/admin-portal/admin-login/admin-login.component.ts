@@ -26,7 +26,8 @@ import { isSupabaseConfigured } from '../../../core/supabase/supabase.client';
 
           <h1 class="login-title">Control de Operaciones y Socios</h1>
           <p class="login-sub">
-            Ingreso exclusivo para administración de nóminas, lista de espera, vinculaciones de Google y conciliación de transferencias bancarias.
+            Ingreso exclusivo para administración de nóminas, lista de espera, vinculaciones de
+            Google y conciliación de transferencias bancarias.
           </p>
         </div>
 
@@ -54,7 +55,9 @@ import { isSupabaseConfigured } from '../../../core/supabase/supabase.client';
               d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
             />
           </svg>
-          {{ connectingGoogle() ? 'Conectando con Google...' : 'Iniciar sesión con Google (Admin)' }}
+          {{
+            connectingGoogle() ? 'Conectando con Google...' : 'Iniciar sesión con Google (Admin)'
+          }}
         </button>
 
         @if (errorMessage()) {
@@ -114,7 +117,9 @@ import { isSupabaseConfigured } from '../../../core/supabase/supabase.client';
         border: 1px solid rgba(255, 95, 0, 0.45);
         border-radius: 3px;
         padding: 2.25rem;
-        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65), 0 0 25px rgba(255, 95, 0, 0.12);
+        box-shadow:
+          0 20px 50px rgba(0, 0, 0, 0.65),
+          0 0 25px rgba(255, 95, 0, 0.12);
         backdrop-filter: blur(16px);
         -webkit-backdrop-filter: blur(16px);
       }
@@ -353,4 +358,3 @@ export class AdminLoginComponent {
     }
   }
 }
-

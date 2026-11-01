@@ -3,14 +3,14 @@ import {
   IPaymentGateway,
   PaymentGatewayType,
   PaymentRequest,
-  PaymentResult
+  PaymentResult,
 } from '../../models/payment.model';
 import { CustomPaymentGatewayService } from './custom-payment-gateway.service';
 import { MercadoPagoGatewayService } from './mercadopago-gateway.service';
 import { StripeGatewayService } from './stripe-gateway.service';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class PaymentManagerService {
   private readonly gateways = new Map<PaymentGatewayType, IPaymentGateway>();
@@ -21,7 +21,7 @@ export class PaymentManagerService {
   readonly availableGateways = signal<Array<{ type: PaymentGatewayType; name: string }>>([
     { type: 'custom', name: 'Pasarela Propia (Transferencia directa / CBU / Alias)' },
     { type: 'mercadopago', name: 'Mercado Pago (Cuotas, Tarjetas y Dinero en Cuenta)' },
-    { type: 'stripe', name: 'Stripe (Tarjetas Internacionales y Apple Pay)' }
+    { type: 'stripe', name: 'Stripe (Tarjetas Internacionales y Apple Pay)' },
   ]);
 
   readonly activeGateway = computed<IPaymentGateway>(() => {
@@ -35,7 +35,7 @@ export class PaymentManagerService {
   constructor(
     private readonly customGateway: CustomPaymentGatewayService,
     private readonly mpGateway: MercadoPagoGatewayService,
-    private readonly stripeGateway: StripeGatewayService
+    private readonly stripeGateway: StripeGatewayService,
   ) {
     this.gateways.set('custom', this.customGateway);
     this.gateways.set('mercadopago', this.mpGateway);

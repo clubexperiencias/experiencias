@@ -1210,12 +1210,12 @@
 
 .not-found-state h2 {
   font-family: var(--font-sans);
-  color: #ffffff;
+  color: #141c2b;
   font-size: 1.75rem;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .not-found-state p {
-  color: #94a3b8;
+  color: #334155;
   margin-bottom: 1.5rem;
 }

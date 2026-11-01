@@ -183,7 +183,9 @@ export class ProviderPanelComponent {
   readonly userMenuOpen = signal(false);
   readonly supportWhatsappUrl =
     'https://wa.me/5493515490431?text=' +
-    encodeURIComponent('Hola! Tengo una duda y necesito asistencia con el Portal de Prestadores, ¿me podrían ayudar?');
+    encodeURIComponent(
+      'Hola! Tengo una duda y necesito asistencia con el Portal de Prestadores, ¿me podrían ayudar?',
+    );
 
   constructor() {
     void this.store.restoreSupabaseSession();

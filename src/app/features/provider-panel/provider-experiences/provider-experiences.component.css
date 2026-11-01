@@ -913,6 +913,18 @@
   }
 }
 
+.btn-album {
+  background: rgba(217, 179, 90, 0.12);
+  border-color: rgba(217, 179, 90, 0.4);
+  color: #fce7b0;
+}
+
+.btn-album:hover {
+  background: rgba(217, 179, 90, 0.25);
+  border-color: #d9b35a;
+  color: #ffffff;
+}
+
 @media (max-width: 480px) {
   .summary-strip {
     grid-template-columns: 1fr;
@@ -927,4 +939,3 @@
     text-align: center;
   }
 }
-

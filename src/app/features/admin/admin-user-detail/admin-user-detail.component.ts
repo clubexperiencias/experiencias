@@ -9,7 +9,7 @@ import { AdminUser } from '../../../core/models/admin.model';
   standalone: true,
   imports: [CommonModule, RouterLink],
   templateUrl: './admin-user-detail.component.html',
-  styleUrls: ['./admin-user-detail.component.css']
+  styleUrls: ['./admin-user-detail.component.css'],
 })
 export class AdminUserDetailComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);

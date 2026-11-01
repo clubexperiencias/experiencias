@@ -21,8 +21,8 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
             <a routerLink="/dashboard" class="btn-back-panel">Volver al Panel</a>
           </div>
           <p class="card-subheading">
-            Administrá y editá toda la información de las rutas públicas de experiencias.club en tiempo real:
-            textos, aranceles, cupos, multimedia, itinerarios y estado de publicación.
+            Administrá y editá toda la información de las rutas públicas de experiencias.club en
+            tiempo real: textos, aranceles, cupos, multimedia, itinerarios y estado de publicación.
           </p>
         </div>
 
@@ -214,12 +214,16 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
             <div class="modal-header">
               <div>
                 <span class="modal-kicker">EDICIÓN DE RUTA PÚBLICA</span>
-                <h2 class="modal-title">{{ isCreating() ? 'Nueva Experiencia' : 'Editar: ' + editTitle() }}</h2>
+                <h2 class="modal-title">
+                  {{ isCreating() ? 'Nueva Experiencia' : 'Editar: ' + editTitle() }}
+                </h2>
                 <p class="modal-sub">
                   Ruta oficial: <code>/experiencias/{{ editSlug() }}</code>
                 </p>
               </div>
-              <button type="button" class="modal-close-icon-btn" (click)="closeEditModal()">×</button>
+              <button type="button" class="modal-close-icon-btn" (click)="closeEditModal()">
+                ×
+              </button>
             </div>
 
             <div class="modal-body-scrollable">
@@ -235,6 +239,7 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                         type="text"
                         class="form-input slug-field"
                         [(ngModel)]="editSlug"
+                        [disabled]="editingExperience()?.slug === 'kayak'"
                         placeholder="ej: kayak, piedra-pomez, etc."
                       />
                     </div>
@@ -385,7 +390,9 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                       [(ngModel)]="editPriceArs"
                       placeholder="65000"
                     />
-                    <span class="field-hint">Monto cobrado en transferencias bancarias locales.</span>
+                    <span class="field-hint"
+                      >Monto cobrado en transferencias bancarias locales.</span
+                    >
                   </div>
 
                   <div class="form-field">
@@ -448,7 +455,9 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                     [(ngModel)]="editDatesRaw"
                     placeholder="2026-11-10, 2026-11-17, 2026-11-24"
                   />
-                  <span class="field-hint">Fechas habilitadas para reservar cupos en el proceso de pago.</span>
+                  <span class="field-hint"
+                    >Fechas habilitadas para reservar cupos en el proceso de pago.</span
+                  >
                 </div>
               </div>
 
@@ -494,9 +503,7 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
 
             <!-- Footer del Modal -->
             <div class="modal-footer">
-              <button type="button" class="btn-cancel" (click)="closeEditModal()">
-                Cancelar
-              </button>
+              <button type="button" class="btn-cancel" (click)="closeEditModal()">Cancelar</button>
               <button
                 type="button"
                 class="btn-save-orange"
@@ -1451,15 +1458,14 @@ export class AdminExperiencesComponent {
       return;
     }
 
-    const slug = (
-      this.editSlug().trim() ||
-      title
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)/g, '')
-    ).toLowerCase();
+    const isKayak = this.editingExperience()?.slug === 'kayak';
+    const rawSlug = isKayak ? 'kayak' : this.editSlug().trim() || title;
+    const slug = rawSlug
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
 
     const dates = this.editDatesRaw()
       .split(',')
@@ -1517,7 +1523,9 @@ export class AdminExperiencesComponent {
           isLocked: false,
         } as Experience;
         await this.experienceService.createExperience(fullNewExp);
-        this.showToast(`✨ Experiencia "${title}" creada exitosamente en la ruta /experiencias/${slug}.`);
+        this.showToast(
+          `✨ Experiencia "${title}" creada exitosamente en la ruta /experiencias/${slug}.`,
+        );
       } else {
         await this.experienceService.updateExperience(payload);
         this.showToast(`✅ Información de la ruta /experiencias/${slug} actualizada con éxito.`);

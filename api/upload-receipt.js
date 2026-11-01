@@ -1,12 +1,7 @@
 const crypto = require('crypto');
 const https = require('https');
 
-const ACCEPTED_MIME_TYPES = new Set([
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'application/pdf',
-]);
+const ACCEPTED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB
 
@@ -236,9 +231,7 @@ function putObjectToR2({
             resolve();
           } else {
             reject(
-              new Error(
-                `R2 respondió con estado ${res.statusCode}: ${responseBody.slice(0, 300)}`,
-              ),
+              new Error(`R2 respondió con estado ${res.statusCode}: ${responseBody.slice(0, 300)}`),
             );
           }
         });

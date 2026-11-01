@@ -14,7 +14,9 @@
         <!-- ═══════════════ HERO CARD: CABECERA Y RESUMEN TÉCNICO ═══════════════ -->
         <div class="kayak-section-card hero-kayak-card">
           <div class="card-inner-header">
-            <span class="section-kicker">{{ exp().kicker || 'EXPEDICIÓN NÁUTICA: VALLE CENTRAL' }}</span>
+            <span class="section-kicker">{{
+              exp().kicker || 'EXPEDICIÓN NÁUTICA: VALLE CENTRAL'
+            }}</span>
             <h1 class="card-heading">{{ exp().title }}</h1>
             <p class="card-subheading">
               {{ exp().description }}
@@ -44,8 +46,8 @@
               <span class="spec-value">{{ exp().bestSeason }}</span>
             </div>
             <div class="spec-tile">
-              <span class="spec-label">CALIFICACIÓN</span>
-              <span class="spec-value gold-text">Reseñas aún no disponibles</span>
+              <span class="spec-label">PUNTO DE ENCUENTRO</span>
+              <span class="spec-value">{{ exp().meetingPoint || 'Club Náutico El Jumeal' }}</span>
             </div>
           </div>
           <!-- Video Oficial de la Experiencia Integrado -->

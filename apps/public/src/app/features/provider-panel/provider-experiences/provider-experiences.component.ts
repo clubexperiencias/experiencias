@@ -6,6 +6,7 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
 import { ProviderExperience } from '../../../core/models/bank-transfer.model';
 import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
 import { ProviderExperienceProposalModalComponent } from '../provider-experience-proposal-modal/provider-experience-proposal-modal.component';
+import { ProviderExperienceAlbumModalComponent } from '../provider-experience-album-modal/provider-experience-album-modal.component';
 
 type ExpFilterTab = 'todas' | 'publicadas' | 'solicitudes' | 'revision' | 'borradores' | 'ocultas';
 
@@ -19,6 +20,7 @@ type ExpFilterTab = 'todas' | 'publicadas' | 'solicitudes' | 'revision' | 'borra
     ArsPipe,
     FechaPipe,
     ProviderExperienceProposalModalComponent,
+    ProviderExperienceAlbumModalComponent,
   ],
   templateUrl: './provider-experiences.component.html',
   styleUrl: './provider-experiences.component.css',
@@ -31,6 +33,7 @@ export class ProviderExperiencesComponent {
   readonly searchQuery = signal('');
   readonly requests = this.store.providerExperienceRequests;
   readonly requestModalOpen = signal(false);
+  readonly albumModalExp = signal<ProviderExperience | null>(null);
   readonly selectedExpForDelete = signal<ProviderExperience | null>(null);
   readonly deleteErrorModal = signal<string | null>(null);
   readonly hideReasonModal = signal<ProviderExperience | null>(null);
@@ -76,6 +79,18 @@ export class ProviderExperiencesComponent {
 
   openRequestModal(): void {
     this.requestModalOpen.set(true);
+  }
+
+  openAlbumModal(exp: ProviderExperience): void {
+    this.albumModalExp.set(exp);
+  }
+
+  closeAlbumModal(): void {
+    this.albumModalExp.set(null);
+  }
+
+  onAlbumSaved(updated: ProviderExperience): void {
+    this.showToast(`📸 Álbum de "${updated.title}" guardado correctamente.`);
   }
 
   readonly rows = computed(() => {

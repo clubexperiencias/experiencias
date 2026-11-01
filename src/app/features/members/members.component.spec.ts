@@ -10,7 +10,7 @@ describe('MembersComponent (/socios)', () => {
     localStorage.clear();
     await TestBed.configureTestingModule({
       imports: [MembersComponent],
-      providers: [provideRouter([])]
+      providers: [provideRouter([])],
     }).compileComponents();
 
     fixture = TestBed.createComponent(MembersComponent);
@@ -31,7 +31,9 @@ describe('MembersComponent (/socios)', () => {
   it('should link to /socios/fundadores from the founder tier CTA button', () => {
     const founderBtn = fixture.nativeElement.querySelector('.founder-cta');
     expect(founderBtn).toBeTruthy();
-    expect(founderBtn.getAttribute('routerlink') || founderBtn.getAttribute('href')).toBe('/socios/fundadores');
+    expect(founderBtn.getAttribute('routerlink') || founderBtn.getAttribute('href')).toBe(
+      '/socios/fundadores',
+    );
   });
 
   it('should link back to root / from the logo', () => {
@@ -42,12 +44,16 @@ describe('MembersComponent (/socios)', () => {
   it('should link to /socios/emergentes from the emerging tier CTA button', () => {
     const emergingBtn = fixture.nativeElement.querySelector('.tier-card .default-action');
     expect(emergingBtn).toBeTruthy();
-    expect(emergingBtn.getAttribute('routerlink') || emergingBtn.getAttribute('href')).toBe('/socios/emergentes');
+    expect(emergingBtn.getAttribute('routerlink') || emergingBtn.getAttribute('href')).toBe(
+      '/socios/emergentes',
+    );
   });
 
   it('should link to /experiencias in the desktop nav and not include Prestadores', () => {
     const navLinks = fixture.nativeElement.querySelectorAll('.nav-actions a');
-    const hrefs = Array.from(navLinks).map((a: any) => a.getAttribute('routerlink') || a.getAttribute('href'));
+    const hrefs = Array.from(navLinks).map(
+      (a: any) => a.getAttribute('routerlink') || a.getAttribute('href'),
+    );
     expect(hrefs).toContain('/experiencias');
     expect(hrefs).not.toContain('/prestadores');
   });

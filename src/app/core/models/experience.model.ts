@@ -1,3 +1,13 @@
+export interface ExperienceAlbumPhoto {
+  id: string;
+  url: string;
+  title?: string;
+  caption?: string;
+  isCover?: boolean; // Exactamente 1 como portada
+  isFeatured?: boolean; // Exactamente 2 como destacadas
+  order?: number;
+}
+
 export interface Experience {
   id: string;
   slug: string;
@@ -20,6 +30,7 @@ export interface Experience {
   reviewsCount: number;
   coverImage: string;
   galleryImages: string[];
+  albumPhotos?: ExperienceAlbumPhoto[];
   videoUrl?: string;
   videoPoster?: string;
   highlights: string[];

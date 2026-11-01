@@ -116,7 +116,10 @@ export class CloudflareR2Service {
             };
           }
         } else {
-          console.warn('[CloudflareR2Service] No se pudo subir a Supabase Storage:', uploadErr.message);
+          console.warn(
+            '[CloudflareR2Service] No se pudo subir a Supabase Storage:',
+            uploadErr.message,
+          );
         }
       } catch (err) {
         console.warn('[CloudflareR2Service] Error en fallback Supabase Storage:', err);

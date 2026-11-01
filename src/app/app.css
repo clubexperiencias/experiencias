@@ -26,7 +26,9 @@
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(128, 179, 255, 0.35);
   border-radius: 9999px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), 0 0 15px rgba(128, 179, 255, 0.2);
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.4),
+    0 0 15px rgba(128, 179, 255, 0.2);
   color: #ffffff;
   font-size: 0.8rem;
   transition: all 0.25s ease;
@@ -34,7 +36,9 @@
 
 .dock-badge:hover {
   border-color: #80b3ff;
-  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.5), 0 0 20px rgba(128, 179, 255, 0.35);
+  box-shadow:
+    0 12px 35px rgba(0, 0, 0, 0.5),
+    0 0 20px rgba(128, 179, 255, 0.35);
 }
 
 .dock-badge.is-prestadores-active {

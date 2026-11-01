@@ -1,4 +1,12 @@
-import { Component, EventEmitter, HostListener, Output, inject, model, signal } from '@angular/core';
+import {
+  Component,
+  EventEmitter,
+  HostListener,
+  Output,
+  inject,
+  model,
+  signal,
+} from '@angular/core';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { NewsletterService } from '../../../core/services/newsletter.service';
@@ -8,7 +16,7 @@ import { NewsletterService } from '../../../core/services/newsletter.service';
   standalone: true,
   imports: [RouterLink, RouterLinkActive, MatIconModule],
   templateUrl: './header.component.html',
-  styleUrl: './header.component.css'
+  styleUrl: './header.component.css',
 })
 export class HeaderComponent {
   readonly newsletter = inject(NewsletterService);
@@ -22,7 +30,7 @@ export class HeaderComponent {
     if (event) {
       event.stopPropagation();
     }
-    this.mobileMenuOpen.update(v => !v);
+    this.mobileMenuOpen.update((v) => !v);
   }
 
   closeMobileMenu(): void {

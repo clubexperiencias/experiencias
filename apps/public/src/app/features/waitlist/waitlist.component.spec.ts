@@ -10,7 +10,7 @@ describe('WaitlistComponent All Desktop Modals & Navigation', () => {
     localStorage.clear();
     await TestBed.configureTestingModule({
       imports: [WaitlistComponent],
-      providers: [provideRouter([])]
+      providers: [provideRouter([])],
     }).compileComponents();
 
     fixture = TestBed.createComponent(WaitlistComponent);

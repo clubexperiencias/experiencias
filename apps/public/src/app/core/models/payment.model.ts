@@ -54,7 +54,7 @@ export interface PaymentResult {
 export interface IPaymentGateway {
   readonly gatewayType: PaymentGatewayType;
   readonly displayName: string;
-  
+
   isAvailable(): boolean;
   getSupportedCurrencies(): CurrencyCode[];
   processPayment(request: PaymentRequest): Promise<PaymentResult>;

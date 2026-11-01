@@ -10,7 +10,7 @@ describe('ExperiencesComponent (/experiencias)', () => {
     localStorage.clear();
     await TestBed.configureTestingModule({
       imports: [ExperiencesComponent],
-      providers: [provideRouter([])]
+      providers: [provideRouter([])],
     }).compileComponents();
 
     fixture = TestBed.createComponent(ExperiencesComponent);
@@ -51,7 +51,9 @@ describe('ExperiencesComponent (/experiencias)', () => {
 
   it('should link to /socios in the desktop nav and not include Prestadores', () => {
     const navLinks = fixture.nativeElement.querySelectorAll('.nav-actions a');
-    const hrefs = Array.from(navLinks).map((a: any) => a.getAttribute('routerlink') || a.getAttribute('href'));
+    const hrefs = Array.from(navLinks).map(
+      (a: any) => a.getAttribute('routerlink') || a.getAttribute('href'),
+    );
     expect(hrefs).toContain('/socios');
     expect(hrefs).not.toContain('/prestadores');
   });

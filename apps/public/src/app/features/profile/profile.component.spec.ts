@@ -9,7 +9,7 @@ describe('ProfileComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [ProfileComponent],
-      providers: [provideRouter([{ path: 'ingresar', component: ProfileComponent }])]
+      providers: [provideRouter([{ path: 'ingresar', component: ProfileComponent }])],
     }).compileComponents();
 
     fixture = TestBed.createComponent(ProfileComponent);
@@ -51,7 +51,9 @@ describe('ProfileComponent', () => {
     expect(card).toBeTruthy();
     expect(card.textContent).toContain('DATOS DE MEMBRESÍA');
     expect(card.textContent).toContain('Socio Emergente');
-    expect(card.textContent).toContain('Priorizaremos tu cupo según qué expediciones realices y qué tan completo tengas tu perfil.');
+    expect(card.textContent).toContain(
+      'Priorizaremos tu cupo según qué expediciones realices y qué tan completo tengas tu perfil.',
+    );
   });
 
   it('should link back to root / from the header logo', () => {

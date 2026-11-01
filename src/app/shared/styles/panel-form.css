@@ -73,11 +73,18 @@ select.pay-input option {
 }
 
 .pay-input:focus {
-  outline: none;
+  outline: 2px solid var(--color-gold);
+  outline-offset: 1px;
   border-color: var(--color-gold);
 }
 
 .pay-input[aria-invalid='true'] {
+  border-color: var(--color-error);
+}
+
+.pay-input[aria-invalid='true']:focus {
+  outline: 2px solid var(--color-error);
+  outline-offset: 1px;
   border-color: var(--color-error);
 }
 

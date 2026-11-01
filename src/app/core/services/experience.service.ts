@@ -1,9 +1,57 @@
-import { Injectable, inject, signal } from '@angular/core';
-import { Experience } from '../models/experience.model';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { Experience, ExperienceAlbumPhoto } from '../models/experience.model';
 import { SUPABASE_CLIENT, isSupabaseConfigured } from '../supabase/supabase.client';
 
 const KAYAK_IMAGE = '/assets/images/kayak-club-de-experiencias.jpg';
 const STORAGE_KEY = 'club_experiencias_catalog_v1';
+
+export const KAYAK_ALBUM_PHOTOS: ExperienceAlbumPhoto[] = [
+  {
+    id: 'kayak-photo-1',
+    url: '/assets/images/kayak-club-de-experiencias.jpg',
+    title: 'Travesía en el Dique El Jumeal',
+    caption: 'Socios del Club navegando en aguas calmas frente al cordón de las Sierras de Ambato.',
+    isCover: true,
+    isFeatured: false,
+    order: 1,
+  },
+  {
+    id: 'kayak-photo-2',
+    url: '/assets/images/dron.jpg',
+    title: 'Dique El Jumeal desde el aire',
+    caption: 'Vista aérea del Dique El Jumeal y su entorno natural.',
+    isCover: false,
+    isFeatured: true,
+    order: 2,
+  },
+  {
+    id: 'kayak-photo-3',
+    url: '/assets/images/amigos.jpg',
+    title: 'Travesía compartida',
+    caption: 'Una salida en kayak junto a los socios del Club.',
+    isCover: false,
+    isFeatured: true,
+    order: 3,
+  },
+  {
+    id: 'kayak-photo-4',
+    url: '/assets/images/dique.jpg',
+    title: 'Kayaks en el Dique El Jumeal',
+    caption: 'Punto de encuentro para nuestras travesías náuticas.',
+    isCover: false,
+    isFeatured: false,
+    order: 4,
+  },
+  {
+    id: 'kayak-photo-5',
+    url: '/assets/images/amigas.jpg',
+    title: 'Navegación en el Dique El Jumeal',
+    caption: 'Remada tranquila por las aguas del Dique El Jumeal.',
+    isCover: false,
+    isFeatured: false,
+    order: 5,
+  },
+];
 
 export const KAYAK_DEFAULT_EXPERIENCE: Experience = {
   id: 'exp-kayak',
@@ -28,6 +76,7 @@ export const KAYAK_DEFAULT_EXPERIENCE: Experience = {
   reviewsCount: 62,
   coverImage: KAYAK_IMAGE,
   galleryImages: [KAYAK_IMAGE],
+  albumPhotos: KAYAK_ALBUM_PHOTOS,
   videoUrl: '/assets/videos/kayak.mp4',
   videoPoster: '/assets/images/kayak-video.png',
   highlights: [
@@ -43,21 +92,179 @@ export const KAYAK_DEFAULT_EXPERIENCE: Experience = {
     'Degustación de productos regionales y bebidas al atardecer',
     'Seguro de accidentes personales',
   ],
-  notIncluded: [
-    'Traslados hasta el Club Náutico',
-    'Ropa de recambio y toallas personales',
-  ],
-  dates: [
-    '2026-11-10',
-    '2026-11-17',
-    '2026-11-24',
-  ],
+  notIncluded: ['Traslados hasta el Club Náutico', 'Ropa de recambio y toallas personales'],
+  dates: ['2026-11-10', '2026-11-17', '2026-11-24'],
   status: 'publicada',
   publicUrl: 'https://experiencias.club/experiencias/kayak',
   isExclusiveClub: true,
   isLocked: false,
   detailRoute: '/experiencias/kayak',
 };
+
+export const POMEZ_ALBUM_PHOTOS: ExperienceAlbumPhoto[] = [
+  {
+    id: 'pomez-photo-1',
+    url: '/assets/images/catamarca_pomez.jpg',
+    title: 'Campo de Piedra Pómez',
+    caption: 'Laberinto blanco esculpido por el viento a más de 3.000 msnm.',
+    isCover: true,
+    isFeatured: false,
+    order: 1,
+  },
+  {
+    id: 'pomez-photo-2',
+    url: '/assets/images/laguna-verde.jpg',
+    title: 'Laguna y Volcanes',
+    caption: 'Contrastes turquesas en la alta cordillera catamarqueña.',
+    isCover: false,
+    isFeatured: true,
+    order: 2,
+  },
+  {
+    id: 'pomez-photo-3',
+    url: '/assets/images/dron.jpg',
+    title: 'Panorámica de la Puna',
+    caption: 'Inmensidad andina y formaciones de ceniza volcánica.',
+    isCover: false,
+    isFeatured: true,
+    order: 3,
+  },
+];
+
+export const POMEZ_DEFAULT_EXPERIENCE: Experience = {
+  id: 'exp-pomez',
+  slug: 'campo-de-piedra-pomez',
+  title: 'Expedición 4x4 Campo de Piedra Pómez & Volcanes',
+  shortTitle: 'Piedra Pómez 4x4',
+  kicker: 'EXPEDICIÓN ANDINA: PUNA DE ATACAMA',
+  tagline: 'Aventura lunar en el laberinto blanco de la Puna catamarqueña a más de 3.000 msnm.',
+  description:
+    'Travesía en camionetas 4x4 equipadas hacia el majestuoso Campo de Piedra Pómez. Incluye cruce de médanos gigantes, avistaje de vicuñas en Laguna Blanca y merienda andina en el silencio absoluto de la cordillera.',
+  region: 'Puna de Atacama',
+  meetingPoint: 'Plaza Principal de El Peñón, Antofagasta de la Sierra',
+  difficulty: 'Moderada',
+  durationDays: 1,
+  durationLabel: 'Día completo (10 h)',
+  altitudeMeters: 3300,
+  bestSeason: 'Octubre a Mayo',
+  priceArs: 145000,
+  priceUsd: 155,
+  maxSpotsPerGroup: 8,
+  rating: 4.98,
+  reviewsCount: 38,
+  coverImage: '/assets/images/catamarca_pomez.jpg',
+  galleryImages: [
+    '/assets/images/catamarca_pomez.jpg',
+    '/assets/images/laguna-verde.jpg',
+    '/assets/images/dron.jpg',
+  ],
+  albumPhotos: POMEZ_ALBUM_PHOTOS,
+  highlights: [
+    'Navegación off-road en camionetas 4x4 preparadas con chofer-guía de montaña',
+    'Caminata por el campo de ignimbritas blancas más extenso del planeta',
+    'Almuerzo campestre y merienda regional con vistas al Volcán Carachi Pampa',
+    'Avistaje de fauna protegida en la Reserva de Biósfera Laguna Blanca',
+  ],
+  included: [
+    'Transporte 4x4 homologado ida y vuelta desde El Peñón',
+    'Guía matriculado y baqueano local',
+    'Picada andina, bebidas y merienda de altura',
+    'Seguro de turismo aventura',
+  ],
+  notIncluded: ['Alojamiento en El Peñón', 'Gastos personales'],
+  dates: ['2026-11-12', '2026-11-19', '2026-11-26'],
+  status: 'publicada',
+  publicUrl: 'https://experiencias.club/experiencias/campo-de-piedra-pomez',
+  isExclusiveClub: true,
+  isLocked: false,
+  detailRoute: '/experiencias/campo-de-piedra-pomez',
+};
+
+export const SEISMILES_ALBUM_PHOTOS: ExperienceAlbumPhoto[] = [
+  {
+    id: 'seismiles-photo-1',
+    url: '/assets/images/laguna-verde.jpg',
+    title: 'Ojos Turquesas de la Laguna Verde',
+    caption: 'Reflejos minerales sobre la laguna de altura en el Paso de San Francisco.',
+    isCover: true,
+    isFeatured: false,
+    order: 1,
+  },
+  {
+    id: 'seismiles-photo-2',
+    url: '/assets/images/catamarca_pomez.jpg',
+    title: 'Volcanes Gigantes',
+    caption: 'Cumbres de más de 6.000 metros custodiando el horizonte cordillerano.',
+    isCover: false,
+    isFeatured: true,
+    order: 2,
+  },
+  {
+    id: 'seismiles-photo-3',
+    url: '/assets/images/dron.jpg',
+    title: 'Paso de San Francisco',
+    caption: 'Inmensidad cordillerana en la Ruta de los Seismiles.',
+    isCover: false,
+    isFeatured: true,
+    order: 3,
+  },
+];
+
+export const SEISMILES_DEFAULT_EXPERIENCE: Experience = {
+  id: 'exp-seismiles',
+  slug: 'ruta-de-los-seismiles',
+  title: 'Ruta de los Seismiles & Laguna Verde',
+  shortTitle: 'Ruta de los Seismiles',
+  kicker: 'ALTA MONTAÑA: PASO DE SAN FRANCISCO',
+  tagline:
+    'Travesía paisajística entre los volcanes más altos del planeta y lagunas turquesas a 4.000 msnm.',
+  description:
+    'Expedición de alta montaña por la emblemática Ruta Nacional 60 hacia el Paso de San Francisco. Contemplamos gigantes de más de 6.000 m como el Pissis, Ojos del Salado e Incahuasi, culminando en los reflejos minerales de la Laguna Verde.',
+  region: 'Tinogasta & Fiambalá',
+  meetingPoint: 'Plaza Principal de Fiambalá',
+  difficulty: 'Moderada',
+  durationDays: 1,
+  durationLabel: 'Día completo (9 h)',
+  altitudeMeters: 4100,
+  bestSeason: 'Todo el año',
+  priceArs: 160000,
+  priceUsd: 170,
+  maxSpotsPerGroup: 10,
+  rating: 4.96,
+  reviewsCount: 44,
+  coverImage: '/assets/images/laguna-verde.jpg',
+  galleryImages: [
+    '/assets/images/laguna-verde.jpg',
+    '/assets/images/catamarca_pomez.jpg',
+    '/assets/images/dron.jpg',
+  ],
+  albumPhotos: SEISMILES_ALBUM_PHOTOS,
+  highlights: [
+    'Circuito panorámico frente a los conos volcánicos más altos del mundo',
+    'Termas y humedales de altura custodiados por flamencos andinos',
+    'Paradas fotográficas en refugios históricos de montaña',
+    'Avistaje de fauna autóctona de alta montaña',
+  ],
+  included: [
+    'Vehículo 4x4 con chofer profesional habilitado',
+    'Guía de alta montaña habilitado',
+    'Desayuno de campo y vianda gourmet de altura',
+    'Seguro de actividad',
+  ],
+  notIncluded: ['Noche previa en Fiambalá', 'Equipamiento térmico personal'],
+  dates: ['2026-11-15', '2026-11-22', '2026-11-29'],
+  status: 'publicada',
+  publicUrl: 'https://experiencias.club/experiencias/ruta-de-los-seismiles',
+  isExclusiveClub: true,
+  isLocked: false,
+  detailRoute: '/experiencias/ruta-de-los-seismiles',
+};
+
+export const DEFAULT_EXPERIENCES: Experience[] = [
+  KAYAK_DEFAULT_EXPERIENCE,
+  POMEZ_DEFAULT_EXPERIENCE,
+  SEISMILES_DEFAULT_EXPERIENCE,
+];
 
 @Injectable({
   providedIn: 'root',
@@ -68,6 +275,13 @@ export class ExperienceService {
   private readonly _hasRemoteExperiences = signal(false);
 
   readonly experiences = this._experiences.asReadonly();
+  readonly publishedExperiences = computed(() =>
+    this._experiences().filter((e) => e.status === 'publicada'),
+  );
+
+  getPublishedExperienceBySlug(slug: string): Experience | undefined {
+    return this.publishedExperiences().find((e: Experience) => e.slug === slug);
+  }
   readonly hasRemoteExperiences = this._hasRemoteExperiences.asReadonly();
 
   constructor() {
@@ -87,13 +301,13 @@ export class ExperienceService {
   }
 
   async updateExperience(updated: Partial<Experience> & { id: string }): Promise<void> {
-    const list = this._experiences();
-    const index = list.findIndex((e) => e.id === updated.id);
+    const prevList = this._experiences();
+    const index = prevList.findIndex((e) => e.id === updated.id);
     if (index === -1) {
       throw new Error(`Experiencia con ID ${updated.id} no encontrada.`);
     }
 
-    const current = list[index];
+    const current = prevList[index];
     const merged: Experience = {
       ...current,
       ...updated,
@@ -103,7 +317,7 @@ export class ExperienceService {
         : current.publicUrl,
     };
 
-    const nextList = [...list];
+    const nextList = [...prevList];
     nextList[index] = merged;
     this._experiences.set(nextList);
     this.persistToLocalStorage(nextList);
@@ -141,6 +355,10 @@ export class ExperienceService {
           payload['slug'] = merged.slug;
         }
 
+        if (merged.albumPhotos) {
+          payload['album_photos'] = merged.albumPhotos;
+        }
+
         const { error } = await this.supabase
           .from('experiencias')
           .update(payload as any)
@@ -148,9 +366,15 @@ export class ExperienceService {
 
         if (error) {
           console.warn('[ExperienceService] Error al actualizar experiencia en Supabase:', error);
+          this._experiences.set(prevList);
+          this.persistToLocalStorage(prevList);
+          throw error;
         }
       } catch (err) {
         console.warn('[ExperienceService] Fallo remoto:', err);
+        this._experiences.set(prevList);
+        this.persistToLocalStorage(prevList);
+        throw err;
       }
     }
   }
@@ -208,14 +432,21 @@ export class ExperienceService {
           not_included: experience.notIncluded || [],
           status: experience.status,
           public_url: experience.publicUrl,
+          album_photos: experience.albumPhotos || [],
         };
 
         const { error } = await this.supabase.from('experiencias').insert(payload as any);
         if (error) {
           console.warn('[ExperienceService] Error al insertar experiencia en Supabase:', error);
+          this._experiences.set(list);
+          this.persistToLocalStorage(list);
+          throw error;
         }
       } catch (err) {
         console.warn('[ExperienceService] Fallo al crear remoto:', err);
+        this._experiences.set(list);
+        this.persistToLocalStorage(list);
+        throw err;
       }
     }
   }
@@ -245,15 +476,21 @@ export class ExperienceService {
         if (stored) {
           const parsed = JSON.parse(stored) as Experience[];
           if (Array.isArray(parsed) && parsed.length > 0) {
-            // Asegurar que kayak tenga valores default completos
-            return parsed.map((e) => (e.slug === 'kayak' ? { ...KAYAK_DEFAULT_EXPERIENCE, ...e } : e));
+            const existingSlugs = new Set(parsed.map((e) => e.slug));
+            const missingDefaults = DEFAULT_EXPERIENCES.filter((d) => !existingSlugs.has(d.slug));
+            return [
+              ...parsed.map((e) =>
+                e.slug === 'kayak' ? { ...KAYAK_DEFAULT_EXPERIENCE, ...e } : e,
+              ),
+              ...missingDefaults,
+            ];
           }
         }
       } catch {
         // Fallback
       }
     }
-    return [KAYAK_DEFAULT_EXPERIENCE];
+    return [...DEFAULT_EXPERIENCES];
   }
 
   private persistToLocalStorage(list: Experience[]): void {
@@ -286,12 +523,14 @@ export class ExperienceService {
             id: exp.id,
             slug: exp.slug,
             title: exp.title,
-            shortTitle: exp.short_title || (isKayak ? KAYAK_DEFAULT_EXPERIENCE.shortTitle : exp.title),
+            shortTitle:
+              exp.short_title || (isKayak ? KAYAK_DEFAULT_EXPERIENCE.shortTitle : exp.title),
             kicker: exp.kicker || (isKayak ? KAYAK_DEFAULT_EXPERIENCE.kicker : ''),
             tagline: exp.tagline,
             description: exp.description,
             region: exp.region,
-            meetingPoint: exp.meeting_point || (isKayak ? KAYAK_DEFAULT_EXPERIENCE.meetingPoint : ''),
+            meetingPoint:
+              exp.meeting_point || (isKayak ? KAYAK_DEFAULT_EXPERIENCE.meetingPoint : ''),
             difficulty: exp.difficulty || 'Baja',
             durationDays: 1,
             durationLabel: exp.duration_label || '4 horas',
@@ -304,20 +543,39 @@ export class ExperienceService {
             reviewsCount: isKayak ? 62 : 0,
             coverImage: image,
             galleryImages: [image],
+            albumPhotos:
+              Array.isArray(exp.album_photos) && exp.album_photos.length > 0
+                ? exp.album_photos
+                : isKayak
+                  ? KAYAK_DEFAULT_EXPERIENCE.albumPhotos
+                  : undefined,
             videoUrl: exp.video_url || (isKayak ? KAYAK_DEFAULT_EXPERIENCE.videoUrl : undefined),
-            videoPoster: exp.video_poster || (isKayak ? KAYAK_DEFAULT_EXPERIENCE.videoPoster : undefined),
-            highlights: Array.isArray(exp.highlights) && exp.highlights.length > 0
-              ? exp.highlights
-              : (isKayak ? KAYAK_DEFAULT_EXPERIENCE.highlights : []),
-            included: Array.isArray(exp.included) && exp.included.length > 0
-              ? exp.included
-              : (isKayak ? KAYAK_DEFAULT_EXPERIENCE.included : []),
-            notIncluded: Array.isArray(exp.not_included) && exp.not_included.length > 0
-              ? exp.not_included
-              : (isKayak ? KAYAK_DEFAULT_EXPERIENCE.notIncluded : []),
-            dates: Array.isArray(exp.dates) && exp.dates.length > 0
-              ? exp.dates
-              : (isKayak ? KAYAK_DEFAULT_EXPERIENCE.dates : []),
+            videoPoster:
+              exp.video_poster || (isKayak ? KAYAK_DEFAULT_EXPERIENCE.videoPoster : undefined),
+            highlights:
+              Array.isArray(exp.highlights) && exp.highlights.length > 0
+                ? exp.highlights
+                : isKayak
+                  ? KAYAK_DEFAULT_EXPERIENCE.highlights
+                  : [],
+            included:
+              Array.isArray(exp.included) && exp.included.length > 0
+                ? exp.included
+                : isKayak
+                  ? KAYAK_DEFAULT_EXPERIENCE.included
+                  : [],
+            notIncluded:
+              Array.isArray(exp.not_included) && exp.not_included.length > 0
+                ? exp.not_included
+                : isKayak
+                  ? KAYAK_DEFAULT_EXPERIENCE.notIncluded
+                  : [],
+            dates:
+              Array.isArray(exp.dates) && exp.dates.length > 0
+                ? exp.dates
+                : isKayak
+                  ? KAYAK_DEFAULT_EXPERIENCE.dates
+                  : [],
             status: exp.status || 'publicada',
             publicUrl: exp.public_url || `https://experiencias.club/experiencias/${exp.slug}`,
             isExclusiveClub: true,

@@ -10,7 +10,7 @@ describe('AdminUsersComponent (/admin/users)', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [AdminUsersComponent],
-      providers: [provideRouter([]), AdminService]
+      providers: [provideRouter([]), AdminService],
     }).compileComponents();
 
     fixture = TestBed.createComponent(AdminUsersComponent);

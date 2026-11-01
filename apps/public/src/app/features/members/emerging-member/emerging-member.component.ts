@@ -158,12 +158,17 @@ export class EmergingMemberComponent implements OnInit {
       this.authReady.set(true);
       await this.newsletter.getAuthenticatedMember();
       const current = this.newsletter.currentMember();
-      if (
-        current?.email.toLowerCase() === authenticatedEmail &&
-        current.fullName &&
-        !this.fullName()
-      ) {
-        this.fullName.set(current.fullName);
+      if (current?.email.toLowerCase() === authenticatedEmail) {
+        if (current.fullName && !this.fullName()) {
+          this.fullName.set(current.fullName);
+        }
+        const dni = current.dni || current.documentNumber;
+        if (dni && !this.documentNumber()) {
+          this.documentNumber.set(dni);
+        }
+        if (current.phone && !this.phone()) {
+          this.phone.set(current.phone);
+        }
       }
     } else {
       this.authReady.set(!this.newsletter.isSupabaseConnected());

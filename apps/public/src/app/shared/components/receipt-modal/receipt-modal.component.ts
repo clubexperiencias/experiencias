@@ -5,7 +5,7 @@ import { ActivityHistoryService } from '../../../core/services/activity-history.
   selector: 'app-receipt-modal',
   standalone: true,
   templateUrl: './receipt-modal.component.html',
-  styleUrl: './receipt-modal.component.css'
+  styleUrl: './receipt-modal.component.css',
 })
 export class ReceiptModalComponent {
   readonly activityService = inject(ActivityHistoryService);

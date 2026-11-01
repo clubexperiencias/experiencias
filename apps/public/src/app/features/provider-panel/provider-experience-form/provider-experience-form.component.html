@@ -1,22 +1,19 @@
 <div class="kayak-section-card form-card">
   <header class="form-header">
-    <a routerLink="../experiencias" class="back-link">
-      Volver al listado de experiencias
-    </a>
+    <a routerLink="../experiencias" class="back-link"> Volver al listado de experiencias </a>
     <h1 class="card-heading">
       {{ isEditMode() ? 'Editar Experiencia' : 'Nueva Experiencia para el Club' }}
     </h1>
     <p class="card-subheading">
-      Completá la información técnica, fechas y tarifas. Las publicaciones pasan por la revisión y aprobación del equipo editorial antes de salir al público.
+      Completá la información técnica, fechas y tarifas. Las publicaciones pasan por la revisión y
+      aprobación del equipo editorial antes de salir al público.
     </p>
   </header>
 
   <form [formGroup]="form" class="panel-form">
     <!-- Basic Information -->
     <fieldset class="form-fieldset">
-      <legend class="fieldset-legend">
-        Información General
-      </legend>
+      <legend class="fieldset-legend">Información General</legend>
 
       <div class="form-group" [class.has-error]="fieldInvalid('title')">
         <label for="title" class="form-label">Título principal de la experiencia *</label>
@@ -85,9 +82,7 @@
 
     <!-- Logistics, Difficulty and Pricing -->
     <fieldset class="form-fieldset">
-      <legend class="fieldset-legend">
-        Logística, Cupos y Tarifas
-      </legend>
+      <legend class="fieldset-legend">Logística, Cupos y Tarifas</legend>
 
       <div class="form-row">
         <div class="form-group" [class.has-error]="fieldInvalid('meetingPoint')">
@@ -151,11 +146,11 @@
 
     <!-- Cover Image Selection -->
     <fieldset class="form-fieldset">
-      <legend class="fieldset-legend">
-        Fotografía de Portada
-      </legend>
+      <legend class="fieldset-legend">Fotografía de Portada</legend>
 
-      <p class="fieldset-hint">Seleccioná una imagen de los paisajes de Catamarca para la portada:</p>
+      <p class="fieldset-hint">
+        Seleccioná una imagen de los paisajes de Catamarca para la portada:
+      </p>
 
       <div class="preset-covers-grid">
         @for (preset of presetImages; track preset.url) {
@@ -164,7 +159,12 @@
             [class.is-selected]="selectedCoverImage() === preset.url"
             (click)="selectedCoverImage.set(preset.url)"
           >
-            <img [src]="preset.url" [alt]="preset.label" class="preset-img" referrerpolicy="no-referrer" />
+            <img
+              [src]="preset.url"
+              [alt]="preset.label"
+              class="preset-img"
+              referrerpolicy="no-referrer"
+            />
             <div class="preset-overlay">
               <span class="preset-label">{{ preset.label }}</span>
             </div>
@@ -175,9 +175,7 @@
 
     <!-- Dates Picker -->
     <fieldset class="form-fieldset">
-      <legend class="fieldset-legend">
-        Fechas de Salida Programadas
-      </legend>
+      <legend class="fieldset-legend">Fechas de Salida Programadas</legend>
 
       <div class="dates-input-row">
         <div class="date-picker-box">
@@ -190,9 +188,7 @@
             (input)="newDate.set($any($event.target).value)"
           />
         </div>
-        <button type="button" class="add-date-btn" (click)="addDate()">
-          Agregar fecha
-        </button>
+        <button type="button" class="add-date-btn" (click)="addDate()">Agregar fecha</button>
       </div>
 
       @if (datesError()) {
@@ -201,13 +197,20 @@
 
       <div class="dates-chips-container">
         @if (dates().length === 0) {
-          <p class="dates-empty-hint">No hay fechas cargadas aún. Agregá al menos una fecha para poder solicitar publicación.</p>
+          <p class="dates-empty-hint">
+            No hay fechas cargadas aún. Agregá al menos una fecha para poder solicitar publicación.
+          </p>
         } @else {
           <div class="chips-list">
             @for (date of dates(); track date) {
               <div class="date-chip">
                 <span>{{ date | fecha }}</span>
-                <button type="button" class="chip-remove" (click)="removeDate(date)" title="Quitar fecha">
+                <button
+                  type="button"
+                  class="chip-remove"
+                  (click)="removeDate(date)"
+                  title="Quitar fecha"
+                >
                   ✕
                 </button>
               </div>
@@ -219,24 +222,12 @@
 
     <!-- Action Buttons - Rectangulares sobrios -->
     <div class="form-actions-strip">
-      <a routerLink="../experiencias" class="cancel-btn">
-        Cancelar
-      </a>
+      <a routerLink="../experiencias" class="cancel-btn"> Cancelar </a>
 
       <div class="save-buttons-group">
-        <button
-          type="button"
-          class="draft-btn"
-          (click)="save(false)"
-        >
-          Guardar como Borrador
-        </button>
+        <button type="button" class="draft-btn" (click)="save(false)">Guardar como Borrador</button>
 
-        <button
-          type="button"
-          class="publish-request-btn"
-          (click)="save(true)"
-        >
+        <button type="button" class="publish-request-btn" (click)="save(true)">
           Guardar y Solicitar Publicación al Admin
         </button>
       </div>

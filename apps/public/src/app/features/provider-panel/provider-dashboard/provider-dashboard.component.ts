@@ -10,7 +10,14 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
 @Component({
   selector: 'app-provider-dashboard',
   standalone: true,
-  imports: [RouterLink, FormsModule, MatIconModule, ArsPipe, FechaPipe, ProviderExperienceProposalModalComponent],
+  imports: [
+    RouterLink,
+    FormsModule,
+    MatIconModule,
+    ArsPipe,
+    FechaPipe,
+    ProviderExperienceProposalModalComponent,
+  ],
   template: `
     <div class="dash-container">
       <!-- Welcome & Agency Header -->
@@ -34,7 +41,6 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
             </p>
           </div>
         </div>
-
       </section>
 
       <!-- KPI Metrics Grid - Boxes rectangulares sobrias sin iconos -->
@@ -160,7 +166,6 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
                     </div>
                   </div>
                 </div>
-
               </div>
             }
           </div>
@@ -175,7 +180,9 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
                 Solicitá a los administradores que carguen una nueva experiencia
               </h3>
               <p class="request-new-exp-desc">
-                ¿Tenés una nueva propuesta, salida o travesía para sumar al catálogo? Completá el formulario con los detalles técnicos, fechas y tarifas para que el equipo de administración la revise y publique.
+                ¿Tenés una nueva propuesta, salida o travesía para sumar al catálogo? Completá el
+                formulario con los detalles técnicos, fechas y tarifas para que el equipo de
+                administración la revise y publique.
               </p>
             </div>
           </div>
@@ -226,9 +233,7 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
           </div>
           <div class="fin-bank-item">
             <span class="fin-bank-lbl">Entidad</span>
-            <strong class="fin-bank-val">{{
-              provider()?.bankName || 'Uala Bank S.A.U'
-            }}</strong>
+            <strong class="fin-bank-val">{{ provider()?.bankName || 'Uala Bank S.A.U' }}</strong>
           </div>
         </div>
 
@@ -289,7 +294,12 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
       </section>
       @if (selectedSubmission(); as sub) {
         <div class="dashboard-modal-backdrop" (click)="closeReceipt()">
-          <div class="dashboard-receipt-modal" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+          <div
+            class="dashboard-receipt-modal"
+            (click)="$event.stopPropagation()"
+            role="dialog"
+            aria-modal="true"
+          >
             <div class="dashboard-receipt-preview">
               <img [src]="sub.receipt.url" [alt]="'Comprobante de ' + sub.fullName" />
             </div>
@@ -299,7 +309,9 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
                   <span class="card-kicker">COMPROBANTE</span>
                   <h2 class="card-title">{{ sub.fullName }}</h2>
                 </div>
-                <button type="button" class="dashboard-modal-close" (click)="closeReceipt()">×</button>
+                <button type="button" class="dashboard-modal-close" (click)="closeReceipt()">
+                  ×
+                </button>
               </div>
               <p><strong>Importe:</strong> {{ sub.amountArs | ars }}</p>
               <p><strong>Experiencia:</strong> {{ sub.experienceTitle }}</p>
@@ -329,7 +341,6 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
         [isOpen]="requestModalOpen()"
         (closeModal)="requestModalOpen.set(false)"
       />
-
     </div>
   `,
   styles: [
@@ -1083,7 +1094,9 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
         background: rgba(14, 22, 54, 0.75);
         border: 1px dashed rgba(128, 179, 255, 0.45);
         border-radius: 2px;
-        transition: border-color 0.2s ease, background 0.2s ease;
+        transition:
+          border-color 0.2s ease,
+          background 0.2s ease;
         cursor: pointer;
       }
       .request-new-exp-card:hover {
@@ -1209,7 +1222,6 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
           grid-template-columns: 1fr;
         }
       }
-
     `,
   ],
 })

@@ -26,7 +26,8 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
                 Solicitar Nueva Experiencia a Administradores
               </h2>
               <p class="exp-request-sub">
-                Completá la ficha técnica y logística de tu propuesta para que los administradores la revisen y carguen al catálogo.
+                Completá la ficha técnica y logística de tu propuesta para que los administradores
+                la revisen y carguen al catálogo.
               </p>
 
               <!-- Barra de Progreso Arriba -->
@@ -41,7 +42,8 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
                 <div class="header-progress-info">
                   <span class="progress-hint">Completitud de la propuesta</span>
                   <span class="progress-badge" [class.is-complete]="getFormProgress() === 100">
-                    {{ getFormProgress() }}% {{ getFormProgress() === 100 ? '¡Completo!' : 'completado' }}
+                    {{ getFormProgress() }}%
+                    {{ getFormProgress() === 100 ? '¡Completo!' : 'completado' }}
                   </span>
                 </div>
               </div>
@@ -62,27 +64,30 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
                 <div class="request-success-badge">SOLICITUD ENVIADA</div>
                 <h3 class="request-success-title">¡Propuesta enviada con éxito!</h3>
                 <p class="request-success-desc">
-                  Los administradores recibieron los datos, archivos multimedia y especificaciones técnicas de
-                  <strong>"{{ reqForm.title || 'tu propuesta' }}"</strong>.
-                  Revisarán el itinerario, logística y tarifas para darla de alta en el catálogo oficial de Experiencias.
+                  Los administradores recibieron los datos, archivos multimedia y especificaciones
+                  técnicas de
+                  <strong>"{{ reqForm.title || 'tu propuesta' }}"</strong>. Revisarán el itinerario,
+                  logística y tarifas para darla de alta en el catálogo oficial de Experiencias.
                 </p>
                 @if (coverImagePreview()) {
                   <div class="request-success-media-preview">
-                    <img [src]="coverImagePreview()" alt="Portada cargada" class="success-thumb-img" />
+                    <img
+                      [src]="coverImagePreview()"
+                      alt="Portada cargada"
+                      class="success-thumb-img"
+                    />
                     <div class="success-thumb-info">
                       <span class="success-thumb-title">Foto de portada adjuntada</span>
                       <span class="success-thumb-name">{{ coverImageFile()?.name }}</span>
                       @if (coverVideoFile()) {
-                        <span class="success-thumb-video">+ Video de portada: {{ coverVideoFile()?.name }}</span>
+                        <span class="success-thumb-video"
+                          >+ Video de portada: {{ coverVideoFile()?.name }}</span
+                        >
                       }
                     </div>
                   </div>
                 }
-                <button
-                  type="button"
-                  class="modal-btn-submit"
-                  (click)="onClose()"
-                >
+                <button type="button" class="modal-btn-submit" (click)="onClose()">
                   Entendido, volver al panel
                 </button>
               </div>
@@ -96,7 +101,9 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
                   </div>
 
                   <div class="form-group">
-                    <label class="form-label" for="req-title">Título Principal de la Experiencia *</label>
+                    <label class="form-label" for="req-title"
+                      >Título Principal de la Experiencia *</label
+                    >
                     <input
                       id="req-title"
                       type="text"
@@ -123,7 +130,9 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
                     </div>
 
                     <div class="form-group">
-                      <label class="form-label" for="req-region">Región Turística de Catamarca *</label>
+                      <label class="form-label" for="req-region"
+                        >Región Turística de Catamarca *</label
+                      >
                       <select
                         id="req-region"
                         class="form-input form-select"
@@ -135,13 +144,17 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
                         <option value="Fiambalá y Seismiles">Fiambalá y Seismiles</option>
                         <option value="Antofagasta de la Sierra">Antofagasta de la Sierra</option>
                         <option value="Belén y Ruta del Telar">Belén y Ruta del Telar</option>
-                        <option value="Andalgalá y Cuesta de Zapata">Andalgalá y Cuesta de Zapata</option>
+                        <option value="Andalgalá y Cuesta de Zapata">
+                          Andalgalá y Cuesta de Zapata
+                        </option>
                       </select>
                     </div>
                   </div>
 
                   <div class="form-group">
-                    <label class="form-label" for="req-subheading">Bajada o Síntesis Atractiva *</label>
+                    <label class="form-label" for="req-subheading"
+                      >Bajada o Síntesis Atractiva *</label
+                    >
                     <textarea
                       id="req-subheading"
                       rows="3"
@@ -171,11 +184,19 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
                       @if (coverImagePreview()) {
                         <div class="media-preview-card">
                           <div class="media-preview-visual">
-                            <img [src]="coverImagePreview()" alt="Foto de portada" class="media-img-preview" />
+                            <img
+                              [src]="coverImagePreview()"
+                              alt="Foto de portada"
+                              class="media-img-preview"
+                            />
                           </div>
                           <div class="media-preview-meta">
-                            <span class="media-file-name" [title]="coverImageFile()?.name">{{ coverImageFile()?.name }}</span>
-                            <span class="media-file-size">{{ formatFileSize(coverImageFile()?.size) }}</span>
+                            <span class="media-file-name" [title]="coverImageFile()?.name">{{
+                              coverImageFile()?.name
+                            }}</span>
+                            <span class="media-file-size">{{
+                              formatFileSize(coverImageFile()?.size)
+                            }}</span>
                           </div>
                           <button
                             type="button"
@@ -201,13 +222,21 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
                             (change)="onCoverImageSelected($event)"
                           />
                           <div class="dropzone-content">
-                            <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                              <circle cx="8.5" cy="8.5" r="1.5"/>
-                              <polyline points="21 15 16 10 5 21"/>
+                            <svg
+                              class="dropzone-icon"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="1.8"
+                            >
+                              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                              <circle cx="8.5" cy="8.5" r="1.5" />
+                              <polyline points="21 15 16 10 5 21" />
                             </svg>
                             <span class="dropzone-main-text">Subir foto de portada *</span>
-                            <span class="dropzone-sub-text">Hacé click o arrastrá tu imagen (JPG, PNG, WEBP)</span>
+                            <span class="dropzone-sub-text"
+                              >Hacé click o arrastrá tu imagen (JPG, PNG, WEBP)</span
+                            >
                           </div>
                         </label>
                       }
@@ -225,11 +254,21 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
                       @if (coverVideoPreview()) {
                         <div class="media-preview-card">
                           <div class="media-preview-visual">
-                            <video [src]="coverVideoPreview()" class="media-video-preview" controls muted playsinline></video>
+                            <video
+                              [src]="coverVideoPreview()"
+                              class="media-video-preview"
+                              controls
+                              muted
+                              playsinline
+                            ></video>
                           </div>
                           <div class="media-preview-meta">
-                            <span class="media-file-name" [title]="coverVideoFile()?.name">{{ coverVideoFile()?.name }}</span>
-                            <span class="media-file-size">{{ formatFileSize(coverVideoFile()?.size) }}</span>
+                            <span class="media-file-name" [title]="coverVideoFile()?.name">{{
+                              coverVideoFile()?.name
+                            }}</span>
+                            <span class="media-file-size">{{
+                              formatFileSize(coverVideoFile()?.size)
+                            }}</span>
                           </div>
                           <button
                             type="button"
@@ -255,12 +294,20 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
                             (change)="onCoverVideoSelected($event)"
                           />
                           <div class="dropzone-content">
-                            <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                              <polygon points="23 7 16 12 23 17 23 7"/>
-                              <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                            <svg
+                              class="dropzone-icon"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="1.8"
+                            >
+                              <polygon points="23 7 16 12 23 17 23 7" />
+                              <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
                             </svg>
                             <span class="dropzone-main-text">Subir video de portada</span>
-                            <span class="dropzone-sub-text">Hacé click o arrastrá un video (MP4, MOV, WEBM)</span>
+                            <span class="dropzone-sub-text"
+                              >Hacé click o arrastrá un video (MP4, MOV, WEBM)</span
+                            >
                           </div>
                         </label>
                       }
@@ -287,7 +334,9 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
                         [(ngModel)]="reqForm.difficulty"
                         name="difficulty"
                       >
-                        <option value="Baja (Sin experiencia previa)">Baja (Sin experiencia previa)</option>
+                        <option value="Baja (Sin experiencia previa)">
+                          Baja (Sin experiencia previa)
+                        </option>
                         <option value="Moderada">Moderada</option>
                         <option value="Exigente">Exigente</option>
                         <option value="Alta Montaña">Alta Montaña</option>
@@ -347,7 +396,9 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
                     </div>
 
                     <div class="form-group">
-                      <label class="form-label" for="req-dates">Fechas / Frecuencia Operativa *</label>
+                      <label class="form-label" for="req-dates"
+                        >Fechas / Frecuencia Operativa *</label
+                      >
                       <input
                         id="req-dates"
                         type="text"
@@ -369,7 +420,9 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
 
                   <div class="form-row">
                     <div class="form-group">
-                      <label class="form-label" for="req-price-ars">Arancel en Pesos ($ ARS) *</label>
+                      <label class="form-label" for="req-price-ars"
+                        >Arancel en Pesos ($ ARS) *</label
+                      >
                       <input
                         id="req-price-ars"
                         type="number"
@@ -384,7 +437,9 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
                     </div>
 
                     <div class="form-group">
-                      <label class="form-label" for="req-price-usd">Referencia en Dólares (USD opcional)</label>
+                      <label class="form-label" for="req-price-usd"
+                        >Referencia en Dólares (USD opcional)</label
+                      >
                       <input
                         id="req-price-usd"
                         type="number"
@@ -397,7 +452,9 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
                   </div>
 
                   <div class="form-group">
-                    <label class="form-label" for="req-promos">Promociones, Descuentos u Otros Precios a Considerar</label>
+                    <label class="form-label" for="req-promos"
+                      >Promociones, Descuentos u Otros Precios a Considerar</label
+                    >
                     <textarea
                       id="req-promos"
                       rows="3"
@@ -438,7 +495,9 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
                   </div>
 
                   <div class="form-group">
-                    <label class="form-label" for="req-meeting">Punto de Encuentro & Ubicación *</label>
+                    <label class="form-label" for="req-meeting"
+                      >Punto de Encuentro & Ubicación *</label
+                    >
                     <input
                       id="req-meeting"
                       type="text"
@@ -452,7 +511,9 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
 
                   <div class="form-row">
                     <div class="form-group">
-                      <label class="form-label" for="req-included">Servicios e Indumentaria Provista *</label>
+                      <label class="form-label" for="req-included"
+                        >Servicios e Indumentaria Provista *</label
+                      >
                       <textarea
                         id="req-included"
                         rows="3"
@@ -465,7 +526,9 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
                     </div>
 
                     <div class="form-group">
-                      <label class="form-label" for="req-requirements">Qué Debe Traer el Participante *</label>
+                      <label class="form-label" for="req-requirements"
+                        >Qué Debe Traer el Participante *</label
+                      >
                       <textarea
                         id="req-requirements"
                         rows="3"
@@ -479,7 +542,9 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
                   </div>
 
                   <div class="form-group">
-                    <label class="form-label" for="req-notes">Notas o Enlace a Fotos / Videos en Drive (Opcional)</label>
+                    <label class="form-label" for="req-notes"
+                      >Notas o Enlace a Fotos / Videos en Drive (Opcional)</label
+                    >
                     <input
                       id="req-notes"
                       type="text"
@@ -492,18 +557,10 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
                 </div>
 
                 <div class="modal-form-actions">
-                  <button
-                    type="button"
-                    class="modal-btn-cancel"
-                    (click)="onClose()"
-                  >
+                  <button type="button" class="modal-btn-cancel" (click)="onClose()">
                     Cancelar
                   </button>
-                  <button
-                    type="submit"
-                    class="modal-btn-submit"
-                    [disabled]="submittingRequest()"
-                  >
+                  <button type="submit" class="modal-btn-submit" [disabled]="submittingRequest()">
                     @if (submittingRequest()) {
                       Enviando...
                     } @else {
@@ -1075,7 +1132,8 @@ export class ProviderExperienceProposalModalComponent {
     if (this.reqForm.priceArs && this.reqForm.priceArs > 0) score++;
     if (this.reqForm.itinerary?.trim()) score++;
     if (this.reqForm.meetingPoint?.trim()) score++;
-    if (this.reqForm.includedServices?.trim() || this.reqForm.participantRequirements?.trim()) score++;
+    if (this.reqForm.includedServices?.trim() || this.reqForm.participantRequirements?.trim())
+      score++;
 
     return Math.min(100, Math.round((score / total) * 100));
   }
@@ -1211,7 +1269,7 @@ export class ProviderExperienceProposalModalComponent {
         includedServices: this.reqForm.includedServices,
         participantRequirements: this.reqForm.participantRequirements,
         notes: this.reqForm.notes,
-        coverImage: this.coverImagePreview() || '/assets/images/kayak-club-de-experiencias.jpg',
+        coverImage: '/assets/images/kayak-club-de-experiencias.jpg',
         coverImageName: this.coverImageFile()?.name,
         coverVideoName: this.coverVideoFile()?.name,
       });

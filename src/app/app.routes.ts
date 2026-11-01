@@ -25,9 +25,7 @@ const adminRoutes: Routes = [
   {
     path: '',
     loadComponent: () =>
-      import('./features/admin-portal/admin-panel.component').then(
-        (m) => m.AdminPanelComponent,
-      ),
+      import('./features/admin-portal/admin-panel.component').then((m) => m.AdminPanelComponent),
     children: [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       {
@@ -161,8 +159,7 @@ const publicRoutes: Routes = [
   },
   {
     path: 'ingresar',
-    loadComponent: () =>
-      import('./features/login/login.component').then((m) => m.LoginComponent),
+    loadComponent: () => import('./features/login/login.component').then((m) => m.LoginComponent),
   },
   {
     path: 'login',
@@ -194,9 +191,7 @@ const publicRoutes: Routes = [
   {
     path: 'socios/plenos',
     loadComponent: () =>
-      import('./features/subscription/subscription.component').then(
-        (m) => m.SubscriptionComponent,
-      ),
+      import('./features/subscription/subscription.component').then((m) => m.SubscriptionComponent),
   },
   {
     path: 'socios/activar',
@@ -221,9 +216,7 @@ const publicRoutes: Routes = [
   {
     path: 'experiencias',
     loadComponent: () =>
-      import('./features/experiences/experiences.component').then(
-        (m) => m.ExperiencesComponent,
-      ),
+      import('./features/experiences/experiences.component').then((m) => m.ExperiencesComponent),
   },
   {
     path: 'experiencias/fotos',
@@ -246,47 +239,28 @@ const publicRoutes: Routes = [
   },
   {
     path: 'experiencias/kayak/fotos',
+    data: { slug: 'kayak' },
     loadComponent: () =>
-      import('./features/experiences/kayak-experience/kayak-photos/kayak-photos.component').then(
-        (m) => m.KayakPhotosComponent,
+      import('./features/experiences/experience-photos/experience-photos.component').then(
+        (m) => m.ExperiencePhotosComponent,
       ),
-  },
-  {
-    path: 'experiencias/kayak/calificaciones',
-    loadComponent: () =>
-      import('./features/experiences/kayak-experience/kayak-ratings/kayak-ratings.component').then(
-        (m) => m.KayakRatingsComponent,
-      ),
-  },
-  {
-    path: 'experiencias/kayak/calificacion',
-    redirectTo: 'experiencias/kayak/calificaciones',
-    pathMatch: 'full',
-  },
-  {
-    path: 'kayak/calificaciones',
-    redirectTo: 'experiencias/kayak/calificaciones',
-    pathMatch: 'full',
-  },
-  {
-    path: 'kayak/calificacion',
-    redirectTo: 'experiencias/kayak/calificaciones',
-    pathMatch: 'full',
-  },
-  {
-    path: 'experiencia/kayak/calificacion',
-    redirectTo: 'experiencias/kayak/calificaciones',
-    pathMatch: 'full',
-  },
-  {
-    path: 'experiencia/kayak/calificaciones',
-    redirectTo: 'experiencias/kayak/calificaciones',
-    pathMatch: 'full',
   },
   {
     path: 'experiencia/kayak/fotos',
     redirectTo: 'experiencias/kayak/fotos',
     pathMatch: 'full',
+  },
+  // Rutas dinámicas de álbum de fotos para cualquier experiencia del catálogo
+  {
+    path: 'experiencias/:slug/fotos',
+    loadComponent: () =>
+      import('./features/experiences/experience-photos/experience-photos.component').then(
+        (m) => m.ExperiencePhotosComponent,
+      ),
+  },
+  {
+    path: 'experiencia/:slug/fotos',
+    redirectTo: 'experiencias/:slug/fotos',
   },
   {
     path: 'experiencia/kayak',
@@ -300,6 +274,43 @@ const publicRoutes: Routes = [
       import('./features/experiences/experience-payment/experience-payment.component').then(
         (m) => m.ExperiencePaymentComponent,
       ),
+  },
+  {
+    path: 'experiencias/kayak/pagar',
+    redirectTo: 'experiencias/kayak/pago',
+    pathMatch: 'full',
+  },
+  // Rutas dinámicas de pago para cualquier experiencia del catálogo
+  {
+    path: 'experiencias/:slug/pago',
+    loadComponent: () =>
+      import('./features/experiences/experience-payment/experience-payment.component').then(
+        (m) => m.ExperiencePaymentComponent,
+      ),
+  },
+  {
+    path: 'experiencias/:slug/pagar',
+    redirectTo: 'experiencias/:slug/pago',
+  },
+  {
+    path: 'experiencia/:slug/pago',
+    redirectTo: 'experiencias/:slug/pago',
+  },
+  {
+    path: 'experiencia/:slug/pagar',
+    redirectTo: 'experiencias/:slug/pago',
+  },
+  // Ruta dinámica universal para cualquier experiencia del catálogo
+  {
+    path: 'experiencias/:slug',
+    loadComponent: () =>
+      import('./features/experiences/experience-detail/experience-detail.component').then(
+        (m) => m.ExperienceDetailComponent,
+      ),
+  },
+  {
+    path: 'experiencia/:slug',
+    redirectTo: 'experiencias/:slug',
   },
 
   // "La web de antes" para prestadores y convocatoria abierta

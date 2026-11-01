@@ -5,16 +5,26 @@ import { MatIconModule } from '@angular/material/icon';
 import { NewsletterService } from '../../core/services/newsletter.service';
 import { FooterComponent } from '../../shared/components/footer/footer.component';
 import { HeaderComponent } from '../../shared/components/header/header.component';
-import { BreadcrumbComponent, BreadcrumbItem } from '../../shared/components/breadcrumb/breadcrumb.component';
+import {
+  BreadcrumbComponent,
+  BreadcrumbItem,
+} from '../../shared/components/breadcrumb/breadcrumb.component';
 
 export type NotFoundModalType = 'login' | null;
 
 @Component({
   selector: 'app-not-found',
   standalone: true,
-  imports: [CommonModule, RouterLink, MatIconModule, FooterComponent, HeaderComponent, BreadcrumbComponent],
+  imports: [
+    CommonModule,
+    RouterLink,
+    MatIconModule,
+    FooterComponent,
+    HeaderComponent,
+    BreadcrumbComponent,
+  ],
   templateUrl: './not-found.component.html',
-  styleUrl: './not-found.component.css'
+  styleUrl: './not-found.component.css',
 })
 export class NotFoundComponent {
   readonly newsletter = inject(NewsletterService);
@@ -24,7 +34,7 @@ export class NotFoundComponent {
 
   readonly breadcrumbs: BreadcrumbItem[] = [
     { label: 'Inicio', url: '/' },
-    { label: 'Página no encontrada' }
+    { label: 'Página no encontrada' },
   ];
 
   readonly mobileMenuOpen = signal(false);
@@ -64,18 +74,24 @@ export class NotFoundComponent {
     const email = this.loginEmail().trim();
     if (!email) return;
 
-    if (this.newsletter.isSubscribed() && this.newsletter.currentMember()?.email.toLowerCase() === email.toLowerCase()) {
+    if (
+      this.newsletter.isSubscribed() &&
+      this.newsletter.currentMember()?.email.toLowerCase() === email.toLowerCase()
+    ) {
       this.closeModal();
       this.router.navigate(['/perfil']);
       return;
     }
 
-    this.newsletter.joinWaitlist({ email }).then(() => {
-      this.closeModal();
-      this.router.navigate(['/perfil']);
-    }).catch(() => {
-      this.loginError.set('Ocurrió un error al ingresar. Intentá nuevamente.');
-    });
+    this.newsletter
+      .joinWaitlist({ email })
+      .then(() => {
+        this.closeModal();
+        this.router.navigate(['/perfil']);
+      })
+      .catch(() => {
+        this.loginError.set('Ocurrió un error al ingresar. Intentá nuevamente.');
+      });
   }
 
   logout(): void {
