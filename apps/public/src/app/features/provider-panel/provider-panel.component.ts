@@ -96,6 +96,17 @@ import { ProviderLoginComponent } from './provider-login/provider-login.componen
                         <strong class="menu-item-title">Mis Experiencias</strong>
                       </div>
                     </a>
+
+                    <a
+                      routerLink="/socios"
+                      class="dropdown-item enlarged-item"
+                      (click)="userMenuOpen.set(false)"
+                    >
+                      <mat-icon class="menu-item-icon">people</mat-icon>
+                      <div class="menu-item-info">
+                        <strong class="menu-item-title">Socios y Comprobantes</strong>
+                      </div>
+                    </a>
                   </div>
 
                   <div class="dropdown-divider"></div>
@@ -172,7 +183,9 @@ export class ProviderPanelComponent {
   readonly userMenuOpen = signal(false);
   readonly supportWhatsappUrl =
     'https://wa.me/5493515490431?text=' +
-    encodeURIComponent('Hola! Tengo una duda y necesito asistencia con el Portal de Prestadores, ¿me podrían ayudar?');
+    encodeURIComponent(
+      'Hola! Tengo una duda y necesito asistencia con el Portal de Prestadores, ¿me podrían ayudar?',
+    );
 
   constructor() {
     void this.store.restoreSupabaseSession();

@@ -39,7 +39,9 @@ export function onAuthStateChange(
   return () => data.subscription.unsubscribe();
 }
 
-export async function getCurrentProfile(client: ExperienciasSupabaseClient): Promise<Profile | null> {
+export async function getCurrentProfile(
+  client: ExperienciasSupabaseClient,
+): Promise<Profile | null> {
   const { data: userData } = await client.auth.getUser();
   const user = userData.user;
   if (!user) return null;

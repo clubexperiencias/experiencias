@@ -8,7 +8,7 @@ import { AdminService } from '../../../core/services/admin.service';
   standalone: true,
   imports: [CommonModule, RouterLink],
   templateUrl: './admin-dashboard.component.html',
-  styleUrls: ['./admin-dashboard.component.css']
+  styleUrls: ['./admin-dashboard.component.css'],
 })
 export class AdminDashboardComponent {
   readonly adminService = inject(AdminService);

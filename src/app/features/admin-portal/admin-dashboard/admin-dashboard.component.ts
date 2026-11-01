@@ -1,20 +1,23 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import {
   AdminStoreService,
   AdminMember,
   AdminApplication,
+  ApplicationStatus,
   ExperienceProposalRequest,
 } from '../../../core/services/admin-store.service';
 import { TransferSubmission } from '../../../core/models/bank-transfer.model';
 import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
+import { slugify } from '../../../core/services/provider-store.service';
 
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink, MatIconModule, ArsPipe, FechaPipe],
+  imports: [CommonModule, FormsModule, RouterLink, MatIconModule, ArsPipe, FechaPipe],
   template: `
     <div class="dash-container">
       <!-- Welcome Header Sobrio y Minimalista -->
@@ -130,7 +133,9 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                           <span class="pill-google" title="Google Vinculado">GOOGLE</span>
                         }
                         @if (m.converted) {
-                          <span class="pill-converted" title="Pagó al menos una experiencia">Pago OK</span>
+                          <span class="pill-converted" title="Pagó al menos una experiencia"
+                            >Pago OK</span
+                          >
                         } @else {
                           <span class="pill-sin-pago" title="Sin pago registrado">Sin pago</span>
                         }
@@ -228,6 +233,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                   <th>Tipo</th>
                   <th>Postulante</th>
                   <th>Detalles</th>
+                  <th>Estado</th>
                   <th>Fecha</th>
                   <th class="text-right">Acción</th>
                 </tr>
@@ -250,7 +256,29 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                     </td>
                     <td>
                       <span class="exp-title-cell">
-                        {{ app.type === 'prestador' ? formatCategory(app.category) : 'Cuadro Fundacional' }}
+                        {{
+                          app.type === 'prestador'
+                            ? formatCategory(app.category)
+                            : 'Cuadro Fundacional'
+                        }}
+                      </span>
+                    </td>
+                    <td>
+                      <span class="status-badge" [attr.data-status]="app.status">
+                        @switch (app.status) {
+                          @case ('aprobado') {
+                            Aprobado
+                          }
+                          @case ('rechazado') {
+                            Rechazado
+                          }
+                          @case ('dado_de_baja') {
+                            Dado de baja
+                          }
+                          @default {
+                            Pendiente
+                          }
+                        }
                       </span>
                     </td>
                     <td>
@@ -281,8 +309,15 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
             } @else {
               <span class="pending-pill">0 pendientes</span>
             }
-            <a routerLink="/postulaciones" [queryParams]="{ tab: 'experiencias' }" class="view-all-link">
-              <span>Ver todas ({{ store.experienceRequests().length }})</span>
+            <a
+              routerLink="/postulaciones"
+              [queryParams]="{ tab: 'experiencias' }"
+              class="view-all-link"
+            >
+              <span>Ver propuestas ({{ store.experienceRequests().length }})</span>
+            </a>
+            <a routerLink="/experiencias" class="view-all-link">
+              <span>Ver Experiencias de la Web →</span>
             </a>
           </div>
         </div>
@@ -357,7 +392,11 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         <div class="modal-backdrop" (click)="closeReceipt()">
           <div class="quick-modal-card receipt-modal-box" (click)="$event.stopPropagation()">
             <div class="modal-img-col">
-              <img [src]="sub.receipt.url" [alt]="'Comprobante de ' + sub.fullName" class="receipt-img-view" />
+              <img
+                [src]="sub.receipt.url"
+                [alt]="'Comprobante de ' + sub.fullName"
+                class="receipt-img-view"
+              />
             </div>
             <div class="modal-info-col">
               <div class="modal-top">
@@ -374,14 +413,35 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
               </div>
 
               <dl class="modal-dl">
-                <div><dt>DNI:</dt><dd>{{ sub.dni }}</dd></div>
-                <div><dt>Email:</dt><dd>{{ sub.email }}</dd></div>
-                <div><dt>Teléfono:</dt><dd>{{ sub.phone }}</dd></div>
-                <div><dt>Experiencia:</dt><dd>{{ sub.experienceTitle }}</dd></div>
-                <div><dt>Fecha:</dt><dd>{{ sub.date | fecha: 'larga' }}</dd></div>
-                <div><dt>Cupos:</dt><dd>{{ sub.participants }}</dd></div>
+                <div>
+                  <dt>DNI:</dt>
+                  <dd>{{ sub.dni }}</dd>
+                </div>
+                <div>
+                  <dt>Email:</dt>
+                  <dd>{{ sub.email }}</dd>
+                </div>
+                <div>
+                  <dt>Teléfono:</dt>
+                  <dd>{{ sub.phone }}</dd>
+                </div>
+                <div>
+                  <dt>Experiencia:</dt>
+                  <dd>{{ sub.experienceTitle }}</dd>
+                </div>
+                <div>
+                  <dt>Fecha:</dt>
+                  <dd>{{ sub.date | fecha: 'larga' }}</dd>
+                </div>
+                <div>
+                  <dt>Cupos:</dt>
+                  <dd>{{ sub.participants }}</dd>
+                </div>
                 @if (sub.discountCode) {
-                  <div><dt>Descuento:</dt><dd>{{ sub.discountCode }}</dd></div>
+                  <div>
+                    <dt>Descuento:</dt>
+                    <dd>{{ sub.discountCode }}</dd>
+                  </div>
                 }
               </dl>
 
@@ -420,7 +480,11 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
               <div class="modal-top">
                 <div>
                   <span class="card-kicker">
-                    {{ app.type === 'prestador' ? 'POSTULACIÓN PRESTADOR' : 'POSTULACIÓN SOCIO FUNDADOR' }}
+                    {{
+                      app.type === 'prestador'
+                        ? 'POSTULACIÓN PRESTADOR'
+                        : 'POSTULACIÓN SOCIO FUNDADOR'
+                    }}
                   </span>
                   <h3 class="modal-sub-name">{{ app.fullName }}</h3>
                 </div>
@@ -428,26 +492,216 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
               </div>
 
               <dl class="modal-dl">
-                <div><dt>Email:</dt><dd><a [href]="'mailto:' + app.email" class="modal-link">{{ app.email }}</a></dd></div>
-                <div><dt>Teléfono:</dt><dd>{{ app.phone || '—' }}</dd></div>
+                <div>
+                  <dt>Email:</dt>
+                  <dd>
+                    <a [href]="'mailto:' + app.email" class="modal-link">{{ app.email }}</a>
+                  </dd>
+                </div>
+                <div>
+                  <dt>Teléfono:</dt>
+                  <dd>{{ app.phone || '—' }}</dd>
+                </div>
+                <div>
+                  <dt>Estado:</dt>
+                  <dd>
+                    <span class="status-badge" [attr.data-status]="app.status">
+                      @switch (app.status) {
+                        @case ('aprobado') {
+                          Aprobado
+                        }
+                        @case ('rechazado') {
+                          Rechazado
+                        }
+                        @case ('dado_de_baja') {
+                          Dado de baja
+                        }
+                        @default {
+                          Pendiente
+                        }
+                      }
+                    </span>
+                  </dd>
+                </div>
                 @if (app.type === 'prestador') {
-                  <div><dt>Rubro:</dt><dd>{{ formatCategory(app.category) }}</dd></div>
-                  <div><dt>Región:</dt><dd>{{ app.region || 'Catamarca' }}</dd></div>
+                  <div>
+                    <dt>Rubro:</dt>
+                    <dd>{{ formatCategory(app.category) }}</dd>
+                  </div>
+                  <div>
+                    <dt>Región:</dt>
+                    <dd>{{ app.region || 'Catamarca' }}</dd>
+                  </div>
                   @if (app.website) {
-                    <div><dt>Web:</dt><dd><a [href]="app.website" target="_blank" rel="noopener" class="modal-link">{{ app.website }}</a></dd></div>
+                    <div>
+                      <dt>Web:</dt>
+                      <dd>
+                        <a [href]="app.website" target="_blank" rel="noopener" class="modal-link">{{
+                          app.website
+                        }}</a>
+                      </dd>
+                    </div>
                   }
                 } @else {
-                  <div><dt>Categoría:</dt><dd>Padrón de Socios Fundadores</dd></div>
+                  <div>
+                    <dt>Categoría:</dt>
+                    <dd>Padrón de Socios Fundadores</dd>
+                  </div>
                 }
-                <div><dt>Fecha:</dt><dd>{{ app.createdAt | fecha: 'larga' }}</dd></div>
+                <div>
+                  <dt>Fecha:</dt>
+                  <dd>{{ app.createdAt | fecha: 'larga' }}</dd>
+                </div>
               </dl>
 
               <div class="app-desc-box">
-                <span class="desc-heading">{{ app.type === 'prestador' ? 'Descripción de servicios y equipamiento:' : 'Carta de motivación:' }}</span>
-                <p class="desc-content">{{ app.type === 'prestador' ? (app.description || 'Sin descripción adicional.') : (app.motivationLetter || 'Sin carta de motivación.') }}</p>
+                <span class="desc-heading">{{
+                  app.type === 'prestador'
+                    ? 'Descripción de servicios y equipamiento:'
+                    : 'Carta de motivación:'
+                }}</span>
+                <p class="desc-content">
+                  {{
+                    app.type === 'prestador'
+                      ? app.description || 'Sin descripción adicional.'
+                      : app.motivationLetter || 'Sin carta de motivación.'
+                  }}
+                </p>
               </div>
 
+              @if (app.type === 'prestador') {
+                <div class="provider-banking-box">
+                  <div class="banking-box-header">
+                    <mat-icon class="banking-icon">account_balance</mat-icon>
+                    <div>
+                      <h4 class="banking-box-title">Datos Bancarios para Liquidación de Pagos</h4>
+                      <p class="banking-box-sub">
+                        Configuración de cuenta para liquidar cobros de experiencias.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div class="banking-form-grid">
+                    <div class="banking-input-group">
+                      <label class="banking-input-label">Nombre / Titular</label>
+                      <input
+                        type="text"
+                        class="banking-form-input"
+                        placeholder="Titular de la cuenta"
+                        [ngModel]="providerAccountHolder()"
+                        (ngModelChange)="providerAccountHolder.set($event)"
+                      />
+                    </div>
+                    <div class="banking-input-group">
+                      <label class="banking-input-label">CUIT / CUIL</label>
+                      <input
+                        type="text"
+                        class="banking-form-input"
+                        placeholder="CUIT o CUIL"
+                        [ngModel]="providerCuitDni()"
+                        (ngModelChange)="providerCuitDni.set($event)"
+                      />
+                    </div>
+                    <div class="banking-input-group">
+                      <label class="banking-input-label">CBU / CVU o Alias</label>
+                      <input
+                        type="text"
+                        class="banking-form-input"
+                        placeholder="CBU, CVU o Alias"
+                        [ngModel]="providerCbuAlias()"
+                        (ngModelChange)="providerCbuAlias.set($event)"
+                      />
+                    </div>
+                    <div class="banking-input-group">
+                      <label class="banking-input-label">Entidad (Banco / Billetera)</label>
+                      <input
+                        type="text"
+                        class="banking-form-input"
+                        placeholder="Banco Nación, Galicia, Mercado Pago..."
+                        [ngModel]="providerBankName()"
+                        (ngModelChange)="providerBankName.set($event)"
+                      />
+                    </div>
+                  </div>
+                </div>
+              }
+
               <div class="modal-actions-row">
+                <div class="dash-modal-state-btns">
+                  @if (app.type === 'prestador') {
+                    @if (app.status === 'aprobado') {
+                      <button
+                        type="button"
+                        class="btn-state btn-save-banking"
+                        (click)="saveProviderBankingData()"
+                      >
+                        Guardar Datos Bancarios
+                      </button>
+                      <button
+                        type="button"
+                        class="btn-state btn-reject"
+                        (click)="darDeBajaProvider()"
+                      >
+                        Dar de baja
+                      </button>
+                    } @else {
+                      <button
+                        type="button"
+                        class="btn-state btn-approve"
+                        (click)="approveProvider()"
+                      >
+                        Aprobar Prestador
+                      </button>
+                      @if (app.status !== 'dado_de_baja') {
+                        <button
+                          type="button"
+                          class="btn-state btn-reject"
+                          (click)="darDeBajaProvider()"
+                        >
+                          Dar de baja
+                        </button>
+                      }
+                    }
+                    @if (app.status !== 'pendiente') {
+                      <button
+                        type="button"
+                        class="btn-state btn-pending"
+                        (click)="changeApplicationStatus('pendiente')"
+                      >
+                        Marcar Pendiente
+                      </button>
+                    }
+                  } @else {
+                    @if (app.status !== 'aprobado') {
+                      <button
+                        type="button"
+                        class="btn-state btn-approve"
+                        (click)="changeApplicationStatus('aprobado')"
+                      >
+                        Aprobar Postulación
+                      </button>
+                    }
+                    @if (app.status !== 'dado_de_baja') {
+                      <button
+                        type="button"
+                        class="btn-state btn-reject"
+                        (click)="changeApplicationStatus('dado_de_baja')"
+                      >
+                        Dar de baja
+                      </button>
+                    }
+                    @if (app.status !== 'pendiente') {
+                      <button
+                        type="button"
+                        class="btn-state btn-pending"
+                        (click)="changeApplicationStatus('pendiente')"
+                      >
+                        Marcar Pendiente
+                      </button>
+                    }
+                  }
+                </div>
+
                 <button type="button" class="btn-close-dash" (click)="closeApplication()">
                   Cerrar
                 </button>
@@ -467,10 +721,19 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                 <span class="modal-kicker">{{ expReq.kicker }}</span>
                 <h2 class="modal-title">{{ expReq.title }}</h2>
                 <p class="modal-sub-author">
-                  Propuesta de <strong>{{ expReq.providerName }}</strong> ({{ expReq.providerAgency }})
+                  Propuesta de <strong>{{ expReq.providerName }}</strong> ({{
+                    expReq.providerAgency
+                  }})
                 </p>
               </div>
-              <button type="button" class="modal-close-btn" (click)="closeExperienceRequest()" aria-label="Cerrar modal">×</button>
+              <button
+                type="button"
+                class="modal-close-btn"
+                (click)="closeExperienceRequest()"
+                aria-label="Cerrar modal"
+              >
+                ×
+              </button>
             </div>
 
             <!-- Cuerpo Scrolleable -->
@@ -479,14 +742,22 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
               @if (expReq.coverImage || expReq.coverImageName || expReq.coverVideoName) {
                 <div class="exp-req-media-banner">
                   @if (expReq.coverImage) {
-                    <img [src]="expReq.coverImage" alt="Portada de la propuesta" class="exp-req-cover-img" />
+                    <img
+                      [src]="expReq.coverImage"
+                      alt="Portada de la propuesta"
+                      class="exp-req-cover-img"
+                    />
                   }
                   <div class="exp-req-media-tags">
                     @if (expReq.coverImageName) {
-                      <span class="exp-media-tag"><mat-icon>image</mat-icon> {{ expReq.coverImageName }}</span>
+                      <span class="exp-media-tag"
+                        ><mat-icon>image</mat-icon> {{ expReq.coverImageName }}</span
+                      >
                     }
                     @if (expReq.coverVideoName) {
-                      <span class="exp-media-tag"><mat-icon>videocam</mat-icon> Video: {{ expReq.coverVideoName }}</span>
+                      <span class="exp-media-tag"
+                        ><mat-icon>videocam</mat-icon> Video: {{ expReq.coverVideoName }}</span
+                      >
                     }
                   </div>
                 </div>
@@ -548,7 +819,9 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
 
               @if (expReq.promosAndPricing) {
                 <div class="app-desc-box promo-accent">
-                  <span class="desc-heading">Promociones, descuentos y consideraciones tarifarias</span>
+                  <span class="desc-heading"
+                    >Promociones, descuentos y consideraciones tarifarias</span
+                  >
                   <p class="desc-content">{{ expReq.promosAndPricing }}</p>
                 </div>
               }
@@ -561,20 +834,90 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
 
               <!-- 5. Logística, Seguridad & Requisitos -->
               <dl class="modal-dl">
-                <div><dt>Punto de Encuentro:</dt><dd>{{ expReq.meetingPoint }}</dd></div>
-                <div><dt>Fechas / Frecuencia:</dt><dd>{{ expReq.dates }}</dd></div>
-                <div><dt>Provisto por el Prestador:</dt><dd>{{ expReq.includedServices }}</dd></div>
-                <div><dt>Requisitos del usuario:</dt><dd>{{ expReq.participantRequirements }}</dd></div>
+                <div>
+                  <dt>Punto de Encuentro:</dt>
+                  <dd>{{ expReq.meetingPoint }}</dd>
+                </div>
+                <div>
+                  <dt>Fechas / Frecuencia:</dt>
+                  <dd>{{ expReq.dates }}</dd>
+                </div>
+                <div>
+                  <dt>Provisto por el Prestador:</dt>
+                  <dd>{{ expReq.includedServices }}</dd>
+                </div>
+                <div>
+                  <dt>Requisitos del usuario:</dt>
+                  <dd>{{ expReq.participantRequirements }}</dd>
+                </div>
                 @if (expReq.notes) {
-                  <div><dt>Notas / Enlaces:</dt><dd><a [href]="expReq.notes" target="_blank" rel="noopener" class="dt-link">{{ expReq.notes }}</a></dd></div>
+                  <div>
+                    <dt>Notas / Enlaces:</dt>
+                    <dd>
+                      <a [href]="expReq.notes" target="_blank" rel="noopener" class="dt-link">{{
+                        expReq.notes
+                      }}</a>
+                    </dd>
+                  </div>
                 }
-                <div><dt>Contacto prestador:</dt><dd><a [href]="'mailto:' + expReq.providerEmail" class="dt-link">{{ expReq.providerEmail }}</a></dd></div>
+                <div>
+                  <dt>Contacto prestador:</dt>
+                  <dd>
+                    <a [href]="'mailto:' + expReq.providerEmail" class="dt-link">{{
+                      expReq.providerEmail
+                    }}</a>
+                  </dd>
+                </div>
               </dl>
+
+              @if (expReq.status === 'pendiente') {
+                <div class="exp-public-url-box">
+                  <label class="url-label" for="exp-public-url-dash"
+                    >URL oficial vinculada en la web pública (experiencias.club):</label
+                  >
+                  <input
+                    id="exp-public-url-dash"
+                    type="text"
+                    class="url-input"
+                    [value]="expPublicUrlInput()"
+                    (input)="expPublicUrlInput.set($any($event.target).value)"
+                    placeholder="https://experiencias.club/experiencias/..."
+                  />
+                </div>
+              }
             </div>
 
             <!-- Acciones al Pie -->
             <div class="modal-actions">
               <div class="state-buttons">
+                @if (expReq.status === 'pendiente') {
+                  <button
+                    type="button"
+                    class="btn-state btn-approve"
+                    (click)="approveExperience(expReq.id)"
+                  >
+                    Aprobar y Publicar
+                  </button>
+                  <button
+                    type="button"
+                    class="btn-state btn-reject"
+                    (click)="rejectExperience(expReq.id)"
+                  >
+                    Rechazar
+                  </button>
+                } @else {
+                  <span
+                    class="status-reviewed-tag"
+                    [class.is-approved]="expReq.status === 'aprobada'"
+                  >
+                    {{
+                      expReq.status === 'aprobada'
+                        ? '✓ Propuesta Aprobada'
+                        : '✕ Propuesta Rechazada'
+                    }}
+                  </span>
+                }
+
                 @if (expReq.providerPhone) {
                   <a
                     [href]="getWhatsappLink(expReq.providerPhone, expReq.providerName)"
@@ -759,9 +1102,15 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         line-height: 1.2;
       }
 
-      .text-orange { color: #ff5f00 !important; }
-      .text-blue { color: #60a5fa !important; }
-      .text-green { color: #34d399 !important; }
+      .text-orange {
+        color: #ff5f00 !important;
+      }
+      .text-blue {
+        color: #60a5fa !important;
+      }
+      .text-green {
+        color: #34d399 !important;
+      }
 
       /* Section Cards */
       .dash-card {
@@ -1016,9 +1365,39 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         white-space: nowrap;
       }
 
-      .status-badge[data-status='aprobado'] { background: rgba(16, 185, 129, 0.2); color: #34d399; }
-      .status-badge[data-status='pendiente'] { background: rgba(255, 95, 0, 0.2); color: #ff8533; }
-      .status-badge[data-status='rechazado'] { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+      .status-badge[data-status='aprobado'] {
+        background: rgba(16, 185, 129, 0.2);
+        color: #34d399;
+      }
+      .status-badge[data-status='pendiente'] {
+        background: rgba(255, 95, 0, 0.2);
+        color: #ff8533;
+      }
+      .status-badge[data-status='rechazado'] {
+        background: rgba(239, 68, 68, 0.2);
+        color: #fca5a5;
+      }
+      .status-badge[data-status='dado_de_baja'] {
+        background: rgba(239, 68, 68, 0.2);
+        color: #fca5a5;
+      }
+
+      .dash-modal-state-btns {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+
+      .btn-save-banking {
+        background: rgba(128, 179, 255, 0.2);
+        border: 1px solid rgba(128, 179, 255, 0.6);
+        color: #80b3ff;
+      }
+      .btn-save-banking:hover:not(:disabled) {
+        background: #80b3ff;
+        color: #070d18;
+      }
 
       .btn-review {
         padding: 0.35rem 0.75rem;
@@ -1043,7 +1422,9 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         white-space: nowrap;
       }
 
-      .text-right { text-align: right; }
+      .text-right {
+        text-align: right;
+      }
 
       /* Modal Rápido */
       .modal-backdrop {
@@ -1163,8 +1544,13 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         margin: 0;
       }
 
-      .modal-dl dt { color: rgba(255, 255, 255, 0.5); }
-      .modal-dl dd { color: #ffffff; margin: 0; }
+      .modal-dl dt {
+        color: rgba(255, 255, 255, 0.5);
+      }
+      .modal-dl dd {
+        color: #ffffff;
+        margin: 0;
+      }
 
       .receipt-box-actions {
         margin-top: auto;
@@ -1564,6 +1950,52 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         color: #ffffff;
       }
 
+      .exp-public-url-box {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        padding: 0.85rem 1rem;
+        background: rgba(22, 33, 85, 0.4);
+        border: 1px solid rgba(128, 179, 255, 0.25);
+        border-radius: 2px;
+        margin-top: 1rem;
+      }
+      .url-label {
+        font-size: 0.76rem;
+        font-weight: 700;
+        color: #80b3ff;
+      }
+      .url-input {
+        width: 100%;
+        background: rgba(7, 13, 28, 0.7);
+        border: 1px solid rgba(128, 179, 255, 0.35);
+        border-radius: 2px;
+        padding: 0.45rem 0.65rem;
+        color: #ffffff;
+        font-size: 0.82rem;
+      }
+      .url-input:focus {
+        outline: none;
+        border-color: #80b3ff;
+      }
+
+      .status-reviewed-tag {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.45rem 0.85rem;
+        font-size: 0.78rem;
+        font-weight: 700;
+        border-radius: 2px;
+        background: rgba(239, 68, 68, 0.15);
+        border: 1px solid rgba(239, 68, 68, 0.4);
+        color: #fca5a5;
+      }
+      .status-reviewed-tag.is-approved {
+        background: rgba(16, 185, 129, 0.15);
+        border-color: rgba(16, 185, 129, 0.4);
+        color: #34d399;
+      }
+
       .btn-close {
         padding: 0.6rem 1.25rem;
         background: transparent;
@@ -1916,6 +2348,12 @@ export class AdminDashboardComponent {
   readonly selectedSubmission = signal<TransferSubmission | null>(null);
   readonly selectedApplication = signal<AdminApplication | null>(null);
   readonly selectedExperienceRequest = signal<ExperienceProposalRequest | null>(null);
+  readonly expPublicUrlInput = signal<string>('');
+
+  readonly providerAccountHolder = signal<string>('');
+  readonly providerCuitDni = signal<string>('');
+  readonly providerCbuAlias = signal<string>('');
+  readonly providerBankName = signal<string>('');
 
   readonly recentMembers = computed(() => this.store.members().slice(0, 7));
   readonly recentSubmissions = computed(() => this.store.submissions().slice(0, 7));
@@ -1927,8 +2365,23 @@ export class AdminDashboardComponent {
     void this.store.loadAllApplications();
   }
 
-  openReceipt(sub: TransferSubmission): void {
+  async openReceipt(sub: TransferSubmission): Promise<void> {
     this.selectedSubmission.set(sub);
+    const key = sub.receipt.storageKey || sub.receipt.url;
+    if (
+      key &&
+      !key.startsWith('http://') &&
+      !key.startsWith('https://') &&
+      !key.startsWith('data:') &&
+      !key.startsWith('blob:')
+    ) {
+      const signed = await this.store.getSignedReceiptUrl(key);
+      if (signed && signed !== key) {
+        this.selectedSubmission.update((s) =>
+          s ? { ...s, receipt: { ...s.receipt, url: signed } } : null,
+        );
+      }
+    }
   }
 
   closeReceipt(): void {
@@ -1937,10 +2390,98 @@ export class AdminDashboardComponent {
 
   openApplication(app: AdminApplication): void {
     this.selectedApplication.set(app);
+    this.providerAccountHolder.set(app.accountHolder || app.fullName || '');
+    this.providerCuitDni.set(app.cuitDni || '');
+    this.providerCbuAlias.set(app.cbuAlias || '');
+    this.providerBankName.set(app.bankName || '');
   }
 
   closeApplication(): void {
     this.selectedApplication.set(null);
+  }
+
+  async approveProvider(): Promise<void> {
+    const current = this.selectedApplication();
+    if (!current) return;
+    const banking = {
+      accountHolder: this.providerAccountHolder().trim() || current.fullName,
+      cuitDni: this.providerCuitDni().trim(),
+      cbuAlias: this.providerCbuAlias().trim(),
+      bankName: this.providerBankName().trim(),
+    };
+    const ok = await this.store.updateApplicationStatus(
+      current.id,
+      current.type,
+      'aprobado',
+      banking,
+    );
+    if (ok) {
+      this.selectedApplication.update((a) =>
+        a ? { ...a, status: 'aprobado', ...banking } : null,
+      );
+    }
+  }
+
+  async darDeBajaProvider(): Promise<void> {
+    const current = this.selectedApplication();
+    if (!current) return;
+    const banking = {
+      accountHolder: this.providerAccountHolder().trim() || current.fullName,
+      cuitDni: this.providerCuitDni().trim(),
+      cbuAlias: this.providerCbuAlias().trim(),
+      bankName: this.providerBankName().trim(),
+    };
+    const ok = await this.store.updateApplicationStatus(
+      current.id,
+      current.type,
+      'dado_de_baja',
+      banking,
+    );
+    if (ok) {
+      this.selectedApplication.update((a) =>
+        a ? { ...a, status: 'dado_de_baja', ...banking } : null,
+      );
+    }
+  }
+
+  async saveProviderBankingData(): Promise<void> {
+    const current = this.selectedApplication();
+    if (!current) return;
+    const banking = {
+      accountHolder: this.providerAccountHolder().trim() || current.fullName,
+      cuitDni: this.providerCuitDni().trim(),
+      cbuAlias: this.providerCbuAlias().trim(),
+      bankName: this.providerBankName().trim(),
+    };
+    const ok = await this.store.updateApplicationStatus(
+      current.id,
+      current.type,
+      current.status,
+      banking,
+    );
+    if (ok) {
+      this.selectedApplication.update((a) => (a ? { ...a, ...banking } : null));
+    }
+  }
+
+  async changeApplicationStatus(status: ApplicationStatus): Promise<void> {
+    const current = this.selectedApplication();
+    if (!current) return;
+    const banking =
+      current.type === 'prestador'
+        ? {
+            accountHolder: this.providerAccountHolder().trim() || current.fullName,
+            cuitDni: this.providerCuitDni().trim(),
+            cbuAlias: this.providerCbuAlias().trim(),
+            bankName: this.providerBankName().trim(),
+          }
+        : undefined;
+    const ok = await this.store.updateApplicationStatus(current.id, current.type, status, banking);
+    if (ok) {
+      this.selectedApplication.update((a) =>
+        a ? { ...a, status, ...(banking || {}) } : null,
+      );
+    }
   }
 
   formatCategory(category?: string): string {
@@ -1959,7 +2500,7 @@ export class AdminDashboardComponent {
     if (!phone) return '#';
     const cleanDigits = phone.replace(/\D/g, '');
     const text = encodeURIComponent(
-      `Hola ${name || ''}, te contactamos desde el equipo de Experiencias Club respecto a tu postulación.`
+      `Hola ${name || ''}, te contactamos desde el equipo de Experiencias Club respecto a tu postulación.`,
     );
     return `https://wa.me/${cleanDigits}?text=${text}`;
   }
@@ -1968,28 +2509,32 @@ export class AdminDashboardComponent {
     if (!sub.phone) return '#';
     const cleanDigits = sub.phone.replace(/\D/g, '');
     const text = encodeURIComponent(
-      `Hola ${sub.fullName}, te contactamos desde Experiencias Club respecto a tu comprobante de reserva para "${sub.experienceTitle}".`
+      `Hola ${sub.fullName}, te contactamos desde Experiencias Club respecto a tu comprobante de reserva para "${sub.experienceTitle}".`,
     );
     return `https://wa.me/${cleanDigits}?text=${text}`;
   }
 
   openExperienceRequest(req: ExperienceProposalRequest): void {
     this.selectedExperienceRequest.set(req);
+    const slug = slugify(req.title);
+    this.expPublicUrlInput.set(`https://experiencias.club/experiencias/${slug}`);
   }
 
   closeExperienceRequest(): void {
     this.selectedExperienceRequest.set(null);
   }
 
-  approveExperience(id: string): void {
-    this.store.approveExperienceRequest(id);
-    const current = this.selectedExperienceRequest();
-    if (current && current.id === id) {
-      this.selectedExperienceRequest.set({
-        ...current,
-        status: 'aprobada',
-        reviewedAt: new Date().toISOString(),
-      });
+  async approveExperience(id: string): Promise<void> {
+    const ok = await this.store.approveExperienceRequest(id, this.expPublicUrlInput());
+    if (ok) {
+      const current = this.selectedExperienceRequest();
+      if (current && current.id === id) {
+        this.selectedExperienceRequest.set({
+          ...current,
+          status: 'aprobada',
+          reviewedAt: new Date().toISOString(),
+        });
+      }
     }
   }
 
@@ -2011,8 +2556,11 @@ export class AdminDashboardComponent {
   }
 
   async quickReject(id: string): Promise<void> {
-    await this.store.reviewSubmission(id, 'rechazado', 'Comprobante observado por el administrador.');
+    await this.store.reviewSubmission(
+      id,
+      'rechazado',
+      'Comprobante observado por el administrador.',
+    );
     this.closeReceipt();
   }
 }
-

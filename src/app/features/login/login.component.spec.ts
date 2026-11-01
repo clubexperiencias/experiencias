@@ -11,7 +11,7 @@ describe('LoginComponent (/ingresar)', () => {
     localStorage.clear();
     await TestBed.configureTestingModule({
       imports: [LoginComponent],
-      providers: [provideRouter([])]
+      providers: [provideRouter([])],
     }).compileComponents();
 
     fixture = TestBed.createComponent(LoginComponent);

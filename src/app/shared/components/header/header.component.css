@@ -197,49 +197,29 @@ mat-icon.btn-icon {
   color: #000000 !important;
 }
 
-/* Botón Cerrar Sesión en Header (#ff5f00) */
-.nav-pill-btn.logout-header-btn,
-.nav-pill-btn.logout-header-btn:hover,
-.nav-pill-btn.logout-header-btn:active {
-  background: #ff5f00 !important;
-  border-color: #ff5f00 !important;
-  color: #ffffff !important;
-}
-
-.nav-pill-btn.logout-header-btn *,
-.nav-pill-btn.logout-header-btn:hover * {
-  color: #ffffff !important;
-}
-
 /* ==========================================================================
    Highlight Verde de Éxito al Iniciar Sesión (Sincronizado con la alerta verde)
    ========================================================================== */
-.nav-pill-btn.profile-btn.highlight-green,
-.nav-pill-btn.login-nav-btn.highlight-green {
+.nav-pill-btn.profile-btn.highlight-green {
   background: #059669 !important;
   border-color: #059669 !important;
   color: #ffffff !important;
   box-shadow: 0 0 16px rgba(5, 150, 105, 0.55) !important;
 }
 
-.nav-pill-btn.profile-btn.highlight-green:hover,
-.nav-pill-btn.login-nav-btn.highlight-green:hover {
+.nav-pill-btn.profile-btn.highlight-green:hover {
   background: #059669 !important;
   border-color: #059669 !important;
 }
 
 .nav-pill-btn.profile-btn.highlight-green *,
 .nav-pill-btn.profile-btn.highlight-green:hover *,
-.nav-pill-btn.login-nav-btn.highlight-green *,
-.nav-pill-btn.login-nav-btn.highlight-green:hover *,
-.mobile-nav-row.profile-cta-row.highlight-green *,
-.mobile-nav-row.login-cta-row.highlight-green * {
+.mobile-nav-row.profile-cta-row.highlight-green * {
   color: #ffffff !important;
   background: transparent !important;
 }
 
-.mobile-nav-row.profile-cta-row.highlight-green,
-.mobile-nav-row.login-cta-row.highlight-green {
+.mobile-nav-row.profile-cta-row.highlight-green {
   background: #059669 !important;
   border-color: #059669 !important;
   color: #ffffff !important;
@@ -488,19 +468,6 @@ mat-icon.btn-icon {
     border-color: #ffcc00 !important;
     transform: none;
   }
-
-  .mobile-nav-row.profile-cta-row.logout-row,
-  .mobile-nav-row.profile-cta-row.logout-row:hover,
-  .mobile-nav-row.profile-cta-row.logout-row:active {
-    background: #ff5f00 !important;
-    border-color: #ff5f00 !important;
-    color: #ffffff !important;
-  }
-
-  .mobile-nav-row.profile-cta-row.logout-row .row-title,
-  .mobile-nav-row.profile-cta-row.logout-row .row-arrow {
-    color: #ffffff !important;
-  }
 }
 
 @keyframes slideDownPanel {
@@ -521,6 +488,19 @@ mat-icon.btn-icon {
   to {
     opacity: 1;
   }
+}
+
+.prestadores-nav-btn {
+  color: #1a4fa0 !important;
+  font-weight: 800 !important;
+}
+
+.prestadores-nav-btn:hover {
+  color: #0b2559 !important;
+}
+
+.prestadores-nav-btn::after {
+  background: #80b3ff !important;
 }
 
 /* ==========================================================================
@@ -559,33 +539,30 @@ mat-icon.btn-icon {
   font-family: var(--font-sans);
   font-size: 0.68rem;
   font-weight: 800;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  letter-spacing: 0.12em;
   color: #ff5f00;
   margin-bottom: 0.4rem;
 }
 
 .logout-modal-title {
+  margin: 0 0 0.5rem 0;
   font-family: var(--font-serif);
-  font-size: 1.5rem;
-  font-weight: 600;
+  font-size: 1.35rem;
+  font-weight: 700;
   color: #ffffff;
-  margin: 0 0 0.65rem;
-  line-height: 1.2;
 }
 
 .logout-modal-desc {
+  margin: 0 0 1.5rem 0;
   font-family: var(--font-sans);
-  font-size: 0.9rem;
-  line-height: 1.5;
-  color: rgba(255, 255, 255, 0.8);
-  margin: 0 0 1.5rem;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.75);
 }
 
 .logout-modal-actions {
   display: flex;
-  align-items: center;
-  justify-content: flex-start;
+  justify-content: flex-end;
   gap: 0.75rem;
 }
 

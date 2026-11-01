@@ -20,10 +20,12 @@ import {
   ProviderStoreService,
   validateReceiptFile,
 } from '../../../core/services/provider-store.service';
+import { ExperienceService } from '../../../core/services/experience.service';
 import { isSupabaseConfigured } from '../../../core/supabase/supabase.client';
 import {
   BANK_TRANSFER_DESTINATION,
   DiscountCode,
+  ProviderExperience,
   discountAmount,
   findDiscountCode,
   MAX_PARTICIPANTS_PER_BOOKING,
@@ -51,6 +53,7 @@ import {
 export class ExperiencePaymentComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly store = inject(ProviderStoreService);
+  private readonly expService = inject(ExperienceService);
   private readonly fb = inject(FormBuilder);
   private readonly newsletter = inject(NewsletterService);
 
@@ -75,9 +78,35 @@ export class ExperiencePaymentComponent implements OnInit {
     },
   );
 
-  readonly experience = computed(() => {
-    const exp = this.store.getExperienceBySlug(this.slug());
-    return exp?.status === 'publicada' ? exp : undefined;
+  readonly experience = computed<ProviderExperience | undefined>(() => {
+    const slug = this.slug();
+    const liveExp =
+      this.expService.getPublishedExperienceBySlug(slug) ||
+      this.expService.getExperienceBySlug(slug);
+    const storeExp = this.store.getExperienceBySlug(slug);
+    if (liveExp) {
+      if (liveExp.status === 'publicada') {
+        return {
+          ...(storeExp || {}),
+          id: liveExp.id,
+          slug: liveExp.slug,
+          title: liveExp.title,
+          shortTitle: liveExp.shortTitle || liveExp.title,
+          priceArs: liveExp.priceArs,
+          priceUsd: liveExp.priceUsd,
+          capacityPerDate: liveExp.maxSpotsPerGroup,
+          dates: liveExp.dates || [],
+          status: liveExp.status,
+        } as ProviderExperience;
+      }
+      return undefined;
+    }
+
+    if (this.expService.hasRemoteExperiences()) {
+      return undefined;
+    }
+
+    return storeExp?.status === 'publicada' ? storeExp : undefined;
   });
 
   readonly breadcrumbs = computed<BreadcrumbItem[]>(() => {

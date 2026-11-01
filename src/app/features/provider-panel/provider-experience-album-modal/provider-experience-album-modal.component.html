@@ -1,0 +1,328 @@
+@if (isOpen() && experience()) {
+  <div class="album-modal-backdrop" (click)="onClose()">
+    <div
+      #modalDialog
+      tabindex="-1"
+      class="album-modal"
+      (click)="$event.stopPropagation()"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="album-modal-title"
+    >
+      <!-- Cabecera del Modal -->
+      <header class="album-modal-header">
+        <div class="header-texts">
+          <span class="album-modal-kicker">GESTIÓN DE CONTENIDO VISUAL</span>
+          <h2 id="album-modal-title" class="album-modal-title">
+            Álbum de Fotos · {{ experience()?.title }}
+          </h2>
+          <p class="album-modal-desc">
+            Configurá hasta <strong>12 fotos</strong> para la galería pública en
+            <code>/experiencias/{{ experience()?.slug }}/fotos</code>. Elegí
+            <strong>1 como portada principal</strong> y <strong>2 como destacadas</strong>.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          class="modal-close-btn"
+          (click)="onClose()"
+          aria-label="Cerrar modal"
+          title="Cerrar"
+        >
+          <mat-icon>close</mat-icon>
+        </button>
+      </header>
+
+      <!-- Barra de Estado / Contadores -->
+      <div class="album-status-bar">
+        <div class="status-pill" [class.is-valid]="totalCount() > 0 && totalCount() <= 12">
+          <mat-icon class="pill-icon">photo_library</mat-icon>
+          <span class="pill-label">Total fotos:</span>
+          <strong>{{ totalCount() }} / 12</strong>
+        </div>
+
+        <div
+          class="status-pill"
+          [class.is-valid]="coverCount() === 1"
+          [class.is-warning]="coverCount() !== 1"
+        >
+          <mat-icon class="pill-icon">star</mat-icon>
+          <span class="pill-label">Portada:</span>
+          <strong>{{ coverCount() === 1 ? '1 Seleccionada' : '0 (Requerida 1)' }}</strong>
+        </div>
+
+        <div
+          class="status-pill"
+          [class.is-valid]="featuredCount() === 2"
+          [class.is-warning]="featuredCount() !== 2 && totalCount() >= 3"
+        >
+          <mat-icon class="pill-icon">auto_awesome</mat-icon>
+          <span class="pill-label">Destacadas:</span>
+          <strong>{{ featuredCount() }} / 2</strong>
+        </div>
+
+        @if (remainingSlots() > 0) {
+          <span class="slots-hint">Podés sumar {{ remainingSlots() }} fotos más</span>
+        } @else {
+          <span class="slots-full-hint">Límite de 12 fotos alcanzado</span>
+        }
+      </div>
+
+      <!-- Alerta de Validación -->
+      @if (validationError()) {
+        <div class="validation-alert" role="alert">
+          <mat-icon class="alert-icon">info</mat-icon>
+          <span>{{ validationError() }}</span>
+        </div>
+      }
+
+      <div class="album-modal-body">
+        <!-- Bloque para Cargar Nuevas Fotos -->
+        <section class="add-photo-card">
+          <h3 class="section-title">
+            <mat-icon>add_photo_alternate</mat-icon>
+            Agregar Fotos al Álbum
+          </h3>
+
+          <div class="add-photo-grid">
+            <!-- Opción 1: Subir archivos desde la computadora -->
+            <div class="upload-dropzone">
+              <label class="file-upload-label" [class.is-disabled]="!canAddMore()">
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  multiple
+                  (change)="onFileSelected($event)"
+                  [disabled]="!canAddMore()"
+                  class="sr-only"
+                />
+                <mat-icon class="upload-icon">cloud_upload</mat-icon>
+                <span class="upload-title">Subir fotos desde tu equipo</span>
+                <span class="upload-hint">JPG, PNG o WebP (podés seleccionar varias)</span>
+              </label>
+            </div>
+
+            <!-- Opción 2: Cargar por URL pública -->
+            <div class="url-input-card">
+              <span class="url-title">O cargar mediante URL de imagen:</span>
+              <div class="url-row">
+                <input
+                  type="url"
+                  placeholder="https://ejemplo.com/foto.jpg"
+                  [value]="newPhotoUrl()"
+                  (input)="newPhotoUrl.set($any($event.target).value)"
+                  class="input-control"
+                  [disabled]="!canAddMore()"
+                />
+                <button
+                  type="button"
+                  class="btn-add-url"
+                  (click)="addPhotoByUrl()"
+                  [disabled]="!canAddMore() || !newPhotoUrl().trim()"
+                >
+                  <mat-icon>add</mat-icon>
+                  Agregar
+                </button>
+              </div>
+
+              <div class="url-meta-row">
+                <input
+                  type="text"
+                  placeholder="Título de la foto (opcional)"
+                  [value]="newPhotoTitle()"
+                  (input)="newPhotoTitle.set($any($event.target).value)"
+                  class="input-control input-sm"
+                  [disabled]="!canAddMore()"
+                />
+                <input
+                  type="text"
+                  placeholder="Epígrafe / descripción (opcional)"
+                  [value]="newPhotoCaption()"
+                  (input)="newPhotoCaption.set($any($event.target).value)"
+                  class="input-control input-sm"
+                  [disabled]="!canAddMore()"
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Listado y Configuración de Fotos -->
+        <section class="photos-management-section">
+          <div class="photos-section-header">
+            <h3 class="section-title">
+              <mat-icon>collections</mat-icon>
+              Fotos del Álbum ({{ totalCount() }} / 12)
+            </h3>
+            <p class="section-sub">
+              Hacé clic en <strong>"Establecer Portada"</strong> para definir la imagen principal
+              del catálogo y en <strong>"Destacada"</strong> para las 2 fotos de honor.
+            </p>
+          </div>
+
+          @if (photos().length === 0) {
+            <div class="empty-album-box">
+              <mat-icon class="empty-icon">photo_library</mat-icon>
+              <h4>No hay fotos cargadas en este álbum todavía</h4>
+              <p>Subí una foto o ingresá una URL arriba para comenzar a construir el álbum.</p>
+            </div>
+          } @else {
+            <div class="photos-grid">
+              @for (photo of photos(); track photo.id; let idx = $index) {
+                <article
+                  class="photo-card"
+                  [class.is-cover]="photo.isCover"
+                  [class.is-featured]="photo.isFeatured"
+                >
+                  <!-- Badge identificador -->
+                  <div class="photo-badge-wrapper">
+                    @if (photo.isCover) {
+                      <span class="photo-badge badge-cover">
+                        <mat-icon>star</mat-icon>
+                        PORTADA (1/1)
+                      </span>
+                    } @else if (photo.isFeatured) {
+                      <span class="photo-badge badge-featured">
+                        <mat-icon>auto_awesome</mat-icon>
+                        DESTACADA
+                      </span>
+                    } @else {
+                      <span class="photo-badge badge-gallery"> #{{ idx + 1 }} GALERÍA </span>
+                    }
+                  </div>
+
+                  <!-- Imagen con Aspect Ratio -->
+                  <div class="photo-thumbnail-wrap">
+                    <img
+                      [src]="photo.url"
+                      [alt]="photo.title || 'Foto de la experiencia'"
+                      class="photo-thumbnail"
+                      loading="lazy"
+                    />
+
+                    <!-- Acciones Rápidas sobre la Foto -->
+                    <div class="photo-thumbnail-actions">
+                      <button
+                        type="button"
+                        class="thumb-action-btn"
+                        [disabled]="idx === 0"
+                        (click)="movePhoto(idx, 'up')"
+                        title="Mover arriba"
+                        aria-label="Mover foto arriba"
+                      >
+                        <mat-icon>arrow_back</mat-icon>
+                      </button>
+                      <button
+                        type="button"
+                        class="thumb-action-btn"
+                        [disabled]="idx === photos().length - 1"
+                        (click)="movePhoto(idx, 'down')"
+                        title="Mover abajo"
+                        aria-label="Mover foto abajo"
+                      >
+                        <mat-icon>arrow_forward</mat-icon>
+                      </button>
+                      <button
+                        type="button"
+                        class="thumb-action-btn btn-trash"
+                        (click)="removePhoto(photo.id)"
+                        title="Eliminar foto"
+                        aria-label="Eliminar foto"
+                      >
+                        <mat-icon>delete</mat-icon>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Configuración de Roles: Portada vs Destacada -->
+                  <div class="photo-role-controls">
+                    <button
+                      type="button"
+                      class="role-btn btn-cover"
+                      [class.is-active]="photo.isCover"
+                      (click)="setCover(photo.id)"
+                      title="Definir como la única foto de portada de la experiencia"
+                    >
+                      <mat-icon>{{
+                        photo.isCover ? 'radio_button_checked' : 'radio_button_unchecked'
+                      }}</mat-icon>
+                      <span>{{ photo.isCover ? 'Es Portada' : 'Elegir como Portada' }}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      class="role-btn btn-featured"
+                      [class.is-active]="photo.isFeatured"
+                      [disabled]="photo.isCover"
+                      (click)="toggleFeatured(photo.id)"
+                      title="Definir como una de las 2 fotos destacadas"
+                    >
+                      <mat-icon>{{
+                        photo.isFeatured ? 'check_box' : 'check_box_outline_blank'
+                      }}</mat-icon>
+                      <span>{{ photo.isFeatured ? 'Es Destacada' : 'Destacar (máx 2)' }}</span>
+                    </button>
+                  </div>
+
+                  <!-- Metadatos Editables: Título y Epígrafe -->
+                  <div class="photo-meta-inputs">
+                    <input
+                      type="text"
+                      class="meta-input"
+                      placeholder="Título o lugar..."
+                      [value]="photo.title || ''"
+                      (change)="updateTitle(photo.id, $event)"
+                      title="Título de la imagen"
+                    />
+                    <textarea
+                      rows="2"
+                      class="meta-textarea"
+                      placeholder="Descripción o epígrafe..."
+                      [value]="photo.caption || ''"
+                      (change)="updateCaption(photo.id, $event)"
+                      title="Epígrafe o pie de foto"
+                    ></textarea>
+                  </div>
+                </article>
+              }
+            </div>
+          }
+        </section>
+      </div>
+
+      <!-- Pie del Modal con Acciones -->
+      <footer class="album-modal-footer">
+        <div class="footer-left">
+          <a
+            [href]="getPublicAlbumUrl()"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="public-preview-link"
+            title="Abrir galería pública en una nueva pestaña"
+          >
+            <mat-icon>open_in_new</mat-icon>
+            <span
+              >Ver galería pública actual (<code>/experiencias/{{ experience()?.slug }}/fotos</code
+              >)</span
+            >
+          </a>
+        </div>
+
+        <div class="footer-right">
+          <button type="button" class="btn-cancel" (click)="onClose()">Cancelar</button>
+
+          <button
+            type="button"
+            class="btn-save"
+            (click)="saveAlbum()"
+            [disabled]="isSaving() || !isFormValid()"
+          >
+            <mat-icon>{{ isSaving() ? 'hourglass_empty' : 'save' }}</mat-icon>
+            <span>{{ isSaving() ? 'Guardando...' : 'Guardar Álbum de Fotos' }}</span>
+          </button>
+        </div>
+      </footer>
+    </div>
+  </div>
+}

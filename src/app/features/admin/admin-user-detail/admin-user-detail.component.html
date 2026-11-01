@@ -114,14 +114,19 @@
           <div class="subscription-status-box" *ngIf="u.subscription as sub">
             <div class="sub-header">
               <span class="sub-tier-title">Plan {{ sub.tier | uppercase }}</span>
-              <span class="sub-status-tag" [ngClass]="'sub-status-' + sub.status">{{ sub.status | uppercase }}</span>
+              <span class="sub-status-tag" [ngClass]="'sub-status-' + sub.status">{{
+                sub.status | uppercase
+              }}</span>
             </div>
             <p class="sub-price">${{ sub.amountArs.toLocaleString('es-AR') }} ARS</p>
             <div class="sub-details">
               <div><strong>Método de pago:</strong> {{ sub.paymentMethod }}</div>
               <div><strong>Fecha de inicio:</strong> {{ sub.startedAt }}</div>
               <div><strong>Próximo corte:</strong> {{ sub.nextBillingDate }}</div>
-              <div><strong>Último recibo emitido:</strong> <span class="mono-tag">{{ sub.lastPaymentReceipt }}</span></div>
+              <div>
+                <strong>Último recibo emitido:</strong>
+                <span class="mono-tag">{{ sub.lastPaymentReceipt }}</span>
+              </div>
             </div>
           </div>
 
@@ -148,7 +153,9 @@
           <dl class="data-list">
             <div class="data-row">
               <dt>Especialidad / Rol:</dt>
-              <dd><strong>{{ prov.category }}</strong></dd>
+              <dd>
+                <strong>{{ prov.category }}</strong>
+              </dd>
             </div>
             <div class="data-row">
               <dt>Zona de Operación:</dt>
@@ -167,14 +174,23 @@
           <div class="vehicle-cert-box">
             <div class="veh-section">
               <span class="sec-subtitle">Vehículo Asignado a Travesías:</span>
-              <p class="veh-desc">{{ prov.vehicleDescription || 'Vehículo estándar homologado' }}</p>
+              <p class="veh-desc">
+                {{ prov.vehicleDescription || 'Vehículo estándar homologado' }}
+              </p>
             </div>
 
             <div class="cert-section">
               <span class="sec-subtitle">Certificaciones & Capacitaciones:</span>
               <ul class="cert-list">
                 <li *ngFor="let cert of prov.certifications">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2">
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#34d399"
+                    stroke-width="2"
+                  >
                     <polyline points="20 6 9 17 4 12"></polyline>
                   </svg>
                   <span>{{ cert }}</span>
@@ -204,7 +220,11 @@
               </div>
               <h3 class="act-title">{{ act.title }}</h3>
               <div class="act-meta">
-                <span>Guía / Prestador: <strong>{{ act.provider.name }}</strong> ({{ act.provider.category }})</span>
+                <span
+                  >Guía / Prestador: <strong>{{ act.provider.name }}</strong> ({{
+                    act.provider.category
+                  }})</span
+                >
                 <span class="booking-ref">ID Actividad: {{ act.id }}</span>
               </div>
             </div>
@@ -230,7 +250,9 @@
                   <span class="rec-label">COMPROBANTE OFICIAL</span>
                   <span class="rec-number">{{ r.receiptNumber }}</span>
                 </div>
-                <span class="rec-status-tag" [ngClass]="'rec-' + r.status">{{ r.status | uppercase }}</span>
+                <span class="rec-status-tag" [ngClass]="'rec-' + r.status">{{
+                  r.status | uppercase
+                }}</span>
               </div>
 
               <div class="receipt-body">
@@ -278,7 +300,9 @@
               </div>
               <div class="rec-col price-col">
                 <span class="rc-label">Monto Abonado</span>
-                <span class="rc-price">${{ (u.subscription?.amountArs || 0).toLocaleString('es-AR') }} ARS</span>
+                <span class="rc-price"
+                  >${{ (u.subscription?.amountArs || 0).toLocaleString('es-AR') }} ARS</span
+                >
               </div>
             </div>
           </div>

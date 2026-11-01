@@ -1,5 +1,6 @@
 import { Component, HostListener, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
+import { Title } from '@angular/platform-browser';
 import { MatIconModule } from '@angular/material/icon';
 import { AdminStoreService } from '../../core/services/admin-store.service';
 import { AdminLoginComponent } from './admin-login/admin-login.component';
@@ -117,6 +118,17 @@ import { AdminLoginComponent } from './admin-login/admin-login.component';
                         <strong class="menu-item-title">Ver Postulaciones</strong>
                       </div>
                     </a>
+
+                    <a
+                      routerLink="/experiencias"
+                      class="dropdown-item enlarged-item"
+                      (click)="userMenuOpen.set(false)"
+                    >
+                      <mat-icon class="menu-item-icon">travel_explore</mat-icon>
+                      <div class="menu-item-info">
+                        <strong class="menu-item-title">Ver Experiencias</strong>
+                      </div>
+                    </a>
                   </div>
 
                   <div class="dropdown-divider"></div>
@@ -168,11 +180,13 @@ import { AdminLoginComponent } from './admin-login/admin-login.component';
 export class AdminPanelComponent {
   readonly store = inject(AdminStoreService);
   private readonly router = inject(Router);
+  private readonly pageTitle = inject(Title);
 
   readonly admin = this.store.currentAdmin;
   readonly userMenuOpen = signal(false);
 
   constructor() {
+    this.pageTitle.setTitle('Portal de Admin del Club de Experiencias');
     void this.store.restoreSupabaseSession();
   }
 

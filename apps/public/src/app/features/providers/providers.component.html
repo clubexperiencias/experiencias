@@ -149,7 +149,9 @@
                 </label>
 
                 <label class="provider-field full-width">
-                  <span class="field-lbl">Breve Descripción de tus Salidas o Servicios <b>*</b></span>
+                  <span class="field-lbl"
+                    >Breve Descripción de tus Salidas o Servicios <b>*</b></span
+                  >
                   <textarea
                     id="p-page-desc"
                     class="provider-textarea"
@@ -193,11 +195,7 @@
                   <strong>{{ providerEmail() }}</strong> para validar habilitaciones y coordinar tu
                   alta prioritaria en el Club de Experiencias.
                 </p>
-                <button
-                  type="button"
-                  class="secondary-btn"
-                  (click)="resetForm()"
-                >
+                <button type="button" class="secondary-btn" (click)="resetForm()">
                   Enviar otra postulación
                 </button>
               </div>

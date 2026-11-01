@@ -95,6 +95,18 @@
   white-space: nowrap;
 }
 
+.session-action-btn.logout-action {
+  background: #000000;
+  border-color: #000000;
+  color: #ffffff;
+}
+
+.session-action-btn.logout-action:hover {
+  background: #1f1f1f;
+  border-color: #1f1f1f;
+  color: #ffffff;
+}
+
 .session-action-btn:hover {
   background: #ffffff;
   color: #000000;
@@ -235,8 +247,8 @@
     grid-template-columns: auto 1fr;
     grid-template-rows: auto auto;
     grid-template-areas:
-      "action tier"
-      "action user";
+      'action tier'
+      'action user';
     align-items: center;
     gap: 0.2rem 0.85rem;
   }
@@ -304,4 +316,3 @@
     width: 100%;
   }
 }
-

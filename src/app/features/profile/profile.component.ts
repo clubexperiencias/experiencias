@@ -2,13 +2,14 @@ import { Component, HostListener, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
-import { NewsletterService } from '../../core/services/newsletter.service';
+import {
+  AUTH_SUCCESS_FEEDBACK_DURATION_MS,
+  NewsletterService,
+} from '../../core/services/newsletter.service';
 import { ActivityHistoryService } from '../../core/services/activity-history.service';
 import { PaymentReceipt } from '../../core/models/activity-history.model';
 import { ExperienceService } from '../../core/services/experience.service';
-import { PaymentManagerService } from '../../core/services/payment/payment-manager.service';
 import { Experience } from '../../core/models/experience.model';
-import { PaymentGatewayType } from '../../core/models/payment.model';
 import { ModalType } from '../waitlist/waitlist.component';
 import { FooterComponent } from '../../shared/components/footer/footer.component';
 import { HeaderComponent } from '../../shared/components/header/header.component';
@@ -37,7 +38,6 @@ export class ProfileComponent implements OnInit {
   readonly newsletter = inject(NewsletterService);
   readonly activityService = inject(ActivityHistoryService);
   readonly experienceService = inject(ExperienceService);
-  readonly paymentManager = inject(PaymentManagerService);
   readonly router = inject(Router);
 
   readonly breadcrumbs: BreadcrumbItem[] = [{ label: 'Inicio', url: '/' }, { label: 'Mi Perfil' }];
@@ -47,6 +47,8 @@ export class ProfileComponent implements OnInit {
   readonly showSuccessNotification = signal(false);
   readonly profileJustSaved = signal(false);
   readonly profileSaveError = signal<string | null>(null);
+  readonly authenticatedEmail = signal<string | null>(null);
+  private readonly authenticatedName = signal<string | null>(null);
   private successTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Actividades: Solo las últimas dos en la vista previa del perfil
@@ -65,6 +67,7 @@ export class ProfileComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    void this.loadAuthenticatedEmail();
     if (!this.newsletter.currentMember()) {
       this.newsletter.isAuthenticated().then((authed) => {
         if (!authed) {
@@ -82,10 +85,35 @@ export class ProfileComponent implements OnInit {
     }
   }
 
+  private async loadAuthenticatedEmail(): Promise<void> {
+    const [email, name] = await Promise.all([
+      this.newsletter.getAuthenticatedEmail(),
+      this.newsletter.getAuthenticatedName(),
+    ]);
+    if (email) {
+      this.authenticatedEmail.set(email);
+    }
+    if (name) {
+      this.authenticatedName.set(name);
+      if (!this.memberFullName() && !this.newsletter.currentMember()?.fullName) {
+        this.memberFullName.set(name);
+      }
+    }
+  }
+
   private syncFieldsFromMember(): void {
     const m = this.newsletter.currentMember();
-    if (!m) return;
-    if (m.fullName && !this.memberFullName()) this.memberFullName.set(m.fullName);
+    if (!m) {
+      if (this.authenticatedName() && !this.memberFullName()) {
+        this.memberFullName.set(this.authenticatedName()!);
+      }
+      return;
+    }
+    if (m.fullName) {
+      this.memberFullName.set(m.fullName);
+    } else if (this.authenticatedName() && !this.memberFullName()) {
+      this.memberFullName.set(this.authenticatedName()!);
+    }
     const dni = m.dni || m.documentNumber || '';
     if (dni && !this.memberDni()) this.memberDni.set(dni);
     if (m.phone && !this.memberPhone()) this.memberPhone.set(m.phone);
@@ -111,7 +139,7 @@ export class ProfileComponent implements OnInit {
       this.profileJustSaved.set(false);
       this.newsletter.profileSuccessHighlight.set(false);
       this.successTimer = null;
-    }, 3000);
+    }, AUTH_SUCCESS_FEEDBACK_DURATION_MS);
   }
 
   // Menús de navegación idénticos a los de la landing /
@@ -141,9 +169,6 @@ export class ProfileComponent implements OnInit {
   readonly founderSuccess = signal(false);
 
   // Suscripción de Membresía Mensual
-  readonly subscribingMembership = signal(false);
-  readonly membershipPaymentSuccess = signal(false);
-
   // Acceso de Socios (Login Modal)
   readonly loginEmail = signal('');
   readonly loginError = signal<string | null>(null);
@@ -228,61 +253,6 @@ export class ProfileComponent implements OnInit {
     } else {
       this.selectedExperience.set(exp);
     }
-  }
-
-  openMembershipPayment(tier?: string): void {
-    this.openModal('payments');
-  }
-
-  selectGateway(type: PaymentGatewayType): void {
-    this.paymentManager.setGateway(type);
-  }
-
-  async confirmMembershipPayment(): Promise<void> {
-    this.subscribingMembership.set(true);
-    await new Promise((resolve) => setTimeout(resolve, 800));
-
-    const receiptNumber = 'REC-2026-CAT-' + Math.floor(1000 + Math.random() * 9000);
-
-    this.activityService.addActivity({
-      id: 'act_' + Date.now(),
-      userId: this.newsletter.currentMember()?.id || 'user_current',
-      experienceId: 'membership_monthly',
-      title: 'Membresía Mensual · Socio Pleno (Temporada Inaugural)',
-      region: 'Catamarca · Club de Experiencias',
-      altitude: 'Sede Central',
-      dateLabel: new Intl.DateTimeFormat('es-AR', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-      }).format(new Date()),
-      status: 'completada',
-      coverImage: '/assets/images/laguna_blanca.jpg',
-      provider: {
-        name: 'EXPERIENCIAS.CLUB Oficial',
-        category: 'Membresía & Cuota Social',
-        contactPhone: '+54 9 3834 89-2104',
-      },
-      receipt: {
-        receiptNumber,
-        transactionId: 'SUB-' + Math.random().toString(36).substring(2, 9).toUpperCase(),
-        gateway: this.paymentManager.activeGatewayType(),
-        gatewayDisplayName: this.paymentManager.activeGateway().displayName,
-        amountArs: 23000,
-        amountUsd: 23,
-        paidAt: new Date().toLocaleString('es-AR'),
-        paymentMethodSummary: `Cuota Mensual · ${this.paymentManager.activeGateway().displayName}`,
-        payerEmail: this.newsletter.currentMember()?.email || 'socio@experiencias.club',
-        payerName: this.newsletter.currentMember()?.fullName || 'Socio Pleno Catamarca',
-        authCode: 'AUTH-' + Math.random().toString(36).substring(2, 8).toUpperCase(),
-        status: 'aprobado',
-      },
-      memoriesCount: 0,
-      memoryPhotos: [],
-    });
-
-    this.subscribingMembership.set(false);
-    this.membershipPaymentSuccess.set(true);
   }
 
   openFounderApplication(): void {

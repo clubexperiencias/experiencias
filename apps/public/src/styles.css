@@ -13,7 +13,7 @@
   --color-bg-dark: hsl(220, 24%, 7%);
   --color-bg-overlay: hsla(220, 24%, 6%, 0.52);
   --color-bg-card: hsla(220, 18%, 13%, 0.65);
-  
+
   /* Glassmorphism tokens */
   --glass-bg: hsla(220, 20%, 15%, 0.45);
   --glass-bg-hover: hsla(220, 20%, 22%, 0.62);
@@ -29,7 +29,7 @@
   --color-text-subtle: hsla(0, 0%, 100%, 0.35);
 
   /* Acentos de Catamarca */
-  --color-gold: #FFD42A;
+  --color-gold: #ffd42a;
   --color-gold-hover: #ffe066;
   --color-copper: hsl(22, 65%, 58%);
   --color-success: hsl(152, 65%, 56%);
@@ -54,13 +54,16 @@
 }
 
 /* Reset y Base */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
-html, body {
+html,
+body {
   width: 100%;
   min-height: 100%;
   background-color: #ffffff;
@@ -110,7 +113,8 @@ input {
 }
 
 @keyframes pulseGlow {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow: 0 0 20px rgba(255, 212, 42, 0.2);
   }
   50% {
@@ -203,4 +207,3 @@ mat-icon {
   display: none !important;
   content: none !important;
 }
-

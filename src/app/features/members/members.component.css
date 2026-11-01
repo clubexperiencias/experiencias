@@ -198,7 +198,10 @@
   flex-direction: column;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+  transition:
+    transform 0.25s ease,
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
 }
 
 .tier-card:hover {
@@ -208,14 +211,14 @@
 }
 
 .tier-card:not(.featured-tier):not(.founder-tier) {
-  background: #779A9A;
+  background: #779a9a;
   border: 1px solid rgba(255, 255, 255, 0.28);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
 }
 
 .tier-card:not(.featured-tier):not(.founder-tier):hover {
   transform: translateY(-4px);
-  border-color: #8BBABA;
+  border-color: #8bbaba;
   box-shadow: 0 16px 40px rgba(255, 255, 255, 0.35);
 }
 
@@ -225,7 +228,7 @@
 }
 
 .tier-card:not(.featured-tier):not(.founder-tier).user-current-tier {
-  background: #779A9A;
+  background: #779a9a;
   border-color: rgba(255, 255, 255, 0.65);
 }
 
@@ -708,7 +711,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #80B3FF;
+  color: #80b3ff;
   flex-shrink: 0;
 }
 
@@ -716,7 +719,7 @@
   font-size: 0.62rem;
   letter-spacing: 0.14em;
   font-weight: 700;
-  color: #80B3FF;
+  color: #80b3ff;
   display: block;
 }
 
@@ -748,7 +751,7 @@
 }
 
 .perk-check {
-  color: #80B3FF;
+  color: #80b3ff;
   font-weight: bold;
 }
 
@@ -809,7 +812,7 @@
 .field-input:focus,
 .field-textarea:focus {
   outline: none;
-  border-color: #80B3FF;
+  border-color: #80b3ff;
 }
 
 .founder-agreement-box {
@@ -838,8 +841,8 @@
 }
 
 .custom-checkbox.checked {
-  background: #80B3FF;
-  border-color: #80B3FF;
+  background: #80b3ff;
+  border-color: #80b3ff;
 }
 
 .agreement-text strong {
@@ -870,7 +873,7 @@
   align-items: center;
   gap: 0.6rem;
   padding: 0.9rem 1.6rem;
-  background: #80B3FF;
+  background: #80b3ff;
   color: #000000;
   font-weight: 700;
   font-size: 0.92rem;
@@ -893,7 +896,7 @@
 /* Success Card */
 .founder-success-card {
   background: rgba(0, 0, 0, 0.35);
-  border: 1px solid #80B3FF;
+  border: 1px solid #80b3ff;
   border-radius: 2px;
   padding: 2.2rem 1.8rem;
   text-align: center;
@@ -904,11 +907,11 @@
   height: 56px;
   border-radius: 50%;
   background: rgba(128, 179, 255, 0.15);
-  border: 2px solid #80B3FF;
+  border: 2px solid #80b3ff;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #80B3FF;
+  color: #80b3ff;
   margin-bottom: 1rem;
 }
 
@@ -922,7 +925,7 @@
   font-size: 0.68rem;
   letter-spacing: 0.16em;
   font-weight: 700;
-  color: #80B3FF;
+  color: #80b3ff;
   display: block;
   margin-bottom: 0.3rem;
 }
@@ -983,7 +986,6 @@
   max-width: 580px;
   margin: 0 auto;
 }
-
 
 /* Responsive */
 @media (max-width: 820px) {

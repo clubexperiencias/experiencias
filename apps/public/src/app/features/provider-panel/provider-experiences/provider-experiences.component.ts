@@ -1,32 +1,102 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { ProviderStoreService } from '../../../core/services/provider-store.service';
 import { ProviderExperience } from '../../../core/models/bank-transfer.model';
 import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
+import { ProviderExperienceProposalModalComponent } from '../provider-experience-proposal-modal/provider-experience-proposal-modal.component';
+import { ProviderExperienceAlbumModalComponent } from '../provider-experience-album-modal/provider-experience-album-modal.component';
 
-type ExpFilterTab = 'todas' | 'publicadas' | 'revision' | 'borradores' | 'ocultas';
+type ExpFilterTab = 'todas' | 'publicadas' | 'solicitudes' | 'revision' | 'borradores' | 'ocultas';
 
 @Component({
   selector: 'app-provider-experiences',
   standalone: true,
-  imports: [RouterLink, MatIconModule, ArsPipe, FechaPipe],
+  imports: [
+    RouterLink,
+    FormsModule,
+    MatIconModule,
+    ArsPipe,
+    FechaPipe,
+    ProviderExperienceProposalModalComponent,
+    ProviderExperienceAlbumModalComponent,
+  ],
   templateUrl: './provider-experiences.component.html',
   styleUrl: './provider-experiences.component.css',
 })
 export class ProviderExperiencesComponent {
   readonly store = inject(ProviderStoreService);
+  readonly stats = this.store.providerStats;
 
   readonly activeTab = signal<ExpFilterTab>('todas');
+  readonly searchQuery = signal('');
+  readonly requests = this.store.providerExperienceRequests;
+  readonly requestModalOpen = signal(false);
+  readonly albumModalExp = signal<ProviderExperience | null>(null);
   readonly selectedExpForDelete = signal<ProviderExperience | null>(null);
   readonly deleteErrorModal = signal<string | null>(null);
   readonly hideReasonModal = signal<ProviderExperience | null>(null);
   readonly hideReasonText = signal('');
   readonly feedbackToast = signal<string | null>(null);
 
+  readonly publishedCount = computed(
+    () => this.store.providerExperiences().filter((e) => e.status === 'publicada').length,
+  );
+  readonly inReviewCount = computed(
+    () =>
+      this.store
+        .providerExperiences()
+        .filter(
+          (e) =>
+            e.status === 'pendiente_publicacion' ||
+            e.status === 'pendiente_ocultar' ||
+            e.status === 'pendiente_eliminar',
+        ).length,
+  );
+  readonly draftsCount = computed(
+    () => this.store.providerExperiences().filter((e) => e.status === 'borrador').length,
+  );
+  readonly hiddenCount = computed(
+    () => this.store.providerExperiences().filter((e) => e.status === 'oculta').length,
+  );
+  readonly pendingRequestsCount = computed(
+    () => this.requests().filter((r) => r.status === 'pendiente').length,
+  );
+
+  readonly filteredRequests = computed(() => {
+    const list = this.requests();
+    const query = this.searchQuery().trim().toLowerCase();
+    if (!query) return list;
+    return list.filter(
+      (r) =>
+        r.title.toLowerCase().includes(query) ||
+        r.kicker?.toLowerCase().includes(query) ||
+        r.region?.toLowerCase().includes(query) ||
+        r.subheading?.toLowerCase().includes(query),
+    );
+  });
+
+  openRequestModal(): void {
+    this.requestModalOpen.set(true);
+  }
+
+  openAlbumModal(exp: ProviderExperience): void {
+    this.albumModalExp.set(exp);
+  }
+
+  closeAlbumModal(): void {
+    this.albumModalExp.set(null);
+  }
+
+  onAlbumSaved(updated: ProviderExperience): void {
+    this.showToast(`📸 Álbum de "${updated.title}" guardado correctamente.`);
+  }
+
   readonly rows = computed(() => {
     const list = this.store.providerExperiences();
     const tab = this.activeTab();
+    const query = this.searchQuery().trim().toLowerCase();
 
     return list
       .filter((exp) => {
@@ -41,6 +111,16 @@ export class ProviderExperiencesComponent {
         if (tab === 'borradores') return exp.status === 'borrador';
         if (tab === 'ocultas') return exp.status === 'oculta';
         return true;
+      })
+      .filter((exp) => {
+        if (!query) return true;
+        return (
+          exp.title.toLowerCase().includes(query) ||
+          exp.tagline.toLowerCase().includes(query) ||
+          exp.region.toLowerCase().includes(query) ||
+          exp.difficulty.toLowerCase().includes(query) ||
+          exp.description.toLowerCase().includes(query)
+        );
       })
       .map((experience) => {
         const submissions = this.store.submissionsFor(experience.id);
@@ -106,6 +186,28 @@ export class ProviderExperiencesComponent {
       const msg = err instanceof Error ? err.message : 'Error al eliminar';
       this.showToast(`⚠️ ${msg}`);
     }
+  }
+
+  getWhatsappEditOrPauseLink(exp: ProviderExperience): string {
+    const provider = this.store.currentProvider();
+    const name = provider?.name || 'Prestador';
+    const agency = provider?.agency ? ` (${provider.agency})` : '';
+    const text = `Hola! Soy ${name}${agency}. Me comunico desde el Portal de Prestadores para realizar una solicitud de edición o pausa de la experiencia "${exp.title}" (ID: ${exp.id}). ¿Me podrían ayudar con la gestión?`;
+    return `https://wa.me/5493515490431?text=${encodeURIComponent(text)}`;
+  }
+
+  getExperiencePublicUrl(exp: ProviderExperience): string {
+    if (exp.publicUrl && exp.publicUrl.trim().length > 0) {
+      return exp.publicUrl.trim();
+    }
+    return `https://experiencias.club/experiencias/${exp.slug}`;
+  }
+
+  getRequestWhatsappLink(req: { title: string; kicker?: string; id?: string }): string {
+    const provider = this.store.currentProvider();
+    const name = provider?.name || 'Prestador';
+    const text = `Hola! Soy ${name}. Me comunico desde el Portal de Prestadores para consultar el estado de la propuesta de experiencia "${req.title}". ¿Tienen alguna novedad?`;
+    return `https://wa.me/5493515490431?text=${encodeURIComponent(text)}`;
   }
 
   onAdminSimulateApprove(expId: string): void {

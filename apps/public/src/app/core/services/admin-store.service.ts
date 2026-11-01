@@ -32,7 +32,7 @@ export interface AdminMember {
 }
 
 export type ApplicationType = 'prestador' | 'fundador';
-export type ApplicationStatus = 'pendiente' | 'aprobado' | 'rechazado';
+export type ApplicationStatus = 'pendiente' | 'aprobado' | 'rechazado' | 'dado_de_baja';
 
 export interface AdminApplication {
   id: string;
@@ -47,6 +47,11 @@ export interface AdminApplication {
   motivationLetter?: string;
   status: ApplicationStatus;
   createdAt: string;
+  // Datos de cobro y fiscales del prestador gestionados por el admin
+  cbuAlias?: string;
+  cuitDni?: string;
+  bankName?: string;
+  accountHolder?: string;
 }
 
 const STORAGE_KEYS = {
@@ -97,8 +102,12 @@ export class AdminStoreService {
     () => this.providerStore.experienceRequests().filter((r) => r.status === 'pendiente').length,
   );
 
-  approveExperienceRequest(id: string): void {
-    this.providerStore.approveExperienceRequest(id);
+  async approveExperienceRequest(id: string, publicUrl?: string): Promise<boolean> {
+    return this.providerStore.approveExperienceRequest(id, publicUrl);
+  }
+
+  updateExperiencePublicUrl(expId: string, publicUrl: string): void {
+    this.providerStore.updateExperiencePublicUrl(expId, publicUrl);
   }
 
   rejectExperienceRequest(id: string): void {
@@ -112,12 +121,14 @@ export class AdminStoreService {
     const fundadores = list.filter((a) => a.type === 'fundador');
     const pendientes = list.filter((a) => a.status === 'pendiente');
     const aprobadas = list.filter((a) => a.status === 'aprobado');
+    const bajas = list.filter((a) => a.status === 'dado_de_baja');
     return {
       total: list.length,
       prestadoresCount: prestadores.length,
       fundadoresCount: fundadores.length,
       pendientesCount: pendientes.length,
       aprobadasCount: aprobadas.length,
+      bajasCount: bajas.length,
     };
   });
 
@@ -139,9 +150,7 @@ export class AdminStoreService {
     const pendingRevenue = pendingSubs.reduce((sum, s) => sum + s.amountArs, 0);
     const totalEnrolled = approvedSubs.reduce((sum, s) => sum + s.participants, 0);
 
-    const conversionRate = list.length > 0
-      ? Math.round((converted.length / list.length) * 100)
-      : 0;
+    const conversionRate = list.length > 0 ? Math.round((converted.length / list.length) * 100) : 0;
 
     // Métricas temporales (Día, Semana, Mes)
     const now = new Date();
@@ -253,7 +262,8 @@ export class AdminStoreService {
         .maybeSingle();
 
       const userMeta = data.user?.user_metadata || {};
-      const fullName = (adminRow as any)?.name || userMeta['full_name'] || userMeta['name'] || email.split('@')[0];
+      const fullName =
+        (adminRow as any)?.name || userMeta['full_name'] || userMeta['name'] || email.split('@')[0];
       const avatar = '/assets/images/gonza.jpg';
 
       if (adminRow) {
@@ -287,7 +297,8 @@ export class AdminStoreService {
     }
 
     try {
-      const redirectOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://admin.experiencias.club';
+      const redirectOrigin =
+        typeof window !== 'undefined' ? window.location.origin : 'https://admin.experiencias.club';
       const { error } = await this.supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -371,7 +382,9 @@ export class AdminStoreService {
     try {
       if (isSupabaseConfigured()) {
         // 1. Intentar RPC get_admin_all_members
-        const { data: rpcData, error: rpcErr } = await this.supabase.rpc('get_admin_all_members' as any);
+        const { data: rpcData, error: rpcErr } = await this.supabase.rpc(
+          'get_admin_all_members' as any,
+        );
 
         if (!rpcErr && rpcData) {
           const payload = rpcData as any;
@@ -443,7 +456,9 @@ export class AdminStoreService {
             membershipTier: s.membership_tier || 'emergente',
             googleLinked: Boolean(s.google_linked || s.auth_user_id),
             converted: hasPayment,
-            experiencesWishlist: Array.isArray(s.experiences_wishlist) ? s.experiences_wishlist : [],
+            experiencesWishlist: Array.isArray(s.experiences_wishlist)
+              ? s.experiences_wishlist
+              : [],
             experiencesOther: s.experiences_other,
             createdAt: s.created_at,
           };
@@ -481,7 +496,10 @@ export class AdminStoreService {
           return;
         }
 
-        console.warn('[AdminStore] Error al consultar tablas de miembros en Supabase:', sociosRes.error || waitlistRes.error);
+        console.warn(
+          '[AdminStore] Error al consultar tablas de miembros en Supabase:',
+          sociosRes.error || waitlistRes.error,
+        );
         this._isLoadingMembers.set(false);
         return;
       }
@@ -515,7 +533,9 @@ export class AdminStoreService {
     try {
       if (isSupabaseConfigured()) {
         // 1. Intentar RPC get_admin_all_submissions
-        const { data: rpcData, error: rpcErr } = await this.supabase.rpc('get_admin_all_submissions' as any);
+        const { data: rpcData, error: rpcErr } = await this.supabase.rpc(
+          'get_admin_all_submissions' as any,
+        );
 
         if (!rpcErr && Array.isArray(rpcData)) {
           const subs: TransferSubmission[] = rpcData.map((p: any) => ({
@@ -575,7 +595,7 @@ export class AdminStoreService {
               mimeType: p.receipt_mime_type || 'image/jpeg',
               sizeBytes: p.receipt_size_bytes || 1,
               url: p.receipt_url,
-              storageKey: p.receipt_storage_key,
+              storageKey: p.receipt_storage_key || p.receipt_url,
               provider: p.receipt_storage_provider,
             },
             status: p.status,
@@ -590,7 +610,10 @@ export class AdminStoreService {
         }
 
         // Si fallaron ambas en Supabase configurado, no sobrescribir con datos de prueba
-        console.warn('[AdminStore] Error al cargar comprobantes desde Supabase configurado:', rpcErr || tableErr);
+        console.warn(
+          '[AdminStore] Error al cargar comprobantes desde Supabase configurado:',
+          rpcErr || tableErr,
+        );
         this._isLoadingSubmissions.set(false);
         return;
       }
@@ -610,6 +633,29 @@ export class AdminStoreService {
       this._submissions.set(this.generateSampleSubmissions());
     }
     this._isLoadingSubmissions.set(false);
+  }
+
+  async getSignedReceiptUrl(storageKey: string): Promise<string> {
+    if (!isSupabaseConfigured() || !storageKey) return storageKey;
+    if (
+      storageKey.startsWith('http://') ||
+      storageKey.startsWith('https://') ||
+      storageKey.startsWith('data:') ||
+      storageKey.startsWith('blob:')
+    ) {
+      return storageKey;
+    }
+    try {
+      const { data, error } = await this.supabase.storage
+        .from('comprobantes')
+        .createSignedUrl(storageKey, 3600);
+      if (!error && data?.signedUrl) {
+        return data.signedUrl;
+      }
+    } catch (err) {
+      console.warn('[AdminStore] Error al generar signed URL de comprobante:', err);
+    }
+    return storageKey;
   }
 
   async reviewSubmission(
@@ -645,11 +691,11 @@ export class AdminStoreService {
       list.map((s) =>
         s.id === submissionId
           ? {
-            ...s,
-            status,
-            rejectionReason: status === 'rechazado' ? rejectionReason : undefined,
-            reviewedAt: new Date().toISOString(),
-          }
+              ...s,
+              status,
+              rejectionReason: status === 'rechazado' ? rejectionReason : undefined,
+              reviewedAt: new Date().toISOString(),
+            }
           : s,
       ),
     );
@@ -660,7 +706,8 @@ export class AdminStoreService {
       if (targetSub) {
         this._members.update((list) =>
           list.map((m) =>
-            m.email.toLowerCase() === targetSub.email.toLowerCase() && m.membershipTier === 'emergente'
+            m.email.toLowerCase() === targetSub.email.toLowerCase() &&
+            m.membershipTier === 'emergente'
               ? { ...m, membershipTier: 'activo' }
               : m,
           ),
@@ -680,7 +727,7 @@ export class AdminStoreService {
 
     try {
       if (isSupabaseConfigured()) {
-        const [prestadoresRes, fundadoresRes] = await Promise.all([
+        const [prestadoresRes, fundadoresRes, providerAccessRes] = await Promise.all([
           this.supabase
             .from('postulaciones_prestadores' as any)
             .select('*')
@@ -689,21 +736,49 @@ export class AdminStoreService {
             .from('postulaciones_fundadores' as any)
             .select('*')
             .order('created_at', { ascending: false }),
+          this.supabase
+            .from('provider_access' as any)
+            .select('email, status, cbu_alias, cuit_dni, bank_name, account_holder'),
         ]);
 
-        const prestadores: AdminApplication[] = (prestadoresRes.data || []).map((p: any) => ({
-          id: p.id,
-          type: 'prestador' as const,
-          fullName: p.full_name || 'Sin nombre',
-          email: p.email,
-          phone: p.phone || '—',
-          category: p.category || 'guia_montaña',
-          region: p.region || 'Puna & Fiambalá',
-          website: p.website || '',
-          description: p.description || '',
-          status: p.status === 'aprobado' ? 'aprobado' : p.status === 'rechazado' ? 'rechazado' : 'pendiente',
-          createdAt: p.created_at || new Date().toISOString(),
-        }));
+        const providerAccessByEmail = new Map<string, any>(
+          (providerAccessRes.data || []).map((pa: any) => [
+            (pa.email || '').trim().toLowerCase(),
+            pa,
+          ]),
+        );
+
+        const prestadores: AdminApplication[] = (prestadoresRes.data || []).map((p: any) => {
+          const emailNorm = (p.email || '').trim().toLowerCase();
+          const pa = providerAccessByEmail.get(emailNorm);
+          const rawStatus = pa?.status || p.status;
+          const status =
+            rawStatus === 'aprobado'
+              ? 'aprobado'
+              : rawStatus === 'rechazado'
+                ? 'rechazado'
+                : rawStatus === 'dado_de_baja'
+                  ? 'dado_de_baja'
+                  : 'pendiente';
+
+          return {
+            id: p.id,
+            type: 'prestador' as const,
+            fullName: p.full_name || 'Sin nombre',
+            email: p.email,
+            phone: p.phone || '—',
+            category: p.category || 'guia_montaña',
+            region: p.region || 'Puna & Fiambalá',
+            website: p.website || '',
+            description: p.description || '',
+            status,
+            accountHolder: pa?.account_holder || undefined,
+            cuitDni: pa?.cuit_dni || undefined,
+            cbuAlias: pa?.cbu_alias || undefined,
+            bankName: pa?.bank_name || undefined,
+            createdAt: p.created_at || new Date().toISOString(),
+          };
+        });
 
         const fundadores: AdminApplication[] = (fundadoresRes.data || []).map((f: any) => ({
           id: f.id,
@@ -712,11 +787,14 @@ export class AdminStoreService {
           email: f.email,
           phone: f.phone || '—',
           motivationLetter: f.motivation_letter || '',
-          status: (f.status === 'aprobada' || f.status === 'aprobado')
-            ? 'aprobado'
-            : (f.status === 'rechazada' || f.status === 'rechazado')
-              ? 'rechazado'
-              : 'pendiente',
+          status:
+            f.status === 'aprobada' || f.status === 'aprobado'
+              ? 'aprobado'
+              : f.status === 'dado_de_baja'
+                ? 'dado_de_baja'
+                : f.status === 'rechazada' || f.status === 'rechazado'
+                  ? 'rechazado'
+                  : 'pendiente',
           createdAt: f.created_at || new Date().toISOString(),
         }));
 
@@ -747,30 +825,115 @@ export class AdminStoreService {
     id: string,
     type: ApplicationType,
     status: ApplicationStatus,
+    bankingData?: {
+      accountHolder?: string;
+      cuitDni?: string;
+      cbuAlias?: string;
+      bankName?: string;
+    },
   ): Promise<boolean> {
+    const app = this._applications().find((a) => a.id === id);
     try {
       if (isSupabaseConfigured()) {
-        const table = type === 'prestador' ? 'postulaciones_prestadores' : 'postulaciones_fundadores';
-        const dbStatus = type === 'fundador'
-          ? (status === 'aprobado' ? 'aprobada' : status === 'rechazado' ? 'rechazada' : 'en_evaluacion')
-          : status;
+        const table =
+          type === 'prestador' ? 'postulaciones_prestadores' : 'postulaciones_fundadores';
+        const dbStatus =
+          type === 'fundador'
+            ? status === 'aprobado'
+              ? 'aprobada'
+              : status === 'dado_de_baja'
+                ? 'dado_de_baja'
+                : status === 'rechazado'
+                  ? 'rechazada'
+                  : 'en_evaluacion'
+            : status;
 
-        await this.supabase
+        const { error: appErr } = await this.supabase
           .from(table as any)
           .update({
             status: dbStatus,
             updated_at: new Date().toISOString(),
           })
           .eq('id', id);
+
+        if (appErr) {
+          console.warn('[AdminStore] Error al actualizar postulación en Supabase:', appErr);
+          return false;
+        }
+
+        if (type === 'prestador' && app) {
+          const email = app.email.trim().toLowerCase();
+          const active = status === 'aprobado';
+          const paStatus =
+            status === 'aprobado'
+              ? 'aprobado'
+              : status === 'pendiente'
+                ? 'pendiente'
+                : 'dado_de_baja';
+
+          const upsertPayload: Record<string, any> = {
+            email,
+            name: bankingData?.accountHolder ?? (app.accountHolder || app.fullName),
+            agency: app.description || app.category || 'Prestador Oficial',
+            active,
+            status: paStatus,
+          };
+          const cbu = bankingData?.cbuAlias ?? app.cbuAlias;
+          if (cbu !== undefined) upsertPayload['cbu_alias'] = cbu;
+          const cuit = bankingData?.cuitDni ?? app.cuitDni;
+          if (cuit !== undefined) upsertPayload['cuit_dni'] = cuit;
+          const bank = bankingData?.bankName ?? app.bankName;
+          if (bank !== undefined) upsertPayload['bank_name'] = bank;
+          const holder = bankingData?.accountHolder ?? (app.accountHolder || app.fullName);
+          if (holder !== undefined) upsertPayload['account_holder'] = holder;
+          if (app.phone) upsertPayload['phone'] = app.phone;
+
+          const { error: paErr } = await (this.supabase.from('provider_access') as any).upsert(
+            upsertPayload,
+            { onConflict: 'email' },
+          );
+          if (paErr) {
+            console.warn('[AdminStore] Error al upsert provider_access en Supabase:', paErr);
+            return false;
+          }
+        }
       }
     } catch (err) {
       console.warn('[AdminStore] Error actualizando estado de postulación en Supabase:', err);
+      return false;
     }
 
     this._applications.update((list) =>
-      list.map((a) => (a.id === id ? { ...a, status } : a)),
+      list.map((a) =>
+        a.id === id
+          ? {
+              ...a,
+              status,
+              ...(bankingData
+                ? {
+                    accountHolder: bankingData.accountHolder ?? a.accountHolder,
+                    cuitDni: bankingData.cuitDni ?? a.cuitDni,
+                    cbuAlias: bankingData.cbuAlias ?? a.cbuAlias,
+                    bankName: bankingData.bankName ?? a.bankName,
+                  }
+                : {}),
+            }
+          : a,
+      ),
     );
     this.persistApplications(this._applications());
+
+    if (type === 'prestador' && app) {
+      this.providerStore.syncProviderStatusFromAdmin(app.email, status, {
+        name: bankingData?.accountHolder ?? (app.accountHolder || app.fullName),
+        agency: app.description || app.category || 'Prestador Oficial',
+        phone: app.phone,
+        cuitDni: bankingData?.cuitDni ?? app.cuitDni ?? '',
+        cbuAlias: bankingData?.cbuAlias ?? app.cbuAlias ?? '',
+        bankName: bankingData?.bankName ?? app.bankName ?? '',
+      });
+    }
+
     return true;
   }
 
@@ -798,12 +961,17 @@ export class AdminStoreService {
         id: 'post-1',
         type: 'prestador',
         fullName: 'Esteban Carrizo (Catamarca 4x4)',
+        accountHolder: 'Esteban Carrizo',
+        cuitDni: '20-31889900-4',
+        cbuAlias: 'CATAMARCA.4X4.MP',
+        bankName: 'Mercado Pago',
         email: 'esteban.guias@catamarca4x4.com',
         phone: '+54 383 490 2211',
         category: 'transporte_4x4',
         region: 'Puna & Fiambalá',
         website: 'https://catamarca4x4.com',
-        description: 'Flota de 3 camionetas Toyota Hilux 4x4 equipadas para alta montaña, rescate, tubo de oxígeno y comunicaciones VHF/Satelital.',
+        description:
+          'Flota de 3 camionetas Toyota Hilux 4x4 equipadas para alta montaña, rescate, tubo de oxígeno y comunicaciones VHF/Satelital.',
         status: 'pendiente',
         createdAt: new Date(Date.now() - 3 * 3600000).toISOString(),
       },
@@ -813,7 +981,8 @@ export class AdminStoreService {
         fullName: 'Mariana Zavaleta',
         email: 'mariana.zavaleta@fundacion.org',
         phone: '+54 11 4455 8899',
-        motivationLetter: 'Deseo sumarme al cuadro fundacional para colaborar con la preservación arqueológica de los valles del Shincal y respaldar expediciones de impacto ecológico positivo.',
+        motivationLetter:
+          'Deseo sumarme al cuadro fundacional para colaborar con la preservación arqueológica de los valles del Shincal y respaldar expediciones de impacto ecológico positivo.',
         status: 'pendiente',
         createdAt: new Date(Date.now() - 14 * 3600000).toISOString(),
       },
@@ -821,14 +990,37 @@ export class AdminStoreService {
         id: 'post-3',
         type: 'prestador',
         fullName: 'Ignacio Jalil (Travesías Náuticas)',
+        accountHolder: 'Ignacio Jalil',
+        cuitDni: '20-33445566-9',
+        cbuAlias: 'JALIL.KAYAK.MP',
+        bankName: 'Ualá Bank S.A.U',
         email: 'ignacio@jumealkayak.com.ar',
         phone: '+54 383 455 8820',
         category: 'kayak_nautica',
         region: 'San Fernando del Valle',
         website: 'https://instagram.com/jumealkayak',
-        description: 'Guía habilitado de kayak y SUP con 12 embarcaciones completas, chalecos certificados y lancha de apoyo en el dique El Jumeal.',
+        description:
+          'Guía habilitado de kayak y SUP con 12 embarcaciones completas, chalecos certificados y lancha de apoyo en el dique El Jumeal.',
         status: 'aprobado',
         createdAt: new Date(Date.now() - 48 * 3600000).toISOString(),
+      },
+      {
+        id: 'post-4',
+        type: 'prestador',
+        fullName: 'Carlos Tula (Andes Aventura)',
+        accountHolder: 'Carlos Alberto Tula',
+        cuitDni: '20-25667788-3',
+        cbuAlias: 'ANDES.AVENTURA',
+        bankName: 'Banco Macro',
+        email: 'carlos.tula@andescatamarca.com',
+        phone: '+54 383 411 9900',
+        category: 'alta_montana',
+        region: 'Paso de San Francisco',
+        website: 'https://andescatamarca.com',
+        description:
+          'Servicio de mulas y porteadores en seismiles. Actualmente suspendido por veda invernal.',
+        status: 'dado_de_baja',
+        createdAt: new Date(Date.now() - 72 * 3600000).toISOString(),
       },
     ];
   }
@@ -840,7 +1032,18 @@ export class AdminStoreService {
   generateMembersRosterText(): string {
     const list = this._members();
     const rows = [
-      ['Nro Socio', 'Tipo', 'Nombre y Apellido', 'DNI', 'Email', 'Teléfono', 'Nivel', 'Google Vinculado', 'Convertido', 'Fecha Alta'].join('\t'),
+      [
+        'Nro Socio',
+        'Tipo',
+        'Nombre y Apellido',
+        'DNI',
+        'Email',
+        'Teléfono',
+        'Nivel',
+        'Google Vinculado',
+        'Convertido',
+        'Fecha Alta',
+      ].join('\t'),
       ...list.map((m) =>
         [
           m.position ? `#${m.position}` : 'Waitlist',
@@ -1031,4 +1234,3 @@ export class AdminStoreService {
     ];
   }
 }
-

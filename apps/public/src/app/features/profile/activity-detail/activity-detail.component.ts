@@ -5,7 +5,10 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ActivityHistoryService } from '../../../core/services/activity-history.service';
 import { NewsletterService } from '../../../core/services/newsletter.service';
 import { ActivityRecord, CommunityPhoto } from '../../../core/models/activity-history.model';
-import { BreadcrumbComponent, BreadcrumbItem } from '../../../shared/components/breadcrumb/breadcrumb.component';
+import {
+  BreadcrumbComponent,
+  BreadcrumbItem,
+} from '../../../shared/components/breadcrumb/breadcrumb.component';
 import { HeaderComponent } from '../../../shared/components/header/header.component';
 import { FooterComponent } from '../../../shared/components/footer/footer.component';
 
@@ -18,9 +21,16 @@ interface StagedPhoto {
 @Component({
   selector: 'app-activity-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, BreadcrumbComponent, HeaderComponent, FooterComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    RouterLink,
+    BreadcrumbComponent,
+    HeaderComponent,
+    FooterComponent,
+  ],
   templateUrl: './activity-detail.component.html',
-  styleUrls: ['./activity-detail.component.css']
+  styleUrls: ['./activity-detail.component.css'],
 })
 export class ActivityDetailComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
@@ -42,7 +52,7 @@ export class ActivityDetailComponent implements OnInit {
       { label: 'Inicio', url: '/' },
       { label: 'Mi Perfil', url: '/perfil' },
       { label: 'Actividades', url: '/perfil/actividades' },
-      { label: act ? act.title : 'Detalle de Actividad' }
+      { label: act ? act.title : 'Detalle de Actividad' },
     ];
   });
 
@@ -84,8 +94,18 @@ export class ActivityDetailComponent implements OnInit {
   formatUploadDate(dateStr: string | undefined): string {
     if (!dateStr) return '';
     const months = [
-      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+      'Enero',
+      'Febrero',
+      'Marzo',
+      'Abril',
+      'Mayo',
+      'Junio',
+      'Julio',
+      'Agosto',
+      'Septiembre',
+      'Octubre',
+      'Noviembre',
+      'Diciembre',
     ];
 
     const match = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}:\d{2})(?:\s*hs)?)?$/);
@@ -148,8 +168,8 @@ export class ActivityDetailComponent implements OnInit {
           {
             previewUrl,
             caption: '',
-            name: file.name
-          }
+            name: file.name,
+          },
         ]);
       };
       reader.readAsDataURL(file);
@@ -177,13 +197,13 @@ export class ActivityDetailComponent implements OnInit {
       const success = this.activityService.uploadCommunityPhotos(
         this.slug(),
         photos.map((p) => ({ url: p.previewUrl, caption: p.caption })),
-        this.authorSignature()
+        this.authorSignature(),
       );
 
       this.isUploading.set(false);
       if (success) {
         this.uploadSuccessMessage.set(
-          `¡${photos.length} foto${photos.length > 1 ? 's subidas' : ' subida'} con éxito al álbum de la actividad!`
+          `¡${photos.length} foto${photos.length > 1 ? 's subidas' : ' subida'} con éxito al álbum de la actividad!`,
         );
         this.stagedPhotos.set([]);
       } else {
@@ -203,7 +223,7 @@ export class ActivityDetailComponent implements OnInit {
     const success = this.activityService.addReview(this.slug(), {
       rating: this.selectedRating(),
       comment,
-      authorSignature: this.authorSignature()
+      authorSignature: this.authorSignature(),
     });
 
     if (success) {

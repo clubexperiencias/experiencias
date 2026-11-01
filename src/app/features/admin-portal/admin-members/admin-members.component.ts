@@ -22,7 +22,8 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
             <a routerLink="/dashboard" class="btn-back-panel">Volver al Panel</a>
           </div>
           <p class="card-subheading">
-            Padrón consolidado de socios emergentes, plenos, fundadores y prospectos de la lista de espera.
+            Padrón consolidado de socios emergentes, plenos, fundadores y prospectos de la lista de
+            espera.
           </p>
         </div>
       </div>
@@ -47,7 +48,10 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
         <div class="summary-item">
           <span class="sum-label">Total Socios</span>
           <strong class="sum-value">{{ store.stats().totalRecords }}</strong>
-          <span class="sum-sub">{{ store.stats().totalSocios }} confirmados + {{ store.stats().totalWaitlist }} en espera</span>
+          <span class="sum-sub"
+            >{{ store.stats().totalSocios }} confirmados + {{ store.stats().totalWaitlist }} en
+            espera</span
+          >
         </div>
       </div>
 
@@ -158,7 +162,9 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
                       @if (m.type === 'waitlist') {
                         <span class="member-sub-hint">Pendiente de completar formulario</span>
                       } @else if (m.experiencesWishlist && m.experiencesWishlist.length > 0) {
-                        <span class="member-sub-hint">Deseos: {{ m.experiencesWishlist.join(', ') }}</span>
+                        <span class="member-sub-hint"
+                          >Deseos: {{ m.experiencesWishlist.join(', ') }}</span
+                        >
                       }
                     </div>
                   </td>
@@ -199,13 +205,23 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
                   <td>
                     <div class="status-tags-row">
                       @if (m.googleLinked) {
-                        <span class="google-linked-pill" title="Cuenta vinculada vía Google OAuth">GOOGLE</span>
+                        <span class="google-linked-pill" title="Cuenta vinculada vía Google OAuth"
+                          >GOOGLE</span
+                        >
                       }
 
                       @if (m.converted) {
-                        <span class="converted-pill" title="Pagó al menos una experiencia / envió comprobante">Pago OK</span>
+                        <span
+                          class="converted-pill"
+                          title="Pagó al menos una experiencia / envió comprobante"
+                          >Pago OK</span
+                        >
                       } @else {
-                        <span class="pending-conversion-pill" title="Sin comprobante ni pago registrado">Sin pago</span>
+                        <span
+                          class="pending-conversion-pill"
+                          title="Sin comprobante ni pago registrado"
+                          >Sin pago</span
+                        >
                       }
                     </div>
                   </td>
@@ -222,7 +238,12 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
 
         <!-- Acciones al pie de la tabla -->
         <div class="table-footer-actions">
-          <button type="button" class="btn-footer-action" (click)="refresh()" [disabled]="store.isLoadingMembers()">
+          <button
+            type="button"
+            class="btn-footer-action"
+            (click)="refresh()"
+            [disabled]="store.isLoadingMembers()"
+          >
             {{ store.isLoadingMembers() ? 'Actualizando...' : 'Refrescar Datos' }}
           </button>
 
@@ -380,8 +401,12 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
       }
 
       @keyframes spin {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
+        from {
+          transform: rotate(0deg);
+        }
+        to {
+          transform: rotate(360deg);
+        }
       }
 
       .export-btn {
@@ -429,7 +454,10 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
         font-size: 0.82rem;
         font-weight: 700;
         cursor: pointer;
-        transition: background 0.2s ease, border-color 0.2s ease, filter 0.2s ease;
+        transition:
+          background 0.2s ease,
+          border-color 0.2s ease,
+          filter 0.2s ease;
         background: rgba(30, 15, 8, 0.75);
         border: 1px solid rgba(255, 95, 0, 0.35);
         color: #ffffff;
@@ -503,9 +531,15 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
         color: rgba(255, 255, 255, 0.5);
       }
 
-      .text-orange { color: #ff5f00 !important; }
-      .text-blue { color: #60a5fa !important; }
-      .text-green { color: #34d399 !important; }
+      .text-orange {
+        color: #ff5f00 !important;
+      }
+      .text-blue {
+        color: #60a5fa !important;
+      }
+      .text-green {
+        color: #34d399 !important;
+      }
 
       /* Filters & Search */
       .filters-bar {
@@ -874,7 +908,18 @@ export class AdminMembersComponent {
 
   downloadRoster(): void {
     const list = this.store.members();
-    const headers = ['Nro Socio', 'Tipo', 'Nombre y Apellido', 'DNI', 'Email', 'Teléfono', 'Nivel', 'Google Vinculado', 'Convertido', 'Fecha Alta'];
+    const headers = [
+      'Nro Socio',
+      'Tipo',
+      'Nombre y Apellido',
+      'DNI',
+      'Email',
+      'Teléfono',
+      'Nivel',
+      'Google Vinculado',
+      'Convertido',
+      'Fecha Alta',
+    ];
     const escapeCsv = (val: any) => {
       let str = val != null ? String(val) : '';
       if (/^[=+\-@\t\r]/.test(str)) {
@@ -884,18 +929,20 @@ export class AdminMembersComponent {
     };
     const rows = [
       headers.map(escapeCsv).join(','),
-      ...list.map((m) => [
-        escapeCsv(m.position ? `#${m.position}` : 'Waitlist'),
-        escapeCsv(m.type === 'socio' ? 'Oficial' : 'Lista Espera'),
-        escapeCsv(m.fullName || ''),
-        escapeCsv(m.dni || ''),
-        escapeCsv(m.email || ''),
-        escapeCsv(m.phone || ''),
-        escapeCsv(m.membershipTier.toUpperCase()),
-        escapeCsv(m.googleLinked ? 'SÍ' : 'NO'),
-        escapeCsv(m.converted ? 'SÍ' : 'NO'),
-        escapeCsv(new Date(m.createdAt).toLocaleDateString('es-AR')),
-      ].join(',')),
+      ...list.map((m) =>
+        [
+          escapeCsv(m.position ? `#${m.position}` : 'Waitlist'),
+          escapeCsv(m.type === 'socio' ? 'Oficial' : 'Lista Espera'),
+          escapeCsv(m.fullName || ''),
+          escapeCsv(m.dni || ''),
+          escapeCsv(m.email || ''),
+          escapeCsv(m.phone || ''),
+          escapeCsv(m.membershipTier.toUpperCase()),
+          escapeCsv(m.googleLinked ? 'SÍ' : 'NO'),
+          escapeCsv(m.converted ? 'SÍ' : 'NO'),
+          escapeCsv(new Date(m.createdAt).toLocaleDateString('es-AR')),
+        ].join(','),
+      ),
     ];
     const blob = new Blob(['\uFEFF' + rows.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -925,4 +972,3 @@ export class AdminMembersComponent {
     }
   }
 }
-

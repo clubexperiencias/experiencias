@@ -16,7 +16,9 @@ export interface SupabaseBrowserConfig {
  * Browser-only client. Accepts the anon key exclusively; the service_role key must
  * never reach an Angular bundle.
  */
-export function createSupabaseBrowserClient(config: SupabaseBrowserConfig): ExperienciasSupabaseClient {
+export function createSupabaseBrowserClient(
+  config: SupabaseBrowserConfig,
+): ExperienciasSupabaseClient {
   assertBrowserSafeKey(config.anonKey);
 
   return createClient<Database>(config.url, config.anonKey, {

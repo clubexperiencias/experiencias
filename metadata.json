@@ -2,7 +2,5 @@
   "name": "Club de Experiencias",
   "description": "Club privado de expediciones andinas y travesías náuticas. Edición Catamarca.",
   "permissions": [],
-  "capabilities": [
-    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
-  ]
+  "capabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

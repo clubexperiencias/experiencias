@@ -1,0 +1,317 @@
+<div class="exp-photos-container">
+  <!-- Header Principal -->
+  <app-header [(mobileMenuOpen)]="mobileMenuOpen"></app-header>
+
+  <!-- Breadcrumbs de Navegación -->
+  <app-breadcrumb [items]="breadcrumbs()"></app-breadcrumb>
+
+  <!-- Fondo Ambiental y Contenido Principal -->
+  <div class="exp-photos-body app-wallpaper-body">
+    <div class="ambient-overlay"></div>
+
+    <main class="exp-photos-main">
+      <div class="exp-photos-wrapper">
+        @if (exp(); as experience) {
+          <!-- ═══════════════ HEADER CARD: TÍTULO Y DESCRIPCIÓN ═══════════════ -->
+          <div class="kayak-section-card hero-gallery-card">
+            <div class="card-inner-header">
+              <span class="section-kicker"
+                >ÁLBUM OFICIAL DE FOTOS · {{ experience.region | uppercase }}</span
+              >
+              <h1 class="card-heading">Galería de {{ experience.title }}</h1>
+              <p class="card-subheading">
+                {{
+                  experience.tagline ||
+                    'Postales y capturas fotográficas oficiales de salidas realizadas junto a los socios del Club.'
+                }}
+              </p>
+
+              <div class="exp-header-pills-row">
+                <span class="exp-header-pill">
+                  <mat-icon>place</mat-icon>
+                  {{ experience.region }}
+                </span>
+                <span class="exp-header-pill">
+                  <mat-icon>speed</mat-icon>
+                  Dificultad: {{ experience.difficulty }}
+                </span>
+                <span class="exp-header-pill">
+                  <mat-icon>schedule</mat-icon>
+                  {{ experience.durationLabel }}
+                </span>
+                <span class="exp-header-pill pill-gold">
+                  <mat-icon>payments</mat-icon>
+                  {{ experience.priceArs | ars }} por persona
+                </span>
+              </div>
+
+              <!-- Acciones Rápidas -->
+              <div class="exp-nav-actions">
+                <a [routerLink]="['/experiencias', experience.slug]" class="btn-back-exp">
+                  <mat-icon>arrow_back</mat-icon>
+                  <span>Volver a la experiencia</span>
+                </a>
+                <a [routerLink]="['/experiencias', experience.slug, 'pago']" class="btn-book-exp">
+                  <mat-icon>confirmation_number</mat-icon>
+                  <span>Reservar y pagar salida</span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- ═══════════════ 1. FOTO PRINCIPAL DE PORTADA ═══════════════ -->
+          @if (coverPhoto(); as cover) {
+            <section class="section-block">
+              <div class="section-label-bar">
+                <span class="subheading-kicker">FOTO PRINCIPAL DE PORTADA</span>
+                <span class="photos-count-badge">1 / 1</span>
+              </div>
+
+              <div
+                class="kayak-section-card featured-photo-card"
+                (click)="openLightbox(cover)"
+                role="button"
+                tabindex="0"
+                (keydown.enter)="openLightbox(cover)"
+                aria-label="Abrir foto de portada ampliada"
+              >
+                <div class="featured-media-wrap">
+                  <img
+                    [src]="cover.url"
+                    [alt]="cover.title || experience.title"
+                    class="featured-img"
+                    loading="eager"
+                  />
+                  <span class="media-tag tag-portada">
+                    <mat-icon class="tag-icon">star</mat-icon>
+                    PORTADA OFICIAL
+                  </span>
+                  <div class="media-overlay-info">
+                    <span class="media-caption-kicker"
+                      >Club de Experiencias · {{ experience.region }}</span
+                    >
+                    <h2 class="media-caption-title">{{ cover.title || experience.title }}</h2>
+                    <p class="media-caption-desc">{{ cover.caption || experience.tagline }}</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+          }
+
+          <!-- ═══════════════ 2. DOS FOTOS DESTACADAS (GRILLA 2 COLS) ═══════════════ -->
+          @if (featuredPhotos().length > 0) {
+            <section class="section-block">
+              <div class="section-label-bar">
+                <span class="subheading-kicker">FOTOS DESTACADAS DE LA EXPERIENCIA</span>
+                <span class="photos-count-badge">{{ featuredPhotos().length }} / 2</span>
+              </div>
+
+              <div class="photos-grid photos-grid-2cols">
+                @for (photo of featuredPhotos(); track photo.id; let idx = $index) {
+                  <article
+                    class="photo-card-item"
+                    (click)="openLightbox(photo)"
+                    role="button"
+                    tabindex="0"
+                    (keydown.enter)="openLightbox(photo)"
+                    aria-label="Ver foto destacada ampliada"
+                  >
+                    <div class="photo-card-media">
+                      <img
+                        [src]="photo.url"
+                        [alt]="photo.title || 'Foto destacada'"
+                        class="gallery-thumb-img"
+                        loading="lazy"
+                      />
+                      <span class="photo-tag tag-destacada">
+                        <mat-icon class="tag-icon">auto_awesome</mat-icon>
+                        DESTACADA #{{ idx + 1 }}
+                      </span>
+                    </div>
+                    <div class="photo-card-body">
+                      <span class="photo-item-credit">Registro Oficial</span>
+                      <h3 class="photo-item-title">
+                        {{ photo.title || experience.shortTitle || experience.title }}
+                      </h3>
+                      <p class="photo-item-caption">{{ photo.caption || experience.region }}</p>
+                    </div>
+                  </article>
+                }
+              </div>
+            </section>
+          }
+
+          <!-- ═══════════════ 3. RESTO DE FOTOS DEL ÁLBUM (HASTA 12 TOTAL) ═══════════════ -->
+          @if (galleryPhotos().length > 0) {
+            <section class="section-block">
+              <div class="section-label-bar">
+                <span class="subheading-kicker">GALERÍA COMPLETA DEL ÁLBUM</span>
+                <span class="photos-count-badge"
+                  >{{ galleryPhotos().length }} fotos adicionales</span
+                >
+              </div>
+
+              <div class="photos-grid photos-grid-3cols">
+                @for (photo of galleryPhotos(); track photo.id; let idx = $index) {
+                  <article
+                    class="photo-card-item gallery-small-card"
+                    (click)="openLightbox(photo)"
+                    role="button"
+                    tabindex="0"
+                    (keydown.enter)="openLightbox(photo)"
+                    aria-label="Ver foto ampliada"
+                  >
+                    <div class="photo-card-media small-thumb">
+                      <img
+                        [src]="photo.url"
+                        [alt]="photo.title || 'Foto de la experiencia'"
+                        class="gallery-thumb-img"
+                        loading="lazy"
+                      />
+                      <span class="photo-tag tag-galeria"> #{{ idx + 4 }} GALERÍA </span>
+                    </div>
+                    <div class="photo-card-body">
+                      @if (photo.title) {
+                        <h4 class="photo-item-title-sm">{{ photo.title }}</h4>
+                      }
+                      @if (photo.caption) {
+                        <p class="photo-item-caption-sm">{{ photo.caption }}</p>
+                      }
+                    </div>
+                  </article>
+                }
+              </div>
+            </section>
+          }
+
+          <!-- ═══════════════ CTA BANNER RESERVAS ═══════════════ -->
+          <div class="kayak-section-card booking-cta-card">
+            <div class="cta-inner">
+              <div class="cta-text-block">
+                <span class="cta-kicker">VIVÍ ESTA EXPERIENCIA EN PRIMERA PERSONA</span>
+                <h3 class="cta-heading">
+                  ¿Querés formar parte de la próxima salida de
+                  {{ experience.shortTitle || experience.title }}?
+                </h3>
+                <p class="cta-desc">
+                  Cupos reducidos garantizados. Reservá directamente online con transferencia
+                  bancaria y confirmación inmediata.
+                </p>
+              </div>
+              <div class="cta-btn-block">
+                <a
+                  [routerLink]="['/experiencias', experience.slug, 'pago']"
+                  class="cta-primary-btn"
+                >
+                  Reservar Cupo · {{ experience.priceArs | ars }}
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Convocatoria Socio Fundador -->
+          <app-founder-ad />
+        } @else {
+          <!-- Experiencia no encontrada -->
+          <div class="kayak-section-card not-found-card">
+            <h2 class="card-heading">Experiencia no encontrada</h2>
+            <p class="card-subheading">
+              No se encontró un álbum de fotos asociado al identificador solicitado.
+            </p>
+            <a routerLink="/experiencias" class="cta-primary-btn">
+              Explorar Catálogo de Experiencias
+            </a>
+          </div>
+        }
+      </div>
+    </main>
+  </div>
+
+  <!-- Footer Compartido -->
+  <app-footer />
+
+  <!-- ═══════════════ MODAL LIGHTBOX / VISOR DE FOTO AMPLIADA ═══════════════ -->
+  @if (activeModalPhoto(); as activePhoto) {
+    <div
+      class="photo-lightbox-backdrop"
+      (click)="closeLightbox()"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Visor de fotografía ampliada"
+    >
+      <div class="lightbox-content" (click)="$event.stopPropagation()">
+        <!-- Botón Cerrar -->
+        <button
+          type="button"
+          class="lightbox-close-btn"
+          (click)="closeLightbox()"
+          aria-label="Cerrar visor"
+          title="Cerrar (Esc)"
+        >
+          <mat-icon>close</mat-icon>
+        </button>
+
+        <!-- Navegación Anterior / Siguiente -->
+        @if (allPhotosOrdered().length > 1) {
+          <button
+            type="button"
+            class="lightbox-nav-btn prev-btn"
+            (click)="prevPhoto($event)"
+            aria-label="Foto anterior"
+            title="Foto anterior (←)"
+          >
+            <mat-icon>chevron_left</mat-icon>
+          </button>
+          <button
+            type="button"
+            class="lightbox-nav-btn next-btn"
+            (click)="nextPhoto($event)"
+            aria-label="Foto siguiente"
+            title="Foto siguiente (→)"
+          >
+            <mat-icon>chevron_right</mat-icon>
+          </button>
+        }
+
+        <!-- Imagen Ampliada -->
+        <div class="lightbox-media-wrap">
+          <img
+            [src]="activePhoto.url"
+            [alt]="activePhoto.title || 'Foto de la experiencia'"
+            class="lightbox-img"
+          />
+        </div>
+
+        <!-- Barra Inferior de Metadatos del Lightbox -->
+        <footer class="lightbox-caption">
+          <div class="lightbox-caption-text">
+            <div class="lightbox-tags-row">
+              @if (activePhoto.isCover) {
+                <span class="lightbox-badge-cover">
+                  <mat-icon>star</mat-icon>
+                  PORTADA
+                </span>
+              } @else if (activePhoto.isFeatured) {
+                <span class="lightbox-badge-featured">
+                  <mat-icon>auto_awesome</mat-icon>
+                  DESTACADA
+                </span>
+              }
+              <span class="lightbox-counter">
+                Foto {{ (activePhotoIndex() || 0) + 1 }} de {{ allPhotosOrdered().length }}
+              </span>
+            </div>
+
+            <h4 class="lightbox-photo-title">
+              {{ activePhoto.title || exp()?.title || 'Experiencia' }}
+            </h4>
+
+            @if (activePhoto.caption) {
+              <p class="lightbox-photo-desc">{{ activePhoto.caption }}</p>
+            }
+          </div>
+        </footer>
+      </div>
+    </div>
+  }
+</div>

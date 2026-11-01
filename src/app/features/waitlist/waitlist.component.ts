@@ -286,7 +286,6 @@ export class WaitlistComponent {
     }, 150);
   }
 
-
   openFounderApplication(): void {
     const member = this.newsletter.currentMember();
     if (member) {
@@ -336,10 +335,7 @@ export class WaitlistComponent {
   }
 
   async saveMemberProfile(): Promise<void> {
-    if (
-      !this.memberFullName().trim() ||
-      this.selectedExperiences().length === 0
-    ) {
+    if (!this.memberFullName().trim() || this.selectedExperiences().length === 0) {
       return;
     }
     const res = await this.newsletter.updateMemberProfile({

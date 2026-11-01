@@ -4,7 +4,7 @@ import {
   PaymentGatewayType,
   PaymentRequest,
   PaymentResult,
-  CurrencyCode
+  CurrencyCode,
 } from '../../models/payment.model';
 
 /**
@@ -15,7 +15,7 @@ import {
  * 3. Pagos con stablecoins (USDT/USDC) si el cliente lo prefiere.
  */
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class CustomPaymentGatewayService implements IPaymentGateway {
   readonly gatewayType: PaymentGatewayType = 'custom';
@@ -26,7 +26,7 @@ export class CustomPaymentGatewayService implements IPaymentGateway {
     aliasCbu: 'CLUB.CATAMARCA.VIAJES',
     cbu: '0110452330045298124012',
     accountHolder: 'Club de Experiencias Turísticas Catamarca S.A.S.',
-    cuit: '30-71829304-9'
+    cuit: '30-71829304-9',
   };
 
   isAvailable(): boolean {
@@ -55,8 +55,8 @@ export class CustomPaymentGatewayService implements IPaymentGateway {
         bankName: this.officialBankDetails.bankName,
         aliasCbu: this.officialBankDetails.aliasCbu,
         cbu: this.officialBankDetails.cbu,
-        notes: `Transferir el monto exacto de $${request.totalAmount.toLocaleString('es-AR')} ${request.currency} al Alias indicado. Tu reserva quedará reservada por 2 horas.`
-      }
+        notes: `Transferir el monto exacto de $${request.totalAmount.toLocaleString('es-AR')} ${request.currency} al Alias indicado. Tu reserva quedará reservada por 2 horas.`,
+      },
     };
   }
 
@@ -68,7 +68,7 @@ export class CustomPaymentGatewayService implements IPaymentGateway {
       status: 'approved',
       amount: 150000,
       currency: 'ARS',
-      paidAt: new Date()
+      paidAt: new Date(),
     };
   }
 }

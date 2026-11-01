@@ -250,7 +250,12 @@ export interface Database {
       is_admin: { Args: Record<string, never>; Returns: boolean };
       current_app_role: { Args: Record<string, never>; Returns: AppRole | null };
       join_waitlist: {
-        Args: { p_email: string; p_full_name?: string; p_interest?: string; p_referred_by?: string };
+        Args: {
+          p_email: string;
+          p_full_name?: string;
+          p_interest?: string;
+          p_referred_by?: string;
+        };
         Returns: { position: number; referral_code: string }[];
       };
       submit_provider_application: {

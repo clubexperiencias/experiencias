@@ -52,7 +52,7 @@
 .sub-section-card {
   width: 100%;
   box-sizing: border-box;
-  background: #4A5568;
+  background: #4a5568;
   border: 1px solid rgba(255, 212, 42, 0.38);
   border-radius: 4px;
   padding: clamp(1.6rem, 4vw, 2.8rem);

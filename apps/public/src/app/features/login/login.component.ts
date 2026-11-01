@@ -13,13 +13,7 @@ import {
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [
-    CommonModule,
-    MatIconModule,
-    FooterComponent,
-    HeaderComponent,
-    BreadcrumbComponent,
-  ],
+  imports: [CommonModule, MatIconModule, FooterComponent, HeaderComponent, BreadcrumbComponent],
   templateUrl: './login.component.html',
   styleUrl: './login.component.css',
 })
@@ -111,9 +105,7 @@ export class LoginComponent implements OnInit {
 
     const [localPart, domainPart] = val.split('@');
     if (!localPart) {
-      input.setCustomValidity(
-        `Por favor, ingresá texto antes de '@'. '${val}' está incompleto.`,
-      );
+      input.setCustomValidity(`Por favor, ingresá texto antes de '@'. '${val}' está incompleto.`);
       return;
     }
 
@@ -158,7 +150,9 @@ export class LoginComponent implements OnInit {
         this.alreadyRegisteredEmail.set(emailVal);
         this.error.set(res.message);
       } else if (res.alreadyInWaitlist) {
-        this.successMessage.set(res.message || '¡Correo verificado con éxito! Redirigiendo a tu ficha...');
+        this.successMessage.set(
+          res.message || '¡Correo verificado con éxito! Redirigiendo a tu ficha...',
+        );
         this.router.navigate(['/socios/emergentes'], {
           queryParams: { email: emailVal, from: 'waitlist' },
         });

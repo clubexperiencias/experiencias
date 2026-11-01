@@ -247,8 +247,8 @@
     grid-template-columns: auto 1fr;
     grid-template-rows: auto auto;
     grid-template-areas:
-      "action tier"
-      "action user";
+      'action tier'
+      'action user';
     align-items: center;
     gap: 0.2rem 0.85rem;
   }

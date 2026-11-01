@@ -4,11 +4,11 @@ import {
   PaymentGatewayType,
   PaymentRequest,
   PaymentResult,
-  CurrencyCode
+  CurrencyCode,
 } from '../../models/payment.model';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class StripeGatewayService implements IPaymentGateway {
   readonly gatewayType: PaymentGatewayType = 'stripe';
@@ -36,7 +36,7 @@ export class StripeGatewayService implements IPaymentGateway {
       currency: request.currency,
       paidAt: new Date(),
       authorizationCode: 'STRIPE-' + Math.random().toString(36).substring(2, 8).toUpperCase(),
-      receiptUrl: `https://dashboard.stripe.com/receipts/${transactionId}`
+      receiptUrl: `https://dashboard.stripe.com/receipts/${transactionId}`,
     };
   }
 
@@ -48,7 +48,7 @@ export class StripeGatewayService implements IPaymentGateway {
       status: 'approved',
       amount: 150,
       currency: 'USD',
-      paidAt: new Date()
+      paidAt: new Date(),
     };
   }
 }

@@ -48,6 +48,7 @@ export class ProfileComponent implements OnInit {
   readonly profileJustSaved = signal(false);
   readonly profileSaveError = signal<string | null>(null);
   readonly authenticatedEmail = signal<string | null>(null);
+  private readonly authenticatedName = signal<string | null>(null);
   private successTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Actividades: Solo las últimas dos en la vista previa del perfil
@@ -92,15 +93,27 @@ export class ProfileComponent implements OnInit {
     if (email) {
       this.authenticatedEmail.set(email);
     }
-    if (name && !this.memberFullName()) {
-      this.memberFullName.set(name);
+    if (name) {
+      this.authenticatedName.set(name);
+      if (!this.memberFullName() && !this.newsletter.currentMember()?.fullName) {
+        this.memberFullName.set(name);
+      }
     }
   }
 
   private syncFieldsFromMember(): void {
     const m = this.newsletter.currentMember();
-    if (!m) return;
-    if (m.fullName && !this.memberFullName()) this.memberFullName.set(m.fullName);
+    if (!m) {
+      if (this.authenticatedName() && !this.memberFullName()) {
+        this.memberFullName.set(this.authenticatedName()!);
+      }
+      return;
+    }
+    if (m.fullName) {
+      this.memberFullName.set(m.fullName);
+    } else if (this.authenticatedName() && !this.memberFullName()) {
+      this.memberFullName.set(this.authenticatedName()!);
+    }
     const dni = m.dni || m.documentNumber || '';
     if (dni && !this.memberDni()) this.memberDni.set(dni);
     if (m.phone && !this.memberPhone()) this.memberPhone.set(m.phone);
@@ -241,7 +254,6 @@ export class ProfileComponent implements OnInit {
       this.selectedExperience.set(exp);
     }
   }
-
 
   openFounderApplication(): void {
     const member = this.newsletter.currentMember();

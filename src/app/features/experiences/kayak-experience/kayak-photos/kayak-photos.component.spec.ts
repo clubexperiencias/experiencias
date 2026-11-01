@@ -22,7 +22,7 @@ describe('KayakPhotosComponent (/experiencias/kayak/fotos)', () => {
     expect(component).toBeTruthy();
     const heading = fixture.nativeElement.querySelector('.card-heading');
     expect(heading).toBeTruthy();
-    expect(heading.textContent).toContain('Galería de Travesías en El Jumeal');
+    expect(heading.textContent).toContain('Galería de Travesías en el Dique El Jumeal');
   });
 
   it('should render breadcrumb with links to /, /experiencias, and /experiencias/kayak', () => {
@@ -93,23 +93,9 @@ describe('KayakPhotosComponent (/experiencias/kayak/fotos)', () => {
     });
   });
 
-  it('should render community section with 3x3 grid (9 photos) all tagged DESTACADA POR EL EQUIPO and author above title', () => {
+  it('should hide the community photos section', () => {
     const communitySection = fixture.nativeElement.querySelector('.community-photos-section');
-    expect(communitySection).toBeTruthy();
-    expect(communitySection.textContent).toContain('Fotos de la Comunidad');
-
-    const communityItems = fixture.nativeElement.querySelectorAll('.community-card-item');
-    expect(communityItems.length).toBe(9);
-
-    const communityBadges = fixture.nativeElement.querySelectorAll('.community-badge');
-    expect(communityBadges.length).toBe(9);
-    communityBadges.forEach((badge: HTMLElement) => {
-      expect(badge.textContent.trim()).toBe('DESTACADA POR EL EQUIPO');
-    });
-
-    const authors = fixture.nativeElement.querySelectorAll('.community-photo-author');
-    expect(authors.length).toBe(9);
-    expect(authors[0].textContent).toContain('Autor: Valentina M. · Socio Pleno');
+    expect(communitySection).toBeNull();
   });
 
   it('should include bottom download button, side navigation arrows, and remove top download button', () => {

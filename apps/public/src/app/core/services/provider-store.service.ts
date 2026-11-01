@@ -1,5 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import {
+  ExperienceAlbumPhoto,
   MAX_PARTICIPANTS_PER_BOOKING,
   NewProviderExperience,
   NewTransferSubmission,
@@ -12,9 +13,11 @@ import {
   discountAmount,
   findDiscountCode,
 } from '../models/bank-transfer.model';
+import { Experience } from '../models/experience.model';
 import { TransactionalEmailService } from './transactional-email.service';
 import { NewsletterService } from './newsletter.service';
 import { ActivityHistoryService } from './activity-history.service';
+import { ExperienceService, KAYAK_ALBUM_PHOTOS } from './experience.service';
 import { SUPABASE_CLIENT, isSupabaseConfigured } from '../supabase/supabase.client';
 
 const PROVIDER_CONTACT_EMAIL = 'prestadores@experiencias.club';
@@ -82,8 +85,7 @@ const SEED_EXPERIENCE_REQUESTS: ExperienceProposalRequest[] = [
     dates: 'Viernes y Sábados de Luna Llena 19:30 hs',
     priceArs: 72000,
     priceUsd: 75,
-    promosAndPricing:
-      '10% de descuento abonando en efectivo o para grupos de 4 o más personas.',
+    promosAndPricing: '10% de descuento abonando en efectivo o para grupos de 4 o más personas.',
     itinerary:
       '19:30 hs Recepción y equipamiento en Club Náutico\n20:15 hs Zarpada con balizas acuáticas\n22:00 hs Desembarco en ensenada y fogón bajo las estrellas\n23:30 hs Brindis de cierre',
     meetingPoint: 'Club Náutico El Jumeal (Fray Mamerto Esquiú, RP 1)',
@@ -132,6 +134,42 @@ export function validateReceiptFile(file: File): string | null {
   return null;
 }
 
+export function mapLiveExperienceToProvider(live: Experience): ProviderExperience {
+  return {
+    id: live.id,
+    slug: live.slug,
+    providerId: 'provider-oficial',
+    providerName: 'Club de Experiencias',
+    title: live.title,
+    shortTitle: live.shortTitle || live.title,
+    tagline: live.tagline,
+    description: live.description,
+    region: live.region,
+    meetingPoint: live.meetingPoint,
+    difficulty: live.difficulty as any,
+    durationDays: live.durationDays,
+    durationLabel: live.durationLabel,
+    priceArs: live.priceArs,
+    priceUsd: live.priceUsd,
+    capacityPerDate: live.maxSpotsPerGroup,
+    dates: live.dates || [],
+    status: live.status,
+    coverImage: live.coverImage,
+    galleryImages: live.galleryImages,
+    albumPhotos: live.albumPhotos,
+    highlights: live.highlights,
+    included: live.included,
+    notIncluded: live.notIncluded,
+    altitudeMeters: live.altitudeMeters,
+    bestSeason: live.bestSeason,
+    rating: live.rating,
+    reviewsCount: live.reviewsCount,
+    detailRoute: live.detailRoute,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  } as ProviderExperience;
+}
+
 export const SEED_PROVIDERS: ProviderUser[] = [
   {
     id: 'prov-patricio',
@@ -143,6 +181,7 @@ export const SEED_PROVIDERS: ProviderUser[] = [
     cbuAlias: '3840200500000056402423',
     bankName: 'Uala Bank S.A.U',
     verified: true,
+    status: 'aprobado',
     role: 'prestador',
     avatar: '/assets/aistudio/patricio.jpg',
     joinedAt: '2024-03-15T10:00:00Z',
@@ -157,6 +196,7 @@ export const SEED_PROVIDERS: ProviderUser[] = [
     cbuAlias: 'PUNA.EXPEDICIONES',
     bankName: 'Banco Galicia',
     verified: true,
+    status: 'aprobado',
     role: 'prestador',
     avatar:
       'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
@@ -184,9 +224,11 @@ const SEED_EXPERIENCES: ProviderExperience[] = [
     capacityPerDate: 12,
     dates: [upcomingDate(9), upcomingDate(16), upcomingDate(23)],
     status: 'publicada',
+    publicUrl: 'https://experiencias.club/experiencias/kayak',
     providerId: 'prov-patricio',
     providerName: 'Patricio Facundo · Catamarca Kayak & Aventura Náutica',
     coverImage: '/assets/images/kayak-club-de-experiencias.jpg',
+    albumPhotos: KAYAK_ALBUM_PHOTOS,
     createdAt: hoursAgo(24 * 30),
   },
   {
@@ -208,6 +250,35 @@ const SEED_EXPERIENCES: ProviderExperience[] = [
     providerId: 'prov-claudio',
     providerName: 'Catamarca Kayak & Aventura Náutica',
     coverImage: '/assets/images/catamarca_pomez.jpg',
+    albumPhotos: [
+      {
+        id: 'pomez-1',
+        url: '/assets/images/catamarca_pomez.jpg',
+        title: 'Campo de Piedra Pómez',
+        caption: 'Laberinto blanco esculpido por el viento a más de 3.000 msnm.',
+        isCover: true,
+        isFeatured: false,
+        order: 1,
+      },
+      {
+        id: 'pomez-2',
+        url: '/assets/images/laguna-verde.jpg',
+        title: 'Laguna y Volcanes',
+        caption: 'Contrastes turquesas en la alta cordillera catamarqueña.',
+        isCover: false,
+        isFeatured: true,
+        order: 2,
+      },
+      {
+        id: 'pomez-3',
+        url: '/assets/images/dron.jpg',
+        title: 'Panorámica de la Puna',
+        caption: 'Inmensidad andina y formaciones de ceniza volcánica.',
+        isCover: false,
+        isFeatured: true,
+        order: 3,
+      },
+    ],
     createdAt: hoursAgo(24 * 5),
   },
 ];
@@ -284,6 +355,7 @@ export class ProviderStoreService {
   private readonly emails = inject(TransactionalEmailService);
   private readonly newsletter = inject(NewsletterService);
   private readonly activities = inject(ActivityHistoryService);
+  private readonly expService = inject(ExperienceService);
   private readonly supabase = inject(SUPABASE_CLIENT);
 
   private readonly _providers = signal<ProviderUser[]>(this.loadStoredProviders());
@@ -292,11 +364,18 @@ export class ProviderStoreService {
   );
   private readonly _experiences = signal<ProviderExperience[]>(this.loadStoredExperiences());
   private readonly _submissions = signal<TransferSubmission[]>(this.loadStoredSubmissions());
-  private readonly _experienceRequests = signal<ExperienceProposalRequest[]>(this.loadStoredRequests());
+  private readonly _experienceRequests = signal<ExperienceProposalRequest[]>(
+    this.loadStoredRequests(),
+  );
 
   // Public readonly signals
   readonly currentProvider = this._currentProvider.asReadonly();
   readonly isAuthenticated = computed(() => this._currentProvider() !== null);
+  readonly isProviderApproved = computed(() => {
+    const prov = this._currentProvider();
+    if (!prov) return false;
+    return prov.verified === true && prov.status !== 'dado_de_baja' && prov.status !== 'pendiente';
+  });
   readonly allProviders = this._providers.asReadonly();
   readonly experiences = this._experiences.asReadonly();
   readonly experienceRequests = computed(() =>
@@ -323,6 +402,15 @@ export class ProviderStoreService {
     const provider = this._currentProvider();
     if (!provider) return this._experiences();
     return this._experiences().filter((e) => e.providerId === provider.id);
+  });
+
+  // Proposals/requests submitted by current provider
+  readonly providerExperienceRequests = computed(() => {
+    const provider = this._currentProvider();
+    if (!provider) return this.experienceRequests();
+    return this.experienceRequests().filter(
+      (r) => r.providerId === provider.id || r.providerEmail === provider.email,
+    );
   });
 
   readonly pendingCount = computed(
@@ -367,8 +455,13 @@ export class ProviderStoreService {
 
   async restoreSupabaseSession(): Promise<void> {
     if (!isSupabaseConfigured()) {
-      this._currentProvider.set(SEED_PROVIDERS[0]);
-      this.saveSession(SEED_PROVIDERS[0]);
+      const first = this._providers()[0] || SEED_PROVIDERS[0];
+      if (first && first.status !== 'dado_de_baja' && first.status !== 'pendiente') {
+        this._currentProvider.set(first);
+        this.saveSession(first);
+      } else {
+        this._currentProvider.set(null);
+      }
       return;
     }
 
@@ -379,34 +472,44 @@ export class ProviderStoreService {
       return;
     }
 
-    const { data: access, error } = await this.supabase
-      .from('provider_access')
-      .select('email, name, agency, active')
+    const { data: access, error } = await (this.supabase.from('provider_access') as any)
+      .select('email, name, agency, active, status, cbu_alias, cuit_dni, bank_name, account_holder')
       .eq('email', email)
-      .eq('active', true)
       .maybeSingle();
 
-    if (error || !access) {
+    if (
+      error ||
+      !access ||
+      access.active === false ||
+      access.status === 'dado_de_baja' ||
+      access.status === 'pendiente'
+    ) {
       this._currentProvider.set(null);
+      this.saveSession(null);
       return;
     }
 
     const existing = this._providers().find((provider) => provider.email.toLowerCase() === email);
-    const provider: ProviderUser = existing ?? {
-      id: `provider-${email.replace(/[^a-z0-9]+/g, '-')}`,
+    const provider: ProviderUser = {
+      id: existing?.id ?? `provider-${email.replace(/[^a-z0-9]+/g, '-')}`,
       email,
-      name: access.name || email,
-      agency: access.agency || 'Prestador EXPERIENCIAS.CLUB',
-      phone: '',
-      cuitDni: '',
-      cbuAlias: '',
-      bankName: '',
+      name: access.account_holder || access.name || existing?.name || email,
+      agency: access.agency || existing?.agency || 'Prestador EXPERIENCIAS.CLUB',
+      phone: existing?.phone || '',
+      cuitDni: access.cuit_dni || existing?.cuitDni || '',
+      cbuAlias: access.cbu_alias || existing?.cbuAlias || '',
+      bankName: access.bank_name || existing?.bankName || '',
       verified: true,
+      status: 'aprobado',
       role: 'prestador',
-      joinedAt: new Date().toISOString(),
+      joinedAt: existing?.joinedAt ?? new Date().toISOString(),
     };
 
     if (!existing) this._providers.update((providers) => [...providers, provider]);
+    else
+      this._providers.update((providers) =>
+        providers.map((p) => (p.email.toLowerCase() === email ? provider : p)),
+      );
     this._currentProvider.set(provider);
     this.saveSession(provider);
   }
@@ -418,7 +521,10 @@ export class ProviderStoreService {
       return { success: true, message: '' };
     }
 
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://prestadores.experiencias.club';
+    const origin =
+      typeof window !== 'undefined'
+        ? window.location.origin
+        : 'https://prestadores.experiencias.club';
     const { error } = await this.supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${origin}/dashboard` },
@@ -432,35 +538,92 @@ export class ProviderStoreService {
   // ==========================================
   // Auth & Session
   // ==========================================
-  login(email: string, _password?: string): boolean {
+  login(email: string, _password?: string): { success: boolean; message: string } {
     const normalized = email.trim().toLowerCase();
-    let provider = this._providers().find((p) => p.email.toLowerCase() === normalized);
+    const provider = this._providers().find((p) => p.email.toLowerCase() === normalized);
 
-    if (!provider) {
-      // Auto-register demo profile for easy testing with any email
-      const name = normalized.split('@')[0].replace(/[._]/g, ' ');
-      provider = {
-        id: `prov-${crypto.randomUUID().slice(0, 8)}`,
-        email: normalized,
-        name: name.charAt(0).toUpperCase() + name.slice(1),
-        agency: `${name.toUpperCase()} Turismo Aventura`,
-        phone: '+54 383 400 0000',
-        cuitDni: '20-30000000-9',
-        cbuAlias: 'PRESTADOR.CATAMARCA',
-        bankName: 'Banco de Catamarca',
-        verified: false,
-        role: 'prestador',
-        avatar:
-          'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
-        joinedAt: new Date().toISOString(),
-      };
-      this._providers.update((list) => [...list, provider!]);
-      this.saveProviders();
+    if (provider) {
+      if (provider.status === 'dado_de_baja') {
+        return {
+          success: false,
+          message:
+            'La cuenta de este prestador se encuentra dada de baja. Comunicate con administración.',
+        };
+      }
+      if (provider.status === 'pendiente' || !provider.verified) {
+        return {
+          success: false,
+          message:
+            'Tu postulación como prestador aún está pendiente de aprobación por el equipo de administración.',
+        };
+      }
+      this._currentProvider.set(provider);
+      this.saveSession(provider);
+      return { success: true, message: 'Ingreso exitoso.' };
     }
 
-    this._currentProvider.set(provider);
-    this.saveSession(provider);
-    return true;
+    return {
+      success: false,
+      message: 'No se encontró un prestador autorizado para este correo.',
+    };
+  }
+
+  syncProviderStatusFromAdmin(
+    email: string,
+    status: 'aprobado' | 'pendiente' | 'rechazado' | 'dado_de_baja',
+    details?: Partial<ProviderUser>,
+  ): void {
+    const normalized = email.trim().toLowerCase();
+    const existing = this._providers().find((p) => p.email.toLowerCase() === normalized);
+
+    if (existing) {
+      this._providers.update((list) =>
+        list.map((p) =>
+          p.email.toLowerCase() === normalized
+            ? {
+                ...p,
+                ...(details?.name ? { name: details.name } : {}),
+                ...(details?.agency ? { agency: details.agency } : {}),
+                ...(details?.phone ? { phone: details.phone } : {}),
+                ...(details?.cuitDni ? { cuitDni: details.cuitDni } : {}),
+                ...(details?.cbuAlias ? { cbuAlias: details.cbuAlias } : {}),
+                ...(details?.bankName ? { bankName: details.bankName } : {}),
+                verified: status === 'aprobado',
+                status,
+              }
+            : p,
+        ),
+      );
+    } else {
+      const newProvider: ProviderUser = {
+        id: `provider-${normalized.replace(/[^a-z0-9]+/g, '-')}`,
+        email: normalized,
+        name: details?.name || email,
+        agency: details?.agency || 'Prestador EXPERIENCIAS.CLUB',
+        phone: details?.phone || '',
+        cuitDni: details?.cuitDni || '',
+        cbuAlias: details?.cbuAlias || '',
+        bankName: details?.bankName || '',
+        verified: status === 'aprobado',
+        status,
+        role: 'prestador',
+        joinedAt: new Date().toISOString(),
+      };
+      this._providers.update((list) => [...list, newProvider]);
+    }
+
+    const current = this._currentProvider();
+    if (current && current.email.toLowerCase() === normalized) {
+      if (status !== 'aprobado') {
+        this._currentProvider.set(null);
+        this.saveSession(null);
+      } else {
+        const updated = this._providers().find((p) => p.email.toLowerCase() === normalized) || null;
+        this._currentProvider.set(updated);
+        if (updated) this.saveSession(updated);
+      }
+    }
+    this.saveProviders();
   }
 
   loginAs(providerId: string): void {
@@ -529,7 +692,13 @@ export class ProviderStoreService {
   }
 
   getExperienceBySlug(slug: string): ProviderExperience | undefined {
-    return this._experiences().find((e) => e.slug === slug);
+    const fromStore = this._experiences().find((e) => e.slug === slug);
+    if (fromStore) return fromStore;
+    const live = this.expService.getExperienceBySlug(slug);
+    if (live) {
+      return mapLiveExperienceToProvider(live);
+    }
+    return undefined;
   }
 
   reservedSeats(experienceId: string, date: string): number {
@@ -590,10 +759,10 @@ export class ProviderStoreService {
       status: requestPublication ? 'pendiente_publicacion' : 'borrador',
       moderation: requestPublication
         ? {
-          action: 'publicar',
-          requestedAt: new Date().toISOString(),
-          status: 'pendiente',
-        }
+            action: 'publicar',
+            requestedAt: new Date().toISOString(),
+            status: 'pendiente',
+          }
         : undefined,
       coverImage: input.coverImage || '/assets/images/laguna_blanca.jpg',
       createdAt: new Date().toISOString(),
@@ -630,6 +799,64 @@ export class ProviderStoreService {
     return updatedExperience;
   }
 
+  getExperienceAlbum(experienceId: string): ExperienceAlbumPhoto[] {
+    const exp = this.getExperienceById(experienceId);
+    return exp?.albumPhotos ? [...exp.albumPhotos] : [];
+  }
+
+  updateExperienceAlbum(experienceId: string, photos: ExperienceAlbumPhoto[]): ProviderExperience {
+    if (photos.length > 12) {
+      throw new Error('El álbum no puede superar el límite de 12 fotos.');
+    }
+
+    const currentProvider = this._currentProvider();
+    const existingExp = this.getExperienceById(experienceId);
+    if (!existingExp) {
+      throw new Error('Experiencia no encontrada.');
+    }
+    if (
+      currentProvider &&
+      existingExp.providerId &&
+      existingExp.providerId !== currentProvider.id
+    ) {
+      throw new Error('No tenés permisos para modificar el álbum de esta experiencia.');
+    }
+
+    const coverPhoto = photos.find((p) => p.isCover);
+    const coverUrl = coverPhoto?.url;
+
+    const updates: Partial<ProviderExperience> = {
+      albumPhotos: photos,
+      ...(coverUrl ? { coverImage: coverUrl } : {}),
+    };
+
+    const prevExperiences = this._experiences();
+    const updated = this.updateExperience(experienceId, updates);
+
+    // Sincronizar con el catálogo público en ExperienceService
+    const expMatch =
+      this.expService.getExperienceById(experienceId) ||
+      this.expService.getExperienceBySlug(updated.slug);
+    if (expMatch) {
+      void this.expService
+        .updateExperience({
+          id: expMatch.id,
+          coverImage: coverUrl || expMatch.coverImage,
+          albumPhotos: photos,
+        })
+        .catch((err) => {
+          console.warn(
+            '[ProviderStoreService] Error sincronizando álbum a ExperienceService:',
+            err,
+          );
+          this._experiences.set(prevExperiences);
+          this.saveExperiences();
+        });
+    }
+
+    return updated;
+  }
+
   /**
    * Request Publication: Prestador requests the admin to review and publish the experience
    */
@@ -644,15 +871,15 @@ export class ProviderStoreService {
       list.map((e) =>
         e.id === experienceId
           ? {
-            ...e,
-            status: 'pendiente_publicacion',
-            moderation: {
-              action: 'publicar',
-              requestedAt: new Date().toISOString(),
-              status: 'pendiente',
-            },
-            updatedAt: new Date().toISOString(),
-          }
+              ...e,
+              status: 'pendiente_publicacion',
+              moderation: {
+                action: 'publicar',
+                requestedAt: new Date().toISOString(),
+                status: 'pendiente',
+              },
+              updatedAt: new Date().toISOString(),
+            }
           : e,
       ),
     );
@@ -667,16 +894,16 @@ export class ProviderStoreService {
       list.map((e) =>
         e.id === experienceId
           ? {
-            ...e,
-            status: 'pendiente_ocultar',
-            moderation: {
-              action: 'ocultar',
-              requestedAt: new Date().toISOString(),
-              reason: reason?.trim(),
-              status: 'pendiente',
-            },
-            updatedAt: new Date().toISOString(),
-          }
+              ...e,
+              status: 'pendiente_ocultar',
+              moderation: {
+                action: 'ocultar',
+                requestedAt: new Date().toISOString(),
+                reason: reason?.trim(),
+                status: 'pendiente',
+              },
+              updatedAt: new Date().toISOString(),
+            }
           : e,
       ),
     );
@@ -696,16 +923,16 @@ export class ProviderStoreService {
       list.map((e) =>
         e.id === experienceId
           ? {
-            ...e,
-            status: 'pendiente_eliminar',
-            moderation: {
-              action: 'eliminar',
-              requestedAt: new Date().toISOString(),
-              reason: reason?.trim(),
-              status: 'pendiente',
-            },
-            updatedAt: new Date().toISOString(),
-          }
+              ...e,
+              status: 'pendiente_eliminar',
+              moderation: {
+                action: 'eliminar',
+                requestedAt: new Date().toISOString(),
+                reason: reason?.trim(),
+                status: 'pendiente',
+              },
+              updatedAt: new Date().toISOString(),
+            }
           : e,
       ),
     );
@@ -746,17 +973,17 @@ export class ProviderStoreService {
       list.map((e) =>
         e.id === experienceId
           ? {
-            ...e,
-            status: newStatus,
-            moderation: {
-              ...e.moderation!,
-              status: 'aprobada',
-              reviewedAt: new Date().toISOString(),
-              reviewedBy: 'Admin experiencias.club',
-              adminComment,
-            },
-            updatedAt: new Date().toISOString(),
-          }
+              ...e,
+              status: newStatus,
+              moderation: {
+                ...e.moderation!,
+                status: 'aprobada',
+                reviewedAt: new Date().toISOString(),
+                reviewedBy: 'Admin experiencias.club',
+                adminComment,
+              },
+              updatedAt: new Date().toISOString(),
+            }
           : e,
       ),
     );
@@ -793,7 +1020,19 @@ export class ProviderStoreService {
   // Submissions & Receipts
   // ==========================================
   async submitTransfer(input: NewTransferSubmission): Promise<TransferSubmission> {
-    const experience = this._experiences().find((e) => e.id === input.experienceId);
+    const liveRecord =
+      this.expService.getExperienceById(input.experienceId) ||
+      this.expService.getExperienceBySlug(input.experienceId);
+    let experience: ProviderExperience | undefined;
+    if (liveRecord) {
+      if (liveRecord.status === 'publicada') {
+        experience = mapLiveExperienceToProvider(liveRecord);
+      }
+    } else {
+      experience = this._experiences().find(
+        (e) => e.id === input.experienceId || e.slug === input.experienceId,
+      );
+    }
     if (!experience || experience.status !== 'publicada') {
       throw new Error('La experiencia no está disponible.');
     }
@@ -844,7 +1083,9 @@ export class ProviderStoreService {
 
         if (uploadErr) {
           console.warn('[ProviderStore] Error al subir comprobante a Supabase Storage:', uploadErr);
-          throw new Error('No se pudo subir el archivo del comprobante. Por favor intentá nuevamente.');
+          throw new Error(
+            'No se pudo subir el archivo del comprobante. Por favor intentá nuevamente.',
+          );
         }
 
         receiptUrl = storageKey;
@@ -876,7 +1117,9 @@ export class ProviderStoreService {
         const rpcPayload = rpcRes as any;
         if (rpcErr) {
           console.warn('[ProviderStore] Error en submit_experience_transfer RPC:', rpcErr);
-          throw new Error('No se pudo registrar la transferencia en el servidor. Intentá de nuevo.');
+          throw new Error(
+            'No se pudo registrar la transferencia en el servidor. Intentá de nuevo.',
+          );
         }
 
         if (rpcPayload?.status === 'no_seats_available') {
@@ -886,7 +1129,11 @@ export class ProviderStoreService {
           throw new Error('Los datos ingresados no son válidos.');
         }
       } catch (err: any) {
-        if (err?.message?.includes('cupos') || err?.message?.includes('válidos') || err?.message?.includes('servidor')) {
+        if (
+          err?.message?.includes('cupos') ||
+          err?.message?.includes('válidos') ||
+          err?.message?.includes('servidor')
+        ) {
           throw err;
         }
         console.warn('[ProviderStore] Fallo al subir comprobante a Supabase:', err);
@@ -1113,6 +1360,11 @@ export class ProviderStoreService {
   submitExperienceRequest(
     data: Omit<ExperienceProposalRequest, 'id' | 'status' | 'createdAt'>,
   ): ExperienceProposalRequest {
+    if (!this.isProviderApproved()) {
+      throw new Error(
+        'Solo los prestadores formalmente aprobados pueden proponer o gestionar experiencias.',
+      );
+    }
     const newReq: ExperienceProposalRequest = {
       ...data,
       id: 'req-' + Date.now(),
@@ -1124,8 +1376,59 @@ export class ProviderStoreService {
     return newReq;
   }
 
-  approveExperienceRequest(requestId: string): void {
+  async approveExperienceRequest(requestId: string, publicUrl?: string): Promise<boolean> {
     const req = this._experienceRequests().find((r) => r.id === requestId);
+    if (!req) return false;
+
+    const generatedSlug = slugify(req.title);
+    const resolvedUrl =
+      publicUrl?.trim() || `https://experiencias.club/experiencias/${generatedSlug}`;
+
+    // 1. Crear en el catálogo oficial de ExperienceService antes de reportar aprobación
+    const experienceForCatalog: Experience = {
+      id: 'exp-' + generatedSlug,
+      slug: generatedSlug,
+      title: req.title,
+      shortTitle: req.title.split('&')[0].trim(),
+      tagline: req.subheading.length > 90 ? req.subheading.slice(0, 90) + '...' : req.subheading,
+      description: req.subheading,
+      region: req.region,
+      meetingPoint: req.meetingPoint,
+      difficulty:
+        (req.difficulty.split('(')[0].trim() as
+          | 'Baja'
+          | 'Moderada'
+          | 'Exigente'
+          | 'Alta Montaña') || 'Moderada',
+      durationDays: 1,
+      durationLabel: req.duration,
+      altitudeMeters: Number(req.altitude?.replace(/\D/g, '')) || 850,
+      bestSeason: req.season || 'Todo el año',
+      priceArs: req.priceArs,
+      priceUsd: req.priceUsd ?? 70,
+      maxSpotsPerGroup: req.capacity,
+      dates: [upcomingDate(7), upcomingDate(14), upcomingDate(21)],
+      status: 'publicada',
+      publicUrl: resolvedUrl,
+      detailRoute: `/experiencias/${generatedSlug}`,
+      coverImage: req.coverImage || '/assets/images/kayak-club-de-experiencias.jpg',
+      galleryImages: [req.coverImage || '/assets/images/kayak-club-de-experiencias.jpg'],
+      isExclusiveClub: true,
+      isLocked: false,
+      albumPhotos: [],
+      highlights: [],
+      included: req.includedServices ? req.includedServices.split('\n').filter(Boolean) : [],
+      notIncluded: [],
+      rating: 5.0,
+      reviewsCount: 1,
+    };
+
+    try {
+      await this.expService.createExperience(experienceForCatalog);
+    } catch (err) {
+      console.warn('[ProviderStore] Error creando experiencia en ExperienceService:', err);
+    }
+
     this._experienceRequests.update((list) =>
       list.map((r) =>
         r.id === requestId
@@ -1140,21 +1443,28 @@ export class ProviderStoreService {
         (e) => e.title.toLowerCase() === req.title.toLowerCase(),
       );
       if (!exists) {
+        const generatedSlug = slugify(req.title);
+        const resolvedUrl =
+          publicUrl?.trim() || `https://experiencias.club/experiencias/${generatedSlug}`;
         const newExp: ProviderExperience = {
-          id: 'exp-' + slugify(req.title),
-          slug: slugify(req.title),
+          id: 'exp-' + generatedSlug,
+          slug: generatedSlug,
           title: req.title,
           shortTitle: req.title.split('&')[0].trim(),
-          tagline: req.subheading.length > 90 ? req.subheading.slice(0, 90) + '...' : req.subheading,
+          tagline:
+            req.subheading.length > 90 ? req.subheading.slice(0, 90) + '...' : req.subheading,
           description: req.subheading,
           region: req.region,
           meetingPoint: req.meetingPoint,
-          difficulty: (req.difficulty.split('(')[0].trim() as 'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña') || 'Moderada',
+          difficulty:
+            (req.difficulty.split('(')[0].trim() as
+              'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña') || 'Moderada',
           durationLabel: req.duration,
           priceArs: req.priceArs,
           capacityPerDate: req.capacity,
           dates: [upcomingDate(7), upcomingDate(14), upcomingDate(21)],
           status: 'publicada',
+          publicUrl: resolvedUrl,
           providerId: req.providerId,
           providerName: `${req.providerName} · ${req.providerAgency}`,
           coverImage: req.coverImage || '/assets/images/kayak-club-de-experiencias.jpg',
@@ -1164,6 +1474,14 @@ export class ProviderStoreService {
         this.saveExperiences();
       }
     }
+    return true;
+  }
+
+  updateExperiencePublicUrl(expId: string, publicUrl: string): void {
+    this._experiences.update((list) =>
+      list.map((e) => (e.id === expId ? { ...e, publicUrl: publicUrl.trim() } : e)),
+    );
+    this.saveExperiences();
   }
 
   rejectExperienceRequest(requestId: string): void {

@@ -14,6 +14,10 @@ export interface PaymentReceipt {
   payerName: string;
   authCode: string;
   status: 'aprobado' | 'pendiente_verificacion';
+  discountCode?: string;
+  discountArs?: number;
+  receiptFileUrl?: string;
+  receiptFileName?: string;
 }
 
 export interface CommunityPhoto {

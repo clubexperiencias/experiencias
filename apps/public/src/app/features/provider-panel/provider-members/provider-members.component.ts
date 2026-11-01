@@ -1,5 +1,5 @@
-import { Component, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -10,11 +10,11 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
 @Component({
   selector: 'app-provider-members',
   standalone: true,
-  imports: [MatIconModule, ArsPipe, FechaPipe, FormsModule],
+  imports: [RouterLink, MatIconModule, ArsPipe, FechaPipe, FormsModule],
   template: `
     <div class="members-container">
       <div class="members-header">
-        <div>
+        <div class="header-titles">
           <span class="section-kicker">GESTIÓN UNIFICADA</span>
           <h2 class="card-heading">Comprobantes y Socios Anotados</h2>
           <p class="card-subheading">
@@ -23,9 +23,38 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
           </p>
         </div>
 
-        <button type="button" class="export-btn" (click)="copyRoster()">
-          {{ copied() ? '¡Nómina Copiada!' : 'Copiar Planilla de Asistencia' }}
-        </button>
+        <div class="header-actions">
+          <button type="button" class="export-btn" (click)="copyRoster()">
+            {{ copied() ? '¡Nómina Copiada!' : 'Copiar Planilla de Asistencia' }}
+          </button>
+          <a routerLink="/dashboard" class="btn-back-panel">Volver al Panel</a>
+        </div>
+      </div>
+
+      <!-- Stats Summary Strip - Rectangular (Arriba de los filtros) -->
+      <div class="summary-strip">
+        <div class="summary-item">
+          <span class="sum-label">Registros encontrados</span>
+          <strong class="sum-value">{{ filteredMembers().length }}</strong>
+          <span class="sum-sub">Comprobantes procesados</span>
+        </div>
+        <div class="summary-item">
+          <span class="sum-label">Cupos Totales</span>
+          <strong class="sum-value">{{ totalParticipants() }} personas</strong>
+          <span class="sum-sub">Socios inscriptos</span>
+        </div>
+        <div class="summary-item">
+          <span class="sum-label">Monto Asociado</span>
+          <strong class="sum-value text-blue">{{ totalAmount() | ars }}</strong>
+          <span class="sum-sub">Recaudación de reservas</span>
+        </div>
+        <div class="summary-item">
+          <span class="sum-label">Pendientes de Revisión</span>
+          <strong class="sum-value" [class.text-amber]="pendingCount() > 0">
+            {{ pendingCount() }} comprobantes
+          </strong>
+          <span class="sum-sub">Requieren confirmación</span>
+        </div>
       </div>
 
       <!-- Filters Bar - Rectangular -->
@@ -71,21 +100,22 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         </div>
       </div>
 
-      <!-- Stats Summary Strip - Rectangular -->
-      <div class="summary-strip">
-        <div class="summary-item">
-          <span class="sum-label">Registros encontrados</span>
-          <strong class="sum-value">{{ filteredMembers().length }}</strong>
+      <!-- Banner de Filtro Activo por Experiencia -->
+      @if (selectedExpName(); as expName) {
+        <div class="active-filter-chip">
+          <span
+            >Filtrando por experiencia: <strong>{{ expName }}</strong></span
+          >
+          <button
+            type="button"
+            class="clear-filter-btn"
+            (click)="selectedExpId.set('')"
+            title="Quitar filtro de experiencia"
+          >
+            Ver todas las experiencias
+          </button>
         </div>
-        <div class="summary-item">
-          <span class="sum-label">Cupos Totales</span>
-          <strong class="sum-value">{{ totalParticipants() }} personas</strong>
-        </div>
-        <div class="summary-item">
-          <span class="sum-label">Monto Asociado</span>
-          <strong class="sum-value text-blue">{{ totalAmount() | ars }}</strong>
-        </div>
-      </div>
+      }
 
       <!-- Members & Receipts Table - Rectangular sobrio -->
       @if (filteredMembers().length === 0) {
@@ -103,8 +133,8 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                 <th>Experiencia & Fecha</th>
                 <th>Cupos</th>
                 <th>Monto</th>
-                <th>Comprobante</th>
                 <th>Estado</th>
+                <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -119,19 +149,25 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
 
                   <td>
                     <div class="member-contact">
-                      <a [href]="'mailto:' + sub.email" class="contact-email">
-                        {{ sub.email }}
-                      </a>
-                      <a
-                        [href]="
-                          getWhatsappLink(sub.phone, sub.fullName, sub.experienceTitle, sub.date)
-                        "
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="contact-whatsapp"
-                      >
-                        WA: {{ sub.phone }}
-                      </a>
+                      <div class="contact-info">
+                        <span class="contact-phone">{{ sub.phone }}</span>
+                        <a [href]="'mailto:' + sub.email" class="contact-email">
+                          {{ sub.email }}
+                        </a>
+                      </div>
+                      @if (sub.phone) {
+                        <a
+                          [href]="
+                            getWhatsappLink(sub.phone, sub.fullName, sub.experienceTitle, sub.date)
+                          "
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="contact-wa-btn"
+                          title="Contactar a esta persona por WhatsApp en otra pestaña"
+                        >
+                          WhatsApp
+                        </a>
+                      }
                     </div>
                   </td>
 
@@ -158,7 +194,24 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                     </div>
                   </td>
 
-                  <!-- Columna Comprobante: Ver comprobante abre el modal unificado -->
+                  <td>
+                    <span
+                      class="table-status-pill"
+                      [class.pill-aprobado]="sub.status === 'aprobado'"
+                      [class.pill-pendiente]="sub.status === 'pendiente'"
+                      [class.pill-rechazado]="sub.status === 'rechazado'"
+                    >
+                      {{
+                        sub.status === 'aprobado'
+                          ? 'Aprobado'
+                          : sub.status === 'rechazado'
+                            ? 'Rechazado'
+                            : 'Pendiente'
+                      }}
+                    </span>
+                  </td>
+
+                  <!-- Columna Acciones: Ver comprobante abre el modal unificado sin símbolo -->
                   <td>
                     <button
                       type="button"
@@ -166,21 +219,8 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                       (click)="openReceipt(sub)"
                       title="Ver y validar comprobante bancario"
                     >
-                      <mat-icon class="receipt-icon">receipt_long</mat-icon>
-                      <span>Ver comprobante</span>
+                      Ver comprobante
                     </button>
-                  </td>
-
-                  <td>
-                    <span class="status-pill" [class]="'pill-' + sub.status">
-                      @if (sub.status === 'aprobado') {
-                        Confirmado
-                      } @else if (sub.status === 'pendiente') {
-                        Pendiente
-                      } @else {
-                        Rechazado
-                      }
-                    </span>
                   </td>
                 </tr>
               }
@@ -365,13 +405,26 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
       .members-container {
         display: flex;
         flex-direction: column;
-        gap: 1.5rem;
+        gap: 1.25rem;
       }
       .members-header {
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
         gap: 1.5rem;
+        flex-wrap: wrap;
+        margin-top: 0;
+      }
+      .header-titles {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        max-width: 680px;
+      }
+      .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
         flex-wrap: wrap;
       }
       .section-kicker {
@@ -385,7 +438,30 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         font-size: 1.45rem;
         font-weight: 700;
         color: #ffffff;
-        margin: 0.25rem 0 0.35rem 0;
+        margin: 0;
+      }
+      .btn-back-panel {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.48rem 1.05rem;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(128, 179, 255, 0.45);
+        color: #ffffff;
+        border-radius: 4px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        text-decoration: none;
+        letter-spacing: 0.02em;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+      }
+      .btn-back-panel:hover {
+        background: rgba(128, 179, 255, 0.2);
+        border-color: #80b3ff;
+        color: #80b3ff;
+        transform: translateY(-1px);
       }
       .card-subheading {
         font-size: 0.88rem;
@@ -394,10 +470,13 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         max-width: 680px;
       }
       .export-btn {
-        padding: 0.6rem 1.15rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.48rem 1.05rem;
         background: rgba(128, 179, 255, 0.15);
-        border: 1px solid rgba(128, 179, 255, 0.35);
-        border-radius: 2px;
+        border: 1px solid rgba(128, 179, 255, 0.45);
+        border-radius: 4px;
         color: #80b3ff;
         font-size: 0.82rem;
         font-weight: 700;
@@ -408,6 +487,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
       .export-btn:hover {
         background: #80b3ff;
         color: #070d18;
+        transform: translateY(-1px);
       }
       .filters-bar {
         display: flex;
@@ -459,7 +539,9 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         color: #f0f4ff;
         font-size: 0.82rem;
         cursor: pointer;
-        transition: background-color 0.2s ease, border-color 0.2s ease;
+        transition:
+          background-color 0.2s ease,
+          border-color 0.2s ease;
       }
       .filter-select::-ms-expand {
         display: none;
@@ -488,9 +570,16 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         gap: 0.2rem;
         background: rgba(22, 33, 85, 0.55);
         border: 1px solid rgba(128, 179, 255, 0.25);
-        border-radius: 2px;
+        border-radius: 4px;
         padding: 1rem 1.25rem;
         backdrop-filter: blur(14px);
+      }
+      .sum-sub {
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.6);
+      }
+      .text-amber {
+        color: #ffaa00 !important;
       }
       .sum-label {
         font-size: 0.72rem;
@@ -557,10 +646,48 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         color: rgba(255, 255, 255, 0.6);
         font-family: var(--font-mono, monospace);
       }
+      .active-filter-chip {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.65rem 1.15rem;
+        background: rgba(128, 179, 255, 0.12);
+        border: 1px solid rgba(128, 179, 255, 0.35);
+        border-radius: 2px;
+        font-size: 0.85rem;
+        color: #80b3ff;
+      }
+      .clear-filter-btn {
+        background: transparent;
+        border: 1px solid #80b3ff;
+        color: #80b3ff;
+        border-radius: 2px;
+        padding: 0.25rem 0.65rem;
+        font-size: 0.74rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .clear-filter-btn:hover {
+        background: #80b3ff;
+        color: #070d18;
+      }
       .member-contact {
         display: flex;
         flex-direction: column;
-        gap: 0.2rem;
+        gap: 0.45rem;
+        align-items: flex-start;
+      }
+      .contact-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+      }
+      .contact-phone {
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: #ffffff;
       }
       .contact-email {
         color: rgba(255, 255, 255, 0.85);
@@ -570,14 +697,24 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
       .contact-email:hover {
         color: #80b3ff;
       }
-      .contact-whatsapp {
-        color: #80b3ff;
-        text-decoration: none;
+      .contact-wa-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.28rem 0.65rem;
+        background: rgba(37, 211, 102, 0.15);
+        border: 1px solid rgba(37, 211, 102, 0.45);
+        color: #25d366;
+        border-radius: 2px;
         font-size: 0.74rem;
-        font-weight: 600;
+        font-weight: 700;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        white-space: nowrap;
       }
-      .contact-whatsapp:hover {
-        text-decoration: underline;
+      .contact-wa-btn:hover {
+        background: #25d366;
+        color: #070d18;
       }
       .exp-cell {
         display: flex;
@@ -614,6 +751,31 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
       .discount-tag {
         font-size: 0.65rem;
         color: #ffaa55;
+      }
+      .table-status-pill {
+        display: inline-block;
+        padding: 0.2rem 0.55rem;
+        border-radius: 2px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        white-space: nowrap;
+      }
+      .pill-aprobado {
+        background: rgba(37, 211, 102, 0.15);
+        border: 1px solid rgba(37, 211, 102, 0.4);
+        color: #25d366;
+      }
+      .pill-pendiente {
+        background: rgba(255, 170, 85, 0.15);
+        border: 1px solid rgba(255, 170, 85, 0.4);
+        color: #ffaa55;
+      }
+      .pill-rechazado {
+        background: rgba(255, 77, 77, 0.15);
+        border: 1px solid rgba(255, 77, 77, 0.4);
+        color: #ff4d4d;
       }
 
       /* Botón Ver Comprobante */
@@ -961,12 +1123,65 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         color: rgba(255, 255, 255, 0.6);
         margin: 0;
       }
+
+      /* Mobile Responsiveness */
+      @media (max-width: 768px) {
+        .members-header {
+          flex-direction: column;
+          gap: 1rem;
+          align-items: stretch;
+        }
+        .header-actions {
+          width: 100%;
+          display: flex;
+          gap: 0.5rem;
+        }
+        .header-actions .export-btn,
+        .header-actions .btn-back-panel {
+          flex: 1;
+          justify-content: center;
+          text-align: center;
+        }
+        .filters-bar {
+          flex-direction: column;
+          align-items: stretch;
+          padding: 0.75rem;
+        }
+        .search-box {
+          width: 100%;
+          min-width: 0;
+        }
+        .filter-group {
+          width: 100%;
+          flex-direction: column;
+          align-items: stretch;
+        }
+        .filter-select {
+          width: 100%;
+        }
+        .summary-strip {
+          grid-template-columns: repeat(2, 1fr);
+          gap: 0.75rem;
+        }
+        .summary-item {
+          padding: 0.85rem 1rem;
+        }
+        .sum-value {
+          font-size: 1.15rem;
+        }
+      }
+      @media (max-width: 480px) {
+        .summary-strip {
+          grid-template-columns: 1fr;
+        }
+      }
     `,
   ],
 })
 export class ProviderMembersComponent {
   readonly store = inject(ProviderStoreService);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
   private readonly queryParams = toSignal(this.route.queryParams);
 
@@ -981,17 +1196,33 @@ export class ProviderMembersComponent {
   readonly rejectionReason = signal('');
 
   constructor() {
-    const qp = this.queryParams();
-    if (qp?.['experiencia']) {
-      this.selectedExpId.set(qp['experiencia']);
-    }
-    if (qp?.['ref']) {
-      const match = this.store.providerSubmissions().find((s) => s.reference === qp['ref']);
-      if (match) {
-        this.selectedSubmission.set(match);
+    effect(() => {
+      const qp = this.queryParams();
+      if (qp && qp['experiencia'] !== undefined) {
+        this.selectedExpId.set(qp['experiencia'] || '');
       }
-    }
+      if (qp?.['ref']) {
+        const match = untracked(() => this.store.providerSubmissions()).find(
+          (s) => s.reference === qp['ref'],
+        );
+        if (match) {
+          this.selectedSubmission.set(match);
+          void this.router.navigate([], {
+            queryParams: { ref: null },
+            queryParamsHandling: 'merge',
+            replaceUrl: true,
+          });
+        }
+      }
+    });
   }
+
+  readonly selectedExpName = computed(() => {
+    const id = this.selectedExpId();
+    if (!id) return null;
+    const exp = this.store.providerExperiences().find((e) => e.id === id);
+    return exp?.title || null;
+  });
 
   readonly filteredMembers = computed(() => {
     let list = this.store.providerSubmissions();
@@ -1021,11 +1252,17 @@ export class ProviderMembersComponent {
   });
 
   readonly totalParticipants = computed(() =>
-    this.filteredMembers().reduce((sum, item) => sum + item.participants, 0),
+    this.filteredMembers()
+      .filter((item) => item.status !== 'rechazado')
+      .reduce((sum, item) => sum + item.participants, 0),
   );
 
   readonly totalAmount = computed(() =>
     this.filteredMembers().reduce((sum, item) => sum + item.amountArs, 0),
+  );
+
+  readonly pendingCount = computed(
+    () => this.filteredMembers().filter((m) => m.status === 'pendiente').length,
   );
 
   openReceipt(sub: TransferSubmission): void {
@@ -1064,7 +1301,20 @@ export class ProviderMembersComponent {
   }
 
   getWhatsappLink(phone: string, name: string, experience: string, date: string): string {
-    const cleanPhone = phone.replace(/[^\d]/g, '');
+    let cleanPhone = (phone || '').replace(/\D/g, '');
+    if (!cleanPhone) return '#';
+    if (cleanPhone.startsWith('0')) {
+      cleanPhone = cleanPhone.slice(1);
+    }
+    const isExplicitlyInternational =
+      (phone || '').trim().startsWith('+') && !cleanPhone.startsWith('54');
+    if (!isExplicitlyInternational) {
+      if (cleanPhone.length === 10 && !cleanPhone.startsWith('54')) {
+        cleanPhone = '549' + cleanPhone;
+      } else if (cleanPhone.length > 0 && !cleanPhone.startsWith('54')) {
+        cleanPhone = '54' + cleanPhone;
+      }
+    }
     const message = encodeURIComponent(
       `Hola ${name}, te escribo desde la coordinación de la expedición "${experience}" para la salida del ${date}.`,
     );

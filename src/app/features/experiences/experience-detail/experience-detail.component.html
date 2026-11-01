@@ -1,0 +1,277 @@
+<div class="exp-detail-page-container">
+  <!-- Header Compartido -->
+  <app-header [(mobileMenuOpen)]="mobileMenuOpen"></app-header>
+
+  <!-- Breadcrumb -->
+  <app-breadcrumb [items]="breadcrumbs()"></app-breadcrumb>
+
+  <!-- Wallpaper y Fondo -->
+  <div class="exp-detail-wallpaper-body app-wallpaper-body">
+    <div class="ambient-overlay"></div>
+
+    <main class="exp-detail-main-content">
+      <div class="exp-detail-wrapper">
+        @if (exp(); as item) {
+          <!-- ═══════════════ HERO CARD: CABECERA Y RESUMEN TÉCNICO ═══════════════ -->
+          <div class="exp-detail-section-card hero-detail-card">
+            <div class="card-inner-header">
+              <span class="section-kicker">{{ item.kicker || 'EXPEDICIÓN OFICIAL DEL CLUB' }}</span>
+              <h1 class="card-heading">{{ item.title }}</h1>
+              @if (item.description || item.tagline) {
+                <p class="card-subheading">
+                  {{ item.description || item.tagline }}
+                </p>
+              }
+            </div>
+
+            <!-- Specs Rápidas -->
+            <div class="detail-specs-grid">
+              <div class="spec-tile">
+                <span class="spec-label">DIFICULTAD</span>
+                <span class="spec-value">{{ item.difficulty }}</span>
+              </div>
+              <div class="spec-tile">
+                <span class="spec-label">DURACIÓN</span>
+                <span class="spec-value">{{ item.durationLabel }}</span>
+              </div>
+              <div class="spec-tile">
+                <span class="spec-label">REGIÓN</span>
+                <span class="spec-value">{{ item.region }}</span>
+              </div>
+              <div class="spec-tile">
+                <span class="spec-label">CUPO MÁXIMO</span>
+                <span class="spec-value">{{ item.maxSpotsPerGroup }} Socios</span>
+              </div>
+              <div class="spec-tile">
+                <span class="spec-label">TEMPORADA</span>
+                <span class="spec-value">{{ item.bestSeason || 'Todo el año' }}</span>
+              </div>
+              <div class="spec-tile">
+                <span class="spec-label">ALTITUD</span>
+                <span class="spec-value">{{
+                  item.altitudeMeters > 0 ? item.altitudeMeters + ' msnm' : 'N/A'
+                }}</span>
+              </div>
+            </div>
+
+            <!-- Media Principal: Video o Imagen de Portada -->
+            @if (item.videoUrl) {
+              <div class="detail-video-media-wrap">
+                <video
+                  [src]="item.videoUrl"
+                  autoplay
+                  muted
+                  [muted]="true"
+                  loop
+                  playsinline
+                  preload="auto"
+                  [poster]="item.videoPoster || item.coverImage"
+                  class="detail-video-element"
+                >
+                  Tu navegador no soporta el formato de video.
+                </video>
+              </div>
+            } @else if (item.coverImage) {
+              <div class="detail-cover-media-wrap">
+                <img [src]="item.coverImage" [alt]="item.title" class="detail-cover-img" />
+              </div>
+            }
+          </div>
+
+          <!-- ═══════════════ CARD: ARANCEL & RESERVA SUPERIOR ═══════════════ -->
+          <div class="exp-detail-section-card pricing-action-card">
+            <div class="pricing-card-flex">
+              <div class="price-data">
+                <span class="price-title">ARANCEL POR PERSONA</span>
+                <div class="price-figures">
+                  <span class="ars-price">{{ item.priceArs | ars }}</span>
+                  @if (item.priceUsd) {
+                    <span class="usd-price">o ${{ item.priceUsd }} USD</span>
+                  }
+                </div>
+                <span class="price-note"
+                  >Prioridad para socios de nuestro Club de Experiencias</span
+                >
+              </div>
+
+              <div class="action-btns-group">
+                <a [routerLink]="paymentRoute()" class="cta-primary-btn cta-blue-btn">
+                  <span>Pagar Experiencia</span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- ═══════════════ CARD: PRÓXIMAS SALIDAS PROGRAMADAS ═══════════════ -->
+          @if (item.dates && item.dates.length > 0) {
+            <div class="exp-detail-section-card">
+              <div class="card-inner-header">
+                <span class="section-kicker">CALENDARIO DE SALIDAS</span>
+                <h2 class="card-heading">Próximas Fechas Disponibles</h2>
+                <p class="card-subheading">
+                  Cupos limitados por salida para preservar el impacto ambiental y garantizar la
+                  mejor atención.
+                </p>
+              </div>
+
+              <div class="dates-chips-grid">
+                @for (d of item.dates; track d) {
+                  <div class="date-chip-item">
+                    <mat-icon class="date-chip-icon">event</mat-icon>
+                    <span class="date-chip-text">{{ d | fecha: 'larga' }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- ═══════════════ CARD: PUNTOS DESTACADOS / HIGHLIGHTS ═══════════════ -->
+          @if (item.highlights && item.highlights.length > 0) {
+            <div class="exp-detail-section-card">
+              <div class="card-inner-header">
+                <span class="section-kicker">PUNTOS DESTACADOS</span>
+                <h2 class="card-heading">Lo Más Sobresaliente de Esta Experiencia</h2>
+              </div>
+
+              <ul class="highlights-list">
+                @for (h of item.highlights; track h) {
+                  <li class="highlight-item">
+                    <span class="highlight-check">✓</span>
+                    <span class="highlight-text">{{ h }}</span>
+                  </li>
+                }
+              </ul>
+            </div>
+          }
+
+          <!-- ═══════════════ CARD: SERVICIOS INCLUIDOS & QUÉ LLEVAR ═══════════════ -->
+          @if (
+            (item.included && item.included.length > 0) ||
+            (item.notIncluded && item.notIncluded.length > 0)
+          ) {
+            <div class="exp-detail-section-card">
+              <div class="card-inner-header">
+                <span class="section-kicker">EQUIPAMIENTO & PREPARACIÓN</span>
+                <h2 class="card-heading">Servicios Incluidos & Qué Llevar</h2>
+                <p class="card-subheading">
+                  Detalles para preparar tu equipo y disfrutar al máximo de la jornada.
+                </p>
+              </div>
+
+              <div class="simple-logistics-grid">
+                <!-- Columna 1: Incluido -->
+                @if (item.included && item.included.length > 0) {
+                  <div class="simple-logistics-col">
+                    <div class="simple-col-title-wrap">
+                      <mat-icon class="simple-col-icon check-icon">check_circle</mat-icon>
+                      <h3 class="simple-col-title">Servicios e Indumentaria Provista</h3>
+                    </div>
+                    <ul class="simple-check-list">
+                      @for (inc of item.included; track inc) {
+                        <li>{{ inc }}</li>
+                      }
+                    </ul>
+                  </div>
+                }
+
+                <!-- Columna 2: Qué Llevar / No Incluido -->
+                @if (item.notIncluded && item.notIncluded.length > 0) {
+                  <div class="simple-logistics-col traer-col">
+                    <div class="simple-col-title-wrap">
+                      <mat-icon class="simple-col-icon pack-icon">backpack</mat-icon>
+                      <h3 class="simple-col-title">Qué Debes Traer</h3>
+                    </div>
+                    <ul class="simple-check-list blue-checks">
+                      @for (notInc of item.notIncluded; track notInc) {
+                        <li>{{ notInc }}</li>
+                      }
+                    </ul>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- ═══════════════ CARD: PUNTO DE ENCUENTRO & LOGÍSTICA ═══════════════ -->
+          @if (item.meetingPoint || item.region) {
+            <div class="exp-detail-section-card">
+              <div class="card-inner-header">
+                <span class="section-kicker">LOGÍSTICA Y UBICACIÓN</span>
+                <h2 class="card-heading">Punto de Encuentro</h2>
+                <p class="card-subheading">
+                  {{
+                    item.meetingPoint ||
+                      'Se coordina directamente con el prestador y los socios inscriptos.'
+                  }}
+                  ({{ item.region }})
+                </p>
+              </div>
+
+              <div class="location-actions-row">
+                <a
+                  [href]="
+                    'https://www.google.com/maps/search/?api=1&query=' +
+                    (item.meetingPoint ? item.meetingPoint + ', Catamarca' : 'Catamarca')
+                  "
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="location-btn maps-btn"
+                >
+                  <mat-icon class="loc-icon">map</mat-icon>
+                  <span>Abrir en Google Maps</span>
+                </a>
+
+                <a [routerLink]="['/experiencias', item.slug, 'fotos']" class="location-btn gallery-btn">
+                  <mat-icon class="loc-icon">photo_library</mat-icon>
+                  <span>Fotos de Experiencias Pasadas</span>
+                </a>
+              </div>
+            </div>
+          }
+
+          <!-- ═══════════════ CARD: ARANCEL & RESERVA INFERIOR ═══════════════ -->
+          <div class="exp-detail-section-card pricing-action-card">
+            <div class="pricing-card-flex">
+              <div class="price-data">
+                <span class="price-title">ARANCEL POR PERSONA</span>
+                <div class="price-figures">
+                  <span class="ars-price">{{ item.priceArs | ars }}</span>
+                  @if (item.priceUsd) {
+                    <span class="usd-price">o ${{ item.priceUsd }} USD</span>
+                  }
+                </div>
+                <span class="price-note"
+                  >Prioridad para socios de nuestro Club de Experiencias</span
+                >
+              </div>
+
+              <div class="action-btns-group">
+                <a [routerLink]="paymentRoute()" class="cta-primary-btn cta-blue-btn">
+                  <span>Pagar Experiencia</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        } @else {
+          <!-- ═══════════════ ESTADO: EXPERIENCIA NO ENCONTRADA ═══════════════ -->
+          <div class="exp-detail-section-card not-found-card">
+            <mat-icon class="not-found-icon">explore_off</mat-icon>
+            <h1 class="card-heading">Experiencia No Disponible</h1>
+            <p class="card-subheading">
+              La experiencia solicitada no se encuentra disponible actualmente o está en proceso de
+              revisión oficial.
+            </p>
+            <div class="not-found-actions">
+              <a routerLink="/experiencias" class="cta-primary-btn cta-blue-btn">
+                <span>Ver Catálogo Oficial</span>
+              </a>
+            </div>
+          </div>
+        }
+      </div>
+    </main>
+  </div>
+
+  <!-- Footer Compartido -->
+  <app-footer></app-footer>
+</div>

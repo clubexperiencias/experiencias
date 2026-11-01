@@ -10,7 +10,7 @@ describe('HeaderComponent', () => {
     localStorage.clear();
     await TestBed.configureTestingModule({
       imports: [HeaderComponent],
-      providers: [provideRouter([])]
+      providers: [provideRouter([])],
     }).compileComponents();
 
     fixture = TestBed.createComponent(HeaderComponent);

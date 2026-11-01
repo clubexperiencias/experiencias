@@ -1,31 +1,58 @@
-import { Component, HostListener, inject, signal } from '@angular/core';
+import { Component, HostListener, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { NewsletterService } from '../../../core/services/newsletter.service';
+import {
+  ExperienceService,
+  KAYAK_DEFAULT_EXPERIENCE,
+} from '../../../core/services/experience.service';
+import { Experience } from '../../../core/models/experience.model';
 import { FooterComponent } from '../../../shared/components/footer/footer.component';
 import { HeaderComponent } from '../../../shared/components/header/header.component';
-import { BreadcrumbComponent, BreadcrumbItem } from '../../../shared/components/breadcrumb/breadcrumb.component';
+import {
+  BreadcrumbComponent,
+  BreadcrumbItem,
+} from '../../../shared/components/breadcrumb/breadcrumb.component';
 
 export type KayakModalType = 'login' | null;
 
 @Component({
   selector: 'app-kayak-experience',
   standalone: true,
-  imports: [CommonModule, RouterLink, MatIconModule, FooterComponent, HeaderComponent, BreadcrumbComponent],
+  imports: [
+    CommonModule,
+    RouterLink,
+    MatIconModule,
+    FooterComponent,
+    HeaderComponent,
+    BreadcrumbComponent,
+  ],
   templateUrl: './kayak-experience.component.html',
-  styleUrl: './kayak-experience.component.css'
+  styleUrl: './kayak-experience.component.css',
 })
 export class KayakExperienceComponent {
   readonly newsletter = inject(NewsletterService);
+  readonly experienceService = inject(ExperienceService);
   readonly router = inject(Router);
+
+  readonly exp = computed<Experience | undefined>(() => {
+    const published = this.experienceService.getPublishedExperienceBySlug('kayak');
+    if (published) {
+      return published;
+    }
+    if (this.experienceService.hasRemoteExperiences()) {
+      return undefined;
+    }
+    return KAYAK_DEFAULT_EXPERIENCE;
+  });
 
   readonly bg = signal('/assets/images/laguna_blanca.jpg');
 
   readonly breadcrumbs: BreadcrumbItem[] = [
     { label: 'Inicio', url: '/' },
     { label: 'Experiencias', url: '/experiencias' },
-    { label: 'Travesía en Kayak' }
+    { label: 'Travesía en Kayak' },
   ];
 
   readonly mobileMenuOpen = signal(false);
@@ -65,18 +92,24 @@ export class KayakExperienceComponent {
     const email = this.loginEmail().trim();
     if (!email) return;
 
-    if (this.newsletter.isSubscribed() && this.newsletter.currentMember()?.email.toLowerCase() === email.toLowerCase()) {
+    if (
+      this.newsletter.isSubscribed() &&
+      this.newsletter.currentMember()?.email.toLowerCase() === email.toLowerCase()
+    ) {
       this.closeModal();
       this.router.navigate(['/perfil']);
       return;
     }
 
-    this.newsletter.joinWaitlist({ email }).then(() => {
-      this.closeModal();
-      this.router.navigate(['/perfil']);
-    }).catch(() => {
-      this.loginError.set('Ocurrió un error al ingresar. Intentá nuevamente.');
-    });
+    this.newsletter
+      .joinWaitlist({ email })
+      .then(() => {
+        this.closeModal();
+        this.router.navigate(['/perfil']);
+      })
+      .catch(() => {
+        this.loginError.set('Ocurrió un error al ingresar. Intentá nuevamente.');
+      });
   }
 
   logout(): void {

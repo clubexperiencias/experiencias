@@ -431,7 +431,8 @@ export class NewsletterService {
             this._isLoading.set(false);
             return {
               success: false,
-              message: 'Ya existe un socio registrado con este email. Iniciá sesión para acceder a tu cuenta.',
+              message:
+                'Ya existe un socio registrado con este email. Iniciá sesión para acceder a tu cuenta.',
             };
           }
 
@@ -484,7 +485,8 @@ export class NewsletterService {
             this._isLoading.set(false);
             return {
               success: false,
-              message: 'Ya existe un socio registrado con este email. Iniciá sesión para acceder a tu cuenta.',
+              message:
+                'Ya existe un socio registrado con este email. Iniciá sesión para acceder a tu cuenta.',
             };
           }
 
@@ -503,10 +505,7 @@ export class NewsletterService {
             .maybeSingle();
 
           const entry = mapDbRowToEntry(updatedSocio || existing);
-          const updatedEntries = [
-            entry,
-            ...this._entries().filter((e) => e.email !== cleanEmail),
-          ];
+          const updatedEntries = [entry, ...this._entries().filter((e) => e.email !== cleanEmail)];
           this._entries.set(updatedEntries);
           this._currentMember.set(entry);
           this.persistEntries(updatedEntries);
@@ -847,8 +846,7 @@ export class NewsletterService {
         success: true,
         alreadyRegisteredSocio: true,
         alreadyInWaitlist: true,
-        message:
-          '¡Correo verificado con éxito! Redirigiendo a tu ficha de Socio Emergente...',
+        message: '¡Correo verificado con éxito! Redirigiendo a tu ficha de Socio Emergente...',
       };
     }
 
