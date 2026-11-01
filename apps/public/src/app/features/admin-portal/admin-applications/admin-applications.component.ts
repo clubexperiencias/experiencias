@@ -12,7 +12,7 @@ import {
 } from '../../../core/services/admin-store.service';
 import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
 
-type ApplicationFilterTab = 'todas' | 'prestadores' | 'fundadores' | 'experiencias' | 'pendientes' | 'aprobadas';
+type ApplicationFilterTab = 'todas' | 'prestadores' | 'fundadores' | 'experiencias' | 'pendientes' | 'aprobadas' | 'bajas';
 
 @Component({
   selector: 'app-admin-applications',
@@ -131,6 +131,15 @@ type ApplicationFilterTab = 'todas' | 'prestadores' | 'fundadores' | 'experienci
             (click)="activeTab.set('aprobadas')"
           >
             Aprobadas ({{ store.applicationStats().aprobadasCount }})
+          </button>
+
+          <button
+            type="button"
+            class="filter-tab"
+            [class.is-active]="activeTab() === 'bajas'"
+            (click)="activeTab.set('bajas')"
+          >
+            Dadas de baja ({{ store.applicationStats().bajasCount }})
           </button>
         </div>
       </div>
@@ -266,6 +275,7 @@ type ApplicationFilterTab = 'todas' | 'prestadores' | 'fundadores' | 'experienci
                   <th class="col-type">Tipo</th>
                   <th class="col-postulante">Postulante</th>
                   <th class="col-rubro">Detalles</th>
+                  <th class="col-estado">Estado</th>
                   <th class="col-fecha">Fecha</th>
                   <th class="col-actions">Acciones</th>
                 </tr>
@@ -319,6 +329,17 @@ type ApplicationFilterTab = 'todas' | 'prestadores' | 'fundadores' | 'experienci
                           </span>
                         }
                       </div>
+                    </td>
+
+                    <!-- Estado -->
+                    <td>
+                      <span class="status-badge" [attr.data-status]="app.status">
+                        @switch (app.status) {
+                          @case ('aprobado') { Aprobado }
+                          @case ('dado_de_baja') { Dado de baja }
+                          @default { Pendiente }
+                        }
+                      </span>
                     </td>
 
                     <!-- Fecha -->
@@ -389,7 +410,11 @@ type ApplicationFilterTab = 'todas' | 'prestadores' | 'fundadores' | 'experienci
                 <div class="detail-item">
                   <span class="dt-label">Estado Actual</span>
                   <span class="status-badge modal-badge" [attr.data-status]="selectedApp()!.status">
-                    {{ selectedApp()!.status === 'aprobado' ? 'Aprobada' : selectedApp()!.status === 'rechazado' ? 'Rechazada' : 'Pendiente' }}
+                    @switch (selectedApp()!.status) {
+                      @case ('aprobado') { Aprobado }
+                      @case ('dado_de_baja') { Dado de baja }
+                      @default { Pendiente }
+                    }
                   </span>
                 </div>
 
@@ -427,6 +452,65 @@ type ApplicationFilterTab = 'todas' | 'prestadores' | 'fundadores' | 'experienci
                     <span class="dt-label">Descripción de Servicios y Logística</span>
                     <p class="dt-text-box">{{ selectedApp()!.description || 'Sin descripción adicional.' }}</p>
                   </div>
+
+                  <!-- Datos Bancarios para Liquidación de Pagos -->
+                  <div class="provider-banking-box full-span">
+                    <div class="banking-box-header">
+                      <mat-icon class="banking-icon">account_balance</mat-icon>
+                      <div>
+                        <h4 class="banking-box-title">Datos Bancarios para Liquidación de Pagos</h4>
+                        <p class="banking-box-sub">
+                          Configurá la cuenta del prestador para transferir la recaudación de las experiencias reservadas.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div class="banking-form-grid">
+                      <div class="banking-input-group">
+                        <label class="banking-input-label">Nombre / Titular de la cuenta</label>
+                        <input
+                          type="text"
+                          class="banking-form-input"
+                          placeholder="Ej: Esteban Carrizo o Catamarca 4x4 SRL"
+                          [ngModel]="providerAccountHolder()"
+                          (ngModelChange)="providerAccountHolder.set($event)"
+                        />
+                      </div>
+
+                      <div class="banking-input-group">
+                        <label class="banking-input-label">CUIT / CUIL</label>
+                        <input
+                          type="text"
+                          class="banking-form-input"
+                          placeholder="Ej: 20-31889900-4"
+                          [ngModel]="providerCuitDni()"
+                          (ngModelChange)="providerCuitDni.set($event)"
+                        />
+                      </div>
+
+                      <div class="banking-input-group">
+                        <label class="banking-input-label">CBU / CVU o Alias</label>
+                        <input
+                          type="text"
+                          class="banking-form-input"
+                          placeholder="Ej: CATAMARCA.4X4.MP o 00000031..."
+                          [ngModel]="providerCbuAlias()"
+                          (ngModelChange)="providerCbuAlias.set($event)"
+                        />
+                      </div>
+
+                      <div class="banking-input-group">
+                        <label class="banking-input-label">Entidad (Banco o Billetera)</label>
+                        <input
+                          type="text"
+                          class="banking-form-input"
+                          placeholder="Ej: Banco Nación, Galicia, Mercado Pago"
+                          [ngModel]="providerBankName()"
+                          (ngModelChange)="providerBankName.set($event)"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 } @else {
                   <div class="detail-item full-span">
                     <span class="dt-label">Carta de Motivación para ser Socio Fundador</span>
@@ -443,24 +527,80 @@ type ApplicationFilterTab = 'todas' | 'prestadores' | 'fundadores' | 'experienci
 
             <div class="modal-actions">
               <div class="state-buttons">
-                @if (selectedApp()!.status !== 'aprobado') {
-                  <button
-                    type="button"
-                    class="btn-state btn-approve"
-                    (click)="changeStatus('aprobado')"
-                  >
-                    Aprobar Postulación
-                  </button>
-                }
+                @if (selectedApp()!.type === 'prestador') {
+                  @if (selectedApp()!.status === 'aprobado') {
+                    <button
+                      type="button"
+                      class="btn-state btn-save-banking"
+                      (click)="saveProviderBankingData()"
+                    >
+                      Guardar Datos Bancarios
+                    </button>
+                    <button
+                      type="button"
+                      class="btn-state btn-reject"
+                      (click)="darDeBajaProvider()"
+                    >
+                      Dar de baja
+                    </button>
+                  } @else {
+                    <button
+                      type="button"
+                      class="btn-state btn-approve"
+                      (click)="approveProvider()"
+                    >
+                      Aprobar Prestador
+                    </button>
+                    @if (selectedApp()!.status !== 'dado_de_baja') {
+                      <button
+                        type="button"
+                        class="btn-state btn-reject"
+                        (click)="darDeBajaProvider()"
+                      >
+                        Dar de baja
+                      </button>
+                    }
+                  }
 
-                @if (selectedApp()!.status !== 'pendiente') {
-                  <button
-                    type="button"
-                    class="btn-state btn-pending"
-                    (click)="changeStatus('pendiente')"
-                  >
-                    Marcar Pendiente
-                  </button>
+                  @if (selectedApp()!.status !== 'pendiente') {
+                    <button
+                      type="button"
+                      class="btn-state btn-pending"
+                      (click)="changeStatus('pendiente')"
+                    >
+                      Marcar Pendiente
+                    </button>
+                  }
+                } @else {
+                  @if (selectedApp()!.status !== 'aprobado') {
+                    <button
+                      type="button"
+                      class="btn-state btn-approve"
+                      (click)="changeStatus('aprobado')"
+                    >
+                      Aprobar Postulación
+                    </button>
+                  }
+
+                  @if (selectedApp()!.status !== 'dado_de_baja') {
+                    <button
+                      type="button"
+                      class="btn-state btn-reject"
+                      (click)="changeStatus('dado_de_baja')"
+                    >
+                      Dar de baja
+                    </button>
+                  }
+
+                  @if (selectedApp()!.status !== 'pendiente') {
+                    <button
+                      type="button"
+                      class="btn-state btn-pending"
+                      (click)="changeStatus('pendiente')"
+                    >
+                      Marcar Pendiente
+                    </button>
+                  }
                 }
               </div>
 
@@ -581,11 +721,46 @@ type ApplicationFilterTab = 'todas' | 'prestadores' | 'fundadores' | 'experienci
                 }
                 <div><dt>Contacto prestador:</dt><dd><a [href]="'mailto:' + expReq.providerEmail" class="dt-link">{{ expReq.providerEmail }}</a></dd></div>
               </dl>
+
+              @if (expReq.status === 'pendiente') {
+                <div class="exp-public-url-box">
+                  <label class="url-label" for="exp-public-url">URL oficial vinculada en la web pública (experiencias.club):</label>
+                  <input
+                    id="exp-public-url"
+                    type="text"
+                    class="url-input"
+                    [value]="expPublicUrlInput()"
+                    (input)="expPublicUrlInput.set($any($event.target).value)"
+                    placeholder="https://experiencias.club/experiencias/..."
+                  />
+                </div>
+              }
             </div>
 
             <!-- Acciones al Pie -->
             <div class="modal-actions">
               <div class="state-buttons">
+                @if (expReq.status === 'pendiente') {
+                  <button
+                    type="button"
+                    class="btn-state btn-approve"
+                    (click)="approveExperience(expReq.id)"
+                  >
+                    Aprobar y Publicar
+                  </button>
+                  <button
+                    type="button"
+                    class="btn-state btn-reject"
+                    (click)="rejectExperience(expReq.id)"
+                  >
+                    Rechazar
+                  </button>
+                } @else {
+                  <span class="status-reviewed-tag" [class.is-approved]="expReq.status === 'aprobada'">
+                    {{ expReq.status === 'aprobada' ? '✓ Propuesta Aprobada' : '✕ Propuesta Rechazada' }}
+                  </span>
+                }
+
                 @if (expReq.providerPhone) {
                   <a
                     [href]="getWhatsappLink(expReq.providerPhone, expReq.providerName)"
@@ -1619,6 +1794,52 @@ type ApplicationFilterTab = 'todas' | 'prestadores' | 'fundadores' | 'experienci
         color: #ffffff;
       }
 
+      .exp-public-url-box {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        padding: 0.85rem 1rem;
+        background: rgba(22, 33, 85, 0.4);
+        border: 1px solid rgba(128, 179, 255, 0.25);
+        border-radius: 2px;
+        margin-top: 1rem;
+      }
+      .url-label {
+        font-size: 0.76rem;
+        font-weight: 700;
+        color: #80b3ff;
+      }
+      .url-input {
+        width: 100%;
+        background: rgba(7, 13, 28, 0.7);
+        border: 1px solid rgba(128, 179, 255, 0.35);
+        border-radius: 2px;
+        padding: 0.45rem 0.65rem;
+        color: #ffffff;
+        font-size: 0.82rem;
+      }
+      .url-input:focus {
+        outline: none;
+        border-color: #80b3ff;
+      }
+
+      .status-reviewed-tag {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.45rem 0.85rem;
+        font-size: 0.78rem;
+        font-weight: 700;
+        border-radius: 2px;
+        background: rgba(239, 68, 68, 0.15);
+        border: 1px solid rgba(239, 68, 68, 0.4);
+        color: #fca5a5;
+      }
+      .status-reviewed-tag.is-approved {
+        background: rgba(16, 185, 129, 0.15);
+        border-color: rgba(16, 185, 129, 0.4);
+        color: #34d399;
+      }
+
       .btn-pending {
         background: rgba(245, 158, 11, 0.2);
         border: 1px solid rgba(245, 158, 11, 0.6);
@@ -1633,6 +1854,97 @@ type ApplicationFilterTab = 'todas' | 'prestadores' | 'fundadores' | 'experienci
       .btn-state:disabled {
         opacity: 0.5;
         cursor: not-allowed;
+      }
+
+      .btn-save-banking {
+        background: rgba(128, 179, 255, 0.2);
+        border: 1px solid rgba(128, 179, 255, 0.6);
+        color: #80b3ff;
+      }
+      .btn-save-banking:hover:not(:disabled) {
+        background: #80b3ff;
+        color: #070d18;
+      }
+
+      .provider-banking-box {
+        display: flex;
+        flex-direction: column;
+        gap: 0.85rem;
+        padding: 1.15rem;
+        background: rgba(18, 28, 60, 0.4);
+        border: 1px solid rgba(128, 179, 255, 0.25);
+        border-radius: 4px;
+        margin-top: 0.5rem;
+      }
+
+      .banking-box-header {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.65rem;
+      }
+
+      .banking-icon {
+        color: #80b3ff;
+        font-size: 22px;
+        width: 22px;
+        height: 22px;
+        margin-top: 2px;
+      }
+
+      .banking-box-title {
+        font-size: 0.88rem;
+        font-weight: 700;
+        color: #ffffff;
+        margin: 0 0 0.2rem 0;
+      }
+
+      .banking-box-sub {
+        font-size: 0.78rem;
+        color: rgba(255, 255, 255, 0.65);
+        margin: 0;
+      }
+
+      .banking-form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.85rem;
+      }
+
+      @media (max-width: 600px) {
+        .banking-form-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .banking-input-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+      }
+
+      .banking-input-label {
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: rgba(255, 255, 255, 0.65);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .banking-form-input {
+        width: 100%;
+        background: rgba(7, 13, 28, 0.7);
+        border: 1px solid rgba(128, 179, 255, 0.3);
+        border-radius: 2px;
+        padding: 0.45rem 0.65rem;
+        color: #ffffff;
+        font-size: 0.82rem;
+        box-sizing: border-box;
+      }
+
+      .banking-form-input:focus {
+        outline: none;
+        border-color: #80b3ff;
+        background: rgba(7, 13, 28, 0.9);
       }
 
       .btn-close {
@@ -1660,6 +1972,12 @@ export class AdminApplicationsComponent implements OnInit {
   readonly activeTab = signal<ApplicationFilterTab>('todas');
   readonly selectedApp = signal<AdminApplication | null>(null);
   readonly selectedExperienceRequest = signal<ExperienceProposalRequest | null>(null);
+  readonly expPublicUrlInput = signal<string>('');
+
+  readonly providerAccountHolder = signal<string>('');
+  readonly providerCuitDni = signal<string>('');
+  readonly providerCbuAlias = signal<string>('');
+  readonly providerBankName = signal<string>('');
 
   ngOnInit(): void {
     this.route.queryParams.subscribe((params) => {
@@ -1683,6 +2001,8 @@ export class AdminApplicationsComponent implements OnInit {
       list = list.filter((a) => a.status === 'pendiente');
     } else if (tab === 'aprobadas') {
       list = list.filter((a) => a.status === 'aprobado');
+    } else if (tab === 'bajas') {
+      list = list.filter((a) => a.status === 'dado_de_baja');
     }
 
     // Filtro por búsqueda
@@ -1722,6 +2042,10 @@ export class AdminApplicationsComponent implements OnInit {
 
   openDetailModal(app: AdminApplication): void {
     this.selectedApp.set(app);
+    this.providerAccountHolder.set(app.accountHolder || app.fullName || '');
+    this.providerCuitDni.set(app.cuitDni || '');
+    this.providerCbuAlias.set(app.cbuAlias || '');
+    this.providerBankName.set(app.bankName || '');
   }
 
   closeDetailModal(): void {
@@ -1730,6 +2054,8 @@ export class AdminApplicationsComponent implements OnInit {
 
   openExperienceRequest(req: ExperienceProposalRequest): void {
     this.selectedExperienceRequest.set(req);
+    const slug = req.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    this.expPublicUrlInput.set(`https://experiencias.club/experiencias/${slug}`);
   }
 
   closeExperienceRequest(): void {
@@ -1737,7 +2063,7 @@ export class AdminApplicationsComponent implements OnInit {
   }
 
   approveExperience(id: string): void {
-    this.store.approveExperienceRequest(id);
+    this.store.approveExperienceRequest(id, this.expPublicUrlInput());
     const current = this.selectedExperienceRequest();
     if (current && current.id === id) {
       this.selectedExperienceRequest.set({
@@ -1760,11 +2086,56 @@ export class AdminApplicationsComponent implements OnInit {
     }
   }
 
+  approveProvider(): void {
+    const current = this.selectedApp();
+    if (!current) return;
+    const banking = {
+      accountHolder: this.providerAccountHolder().trim() || current.fullName,
+      cuitDni: this.providerCuitDni().trim(),
+      cbuAlias: this.providerCbuAlias().trim(),
+      bankName: this.providerBankName().trim(),
+    };
+    void this.store.updateApplicationStatus(current.id, current.type, 'aprobado', banking);
+    this.selectedApp.update((a) => (a ? { ...a, status: 'aprobado', ...banking } : null));
+  }
+
+  darDeBajaProvider(): void {
+    const current = this.selectedApp();
+    if (!current) return;
+    const banking = {
+      accountHolder: this.providerAccountHolder().trim() || current.fullName,
+      cuitDni: this.providerCuitDni().trim(),
+      cbuAlias: this.providerCbuAlias().trim(),
+      bankName: this.providerBankName().trim(),
+    };
+    void this.store.updateApplicationStatus(current.id, current.type, 'dado_de_baja', banking);
+    this.selectedApp.update((a) => (a ? { ...a, status: 'dado_de_baja', ...banking } : null));
+  }
+
+  saveProviderBankingData(): void {
+    const current = this.selectedApp();
+    if (!current) return;
+    const banking = {
+      accountHolder: this.providerAccountHolder().trim() || current.fullName,
+      cuitDni: this.providerCuitDni().trim(),
+      cbuAlias: this.providerCbuAlias().trim(),
+      bankName: this.providerBankName().trim(),
+    };
+    void this.store.updateApplicationStatus(current.id, current.type, current.status, banking);
+    this.selectedApp.update((a) => (a ? { ...a, ...banking } : null));
+  }
+
   changeStatus(status: ApplicationStatus): void {
     const current = this.selectedApp();
     if (!current) return;
-    void this.store.updateApplicationStatus(current.id, current.type, status);
-    this.selectedApp.update((a) => (a ? { ...a, status } : null));
+    const banking = current.type === 'prestador' ? {
+      accountHolder: this.providerAccountHolder().trim() || current.fullName,
+      cuitDni: this.providerCuitDni().trim(),
+      cbuAlias: this.providerCbuAlias().trim(),
+      bankName: this.providerBankName().trim(),
+    } : undefined;
+    void this.store.updateApplicationStatus(current.id, current.type, status, banking);
+    this.selectedApp.update((a) => (a ? { ...a, status, ...(banking || {}) } : null));
   }
 
   getWhatsappLink(phone?: string, name?: string): string {

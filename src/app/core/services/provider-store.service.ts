@@ -143,6 +143,7 @@ export const SEED_PROVIDERS: ProviderUser[] = [
     cbuAlias: '3840200500000056402423',
     bankName: 'Uala Bank S.A.U',
     verified: true,
+    status: 'aprobado',
     role: 'prestador',
     avatar: '/assets/aistudio/patricio.jpg',
     joinedAt: '2024-03-15T10:00:00Z',
@@ -157,6 +158,7 @@ export const SEED_PROVIDERS: ProviderUser[] = [
     cbuAlias: 'PUNA.EXPEDICIONES',
     bankName: 'Banco Galicia',
     verified: true,
+    status: 'aprobado',
     role: 'prestador',
     avatar:
       'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
@@ -184,6 +186,7 @@ const SEED_EXPERIENCES: ProviderExperience[] = [
     capacityPerDate: 12,
     dates: [upcomingDate(9), upcomingDate(16), upcomingDate(23)],
     status: 'publicada',
+    publicUrl: 'https://experiencias.club/experiencias/kayak',
     providerId: 'prov-patricio',
     providerName: 'Patricio Facundo · Catamarca Kayak & Aventura Náutica',
     coverImage: '/assets/images/kayak-club-de-experiencias.jpg',
@@ -297,6 +300,11 @@ export class ProviderStoreService {
   // Public readonly signals
   readonly currentProvider = this._currentProvider.asReadonly();
   readonly isAuthenticated = computed(() => this._currentProvider() !== null);
+  readonly isProviderApproved = computed(() => {
+    const prov = this._currentProvider();
+    if (!prov) return false;
+    return prov.verified === true && prov.status !== 'dado_de_baja' && prov.status !== 'pendiente';
+  });
   readonly allProviders = this._providers.asReadonly();
   readonly experiences = this._experiences.asReadonly();
   readonly experienceRequests = computed(() =>
@@ -323,6 +331,15 @@ export class ProviderStoreService {
     const provider = this._currentProvider();
     if (!provider) return this._experiences();
     return this._experiences().filter((e) => e.providerId === provider.id);
+  });
+
+  // Proposals/requests submitted by current provider
+  readonly providerExperienceRequests = computed(() => {
+    const provider = this._currentProvider();
+    if (!provider) return this.experienceRequests();
+    return this.experienceRequests().filter(
+      (r) => r.providerId === provider.id || r.providerEmail === provider.email,
+    );
   });
 
   readonly pendingCount = computed(
@@ -367,8 +384,13 @@ export class ProviderStoreService {
 
   async restoreSupabaseSession(): Promise<void> {
     if (!isSupabaseConfigured()) {
-      this._currentProvider.set(SEED_PROVIDERS[0]);
-      this.saveSession(SEED_PROVIDERS[0]);
+      const first = this._providers()[0] || SEED_PROVIDERS[0];
+      if (first && first.status !== 'dado_de_baja' && first.status !== 'pendiente') {
+        this._currentProvider.set(first);
+        this.saveSession(first);
+      } else {
+        this._currentProvider.set(null);
+      }
       return;
     }
 
@@ -379,34 +401,36 @@ export class ProviderStoreService {
       return;
     }
 
-    const { data: access, error } = await this.supabase
-      .from('provider_access')
-      .select('email, name, agency, active')
+    const { data: access, error } = await (this.supabase
+      .from('provider_access') as any)
+      .select('email, name, agency, active, status, cbu_alias, cuit_dni, bank_name, account_holder')
       .eq('email', email)
-      .eq('active', true)
       .maybeSingle();
 
-    if (error || !access) {
+    if (error || !access || access.active === false || access.status === 'dado_de_baja' || access.status === 'pendiente') {
       this._currentProvider.set(null);
+      this.saveSession(null);
       return;
     }
 
     const existing = this._providers().find((provider) => provider.email.toLowerCase() === email);
-    const provider: ProviderUser = existing ?? {
-      id: `provider-${email.replace(/[^a-z0-9]+/g, '-')}`,
+    const provider: ProviderUser = {
+      id: existing?.id ?? `provider-${email.replace(/[^a-z0-9]+/g, '-')}`,
       email,
-      name: access.name || email,
-      agency: access.agency || 'Prestador EXPERIENCIAS.CLUB',
-      phone: '',
-      cuitDni: '',
-      cbuAlias: '',
-      bankName: '',
+      name: access.account_holder || access.name || existing?.name || email,
+      agency: access.agency || existing?.agency || 'Prestador EXPERIENCIAS.CLUB',
+      phone: existing?.phone || '',
+      cuitDni: access.cuit_dni || existing?.cuitDni || '',
+      cbuAlias: access.cbu_alias || existing?.cbuAlias || '',
+      bankName: access.bank_name || existing?.bankName || '',
       verified: true,
+      status: 'aprobado',
       role: 'prestador',
-      joinedAt: new Date().toISOString(),
+      joinedAt: existing?.joinedAt ?? new Date().toISOString(),
     };
 
     if (!existing) this._providers.update((providers) => [...providers, provider]);
+    else this._providers.update((providers) => providers.map((p) => p.email.toLowerCase() === email ? provider : p));
     this._currentProvider.set(provider);
     this.saveSession(provider);
   }
@@ -432,35 +456,90 @@ export class ProviderStoreService {
   // ==========================================
   // Auth & Session
   // ==========================================
-  login(email: string, _password?: string): boolean {
+  login(email: string, _password?: string): { success: boolean; message: string } {
     const normalized = email.trim().toLowerCase();
-    let provider = this._providers().find((p) => p.email.toLowerCase() === normalized);
+    const provider = this._providers().find((p) => p.email.toLowerCase() === normalized);
 
-    if (!provider) {
-      // Auto-register demo profile for easy testing with any email
-      const name = normalized.split('@')[0].replace(/[._]/g, ' ');
-      provider = {
-        id: `prov-${crypto.randomUUID().slice(0, 8)}`,
-        email: normalized,
-        name: name.charAt(0).toUpperCase() + name.slice(1),
-        agency: `${name.toUpperCase()} Turismo Aventura`,
-        phone: '+54 383 400 0000',
-        cuitDni: '20-30000000-9',
-        cbuAlias: 'PRESTADOR.CATAMARCA',
-        bankName: 'Banco de Catamarca',
-        verified: false,
-        role: 'prestador',
-        avatar:
-          'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
-        joinedAt: new Date().toISOString(),
-      };
-      this._providers.update((list) => [...list, provider!]);
-      this.saveProviders();
+    if (provider) {
+      if (provider.status === 'dado_de_baja') {
+        return {
+          success: false,
+          message: 'La cuenta de este prestador se encuentra dada de baja. Comunicate con administración.',
+        };
+      }
+      if (provider.status === 'pendiente' || !provider.verified) {
+        return {
+          success: false,
+          message: 'Tu postulación como prestador aún está pendiente de aprobación por el equipo de administración.',
+        };
+      }
+      this._currentProvider.set(provider);
+      this.saveSession(provider);
+      return { success: true, message: 'Ingreso exitoso.' };
     }
 
-    this._currentProvider.set(provider);
-    this.saveSession(provider);
-    return true;
+    return {
+      success: false,
+      message: 'No se encontró un prestador autorizado para este correo.',
+    };
+  }
+
+  syncProviderStatusFromAdmin(
+    email: string,
+    status: 'aprobado' | 'pendiente' | 'rechazado' | 'dado_de_baja',
+    details?: Partial<ProviderUser>,
+  ): void {
+    const normalized = email.trim().toLowerCase();
+    const existing = this._providers().find((p) => p.email.toLowerCase() === normalized);
+
+    if (existing) {
+      this._providers.update((list) =>
+        list.map((p) =>
+          p.email.toLowerCase() === normalized
+            ? {
+                ...p,
+                ...(details?.name ? { name: details.name } : {}),
+                ...(details?.agency ? { agency: details.agency } : {}),
+                ...(details?.phone ? { phone: details.phone } : {}),
+                ...(details?.cuitDni ? { cuitDni: details.cuitDni } : {}),
+                ...(details?.cbuAlias ? { cbuAlias: details.cbuAlias } : {}),
+                ...(details?.bankName ? { bankName: details.bankName } : {}),
+                verified: status === 'aprobado',
+                status,
+              }
+            : p,
+        ),
+      );
+    } else {
+      const newProvider: ProviderUser = {
+        id: `provider-${normalized.replace(/[^a-z0-9]+/g, '-')}`,
+        email: normalized,
+        name: details?.name || email,
+        agency: details?.agency || 'Prestador EXPERIENCIAS.CLUB',
+        phone: details?.phone || '',
+        cuitDni: details?.cuitDni || '',
+        cbuAlias: details?.cbuAlias || '',
+        bankName: details?.bankName || '',
+        verified: status === 'aprobado',
+        status,
+        role: 'prestador',
+        joinedAt: new Date().toISOString(),
+      };
+      this._providers.update((list) => [...list, newProvider]);
+    }
+
+    const current = this._currentProvider();
+    if (current && current.email.toLowerCase() === normalized) {
+      if (status !== 'aprobado') {
+        this._currentProvider.set(null);
+        this.saveSession(null);
+      } else {
+        const updated = this._providers().find((p) => p.email.toLowerCase() === normalized) || null;
+        this._currentProvider.set(updated);
+        if (updated) this.saveSession(updated);
+      }
+    }
+    this.saveProviders();
   }
 
   loginAs(providerId: string): void {
@@ -1113,6 +1192,9 @@ export class ProviderStoreService {
   submitExperienceRequest(
     data: Omit<ExperienceProposalRequest, 'id' | 'status' | 'createdAt'>,
   ): ExperienceProposalRequest {
+    if (!this.isProviderApproved()) {
+      throw new Error('Solo los prestadores formalmente aprobados pueden proponer o gestionar experiencias.');
+    }
     const newReq: ExperienceProposalRequest = {
       ...data,
       id: 'req-' + Date.now(),
@@ -1124,7 +1206,7 @@ export class ProviderStoreService {
     return newReq;
   }
 
-  approveExperienceRequest(requestId: string): void {
+  approveExperienceRequest(requestId: string, publicUrl?: string): void {
     const req = this._experienceRequests().find((r) => r.id === requestId);
     this._experienceRequests.update((list) =>
       list.map((r) =>
@@ -1140,9 +1222,11 @@ export class ProviderStoreService {
         (e) => e.title.toLowerCase() === req.title.toLowerCase(),
       );
       if (!exists) {
+        const generatedSlug = slugify(req.title);
+        const resolvedUrl = publicUrl?.trim() || `https://experiencias.club/experiencias/${generatedSlug}`;
         const newExp: ProviderExperience = {
-          id: 'exp-' + slugify(req.title),
-          slug: slugify(req.title),
+          id: 'exp-' + generatedSlug,
+          slug: generatedSlug,
           title: req.title,
           shortTitle: req.title.split('&')[0].trim(),
           tagline: req.subheading.length > 90 ? req.subheading.slice(0, 90) + '...' : req.subheading,
@@ -1155,6 +1239,7 @@ export class ProviderStoreService {
           capacityPerDate: req.capacity,
           dates: [upcomingDate(7), upcomingDate(14), upcomingDate(21)],
           status: 'publicada',
+          publicUrl: resolvedUrl,
           providerId: req.providerId,
           providerName: `${req.providerName} · ${req.providerAgency}`,
           coverImage: req.coverImage || '/assets/images/kayak-club-de-experiencias.jpg',
@@ -1164,6 +1249,13 @@ export class ProviderStoreService {
         this.saveExperiences();
       }
     }
+  }
+
+  updateExperiencePublicUrl(expId: string, publicUrl: string): void {
+    this._experiences.update((list) =>
+      list.map((e) => (e.id === expId ? { ...e, publicUrl: publicUrl.trim() } : e)),
+    );
+    this.saveExperiences();
   }
 
   rejectExperienceRequest(requestId: string): void {

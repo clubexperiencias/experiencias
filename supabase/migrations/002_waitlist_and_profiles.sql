@@ -722,9 +722,9 @@ CREATE POLICY "Permitir consultar postulaciones de prestadores"
 GRANT SELECT, INSERT ON public.postulaciones_prestadores TO anon, authenticated;
 
 -- ============================================================
--- 5. TABLA: Experiencias Oficiales del Club (public.experiencias_club)
+-- 5. TABLA: Experiencias Oficiales del Club (public.experiencias)
 -- ============================================================
-CREATE TABLE IF NOT EXISTS public.experiencias_club (
+CREATE TABLE IF NOT EXISTS public.experiencias (
   id                   TEXT PRIMARY KEY,
   slug                 TEXT NOT NULL UNIQUE,
   title                TEXT NOT NULL,
@@ -741,19 +741,22 @@ CREATE TABLE IF NOT EXISTS public.experiencias_club (
   dates                JSONB NOT NULL DEFAULT '[]'::jsonb,
   status               TEXT NOT NULL DEFAULT 'publicada'
                        CHECK (status IN ('borrador', 'publicada')),
+  public_url           TEXT DEFAULT '',
   created_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at           TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_experiencias_club_slug ON public.experiencias_club(slug);
+ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS public_url TEXT DEFAULT '';
 
-DROP TRIGGER IF EXISTS experiencias_club_updated_at ON public.experiencias_club;
-CREATE TRIGGER experiencias_club_updated_at
-  BEFORE UPDATE ON public.experiencias_club
+CREATE INDEX IF NOT EXISTS idx_experiencias_slug ON public.experiencias(slug);
+
+DROP TRIGGER IF EXISTS experiencias_updated_at ON public.experiencias;
+CREATE TRIGGER experiencias_updated_at
+  BEFORE UPDATE ON public.experiencias
   FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
 -- Semilla idempotente de la experiencia inaugural de Kayak
-INSERT INTO public.experiencias_club (
+INSERT INTO public.experiencias (
   id,
   slug,
   title,
@@ -791,24 +794,24 @@ VALUES (
 )
 ON CONFLICT (id) DO NOTHING;
 
-ALTER TABLE public.experiencias_club ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.experiencias ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Permitir lectura publica de experiencias_club" ON public.experiencias_club;
-CREATE POLICY "Permitir lectura publica de experiencias_club"
-  ON public.experiencias_club
+DROP POLICY IF EXISTS "Permitir lectura publica de experiencias" ON public.experiencias;
+CREATE POLICY "Permitir lectura publica de experiencias"
+  ON public.experiencias
   FOR SELECT
   TO anon, authenticated
   USING (true);
 
-DROP POLICY IF EXISTS "Permitir crear y editar experiencias_club" ON public.experiencias_club;
-CREATE POLICY "Permitir crear y editar experiencias_club"
-  ON public.experiencias_club
+DROP POLICY IF EXISTS "Permitir crear y editar experiencias" ON public.experiencias;
+CREATE POLICY "Permitir crear y editar experiencias"
+  ON public.experiencias
   FOR ALL
   TO anon, authenticated
   USING (true)
   WITH CHECK (true);
 
-GRANT SELECT, INSERT, UPDATE ON public.experiencias_club TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE ON public.experiencias TO anon, authenticated;
 
 -- ============================================================
 -- 6. TABLA: Pagos por Transferencia & Comprobantes en Cloudflare R2 (public.pagos_transferencias)
@@ -925,7 +928,7 @@ BEGIN
   END IF;
 
   SELECT capacity_per_date INTO v_capacity
-  FROM public.experiencias_club
+  FROM public.experiencias
   WHERE id = p_experience_id
   LIMIT 1;
 
@@ -1231,9 +1234,9 @@ END;
 $$;
 
 -- ============================================================
--- 5. TABLA: Experiencias Oficiales del Club (public.experiencias_club)
+-- 5. TABLA: Experiencias Oficiales del Club (public.experiencias)
 -- ============================================================
-CREATE TABLE IF NOT EXISTS public.experiencias_club (
+CREATE TABLE IF NOT EXISTS public.experiencias (
   id                   TEXT PRIMARY KEY,
   slug                 TEXT NOT NULL UNIQUE,
   title                TEXT NOT NULL,
@@ -1250,19 +1253,22 @@ CREATE TABLE IF NOT EXISTS public.experiencias_club (
   dates                JSONB NOT NULL DEFAULT '[]'::jsonb,
   status               TEXT NOT NULL DEFAULT 'publicada'
                        CHECK (status IN ('borrador', 'publicada')),
+  public_url           TEXT DEFAULT '',
   created_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at           TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_experiencias_club_slug ON public.experiencias_club(slug);
+ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS public_url TEXT DEFAULT '';
 
-DROP TRIGGER IF EXISTS experiencias_club_updated_at ON public.experiencias_club;
-CREATE TRIGGER experiencias_club_updated_at
-  BEFORE UPDATE ON public.experiencias_club
+CREATE INDEX IF NOT EXISTS idx_experiencias_slug ON public.experiencias(slug);
+
+DROP TRIGGER IF EXISTS experiencias_updated_at ON public.experiencias;
+CREATE TRIGGER experiencias_updated_at
+  BEFORE UPDATE ON public.experiencias
   FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
 -- Semilla idempotente de la experiencia inaugural de Kayak
-INSERT INTO public.experiencias_club (
+INSERT INTO public.experiencias (
   id,
   slug,
   title,
@@ -1276,7 +1282,8 @@ INSERT INTO public.experiencias_club (
   price_ars,
   capacity_per_date,
   dates,
-  status
+  status,
+  public_url
 )
 VALUES (
   'exp-kayak',
@@ -1296,28 +1303,29 @@ VALUES (
     to_char((CURRENT_DATE + INTERVAL '16 days'), 'YYYY-MM-DD'),
     to_char((CURRENT_DATE + INTERVAL '23 days'), 'YYYY-MM-DD')
   ),
-  'publicada'
+  'publicada',
+  'https://experiencias.club/experiencias/kayak'
 )
 ON CONFLICT (id) DO NOTHING;
 
-ALTER TABLE public.experiencias_club ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.experiencias ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Permitir lectura publica de experiencias_club" ON public.experiencias_club;
-CREATE POLICY "Permitir lectura publica de experiencias_club"
-  ON public.experiencias_club
+DROP POLICY IF EXISTS "Permitir lectura publica de experiencias" ON public.experiencias;
+CREATE POLICY "Permitir lectura publica de experiencias"
+  ON public.experiencias
   FOR SELECT
   TO anon, authenticated
   USING (true);
 
-DROP POLICY IF EXISTS "Permitir crear y editar experiencias_club" ON public.experiencias_club;
-CREATE POLICY "Permitir crear y editar experiencias_club"
-  ON public.experiencias_club
+DROP POLICY IF EXISTS "Permitir crear y editar experiencias" ON public.experiencias;
+CREATE POLICY "Permitir crear y editar experiencias"
+  ON public.experiencias
   FOR ALL
   TO anon, authenticated
   USING (true)
   WITH CHECK (true);
 
-GRANT SELECT, INSERT, UPDATE ON public.experiencias_club TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE ON public.experiencias TO anon, authenticated;
 
 -- ============================================================
 -- 6. TABLA: Pagos por Transferencia & Comprobantes en Cloudflare R2 (public.pagos_transferencias)
@@ -1427,7 +1435,7 @@ BEGIN
   END IF;
 
   SELECT capacity_per_date INTO v_capacity
-  FROM public.experiencias_club
+  FROM public.experiencias
   WHERE id = p_experience_id
   LIMIT 1;
 

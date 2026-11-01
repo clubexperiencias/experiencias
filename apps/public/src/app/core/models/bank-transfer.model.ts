@@ -26,6 +26,7 @@ export interface ProviderUser {
   cbuAlias: string;
   bankName: string;
   verified: boolean;
+  status?: 'aprobado' | 'pendiente' | 'rechazado' | 'dado_de_baja';
   role: 'prestador';
   avatar?: string;
   joinedAt: string;
@@ -47,6 +48,7 @@ export interface ProviderExperience {
   dates: string[];
   status: ExperienceStatus;
   moderation?: ExperienceModerationLog;
+  publicUrl?: string;
   providerId: string;
   providerName: string;
   coverImage?: string;

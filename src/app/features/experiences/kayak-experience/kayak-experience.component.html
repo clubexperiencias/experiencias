@@ -14,12 +14,10 @@
         <!-- ═══════════════ HERO CARD: CABECERA Y RESUMEN TÉCNICO ═══════════════ -->
         <div class="kayak-section-card hero-kayak-card">
           <div class="card-inner-header">
-            <span class="section-kicker">EXPEDICIÓN NÁUTICA: VALLE CENTRAL</span>
-            <h1 class="card-heading">Travesía en Kayak & Sunset en el Dique El Jumeal</h1>
+            <span class="section-kicker">{{ exp().kicker || 'EXPEDICIÓN NÁUTICA: VALLE CENTRAL' }}</span>
+            <h1 class="card-heading">{{ exp().title }}</h1>
             <p class="card-subheading">
-              Remada guiada en kayak en aguas calmas rodeadas de quebradas y vegetación de yungas
-              andinas. Presenciamos la caída del sol reflejada en el dique y coronamos la jornada
-              con un brindis y picada de productos artesanales catamarqueños.
+              {{ exp().description }}
             </p>
           </div>
 
@@ -27,23 +25,23 @@
           <div class="kayak-specs-grid">
             <div class="spec-tile">
               <span class="spec-label">DIFICULTAD</span>
-              <span class="spec-value">Baja (Sin experiencia previa)</span>
+              <span class="spec-value">{{ exp().difficulty }} (Sin experiencia previa)</span>
             </div>
             <div class="spec-tile">
               <span class="spec-label">DURACIÓN</span>
-              <span class="spec-value">4 Horas (Media Jornada)</span>
+              <span class="spec-value">{{ exp().durationLabel }}</span>
             </div>
             <div class="spec-tile">
               <span class="spec-label">ALTITUD</span>
-              <span class="spec-value">850 msnm</span>
+              <span class="spec-value">{{ exp().altitudeMeters }} msnm</span>
             </div>
             <div class="spec-tile">
               <span class="spec-label">CUPO MÁXIMO</span>
-              <span class="spec-value">12 Socios</span>
+              <span class="spec-value">{{ exp().maxSpotsPerGroup }} Socios</span>
             </div>
             <div class="spec-tile">
               <span class="spec-label">TEMPORADA</span>
-              <span class="spec-value">Todo el año</span>
+              <span class="spec-value">{{ exp().bestSeason }}</span>
             </div>
             <div class="spec-tile">
               <span class="spec-label">CALIFICACIÓN</span>
@@ -53,14 +51,14 @@
           <!-- Video Oficial de la Experiencia Integrado -->
           <div class="kayak-video-media-wrap">
             <video
-              src="/assets/videos/kayak.mp4"
+              [src]="exp().videoUrl || '/assets/videos/kayak.mp4'"
               autoplay
               muted
               [muted]="true"
               loop
               playsinline
               preload="auto"
-              poster="/assets/images/kayak-video.png"
+              [poster]="exp().videoPoster || '/assets/images/kayak-video.png'"
               class="kayak-video-element"
             >
               Tu navegador no soporta el formato de video.
@@ -74,8 +72,8 @@
             <div class="price-data">
               <span class="price-title">ARANCEL POR PERSONA</span>
               <div class="price-figures">
-                <span class="ars-price">$65.000 ARS</span>
-                <span class="usd-price">o $70 USD</span>
+                <span class="ars-price">${{ exp().priceArs.toLocaleString('es-AR') }} ARS</span>
+                <span class="usd-price">o ${{ exp().priceUsd }} USD</span>
               </div>
               <span class="price-note">Prioridad para socios de nuestro Club de Experiencias</span>
             </div>

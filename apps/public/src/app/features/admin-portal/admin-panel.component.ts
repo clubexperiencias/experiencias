@@ -117,6 +117,17 @@ import { AdminLoginComponent } from './admin-login/admin-login.component';
                         <strong class="menu-item-title">Ver Postulaciones</strong>
                       </div>
                     </a>
+
+                    <a
+                      routerLink="/experiencias"
+                      class="dropdown-item enlarged-item"
+                      (click)="userMenuOpen.set(false)"
+                    >
+                      <mat-icon class="menu-item-icon">travel_explore</mat-icon>
+                      <div class="menu-item-info">
+                        <strong class="menu-item-title">Ver Experiencias</strong>
+                      </div>
+                    </a>
                   </div>
 
                   <div class="dropdown-divider"></div>

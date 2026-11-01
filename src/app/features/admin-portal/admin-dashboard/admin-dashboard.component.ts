@@ -1,11 +1,13 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import {
   AdminStoreService,
   AdminMember,
   AdminApplication,
+  ApplicationStatus,
   ExperienceProposalRequest,
 } from '../../../core/services/admin-store.service';
 import { TransferSubmission } from '../../../core/models/bank-transfer.model';
@@ -14,7 +16,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink, MatIconModule, ArsPipe, FechaPipe],
+  imports: [CommonModule, FormsModule, RouterLink, MatIconModule, ArsPipe, FechaPipe],
   template: `
     <div class="dash-container">
       <!-- Welcome Header Sobrio y Minimalista -->
@@ -228,6 +230,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                   <th>Tipo</th>
                   <th>Postulante</th>
                   <th>Detalles</th>
+                  <th>Estado</th>
                   <th>Fecha</th>
                   <th class="text-right">Acción</th>
                 </tr>
@@ -251,6 +254,15 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                     <td>
                       <span class="exp-title-cell">
                         {{ app.type === 'prestador' ? formatCategory(app.category) : 'Cuadro Fundacional' }}
+                      </span>
+                    </td>
+                    <td>
+                      <span class="status-badge" [attr.data-status]="app.status">
+                        @switch (app.status) {
+                          @case ('aprobado') { Aprobado }
+                          @case ('dado_de_baja') { Dado de baja }
+                          @default { Pendiente }
+                        }
                       </span>
                     </td>
                     <td>
@@ -282,7 +294,10 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
               <span class="pending-pill">0 pendientes</span>
             }
             <a routerLink="/postulaciones" [queryParams]="{ tab: 'experiencias' }" class="view-all-link">
-              <span>Ver todas ({{ store.experienceRequests().length }})</span>
+              <span>Ver propuestas ({{ store.experienceRequests().length }})</span>
+            </a>
+            <a routerLink="/experiencias" class="view-all-link">
+              <span>Ver Experiencias de la Web →</span>
             </a>
           </div>
         </div>
@@ -430,6 +445,18 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
               <dl class="modal-dl">
                 <div><dt>Email:</dt><dd><a [href]="'mailto:' + app.email" class="modal-link">{{ app.email }}</a></dd></div>
                 <div><dt>Teléfono:</dt><dd>{{ app.phone || '—' }}</dd></div>
+                <div>
+                  <dt>Estado:</dt>
+                  <dd>
+                    <span class="status-badge" [attr.data-status]="app.status">
+                      @switch (app.status) {
+                        @case ('aprobado') { Aprobado }
+                        @case ('dado_de_baja') { Dado de baja }
+                        @default { Pendiente }
+                      }
+                    </span>
+                  </dd>
+                </div>
                 @if (app.type === 'prestador') {
                   <div><dt>Rubro:</dt><dd>{{ formatCategory(app.category) }}</dd></div>
                   <div><dt>Región:</dt><dd>{{ app.region || 'Catamarca' }}</dd></div>
@@ -447,7 +474,137 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                 <p class="desc-content">{{ app.type === 'prestador' ? (app.description || 'Sin descripción adicional.') : (app.motivationLetter || 'Sin carta de motivación.') }}</p>
               </div>
 
+              @if (app.type === 'prestador') {
+                <div class="provider-banking-box">
+                  <div class="banking-box-header">
+                    <mat-icon class="banking-icon">account_balance</mat-icon>
+                    <div>
+                      <h4 class="banking-box-title">Datos Bancarios para Liquidación de Pagos</h4>
+                      <p class="banking-box-sub">Configuración de cuenta para liquidar cobros de experiencias.</p>
+                    </div>
+                  </div>
+
+                  <div class="banking-form-grid">
+                    <div class="banking-input-group">
+                      <label class="banking-input-label">Nombre / Titular</label>
+                      <input
+                        type="text"
+                        class="banking-form-input"
+                        placeholder="Titular de la cuenta"
+                        [ngModel]="providerAccountHolder()"
+                        (ngModelChange)="providerAccountHolder.set($event)"
+                      />
+                    </div>
+                    <div class="banking-input-group">
+                      <label class="banking-input-label">CUIT / CUIL</label>
+                      <input
+                        type="text"
+                        class="banking-form-input"
+                        placeholder="CUIT o CUIL"
+                        [ngModel]="providerCuitDni()"
+                        (ngModelChange)="providerCuitDni.set($event)"
+                      />
+                    </div>
+                    <div class="banking-input-group">
+                      <label class="banking-input-label">CBU / CVU o Alias</label>
+                      <input
+                        type="text"
+                        class="banking-form-input"
+                        placeholder="CBU, CVU o Alias"
+                        [ngModel]="providerCbuAlias()"
+                        (ngModelChange)="providerCbuAlias.set($event)"
+                      />
+                    </div>
+                    <div class="banking-input-group">
+                      <label class="banking-input-label">Entidad (Banco / Billetera)</label>
+                      <input
+                        type="text"
+                        class="banking-form-input"
+                        placeholder="Banco Nación, Galicia, Mercado Pago..."
+                        [ngModel]="providerBankName()"
+                        (ngModelChange)="providerBankName.set($event)"
+                      />
+                    </div>
+                  </div>
+                </div>
+              }
+
               <div class="modal-actions-row">
+                <div class="dash-modal-state-btns">
+                  @if (app.type === 'prestador') {
+                    @if (app.status === 'aprobado') {
+                      <button
+                        type="button"
+                        class="btn-state btn-save-banking"
+                        (click)="saveProviderBankingData()"
+                      >
+                        Guardar Datos Bancarios
+                      </button>
+                      <button
+                        type="button"
+                        class="btn-state btn-reject"
+                        (click)="darDeBajaProvider()"
+                      >
+                        Dar de baja
+                      </button>
+                    } @else {
+                      <button
+                        type="button"
+                        class="btn-state btn-approve"
+                        (click)="approveProvider()"
+                      >
+                        Aprobar Prestador
+                      </button>
+                      @if (app.status !== 'dado_de_baja') {
+                        <button
+                          type="button"
+                          class="btn-state btn-reject"
+                          (click)="darDeBajaProvider()"
+                        >
+                          Dar de baja
+                        </button>
+                      }
+                    }
+                    @if (app.status !== 'pendiente') {
+                      <button
+                        type="button"
+                        class="btn-state btn-pending"
+                        (click)="changeApplicationStatus('pendiente')"
+                      >
+                        Marcar Pendiente
+                      </button>
+                    }
+                  } @else {
+                    @if (app.status !== 'aprobado') {
+                      <button
+                        type="button"
+                        class="btn-state btn-approve"
+                        (click)="changeApplicationStatus('aprobado')"
+                      >
+                        Aprobar Postulación
+                      </button>
+                    }
+                    @if (app.status !== 'dado_de_baja') {
+                      <button
+                        type="button"
+                        class="btn-state btn-reject"
+                        (click)="changeApplicationStatus('dado_de_baja')"
+                      >
+                        Dar de baja
+                      </button>
+                    }
+                    @if (app.status !== 'pendiente') {
+                      <button
+                        type="button"
+                        class="btn-state btn-pending"
+                        (click)="changeApplicationStatus('pendiente')"
+                      >
+                        Marcar Pendiente
+                      </button>
+                    }
+                  }
+                </div>
+
                 <button type="button" class="btn-close-dash" (click)="closeApplication()">
                   Cerrar
                 </button>
@@ -570,11 +727,46 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                 }
                 <div><dt>Contacto prestador:</dt><dd><a [href]="'mailto:' + expReq.providerEmail" class="dt-link">{{ expReq.providerEmail }}</a></dd></div>
               </dl>
+
+              @if (expReq.status === 'pendiente') {
+                <div class="exp-public-url-box">
+                  <label class="url-label" for="exp-public-url-dash">URL oficial vinculada en la web pública (experiencias.club):</label>
+                  <input
+                    id="exp-public-url-dash"
+                    type="text"
+                    class="url-input"
+                    [value]="expPublicUrlInput()"
+                    (input)="expPublicUrlInput.set($any($event.target).value)"
+                    placeholder="https://experiencias.club/experiencias/..."
+                  />
+                </div>
+              }
             </div>
 
             <!-- Acciones al Pie -->
             <div class="modal-actions">
               <div class="state-buttons">
+                @if (expReq.status === 'pendiente') {
+                  <button
+                    type="button"
+                    class="btn-state btn-approve"
+                    (click)="approveExperience(expReq.id)"
+                  >
+                    Aprobar y Publicar
+                  </button>
+                  <button
+                    type="button"
+                    class="btn-state btn-reject"
+                    (click)="rejectExperience(expReq.id)"
+                  >
+                    Rechazar
+                  </button>
+                } @else {
+                  <span class="status-reviewed-tag" [class.is-approved]="expReq.status === 'aprobada'">
+                    {{ expReq.status === 'aprobada' ? '✓ Propuesta Aprobada' : '✕ Propuesta Rechazada' }}
+                  </span>
+                }
+
                 @if (expReq.providerPhone) {
                   <a
                     [href]="getWhatsappLink(expReq.providerPhone, expReq.providerName)"
@@ -1019,6 +1211,24 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
       .status-badge[data-status='aprobado'] { background: rgba(16, 185, 129, 0.2); color: #34d399; }
       .status-badge[data-status='pendiente'] { background: rgba(255, 95, 0, 0.2); color: #ff8533; }
       .status-badge[data-status='rechazado'] { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+      .status-badge[data-status='dado_de_baja'] { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+
+      .dash-modal-state-btns {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+
+      .btn-save-banking {
+        background: rgba(128, 179, 255, 0.2);
+        border: 1px solid rgba(128, 179, 255, 0.6);
+        color: #80b3ff;
+      }
+      .btn-save-banking:hover:not(:disabled) {
+        background: #80b3ff;
+        color: #070d18;
+      }
 
       .btn-review {
         padding: 0.35rem 0.75rem;
@@ -1564,6 +1774,52 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         color: #ffffff;
       }
 
+      .exp-public-url-box {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        padding: 0.85rem 1rem;
+        background: rgba(22, 33, 85, 0.4);
+        border: 1px solid rgba(128, 179, 255, 0.25);
+        border-radius: 2px;
+        margin-top: 1rem;
+      }
+      .url-label {
+        font-size: 0.76rem;
+        font-weight: 700;
+        color: #80b3ff;
+      }
+      .url-input {
+        width: 100%;
+        background: rgba(7, 13, 28, 0.7);
+        border: 1px solid rgba(128, 179, 255, 0.35);
+        border-radius: 2px;
+        padding: 0.45rem 0.65rem;
+        color: #ffffff;
+        font-size: 0.82rem;
+      }
+      .url-input:focus {
+        outline: none;
+        border-color: #80b3ff;
+      }
+
+      .status-reviewed-tag {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.45rem 0.85rem;
+        font-size: 0.78rem;
+        font-weight: 700;
+        border-radius: 2px;
+        background: rgba(239, 68, 68, 0.15);
+        border: 1px solid rgba(239, 68, 68, 0.4);
+        color: #fca5a5;
+      }
+      .status-reviewed-tag.is-approved {
+        background: rgba(16, 185, 129, 0.15);
+        border-color: rgba(16, 185, 129, 0.4);
+        color: #34d399;
+      }
+
       .btn-close {
         padding: 0.6rem 1.25rem;
         background: transparent;
@@ -1916,6 +2172,12 @@ export class AdminDashboardComponent {
   readonly selectedSubmission = signal<TransferSubmission | null>(null);
   readonly selectedApplication = signal<AdminApplication | null>(null);
   readonly selectedExperienceRequest = signal<ExperienceProposalRequest | null>(null);
+  readonly expPublicUrlInput = signal<string>('');
+
+  readonly providerAccountHolder = signal<string>('');
+  readonly providerCuitDni = signal<string>('');
+  readonly providerCbuAlias = signal<string>('');
+  readonly providerBankName = signal<string>('');
 
   readonly recentMembers = computed(() => this.store.members().slice(0, 7));
   readonly recentSubmissions = computed(() => this.store.submissions().slice(0, 7));
@@ -1937,10 +2199,66 @@ export class AdminDashboardComponent {
 
   openApplication(app: AdminApplication): void {
     this.selectedApplication.set(app);
+    this.providerAccountHolder.set(app.accountHolder || app.fullName || '');
+    this.providerCuitDni.set(app.cuitDni || '');
+    this.providerCbuAlias.set(app.cbuAlias || '');
+    this.providerBankName.set(app.bankName || '');
   }
 
   closeApplication(): void {
     this.selectedApplication.set(null);
+  }
+
+  approveProvider(): void {
+    const current = this.selectedApplication();
+    if (!current) return;
+    const banking = {
+      accountHolder: this.providerAccountHolder().trim() || current.fullName,
+      cuitDni: this.providerCuitDni().trim(),
+      cbuAlias: this.providerCbuAlias().trim(),
+      bankName: this.providerBankName().trim(),
+    };
+    void this.store.updateApplicationStatus(current.id, current.type, 'aprobado', banking);
+    this.selectedApplication.update((a) => (a ? { ...a, status: 'aprobado', ...banking } : null));
+  }
+
+  darDeBajaProvider(): void {
+    const current = this.selectedApplication();
+    if (!current) return;
+    const banking = {
+      accountHolder: this.providerAccountHolder().trim() || current.fullName,
+      cuitDni: this.providerCuitDni().trim(),
+      cbuAlias: this.providerCbuAlias().trim(),
+      bankName: this.providerBankName().trim(),
+    };
+    void this.store.updateApplicationStatus(current.id, current.type, 'dado_de_baja', banking);
+    this.selectedApplication.update((a) => (a ? { ...a, status: 'dado_de_baja', ...banking } : null));
+  }
+
+  saveProviderBankingData(): void {
+    const current = this.selectedApplication();
+    if (!current) return;
+    const banking = {
+      accountHolder: this.providerAccountHolder().trim() || current.fullName,
+      cuitDni: this.providerCuitDni().trim(),
+      cbuAlias: this.providerCbuAlias().trim(),
+      bankName: this.providerBankName().trim(),
+    };
+    void this.store.updateApplicationStatus(current.id, current.type, current.status, banking);
+    this.selectedApplication.update((a) => (a ? { ...a, ...banking } : null));
+  }
+
+  changeApplicationStatus(status: ApplicationStatus): void {
+    const current = this.selectedApplication();
+    if (!current) return;
+    const banking = current.type === 'prestador' ? {
+      accountHolder: this.providerAccountHolder().trim() || current.fullName,
+      cuitDni: this.providerCuitDni().trim(),
+      cbuAlias: this.providerCbuAlias().trim(),
+      bankName: this.providerBankName().trim(),
+    } : undefined;
+    void this.store.updateApplicationStatus(current.id, current.type, status, banking);
+    this.selectedApplication.update((a) => (a ? { ...a, status, ...(banking || {}) } : null));
   }
 
   formatCategory(category?: string): string {
@@ -1975,6 +2293,8 @@ export class AdminDashboardComponent {
 
   openExperienceRequest(req: ExperienceProposalRequest): void {
     this.selectedExperienceRequest.set(req);
+    const slug = req.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    this.expPublicUrlInput.set(`https://experiencias.club/experiencias/${slug}`);
   }
 
   closeExperienceRequest(): void {
@@ -1982,7 +2302,7 @@ export class AdminDashboardComponent {
   }
 
   approveExperience(id: string): void {
-    this.store.approveExperienceRequest(id);
+    this.store.approveExperienceRequest(id, this.expPublicUrlInput());
     const current = this.selectedExperienceRequest();
     if (current && current.id === id) {
       this.selectedExperienceRequest.set({

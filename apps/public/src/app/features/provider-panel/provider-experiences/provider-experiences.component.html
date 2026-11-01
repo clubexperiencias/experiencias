@@ -1,45 +1,120 @@
-<!-- Filter Tabs - Rectangulares sobrias -->
-<div class="exp-filters-nav">
-  <button
-    type="button"
-    class="filter-tab-btn"
-    [class.is-active]="activeTab() === 'todas'"
-    (click)="activeTab.set('todas')"
-  >
-    Todas ({{ store.providerExperiences().length }})
-  </button>
-  <button
-    type="button"
-    class="filter-tab-btn"
-    [class.is-active]="activeTab() === 'publicadas'"
-    (click)="activeTab.set('publicadas')"
-  >
-    Publicadas
-  </button>
-  <button
-    type="button"
-    class="filter-tab-btn"
-    [class.is-active]="activeTab() === 'revision'"
-    (click)="activeTab.set('revision')"
-  >
-    En Moderación Admin
-  </button>
-  <button
-    type="button"
-    class="filter-tab-btn"
-    [class.is-active]="activeTab() === 'borradores'"
-    (click)="activeTab.set('borradores')"
-  >
-    Borradores
-  </button>
-  <button
-    type="button"
-    class="filter-tab-btn"
-    [class.is-active]="activeTab() === 'ocultas'"
-    (click)="activeTab.set('ocultas')"
-  >
-    Ocultas
-  </button>
+<!-- Encabezado con botón de Cargar Nueva Propuesta y Volver al Panel -->
+<div class="experiences-header">
+  <div class="header-titles">
+    <span class="section-kicker">GESTIÓN DE CATÁLOGO</span>
+    <h2 class="card-heading">Tus Experiencias</h2>
+    <p class="card-subheading">
+      Administrá tus experiencias publicadas, revisá solicitudes enviadas y gestioná cupos de exploradores.
+    </p>
+  </div>
+
+  <div class="header-actions">
+    <button
+      type="button"
+      class="new-proposal-btn"
+      (click)="openRequestModal()"
+      title="Cargar nueva solicitud de experiencia"
+    >
+      Cargar Nueva Propuesta
+    </button>
+    <a routerLink="/dashboard" class="btn-back-panel">Volver al Panel</a>
+  </div>
+</div>
+
+<!-- Stats Summary Strip -->
+<div class="summary-strip">
+  <div class="summary-item">
+    <span class="sum-label">Experiencias Activas</span>
+    <strong class="sum-value">{{ publishedCount() }}</strong>
+    <span class="sum-sub">{{ store.providerExperiences().length }} en catálogo</span>
+  </div>
+  <div class="summary-item">
+    <span class="sum-label">Cupos Reservados</span>
+    <strong class="sum-value">{{ stats().totalEnrolled }} personas</strong>
+    <span class="sum-sub">Socios inscriptos</span>
+  </div>
+  <div class="summary-item">
+    <span class="sum-label">Ingresos Confirmados</span>
+    <strong class="sum-value text-blue">{{ stats().confirmedRevenue | ars }}</strong>
+    <span class="sum-sub">Recaudación aprobada</span>
+  </div>
+  <div class="summary-item">
+    <span class="sum-label">Propuestas al Admin</span>
+    <strong class="sum-value" [class.text-amber]="pendingRequestsCount() > 0">
+      {{ requests().length }}
+    </strong>
+    <span class="sum-sub">{{ pendingRequestsCount() }} en evaluación</span>
+  </div>
+</div>
+
+<!-- Barra de Filtros y Búsqueda -->
+<div class="filters-bar">
+  <div class="search-box">
+    <input
+      type="text"
+      class="search-input"
+      placeholder="Buscar por experiencia, región o dificultad..."
+      [ngModel]="searchQuery()"
+      (ngModelChange)="searchQuery.set($event)"
+    />
+    @if (searchQuery()) {
+      <button type="button" class="clear-search-btn" (click)="searchQuery.set('')">×</button>
+    }
+  </div>
+
+  <div class="filter-tabs">
+    <button
+      type="button"
+      class="filter-tab-btn"
+      [class.is-active]="activeTab() === 'todas'"
+      (click)="activeTab.set('todas')"
+    >
+      Todas ({{ store.providerExperiences().length }})
+    </button>
+    <button
+      type="button"
+      class="filter-tab-btn"
+      [class.is-active]="activeTab() === 'publicadas'"
+      (click)="activeTab.set('publicadas')"
+    >
+      Publicadas ({{ publishedCount() }})
+    </button>
+    <button
+      type="button"
+      class="filter-tab-btn"
+      [class.is-active]="activeTab() === 'solicitudes'"
+      (click)="activeTab.set('solicitudes')"
+    >
+      Solicitudes ({{ requests().length }})
+      @if (pendingRequestsCount() > 0) {
+        <span class="tab-badge">{{ pendingRequestsCount() }}</span>
+      }
+    </button>
+    <button
+      type="button"
+      class="filter-tab-btn"
+      [class.is-active]="activeTab() === 'revision'"
+      (click)="activeTab.set('revision')"
+    >
+      En Moderación ({{ inReviewCount() }})
+    </button>
+    <button
+      type="button"
+      class="filter-tab-btn"
+      [class.is-active]="activeTab() === 'borradores'"
+      (click)="activeTab.set('borradores')"
+    >
+      Borradores ({{ draftsCount() }})
+    </button>
+    <button
+      type="button"
+      class="filter-tab-btn"
+      [class.is-active]="activeTab() === 'ocultas'"
+      (click)="activeTab.set('ocultas')"
+    >
+      Ocultas ({{ hiddenCount() }})
+    </button>
+  </div>
 </div>
 
 <!-- Feedback Toast -->
@@ -49,18 +124,92 @@
   </div>
 }
 
-<!-- Empty State -->
-@if (rows().length === 0) {
-  <section class="kayak-section-card empty-state-card">
-    <h2 class="card-heading">No se encontraron experiencias</h2>
-    <p class="card-subheading">
-      No tenés experiencias bajo este filtro. Creá una nueva experiencia para enviar al catálogo de Catamarca.
-    </p>
-    <a routerLink="../experiencias/nueva" class="cta-primary-btn">
-      Crear nueva experiencia
-    </a>
+<!-- Sección de Solicitudes de Nuevas Experiencias (solo cuando se selecciona esa pestaña) -->
+@if (activeTab() === 'solicitudes') {
+  <section class="requests-section">
+    @if (filteredRequests().length === 0) {
+      <div class="empty-requests-box">
+        <p>No se encontraron solicitudes de experiencias con esos criterios.</p>
+      </div>
+    } @else {
+      <ul class="requests-list">
+        @for (req of filteredRequests(); track req.id) {
+          <li class="kayak-section-card request-card" [class.is-pending]="req.status === 'pendiente'">
+            <div class="request-card-head">
+              <div class="request-badge-row">
+                @switch (req.status) {
+                  @case ('aprobada') {
+                    <span class="exp-status is-live">Propuesta Aprobada</span>
+                  }
+                  @case ('rechazada') {
+                    <span class="exp-status is-moderation-red">Propuesta Rechazada</span>
+                  }
+                  @default {
+                    <span class="exp-status is-moderation">Pendiente de Revisión Admin</span>
+                  }
+                }
+                <span class="request-date">Enviada: {{ req.createdAt | fecha: 'corta' }}</span>
+              </div>
+              <h4 class="request-exp-title">{{ req.title }}</h4>
+              <p class="request-kicker-tag">{{ req.kicker }}</p>
+            </div>
+
+            <p class="request-desc">{{ req.subheading }}</p>
+
+            <div class="request-meta-grid">
+              <div class="req-meta-item">
+                <span class="req-lbl">Región</span>
+                <strong>{{ req.region }}</strong>
+              </div>
+              <div class="req-meta-item">
+                <span class="req-lbl">Dificultad</span>
+                <strong>{{ req.difficulty }}</strong>
+              </div>
+              <div class="req-meta-item">
+                <span class="req-lbl">Duración</span>
+                <strong>{{ req.duration }}</strong>
+              </div>
+              <div class="req-meta-item">
+                <span class="req-lbl">Arancel</span>
+                <strong class="text-blue">{{ req.priceArs | ars }}</strong>
+              </div>
+              <div class="req-meta-item">
+                <span class="req-lbl">Cupo Máximo</span>
+                <strong>{{ req.capacity }} pers.</strong>
+              </div>
+            </div>
+
+            <div class="request-actions">
+              <a
+                [href]="getRequestWhatsappLink(req)"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="pay-copy-btn"
+                title="Consultar al equipo de administración por WhatsApp sobre esta propuesta"
+              >
+                Consultar por WhatsApp
+              </a>
+            </div>
+          </li>
+        }
+      </ul>
+    }
   </section>
 }
+
+@if (activeTab() !== 'solicitudes') {
+  <!-- Empty State -->
+  @if (rows().length === 0) {
+    <section class="kayak-section-card empty-state-card">
+      <h2 class="card-heading">No se encontraron experiencias</h2>
+      <p class="card-subheading">
+        No tenés experiencias bajo este criterio de filtro o búsqueda. Podés proponer una nueva experiencia al catálogo oficial.
+      </p>
+      <button type="button" class="cta-primary-btn" (click)="openRequestModal()">
+        Cargar nueva propuesta
+      </button>
+    </section>
+  }
 
 <!-- Experiences List - Boxes rectangulares -->
 <ul class="exp-list">
@@ -185,31 +334,44 @@
 
       <!-- Experience Actions - Botones rectangulares limpios sin iconos excesivos -->
       <div class="exp-actions">
-        <!-- Edit Experience -->
-        <a [routerLink]="['../experiencias', row.experience.id, 'editar']" class="pay-copy-btn">
-          Editar
+        <!-- Solicitud de edición o pausa vía WhatsApp -->
+        <a
+          [href]="getWhatsappEditOrPauseLink(row.experience)"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="pay-copy-btn"
+          title="Contactar al equipo por WhatsApp para solicitar edición de datos, fechas o pausa de la experiencia"
+        >
+          Solicitud de edición o pausa
         </a>
 
-        <!-- View Enrolled Members and Receipts -->
-        <a routerLink="../comprobantes" [queryParams]="{ experiencia: row.experience.id }" class="pay-copy-btn">
+        <!-- View Enrolled Members and Receipts filtrando por esta experiencia -->
+        <a
+          routerLink="/socios"
+          [queryParams]="{ experiencia: row.experience.id }"
+          class="pay-copy-btn"
+          title="Ver socios inscriptos y comprobantes de esta experiencia"
+        >
           Socios y Comprobantes ({{ row.enrolledCount }})
         </a>
 
         <!-- Public Preview Link if published -->
         @if (row.experience.status === 'publicada') {
-          <a [routerLink]="['/experiencias', row.experience.slug, 'pago']" target="_blank" class="pay-copy-btn text-blue">
+          <a
+            [href]="getExperiencePublicUrl(row.experience)"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="pay-copy-btn text-blue"
+            title="Abrir la ficha de esta experiencia en la web pública de experiencias.club"
+          >
             Ver en la web pública
           </a>
         }
 
-        <!-- Publish / Hide Moderation Request -->
+        <!-- Publish Moderation Request for drafts -->
         @if (row.experience.status === 'borrador' || row.experience.status === 'oculta') {
           <button type="button" class="pay-copy-btn btn-highlight" (click)="onRequestPublish(row.experience)">
             Solicitar Publicación
-          </button>
-        } @else if (row.experience.status === 'publicada') {
-          <button type="button" class="pay-copy-btn" (click)="openHideModal(row.experience)">
-            Solicitar Ocultar
           </button>
         }
 
@@ -226,6 +388,7 @@
     </li>
   }
 </ul>
+}
 
 <!-- Modal: Cannot Delete Warning -->
 @if (deleteErrorModal()) {
@@ -299,3 +462,9 @@
     </div>
   </div>
 }
+
+<!-- Modal: Solicitud de Nueva Experiencia -->
+<app-provider-experience-proposal-modal
+  [isOpen]="requestModalOpen()"
+  (closeModal)="requestModalOpen.set(false)"
+/>

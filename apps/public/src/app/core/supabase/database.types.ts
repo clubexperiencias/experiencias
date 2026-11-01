@@ -197,8 +197,98 @@ export interface Database {
       };
 
       /**
-       * Tabla 5: Experiencias Oficiales del Club
+       * Tabla 5: Experiencias Oficiales del Club (public.experiencias)
        */
+      experiencias: {
+        Row: {
+          id: string;
+          slug: string;
+          title: string;
+          short_title: string | null;
+          tagline: string;
+          description: string;
+          region: string;
+          meeting_point: string;
+          cover_image: string;
+          kicker?: string;
+          video_url?: string;
+          video_poster?: string;
+          difficulty: 'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña';
+          duration_label: string;
+          altitude_meters?: number;
+          best_season?: string;
+          price_ars: number;
+          price_usd?: number;
+          capacity_per_date: number;
+          dates: string[];
+          highlights?: string[];
+          included?: string[];
+          not_included?: string[];
+          status: 'borrador' | 'publicada' | 'oculta';
+          public_url?: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id: string;
+          slug: string;
+          title: string;
+          short_title?: string | null;
+          tagline?: string;
+          description?: string;
+          region?: string;
+          meeting_point?: string;
+          cover_image?: string;
+          kicker?: string;
+          video_url?: string;
+          video_poster?: string;
+          difficulty?: 'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña';
+          duration_label?: string;
+          altitude_meters?: number;
+          best_season?: string;
+          price_ars?: number;
+          price_usd?: number;
+          capacity_per_date?: number;
+          dates?: string[];
+          highlights?: string[];
+          included?: string[];
+          not_included?: string[];
+          status?: 'borrador' | 'publicada' | 'oculta';
+          public_url?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          slug?: string;
+          title?: string;
+          short_title?: string | null;
+          tagline?: string;
+          description?: string;
+          region?: string;
+          meeting_point?: string;
+          cover_image?: string;
+          kicker?: string;
+          video_url?: string;
+          video_poster?: string;
+          difficulty?: 'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña';
+          duration_label?: string;
+          altitude_meters?: number;
+          best_season?: string;
+          price_ars?: number;
+          price_usd?: number;
+          capacity_per_date?: number;
+          dates?: string[];
+          highlights?: string[];
+          included?: string[];
+          not_included?: string[];
+          status?: 'borrador' | 'publicada' | 'oculta';
+          public_url?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+
       experiencias_club: {
         Row: {
           id: string;

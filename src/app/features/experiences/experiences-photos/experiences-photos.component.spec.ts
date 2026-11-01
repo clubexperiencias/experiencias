@@ -10,7 +10,7 @@ describe('ExperiencesPhotosComponent (/experiencias/fotos)', () => {
     localStorage.clear();
     await TestBed.configureTestingModule({
       imports: [ExperiencesPhotosComponent],
-      providers: [provideRouter([])]
+      providers: [provideRouter([])],
     }).compileComponents();
 
     fixture = TestBed.createComponent(ExperiencesPhotosComponent);
@@ -29,25 +29,22 @@ describe('ExperiencesPhotosComponent (/experiencias/fotos)', () => {
     expect(breadcrumb.textContent).toContain('Fotos Destacadas');
   });
 
-  it('should render collage photo cards with admin curated badges', () => {
+  it('should render collage photo cards with the same DESTACADA badge and no badge icons', () => {
     const cards = fixture.nativeElement.querySelectorAll('.collage-card');
-    expect(cards.length).toBeGreaterThanOrEqual(4);
+    expect(cards.length).toBe(6);
 
     const badges = fixture.nativeElement.querySelectorAll('.admin-curated-badge');
-    expect(badges.length).toBeGreaterThan(0);
-    expect(badges[0].textContent).toContain('DESTACADA');
+    expect(badges.length).toBe(6);
+    badges.forEach((badge: HTMLElement) => {
+      expect(badge.textContent.trim()).toBe('DESTACADA');
+      expect(badge.querySelector('mat-icon')).toBeNull();
+    });
+    expect(fixture.nativeElement.textContent).not.toContain('Amanecer en las Quebradas de Ambato');
   });
 
-  it('should filter photos by experience', () => {
-    component.setFilter('kayak');
-    fixture.detectChanges();
-    const kayakPhotos = component.filteredPhotos();
-    expect(kayakPhotos.every((p) => p.experienceSlug === 'kayak')).toBe(true);
-
-    component.setFilter('pomez');
-    fixture.detectChanges();
-    const pomezPhotos = component.filteredPhotos();
-    expect(pomezPhotos.every((p) => p.experienceSlug === 'pomez')).toBe(true);
+  it('should hide filters and show the founder ad component', () => {
+    expect(fixture.nativeElement.querySelector('.filters-bar-card')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-founder-ad')).toBeTruthy();
   });
 
   it('should open and close the lightbox modal', () => {

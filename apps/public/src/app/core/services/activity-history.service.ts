@@ -45,7 +45,7 @@ export class ActivityHistoryService {
         .select('*')
         .eq('email', email)
         .order('submitted_at', { ascending: false }),
-      this.supabase.from('experiencias_club').select('*'),
+      this.supabase.from('experiencias').select('*'),
     ]);
 
     if (paymentsError || experiencesError) {

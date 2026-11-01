@@ -32,7 +32,7 @@ export interface AdminMember {
 }
 
 export type ApplicationType = 'prestador' | 'fundador';
-export type ApplicationStatus = 'pendiente' | 'aprobado' | 'rechazado';
+export type ApplicationStatus = 'pendiente' | 'aprobado' | 'rechazado' | 'dado_de_baja';
 
 export interface AdminApplication {
   id: string;
@@ -47,6 +47,11 @@ export interface AdminApplication {
   motivationLetter?: string;
   status: ApplicationStatus;
   createdAt: string;
+  // Datos de cobro y fiscales del prestador gestionados por el admin
+  cbuAlias?: string;
+  cuitDni?: string;
+  bankName?: string;
+  accountHolder?: string;
 }
 
 const STORAGE_KEYS = {
@@ -97,8 +102,12 @@ export class AdminStoreService {
     () => this.providerStore.experienceRequests().filter((r) => r.status === 'pendiente').length,
   );
 
-  approveExperienceRequest(id: string): void {
-    this.providerStore.approveExperienceRequest(id);
+  approveExperienceRequest(id: string, publicUrl?: string): void {
+    this.providerStore.approveExperienceRequest(id, publicUrl);
+  }
+
+  updateExperiencePublicUrl(expId: string, publicUrl: string): void {
+    this.providerStore.updateExperiencePublicUrl(expId, publicUrl);
   }
 
   rejectExperienceRequest(id: string): void {
@@ -112,12 +121,14 @@ export class AdminStoreService {
     const fundadores = list.filter((a) => a.type === 'fundador');
     const pendientes = list.filter((a) => a.status === 'pendiente');
     const aprobadas = list.filter((a) => a.status === 'aprobado');
+    const bajas = list.filter((a) => a.status === 'dado_de_baja');
     return {
       total: list.length,
       prestadoresCount: prestadores.length,
       fundadoresCount: fundadores.length,
       pendientesCount: pendientes.length,
       aprobadasCount: aprobadas.length,
+      bajasCount: bajas.length,
     };
   });
 
@@ -747,12 +758,19 @@ export class AdminStoreService {
     id: string,
     type: ApplicationType,
     status: ApplicationStatus,
+    bankingData?: {
+      accountHolder?: string;
+      cuitDni?: string;
+      cbuAlias?: string;
+      bankName?: string;
+    },
   ): Promise<boolean> {
+    const app = this._applications().find((a) => a.id === id);
     try {
       if (isSupabaseConfigured()) {
         const table = type === 'prestador' ? 'postulaciones_prestadores' : 'postulaciones_fundadores';
         const dbStatus = type === 'fundador'
-          ? (status === 'aprobado' ? 'aprobada' : status === 'rechazado' ? 'rechazada' : 'en_evaluacion')
+          ? (status === 'aprobado' ? 'aprobada' : status === 'rechazado' || status === 'dado_de_baja' ? 'rechazada' : 'en_evaluacion')
           : status;
 
         await this.supabase
@@ -762,15 +780,59 @@ export class AdminStoreService {
             updated_at: new Date().toISOString(),
           })
           .eq('id', id);
+
+        if (type === 'prestador' && app) {
+          const email = app.email.trim().toLowerCase();
+          const active = status === 'aprobado';
+          await (this.supabase.from('provider_access') as any).upsert({
+            email,
+            name: bankingData?.accountHolder || app.accountHolder || app.fullName,
+            agency: app.description || app.category || 'Prestador Oficial',
+            active,
+            status,
+            cbu_alias: bankingData?.cbuAlias || app.cbuAlias || '',
+            cuit_dni: bankingData?.cuitDni || app.cuitDni || '',
+            bank_name: bankingData?.bankName || app.bankName || '',
+            account_holder: bankingData?.accountHolder || app.accountHolder || app.fullName,
+            phone: app.phone || '',
+          }, { onConflict: 'email' });
+        }
       }
     } catch (err) {
       console.warn('[AdminStore] Error actualizando estado de postulación en Supabase:', err);
     }
 
     this._applications.update((list) =>
-      list.map((a) => (a.id === id ? { ...a, status } : a)),
+      list.map((a) =>
+        a.id === id
+          ? {
+              ...a,
+              status,
+              ...(bankingData
+                ? {
+                    accountHolder: bankingData.accountHolder ?? a.accountHolder,
+                    cuitDni: bankingData.cuitDni ?? a.cuitDni,
+                    cbuAlias: bankingData.cbuAlias ?? a.cbuAlias,
+                    bankName: bankingData.bankName ?? a.bankName,
+                  }
+                : {}),
+            }
+          : a,
+      ),
     );
     this.persistApplications(this._applications());
+
+    if (type === 'prestador' && app) {
+      this.providerStore.syncProviderStatusFromAdmin(app.email, status, {
+        name: bankingData?.accountHolder || app.accountHolder || app.fullName,
+        agency: app.description || app.category || 'Prestador Oficial',
+        phone: app.phone,
+        cuitDni: bankingData?.cuitDni || app.cuitDni || '',
+        cbuAlias: bankingData?.cbuAlias || app.cbuAlias || '',
+        bankName: bankingData?.bankName || app.bankName || '',
+      });
+    }
+
     return true;
   }
 
@@ -798,6 +860,10 @@ export class AdminStoreService {
         id: 'post-1',
         type: 'prestador',
         fullName: 'Esteban Carrizo (Catamarca 4x4)',
+        accountHolder: 'Esteban Carrizo',
+        cuitDni: '20-31889900-4',
+        cbuAlias: 'CATAMARCA.4X4.MP',
+        bankName: 'Mercado Pago',
         email: 'esteban.guias@catamarca4x4.com',
         phone: '+54 383 490 2211',
         category: 'transporte_4x4',
@@ -821,6 +887,10 @@ export class AdminStoreService {
         id: 'post-3',
         type: 'prestador',
         fullName: 'Ignacio Jalil (Travesías Náuticas)',
+        accountHolder: 'Ignacio Jalil',
+        cuitDni: '20-33445566-9',
+        cbuAlias: 'JALIL.KAYAK.MP',
+        bankName: 'Ualá Bank S.A.U',
         email: 'ignacio@jumealkayak.com.ar',
         phone: '+54 383 455 8820',
         category: 'kayak_nautica',
@@ -829,6 +899,23 @@ export class AdminStoreService {
         description: 'Guía habilitado de kayak y SUP con 12 embarcaciones completas, chalecos certificados y lancha de apoyo en el dique El Jumeal.',
         status: 'aprobado',
         createdAt: new Date(Date.now() - 48 * 3600000).toISOString(),
+      },
+      {
+        id: 'post-4',
+        type: 'prestador',
+        fullName: 'Carlos Tula (Andes Aventura)',
+        accountHolder: 'Carlos Alberto Tula',
+        cuitDni: '20-25667788-3',
+        cbuAlias: 'ANDES.AVENTURA',
+        bankName: 'Banco Macro',
+        email: 'carlos.tula@andescatamarca.com',
+        phone: '+54 383 411 9900',
+        category: 'alta_montana',
+        region: 'Paso de San Francisco',
+        website: 'https://andescatamarca.com',
+        description: 'Servicio de mulas y porteadores en seismiles. Actualmente suspendido por veda invernal.',
+        status: 'dado_de_baja',
+        createdAt: new Date(Date.now() - 72 * 3600000).toISOString(),
       },
     ];
   }

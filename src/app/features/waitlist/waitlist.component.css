@@ -22,7 +22,23 @@
   overflow-x: clip;
 }
 
-.landing-container::before,
+.landing-container::before {
+  content: '' !important;
+  display: block !important;
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  background: linear-gradient(
+    180deg,
+    rgba(8, 14, 28, 0.2) 0%,
+    rgba(8, 14, 28, 0.26) 50%,
+    rgba(8, 14, 28, 0.32) 100%
+  ) !important;
+  z-index: 1 !important;
+  pointer-events: none !important;
+}
+
 .landing-container .ambient-overlay {
   display: none !important;
   content: none !important;
@@ -506,13 +522,14 @@ mat-icon.chevron-icon.rotated {
 /* Subtítulo */
 .hero-subtitle {
   font-family: var(--font-sans);
-  font-size: clamp(1rem, 1.65vw, 1.18rem);
-  font-weight: 600;
+  font-size: clamp(1.05rem, 1.7vw, 1.22rem);
+  font-weight: 500;
   line-height: 1.65;
-  color: var(--color-text-soft);
-  max-width: 620px;
+  color: #ffffff;
+  max-width: 640px;
   margin-bottom: 2.4rem;
-  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.7);
+  text-shadow: none !important;
+  letter-spacing: 0.01em;
 }
 
 /* ==========================================================================
@@ -575,7 +592,7 @@ mat-icon.chevron-icon.rotated {
   border: none;
   outline: none;
   font-family: var(--font-sans);
-  color: #000000;
+  color: #ffffff;
   font-size: 0.95rem;
   font-weight: 500;
   letter-spacing: normal;
@@ -583,12 +600,12 @@ mat-icon.chevron-icon.rotated {
 
 .pill-input:focus,
 .pill-input:active {
-  color: #000000;
+  color: #ffffff;
 }
 
 .pill-input::placeholder {
   font-family: var(--font-sans);
-  color: rgba(0, 0, 0, 0.65);
+  color: rgba(255, 255, 255, 0.8);
   font-weight: 400;
   letter-spacing: normal;
 }
@@ -596,7 +613,8 @@ mat-icon.chevron-icon.rotated {
 .pill-input:-webkit-autofill,
 .pill-input:-webkit-autofill:hover,
 .pill-input:-webkit-autofill:focus {
-  -webkit-text-fill-color: #000000 !important;
+  -webkit-text-fill-color: #ffffff !important;
+  transition: background-color 5000s ease-in-out 0s;
 }
 
 /* Botón Circular con Flecha */
@@ -4024,8 +4042,10 @@ mat-icon.arrow-icon {
   }
 
   .hero-subtitle {
-    font-size: 0.98rem;
+    font-size: 1.02rem;
+    line-height: 1.6;
     margin-bottom: 1.8rem;
+    color: #ffffff;
   }
 
   .pill-form-container {

@@ -444,6 +444,8 @@
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
+  height: 42px;
+  box-sizing: border-box;
   padding: 0.65rem 1.1rem;
   background: #80b3ff;
   color: #0b1120;
@@ -531,6 +533,8 @@
   align-items: center;
   justify-content: center;
   gap: 0.45rem;
+  height: 42px;
+  box-sizing: border-box;
   padding: 0.65rem 1.1rem;
   background: #d9a300;
   color: #0b1120;

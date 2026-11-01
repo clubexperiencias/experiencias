@@ -497,7 +497,11 @@ export class ProviderLoginComponent {
   onLogin(): void {
     if (this.loginForm.invalid) return;
     const { email } = this.loginForm.getRawValue();
-    this.store.login(email);
+    const res = this.store.login(email);
+    if (!res.success) {
+      this.errorMessage.set(res.message);
+      return;
+    }
     this.router.navigate(['/prestadores/dashboard']);
   }
 

@@ -1,8 +1,9 @@
-import { Component, HostListener, inject, signal } from '@angular/core';
+import { Component, HostListener, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { NewsletterService } from '../../../core/services/newsletter.service';
+import { ExperienceService, KAYAK_DEFAULT_EXPERIENCE } from '../../../core/services/experience.service';
 import { FooterComponent } from '../../../shared/components/footer/footer.component';
 import { HeaderComponent } from '../../../shared/components/header/header.component';
 import { BreadcrumbComponent, BreadcrumbItem } from '../../../shared/components/breadcrumb/breadcrumb.component';
@@ -18,7 +19,12 @@ export type KayakModalType = 'login' | null;
 })
 export class KayakExperienceComponent {
   readonly newsletter = inject(NewsletterService);
+  readonly experienceService = inject(ExperienceService);
   readonly router = inject(Router);
+
+  readonly exp = computed(
+    () => this.experienceService.getExperienceBySlug('kayak') || KAYAK_DEFAULT_EXPERIENCE,
+  );
 
   readonly bg = signal('/assets/images/laguna_blanca.jpg');
 

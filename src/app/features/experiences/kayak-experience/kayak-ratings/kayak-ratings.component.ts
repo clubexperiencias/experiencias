@@ -1,6 +1,6 @@
 import { Component, HostListener, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { NewsletterService } from '../../../../core/services/newsletter.service';
@@ -10,6 +10,7 @@ import {
   BreadcrumbComponent,
   BreadcrumbItem,
 } from '../../../../shared/components/breadcrumb/breadcrumb.component';
+import { FounderAdComponent } from '../../../../shared/components/founder-ad/founder-ad.component';
 
 export interface ProviderReply {
   responderName: string;
@@ -39,10 +40,10 @@ export type ReviewFilter = 'all' | 'with-reply' | '5-stars' | '4-stars';
   standalone: true,
   imports: [
     CommonModule,
-    RouterLink,
     FormsModule,
     MatIconModule,
     FooterComponent,
+    FounderAdComponent,
     HeaderComponent,
     BreadcrumbComponent,
   ],
@@ -77,10 +78,10 @@ export class KayakRatingsComponent {
     () => this.newsletter.currentMember()?.fullName?.trim() || '',
   );
   readonly memberProfileLocation = computed(
-    () => this.newsletter.currentMember()?.nationality?.trim() || '',
+    () => 'Catamarca, Argentina',
   );
   readonly hasProfileCompleted = computed(
-    () => !!(this.memberProfileName() && this.memberProfileLocation()),
+    () => !!this.memberProfileName(),
   );
 
   readonly reviewsList = signal<UserReview[]>([
@@ -93,7 +94,7 @@ export class KayakRatingsComponent {
       activityDate: 'Marzo 2026',
       rating: 5,
       date: '14 de Marzo, 2026',
-      title: 'Una experiencia única, el atardecer en El Jumeal es surreal',
+      title: 'Una experiencia única, el atardecer en el Dique El Jumeal es surreal',
       comment:
         'Hicimos la remada con mi pareja el sábado al atardecer. Los kayaks son comodísimos y súper estables, no nos mojamos nada salvo las manos al remar. El momento de la pausa sunset cuando el sol cae sobre las Sierras de Ambato te deja sin palabras. La picada de quesos de cabra y vino catamarqueño al final fue el broche de oro.',
       providerReply: {
@@ -101,7 +102,7 @@ export class KayakRatingsComponent {
         badge: 'Prestador Oficial Habilitado',
         date: '15 de Marzo, 2026',
         message:
-          '¡Muchas gracias Valentina! Un placer enorme recibirlos en El Jumeal. El atardecer de marzo estuvo especialmente calmo y con una luz dorada increíble. Nos alegra mucho que hayan disfrutado tanto los kayaks como la degustación de productores locales de Fray Mamerto Esquiú. ¡Los esperamos en la próxima expedición andina!',
+          '¡Muchas gracias Valentina! Un placer enorme recibirlos en el Dique El Jumeal. El atardecer de marzo estuvo especialmente calmo y con una luz dorada increíble. Nos alegra mucho que hayan disfrutado tanto los kayaks como la degustación de productores locales de Fray Mamerto Esquiú. ¡Los esperamos en la próxima expedición andina!',
       },
     },
     {
@@ -238,7 +239,7 @@ export class KayakRatingsComponent {
         responderName: 'Lucas Nieto • Guía Náutico & Prestador Habilitado',
         badge: 'Prestador Oficial Habilitado',
         date: 'En proceso de moderación',
-        message: `¡Hola ${name}! Agradecemos profundamente tu reseña y el tiempo dedicado a compartir tu experiencia lacustre en El Jumeal. ¡Nos alegra contar con vos en el Club!`,
+        message: `¡Hola ${name}! Agradecemos profundamente tu reseña y el tiempo dedicado a compartir tu experiencia lacustre en el Dique El Jumeal. ¡Nos alegra contar con vos en el Club!`,
       },
     };
 

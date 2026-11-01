@@ -58,6 +58,13 @@ const adminRoutes: Routes = [
             (m) => m.AdminApplicationsComponent,
           ),
       },
+      {
+        path: 'experiencias',
+        loadComponent: () =>
+          import('./features/admin-portal/admin-experiences/admin-experiences.component').then(
+            (m) => m.AdminExperiencesComponent,
+          ),
+      },
       { path: '**', redirectTo: 'dashboard' },
     ],
   },
@@ -103,6 +110,18 @@ const providerRoutes: Routes = [
           import('./features/provider-panel/provider-experience-form/provider-experience-form.component').then(
             (m) => m.ProviderExperienceFormComponent,
           ),
+      },
+      {
+        path: 'socios',
+        loadComponent: () =>
+          import('./features/provider-panel/provider-members/provider-members.component').then(
+            (m) => m.ProviderMembersComponent,
+          ),
+      },
+      {
+        path: 'comprobantes',
+        redirectTo: 'socios',
+        pathMatch: 'full',
       },
       {
         path: 'perfil',
