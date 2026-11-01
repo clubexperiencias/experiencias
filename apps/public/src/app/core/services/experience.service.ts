@@ -4,6 +4,7 @@ import { SUPABASE_CLIENT, isSupabaseConfigured } from '../supabase/supabase.clie
 
 const KAYAK_IMAGE = '/assets/images/kayak-club-de-experiencias.jpg';
 const STORAGE_KEY = 'club_experiencias_catalog_v1';
+const DELETED_STORAGE_KEY = 'club_experiencias_deleted_ids_v1';
 
 export const KAYAK_ALBUM_PHOTOS: ExperienceAlbumPhoto[] = [
   {
@@ -282,6 +283,10 @@ export class ExperienceService {
   getPublishedExperienceBySlug(slug: string): Experience | undefined {
     return this.publishedExperiences().find((e: Experience) => e.slug === slug);
   }
+
+  getPublishedExperienceById(id: string): Experience | undefined {
+    return this.publishedExperiences().find((e: Experience) => e.id === id || e.slug === id);
+  }
   readonly hasRemoteExperiences = this._hasRemoteExperiences.asReadonly();
 
   constructor() {
@@ -401,6 +406,7 @@ export class ExperienceService {
     };
 
     const nextList = [experience, ...list];
+    this.removeDeletedId(experience.id, experience.slug);
     this._experiences.set(nextList);
     this.persistToLocalStorage(nextList);
 
@@ -456,30 +462,94 @@ export class ExperienceService {
   }
 
   async deleteExperience(id: string): Promise<void> {
-    const list = this._experiences().filter((e) => e.id !== id);
+    const prevList = this._experiences();
+    const expToDelete = prevList.find((e) => e.id === id || e.slug === id);
+    const list = prevList.filter((e) => e.id !== id && e.slug !== id);
+
+    this.recordDeletedId(id, expToDelete?.slug);
     this._experiences.set(list);
     this.persistToLocalStorage(list);
 
     if (isSupabaseConfigured()) {
       try {
-        await this.supabase.from('experiencias').delete().eq('id', id);
+        const { error } = await this.supabase.from('experiencias').delete().eq('id', id);
+        if (error) {
+          console.warn('[ExperienceService] Error al eliminar en Supabase:', error);
+          this.removeDeletedId(id, expToDelete?.slug);
+          this._experiences.set(prevList);
+          this.persistToLocalStorage(prevList);
+          throw error;
+        }
       } catch (err) {
         console.warn('[ExperienceService] Fallo al eliminar en Supabase:', err);
+        this.removeDeletedId(id, expToDelete?.slug);
+        this._experiences.set(prevList);
+        this.persistToLocalStorage(prevList);
+        throw err;
+      }
+    }
+  }
+
+  private getDeletedIds(): Set<string> {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(DELETED_STORAGE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            return new Set(parsed);
+          }
+        }
+      } catch {
+        // Fallback
+      }
+    }
+    return new Set<string>();
+  }
+
+  private recordDeletedId(id: string, slug?: string): void {
+    if (typeof window !== 'undefined') {
+      try {
+        const set = this.getDeletedIds();
+        set.add(id);
+        if (slug) set.add(slug);
+        localStorage.setItem(DELETED_STORAGE_KEY, JSON.stringify(Array.from(set)));
+      } catch {
+        // Ignorar quota errors
+      }
+    }
+  }
+
+  private removeDeletedId(id: string, slug?: string): void {
+    if (typeof window !== 'undefined') {
+      try {
+        const set = this.getDeletedIds();
+        set.delete(id);
+        if (slug) set.delete(slug);
+        localStorage.setItem(DELETED_STORAGE_KEY, JSON.stringify(Array.from(set)));
+      } catch {
+        // Ignorar quota errors
       }
     }
   }
 
   private loadInitialExperiences(): Experience[] {
+    const deletedIds = this.getDeletedIds();
     if (typeof window !== 'undefined') {
       try {
         const stored = localStorage.getItem(STORAGE_KEY);
         if (stored) {
           const parsed = JSON.parse(stored) as Experience[];
           if (Array.isArray(parsed) && parsed.length > 0) {
-            const existingSlugs = new Set(parsed.map((e) => e.slug));
-            const missingDefaults = DEFAULT_EXPERIENCES.filter((d) => !existingSlugs.has(d.slug));
+            const activeList = parsed.filter(
+              (e) => !deletedIds.has(e.id) && !deletedIds.has(e.slug),
+            );
+            const existingSlugs = new Set(activeList.map((e) => e.slug));
+            const missingDefaults = DEFAULT_EXPERIENCES.filter(
+              (d) => !existingSlugs.has(d.slug) && !deletedIds.has(d.id) && !deletedIds.has(d.slug),
+            );
             return [
-              ...parsed.map((e) =>
+              ...activeList.map((e) =>
                 e.slug === 'kayak' ? { ...KAYAK_DEFAULT_EXPERIENCE, ...e } : e,
               ),
               ...missingDefaults,
@@ -490,7 +560,9 @@ export class ExperienceService {
         // Fallback
       }
     }
-    return [...DEFAULT_EXPERIENCES];
+    return DEFAULT_EXPERIENCES.filter(
+      (d) => !deletedIds.has(d.id) && !deletedIds.has(d.slug),
+    );
   }
 
   private persistToLocalStorage(list: Experience[]): void {

@@ -221,7 +221,7 @@
                   <span>Abrir en Google Maps</span>
                 </a>
 
-                <a routerLink="/experiencias/fotos" class="location-btn gallery-btn">
+                <a [routerLink]="['/experiencias', item.slug, 'fotos']" class="location-btn gallery-btn">
                   <mat-icon class="loc-icon">photo_library</mat-icon>
                   <span>Fotos de Experiencias Pasadas</span>
                 </a>

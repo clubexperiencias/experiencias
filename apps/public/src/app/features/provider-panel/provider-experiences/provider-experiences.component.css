@@ -14,8 +14,15 @@
 .header-titles {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  max-width: 680px;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.heading-row {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
 }
 
 .header-actions {
@@ -868,14 +875,18 @@
     gap: 1rem;
     align-items: stretch;
   }
+  .heading-row {
+    gap: 0.5rem;
+  }
   .header-actions {
     width: 100%;
     display: flex;
     gap: 0.5rem;
   }
+  .heading-row .new-proposal-btn,
+  .heading-row .btn-back-panel,
   .header-actions .new-proposal-btn,
   .header-actions .btn-back-panel {
-    flex: 1;
     justify-content: center;
     text-align: center;
   }

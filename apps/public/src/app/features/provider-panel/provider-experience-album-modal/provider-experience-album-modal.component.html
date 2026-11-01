@@ -1,6 +1,8 @@
 @if (isOpen() && experience()) {
   <div class="album-modal-backdrop" (click)="onClose()">
     <div
+      #modalDialog
+      tabindex="-1"
       class="album-modal"
       (click)="$event.stopPropagation()"
       role="dialog"

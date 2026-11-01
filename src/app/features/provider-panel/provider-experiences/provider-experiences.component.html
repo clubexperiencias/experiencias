@@ -2,23 +2,22 @@
 <div class="experiences-header">
   <div class="header-titles">
     <span class="section-kicker">GESTIÓN DE CATÁLOGO</span>
-    <h2 class="card-heading">Tus Experiencias</h2>
+    <div class="heading-row">
+      <h2 class="card-heading">Experiencias</h2>
+      <a routerLink="/dashboard" class="btn-back-panel">Volver al Panel</a>
+      <button
+        type="button"
+        class="new-proposal-btn"
+        (click)="openRequestModal()"
+        title="Cargar nueva solicitud de experiencia"
+      >
+        Cargar Nueva Propuesta
+      </button>
+    </div>
     <p class="card-subheading">
       Administrá tus experiencias publicadas, revisá solicitudes enviadas y gestioná cupos de
       exploradores.
     </p>
-  </div>
-
-  <div class="header-actions">
-    <button
-      type="button"
-      class="new-proposal-btn"
-      (click)="openRequestModal()"
-      title="Cargar nueva solicitud de experiencia"
-    >
-      Cargar Nueva Propuesta
-    </button>
-    <a routerLink="/dashboard" class="btn-back-panel">Volver al Panel</a>
   </div>
 </div>
 

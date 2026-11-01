@@ -361,6 +361,9 @@ type ApplicationFilterTab =
                           @case ('aprobado') {
                             Aprobado
                           }
+                          @case ('rechazado') {
+                            Rechazado
+                          }
                           @case ('dado_de_baja') {
                             Dado de baja
                           }
@@ -442,6 +445,9 @@ type ApplicationFilterTab =
                     @switch (selectedApp()!.status) {
                       @case ('aprobado') {
                         Aprobado
+                      }
+                      @case ('rechazado') {
+                        Rechazado
                       }
                       @case ('dado_de_baja') {
                         Dado de baja
@@ -2164,15 +2170,17 @@ export class AdminApplicationsComponent implements OnInit {
     this.selectedExperienceRequest.set(null);
   }
 
-  approveExperience(id: string): void {
-    this.store.approveExperienceRequest(id, this.expPublicUrlInput());
-    const current = this.selectedExperienceRequest();
-    if (current && current.id === id) {
-      this.selectedExperienceRequest.set({
-        ...current,
-        status: 'aprobada',
-        reviewedAt: new Date().toISOString(),
-      });
+  async approveExperience(id: string): Promise<void> {
+    const ok = await this.store.approveExperienceRequest(id, this.expPublicUrlInput());
+    if (ok) {
+      const current = this.selectedExperienceRequest();
+      if (current && current.id === id) {
+        this.selectedExperienceRequest.set({
+          ...current,
+          status: 'aprobada',
+          reviewedAt: new Date().toISOString(),
+        });
+      }
     }
   }
 
@@ -2188,7 +2196,7 @@ export class AdminApplicationsComponent implements OnInit {
     }
   }
 
-  approveProvider(): void {
+  async approveProvider(): Promise<void> {
     const current = this.selectedApp();
     if (!current) return;
     const banking = {
@@ -2197,11 +2205,18 @@ export class AdminApplicationsComponent implements OnInit {
       cbuAlias: this.providerCbuAlias().trim(),
       bankName: this.providerBankName().trim(),
     };
-    void this.store.updateApplicationStatus(current.id, current.type, 'aprobado', banking);
-    this.selectedApp.update((a) => (a ? { ...a, status: 'aprobado', ...banking } : null));
+    const ok = await this.store.updateApplicationStatus(
+      current.id,
+      current.type,
+      'aprobado',
+      banking,
+    );
+    if (ok) {
+      this.selectedApp.update((a) => (a ? { ...a, status: 'aprobado', ...banking } : null));
+    }
   }
 
-  darDeBajaProvider(): void {
+  async darDeBajaProvider(): Promise<void> {
     const current = this.selectedApp();
     if (!current) return;
     const banking = {
@@ -2210,11 +2225,18 @@ export class AdminApplicationsComponent implements OnInit {
       cbuAlias: this.providerCbuAlias().trim(),
       bankName: this.providerBankName().trim(),
     };
-    void this.store.updateApplicationStatus(current.id, current.type, 'dado_de_baja', banking);
-    this.selectedApp.update((a) => (a ? { ...a, status: 'dado_de_baja', ...banking } : null));
+    const ok = await this.store.updateApplicationStatus(
+      current.id,
+      current.type,
+      'dado_de_baja',
+      banking,
+    );
+    if (ok) {
+      this.selectedApp.update((a) => (a ? { ...a, status: 'dado_de_baja', ...banking } : null));
+    }
   }
 
-  saveProviderBankingData(): void {
+  async saveProviderBankingData(): Promise<void> {
     const current = this.selectedApp();
     if (!current) return;
     const banking = {
@@ -2223,11 +2245,18 @@ export class AdminApplicationsComponent implements OnInit {
       cbuAlias: this.providerCbuAlias().trim(),
       bankName: this.providerBankName().trim(),
     };
-    void this.store.updateApplicationStatus(current.id, current.type, current.status, banking);
-    this.selectedApp.update((a) => (a ? { ...a, ...banking } : null));
+    const ok = await this.store.updateApplicationStatus(
+      current.id,
+      current.type,
+      current.status,
+      banking,
+    );
+    if (ok) {
+      this.selectedApp.update((a) => (a ? { ...a, ...banking } : null));
+    }
   }
 
-  changeStatus(status: ApplicationStatus): void {
+  async changeStatus(status: ApplicationStatus): Promise<void> {
     const current = this.selectedApp();
     if (!current) return;
     const banking =
@@ -2239,8 +2268,10 @@ export class AdminApplicationsComponent implements OnInit {
             bankName: this.providerBankName().trim(),
           }
         : undefined;
-    void this.store.updateApplicationStatus(current.id, current.type, status, banking);
-    this.selectedApp.update((a) => (a ? { ...a, status, ...(banking || {}) } : null));
+    const ok = await this.store.updateApplicationStatus(current.id, current.type, status, banking);
+    if (ok) {
+      this.selectedApp.update((a) => (a ? { ...a, status, ...(banking || {}) } : null));
+    }
   }
 
   getWhatsappLink(phone?: string, name?: string): string {

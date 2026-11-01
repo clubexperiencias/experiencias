@@ -211,7 +211,7 @@ CREATE TABLE IF NOT EXISTS public.postulaciones_fundadores (
   motivation_letter    TEXT NOT NULL,
   agreed_to_protocol   BOOLEAN NOT NULL DEFAULT true CHECK (agreed_to_protocol = true),
   status               TEXT NOT NULL DEFAULT 'en_evaluacion'
-                       CHECK (status IN ('en_evaluacion', 'aprobada', 'rechazada')),
+                       CHECK (status IN ('en_evaluacion', 'aprobada', 'rechazada', 'dado_de_baja')),
   created_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at           TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -247,7 +247,7 @@ CREATE TABLE IF NOT EXISTS public.postulaciones_prestadores (
   website              TEXT NOT NULL,
   description          TEXT NOT NULL,
   status               TEXT NOT NULL DEFAULT 'pendiente'
-                       CHECK (status IN ('pendiente', 'aprobado', 'rechazado')),
+                       CHECK (status IN ('pendiente', 'aprobado', 'rechazado', 'dado_de_baja')),
   created_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at           TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -495,11 +495,6 @@ CREATE POLICY "Permitir actualizar waitlist propio"
 
 -- Políticas socios
 DROP POLICY IF EXISTS "Permitir lectura general de socios" ON public.socios;
-CREATE POLICY "Permitir lectura general de socios"
-  ON public.socios
-  FOR SELECT
-  TO anon, authenticated
-  USING (true);
 
 DROP POLICY IF EXISTS "Permitir consultar socio propio autenticado" ON public.socios;
 CREATE POLICY "Permitir consultar socio propio autenticado"
@@ -557,7 +552,8 @@ CREATE POLICY "Permitir consultar postulaciones de prestadores"
 
 -- Permisos y Grants
 GRANT SELECT, INSERT, UPDATE ON public.waitlist TO anon, authenticated;
-GRANT SELECT, INSERT, UPDATE ON public.socios TO anon, authenticated;
+GRANT SELECT, INSERT ON public.socios TO anon, authenticated;
+GRANT UPDATE (full_name, dni, phone, experiences_wishlist, experiences_other, updated_at) ON public.socios TO authenticated;
 GRANT SELECT, INSERT, UPDATE ON public.postulaciones_fundadores TO anon, authenticated;
 GRANT SELECT, INSERT, UPDATE ON public.postulaciones_prestadores TO anon, authenticated;
 GRANT USAGE, SELECT ON SEQUENCE public.socios_position_seq TO anon, authenticated;

@@ -105,10 +105,10 @@ export class App {
     let themeColor = '#ffffff';
 
     if (isAdminHost) {
-      title = 'Portal de Administración · EXPERIENCIAS.CLUB';
+      title = 'Portal de Admin del Club de Experiencias';
       themeColor = '#ff5f00';
     } else if (isProviderHost) {
-      title = 'Portal de Prestadores · EXPERIENCIAS.CLUB';
+      title = 'Portal de Prestadores del Club de Experiencias';
       themeColor = '#00388f';
     }
 

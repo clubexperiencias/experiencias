@@ -1,4 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
+import { Title } from '@angular/platform-browser';
 import { MatIconModule } from '@angular/material/icon';
 import { AdminStoreService } from '../../../core/services/admin-store.service';
 import { isSupabaseConfigured } from '../../../core/supabase/supabase.client';
@@ -336,10 +337,15 @@ import { isSupabaseConfigured } from '../../../core/supabase/supabase.client';
 })
 export class AdminLoginComponent {
   private readonly store = inject(AdminStoreService);
+  private readonly pageTitle = inject(Title);
 
   readonly isDevelopmentMode = !isSupabaseConfigured();
   readonly connectingGoogle = signal(false);
   readonly errorMessage = signal<string | null>(null);
+
+  constructor() {
+    this.pageTitle.setTitle('Portal de Admin del Club de Experiencias');
+  }
 
   async signInGoogle(): Promise<void> {
     this.connectingGoogle.set(true);

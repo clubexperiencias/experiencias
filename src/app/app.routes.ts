@@ -24,12 +24,14 @@ const isProviderHost =
 const adminRoutes: Routes = [
   {
     path: '',
+    title: 'Portal de Admin del Club de Experiencias',
     loadComponent: () =>
       import('./features/admin-portal/admin-panel.component').then((m) => m.AdminPanelComponent),
     children: [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       {
         path: 'dashboard',
+        title: 'Portal de Admin del Club de Experiencias',
         loadComponent: () =>
           import('./features/admin-portal/admin-dashboard/admin-dashboard.component').then(
             (m) => m.AdminDashboardComponent,
@@ -37,6 +39,7 @@ const adminRoutes: Routes = [
       },
       {
         path: 'socios',
+        title: 'Portal de Admin del Club de Experiencias',
         loadComponent: () =>
           import('./features/admin-portal/admin-members/admin-members.component').then(
             (m) => m.AdminMembersComponent,
@@ -44,6 +47,7 @@ const adminRoutes: Routes = [
       },
       {
         path: 'comprobantes',
+        title: 'Portal de Admin del Club de Experiencias',
         loadComponent: () =>
           import('./features/admin-portal/admin-receipts/admin-receipts.component').then(
             (m) => m.AdminReceiptsComponent,
@@ -51,6 +55,7 @@ const adminRoutes: Routes = [
       },
       {
         path: 'postulaciones',
+        title: 'Portal de Admin del Club de Experiencias',
         loadComponent: () =>
           import('./features/admin-portal/admin-applications/admin-applications.component').then(
             (m) => m.AdminApplicationsComponent,
@@ -58,6 +63,7 @@ const adminRoutes: Routes = [
       },
       {
         path: 'experiencias',
+        title: 'Portal de Admin del Club de Experiencias',
         loadComponent: () =>
           import('./features/admin-portal/admin-experiences/admin-experiences.component').then(
             (m) => m.AdminExperiencesComponent,
@@ -231,6 +237,11 @@ const publicRoutes: Routes = [
     pathMatch: 'full',
   },
   {
+    path: 'experiencias/prestadores',
+    redirectTo: 'prestadores',
+    pathMatch: 'full',
+  },
+  {
     path: 'experiencias/kayak',
     loadComponent: () =>
       import('./features/experiences/kayak-experience/kayak-experience.component').then(
@@ -318,11 +329,6 @@ const publicRoutes: Routes = [
     path: 'prestadores',
     loadComponent: () =>
       import('./features/providers/providers.component').then((m) => m.ProvidersComponent),
-  },
-  {
-    path: 'experiencias/prestadores',
-    redirectTo: 'prestadores',
-    pathMatch: 'full',
   },
 
   {

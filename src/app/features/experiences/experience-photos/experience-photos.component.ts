@@ -5,7 +5,6 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
 import { MatIconModule } from '@angular/material/icon';
 import { ExperienceService, KAYAK_ALBUM_PHOTOS } from '../../../core/services/experience.service';
-import { ProviderStoreService } from '../../../core/services/provider-store.service';
 import { ExperienceAlbumPhoto } from '../../../core/models/experience.model';
 import { HeaderComponent } from '../../../shared/components/header/header.component';
 import { FooterComponent } from '../../../shared/components/footer/footer.component';
@@ -36,7 +35,6 @@ export class ExperiencePhotosComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   readonly expService = inject(ExperienceService);
-  readonly providerStore = inject(ProviderStoreService);
 
   readonly mobileMenuOpen = signal(false);
   readonly activePhotoIndex = signal<number | null>(null);
@@ -62,11 +60,7 @@ export class ExperiencePhotosComponent {
   readonly exp = computed(() => {
     const s = this.slug();
     if (!s) return undefined;
-    return (
-      this.expService.getPublishedExperienceBySlug(s) ||
-      this.expService.getExperienceBySlug(s) ||
-      this.providerStore.getExperienceBySlug(s)
-    );
+    return this.expService.getPublishedExperienceBySlug(s);
   });
 
   // Lista de fotos del álbum (hasta 12)

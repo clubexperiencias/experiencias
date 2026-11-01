@@ -144,6 +144,10 @@ BEGIN
     RETURN jsonb_build_object('status', 'invalid_input');
   END IF;
 
+  IF v_auth_uid IS NULL OR v_jwt_email <> v_email THEN
+    RETURN jsonb_build_object('status', 'unauthorized', 'message', 'Se requiere autenticación válida para registrar el socio.');
+  END IF;
+
   IF EXISTS (SELECT 1 FROM public.socios WHERE email = v_email) THEN
     IF v_auth_uid IS NOT NULL AND v_jwt_email = v_email THEN
       UPDATE public.socios
@@ -237,6 +241,10 @@ DECLARE
 BEGIN
   IF v_email = '' OR v_name = '' OR length(v_dni) < 7 OR length(v_dni) > 9 OR v_phone = '' THEN
     RETURN jsonb_build_object('status', 'invalid_input');
+  END IF;
+
+  IF v_auth_uid IS NULL OR v_jwt_email <> v_email THEN
+    RETURN jsonb_build_object('status', 'unauthorized', 'message', 'Se requiere autenticación válida para registrar el socio.');
   END IF;
 
   IF EXISTS (SELECT 1 FROM public.socios WHERE email = v_email) THEN
@@ -464,4 +472,33 @@ SELECT
 FROM public.socios;
 
 GRANT SELECT ON public.waitlist_stats TO anon, authenticated;
+
+-- ============================================================
+-- 6. ACTUALIZACIÓN CONSTRAINT DE ESTADO EN POSTULACIONES_PRESTADORES Y FUNDADORES
+-- ============================================================
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'postulaciones_prestadores'
+  ) THEN
+    ALTER TABLE public.postulaciones_prestadores
+      DROP CONSTRAINT IF EXISTS postulaciones_prestadores_status_check;
+    ALTER TABLE public.postulaciones_prestadores
+      ADD CONSTRAINT postulaciones_prestadores_status_check
+      CHECK (status IN ('pendiente', 'aprobado', 'rechazado', 'dado_de_baja'));
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'postulaciones_fundadores'
+  ) THEN
+    ALTER TABLE public.postulaciones_fundadores
+      DROP CONSTRAINT IF EXISTS postulaciones_fundadores_status_check;
+    ALTER TABLE public.postulaciones_fundadores
+      ADD CONSTRAINT postulaciones_fundadores_status_check
+      CHECK (status IN ('en_evaluacion', 'aprobada', 'rechazada', 'dado_de_baja'));
+  END IF;
+END;
+$$;
 

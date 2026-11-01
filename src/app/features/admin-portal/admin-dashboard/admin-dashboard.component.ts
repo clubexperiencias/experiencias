@@ -269,6 +269,9 @@ import { slugify } from '../../../core/services/provider-store.service';
                           @case ('aprobado') {
                             Aprobado
                           }
+                          @case ('rechazado') {
+                            Rechazado
+                          }
                           @case ('dado_de_baja') {
                             Dado de baja
                           }
@@ -506,6 +509,9 @@ import { slugify } from '../../../core/services/provider-store.service';
                       @switch (app.status) {
                         @case ('aprobado') {
                           Aprobado
+                        }
+                        @case ('rechazado') {
+                          Rechazado
                         }
                         @case ('dado_de_baja') {
                           Dado de baja
@@ -2359,8 +2365,23 @@ export class AdminDashboardComponent {
     void this.store.loadAllApplications();
   }
 
-  openReceipt(sub: TransferSubmission): void {
+  async openReceipt(sub: TransferSubmission): Promise<void> {
     this.selectedSubmission.set(sub);
+    const key = sub.receipt.storageKey || sub.receipt.url;
+    if (
+      key &&
+      !key.startsWith('http://') &&
+      !key.startsWith('https://') &&
+      !key.startsWith('data:') &&
+      !key.startsWith('blob:')
+    ) {
+      const signed = await this.store.getSignedReceiptUrl(key);
+      if (signed && signed !== key) {
+        this.selectedSubmission.update((s) =>
+          s ? { ...s, receipt: { ...s.receipt, url: signed } } : null,
+        );
+      }
+    }
   }
 
   closeReceipt(): void {
@@ -2379,7 +2400,7 @@ export class AdminDashboardComponent {
     this.selectedApplication.set(null);
   }
 
-  approveProvider(): void {
+  async approveProvider(): Promise<void> {
     const current = this.selectedApplication();
     if (!current) return;
     const banking = {
@@ -2388,26 +2409,20 @@ export class AdminDashboardComponent {
       cbuAlias: this.providerCbuAlias().trim(),
       bankName: this.providerBankName().trim(),
     };
-    void this.store.updateApplicationStatus(current.id, current.type, 'aprobado', banking);
-    this.selectedApplication.update((a) => (a ? { ...a, status: 'aprobado', ...banking } : null));
-  }
-
-  darDeBajaProvider(): void {
-    const current = this.selectedApplication();
-    if (!current) return;
-    const banking = {
-      accountHolder: this.providerAccountHolder().trim() || current.fullName,
-      cuitDni: this.providerCuitDni().trim(),
-      cbuAlias: this.providerCbuAlias().trim(),
-      bankName: this.providerBankName().trim(),
-    };
-    void this.store.updateApplicationStatus(current.id, current.type, 'dado_de_baja', banking);
-    this.selectedApplication.update((a) =>
-      a ? { ...a, status: 'dado_de_baja', ...banking } : null,
+    const ok = await this.store.updateApplicationStatus(
+      current.id,
+      current.type,
+      'aprobado',
+      banking,
     );
+    if (ok) {
+      this.selectedApplication.update((a) =>
+        a ? { ...a, status: 'aprobado', ...banking } : null,
+      );
+    }
   }
 
-  saveProviderBankingData(): void {
+  async darDeBajaProvider(): Promise<void> {
     const current = this.selectedApplication();
     if (!current) return;
     const banking = {
@@ -2416,11 +2431,40 @@ export class AdminDashboardComponent {
       cbuAlias: this.providerCbuAlias().trim(),
       bankName: this.providerBankName().trim(),
     };
-    void this.store.updateApplicationStatus(current.id, current.type, current.status, banking);
-    this.selectedApplication.update((a) => (a ? { ...a, ...banking } : null));
+    const ok = await this.store.updateApplicationStatus(
+      current.id,
+      current.type,
+      'dado_de_baja',
+      banking,
+    );
+    if (ok) {
+      this.selectedApplication.update((a) =>
+        a ? { ...a, status: 'dado_de_baja', ...banking } : null,
+      );
+    }
   }
 
-  changeApplicationStatus(status: ApplicationStatus): void {
+  async saveProviderBankingData(): Promise<void> {
+    const current = this.selectedApplication();
+    if (!current) return;
+    const banking = {
+      accountHolder: this.providerAccountHolder().trim() || current.fullName,
+      cuitDni: this.providerCuitDni().trim(),
+      cbuAlias: this.providerCbuAlias().trim(),
+      bankName: this.providerBankName().trim(),
+    };
+    const ok = await this.store.updateApplicationStatus(
+      current.id,
+      current.type,
+      current.status,
+      banking,
+    );
+    if (ok) {
+      this.selectedApplication.update((a) => (a ? { ...a, ...banking } : null));
+    }
+  }
+
+  async changeApplicationStatus(status: ApplicationStatus): Promise<void> {
     const current = this.selectedApplication();
     if (!current) return;
     const banking =
@@ -2432,8 +2476,12 @@ export class AdminDashboardComponent {
             bankName: this.providerBankName().trim(),
           }
         : undefined;
-    void this.store.updateApplicationStatus(current.id, current.type, status, banking);
-    this.selectedApplication.update((a) => (a ? { ...a, status, ...(banking || {}) } : null));
+    const ok = await this.store.updateApplicationStatus(current.id, current.type, status, banking);
+    if (ok) {
+      this.selectedApplication.update((a) =>
+        a ? { ...a, status, ...(banking || {}) } : null,
+      );
+    }
   }
 
   formatCategory(category?: string): string {
@@ -2476,15 +2524,17 @@ export class AdminDashboardComponent {
     this.selectedExperienceRequest.set(null);
   }
 
-  approveExperience(id: string): void {
-    this.store.approveExperienceRequest(id, this.expPublicUrlInput());
-    const current = this.selectedExperienceRequest();
-    if (current && current.id === id) {
-      this.selectedExperienceRequest.set({
-        ...current,
-        status: 'aprobada',
-        reviewedAt: new Date().toISOString(),
-      });
+  async approveExperience(id: string): Promise<void> {
+    const ok = await this.store.approveExperienceRequest(id, this.expPublicUrlInput());
+    if (ok) {
+      const current = this.selectedExperienceRequest();
+      if (current && current.id === id) {
+        this.selectedExperienceRequest.set({
+          ...current,
+          status: 'aprobada',
+          reviewedAt: new Date().toISOString(),
+        });
+      }
     }
   }
 

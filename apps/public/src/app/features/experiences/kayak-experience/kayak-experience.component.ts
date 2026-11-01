@@ -7,6 +7,7 @@ import {
   ExperienceService,
   KAYAK_DEFAULT_EXPERIENCE,
 } from '../../../core/services/experience.service';
+import { Experience } from '../../../core/models/experience.model';
 import { FooterComponent } from '../../../shared/components/footer/footer.component';
 import { HeaderComponent } from '../../../shared/components/header/header.component';
 import {
@@ -35,12 +36,16 @@ export class KayakExperienceComponent {
   readonly experienceService = inject(ExperienceService);
   readonly router = inject(Router);
 
-  readonly exp = computed(
-    () =>
-      this.experienceService.getPublishedExperienceBySlug('kayak') ||
-      this.experienceService.getExperienceBySlug('kayak') ||
-      KAYAK_DEFAULT_EXPERIENCE,
-  );
+  readonly exp = computed<Experience | undefined>(() => {
+    const published = this.experienceService.getPublishedExperienceBySlug('kayak');
+    if (published) {
+      return published;
+    }
+    if (this.experienceService.hasRemoteExperiences()) {
+      return undefined;
+    }
+    return KAYAK_DEFAULT_EXPERIENCE;
+  });
 
   readonly bg = signal('/assets/images/laguna_blanca.jpg');
 

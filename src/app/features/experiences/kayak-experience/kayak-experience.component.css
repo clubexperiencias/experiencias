@@ -618,3 +618,24 @@
     white-space: normal;
   }
 }
+
+/* ═══════════════ NOT FOUND STATE ═══════════════ */
+.not-found-card {
+  text-align: center;
+  padding: 3.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.not-found-icon {
+  font-size: 56px;
+  width: 56px;
+  height: 56px;
+  color: var(--color-gold);
+}
+
+.not-found-actions {
+  margin-top: 1rem;
+}

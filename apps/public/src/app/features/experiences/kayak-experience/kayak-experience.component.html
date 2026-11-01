@@ -11,82 +11,83 @@
 
     <main class="kayak-main-content">
       <div class="kayak-wrapper">
-        <!-- ═══════════════ HERO CARD: CABECERA Y RESUMEN TÉCNICO ═══════════════ -->
-        <div class="kayak-section-card hero-kayak-card">
-          <div class="card-inner-header">
-            <span class="section-kicker">{{
-              exp().kicker || 'EXPEDICIÓN NÁUTICA: VALLE CENTRAL'
-            }}</span>
-            <h1 class="card-heading">{{ exp().title }}</h1>
-            <p class="card-subheading">
-              {{ exp().description }}
-            </p>
-          </div>
+        @if (exp(); as item) {
+          <!-- ═══════════════ HERO CARD: CABECERA Y RESUMEN TÉCNICO ═══════════════ -->
+          <div class="kayak-section-card hero-kayak-card">
+            <div class="card-inner-header">
+              <span class="section-kicker">{{
+                item.kicker || 'EXPEDICIÓN NÁUTICA: VALLE CENTRAL'
+              }}</span>
+              <h1 class="card-heading">{{ item.title }}</h1>
+              <p class="card-subheading">
+                {{ item.description }}
+              </p>
+            </div>
 
-          <!-- Specs Rápidas -->
-          <div class="kayak-specs-grid">
-            <div class="spec-tile">
-              <span class="spec-label">DIFICULTAD</span>
-              <span class="spec-value">{{ exp().difficulty }} (Sin experiencia previa)</span>
-            </div>
-            <div class="spec-tile">
-              <span class="spec-label">DURACIÓN</span>
-              <span class="spec-value">{{ exp().durationLabel }}</span>
-            </div>
-            <div class="spec-tile">
-              <span class="spec-label">ALTITUD</span>
-              <span class="spec-value">{{ exp().altitudeMeters }} msnm</span>
-            </div>
-            <div class="spec-tile">
-              <span class="spec-label">CUPO MÁXIMO</span>
-              <span class="spec-value">{{ exp().maxSpotsPerGroup }} Socios</span>
-            </div>
-            <div class="spec-tile">
-              <span class="spec-label">TEMPORADA</span>
-              <span class="spec-value">{{ exp().bestSeason }}</span>
-            </div>
-            <div class="spec-tile">
-              <span class="spec-label">PUNTO DE ENCUENTRO</span>
-              <span class="spec-value">{{ exp().meetingPoint || 'Club Náutico El Jumeal' }}</span>
-            </div>
-          </div>
-          <!-- Video Oficial de la Experiencia Integrado -->
-          <div class="kayak-video-media-wrap">
-            <video
-              [src]="exp().videoUrl || '/assets/videos/kayak.mp4'"
-              autoplay
-              muted
-              [muted]="true"
-              loop
-              playsinline
-              preload="auto"
-              [poster]="exp().videoPoster || '/assets/images/kayak-video.png'"
-              class="kayak-video-element"
-            >
-              Tu navegador no soporta el formato de video.
-            </video>
-          </div>
-        </div>
-
-        <!-- ═══════════════ CARD: ARANCEL & RESERVA ═══════════════ -->
-        <div class="kayak-section-card pricing-action-card">
-          <div class="pricing-card-flex">
-            <div class="price-data">
-              <span class="price-title">ARANCEL POR PERSONA</span>
-              <div class="price-figures">
-                <span class="ars-price">${{ exp().priceArs.toLocaleString('es-AR') }} ARS</span>
-                <span class="usd-price">o ${{ exp().priceUsd }} USD</span>
+            <!-- Specs Rápidas -->
+            <div class="kayak-specs-grid">
+              <div class="spec-tile">
+                <span class="spec-label">DIFICULTAD</span>
+                <span class="spec-value">{{ item.difficulty }} (Sin experiencia previa)</span>
               </div>
-              <span class="price-note">Prioridad para socios de nuestro Club de Experiencias</span>
+              <div class="spec-tile">
+                <span class="spec-label">DURACIÓN</span>
+                <span class="spec-value">{{ item.durationLabel }}</span>
+              </div>
+              <div class="spec-tile">
+                <span class="spec-label">ALTITUD</span>
+                <span class="spec-value">{{ item.altitudeMeters }} msnm</span>
+              </div>
+              <div class="spec-tile">
+                <span class="spec-label">CUPO MÁXIMO</span>
+                <span class="spec-value">{{ item.maxSpotsPerGroup }} Socios</span>
+              </div>
+              <div class="spec-tile">
+                <span class="spec-label">TEMPORADA</span>
+                <span class="spec-value">{{ item.bestSeason }}</span>
+              </div>
+              <div class="spec-tile">
+                <span class="spec-label">PUNTO DE ENCUENTRO</span>
+                <span class="spec-value">{{ item.meetingPoint || 'Club Náutico El Jumeal' }}</span>
+              </div>
             </div>
-
-            <div class="action-btns-group">
-              <a routerLink="/experiencias/kayak/pago" class="cta-primary-btn cta-blue-btn">
-                <span>Pagar Experiencia</span>
-              </a>
+            <!-- Video Oficial de la Experiencia Integrado -->
+            <div class="kayak-video-media-wrap">
+              <video
+                [src]="item.videoUrl || '/assets/videos/kayak.mp4'"
+                autoplay
+                muted
+                [muted]="true"
+                loop
+                playsinline
+                preload="auto"
+                [poster]="item.videoPoster || '/assets/images/kayak-video.png'"
+                class="kayak-video-element"
+              >
+                Tu navegador no soporta el formato de video.
+              </video>
             </div>
           </div>
-        </div>
+
+          <!-- ═══════════════ CARD: ARANCEL & RESERVA ═══════════════ -->
+          <div class="kayak-section-card pricing-action-card">
+            <div class="pricing-card-flex">
+              <div class="price-data">
+                <span class="price-title">ARANCEL POR PERSONA</span>
+                <div class="price-figures">
+                  <span class="ars-price">${{ item.priceArs.toLocaleString('es-AR') }} ARS</span>
+                  <span class="usd-price">o ${{ item.priceUsd }} USD</span>
+                </div>
+                <span class="price-note">Prioridad para socios de nuestro Club de Experiencias</span>
+              </div>
+
+              <div class="action-btns-group">
+                <a routerLink="/experiencias/kayak/pago" class="cta-primary-btn cta-blue-btn">
+                  <span>Pagar Experiencia</span>
+                </a>
+              </div>
+            </div>
+          </div>
 
         <!-- ═══════════════ CARD: CRONOGRAMA & ITINERARIO ═══════════════ -->
         <div class="kayak-section-card">
@@ -242,8 +243,8 @@
             <div class="price-data">
               <span class="price-title">ARANCEL POR PERSONA</span>
               <div class="price-figures">
-                <span class="ars-price">$65.000 ARS</span>
-                <span class="usd-price">o $70 USD</span>
+                <span class="ars-price">${{ item.priceArs.toLocaleString('es-AR') }} ARS</span>
+                <span class="usd-price">o ${{ item.priceUsd }} USD</span>
               </div>
               <span class="price-note">Prioridad para socios de nuestro Club de Experiencias</span>
             </div>
@@ -255,6 +256,22 @@
             </div>
           </div>
         </div>
+      } @else {
+        <!-- ═══════════════ ESTADO: EXPERIENCIA NO ENCONTRADA ═══════════════ -->
+        <div class="kayak-section-card not-found-card">
+          <mat-icon class="not-found-icon">explore_off</mat-icon>
+          <h1 class="card-heading">Experiencia No Disponible</h1>
+          <p class="card-subheading">
+            La experiencia solicitada no se encuentra disponible actualmente o está en proceso de
+            revisión oficial.
+          </p>
+          <div class="not-found-actions">
+            <a routerLink="/experiencias" class="cta-primary-btn cta-blue-btn">
+              <span>Ver Catálogo Oficial</span>
+            </a>
+          </div>
+        </div>
+      }
       </div>
     </main>
   </div>

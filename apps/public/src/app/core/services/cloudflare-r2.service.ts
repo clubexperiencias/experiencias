@@ -15,6 +15,13 @@ export class CloudflareR2Service {
   private readonly supabase = inject(SUPABASE_CLIENT);
 
   /**
+   * Sube un archivo a Cloudflare R2 o storage de respaldo.
+   */
+  async uploadFile(file: File, reference = 'MEDIA'): Promise<ReceiptUploadResult> {
+    return this.uploadReceipt(file, reference);
+  }
+
+  /**
    * Sube un comprobante de pago (imagen o PDF) a Cloudflare R2 a través de /api/upload-receipt.
    * Si R2 aún no tiene credenciales configuradas o se ejecuta en ng serve local,
    * utiliza automáticamente el bucket 'comprobantes' de Supabase Storage como respaldo.
@@ -104,17 +111,11 @@ export class CloudflareR2Service {
           });
 
         if (!uploadErr) {
-          const { data: pubData } = this.supabase.storage
-            .from('comprobantes')
-            .getPublicUrl(storageKey);
-
-          if (pubData?.publicUrl) {
-            return {
-              url: pubData.publicUrl,
-              storageKey,
-              provider: 'supabase',
-            };
-          }
+          return {
+            url: storageKey,
+            storageKey,
+            provider: 'supabase',
+          };
         } else {
           console.warn(
             '[CloudflareR2Service] No se pudo subir a Supabase Storage:',

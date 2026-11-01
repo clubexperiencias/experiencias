@@ -45,10 +45,7 @@ export class ExperienceDetailComponent {
   readonly exp = computed(() => {
     const s = this.slug();
     if (!s) return undefined;
-    return (
-      this.experienceService.getPublishedExperienceBySlug(s) ||
-      this.experienceService.getExperienceBySlug(s)
-    );
+    return this.experienceService.getPublishedExperienceBySlug(s);
   });
 
   readonly breadcrumbs = computed<BreadcrumbItem[]>(() => {

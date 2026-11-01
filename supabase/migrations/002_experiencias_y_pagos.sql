@@ -271,6 +271,11 @@ DECLARE
   v_dni TEXT := regexp_replace(COALESCE(p_dni, ''), '\D', '', 'g');
   v_socio_id UUID := NULL;
   v_capacity INTEGER := 12;
+  v_unit_price INTEGER := 0;
+  v_dates JSONB := '[]'::jsonb;
+  v_expected_subtotal INTEGER := 0;
+  v_expected_discount INTEGER := 0;
+  v_expected_total INTEGER := 0;
   v_reserved INTEGER := 0;
   v_inserted public.pagos_transferencias%ROWTYPE;
 BEGIN
@@ -283,13 +288,55 @@ BEGIN
     RETURN jsonb_build_object('status', 'unauthorized');
   END IF;
 
-  SELECT capacity_per_date INTO v_capacity
+  SELECT capacity_per_date, price_ars, dates INTO v_capacity, v_unit_price, v_dates
   FROM public.experiencias
   WHERE id = p_experience_id
-  LIMIT 1;
+  LIMIT 1
+  FOR UPDATE;
 
   IF v_capacity IS NULL THEN
     v_capacity := 12;
+  END IF;
+
+  IF v_dates IS NOT NULL AND jsonb_array_length(v_dates) > 0 AND NOT (v_dates ? p_date) THEN
+    RETURN jsonb_build_object(
+      'status', 'invalid_date',
+      'message', 'La fecha seleccionada no está disponible.'
+    );
+  END IF;
+
+  IF v_unit_price IS NOT NULL AND v_unit_price > 0 THEN
+    v_expected_subtotal := v_unit_price * p_participants;
+
+    IF p_discount_code IS NOT NULL AND TRIM(p_discount_code) <> '' THEN
+      IF UPPER(TRIM(p_discount_code)) IN ('FUNDADOR100') THEN
+        v_expected_discount := v_expected_subtotal;
+      ELSIF UPPER(TRIM(p_discount_code)) IN ('FUNDADOR20') THEN
+        v_expected_discount := ROUND(v_expected_subtotal * 0.20);
+      ELSIF UPPER(TRIM(p_discount_code)) IN ('SOCIO15', 'DESCUENTO15') THEN
+        v_expected_discount := ROUND(v_expected_subtotal * 0.15);
+      ELSIF UPPER(TRIM(p_discount_code)) IN ('AMIGO10', 'CLUB10', 'SOCIO10') THEN
+        v_expected_discount := ROUND(v_expected_subtotal * 0.10);
+      ELSIF UPPER(TRIM(p_discount_code)) IN ('SOCIOFUNDADOR7') THEN
+        v_expected_discount := ROUND(v_expected_subtotal * 0.07);
+      ELSE
+        v_expected_discount := 0;
+      END IF;
+    ELSE
+      v_expected_discount := 0;
+    END IF;
+
+    v_expected_total := GREATEST(0, v_expected_subtotal - v_expected_discount);
+    IF p_amount_ars <> v_expected_total THEN
+      RETURN jsonb_build_object(
+        'status', 'invalid_amount',
+        'message', 'El monto transferido no coincide con el total calculado para esta reserva.',
+        'expected_amount', v_expected_total
+      );
+    END IF;
+  ELSE
+    v_expected_total := p_amount_ars;
+    v_expected_discount := COALESCE(p_discount_ars, 0);
   END IF;
 
   SELECT COALESCE(SUM(participants), 0) INTO v_reserved
@@ -335,9 +382,9 @@ BEGIN
     p_experience_title,
     p_date,
     p_participants,
-    p_amount_ars,
+    v_expected_total,
     p_discount_code,
-    p_discount_ars,
+    v_expected_discount,
     p_full_name,
     v_email,
     v_dni,

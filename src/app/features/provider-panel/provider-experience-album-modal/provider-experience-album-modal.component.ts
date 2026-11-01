@@ -1,6 +1,8 @@
 import {
   Component,
+  ElementRef,
   HostListener,
+  ViewChild,
   inject,
   input,
   output,
@@ -13,6 +15,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { ProviderStoreService } from '../../../core/services/provider-store.service';
+import { CloudflareR2Service } from '../../../core/services/cloudflare-r2.service';
 import { ProviderExperience } from '../../../core/models/bank-transfer.model';
 import { ExperienceAlbumPhoto } from '../../../core/models/experience.model';
 
@@ -25,6 +28,7 @@ import { ExperienceAlbumPhoto } from '../../../core/models/experience.model';
 })
 export class ProviderExperienceAlbumModalComponent {
   readonly store = inject(ProviderStoreService);
+  readonly r2Service = inject(CloudflareR2Service);
   readonly router = inject(Router);
 
   readonly isOpen = input<boolean>(false);
@@ -39,6 +43,9 @@ export class ProviderExperienceAlbumModalComponent {
   readonly newPhotoCaption = signal('');
   readonly validationError = signal<string | null>(null);
   readonly isSaving = signal(false);
+
+  @ViewChild('modalDialog') modalDialog?: ElementRef<HTMLElement>;
+  private previousActiveElement: HTMLElement | null = null;
 
   // Computeds for validation counters
   readonly totalCount = computed(() => this.photos().length);
@@ -66,10 +73,59 @@ export class ProviderExperienceAlbumModalComponent {
             this.initPhotos(exp);
           }
           this.validationError.set(null);
+          if (typeof document !== 'undefined') {
+            this.previousActiveElement = document.activeElement as HTMLElement | null;
+          }
+          setTimeout(() => {
+            this.focusInitialElement();
+          }, 0);
         }
       },
       { allowSignalWrites: true },
     );
+  }
+
+  private getFocusableElements(): HTMLElement[] {
+    if (!this.modalDialog?.nativeElement) return [];
+    const selector =
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    return Array.from(this.modalDialog.nativeElement.querySelectorAll<HTMLElement>(selector));
+  }
+
+  private focusInitialElement(): void {
+    const focusable = this.getFocusableElements();
+    if (focusable.length > 0) {
+      focusable[0].focus();
+    } else {
+      this.modalDialog?.nativeElement.focus();
+    }
+  }
+
+  @HostListener('keydown', ['$event'])
+  handleKeydown(event: KeyboardEvent): void {
+    if (!this.isOpen() || event.key !== 'Tab') return;
+
+    const focusable = this.getFocusableElements();
+    if (focusable.length === 0) {
+      event.preventDefault();
+      return;
+    }
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = typeof document !== 'undefined' ? document.activeElement : null;
+
+    if (event.shiftKey) {
+      if (active === first || !this.modalDialog?.nativeElement.contains(active)) {
+        event.preventDefault();
+        last.focus();
+      }
+    } else {
+      if (active === last || !this.modalDialog?.nativeElement.contains(active)) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
   }
 
   private initPhotos(exp: ProviderExperience): void {
@@ -100,6 +156,9 @@ export class ProviderExperienceAlbumModalComponent {
   }
 
   onClose(): void {
+    if (this.previousActiveElement && typeof this.previousActiveElement.focus === 'function') {
+      this.previousActiveElement.focus();
+    }
     this.close.emit();
   }
 
@@ -191,8 +250,8 @@ export class ProviderExperienceAlbumModalComponent {
     this.validationError.set(null);
   }
 
-  // Subir foto(s) desde el dispositivo local (FileReader dataURL)
-  onFileSelected(event: Event): void {
+  // Subir foto(s) desde el dispositivo local al almacenamiento persistente
+  async onFileSelected(event: Event): Promise<void> {
     const inputEl = event.target as HTMLInputElement;
     if (!inputEl.files || inputEl.files.length === 0) return;
 
@@ -211,24 +270,28 @@ export class ProviderExperienceAlbumModalComponent {
       );
     }
 
-    filesToLoad.forEach((file) => {
+    for (const file of filesToLoad) {
       if (!file.type.startsWith('image/')) {
         this.validationError.set(`El archivo "${file.name}" no es una imagen válida.`);
-        return;
+        continue;
       }
 
-      const reader = new FileReader();
-      reader.onload = () => {
-        const dataUrl = reader.result as string;
+      if (file.size > 5 * 1024 * 1024) {
+        this.validationError.set(`El archivo "${file.name}" supera el límite máximo de 5 MB.`);
+        continue;
+      }
+
+      try {
+        const uploadRes = await this.r2Service.uploadReceipt(file, 'ALBUM');
         const currentTotal = this.photos().length;
-        if (currentTotal >= 12) return;
+        if (currentTotal >= 12) break;
 
         const isFirst = currentTotal === 0;
         const isSecondOrThird = currentTotal === 1 || currentTotal === 2;
 
         const photo: ExperienceAlbumPhoto = {
           id: `photo_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-          url: dataUrl,
+          url: uploadRes.url,
           title: file.name.replace(/\.[^/.]+$/, ''),
           caption: 'Foto cargada por el prestador',
           isCover: isFirst,
@@ -237,9 +300,11 @@ export class ProviderExperienceAlbumModalComponent {
         };
 
         this.photos.update((list) => [...list, photo]);
-      };
-      reader.readAsDataURL(file);
-    });
+      } catch (err: unknown) {
+        console.warn('[AlbumModal] Error al subir foto:', err);
+        this.validationError.set(`No se pudo subir la foto "${file.name}".`);
+      }
+    }
 
     inputEl.value = '';
   }

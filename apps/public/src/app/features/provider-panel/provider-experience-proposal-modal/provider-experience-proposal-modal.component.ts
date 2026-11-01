@@ -1,8 +1,19 @@
-import { Component, HostListener, inject, input, output, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  HostListener,
+  ViewChild,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { ProviderStoreService } from '../../../core/services/provider-store.service';
+import { CloudflareR2Service } from '../../../core/services/cloudflare-r2.service';
 
 @Component({
   selector: 'app-provider-experience-proposal-modal',
@@ -12,6 +23,8 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
     @if (isOpen()) {
       <div class="exp-request-modal-backdrop" (click)="onClose()">
         <div
+          #modalDialog
+          tabindex="-1"
           class="exp-request-modal"
           (click)="$event.stopPropagation()"
           role="dialog"
@@ -1075,10 +1088,70 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
 })
 export class ProviderExperienceProposalModalComponent {
   private readonly store = inject(ProviderStoreService);
+  private readonly r2Service = inject(CloudflareR2Service);
 
   readonly isOpen = input<boolean>(false);
   readonly closeModal = output<void>();
   readonly submitted = output<void>();
+
+  @ViewChild('modalDialog') modalDialog?: ElementRef<HTMLElement>;
+  private previousActiveElement: HTMLElement | null = null;
+
+  constructor() {
+    effect(() => {
+      if (this.isOpen()) {
+        if (typeof document !== 'undefined') {
+          this.previousActiveElement = document.activeElement as HTMLElement | null;
+        }
+        setTimeout(() => {
+          this.focusInitialElement();
+        }, 0);
+      }
+    });
+  }
+
+  private getFocusableElements(): HTMLElement[] {
+    if (!this.modalDialog?.nativeElement) return [];
+    const selector =
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    return Array.from(this.modalDialog.nativeElement.querySelectorAll<HTMLElement>(selector));
+  }
+
+  private focusInitialElement(): void {
+    const focusable = this.getFocusableElements();
+    if (focusable.length > 0) {
+      focusable[0].focus();
+    } else {
+      this.modalDialog?.nativeElement.focus();
+    }
+  }
+
+  @HostListener('keydown', ['$event'])
+  handleKeydown(event: KeyboardEvent): void {
+    if (!this.isOpen() || event.key !== 'Tab') return;
+
+    const focusable = this.getFocusableElements();
+    if (focusable.length === 0) {
+      event.preventDefault();
+      return;
+    }
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = typeof document !== 'undefined' ? document.activeElement : null;
+
+    if (event.shiftKey) {
+      if (active === first || !this.modalDialog?.nativeElement.contains(active)) {
+        event.preventDefault();
+        last.focus();
+      }
+    } else {
+      if (active === last || !this.modalDialog?.nativeElement.contains(active)) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+  }
 
   readonly requestSuccess = signal(false);
   readonly submittingRequest = signal(false);
@@ -1158,8 +1231,8 @@ export class ProviderExperienceProposalModalComponent {
       this.coverImageError.set('El archivo seleccionado debe ser una imagen (JPG, PNG, WEBP).');
       return;
     }
-    if (file.size > 20 * 1024 * 1024) {
-      this.coverImageError.set('La imagen supera el límite máximo de 20 MB.');
+    if (file.size > 5 * 1024 * 1024) {
+      this.coverImageError.set('La imagen supera el límite máximo de 5 MB.');
       return;
     }
     this.coverImageError.set(null);
@@ -1228,6 +1301,9 @@ export class ProviderExperienceProposalModalComponent {
   }
 
   onClose(): void {
+    if (this.previousActiveElement && typeof this.previousActiveElement.focus === 'function') {
+      this.previousActiveElement.focus();
+    }
     this.requestSuccess.set(false);
     this.submittingRequest.set(false);
     this.removeCoverImage();
@@ -1235,7 +1311,7 @@ export class ProviderExperienceProposalModalComponent {
     this.closeModal.emit();
   }
 
-  submitRequestForm(): void {
+  async submitRequestForm(): Promise<void> {
     if (!this.reqForm.title.trim()) return;
     if (!this.coverImageFile()) {
       this.coverImageError.set('La foto de portada es obligatoria para enviar la propuesta.');
@@ -1244,6 +1320,20 @@ export class ProviderExperienceProposalModalComponent {
     this.submittingRequest.set(true);
 
     const prov = this.store.currentProvider();
+    let coverImageUrl = '/assets/images/kayak-club-de-experiencias.jpg';
+    const coverFile = this.coverImageFile();
+
+    if (coverFile) {
+      try {
+        const uploadRes = await this.r2Service.uploadReceipt(coverFile, 'PROPOSAL');
+        if (uploadRes?.url) {
+          coverImageUrl = uploadRes.url;
+        }
+      } catch (err) {
+        console.warn('[ProposalModal] No se pudo subir imagen a storage, usando fallback:', err);
+      }
+    }
+
     try {
       this.store.submitExperienceRequest({
         providerId: prov?.id || 'prov-patricio',
@@ -1269,8 +1359,8 @@ export class ProviderExperienceProposalModalComponent {
         includedServices: this.reqForm.includedServices,
         participantRequirements: this.reqForm.participantRequirements,
         notes: this.reqForm.notes,
-        coverImage: '/assets/images/kayak-club-de-experiencias.jpg',
-        coverImageName: this.coverImageFile()?.name,
+        coverImage: coverImageUrl,
+        coverImageName: coverFile?.name,
         coverVideoName: this.coverVideoFile()?.name,
       });
 

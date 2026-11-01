@@ -13,6 +13,7 @@ import {
   discountAmount,
   findDiscountCode,
 } from '../models/bank-transfer.model';
+import { Experience } from '../models/experience.model';
 import { TransactionalEmailService } from './transactional-email.service';
 import { NewsletterService } from './newsletter.service';
 import { ActivityHistoryService } from './activity-history.service';
@@ -131,6 +132,42 @@ export function validateReceiptFile(file: File): string | null {
     return 'El archivo supera los 5 MB.';
   }
   return null;
+}
+
+export function mapLiveExperienceToProvider(live: Experience): ProviderExperience {
+  return {
+    id: live.id,
+    slug: live.slug,
+    providerId: 'provider-oficial',
+    providerName: 'Club de Experiencias',
+    title: live.title,
+    shortTitle: live.shortTitle || live.title,
+    tagline: live.tagline,
+    description: live.description,
+    region: live.region,
+    meetingPoint: live.meetingPoint,
+    difficulty: live.difficulty as any,
+    durationDays: live.durationDays,
+    durationLabel: live.durationLabel,
+    priceArs: live.priceArs,
+    priceUsd: live.priceUsd,
+    capacityPerDate: live.maxSpotsPerGroup,
+    dates: live.dates || [],
+    status: live.status,
+    coverImage: live.coverImage,
+    galleryImages: live.galleryImages,
+    albumPhotos: live.albumPhotos,
+    highlights: live.highlights,
+    included: live.included,
+    notIncluded: live.notIncluded,
+    altitudeMeters: live.altitudeMeters,
+    bestSeason: live.bestSeason,
+    rating: live.rating,
+    reviewsCount: live.reviewsCount,
+    detailRoute: live.detailRoute,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  } as ProviderExperience;
 }
 
 export const SEED_PROVIDERS: ProviderUser[] = [
@@ -659,38 +696,7 @@ export class ProviderStoreService {
     if (fromStore) return fromStore;
     const live = this.expService.getExperienceBySlug(slug);
     if (live) {
-      return {
-        id: live.id,
-        slug: live.slug,
-        providerId: 'provider-oficial',
-        providerName: 'Club de Experiencias',
-        title: live.title,
-        shortTitle: live.shortTitle || live.title,
-        tagline: live.tagline,
-        description: live.description,
-        region: live.region,
-        meetingPoint: live.meetingPoint,
-        difficulty: live.difficulty as any,
-        durationDays: live.durationDays,
-        durationLabel: live.durationLabel,
-        priceArs: live.priceArs,
-        priceUsd: live.priceUsd,
-        capacityPerDate: live.maxSpotsPerGroup,
-        dates: live.dates || [],
-        status: live.status,
-        coverImage: live.coverImage,
-        galleryImages: live.galleryImages,
-        highlights: live.highlights,
-        included: live.included,
-        notIncluded: live.notIncluded,
-        altitudeMeters: live.altitudeMeters,
-        bestSeason: live.bestSeason,
-        rating: live.rating,
-        reviewsCount: live.reviewsCount,
-        detailRoute: live.detailRoute,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      } as ProviderExperience;
+      return mapLiveExperienceToProvider(live);
     }
     return undefined;
   }
@@ -803,6 +809,19 @@ export class ProviderStoreService {
       throw new Error('El álbum no puede superar el límite de 12 fotos.');
     }
 
+    const currentProvider = this._currentProvider();
+    const existingExp = this.getExperienceById(experienceId);
+    if (!existingExp) {
+      throw new Error('Experiencia no encontrada.');
+    }
+    if (
+      currentProvider &&
+      existingExp.providerId &&
+      existingExp.providerId !== currentProvider.id
+    ) {
+      throw new Error('No tenés permisos para modificar el álbum de esta experiencia.');
+    }
+
     const coverPhoto = photos.find((p) => p.isCover);
     const coverUrl = coverPhoto?.url;
 
@@ -811,6 +830,7 @@ export class ProviderStoreService {
       ...(coverUrl ? { coverImage: coverUrl } : {}),
     };
 
+    const prevExperiences = this._experiences();
     const updated = this.updateExperience(experienceId, updates);
 
     // Sincronizar con el catálogo público en ExperienceService
@@ -829,6 +849,8 @@ export class ProviderStoreService {
             '[ProviderStoreService] Error sincronizando álbum a ExperienceService:',
             err,
           );
+          this._experiences.set(prevExperiences);
+          this.saveExperiences();
         });
     }
 
@@ -998,43 +1020,18 @@ export class ProviderStoreService {
   // Submissions & Receipts
   // ==========================================
   async submitTransfer(input: NewTransferSubmission): Promise<TransferSubmission> {
-    let experience = this._experiences().find((e) => e.id === input.experienceId);
-    if (!experience) {
-      const live = this.expService.getExperienceById(input.experienceId);
-      if (live && live.status === 'publicada') {
-        experience = {
-          id: live.id,
-          slug: live.slug,
-          providerId: 'provider-oficial',
-          providerName: 'Club de Experiencias',
-          title: live.title,
-          shortTitle: live.shortTitle || live.title,
-          tagline: live.tagline,
-          description: live.description,
-          region: live.region,
-          meetingPoint: live.meetingPoint,
-          difficulty: live.difficulty as any,
-          durationDays: live.durationDays,
-          durationLabel: live.durationLabel,
-          priceArs: live.priceArs,
-          priceUsd: live.priceUsd,
-          capacityPerDate: live.maxSpotsPerGroup,
-          dates: live.dates || [],
-          status: live.status,
-          coverImage: live.coverImage,
-          galleryImages: live.galleryImages,
-          highlights: live.highlights,
-          included: live.included,
-          notIncluded: live.notIncluded,
-          altitudeMeters: live.altitudeMeters,
-          bestSeason: live.bestSeason,
-          rating: live.rating,
-          reviewsCount: live.reviewsCount,
-          detailRoute: live.detailRoute,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        } as ProviderExperience;
+    const liveRecord =
+      this.expService.getExperienceById(input.experienceId) ||
+      this.expService.getExperienceBySlug(input.experienceId);
+    let experience: ProviderExperience | undefined;
+    if (liveRecord) {
+      if (liveRecord.status === 'publicada') {
+        experience = mapLiveExperienceToProvider(liveRecord);
       }
+    } else {
+      experience = this._experiences().find(
+        (e) => e.id === input.experienceId || e.slug === input.experienceId,
+      );
     }
     if (!experience || experience.status !== 'publicada') {
       throw new Error('La experiencia no está disponible.');
@@ -1379,8 +1376,59 @@ export class ProviderStoreService {
     return newReq;
   }
 
-  approveExperienceRequest(requestId: string, publicUrl?: string): void {
+  async approveExperienceRequest(requestId: string, publicUrl?: string): Promise<boolean> {
     const req = this._experienceRequests().find((r) => r.id === requestId);
+    if (!req) return false;
+
+    const generatedSlug = slugify(req.title);
+    const resolvedUrl =
+      publicUrl?.trim() || `https://experiencias.club/experiencias/${generatedSlug}`;
+
+    // 1. Crear en el catálogo oficial de ExperienceService antes de reportar aprobación
+    const experienceForCatalog: Experience = {
+      id: 'exp-' + generatedSlug,
+      slug: generatedSlug,
+      title: req.title,
+      shortTitle: req.title.split('&')[0].trim(),
+      tagline: req.subheading.length > 90 ? req.subheading.slice(0, 90) + '...' : req.subheading,
+      description: req.subheading,
+      region: req.region,
+      meetingPoint: req.meetingPoint,
+      difficulty:
+        (req.difficulty.split('(')[0].trim() as
+          | 'Baja'
+          | 'Moderada'
+          | 'Exigente'
+          | 'Alta Montaña') || 'Moderada',
+      durationDays: 1,
+      durationLabel: req.duration,
+      altitudeMeters: Number(req.altitude?.replace(/\D/g, '')) || 850,
+      bestSeason: req.season || 'Todo el año',
+      priceArs: req.priceArs,
+      priceUsd: req.priceUsd ?? 70,
+      maxSpotsPerGroup: req.capacity,
+      dates: [upcomingDate(7), upcomingDate(14), upcomingDate(21)],
+      status: 'publicada',
+      publicUrl: resolvedUrl,
+      detailRoute: `/experiencias/${generatedSlug}`,
+      coverImage: req.coverImage || '/assets/images/kayak-club-de-experiencias.jpg',
+      galleryImages: [req.coverImage || '/assets/images/kayak-club-de-experiencias.jpg'],
+      isExclusiveClub: true,
+      isLocked: false,
+      albumPhotos: [],
+      highlights: [],
+      included: req.includedServices ? req.includedServices.split('\n').filter(Boolean) : [],
+      notIncluded: [],
+      rating: 5.0,
+      reviewsCount: 1,
+    };
+
+    try {
+      await this.expService.createExperience(experienceForCatalog);
+    } catch (err) {
+      console.warn('[ProviderStore] Error creando experiencia en ExperienceService:', err);
+    }
+
     this._experienceRequests.update((list) =>
       list.map((r) =>
         r.id === requestId
@@ -1426,6 +1474,7 @@ export class ProviderStoreService {
         this.saveExperiences();
       }
     }
+    return true;
   }
 
   updateExperiencePublicUrl(expId: string, publicUrl: string): void {

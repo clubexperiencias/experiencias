@@ -84,20 +84,28 @@ export class ExperiencePaymentComponent implements OnInit {
       this.expService.getPublishedExperienceBySlug(slug) ||
       this.expService.getExperienceBySlug(slug);
     const storeExp = this.store.getExperienceBySlug(slug);
-    if (liveExp && liveExp.status === 'publicada') {
-      return {
-        ...(storeExp || {}),
-        id: liveExp.id,
-        slug: liveExp.slug,
-        title: liveExp.title,
-        shortTitle: liveExp.shortTitle || liveExp.title,
-        priceArs: liveExp.priceArs,
-        priceUsd: liveExp.priceUsd,
-        capacityPerDate: liveExp.maxSpotsPerGroup,
-        dates: liveExp.dates || [],
-        status: liveExp.status,
-      } as ProviderExperience;
+    if (liveExp) {
+      if (liveExp.status === 'publicada') {
+        return {
+          ...(storeExp || {}),
+          id: liveExp.id,
+          slug: liveExp.slug,
+          title: liveExp.title,
+          shortTitle: liveExp.shortTitle || liveExp.title,
+          priceArs: liveExp.priceArs,
+          priceUsd: liveExp.priceUsd,
+          capacityPerDate: liveExp.maxSpotsPerGroup,
+          dates: liveExp.dates || [],
+          status: liveExp.status,
+        } as ProviderExperience;
+      }
+      return undefined;
     }
+
+    if (this.expService.hasRemoteExperiences()) {
+      return undefined;
+    }
+
     return storeExp?.status === 'publicada' ? storeExp : undefined;
   });
 

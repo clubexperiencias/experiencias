@@ -1347,10 +1347,23 @@ export class AdminReceiptsComponent {
     URL.revokeObjectURL(url);
   }
 
-  openReceipt(sub: TransferSubmission): void {
+  async openReceipt(sub: TransferSubmission): Promise<void> {
     this.selected.set(sub);
     this.rejecting.set(false);
     this.rejectionReason.set('');
+    const key = sub.receipt.storageKey || sub.receipt.url;
+    if (
+      key &&
+      !key.startsWith('http://') &&
+      !key.startsWith('https://') &&
+      !key.startsWith('data:') &&
+      !key.startsWith('blob:')
+    ) {
+      const signed = await this.store.getSignedReceiptUrl(key);
+      if (signed && signed !== key) {
+        this.selected.update((s) => (s ? { ...s, receipt: { ...s.receipt, url: signed } } : null));
+      }
+    }
   }
 
   closeReceipt(): void {

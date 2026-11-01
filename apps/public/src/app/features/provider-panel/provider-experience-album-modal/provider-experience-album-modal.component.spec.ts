@@ -132,7 +132,7 @@ describe('ProviderExperienceAlbumModalComponent', () => {
   });
 
   it('should call store.updateExperienceAlbum on valid save', () => {
-    const updateSpy = vi.spyOn(store, 'updateExperienceAlbum');
+    const updateSpy = vi.spyOn(store, 'updateExperienceAlbum').mockReturnValue(mockExperience);
     let emitted = false;
     component.saved.subscribe(() => {
       emitted = true;

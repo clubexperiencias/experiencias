@@ -1,5 +1,5 @@
 import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -133,6 +133,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                 <th>Experiencia & Fecha</th>
                 <th>Cupos</th>
                 <th>Monto</th>
+                <th>Estado</th>
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -191,6 +192,23 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                         <span class="discount-tag">{{ sub.discountCode }}</span>
                       }
                     </div>
+                  </td>
+
+                  <td>
+                    <span
+                      class="table-status-pill"
+                      [class.pill-aprobado]="sub.status === 'aprobado'"
+                      [class.pill-pendiente]="sub.status === 'pendiente'"
+                      [class.pill-rechazado]="sub.status === 'rechazado'"
+                    >
+                      {{
+                        sub.status === 'aprobado'
+                          ? 'Aprobado'
+                          : sub.status === 'rechazado'
+                            ? 'Rechazado'
+                            : 'Pendiente'
+                      }}
+                    </span>
                   </td>
 
                   <!-- Columna Acciones: Ver comprobante abre el modal unificado sin símbolo -->
@@ -734,6 +752,31 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         font-size: 0.65rem;
         color: #ffaa55;
       }
+      .table-status-pill {
+        display: inline-block;
+        padding: 0.2rem 0.55rem;
+        border-radius: 2px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        white-space: nowrap;
+      }
+      .pill-aprobado {
+        background: rgba(37, 211, 102, 0.15);
+        border: 1px solid rgba(37, 211, 102, 0.4);
+        color: #25d366;
+      }
+      .pill-pendiente {
+        background: rgba(255, 170, 85, 0.15);
+        border: 1px solid rgba(255, 170, 85, 0.4);
+        color: #ffaa55;
+      }
+      .pill-rechazado {
+        background: rgba(255, 77, 77, 0.15);
+        border: 1px solid rgba(255, 77, 77, 0.4);
+        color: #ff4d4d;
+      }
 
       /* Botón Ver Comprobante */
       .view-receipt-btn {
@@ -1138,6 +1181,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
 export class ProviderMembersComponent {
   readonly store = inject(ProviderStoreService);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
   private readonly queryParams = toSignal(this.route.queryParams);
 
@@ -1163,6 +1207,11 @@ export class ProviderMembersComponent {
         );
         if (match) {
           this.selectedSubmission.set(match);
+          void this.router.navigate([], {
+            queryParams: { ref: null },
+            queryParamsHandling: 'merge',
+            replaceUrl: true,
+          });
         }
       }
     });

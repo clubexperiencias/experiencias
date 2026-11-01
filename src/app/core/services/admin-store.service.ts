@@ -102,8 +102,8 @@ export class AdminStoreService {
     () => this.providerStore.experienceRequests().filter((r) => r.status === 'pendiente').length,
   );
 
-  approveExperienceRequest(id: string, publicUrl?: string): void {
-    this.providerStore.approveExperienceRequest(id, publicUrl);
+  async approveExperienceRequest(id: string, publicUrl?: string): Promise<boolean> {
+    return this.providerStore.approveExperienceRequest(id, publicUrl);
   }
 
   updateExperiencePublicUrl(expId: string, publicUrl: string): void {
@@ -595,7 +595,7 @@ export class AdminStoreService {
               mimeType: p.receipt_mime_type || 'image/jpeg',
               sizeBytes: p.receipt_size_bytes || 1,
               url: p.receipt_url,
-              storageKey: p.receipt_storage_key,
+              storageKey: p.receipt_storage_key || p.receipt_url,
               provider: p.receipt_storage_provider,
             },
             status: p.status,
@@ -633,6 +633,29 @@ export class AdminStoreService {
       this._submissions.set(this.generateSampleSubmissions());
     }
     this._isLoadingSubmissions.set(false);
+  }
+
+  async getSignedReceiptUrl(storageKey: string): Promise<string> {
+    if (!isSupabaseConfigured() || !storageKey) return storageKey;
+    if (
+      storageKey.startsWith('http://') ||
+      storageKey.startsWith('https://') ||
+      storageKey.startsWith('data:') ||
+      storageKey.startsWith('blob:')
+    ) {
+      return storageKey;
+    }
+    try {
+      const { data, error } = await this.supabase.storage
+        .from('comprobantes')
+        .createSignedUrl(storageKey, 3600);
+      if (!error && data?.signedUrl) {
+        return data.signedUrl;
+      }
+    } catch (err) {
+      console.warn('[AdminStore] Error al generar signed URL de comprobante:', err);
+    }
+    return storageKey;
   }
 
   async reviewSubmission(
@@ -767,9 +790,11 @@ export class AdminStoreService {
           status:
             f.status === 'aprobada' || f.status === 'aprobado'
               ? 'aprobado'
-              : f.status === 'rechazada' || f.status === 'rechazado'
-                ? 'rechazado'
-                : 'pendiente',
+              : f.status === 'dado_de_baja'
+                ? 'dado_de_baja'
+                : f.status === 'rechazada' || f.status === 'rechazado'
+                  ? 'rechazado'
+                  : 'pendiente',
           createdAt: f.created_at || new Date().toISOString(),
         }));
 
@@ -816,9 +841,11 @@ export class AdminStoreService {
           type === 'fundador'
             ? status === 'aprobado'
               ? 'aprobada'
-              : status === 'rechazado' || status === 'dado_de_baja'
-                ? 'rechazada'
-                : 'en_evaluacion'
+              : status === 'dado_de_baja'
+                ? 'dado_de_baja'
+                : status === 'rechazado'
+                  ? 'rechazada'
+                  : 'en_evaluacion'
             : status;
 
         const { error: appErr } = await this.supabase
@@ -837,21 +864,28 @@ export class AdminStoreService {
         if (type === 'prestador' && app) {
           const email = app.email.trim().toLowerCase();
           const active = status === 'aprobado';
+          const paStatus =
+            status === 'aprobado'
+              ? 'aprobado'
+              : status === 'pendiente'
+                ? 'pendiente'
+                : 'dado_de_baja';
+
           const upsertPayload: Record<string, any> = {
             email,
-            name: bankingData?.accountHolder || app.accountHolder || app.fullName,
+            name: bankingData?.accountHolder ?? (app.accountHolder || app.fullName),
             agency: app.description || app.category || 'Prestador Oficial',
             active,
-            status,
+            status: paStatus,
           };
-          const cbu = bankingData?.cbuAlias || app.cbuAlias;
-          if (cbu) upsertPayload['cbu_alias'] = cbu;
-          const cuit = bankingData?.cuitDni || app.cuitDni;
-          if (cuit) upsertPayload['cuit_dni'] = cuit;
-          const bank = bankingData?.bankName || app.bankName;
-          if (bank) upsertPayload['bank_name'] = bank;
-          const holder = bankingData?.accountHolder || app.accountHolder || app.fullName;
-          if (holder) upsertPayload['account_holder'] = holder;
+          const cbu = bankingData?.cbuAlias ?? app.cbuAlias;
+          if (cbu !== undefined) upsertPayload['cbu_alias'] = cbu;
+          const cuit = bankingData?.cuitDni ?? app.cuitDni;
+          if (cuit !== undefined) upsertPayload['cuit_dni'] = cuit;
+          const bank = bankingData?.bankName ?? app.bankName;
+          if (bank !== undefined) upsertPayload['bank_name'] = bank;
+          const holder = bankingData?.accountHolder ?? (app.accountHolder || app.fullName);
+          if (holder !== undefined) upsertPayload['account_holder'] = holder;
           if (app.phone) upsertPayload['phone'] = app.phone;
 
           const { error: paErr } = await (this.supabase.from('provider_access') as any).upsert(
@@ -866,6 +900,7 @@ export class AdminStoreService {
       }
     } catch (err) {
       console.warn('[AdminStore] Error actualizando estado de postulación en Supabase:', err);
+      return false;
     }
 
     this._applications.update((list) =>
@@ -890,12 +925,12 @@ export class AdminStoreService {
 
     if (type === 'prestador' && app) {
       this.providerStore.syncProviderStatusFromAdmin(app.email, status, {
-        name: bankingData?.accountHolder || app.accountHolder || app.fullName,
+        name: bankingData?.accountHolder ?? (app.accountHolder || app.fullName),
         agency: app.description || app.category || 'Prestador Oficial',
         phone: app.phone,
-        cuitDni: bankingData?.cuitDni || app.cuitDni || '',
-        cbuAlias: bankingData?.cbuAlias || app.cbuAlias || '',
-        bankName: bankingData?.bankName || app.bankName || '',
+        cuitDni: bankingData?.cuitDni ?? app.cuitDni ?? '',
+        cbuAlias: bankingData?.cbuAlias ?? app.cbuAlias ?? '',
+        bankName: bankingData?.bankName ?? app.bankName ?? '',
       });
     }
 
