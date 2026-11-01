@@ -5,6 +5,18 @@ import { SUPABASE_CLIENT, isSupabaseConfigured } from '../supabase/supabase.clie
 const KAYAK_IMAGE = '/assets/images/kayak-club-de-experiencias.jpg';
 const STORAGE_KEY = 'club_experiencias_catalog_v1';
 const DELETED_STORAGE_KEY = 'club_experiencias_deleted_ids_v1';
+export const RESERVED_EXPERIENCE_SLUGS = new Set([
+  'fotos',
+  'prestadores',
+  'nueva',
+  'editar',
+  'admin',
+  'login',
+  'ingresar',
+  'socios',
+  'perfil',
+  '404',
+]);
 
 export const KAYAK_ALBUM_PHOTOS: ExperienceAlbumPhoto[] = [
   {
@@ -364,16 +376,14 @@ export class ExperienceService {
           payload['album_photos'] = merged.albumPhotos;
         }
 
-        const { error } = await this.supabase
+        const { data, error } = await this.supabase
           .from('experiencias')
           .update(payload as any)
-          .eq('id', merged.id);
+          .eq('id', merged.id)
+          .select();
 
-        if (error) {
-          console.warn('[ExperienceService] Error al actualizar experiencia en Supabase:', error);
-          this._experiences.set(prevList);
-          this.persistToLocalStorage(prevList);
-          throw error;
+        if (error || !data || data.length === 0) {
+          throw error || new Error(`No se encontró la experiencia remota con id ${merged.id}`);
         }
       } catch (err) {
         console.warn('[ExperienceService] Fallo remoto:', err);
@@ -394,6 +404,16 @@ export class ExperienceService {
         .replace(/[\u0300-\u036f]/g, '')
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/(^-|-$)/g, '');
+
+    if (!slug) {
+      throw new Error('El slug de la experiencia no puede estar vacío.');
+    }
+    if (RESERVED_EXPERIENCE_SLUGS.has(slug.toLowerCase())) {
+      throw new Error(`El slug "${slug}" está reservado por el sistema y no puede ser utilizado.`);
+    }
+    if (list.some((e) => e.slug.toLowerCase() === slug.toLowerCase())) {
+      throw new Error(`Ya existe una experiencia con el slug "${slug}".`);
+    }
 
     const experience: Experience = {
       ...newExp,
@@ -464,25 +484,27 @@ export class ExperienceService {
   async deleteExperience(id: string): Promise<void> {
     const prevList = this._experiences();
     const expToDelete = prevList.find((e) => e.id === id || e.slug === id);
-    const list = prevList.filter((e) => e.id !== id && e.slug !== id);
+    const targetId = expToDelete?.id ?? id;
+    const list = prevList.filter((e) => e.id !== targetId && e.slug !== id);
 
-    this.recordDeletedId(id, expToDelete?.slug);
+    this.recordDeletedId(targetId, expToDelete?.slug);
     this._experiences.set(list);
     this.persistToLocalStorage(list);
 
     if (isSupabaseConfigured()) {
       try {
-        const { error } = await this.supabase.from('experiencias').delete().eq('id', id);
-        if (error) {
-          console.warn('[ExperienceService] Error al eliminar en Supabase:', error);
-          this.removeDeletedId(id, expToDelete?.slug);
-          this._experiences.set(prevList);
-          this.persistToLocalStorage(prevList);
-          throw error;
+        const { data, error } = await this.supabase
+          .from('experiencias')
+          .delete()
+          .eq('id', targetId)
+          .select('id');
+
+        if (error || !data || data.length === 0) {
+          throw error || new Error(`No se encontró la experiencia remota con id ${targetId}`);
         }
       } catch (err) {
         console.warn('[ExperienceService] Fallo al eliminar en Supabase:', err);
-        this.removeDeletedId(id, expToDelete?.slug);
+        this.removeDeletedId(targetId, expToDelete?.slug);
         this._experiences.set(prevList);
         this.persistToLocalStorage(prevList);
         throw err;

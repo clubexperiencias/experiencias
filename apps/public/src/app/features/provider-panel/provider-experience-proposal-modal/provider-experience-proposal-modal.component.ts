@@ -10,10 +10,31 @@ import {
   signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, NgForm } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { ProviderStoreService } from '../../../core/services/provider-store.service';
 import { CloudflareR2Service } from '../../../core/services/cloudflare-r2.service';
+
+const DEFAULT_REQ_FORM = {
+  title: '',
+  kicker: 'EXPEDICIÓN NÁUTICA: VALLE CENTRAL',
+  subheading: '',
+  region: 'Valle Central y Ambato',
+  difficulty: 'Baja (Sin experiencia previa)',
+  duration: '4 Horas (Media Jornada)',
+  altitude: '850 msnm',
+  capacity: 12,
+  season: 'Todo el año',
+  dates: 'Sábados y Domingos 15:30 hs',
+  priceArs: 65000,
+  priceUsd: 70,
+  promosAndPricing: '',
+  itinerary: '',
+  meetingPoint: '',
+  includedServices: '',
+  participantRequirements: '',
+  notes: '',
+};
 
 @Component({
   selector: 'app-provider-experience-proposal-modal',
@@ -105,7 +126,7 @@ import { CloudflareR2Service } from '../../../core/services/cloudflare-r2.servic
                 </button>
               </div>
             } @else {
-              <form class="exp-modal-form" (ngSubmit)="submitRequestForm()">
+              <form #proposalForm="ngForm" class="exp-modal-form" (ngSubmit)="submitRequestForm(proposalForm)">
                 <!-- 1. Cabecera y Resumen de la Experiencia -->
                 <div class="form-section">
                   <div class="form-section-header">
@@ -151,6 +172,7 @@ import { CloudflareR2Service } from '../../../core/services/cloudflare-r2.servic
                         class="form-input form-select"
                         [(ngModel)]="reqForm.region"
                         name="region"
+                        required
                       >
                         <option value="Valle Central y Ambato">Valle Central y Ambato</option>
                         <option value="Puna de Atacama">Puna de Atacama</option>
@@ -405,6 +427,7 @@ import { CloudflareR2Service } from '../../../core/services/cloudflare-r2.servic
                         placeholder="Ej: Todo el año"
                         [(ngModel)]="reqForm.season"
                         name="season"
+                        required
                       />
                     </div>
 
@@ -419,6 +442,7 @@ import { CloudflareR2Service } from '../../../core/services/cloudflare-r2.servic
                         placeholder="Ej: Sábados y Domingos 15:30 hs..."
                         [(ngModel)]="reqForm.dates"
                         name="dates"
+                        required
                       />
                     </div>
                   </div>
@@ -789,6 +813,10 @@ import { CloudflareR2Service } from '../../../core/services/cloudflare-r2.servic
         outline: none;
         border-color: #80b3ff;
         box-shadow: 0 0 0 2px rgba(128, 179, 255, 0.25);
+      }
+      .form-input.ng-invalid.ng-touched {
+        border-color: #ef4444;
+        box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.25);
       }
       .form-select {
         cursor: pointer;
@@ -1164,26 +1192,8 @@ export class ProviderExperienceProposalModalComponent {
   readonly coverVideoPreview = signal<string | null>(null);
   readonly coverVideoError = signal<string | null>(null);
 
-  readonly reqForm = {
-    title: '',
-    kicker: 'EXPEDICIÓN NÁUTICA: VALLE CENTRAL',
-    subheading: '',
-    region: 'Valle Central y Ambato',
-    difficulty: 'Baja (Sin experiencia previa)',
-    duration: '4 Horas (Media Jornada)',
-    altitude: '850 msnm',
-    capacity: 12,
-    season: 'Todo el año',
-    dates: 'Sábados y Domingos 15:30 hs',
-    priceArs: 65000,
-    priceUsd: 70,
-    promosAndPricing: '',
-    itinerary: '',
-    meetingPoint: '',
-    includedServices: '',
-    participantRequirements: '',
-    notes: '',
-  };
+  reqForm = { ...DEFAULT_REQ_FORM };
+  private successTimer: ReturnType<typeof setTimeout> | null = null;
 
   formatFileSize(bytes?: number): string {
     if (!bytes) return '0 KB';
@@ -1304,6 +1314,11 @@ export class ProviderExperienceProposalModalComponent {
     if (this.previousActiveElement && typeof this.previousActiveElement.focus === 'function') {
       this.previousActiveElement.focus();
     }
+    if (this.successTimer) {
+      clearTimeout(this.successTimer);
+      this.successTimer = null;
+    }
+    this.reqForm = { ...DEFAULT_REQ_FORM };
     this.requestSuccess.set(false);
     this.submittingRequest.set(false);
     this.removeCoverImage();
@@ -1311,8 +1326,30 @@ export class ProviderExperienceProposalModalComponent {
     this.closeModal.emit();
   }
 
-  async submitRequestForm(): Promise<void> {
-    if (!this.reqForm.title.trim()) return;
+  async submitRequestForm(form?: NgForm): Promise<void> {
+    if (form) {
+      form.control.markAllAsTouched();
+      if (form.invalid) {
+        return;
+      }
+    }
+
+    const title = this.reqForm.title?.trim();
+    const region = this.reqForm.region?.trim();
+    const season = this.reqForm.season?.trim();
+    const dates = this.reqForm.dates?.trim();
+    if (!title || !region || !season || !dates) return;
+
+    const capacity = Number(this.reqForm.capacity);
+    if (!Number.isFinite(capacity) || capacity < 1 || capacity > 100) {
+      return;
+    }
+
+    const priceArs = Number(this.reqForm.priceArs);
+    if (!Number.isFinite(priceArs) || priceArs < 1) {
+      return;
+    }
+
     if (!this.coverImageFile()) {
       this.coverImageError.set('La foto de portada es obligatoria para enviar la propuesta.');
       return;
@@ -1341,17 +1378,17 @@ export class ProviderExperienceProposalModalComponent {
         providerAgency: prov?.agency || 'Catamarca Kayak & Aventura Náutica',
         providerEmail: prov?.email || 'patricio@experiencias.club',
         providerPhone: prov?.phone || '+54 383 455 8812',
-        title: this.reqForm.title.trim(),
+        title,
         kicker: this.reqForm.kicker.trim(),
         subheading: this.reqForm.subheading.trim(),
         region: this.reqForm.region,
         difficulty: this.reqForm.difficulty,
         duration: this.reqForm.duration,
         altitude: this.reqForm.altitude,
-        capacity: Number(this.reqForm.capacity) || 12,
+        capacity,
         season: this.reqForm.season,
         dates: this.reqForm.dates,
-        priceArs: Number(this.reqForm.priceArs) || 65000,
+        priceArs,
         priceUsd: this.reqForm.priceUsd ? Number(this.reqForm.priceUsd) : null,
         promosAndPricing: this.reqForm.promosAndPricing,
         itinerary: this.reqForm.itinerary,
@@ -1364,7 +1401,7 @@ export class ProviderExperienceProposalModalComponent {
         coverVideoName: this.coverVideoFile()?.name,
       });
 
-      setTimeout(() => {
+      this.successTimer = setTimeout(() => {
         this.submittingRequest.set(false);
         this.requestSuccess.set(true);
         this.submitted.emit();
