@@ -11,7 +11,7 @@
 
 .breadcrumb-bar {
   position: relative;
-  z-index: 20;
+  z-index: 1000;
   width: 100%;
   height: auto;
   min-height: 44px;
@@ -329,5 +329,87 @@
 
   .natgeo-founder-col {
     display: none !important;
+  }
+}
+
+/* ==========================================================================
+   Botones Flotantes (Volver Atrás a la Izquierda y Soporte Técnico a la Derecha)
+   ========================================================================== */
+.desktop-floating-btn {
+  position: fixed;
+  top: 138px;
+  z-index: 800;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #000000;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
+  transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease, opacity 0.2s ease, visibility 0.2s ease;
+  user-select: none;
+  padding: 0;
+  text-decoration: none;
+}
+
+/* Volver atrás posicionado a la izquierda */
+.desktop-floating-back-btn {
+  left: 1.85rem;
+}
+
+/* Soporte técnico posicionado a la derecha */
+.desktop-floating-support-btn {
+  right: 1.85rem;
+}
+
+/* El mega menú desplegable se posiciona por encima de los botones flotantes */
+:host:has(.bc-step-wrapper.has-dropdown:hover) .desktop-floating-btn,
+:host:has(.bc-step-wrapper.has-dropdown.is-mobile-active) .desktop-floating-btn {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.desktop-floating-btn:hover {
+  background: #f2f2f2;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+
+.desktop-floating-btn:active {
+  transform: scale(0.96);
+}
+
+.floating-btn-icon,
+.floating-back-icon,
+.floating-btn-icon-svg {
+  font-size: 22px;
+  width: 22px;
+  height: 22px;
+  color: #000000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* En resoluciones menores o móviles, ambos botones flotan en la parte inferior (atrás a la izquierda, soporte a la derecha) */
+@media (max-width: 899px) {
+  .desktop-floating-btn {
+    top: auto;
+    bottom: 1.25rem;
+    z-index: 900;
+  }
+
+  .desktop-floating-back-btn {
+    left: 1.25rem;
+    right: auto;
+  }
+
+  .desktop-floating-support-btn {
+    right: 1.25rem;
+    left: auto;
   }
 }

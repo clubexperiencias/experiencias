@@ -1,7 +1,10 @@
 import { Component, input, signal, inject, OnInit } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
-import { MenuCardComponent, RECOMMENDED_CARD } from './menu-card/menu-card.component';
+import {
+  MenuCardComponent,
+  RECOMMENDED_CARD,
+} from './menu-card/menu-card.component';
 
 export interface BreadcrumbNextStep {
   label: string;
@@ -162,7 +165,9 @@ export class BreadcrumbComponent implements OnInit {
       event.preventDefault();
       event.stopPropagation();
       this.closeMobileMenu();
-      const previousItem = [...this.items()].reverse().find((item) => item.url);
+      const previousItem = [...this.items()]
+        .reverse()
+        .find((item) => item.url);
       const previousUrl = previousItem?.url ?? '/';
       globalSuppressBreadcrumbHover = true;
       if (typeof window !== 'undefined') {
@@ -224,7 +229,7 @@ export class BreadcrumbComponent implements OnInit {
       return {
         kicker: 'Expediciones',
         steps: [
-          { label: 'Kayak & Sunset El Jumeal', url: '/experiencias/kayak' },
+          { label: 'Kayak & Sunset Dique El Jumeal', url: '/experiencias/kayak' },
           { label: 'Fotos de Travesías', url: '/experiencias/fotos' },
           { label: 'Volver atrás', url: '/' },
         ],
@@ -314,5 +319,39 @@ export class BreadcrumbComponent implements OnInit {
         { label: 'Volver atrás', url: '/' },
       ],
     };
+  }
+
+  readonly supportWhatsappUrl =
+    'https://wa.me/5493515490431?text=' +
+    encodeURIComponent(
+      'Hola! Tengo una duda y necesito asistencia con el Club de Experiencias, ¿me podrían ayudar?'
+    );
+
+  canShowBackButton(): boolean {
+    const list = this.items();
+    return !!(list && list.length > 1);
+  }
+
+  goBack(): void {
+    const list = this.items();
+    // 1. Navegar al paso jerárquico anterior en el breadcrumb que tenga URL definida
+    if (list && list.length > 1) {
+      for (let i = list.length - 2; i >= 0; i--) {
+        if (list[i]?.url) {
+          this.router.navigateByUrl(list[i].url!);
+          return;
+        }
+      }
+    }
+
+    // 2. Fallback: subir un nivel jerárquico en la URL de la ruta
+    const currentUrl = this.router.url.split('?')[0].split('#')[0];
+    const segments = currentUrl.split('/').filter(Boolean);
+    if (segments.length > 1) {
+      segments.pop();
+      this.router.navigateByUrl('/' + segments.join('/'));
+    } else {
+      this.router.navigateByUrl('/');
+    }
   }
 }

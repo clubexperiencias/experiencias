@@ -53,10 +53,10 @@ export class LoginComponent implements OnInit {
         this.email.set(paramEmail);
       }
       if (params['registered'] === 'true') {
-        this.alreadyRegisteredEmail.set(paramEmail || 'true');
-        this.error.set(
-          'Ya completaste el formulario de Socio con este correo. Por favor, iniciá sesión vía Google para acceder a tu perfil.',
-        );
+        this.router.navigate(['/socios/emergentes'], {
+          queryParams: { email: paramEmail, from: 'waitlist' },
+        });
+        return;
       }
     });
   }
@@ -156,11 +156,9 @@ export class LoginComponent implements OnInit {
 
       if (res.alreadyRegisteredSocio) {
         this.alreadyRegisteredEmail.set(emailVal);
-        this.error.set(
-          res.message ||
-            'Ya completaste el formulario de Socio con este correo. Por favor, iniciá sesión vía Google para acceder a tu perfil.',
-        );
+        this.error.set(res.message);
       } else if (res.alreadyInWaitlist) {
+        this.successMessage.set(res.message || '¡Correo verificado con éxito! Redirigiendo a tu ficha...');
         this.router.navigate(['/socios/emergentes'], {
           queryParams: { email: emailVal, from: 'waitlist' },
         });

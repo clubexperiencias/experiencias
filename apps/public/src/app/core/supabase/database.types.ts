@@ -11,6 +11,31 @@ export type MembershipTier = 'emergente' | 'activo' | 'fundador';
 export interface Database {
   public: {
     Tables: {
+      provider_access: {
+        Row: {
+          id: string;
+          email: string;
+          name: string;
+          agency: string;
+          active: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          email: string;
+          name?: string;
+          agency?: string;
+          active?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          email?: string;
+          name?: string;
+          agency?: string;
+          active?: boolean;
+        };
+        Relationships: [];
+      };
       /**
        * Tabla 1: Recopilación ágil de correos desde la landing page (/)
        */

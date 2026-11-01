@@ -431,9 +431,7 @@ export class NewsletterService {
             this._isLoading.set(false);
             return {
               success: false,
-              alreadyRegistered: true,
-              message:
-                'Ya completaste el formulario de Socio con este correo. Por favor, iniciá sesión vía Google para ingresar a tu perfil.',
+              message: 'Ya existe un socio registrado con este email. Iniciá sesión para acceder a tu cuenta.',
             };
           }
 
@@ -474,12 +472,52 @@ export class NewsletterService {
           .maybeSingle();
 
         if (existing) {
+          let activeEmail: string | null = null;
+          try {
+            const { data: sessData } = await this.supabase.auth.getSession();
+            activeEmail = sessData?.session?.user?.email?.toLowerCase().trim() || null;
+          } catch {
+            // Sin sesión activa
+          }
+
+          if (activeEmail !== cleanEmail) {
+            this._isLoading.set(false);
+            return {
+              success: false,
+              message: 'Ya existe un socio registrado con este email. Iniciá sesión para acceder a tu cuenta.',
+            };
+          }
+
+          const { data: updatedSocio } = await this.supabase
+            .from('socios')
+            .update({
+              full_name: cleanName || existing.full_name,
+              dni: cleanDni || existing.dni,
+              phone: cleanPhone || existing.phone,
+              experiences_wishlist: dto.experiencesWishlist || existing.experiences_wishlist,
+              experiences_other: dto.experiencesOther || existing.experiences_other,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', existing.id)
+            .select('*')
+            .maybeSingle();
+
+          const entry = mapDbRowToEntry(updatedSocio || existing);
+          const updatedEntries = [
+            entry,
+            ...this._entries().filter((e) => e.email !== cleanEmail),
+          ];
+          this._entries.set(updatedEntries);
+          this._currentMember.set(entry);
+          this.persistEntries(updatedEntries);
+          this.persistCurrentMember(entry);
+
           this._isLoading.set(false);
+          this.setLoginSuccessFlag();
           return {
-            success: false,
-            alreadyRegistered: true,
-            message:
-              'Ya completaste el formulario de Socio con este correo. Por favor, iniciá sesión vía Google para ingresar a tu perfil.',
+            success: true,
+            socio: entry,
+            message: `¡Bienvenido al Club! Sos el Socio Emergente #${entry.position}.`,
           };
         } else {
           // Si ya hay sesión activa en Supabase Auth con este mismo correo, vincular automáticamente
@@ -582,12 +620,27 @@ export class NewsletterService {
 
     const existingLocal = this._entries().find((e) => e.email === cleanEmail);
     if (existingLocal && existingLocal.dni) {
+      const updatedSocio: WaitlistEntry = {
+        ...existingLocal,
+        fullName: cleanName || existingLocal.fullName,
+        dni: cleanDni || existingLocal.dni,
+        documentNumber: cleanDni || existingLocal.documentNumber,
+        phone: cleanPhone || existingLocal.phone,
+        experiencesWishlist: dto.experiencesWishlist || existingLocal.experiencesWishlist,
+        experiencesOther: dto.experiencesOther || existingLocal.experiencesOther,
+      };
+      const updated = [updatedSocio, ...this._entries().filter((e) => e.email !== cleanEmail)];
+      this._entries.set(updated);
+      this._currentMember.set(updatedSocio);
+      this.persistEntries(updated);
+      this.persistCurrentMember(updatedSocio);
+
       this._isLoading.set(false);
+      this.setLoginSuccessFlag();
       return {
-        success: false,
-        alreadyRegistered: true,
-        message:
-          'Ya completaste el formulario de Socio con este correo. Por favor, iniciá sesión vía Google para ingresar a tu perfil.',
+        success: true,
+        socio: updatedSocio,
+        message: `¡Bienvenido al Club! Sos el Socio Emergente #${updatedSocio.position}.`,
       };
     }
 
@@ -696,8 +749,9 @@ export class NewsletterService {
             return {
               success: false,
               alreadyRegisteredSocio: true,
+              alreadyInWaitlist: false,
               message:
-                'Ya completaste el formulario de Socio con este correo. Por favor, iniciá sesión vía Google para acceder a tu perfil.',
+                'Este correo pertenece a un socio del Club. Por seguridad, iniciá sesión con Google para acceder a tu perfil.',
             };
           }
 
@@ -744,8 +798,9 @@ export class NewsletterService {
           return {
             success: false,
             alreadyRegisteredSocio: true,
+            alreadyInWaitlist: false,
             message:
-              'Ya completaste el formulario de Socio con este correo. Por favor, iniciá sesión vía Google para acceder a tu perfil.',
+              'Este correo pertenece a un socio del Club. Por seguridad, iniciá sesión con Google para acceder a tu perfil.',
           };
         }
 
@@ -784,11 +839,16 @@ export class NewsletterService {
     const localEntry = this._entries().find((e) => e.email === cleanEmail);
     if (localEntry) {
       this._isLoading.set(false);
+      this._currentMember.set(localEntry);
+      this.persistCurrentMember(localEntry);
+      this.lastProspectEmail.set(cleanEmail);
+      this.persistProspectEmail(cleanEmail);
       return {
-        success: false,
+        success: true,
         alreadyRegisteredSocio: true,
+        alreadyInWaitlist: true,
         message:
-          'Ya completaste el formulario de Socio con este correo. Por favor, iniciá sesión vía Google para acceder a tu perfil.',
+          '¡Correo verificado con éxito! Redirigiendo a tu ficha de Socio Emergente...',
       };
     }
 
