@@ -428,31 +428,11 @@ export class NewsletterService {
         const rpcPayload = rpcRes as any;
         if (!rpcErr && rpcPayload?.status) {
           if (rpcPayload.status === 'already_registered_email') {
-            const { data: existingSocio } = await this.supabase
-              .from('socios')
-              .select('*')
-              .eq('email', cleanEmail)
-              .maybeSingle();
-
-            if (existingSocio) {
-              const entry = mapDbRowToEntry(existingSocio);
-              const updatedEntries = [
-                entry,
-                ...this._entries().filter((e) => e.email !== cleanEmail),
-              ];
-              this._entries.set(updatedEntries);
-              this._currentMember.set(entry);
-              this.persistEntries(updatedEntries);
-              this.persistCurrentMember(entry);
-
-              this._isLoading.set(false);
-              this.setLoginSuccessFlag();
-              return {
-                success: true,
-                socio: entry,
-                message: `¡Bienvenido al Club! Sos el Socio Emergente #${entry.position}.`,
-              };
-            }
+            this._isLoading.set(false);
+            return {
+              success: false,
+              message: 'Ya existe un socio registrado con este email. Iniciá sesión para acceder a tu cuenta.',
+            };
           }
 
           if (rpcPayload.status === 'already_registered_dni') {

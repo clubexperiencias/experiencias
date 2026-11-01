@@ -875,7 +875,13 @@ export class AdminMembersComponent {
   downloadRoster(): void {
     const list = this.store.members();
     const headers = ['Nro Socio', 'Tipo', 'Nombre y Apellido', 'DNI', 'Email', 'Teléfono', 'Nivel', 'Google Vinculado', 'Convertido', 'Fecha Alta'];
-    const escapeCsv = (val: string) => `"${(val || '').replace(/"/g, '""')}"`;
+    const escapeCsv = (val: any) => {
+      let str = val != null ? String(val) : '';
+      if (/^[=+\-@\t\r]/.test(str)) {
+        str = "'" + str;
+      }
+      return `"${str.replace(/"/g, '""')}"`;
+    };
     const rows = [
       headers.map(escapeCsv).join(','),
       ...list.map((m) => [

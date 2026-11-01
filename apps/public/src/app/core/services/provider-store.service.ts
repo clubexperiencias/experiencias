@@ -792,7 +792,7 @@ export class ProviderStoreService {
   // ==========================================
   // Submissions & Receipts
   // ==========================================
-  submitTransfer(input: NewTransferSubmission): TransferSubmission {
+  async submitTransfer(input: NewTransferSubmission): Promise<TransferSubmission> {
     const experience = this._experiences().find((e) => e.id === input.experienceId);
     if (!experience || experience.status !== 'publicada') {
       throw new Error('La experiencia no está disponible.');
@@ -823,15 +823,89 @@ export class ProviderStoreService {
     }
     const subtotal = experience.priceArs * input.participants;
     const discountArs = discountAmount(subtotal, discount);
+    const amountArs = subtotal - discountArs;
+    const ref = this.buildReference(experience.slug);
+
+    let receiptUrl = '';
+    let storageKey: string | undefined;
+
+    if (isSupabaseConfigured()) {
+      try {
+        const fileExt = input.receiptFile.name.split('.').pop() || 'jpg';
+        const cleanRef = ref.toLowerCase().replace(/[^a-z0-9]/g, '');
+        storageKey = `receipt_${cleanRef}_${Date.now()}.${fileExt}`;
+
+        const { error: uploadErr } = await this.supabase.storage
+          .from('comprobantes')
+          .upload(storageKey, input.receiptFile, {
+            contentType: input.receiptFile.type,
+            upsert: false,
+          });
+
+        if (!uploadErr) {
+          const { data: urlData } = this.supabase.storage
+            .from('comprobantes')
+            .getPublicUrl(storageKey);
+          receiptUrl = urlData?.publicUrl || '';
+        }
+
+        const { data: rpcRes, error: rpcErr } = await this.supabase.rpc(
+          'submit_experience_transfer' as any,
+          {
+            p_reference: ref,
+            p_experience_id: experience.id,
+            p_experience_title: experience.title,
+            p_date: input.date,
+            p_participants: input.participants,
+            p_amount_ars: amountArs,
+            p_discount_code: discount?.code || null,
+            p_discount_ars: discountArs,
+            p_full_name: input.fullName.trim(),
+            p_email: input.email.trim().toLowerCase(),
+            p_dni: input.dni.trim(),
+            p_phone: input.phone.trim(),
+            p_receipt_file_name: input.receiptFile.name,
+            p_receipt_mime_type: input.receiptFile.type,
+            p_receipt_size_bytes: input.receiptFile.size,
+            p_receipt_url: receiptUrl || 'https://experiencias.club/assets/images/comprobante-ejemplo.png',
+            p_receipt_storage_key: storageKey || null,
+            p_receipt_storage_provider: 'supabase',
+          },
+        );
+
+        const rpcPayload = rpcRes as any;
+        if (rpcErr) {
+          console.warn('[ProviderStore] Error en submit_experience_transfer RPC:', rpcErr);
+          throw new Error('No se pudo registrar la transferencia en el servidor. Intentá de nuevo.');
+        }
+
+        if (rpcPayload?.status === 'no_seats_available') {
+          throw new Error('No quedan cupos suficientes para esa fecha.');
+        }
+        if (rpcPayload?.status === 'invalid_input') {
+          throw new Error('Los datos ingresados no son válidos.');
+        }
+      } catch (err: any) {
+        if (err?.message?.includes('cupos') || err?.message?.includes('válidos') || err?.message?.includes('servidor')) {
+          throw err;
+        }
+        console.warn('[ProviderStore] Fallo al subir comprobante a Supabase:', err);
+        throw err;
+      }
+    }
+
+    if (!receiptUrl && typeof window !== 'undefined') {
+      receiptUrl = URL.createObjectURL(input.receiptFile);
+    }
 
     const submission: TransferSubmission = {
       id: `sub-${crypto.randomUUID()}`,
-      reference: this.buildReference(experience.slug),
+      reference: ref,
       experienceId: experience.id,
       experienceTitle: experience.title,
       date: input.date,
       participants: input.participants,
-      amountArs: subtotal - discountArs,
+      amountArs,
       ...(discount ? { discountCode: discount.code, discountArs } : {}),
       fullName: input.fullName.trim(),
       email: input.email.trim().toLowerCase(),
@@ -841,14 +915,18 @@ export class ProviderStoreService {
         fileName: input.receiptFile.name,
         mimeType: input.receiptFile.type,
         sizeBytes: input.receiptFile.size,
-        url: URL.createObjectURL(input.receiptFile),
+        url: receiptUrl,
+        storageKey,
+        provider: isSupabaseConfigured() ? 'supabase' : undefined,
       },
       status: 'pendiente',
       submittedAt: new Date().toISOString(),
     };
 
-    this._submissions.update((list) => [submission, ...list]);
-    this.saveSubmissions();
+    if (!isSupabaseConfigured()) {
+      this._submissions.update((list) => [submission, ...list]);
+      this.saveSubmissions();
+    }
 
     if (submission.discountCode) {
       this.newsletter.markMemberDiscountUsed(

@@ -55,77 +55,84 @@ import { AdminLoginComponent } from './admin-login/admin-login.component';
 
             <!-- Menú de administrador -->
             <div class="header-right">
-              <div class="user-pill" [class.is-open]="userMenuOpen()" (click)="toggleUserMenu()">
+              <button
+                type="button"
+                class="user-pill"
+                [class.is-open]="userMenuOpen()"
+                (click)="toggleUserMenu()"
+                aria-label="Menú de usuario"
+                [attr.aria-expanded]="userMenuOpen()"
+              >
                 <mat-icon class="user-pill-icon">{{ userMenuOpen() ? 'close' : 'menu' }}</mat-icon>
                 <div class="user-meta">
                   <strong class="user-name">{{ admin()?.name || 'Gonzalo Gramaglia' }}</strong>
                   <span class="user-agency">Superadmin</span>
                 </div>
+              </button>
 
-                @if (userMenuOpen()) {
-                  <div class="dropdown-menu enlarged-menu" (click)="$event.stopPropagation()">
-                    <!-- Navegación mínima del administrador -->
-                    <div class="dropdown-nav-list">
-                      <a
-                        routerLink="/dashboard"
-                        class="dropdown-item enlarged-item"
-                        (click)="userMenuOpen.set(false)"
-                      >
-                        <mat-icon class="menu-item-icon">dashboard</mat-icon>
-                        <div class="menu-item-info">
-                          <strong class="menu-item-title">Panel de Control</strong>
-                        </div>
-                      </a>
-
-                      <a
-                        routerLink="/socios"
-                        class="dropdown-item enlarged-item"
-                        (click)="userMenuOpen.set(false)"
-                      >
-                        <mat-icon class="menu-item-icon">group</mat-icon>
-                        <div class="menu-item-info">
-                          <strong class="menu-item-title">Ver Socios</strong>
-                        </div>
-                      </a>
-
-                      <a
-                        routerLink="/comprobantes"
-                        class="dropdown-item enlarged-item"
-                        (click)="userMenuOpen.set(false)"
-                      >
-                        <mat-icon class="menu-item-icon">receipt_long</mat-icon>
-                        <div class="menu-item-info">
-                          <strong class="menu-item-title">Ver Comprobantes</strong>
-                        </div>
-                      </a>
-
-                      <a
-                        routerLink="/postulaciones"
-                        class="dropdown-item enlarged-item"
-                        (click)="userMenuOpen.set(false)"
-                      >
-                        <mat-icon class="menu-item-icon">assignment_ind</mat-icon>
-                        <div class="menu-item-info">
-                          <strong class="menu-item-title">Ver Postulaciones</strong>
-                        </div>
-                      </a>
-                    </div>
-
-                    <div class="dropdown-divider"></div>
-
-                    <button
-                      type="button"
-                      class="dropdown-item enlarged-item logout-item"
-                      (click)="logout()"
+              @if (userMenuOpen()) {
+                <div class="dropdown-menu enlarged-menu" (click)="$event.stopPropagation()">
+                  <!-- Navegación mínima del administrador -->
+                  <div class="dropdown-nav-list">
+                    <a
+                      routerLink="/dashboard"
+                      class="dropdown-item enlarged-item"
+                      (click)="userMenuOpen.set(false)"
                     >
-                      <mat-icon class="menu-item-icon">logout</mat-icon>
+                      <mat-icon class="menu-item-icon">dashboard</mat-icon>
                       <div class="menu-item-info">
-                        <strong class="menu-item-title">Cerrar sesión</strong>
+                        <strong class="menu-item-title">Panel de Control</strong>
                       </div>
-                    </button>
+                    </a>
+
+                    <a
+                      routerLink="/socios"
+                      class="dropdown-item enlarged-item"
+                      (click)="userMenuOpen.set(false)"
+                    >
+                      <mat-icon class="menu-item-icon">group</mat-icon>
+                      <div class="menu-item-info">
+                        <strong class="menu-item-title">Ver Socios</strong>
+                      </div>
+                    </a>
+
+                    <a
+                      routerLink="/comprobantes"
+                      class="dropdown-item enlarged-item"
+                      (click)="userMenuOpen.set(false)"
+                    >
+                      <mat-icon class="menu-item-icon">receipt_long</mat-icon>
+                      <div class="menu-item-info">
+                        <strong class="menu-item-title">Ver Comprobantes</strong>
+                      </div>
+                    </a>
+
+                    <a
+                      routerLink="/postulaciones"
+                      class="dropdown-item enlarged-item"
+                      (click)="userMenuOpen.set(false)"
+                    >
+                      <mat-icon class="menu-item-icon">assignment_ind</mat-icon>
+                      <div class="menu-item-info">
+                        <strong class="menu-item-title">Ver Postulaciones</strong>
+                      </div>
+                    </a>
                   </div>
-                }
-              </div>
+
+                  <div class="dropdown-divider"></div>
+
+                  <button
+                    type="button"
+                    class="dropdown-item enlarged-item logout-item"
+                    (click)="logout()"
+                  >
+                    <mat-icon class="menu-item-icon">logout</mat-icon>
+                    <div class="menu-item-info">
+                      <strong class="menu-item-title">Cerrar sesión</strong>
+                    </div>
+                  </button>
+                </div>
+              }
             </div>
           </div>
         </header>

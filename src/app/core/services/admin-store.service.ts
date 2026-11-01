@@ -72,7 +72,7 @@ export class AdminStoreService {
   private readonly newsletter = inject(NewsletterService);
   private readonly providerStore = inject(ProviderStoreService);
 
-  private readonly _currentAdmin = signal<AdminUser | null>(this.loadStoredSession());
+  private readonly _currentAdmin = signal<AdminUser | null>(null);
   private readonly _members = signal<AdminMember[]>(this.loadStoredMembers());
   private readonly _submissions = signal<TransferSubmission[]>([]);
   private readonly _applications = signal<AdminApplication[]>(this.loadStoredApplications());
@@ -209,23 +209,29 @@ export class AdminStoreService {
   });
 
   constructor() {
-    void this.restoreSupabaseSession();
-    void this.loadAllMembers();
-    void this.loadAllSubmissions();
-    void this.loadAllApplications();
+    void this.initStore();
+  }
+
+  private async initStore(): Promise<void> {
+    const isAuth = await this.restoreSupabaseSession();
+    if (isAuth) {
+      void this.loadAllMembers();
+      void this.loadAllSubmissions();
+      void this.loadAllApplications();
+    }
   }
 
   // ============================================================
   // SESIÓN ADMINISTRATIVA
   // ============================================================
 
-  async restoreSupabaseSession(): Promise<void> {
+  async restoreSupabaseSession(): Promise<boolean> {
     if (!isSupabaseConfigured()) {
       // Entorno de prueba local
-      if (!this._currentAdmin()) {
-        this.saveSession(DEFAULT_SUPERADMIN);
-      }
-      return;
+      const stored = this.loadStoredSession();
+      const admin = stored || DEFAULT_SUPERADMIN;
+      this.saveSession(admin);
+      return true;
     }
 
     try {
@@ -233,10 +239,9 @@ export class AdminStoreService {
       const email = data.user?.email?.trim().toLowerCase();
 
       if (!email) {
-        if (!this.loadStoredSession()) {
-          this._currentAdmin.set(null);
-        }
-        return;
+        this._currentAdmin.set(null);
+        this.clearSession();
+        return false;
       }
 
       // 1. Consultar si tiene registro en admin_access
@@ -251,10 +256,7 @@ export class AdminStoreService {
       const fullName = (adminRow as any)?.name || userMeta['full_name'] || userMeta['name'] || email.split('@')[0];
       const avatar = '/assets/images/gonza.jpg';
 
-      // Se permite acceso si está en la tabla admin_access o si coincide con gonzagramaglia@gmail.com
-      const isSuperAdminEmail = email === 'gonzagramaglia@gmail.com' || email.endsWith('@experiencias.club');
-
-      if (adminRow || isSuperAdminEmail) {
+      if (adminRow) {
         const admin: AdminUser = {
           id: `admin-${email.replace(/[^a-z0-9]+/g, '-')}`,
           email,
@@ -264,9 +266,17 @@ export class AdminStoreService {
           joinedAt: new Date().toISOString(),
         };
         this.saveSession(admin);
+        return true;
+      } else {
+        this._currentAdmin.set(null);
+        this.clearSession();
+        return false;
       }
     } catch (err) {
       console.warn('[AdminStore] Error restaurando sesión Supabase:', err);
+      this._currentAdmin.set(null);
+      this.clearSession();
+      return false;
     }
   }
 
@@ -299,20 +309,28 @@ export class AdminStoreService {
   }
 
   quickLogin(): void {
+    if (isSupabaseConfigured()) {
+      return;
+    }
     this.saveSession(DEFAULT_SUPERADMIN);
     void this.loadAllMembers();
     void this.loadAllSubmissions();
+    void this.loadAllApplications();
   }
 
   logout(): void {
     this._currentAdmin.set(null);
+    this.clearSession();
+    if (isSupabaseConfigured()) {
+      void this.supabase.auth.signOut();
+    }
+  }
+
+  private clearSession(): void {
     try {
       localStorage.removeItem(STORAGE_KEYS.adminSession);
     } catch {
       // ignore
-    }
-    if (isSupabaseConfigured()) {
-      void this.supabase.auth.signOut();
     }
   }
 
@@ -444,19 +462,29 @@ export class AdminStoreService {
             };
           });
 
-        const combined = [...sociosList, ...waitlistOnly];
-        // Cuando Supabase está configurado, la fuente de la verdad es Supabase
-        this._members.set(combined);
-        this.persistMembers(combined);
-        this._lastRefreshedAt.set(new Date().toLocaleTimeString('es-AR'));
+        if (!sociosRes.error && !waitlistRes.error) {
+          const combined = [...sociosList, ...waitlistOnly];
+          // Cuando Supabase está configurado, la fuente de la verdad es Supabase
+          this._members.set(combined);
+          this.persistMembers(combined);
+          this._lastRefreshedAt.set(new Date().toLocaleTimeString('es-AR'));
+          this._isLoadingMembers.set(false);
+          return;
+        }
+
+        console.warn('[AdminStore] Error al consultar tablas de miembros en Supabase:', sociosRes.error || waitlistRes.error);
         this._isLoadingMembers.set(false);
         return;
       }
     } catch (err) {
       console.warn('[AdminStore] Error cargando socios desde Supabase:', err);
+      if (isSupabaseConfigured()) {
+        this._isLoadingMembers.set(false);
+        return;
+      }
     }
 
-    // 3. Respaldo local si no hay conexión a Supabase o falla la red
+    // 3. Respaldo local SÓLO si Supabase no está configurado
     const stored = this.loadStoredMembers();
     if (stored && stored.length > 0) {
       this._members.set(stored);
@@ -480,7 +508,7 @@ export class AdminStoreService {
         // 1. Intentar RPC get_admin_all_submissions
         const { data: rpcData, error: rpcErr } = await this.supabase.rpc('get_admin_all_submissions' as any);
 
-        if (!rpcErr && Array.isArray(rpcData) && rpcData.length > 0) {
+        if (!rpcErr && Array.isArray(rpcData)) {
           const subs: TransferSubmission[] = rpcData.map((p: any) => ({
             id: p.id,
             reference: p.reference,
@@ -518,7 +546,7 @@ export class AdminStoreService {
           .select('*')
           .order('submitted_at', { ascending: false });
 
-        if (!tableErr && Array.isArray(tableData) && tableData.length > 0) {
+        if (!tableErr && Array.isArray(tableData)) {
           const mapped: TransferSubmission[] = tableData.map((p: any) => ({
             id: p.id,
             reference: p.reference,
@@ -551,12 +579,21 @@ export class AdminStoreService {
           this._isLoadingSubmissions.set(false);
           return;
         }
+
+        // Si fallaron ambas en Supabase configurado, no sobrescribir con datos de prueba
+        console.warn('[AdminStore] Error al cargar comprobantes desde Supabase configurado:', rpcErr || tableErr);
+        this._isLoadingSubmissions.set(false);
+        return;
       }
     } catch (err) {
       console.warn('[AdminStore] Error cargando comprobantes desde Supabase:', err);
+      if (isSupabaseConfigured()) {
+        this._isLoadingSubmissions.set(false);
+        return;
+      }
     }
 
-    // 3. Respaldo unificado con las submissions de ProviderStore
+    // 3. Respaldo local SÓLO si Supabase no está configurado
     const providerSubs = this.providerStore.submissions();
     if (providerSubs.length > 0) {
       this._submissions.set(providerSubs);

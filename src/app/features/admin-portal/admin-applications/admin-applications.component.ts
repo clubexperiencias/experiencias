@@ -1817,7 +1817,13 @@ export class AdminApplicationsComponent implements OnInit {
       'Fecha Postulación',
       'Detalle / Carta',
     ];
-    const escapeCsv = (val: string) => `"${(val || '').replace(/"/g, '""')}"`;
+    const escapeCsv = (val: any) => {
+      let str = val != null ? String(val) : '';
+      if (/^[=+\-@\t\r]/.test(str)) {
+        str = "'" + str;
+      }
+      return `"${str.replace(/"/g, '""')}"`;
+    };
     const rows = [
       headers.map(escapeCsv).join(','),
       ...list.map((a) => [
@@ -1863,7 +1869,13 @@ export class AdminApplicationsComponent implements OnInit {
       'Itinerario',
       'Promociones',
     ];
-    const escapeCsv = (val: any) => `"${(val != null ? String(val) : '').replace(/"/g, '""')}"`;
+    const escapeCsv = (val: any) => {
+      let str = val != null ? String(val) : '';
+      if (/^[=+\-@\t\r]/.test(str)) {
+        str = "'" + str;
+      }
+      return `"${str.replace(/"/g, '""')}"`;
+    };
     const rows = [
       headers.map(escapeCsv).join(','),
       ...list.map((r) => [

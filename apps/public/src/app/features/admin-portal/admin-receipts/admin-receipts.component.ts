@@ -263,6 +263,45 @@ type StatusFilter = TransferStatus | 'todos';
                 </div>
               </div>
 
+              <!-- Acciones de Validación para comprobantes pendientes -->
+              @if (sub.status === 'pendiente') {
+                @if (!rejecting()) {
+                  <div class="modal-actions-row">
+                    <button type="button" class="btn-reject" (click)="rejecting.set(true)">
+                      Rechazar Pago
+                    </button>
+                    <button type="button" class="btn-approve" (click)="confirmApprove(sub.id)">
+                      Aprobar Comprobante
+                    </button>
+                  </div>
+                } @else {
+                  <div class="reject-box">
+                    <label class="reject-label" for="rej-reason-input">Motivo del Rechazo:</label>
+                    <textarea
+                      id="rej-reason-input"
+                      class="reject-textarea"
+                      rows="2"
+                      placeholder="Ej: El importe no coincide con el total..."
+                      [value]="rejectionReason()"
+                      (input)="rejectionReason.set($any($event.target).value)"
+                    ></textarea>
+                    <div class="reject-actions">
+                      <button type="button" class="cancel-btn" (click)="rejecting.set(false)">
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        class="confirm-reject-btn"
+                        [disabled]="rejectionReason().trim().length < 4"
+                        (click)="confirmReject(sub.id)"
+                      >
+                        Confirmar Rechazo
+                      </button>
+                    </div>
+                  </div>
+                }
+              }
+
               <!-- Descarga Directa -->
               <a [href]="sub.receipt.url" [download]="sub.receipt.fileName" target="_blank" rel="noopener" class="download-link-btn">
                 <mat-icon>download</mat-icon>
@@ -1173,7 +1212,13 @@ export class AdminReceiptsComponent {
   downloadReceiptsList(): void {
     const list = this.store.submissions();
     const headers = ['Referencia', 'Socio', 'DNI', 'Email', 'Teléfono', 'Experiencia', 'Fecha Salida', 'Cupos', 'Importe', 'Descuento', 'Estado', 'Fecha Envío'];
-    const escapeCsv = (val: string | number) => `"${String(val ?? '').replace(/"/g, '""')}"`;
+    const escapeCsv = (val: any) => {
+      let str = val != null ? String(val) : '';
+      if (/^[=+\-@\t\r]/.test(str)) {
+        str = "'" + str;
+      }
+      return `"${str.replace(/"/g, '""')}"`;
+    };
     const rows = [
       headers.map(escapeCsv).join(','),
       ...list.map((s) => [

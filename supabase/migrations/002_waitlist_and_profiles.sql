@@ -416,22 +416,26 @@ BEGIN
   END IF;
 
   IF EXISTS (SELECT 1 FROM public.socios WHERE email = v_email) THEN
-    UPDATE public.socios
-    SET full_name = CASE WHEN v_name <> '' THEN v_name ELSE full_name END,
-        dni = CASE WHEN v_dni <> '' THEN v_dni ELSE dni END,
-        phone = CASE WHEN v_phone <> '' THEN v_phone ELSE phone END,
-        experiences_wishlist = CASE WHEN p_experiences_wishlist IS NOT NULL THEN p_experiences_wishlist ELSE experiences_wishlist END,
-        experiences_other = CASE WHEN p_experiences_other IS NOT NULL AND TRIM(p_experiences_other) <> '' THEN TRIM(p_experiences_other) ELSE experiences_other END,
-        auth_user_id = CASE WHEN v_auth_uid IS NOT NULL AND v_jwt_email = v_email THEN v_auth_uid ELSE auth_user_id END,
-        google_linked = CASE WHEN v_auth_uid IS NOT NULL AND v_jwt_email = v_email THEN true ELSE google_linked END,
-        updated_at = now()
-    WHERE email = v_email
-    RETURNING * INTO v_inserted;
+    IF v_auth_uid IS NOT NULL AND v_jwt_email = v_email THEN
+      UPDATE public.socios
+      SET full_name = CASE WHEN v_name <> '' THEN v_name ELSE full_name END,
+          dni = CASE WHEN v_dni <> '' THEN v_dni ELSE dni END,
+          phone = CASE WHEN v_phone <> '' THEN v_phone ELSE phone END,
+          experiences_wishlist = CASE WHEN p_experiences_wishlist IS NOT NULL THEN p_experiences_wishlist ELSE experiences_wishlist END,
+          experiences_other = CASE WHEN p_experiences_other IS NOT NULL AND TRIM(p_experiences_other) <> '' THEN TRIM(p_experiences_other) ELSE experiences_other END,
+          auth_user_id = v_auth_uid,
+          google_linked = true,
+          updated_at = now()
+      WHERE email = v_email
+      RETURNING * INTO v_inserted;
 
-    RETURN jsonb_build_object(
-      'status', 'created',
-      'socio', to_jsonb(v_inserted)
-    );
+      RETURN jsonb_build_object(
+        'status', 'created',
+        'socio', to_jsonb(v_inserted)
+      );
+    ELSE
+      RETURN jsonb_build_object('status', 'already_registered_email');
+    END IF;
   END IF;
 
   IF EXISTS (SELECT 1 FROM public.socios WHERE dni = v_dni AND dni <> '') THEN
@@ -1167,12 +1171,12 @@ BEGIN
     VALUES (
       'comprobantes',
       'comprobantes',
-      true,
+      false,
       5242880,
       ARRAY['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
     )
     ON CONFLICT (id) DO UPDATE
-    SET public = true,
+    SET public = false,
         file_size_limit = 5242880,
         allowed_mime_types = ARRAY['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
   END IF;
@@ -1200,7 +1204,7 @@ BEGIN
     CREATE POLICY "Permitir ver comprobantes"
       ON storage.objects
       FOR SELECT
-      TO anon, authenticated
+      TO authenticated
       USING (bucket_id = 'comprobantes');
   END IF;
 EXCEPTION
@@ -1652,12 +1656,12 @@ BEGIN
     VALUES (
       'comprobantes',
       'comprobantes',
-      true,
+      false,
       5242880,
       ARRAY['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
     )
     ON CONFLICT (id) DO UPDATE
-    SET public = true,
+    SET public = false,
         file_size_limit = 5242880,
         allowed_mime_types = ARRAY['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
   END IF;
@@ -1685,7 +1689,7 @@ BEGIN
     CREATE POLICY "Permitir ver comprobantes"
       ON storage.objects
       FOR SELECT
-      TO anon, authenticated
+      TO authenticated
       USING (bucket_id = 'comprobantes');
   END IF;
 EXCEPTION

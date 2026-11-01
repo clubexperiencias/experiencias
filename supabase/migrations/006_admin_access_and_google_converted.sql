@@ -95,13 +95,9 @@ CREATE POLICY "Permitir consultar su propio acceso admin"
   USING (LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', '')) AND active = true);
 
 DROP POLICY IF EXISTS "Permitir consulta de emails autorizados admin" ON public.admin_access;
-CREATE POLICY "Permitir consulta de emails autorizados admin"
-  ON public.admin_access
-  FOR SELECT
-  TO anon, authenticated
-  USING (active = true);
 
-GRANT SELECT ON public.admin_access TO anon, authenticated;
+REVOKE ALL ON public.admin_access FROM anon, PUBLIC;
+GRANT SELECT ON public.admin_access TO authenticated;
 
 -- Insertar administrador principal
 INSERT INTO public.admin_access (email, name, role, active)
@@ -285,24 +281,28 @@ BEGIN
     RETURN jsonb_build_object('status', 'invalid_input');
   END IF;
 
-  -- Si el socio ya existe por email, actualizar sus datos y confirmar como éxito
+  -- Si el socio ya existe por email, sólo actualizar si la identidad coincide con el token JWT
   IF EXISTS (SELECT 1 FROM public.socios WHERE email = v_email) THEN
-    UPDATE public.socios
-    SET full_name = CASE WHEN v_name <> '' THEN v_name ELSE full_name END,
-        dni = CASE WHEN v_dni <> '' THEN v_dni ELSE dni END,
-        phone = CASE WHEN v_phone <> '' THEN v_phone ELSE phone END,
-        experiences_wishlist = CASE WHEN p_experiences_wishlist IS NOT NULL THEN p_experiences_wishlist ELSE experiences_wishlist END,
-        experiences_other = CASE WHEN p_experiences_other IS NOT NULL AND TRIM(p_experiences_other) <> '' THEN TRIM(p_experiences_other) ELSE experiences_other END,
-        auth_user_id = CASE WHEN v_auth_uid IS NOT NULL AND v_jwt_email = v_email THEN v_auth_uid ELSE auth_user_id END,
-        google_linked = CASE WHEN v_auth_uid IS NOT NULL AND v_jwt_email = v_email THEN true ELSE google_linked END,
-        updated_at = now()
-    WHERE email = v_email
-    RETURNING * INTO v_inserted;
+    IF v_auth_uid IS NOT NULL AND v_jwt_email = v_email THEN
+      UPDATE public.socios
+      SET full_name = CASE WHEN v_name <> '' THEN v_name ELSE full_name END,
+          dni = CASE WHEN v_dni <> '' THEN v_dni ELSE dni END,
+          phone = CASE WHEN v_phone <> '' THEN v_phone ELSE phone END,
+          experiences_wishlist = CASE WHEN p_experiences_wishlist IS NOT NULL THEN p_experiences_wishlist ELSE experiences_wishlist END,
+          experiences_other = CASE WHEN p_experiences_other IS NOT NULL AND TRIM(p_experiences_other) <> '' THEN TRIM(p_experiences_other) ELSE experiences_other END,
+          auth_user_id = v_auth_uid,
+          google_linked = true,
+          updated_at = now()
+      WHERE email = v_email
+      RETURNING * INTO v_inserted;
 
-    RETURN jsonb_build_object(
-      'status', 'created',
-      'socio', to_jsonb(v_inserted)
-    );
+      RETURN jsonb_build_object(
+        'status', 'created',
+        'socio', to_jsonb(v_inserted) - 'registration_token'
+      );
+    ELSE
+      RETURN jsonb_build_object('status', 'already_registered');
+    END IF;
   END IF;
 
   IF EXISTS (SELECT 1 FROM public.socios WHERE dni = v_dni AND dni <> '') THEN
@@ -345,7 +345,7 @@ BEGIN
 
   RETURN jsonb_build_object(
     'status', 'created',
-    'socio', to_jsonb(v_inserted)
+    'socio', to_jsonb(v_inserted) - 'registration_token'
   );
 END;
 $$;

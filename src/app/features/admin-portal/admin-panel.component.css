@@ -201,6 +201,7 @@
   display: flex;
   align-items: center;
   gap: 1rem;
+  position: relative;
 }
 
 .user-pill {
@@ -219,6 +220,9 @@
   box-sizing: border-box;
   width: 260px;
   max-width: 92vw;
+  font-family: inherit;
+  color: inherit;
+  text-align: left;
 }
 
 .user-pill:hover,

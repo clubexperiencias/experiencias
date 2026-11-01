@@ -245,6 +245,7 @@
   display: flex;
   align-items: center;
   gap: 0.85rem;
+  position: relative;
 }
 
 .new-exp-btn {
@@ -286,6 +287,9 @@
   box-sizing: border-box;
   width: 260px;
   max-width: 92vw;
+  font-family: inherit;
+  color: inherit;
+  text-align: left;
 }
 
 .user-pill:hover,

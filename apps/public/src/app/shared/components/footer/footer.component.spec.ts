@@ -28,7 +28,7 @@ describe('FooterComponent', () => {
   it('should render location text and provider link', () => {
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('.location-place')?.textContent).toContain('Laguna Blanca');
-    const providerLink = compiled.querySelector('.footer-provider-link');
+    const providerLink = compiled.querySelector('.footer-provider-link[routerLink]');
     expect(providerLink).toBeTruthy();
     expect(providerLink?.getAttribute('routerLink')).toBe('/prestadores');
   });

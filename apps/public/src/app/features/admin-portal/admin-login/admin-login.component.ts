@@ -1,6 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { AdminStoreService } from '../../../core/services/admin-store.service';
+import { isSupabaseConfigured } from '../../../core/supabase/supabase.client';
 
 @Component({
   selector: 'app-admin-login',
@@ -63,18 +64,20 @@ import { AdminStoreService } from '../../../core/services/admin-store.service';
           </div>
         }
 
-        <div class="divider">
-          <span>O ACCESO DIRECTO DE DESARROLLO</span>
-        </div>
-
-        <button type="button" class="quick-admin-btn" (click)="quickLogin()">
-          <mat-icon>verified_user</mat-icon>
-          <div class="quick-admin-info">
-            <strong>Ingresar como Superadmin</strong>
-            <span>gonzagramaglia&#64;gmail.com</span>
+        @if (isDevelopmentMode) {
+          <div class="divider">
+            <span>O ACCESO DIRECTO DE DESARROLLO</span>
           </div>
-          <span class="quick-badge">Acceder</span>
-        </button>
+
+          <button type="button" class="quick-admin-btn" (click)="quickLogin()">
+            <mat-icon>verified_user</mat-icon>
+            <div class="quick-admin-info">
+              <strong>Ingresar como Superadmin</strong>
+              <span>gonzagramaglia&#64;gmail.com</span>
+            </div>
+            <span class="quick-badge">Acceder</span>
+          </button>
+        }
 
         <div class="admin-perks-box">
           <div class="perk-item">
@@ -329,6 +332,7 @@ import { AdminStoreService } from '../../../core/services/admin-store.service';
 export class AdminLoginComponent {
   private readonly store = inject(AdminStoreService);
 
+  readonly isDevelopmentMode = !isSupabaseConfigured();
   readonly connectingGoogle = signal(false);
   readonly errorMessage = signal<string | null>(null);
 
@@ -344,7 +348,9 @@ export class AdminLoginComponent {
   }
 
   quickLogin(): void {
-    this.store.quickLogin();
+    if (this.isDevelopmentMode) {
+      this.store.quickLogin();
+    }
   }
 }
 

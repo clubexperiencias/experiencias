@@ -83,6 +83,34 @@ const providerRoutes: Routes = [
             (m) => m.ProviderDashboardComponent,
           ),
       },
+      {
+        path: 'experiencias',
+        loadComponent: () =>
+          import('./features/provider-panel/provider-experiences/provider-experiences.component').then(
+            (m) => m.ProviderExperiencesComponent,
+          ),
+      },
+      {
+        path: 'experiencias/nueva',
+        loadComponent: () =>
+          import('./features/provider-panel/provider-experience-form/provider-experience-form.component').then(
+            (m) => m.ProviderExperienceFormComponent,
+          ),
+      },
+      {
+        path: 'experiencias/:id/editar',
+        loadComponent: () =>
+          import('./features/provider-panel/provider-experience-form/provider-experience-form.component').then(
+            (m) => m.ProviderExperienceFormComponent,
+          ),
+      },
+      {
+        path: 'perfil',
+        loadComponent: () =>
+          import('./features/provider-panel/provider-profile/provider-profile.component').then(
+            (m) => m.ProviderProfileComponent,
+          ),
+      },
       { path: '**', redirectTo: 'dashboard' },
     ],
   },
