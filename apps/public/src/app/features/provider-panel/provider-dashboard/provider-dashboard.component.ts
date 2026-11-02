@@ -125,8 +125,9 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
 
                 <div class="active-exp-main">
                   <div class="active-exp-top-row">
-                    <span class="exp-cat-tag">{{ exp.region }}</span>
-                    <span class="exp-sep">·</span>
+                    @if (exp.region) {
+                      <span class="exp-cat-tag">{{ exp.region }}</span>
+                    }
                     <span class="exp-duration-tag"
                       >{{ exp.difficulty }} · {{ exp.durationLabel }}</span
                     >
@@ -146,8 +147,45 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
                       <strong class="kpi-mini-val">{{ exp.capacityPerDate }} cupos</strong>
                     </div>
 
-                    <div class="kpi-mini-col">
-                      <span class="kpi-mini-lbl">Próximas Salidas</span>
+                    <div class="kpi-mini-col kpi-col-dates">
+                      <div class="kpi-dates-head">
+                        <span class="kpi-mini-lbl">Próximas Salidas</span>
+                        <button
+                          type="button"
+                          class="btn-quick-add-date"
+                          (click)="toggleAddDate(exp.id); $event.stopPropagation()"
+                          title="Agregar una nueva fecha de salida"
+                        >
+                          + Fecha
+                        </button>
+                      </div>
+
+                      @if (activeDateExpId() === exp.id) {
+                        <div class="quick-add-date-popover" (click)="$event.stopPropagation()">
+                          <input
+                            type="date"
+                            class="quick-date-input"
+                            [min]="todayIso"
+                            [(ngModel)]="newDateValue"
+                          />
+                          <button
+                            type="button"
+                            class="quick-date-save-btn"
+                            (click)="saveNewDate(exp.id)"
+                            [disabled]="!newDateValue"
+                          >
+                            Agregar
+                          </button>
+                          <button
+                            type="button"
+                            class="quick-date-cancel-btn"
+                            (click)="toggleAddDate(null)"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      }
+
                       <div class="exp-mini-dates">
                         @for (d of exp.dates; track d) {
                           <span class="mini-date-badge">
@@ -157,6 +195,14 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
                                 exp.capacityPerDate
                               }})</span
                             >
+                            <button
+                              type="button"
+                              class="mini-date-remove-btn"
+                              (click)="removeDate(exp.id, d); $event.stopPropagation()"
+                              title="Eliminar esta fecha de salida"
+                            >
+                              ✕
+                            </button>
                           </span>
                         }
                       </div>
@@ -1100,6 +1146,94 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
         font-weight: 700;
         color: #ffffff;
       }
+      .kpi-col-dates {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+      }
+      .kpi-dates-head {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+      }
+      .btn-quick-add-date {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.2rem;
+        padding: 0.15rem 0.45rem;
+        background: rgba(128, 179, 255, 0.15);
+        border: 1px solid rgba(128, 179, 255, 0.4);
+        border-radius: 2px;
+        color: #80b3ff;
+        font-size: 0.68rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      .btn-quick-add-date:hover {
+        background: #80b3ff;
+        color: #070d18;
+      }
+      .quick-add-date-popover {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.45rem 0.6rem;
+        background: rgba(14, 22, 54, 0.95);
+        border: 1px solid rgba(128, 179, 255, 0.45);
+        border-radius: 2px;
+        margin: 0.35rem 0;
+        flex-wrap: wrap;
+      }
+      .quick-date-input {
+        padding: 0.3rem 0.5rem;
+        font-size: 0.78rem;
+        background: rgba(7, 13, 28, 0.9);
+        border: 1px solid rgba(128, 179, 255, 0.3);
+        border-radius: 2px;
+        color: #ffffff;
+        font-family: inherit;
+        color-scheme: dark;
+      }
+      .quick-date-save-btn {
+        padding: 0.32rem 0.7rem;
+        background: #80b3ff;
+        color: #070d18;
+        border: none;
+        border-radius: 2px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .quick-date-save-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .quick-date-cancel-btn {
+        padding: 0.3rem 0.45rem;
+        color: rgba(255, 255, 255, 0.6);
+        background: transparent;
+        border: none;
+        font-size: 0.75rem;
+        cursor: pointer;
+      }
+      .quick-date-cancel-btn:hover {
+        color: #ffffff;
+      }
+      .mini-date-remove-btn {
+        margin-left: 0.25rem;
+        color: rgba(255, 255, 255, 0.45);
+        font-size: 0.75rem;
+        cursor: pointer;
+        padding: 0 0.15rem;
+        line-height: 1;
+        background: transparent;
+        border: none;
+        transition: color 0.15s ease;
+      }
+      .mini-date-remove-btn:hover {
+        color: #ff8080;
+      }
       .exp-mini-dates {
         display: flex;
         gap: 0.35rem;
@@ -1267,6 +1401,9 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
 
       /* Mobile Responsiveness */
       @media (max-width: 768px) {
+        .dash-card {
+          padding: 1rem;
+        }
         .welcome-card {
           flex-direction: column;
           align-items: stretch;
@@ -1274,16 +1411,28 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
           gap: 1rem;
         }
         .welcome-main {
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 0.75rem;
+          flex-direction: row;
+          align-items: center;
+          gap: 1rem;
         }
-        .welcome-avatar {
-          width: 64px;
-          height: 64px;
+        .avatar-ring {
+          flex-shrink: 0;
+        }
+        .provider-avatar {
+          width: 74px;
+          height: 74px;
+        }
+        .welcome-text {
+          min-width: 0;
+          flex: 1;
         }
         .welcome-name {
-          font-size: 1.35rem;
+          font-size: 1.25rem;
+          line-height: 1.25;
+          word-break: break-word;
+        }
+        .welcome-agency {
+          font-size: 0.85rem;
         }
         .welcome-card .new-proposal-btn {
           width: 100%;
@@ -1308,9 +1457,60 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
           width: 100%;
           justify-content: flex-start;
         }
-        .request-new-exp-inner {
+        .active-exp-row {
+          display: flex;
+          flex-direction: column;
+        }
+        .active-exp-cover-wrap {
+          width: 100%;
+          height: 195px;
+          min-height: 195px;
+          border-right: none;
+          border-bottom: 1px solid rgba(128, 179, 255, 0.2);
+        }
+        .active-exp-main {
+          padding: 1.15rem 1rem 1.25rem;
+          gap: 0.5rem;
+        }
+        .active-exp-name {
+          font-size: 1.15rem;
+          line-height: 1.3;
+        }
+        .active-exp-desc {
+          font-size: 0.85rem;
+          line-height: 1.45;
+          -webkit-line-clamp: 3;
+        }
+        .active-exp-kpis {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 0.85rem;
+          margin-top: 0.5rem;
+          padding-top: 0.75rem;
+        }
+        .active-exp-kpis .kpi-mini-col:last-child {
+          grid-column: 1 / -1;
+        }
+        .exp-mini-dates {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.4rem;
+        }
+        .mini-date-badge {
+          padding: 0.25rem 0.55rem;
+          font-size: 0.75rem;
+        }
+        .request-new-exp-card {
           flex-direction: column;
           align-items: stretch;
+          padding: 1.15rem 1rem;
+          gap: 1rem;
+        }
+        .request-new-exp-content {
+          width: 100%;
+        }
+        .request-new-exp-info {
+          width: 100%;
         }
         .request-new-exp-action {
           width: 100%;
@@ -1321,8 +1521,34 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
       }
 
       @media (max-width: 480px) {
+        .dash-card {
+          padding: 0.85rem;
+        }
+        .provider-avatar {
+          width: 64px;
+          height: 64px;
+        }
+        .welcome-name {
+          font-size: 1.1rem;
+        }
         .metrics-grid {
           grid-template-columns: 1fr;
+        }
+        .fin-bank-banner {
+          grid-template-columns: 1fr;
+          gap: 0.65rem;
+          padding: 0.85rem;
+        }
+        .active-exp-cover-wrap {
+          height: 175px;
+          min-height: 175px;
+        }
+        .active-exp-main {
+          padding: 1rem 0.85rem;
+        }
+        .active-exp-kpis {
+          grid-template-columns: 1fr;
+          gap: 0.75rem;
         }
       }
 
@@ -1542,5 +1768,32 @@ export class ProviderDashboardComponent implements OnInit {
 
   closeReceipt(): void {
     this.selectedSubmission.set(null);
+  }
+
+  readonly todayIso = new Date().toISOString().split('T')[0];
+  readonly activeDateExpId = signal<string | null>(null);
+  newDateValue = '';
+
+  toggleAddDate(expId: string | null): void {
+    if (this.activeDateExpId() === expId) {
+      this.activeDateExpId.set(null);
+      this.newDateValue = '';
+    } else {
+      this.activeDateExpId.set(expId);
+      this.newDateValue = '';
+    }
+  }
+
+  saveNewDate(expId: string): void {
+    if (!this.newDateValue) return;
+    this.store.addDateToExperience(expId, this.newDateValue);
+    this.activeDateExpId.set(null);
+    this.newDateValue = '';
+  }
+
+  removeDate(expId: string, date: string): void {
+    if (confirm(`¿Eliminar la fecha ${date} para esta experiencia?`)) {
+      this.store.removeDateFromExperience(expId, date);
+    }
   }
 }

@@ -266,4 +266,33 @@ export class ProviderExperiencesComponent implements OnInit {
     link.click();
     URL.revokeObjectURL(url);
   }
+
+  readonly todayIso = new Date().toISOString().split('T')[0];
+  readonly activeDateExpId = signal<string | null>(null);
+  newDateValue = '';
+
+  toggleAddDate(expId: string | null): void {
+    if (this.activeDateExpId() === expId) {
+      this.activeDateExpId.set(null);
+      this.newDateValue = '';
+    } else {
+      this.activeDateExpId.set(expId);
+      this.newDateValue = '';
+    }
+  }
+
+  saveNewDate(expId: string): void {
+    if (!this.newDateValue) return;
+    this.store.addDateToExperience(expId, this.newDateValue);
+    this.activeDateExpId.set(null);
+    this.newDateValue = '';
+    this.showToast('Fecha de salida agregada con éxito');
+  }
+
+  removeDate(expId: string, date: string): void {
+    if (confirm(`¿Eliminar la fecha de salida (${date})?`)) {
+      this.store.removeDateFromExperience(expId, date);
+      this.showToast('Fecha de salida eliminada');
+    }
+  }
 }

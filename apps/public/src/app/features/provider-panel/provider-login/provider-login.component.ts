@@ -141,7 +141,7 @@ import { SUPABASE_CLIENT, isSupabaseConfigured } from '../../../core/supabase/su
                 </div>
                 <div class="perk-item">
                   <mat-icon>check_circle</mat-icon>
-                  <span>Subida de fotos y videos a Cloudflare R2 con enlace directo</span>
+                  <span>Subida de fotos y videos en alta resolución con enlace directo</span>
                 </div>
               </div>
 

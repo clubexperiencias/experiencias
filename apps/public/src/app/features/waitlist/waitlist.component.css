@@ -1175,7 +1175,6 @@ mat-icon.arrow-icon {
 .modal-card.tiers-modal-card .btn-icon,
 .modal-card.tiers-modal-card .tier-cta-btn svg,
 .modal-card.tiers-modal-card .current-level-btn svg,
-.modal-card.experiences-modal-card .exp-rating:not(.rating-link-yellow),
 .modal-card.experiences-modal-card .close-details-pill {
   color: #ffffff !important;
 }

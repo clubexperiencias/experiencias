@@ -348,3 +348,45 @@
 .publish-request-btn:hover {
   background: #a6c8ff;
 }
+
+@media (max-width: 680px) {
+  .form-card {
+    padding: 1.25rem 0.85rem !important;
+  }
+
+  .form-header {
+    margin-bottom: 1.25rem;
+    padding-bottom: 1rem;
+  }
+
+  .card-heading {
+    font-size: 1.35rem;
+  }
+
+  .form-fieldset {
+    padding: 1rem 0.75rem;
+    gap: 1rem;
+  }
+
+  .form-actions-strip {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .save-buttons-group {
+    flex-direction: column;
+    width: 100%;
+    gap: 0.65rem;
+  }
+
+  .draft-btn,
+  .publish-request-btn,
+  .cancel-btn {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+    box-sizing: border-box;
+    padding: 0.85rem 1rem;
+  }
+}

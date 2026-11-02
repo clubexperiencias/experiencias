@@ -168,8 +168,8 @@ CREATE TABLE IF NOT EXISTS public.pagos_transferencias (
   receipt_size_bytes       INTEGER NOT NULL CHECK (receipt_size_bytes > 0),
   receipt_url              TEXT NOT NULL,
   receipt_storage_key      TEXT,
-  receipt_storage_provider TEXT NOT NULL DEFAULT 'r2'
-                           CHECK (receipt_storage_provider IN ('r2', 'supabase', 'local')),
+  receipt_storage_provider TEXT NOT NULL DEFAULT 'supabase'
+                           CHECK (receipt_storage_provider IN ('supabase', 'local')),
   status                   TEXT NOT NULL DEFAULT 'pendiente'
                            CHECK (status IN ('pendiente', 'aprobado', 'rechazado')),
   rejection_reason         TEXT,
@@ -259,7 +259,7 @@ CREATE OR REPLACE FUNCTION public.submit_experience_transfer(
   p_receipt_size_bytes INTEGER DEFAULT 1,
   p_receipt_url TEXT DEFAULT '',
   p_receipt_storage_key TEXT DEFAULT NULL,
-  p_receipt_storage_provider TEXT DEFAULT 'r2'
+  p_receipt_storage_provider TEXT DEFAULT 'supabase'
 )
 RETURNS JSONB
 LANGUAGE plpgsql

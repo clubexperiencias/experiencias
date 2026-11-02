@@ -247,7 +247,7 @@ function templatePaymentSubmittedAdmin(sub) {
       </tr>
       ${sub.receiptUrl ? `
       <tr>
-        <td class="data-label">Comprobante R2</td>
+        <td class="data-label">Comprobante de Pago</td>
         <td class="data-value"><a href="${sub.receiptUrl}" target="_blank" style="color: #ffcc00; text-decoration: underline;">Abrir archivo adjunto</a></td>
       </tr>` : ''}
     </table>

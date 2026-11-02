@@ -287,6 +287,12 @@ export class ExperiencePaymentComponent implements OnInit {
     const result = await this.newsletter.signInWithGoogle(redirectTo);
     if (!result.success) {
       this.authError.set(result.message);
+    } else {
+      const member = await this.newsletter.getAuthenticatedMember();
+      this.checkoutMember.set(member);
+      if (member) {
+        this.triggerAuthSuccessFeedback();
+      }
     }
   }
 

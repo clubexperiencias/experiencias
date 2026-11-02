@@ -349,7 +349,7 @@ export interface Database {
       };
 
       /**
-       * Tabla 6: Pagos por Transferencia & Comprobantes en Cloudflare R2
+       * Tabla 6: Pagos por Transferencia & Comprobantes en Supabase Storage
        */
       pagos_transferencias: {
         Row: {
@@ -372,7 +372,7 @@ export interface Database {
           receipt_size_bytes: number;
           receipt_url: string;
           receipt_storage_key: string | null;
-          receipt_storage_provider: 'r2' | 'supabase' | 'local';
+          receipt_storage_provider: 'supabase' | 'local' | string;
           status: 'pendiente' | 'aprobado' | 'rechazado';
           rejection_reason: string | null;
           submitted_at: string;
@@ -399,7 +399,7 @@ export interface Database {
           receipt_size_bytes: number;
           receipt_url: string;
           receipt_storage_key?: string | null;
-          receipt_storage_provider?: 'r2' | 'supabase' | 'local';
+          receipt_storage_provider?: 'supabase' | 'local' | string;
           status?: 'pendiente' | 'aprobado' | 'rechazado';
           rejection_reason?: string | null;
           submitted_at?: string;

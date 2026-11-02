@@ -85,8 +85,6 @@ export const KAYAK_DEFAULT_EXPERIENCE: Experience = {
   priceArs: 65000,
   priceUsd: 70,
   maxSpotsPerGroup: 12,
-  rating: 4.95,
-  reviewsCount: 62,
   coverImage: KAYAK_IMAGE,
   galleryImages: [KAYAK_IMAGE],
   albumPhotos: KAYAK_ALBUM_PHOTOS,
@@ -163,8 +161,6 @@ export const POMEZ_DEFAULT_EXPERIENCE: Experience = {
   priceArs: 145000,
   priceUsd: 155,
   maxSpotsPerGroup: 8,
-  rating: 4.98,
-  reviewsCount: 38,
   coverImage: '/assets/images/catamarca_pomez.jpg',
   galleryImages: [
     '/assets/images/catamarca_pomez.jpg',
@@ -243,8 +239,6 @@ export const SEISMILES_DEFAULT_EXPERIENCE: Experience = {
   priceArs: 160000,
   priceUsd: 170,
   maxSpotsPerGroup: 10,
-  rating: 4.96,
-  reviewsCount: 44,
   coverImage: '/assets/images/laguna-verde.jpg',
   galleryImages: [
     '/assets/images/laguna-verde.jpg',
@@ -633,8 +627,6 @@ export class ExperienceService {
             priceArs: exp.price_ars,
             priceUsd: exp.price_usd ?? 70,
             maxSpotsPerGroup: exp.capacity_per_date || 12,
-            rating: isKayak ? 4.95 : 0,
-            reviewsCount: isKayak ? 62 : 0,
             coverImage: image,
             galleryImages: [image],
             albumPhotos:

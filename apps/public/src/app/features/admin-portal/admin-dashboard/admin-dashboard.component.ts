@@ -1119,6 +1119,9 @@ import { ExperienceService } from '../../../core/services/experience.service';
       }
 
       @media (max-width: 768px) {
+        .welcome-card {
+          padding: 1.25rem 1rem;
+        }
         .welcome-main {
           gap: 1rem;
         }
@@ -1143,6 +1146,29 @@ import { ExperienceService } from '../../../core/services/experience.service';
         }
         .metric-hint {
           font-size: 0.62rem;
+        }
+        .card-head {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 0.5rem;
+        }
+        .head-actions {
+          width: 100%;
+          justify-content: flex-start;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .welcome-main {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 0.75rem;
+        }
+        .welcome-name {
+          font-size: 1.35rem;
+        }
+        .metrics-grid {
+          grid-template-columns: 1fr !important;
         }
       }
 

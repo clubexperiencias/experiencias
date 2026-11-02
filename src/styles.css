@@ -90,7 +90,15 @@ button {
   color: inherit;
 }
 
-input {
+input,
+textarea,
+select {
+  font-family: inherit;
+}
+
+::placeholder,
+input::placeholder,
+textarea::placeholder {
   font-family: inherit;
 }
 

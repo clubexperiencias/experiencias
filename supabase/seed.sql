@@ -419,7 +419,7 @@ BEGIN
       245000,
       'https://cdn.catamarcasecreta.com/comprobantes/EXP-KAYAK-2026-001.pdf',
       'comprobantes/EXP-KAYAK-2026-001.pdf',
-      'r2',
+      'supabase',
       'aprobado',
       now() - INTERVAL '2 days',
       now() - INTERVAL '1 day'
@@ -441,7 +441,7 @@ BEGIN
       512000,
       'https://cdn.catamarcasecreta.com/comprobantes/EXP-KAYAK-2026-002.jpg',
       'comprobantes/EXP-KAYAK-2026-002.jpg',
-      'r2',
+      'supabase',
       'aprobado',
       now() - INTERVAL '1 day',
       now() - INTERVAL '4 hours'
@@ -463,7 +463,7 @@ BEGIN
       410000,
       'https://cdn.catamarcasecreta.com/comprobantes/EXP-KAYAK-2026-003.png',
       'comprobantes/EXP-KAYAK-2026-003.png',
-      'r2',
+      'supabase',
       'pendiente',
       now() - INTERVAL '3 hours',
       NULL
@@ -485,7 +485,7 @@ BEGIN
       198000,
       'https://cdn.catamarcasecreta.com/comprobantes/EXP-POMEZ-2026-001.pdf',
       'comprobantes/EXP-POMEZ-2026-001.pdf',
-      'r2',
+      'supabase',
       'pendiente',
       now() - INTERVAL '1 hour',
       NULL
@@ -507,7 +507,7 @@ BEGIN
       120000,
       'https://cdn.catamarcasecreta.com/comprobantes/EXP-POMEZ-2026-002.jpg',
       'comprobantes/EXP-POMEZ-2026-002.jpg',
-      'r2',
+      'supabase',
       'rechazado',
       now() - INTERVAL '3 days',
       now() - INTERVAL '2 days'

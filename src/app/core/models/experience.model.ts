@@ -26,8 +26,6 @@ export interface Experience {
   priceArs: number;
   priceUsd: number;
   maxSpotsPerGroup: number;
-  rating: number;
-  reviewsCount: number;
   coverImage: string;
   galleryImages: string[];
   albumPhotos?: ExperienceAlbumPhoto[];

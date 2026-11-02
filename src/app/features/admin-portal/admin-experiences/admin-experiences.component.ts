@@ -1373,8 +1373,6 @@ export class AdminExperiencesComponent {
       priceArs: 75000,
       priceUsd: 80,
       maxSpotsPerGroup: 10,
-      rating: 0,
-      reviewsCount: 0,
       coverImage: '/assets/images/kayak-club-de-experiencias.jpg',
       galleryImages: ['/assets/images/kayak-club-de-experiencias.jpg'],
       highlights: [],
@@ -1483,8 +1481,6 @@ export class AdminExperiencesComponent {
         const fullNewExp: Experience = {
           ...payload,
           durationDays: 1,
-          rating: 0,
-          reviewsCount: 0,
           galleryImages: [payload.coverImage!],
           isExclusiveClub: true,
           isLocked: false,

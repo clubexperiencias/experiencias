@@ -2,8 +2,6 @@ import { Injectable, inject, signal } from '@angular/core';
 import {
   ActivityRecord,
   PaymentReceipt,
-  CommunityPhoto,
-  ActivityReview,
 } from '../models/activity-history.model';
 import { SUPABASE_CLIENT, isSupabaseConfigured } from '../supabase/supabase.client';
 
@@ -111,7 +109,6 @@ export class ActivityHistoryService {
           },
           memoriesCount: 0,
           memoryPhotos: [],
-          reviews: [],
         } satisfies ActivityRecord;
       }),
     );
@@ -150,79 +147,6 @@ export class ActivityHistoryService {
     return `${firstName} ${lastInitial}.`;
   }
 
-  /**
-   * Agrega fotos subidas por el usuario a la galería comunitaria (máx 3)
-   */
-  uploadCommunityPhotos(
-    slug: string,
-    photos: { url: string; caption?: string }[],
-    authorSignature: string,
-  ): boolean {
-    const list = this._activities();
-    const index = list.findIndex((a) => a.slug === slug || a.id === slug);
-    if (index === -1) return false;
-
-    const activity = list[index];
-    const newPhotos: CommunityPhoto[] = photos.slice(0, 3).map((p, i) => ({
-      id: `photo_user_${Date.now()}_${i}`,
-      url: p.url,
-      caption: p.caption || `Foto de travesía subida por ${authorSignature}`,
-      uploadedBy: authorSignature,
-      uploadedAt: new Date().toLocaleDateString('es-AR'),
-    }));
-
-    const updatedActivity: ActivityRecord = {
-      ...activity,
-      communityPhotos: [...newPhotos, ...(activity.communityPhotos || [])],
-      memoriesCount: (activity.memoriesCount || 0) + newPhotos.length,
-    };
-
-    const updatedList = [...list];
-    updatedList[index] = updatedActivity;
-    this.saveActivities(updatedList);
-    return true;
-  }
-
-  /**
-   * Agrega una reseña y votación de 1 a 5 estrellas firmada
-   */
-  addReview(
-    slug: string,
-    review: { rating: number; comment: string; authorSignature: string },
-  ): boolean {
-    const list = this._activities();
-    const index = list.findIndex((a) => a.slug === slug || a.id === slug);
-    if (index === -1) return false;
-
-    const activity = list[index];
-    const newReview: ActivityReview = {
-      id: `rev_${Date.now()}`,
-      authorSignature: review.authorSignature,
-      rating: Math.min(5, Math.max(1, review.rating)),
-      comment: review.comment.trim(),
-      createdAt: new Date().toLocaleDateString('es-AR', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-      }),
-    };
-
-    const updatedActivity: ActivityRecord = {
-      ...activity,
-      reviews: [newReview, ...(activity.reviews || [])],
-      userReview: {
-        rating: newReview.rating,
-        comment: newReview.comment,
-        authorSignature: newReview.authorSignature,
-      },
-    };
-
-    const updatedList = [...list];
-    updatedList[index] = updatedActivity;
-    this.saveActivities(updatedList);
-    return true;
-  }
-
   private saveActivities(list: ActivityRecord[]): void {
     this._activities.set(list);
   }
@@ -240,8 +164,6 @@ export class ActivityHistoryService {
     const completeRecord: ActivityRecord = {
       ...record,
       slug,
-      communityPhotos: record.communityPhotos || [],
-      reviews: record.reviews || [],
     };
     const updated = [completeRecord, ...this._activities()];
     this.saveActivities(updated);

@@ -13,7 +13,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule, NgForm } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { ProviderStoreService } from '../../../core/services/provider-store.service';
-import { CloudflareR2Service } from '../../../core/services/cloudflare-r2.service';
+import { StorageService } from '../../../core/services/storage.service';
 
 const DEFAULT_REQ_FORM = {
   title: '',
@@ -807,7 +807,13 @@ const DEFAULT_REQ_FORM = {
         padding: 0.55rem 0.85rem;
         color: #ffffff;
         font-size: 0.85rem;
+        font-family: inherit;
         box-sizing: border-box;
+      }
+      .form-input::placeholder,
+      .form-textarea::placeholder {
+        font-family: inherit;
+        color: rgba(255, 255, 255, 0.42);
       }
       .form-input:focus {
         outline: none;
@@ -1116,7 +1122,7 @@ const DEFAULT_REQ_FORM = {
 })
 export class ProviderExperienceProposalModalComponent {
   private readonly store = inject(ProviderStoreService);
-  private readonly r2Service = inject(CloudflareR2Service);
+  private readonly storageService = inject(StorageService);
 
   readonly isOpen = input<boolean>(false);
   readonly closeModal = output<void>();
@@ -1362,7 +1368,7 @@ export class ProviderExperienceProposalModalComponent {
 
     if (coverFile) {
       try {
-        const uploadRes = await this.r2Service.uploadFile(coverFile, 'PROPOSAL');
+        const uploadRes = await this.storageService.uploadFile(coverFile, 'PROPOSAL');
         if (uploadRes?.url) {
           coverImageUrl = uploadRes.url;
         }
@@ -1375,7 +1381,7 @@ export class ProviderExperienceProposalModalComponent {
     const videoFile = this.coverVideoFile();
     if (videoFile) {
       try {
-        const uploadRes = await this.r2Service.uploadFile(videoFile, 'VIDEO');
+        const uploadRes = await this.storageService.uploadFile(videoFile, 'VIDEO');
         if (uploadRes?.url) {
           coverVideoUrl = uploadRes.url;
         }

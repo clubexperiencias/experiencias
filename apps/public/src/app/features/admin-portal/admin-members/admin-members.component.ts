@@ -507,6 +507,23 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
         }
       }
 
+      @media (max-width: 768px) {
+        .admin-page-header {
+          flex-direction: column;
+          gap: 1rem;
+          align-items: stretch;
+        }
+        .header-actions {
+          width: 100%;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .summary-strip {
+          grid-template-columns: 1fr !important;
+        }
+      }
+
       .summary-item {
         background: rgba(26, 14, 8, 0.78);
         border: 1px solid rgba(255, 95, 0, 0.35);

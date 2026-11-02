@@ -60,8 +60,6 @@ describe('ExperienceService', () => {
       priceArs: 10000,
       priceUsd: 10,
       maxSpotsPerGroup: 10,
-      rating: 5,
-      reviewsCount: 1,
       coverImage: '/img.jpg',
       galleryImages: [],
       highlights: [],

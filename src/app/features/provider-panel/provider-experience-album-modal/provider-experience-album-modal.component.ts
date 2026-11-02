@@ -15,7 +15,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { ProviderStoreService } from '../../../core/services/provider-store.service';
-import { CloudflareR2Service } from '../../../core/services/cloudflare-r2.service';
+import { StorageService } from '../../../core/services/storage.service';
 import { ProviderExperience } from '../../../core/models/bank-transfer.model';
 import { ExperienceAlbumPhoto } from '../../../core/models/experience.model';
 
@@ -28,7 +28,7 @@ import { ExperienceAlbumPhoto } from '../../../core/models/experience.model';
 })
 export class ProviderExperienceAlbumModalComponent {
   readonly store = inject(ProviderStoreService);
-  readonly r2Service = inject(CloudflareR2Service);
+  readonly storageService = inject(StorageService);
   readonly router = inject(Router);
 
   readonly isOpen = input<boolean>(false);
@@ -282,7 +282,7 @@ export class ProviderExperienceAlbumModalComponent {
       }
 
       try {
-        const uploadRes = await this.r2Service.uploadFile(file, 'ALBUM');
+        const uploadRes = await this.storageService.uploadFile(file, 'ALBUM');
         const currentTotal = this.photos().length;
         if (currentTotal >= 12) break;
 

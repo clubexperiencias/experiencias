@@ -18,7 +18,7 @@ import { TransactionalEmailService } from './transactional-email.service';
 import { NewsletterService } from './newsletter.service';
 import { ActivityHistoryService } from './activity-history.service';
 import { ExperienceService, KAYAK_ALBUM_PHOTOS } from './experience.service';
-import { CloudflareR2Service } from './cloudflare-r2.service';
+import { StorageService } from './storage.service';
 import { SUPABASE_CLIENT, isSupabaseConfigured } from '../supabase/supabase.client';
 
 const PROVIDER_CONTACT_EMAIL = 'prestadores@experiencias.club';
@@ -164,8 +164,6 @@ export function mapLiveExperienceToProvider(live: Experience): ProviderExperienc
     notIncluded: live.notIncluded,
     altitudeMeters: live.altitudeMeters,
     bestSeason: live.bestSeason,
-    rating: live.rating,
-    reviewsCount: live.reviewsCount,
     detailRoute: live.detailRoute,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -373,7 +371,7 @@ export class ProviderStoreService {
   private readonly activities = inject(ActivityHistoryService);
   private readonly expService = inject(ExperienceService);
   private readonly supabase = inject(SUPABASE_CLIENT);
-  private readonly r2Service = inject(CloudflareR2Service);
+  private readonly storageService = inject(StorageService);
 
   private readonly _providers = signal<ProviderUser[]>(this.loadStoredProviders());
   private readonly _currentProvider = signal<ProviderUser | null>(
@@ -837,6 +835,24 @@ export class ProviderStoreService {
     return updatedExperience;
   }
 
+  addDateToExperience(experienceId: string, date: string): boolean {
+    const exp = this.getExperienceById(experienceId);
+    if (!exp) return false;
+    const currentDates = exp.dates || [];
+    if (currentDates.includes(date)) return false;
+    const newDates = [...currentDates, date].sort();
+    this.updateExperience(experienceId, { dates: newDates });
+    return true;
+  }
+
+  removeDateFromExperience(experienceId: string, date: string): boolean {
+    const exp = this.getExperienceById(experienceId);
+    if (!exp) return false;
+    const newDates = (exp.dates || []).filter((d) => d !== date);
+    this.updateExperience(experienceId, { dates: newDates });
+    return true;
+  }
+
   getExperienceAlbum(experienceId: string): ExperienceAlbumPhoto[] {
     const exp = this.getExperienceById(experienceId);
     return exp?.albumPhotos ? [...exp.albumPhotos] : [];
@@ -1105,15 +1121,15 @@ export class ProviderStoreService {
 
     let receiptUrl = '';
     let storageKey: string | undefined;
-    let storageProvider: 'r2' | 'supabase' | 'local' = 'r2';
+    let storageProvider: 'supabase' | 'local' = 'supabase';
 
     try {
-      const uploadRes = await this.r2Service.uploadReceipt(input.receiptFile, ref);
+      const uploadRes = await this.storageService.uploadReceipt(input.receiptFile, ref);
       receiptUrl = uploadRes.url;
       storageKey = uploadRes.storageKey;
       storageProvider = uploadRes.provider;
     } catch (uploadErr) {
-      console.warn('[ProviderStore] Error al subir comprobante a Cloudflare R2 / Storage:', uploadErr);
+      console.warn('[ProviderStore] Error al subir comprobante a Supabase Storage:', uploadErr);
     }
 
     if (isSupabaseConfigured()) {
@@ -1448,8 +1464,6 @@ export class ProviderStoreService {
       highlights: [],
       included: req.includedServices ? req.includedServices.split('\n').filter(Boolean) : [],
       notIncluded: [],
-      rating: 5.0,
-      reviewsCount: 1,
     };
 
     try {

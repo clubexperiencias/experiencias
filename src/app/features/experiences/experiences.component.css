@@ -432,37 +432,6 @@
   flex-direction: column;
 }
 
-.exp-rating {
-  font-size: 0.82rem;
-  color: #ffffff;
-  font-weight: 600;
-  margin-bottom: 0.4rem;
-}
-
-.exp-rating.rating-uncalculated {
-  color: #ffcc00 !important;
-  font-weight: 600;
-}
-
-.exp-rating.rating-link-yellow {
-  color: #ffd42a !important;
-  text-decoration: none;
-  display: inline-block;
-  cursor: pointer;
-  transition: opacity 0.2s ease;
-}
-
-.exp-rating.rating-link-yellow:hover {
-  text-decoration: underline;
-  opacity: 0.85;
-}
-
-.exp-rating .reviews {
-  font-size: 0.75rem;
-  color: var(--color-text-soft);
-  font-weight: normal;
-}
-
 .exp-title {
   font-family: var(--font-serif);
   font-size: 1.4rem;
