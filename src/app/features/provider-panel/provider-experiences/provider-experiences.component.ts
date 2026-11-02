@@ -231,10 +231,7 @@ export class ProviderExperiencesComponent implements OnInit {
   }
 
   refresh(): void {
-    // Los datos son reactivos en memoria; forzar re-render actualizando la búsqueda
-    const q = this.searchQuery();
-    this.searchQuery.set(q + ' ');
-    setTimeout(() => this.searchQuery.set(q), 0);
+    this.store.reloadFromStorage();
   }
 
   downloadCatalog(): void {

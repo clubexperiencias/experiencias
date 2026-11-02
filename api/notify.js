@@ -77,7 +77,18 @@ function sendEmailViaResend({ apiKey, from, to, subject, html }) {
 // Plantillas HTML para Emails (Ultra Minimalistas • Brand Color #ffcc00)
 // -----------------------------------------------------------------------------
 
+function escapeHtml(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function renderBaseLayout(contentHtml, preheaderText = '') {
+  const safePreheader = escapeHtml(preheaderText);
   return `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -115,7 +126,7 @@ function renderBaseLayout(contentHtml, preheaderText = '') {
 </head>
 <body>
   <div style="display:none;font-size:1px;color:#333;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
-    ${preheaderText}
+    ${safePreheader}
   </div>
   <div class="email-wrapper">
     <div class="email-container">
@@ -138,16 +149,17 @@ function renderBaseLayout(contentHtml, preheaderText = '') {
 
 // 1. Template: Comprobante Recibido (Para el Usuario)
 function templatePaymentSubmittedUser(sub) {
+  const fullName = sub.fullName ? escapeHtml(sub.fullName) : 'Explorador';
   const content = `
     <h2 class="card-title">Comprobante de pago recibido</h2>
     <p class="card-lead">
-      Hola <strong>${sub.fullName || 'Explorador'}</strong>, registramos tu comprobante de transferencia bancaria para <strong>${sub.experienceTitle}</strong>.
+      Hola <strong>${fullName}</strong>, registramos tu comprobante de transferencia bancaria para <strong>${escapeHtml(sub.experienceTitle)}</strong>.
       Tus cupos se encuentran pre-reservados mientras el prestador oficial valida la acreditación.
     </p>
 
     <div class="voucher-box">
       <span class="voucher-tag">CÓDIGO DE RESERVA PROVISORIO</span>
-      <div class="voucher-code">${sub.reference}</div>
+      <div class="voucher-code">${escapeHtml(sub.reference)}</div>
       <div style="font-size: 13px; color: rgba(255,255,255,0.7); margin-top: 6px;">
         Conservá este código para consultar el estado de tu expedición.
       </div>
@@ -156,15 +168,15 @@ function templatePaymentSubmittedUser(sub) {
     <table class="data-table">
       <tr>
         <td class="data-label">Experiencia</td>
-        <td class="data-value">${sub.experienceTitle}</td>
+        <td class="data-value">${escapeHtml(sub.experienceTitle)}</td>
       </tr>
       <tr>
         <td class="data-label">Fecha Programada</td>
-        <td class="data-value">${sub.date}</td>
+        <td class="data-value">${escapeHtml(sub.date)}</td>
       </tr>
       <tr>
         <td class="data-label">Pasajeros</td>
-        <td class="data-value">${sub.participants} persona(s)</td>
+        <td class="data-value">${escapeHtml(sub.participants)} persona(s)</td>
       </tr>
       <tr>
         <td class="data-label">Monto Transferido</td>
@@ -328,18 +340,22 @@ function templatePaymentRejectedUser(sub) {
 
 // 5. Template: Bienvenida a Nuevo Socio Emergente
 function templateWelcomeMember(member) {
+  const fullName = member.fullName ? escapeHtml(member.fullName) : 'Explorador';
+  const position = member.position ? escapeHtml(member.position) : 100;
+  const tier = escapeHtml(String(member.tier || 'Emergente').toUpperCase());
+
   const content = `
     <h2 class="card-title">¡Te damos la bienvenida al Club! 🏔️</h2>
     <p class="card-lead">
-      Hola <strong>${member.fullName || 'Explorador'}</strong>, tu membresía oficial en <strong>EXPERIENCIAS.CLUB</strong> ha sido dada de alta con éxito.
+      Hola <strong>${fullName}</strong>, tu membresía oficial en <strong>EXPERIENCIAS.CLUB</strong> ha sido dada de alta con éxito.
       Ya formás parte de la comunidad andina de exploradores de Catamarca.
     </p>
 
     <div class="voucher-box">
       <span class="voucher-tag">CREDENCIAL DIGITAL OFICIAL</span>
-      <div class="voucher-code">SOCIO #${member.position || 100}</div>
+      <div class="voucher-code">SOCIO #${position}</div>
       <div style="font-size: 13px; color: rgba(255,255,255,0.75); margin-top: 6px;">
-        Categoría: <strong style="color: #ffcc00;">${String(member.tier || 'Emergente').toUpperCase()}</strong>
+        Categoría: <strong style="color: #ffcc00;">${tier}</strong>
       </div>
     </div>
 
@@ -367,17 +383,22 @@ function templateWelcomeMember(member) {
 
 // 6. Template: Aviso de Socio Ya Registrado (Para el Usuario)
 function templateAlreadyRegisteredUser(data) {
+  const fullName = data.fullName ? escapeHtml(data.fullName) : 'Explorador';
+  const email = escapeHtml(data.email || '');
+  const position = data.position ? escapeHtml(data.position) : '';
+  const tier = data.tier ? escapeHtml(String(data.tier).toUpperCase()) : '';
+
   const content = `
     <h2 class="card-title">Ya formás parte del Club</h2>
     <p class="card-lead">
-      Hola <strong>${data.fullName || 'Explorador'}</strong>, notamos que ingresaste tus datos para registrarte, pero tu correo (<strong>${data.email}</strong>) ya cuenta con una <strong>membresía activa</strong> en <strong>EXPERIENCIAS.CLUB</strong>.
+      Hola <strong>${fullName}</strong>, notamos que ingresaste tus datos para registrarte, pero tu correo (<strong>${email}</strong>) ya cuenta con una <strong>membresía activa</strong> en <strong>EXPERIENCIAS.CLUB</strong>.
     </p>
 
     <div class="voucher-box">
       <span class="voucher-tag">ESTADO DE CUENTA</span>
-      <div class="voucher-code">${data.position ? `SOCIO #${data.position}` : 'MEMBRESÍA ACTIVA'}</div>
+      <div class="voucher-code">${position ? `SOCIO #${position}` : 'MEMBRESÍA ACTIVA'}</div>
       <div style="font-size: 13px; color: rgba(255,255,255,0.75); margin-top: 6px;">
-        ${data.tier ? `Categoría: <strong style="color: #ffcc00;">${String(data.tier).toUpperCase()}</strong> · ` : ''}No necesitás registrarte de nuevo.
+        ${tier ? `Categoría: <strong style="color: #ffcc00;">${tier}</strong> · ` : ''}No necesitás registrarte de nuevo.
       </div>
     </div>
 

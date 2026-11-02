@@ -1,4 +1,5 @@
 import { Component, HostListener, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { filter } from 'rxjs';
@@ -29,7 +30,7 @@ const ROUTE_LABELS: Record<string, string> = {
         <!-- Barra Superior Unificada idéntica al Login -->
         <header class="portal-top-nav">
           <div class="nav-brand-col">
-            <a routerLink="/dashboard" class="brand-link" title="Panel de Prestadores">
+            <a [routerLink]="dashboardLink()" class="brand-link" title="Panel de Prestadores">
               <img
                 src="/assets/aistudio/logo-prestadores-experiencias_9372e925.png"
                 alt="Emblema Prestadores"
@@ -69,7 +70,7 @@ const ROUTE_LABELS: Record<string, string> = {
                 <!-- Opciones de Navegación del Menú Agrandadas -->
                 <div class="dropdown-nav-list">
                   <a
-                    routerLink="/dashboard"
+                    [routerLink]="dashboardLink()"
                     class="dropdown-item enlarged-item"
                     (click)="userMenuOpen.set(false)"
                   >
@@ -80,7 +81,7 @@ const ROUTE_LABELS: Record<string, string> = {
                   </a>
 
                   <a
-                    routerLink="/experiencias"
+                    [routerLink]="experiencesLink()"
                     class="dropdown-item enlarged-item"
                     (click)="userMenuOpen.set(false)"
                   >
@@ -91,7 +92,7 @@ const ROUTE_LABELS: Record<string, string> = {
                   </a>
 
                   <a
-                    routerLink="/socios"
+                    [routerLink]="membersLink()"
                     class="dropdown-item enlarged-item"
                     (click)="userMenuOpen.set(false)"
                   >
@@ -122,7 +123,7 @@ const ROUTE_LABELS: Record<string, string> = {
         <!-- Breadcrumb Bar con Fondo Temático Azul/Cyan #80b3ff -->
         <nav class="portal-breadcrumb-bar" aria-label="Ruta de navegación">
           <div class="breadcrumb-inner">
-            <a href="https://experiencias.club" class="bc-link">EXPERIENCIAS.CLUB</a>
+            <a href="https://experiencias.club" target="_blank" rel="noopener noreferrer" class="bc-link">EXPERIENCIAS.CLUB</a>
             <span class="bc-sep">/</span>
             @if (breadcrumbs().length === 0) {
               <span class="bc-current" aria-current="page">PRESTADORES</span>
@@ -195,11 +196,12 @@ export class ProviderPanelComponent {
   readonly userMenuOpen = signal(false);
   readonly currentUrl = signal(this.router.url);
 
-  readonly dashboardLink = computed(() =>
-    this.currentUrl().includes('/prestadores/panel')
-      ? '/prestadores/panel/dashboard'
-      : '/dashboard',
+  readonly basePath = computed(() =>
+    this.currentUrl().includes('/prestadores/panel') ? '/prestadores/panel' : '',
   );
+  readonly dashboardLink = computed(() => `${this.basePath()}/dashboard`);
+  readonly experiencesLink = computed(() => `${this.basePath()}/experiencias`);
+  readonly membersLink = computed(() => `${this.basePath()}/socios`);
 
   readonly breadcrumbs = computed<{ label: string; link?: string }[]>(() => {
     const rawPath = this.currentUrl().split('?')[0].split('#')[0];
@@ -254,7 +256,10 @@ export class ProviderPanelComponent {
     void this.store.restoreSupabaseSession();
 
     this.router.events
-      .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
+      .pipe(
+        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+        takeUntilDestroyed(),
+      )
       .subscribe((event) => {
         this.currentUrl.set(event.urlAfterRedirects || event.url);
       });

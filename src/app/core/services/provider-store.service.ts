@@ -470,6 +470,13 @@ export class ProviderStoreService {
     };
   });
 
+  reloadFromStorage(): void {
+    this._experiences.set(this.loadStoredExperiences());
+    this._submissions.set(this.loadStoredSubmissions());
+    this._experienceRequests.set(this.loadStoredRequests());
+    this._providers.set(this.loadStoredProviders());
+  }
+
   async restoreSupabaseSession(): Promise<void> {
     if (!isSupabaseConfigured()) {
       const first = this._providers()[0] || SEED_PROVIDERS[0];

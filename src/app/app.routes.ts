@@ -27,7 +27,7 @@ const isAdminHost =
 const isProviderHost =
   host.startsWith('prestadores.') ||
   host.includes('prestadores.experiencias') ||
-  (isLocalHost && (search.includes('portal=prestador') || search.includes('portal=true') || storedPortal === 'prestador'));
+  (isLocalHost && (search.includes('portal=prestador') || search.includes('prestador=true') || storedPortal === 'prestador'));
 
 // ══════════════════════════════════════════════════════════════════════
 // 1. Rutas exclusivas de administración central (admin.experiencias.club)

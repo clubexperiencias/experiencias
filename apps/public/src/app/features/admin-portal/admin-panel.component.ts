@@ -145,7 +145,7 @@ const ROUTE_LABELS: Record<string, string> = {
         <!-- Breadcrumb Bar con Fondo Temático Naranja #ff5f00 -->
         <nav class="portal-breadcrumb-bar" aria-label="Ruta de navegación">
           <div class="breadcrumb-inner">
-            <a href="https://experiencias.club" class="bc-link">EXPERIENCIAS.CLUB</a>
+            <a href="https://experiencias.club" target="_blank" rel="noopener noreferrer" class="bc-link">EXPERIENCIAS.CLUB</a>
             <span class="bc-sep">/</span>
             @if (breadcrumbs().length === 0) {
               <span class="bc-current" aria-current="page">ADMINISTRACIÓN</span>

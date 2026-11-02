@@ -433,7 +433,7 @@ import { ExperienceService } from '../../../core/services/experience.service';
                     </td>
                     <td>
                       <a
-                        [href]="exp.detailRoute || '/experiencias/' + exp.slug"
+                        [href]="getPublicExperienceUrl(exp)"
                         target="_blank"
                         rel="noopener noreferrer"
                         class="route-link-cell"
@@ -2700,5 +2700,13 @@ export class AdminDashboardComponent {
       'Comprobante observado por el administrador.',
     );
     this.closeReceipt();
+  }
+
+  getPublicExperienceUrl(exp: { publicUrl?: string; slug?: string; detailRoute?: string }): string {
+    if (exp.publicUrl && exp.publicUrl.trim().length > 0) {
+      return exp.publicUrl.trim();
+    }
+    const route = exp.detailRoute || `/experiencias/${exp.slug || ''}`;
+    return `https://experiencias.club${route.startsWith('/') ? '' : '/'}${route}`;
   }
 }

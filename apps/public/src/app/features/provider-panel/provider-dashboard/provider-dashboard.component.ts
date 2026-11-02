@@ -100,7 +100,7 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
       <section class="dash-card full-width-card active-experiences-section">
         <div class="card-head">
           <h2 class="card-title">Experiencias Activas</h2>
-          <a routerLink="/experiencias" class="view-all-link" title="Ver todas tus experiencias">
+          <a routerLink="../experiencias" class="view-all-link" title="Ver todas tus experiencias">
             <span>Ver todas tus experiencias</span>
           </a>
         </div>
@@ -200,7 +200,7 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
       <section class="dash-card full-width-card finanzas-section">
         <div class="card-head">
           <h2 class="card-title">Últimos Pagos de Socios del Club</h2>
-          <a routerLink="/socios" class="view-all-link" title="Ver todos los socios inscriptos">
+          <a routerLink="../socios" class="view-all-link" title="Ver todos los socios inscriptos">
             <span>Ver todos los socios inscriptos</span>
           </a>
         </div>
@@ -292,7 +292,7 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
         <div class="card-head">
           <h2 class="card-title">Postulaciones de Experiencias Más Recientes</h2>
           <a
-            routerLink="/experiencias"
+            routerLink="../experiencias"
             [queryParams]="{ tab: 'solicitudes' }"
             class="view-all-link"
             title="Ver todas las postulaciones"

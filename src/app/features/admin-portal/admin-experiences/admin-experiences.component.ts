@@ -80,7 +80,7 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                   <td>
                     <div class="route-badge-box">
                       <a
-                        [href]="exp.detailRoute || '/experiencias/' + exp.slug"
+                        [href]="getPublicExperienceUrl(exp)"
                         target="_blank"
                         rel="noopener noreferrer"
                         class="route-badge-link"
@@ -1523,5 +1523,13 @@ export class AdminExperiencesComponent {
   private showToast(msg: string): void {
     this.feedbackToast.set(msg);
     setTimeout(() => this.feedbackToast.set(null), 4500);
+  }
+
+  getPublicExperienceUrl(exp: { publicUrl?: string; slug?: string; detailRoute?: string }): string {
+    if (exp.publicUrl && exp.publicUrl.trim().length > 0) {
+      return exp.publicUrl.trim();
+    }
+    const route = exp.detailRoute || `/experiencias/${exp.slug || ''}`;
+    return `https://experiencias.club${route.startsWith('/') ? '' : '/'}${route}`;
   }
 }

@@ -949,7 +949,7 @@ export class NewsletterService {
 
   async signInWithGoogle(redirectTo?: string): Promise<{ success: boolean; message: string }> {
     if (!this.isSupabaseConnected()) {
-      const demoSocio = this._entries()[0] || {
+      const demoSocio = {
         id: 'socio_founder_demo',
         email: 'gonzagramaglia@gmail.com',
         fullName: 'Gonzalo Gramaglia',
