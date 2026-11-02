@@ -24,8 +24,8 @@ type ApplicationFilterTab =
     <div class="applications-container">
       <div class="applications-header">
         <div>
-          <span class="section-kicker">CONVOCATORIAS, POSTULACIONES & PROPUESTAS</span>
-          <h1 class="card-heading">Postulaciones y Propuestas</h1>
+          <span class="section-kicker">CONVOCATORIAS & PROPUESTAS</span>
+          <h1 class="card-heading">Propuestas y Postulaciones</h1>
           <p class="card-subheading">
             Padrón consolidado de solicitudes recibidas para sumarse como prestadores de servicios
             turísticos, propuestas de nuevas experiencias para el catálogo y aspirantes al cuadro de

@@ -2,12 +2,12 @@ export const environment = {
   production: true,
 
   supabase: {
-    url: 'https://test-dev.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.testkeydev123456789',
+    url: 'https://TU_PROYECTO.supabase.co',
+    anonKey: 'TU_ANON_PUBLIC_KEY',
   },
 
   cloudflare: {
-    r2PublicBaseUrl: 'https://cdn.test.com',
+    r2PublicBaseUrl: 'https://cdn.catamarcasecreta.com',
     r2BucketName: 'experiencias-comprobantes',
   },
 };

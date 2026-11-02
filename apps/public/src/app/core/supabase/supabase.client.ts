@@ -31,10 +31,13 @@ export function isSupabaseConfigured(): boolean {
     Boolean(anonKey) &&
     anonKey.length > 20 &&
     !url.includes('TU_PROYECTO') &&
+    !url.includes('tu-proyecto') &&
     !url.includes('mock.supabase.co') &&
     !url.includes('test.supabase.co') &&
+    !url.includes('test-dev.supabase.co') &&
     !url.includes('placeholder-project.supabase.co') &&
     !anonKey.includes('TU_ANON_PUBLIC_KEY') &&
+    !anonKey.includes('testkeydev') &&
     anonKey !== 'eyTest'
   );
 }

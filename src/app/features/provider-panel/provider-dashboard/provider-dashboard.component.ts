@@ -2,7 +2,7 @@ import { Component, HostListener, OnInit, computed, inject, signal } from '@angu
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
-import { ProviderStoreService } from '../../../core/services/provider-store.service';
+import { ProviderStoreService, ExperienceProposalRequest } from '../../../core/services/provider-store.service';
 import { TransferSubmission } from '../../../core/models/bank-transfer.model';
 import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
 import { ProviderExperienceProposalModalComponent } from '../provider-experience-proposal-modal/provider-experience-proposal-modal.component';
@@ -99,10 +99,7 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
       <!-- Experiencias Activas - Box de ancho completo que ocupa las dos columnas -->
       <section class="dash-card full-width-card active-experiences-section">
         <div class="card-head">
-          <div>
-            <span class="card-kicker">CATÁLOGO ACTIVO</span>
-            <h2 class="card-title">Experiencias Activas</h2>
-          </div>
+          <h2 class="card-title">Experiencias Activas</h2>
           <a routerLink="/experiencias" class="view-all-link" title="Ver todas tus experiencias">
             <span>Ver todas tus experiencias</span>
           </a>
@@ -202,10 +199,7 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
       <!-- Finanzas y Conciliación de Pagos - Expanded Full Width Section -->
       <section class="dash-card full-width-card finanzas-section">
         <div class="card-head">
-          <div>
-            <span class="card-kicker">FINANZAS Y RECAUDACIÓN</span>
-            <h2 class="card-title">Últimos Pagos de Socios del Club</h2>
-          </div>
+          <h2 class="card-title">Últimos Pagos de Socios del Club</h2>
           <a routerLink="/socios" class="view-all-link" title="Ver todos los socios inscriptos">
             <span>Ver todos los socios inscriptos</span>
           </a>
@@ -292,6 +286,81 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
           </div>
         }
       </section>
+
+      <!-- Sección 3: Postulaciones de Experiencias Más Recientes -->
+      <section class="dash-card full-width-card">
+        <div class="card-head">
+          <h2 class="card-title">Postulaciones de Experiencias Más Recientes</h2>
+          <a
+            routerLink="/experiencias"
+            [queryParams]="{ tab: 'solicitudes' }"
+            class="view-all-link"
+            title="Ver todas las postulaciones"
+          >
+            <span>Ver todas las postulaciones ({{ store.providerExperienceRequests().length }})</span>
+          </a>
+        </div>
+
+        @if (store.providerExperienceRequests().length === 0) {
+          <p class="empty-text">No tenés postulaciones de nuevas experiencias enviadas todavía.</p>
+        } @else {
+          <div class="fin-table-wrap">
+            <table class="fin-data-table">
+              <thead>
+                <tr>
+                  <th>Experiencia Propuesta</th>
+                  <th>Región</th>
+                  <th>Dificultad</th>
+                  <th class="col-th-amount">Arancel</th>
+                  <th>Fecha</th>
+                  <th class="col-th-action">Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (req of store.providerExperienceRequests().slice(0, 6); track req.id) {
+                  <tr>
+                    <td>
+                      <div class="cell-stack">
+                        <strong class="socio-name">{{ req.title }}</strong>
+                        <span class="cell-sub">{{ req.kicker }}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <span class="exp-title-text">{{ req.region }}</span>
+                    </td>
+                    <td>
+                      <span class="exp-title-text">{{ req.difficulty }}</span>
+                    </td>
+                    <td class="text-right">
+                      <strong class="amount-val">{{ req.priceArs | ars }}</strong>
+                    </td>
+                    <td>
+                      <span class="cell-date">{{ req.createdAt | fecha: 'corta' }}</span>
+                    </td>
+                    <td class="text-right">
+                      <span
+                        class="req-status-pill"
+                        [class.pill-aprobada]="req.status === 'aprobada'"
+                        [class.pill-pendiente]="req.status === 'pendiente'"
+                        [class.pill-rechazada]="req.status === 'rechazada'"
+                      >
+                        {{
+                          req.status === 'aprobada'
+                            ? 'Aprobada'
+                            : req.status === 'rechazada'
+                              ? 'Rechazada'
+                              : 'Pendiente'
+                        }}
+                      </span>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </section>
+
       @if (selectedSubmission(); as sub) {
         <div class="dashboard-modal-backdrop" (click)="closeReceipt()">
           <div
@@ -301,7 +370,11 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
             aria-modal="true"
           >
             <div class="dashboard-receipt-preview">
-              <img [src]="sub.receipt.url" [alt]="'Comprobante de ' + sub.fullName" />
+              @if (sub.receipt?.url) {
+                <img [src]="sub.receipt.url" [alt]="'Comprobante de ' + sub.fullName" />
+              } @else {
+                <div class="dashboard-no-receipt">Sin comprobante adjunto</div>
+              }
             </div>
             <div class="dashboard-receipt-details">
               <div class="dashboard-modal-head">
@@ -322,15 +395,17 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
               @if (sub.status !== 'pendiente') {
                 <p class="dashboard-receipt-status">Pago {{ sub.status }}.</p>
               }
-              <a
-                class="dashboard-receipt-download"
-                [href]="sub.receipt.url"
-                [download]="sub.receipt.fileName"
-                target="_blank"
-                rel="noopener"
-              >
-                DESCARGAR COMPROBANTE
-              </a>
+              @if (sub.receipt?.url) {
+                <a
+                  class="dashboard-receipt-download"
+                  [href]="sub.receipt.url"
+                  [download]="sub.receipt.fileName"
+                  target="_blank"
+                  rel="noopener"
+                >
+                  DESCARGAR COMPROBANTE
+                </a>
+              }
             </div>
           </div>
         </div>
@@ -590,7 +665,7 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
       .card-head {
         display: flex;
         justify-content: space-between;
-        align-items: flex-start;
+        align-items: center;
         margin-bottom: 1.25rem;
       }
       .card-kicker {
@@ -603,7 +678,8 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
         font-size: 1.15rem;
         font-weight: 700;
         color: #ffffff;
-        margin: 0.15rem 0 0 0;
+        margin: 0;
+        line-height: 1.2;
       }
       .card-link {
         font-size: 0.8rem;
@@ -619,6 +695,7 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
         text-decoration: none;
         font-size: 0.82rem;
         font-weight: 700;
+        line-height: 1.2;
         transition: color 0.2s ease;
       }
       .view-all-link:hover {
@@ -1162,6 +1239,32 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
         transform: translateY(-1px);
       }
 
+      /* Postulation Status Pills */
+      .req-status-pill {
+        display: inline-block;
+        padding: 0.18rem 0.55rem;
+        border-radius: 2px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .pill-pendiente {
+        background: rgba(255, 170, 0, 0.15);
+        border: 1px solid rgba(255, 170, 0, 0.45);
+        color: #ffaa00;
+      }
+      .pill-aprobada {
+        background: rgba(40, 200, 120, 0.15);
+        border: 1px solid rgba(40, 200, 120, 0.45);
+        color: #28c878;
+      }
+      .pill-rechazada {
+        background: rgba(255, 60, 60, 0.12);
+        border: 1px solid rgba(255, 60, 60, 0.35);
+        color: #ff5f5f;
+      }
+
       /* Mobile Responsiveness */
       @media (max-width: 768px) {
         .welcome-card {
@@ -1220,6 +1323,141 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
       @media (max-width: 480px) {
         .metrics-grid {
           grid-template-columns: 1fr;
+        }
+      }
+
+      /* ── Dashboard Receipt Modal ── */
+      .dashboard-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(4, 8, 30, 0.72);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+        z-index: 1000;
+      }
+
+      .dashboard-receipt-modal {
+        display: grid;
+        grid-template-columns: minmax(240px, 0.85fr) minmax(320px, 1.15fr);
+        width: min(860px, 100%);
+        max-height: min(680px, 90vh);
+        background: rgba(10, 18, 50, 0.88);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(128, 179, 255, 0.35);
+        border-radius: 3px;
+        overflow: hidden;
+      }
+
+      .dashboard-receipt-preview {
+        background: rgba(5, 10, 30, 0.6);
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        padding: 1rem;
+        overflow-y: auto;
+        max-height: 100%;
+      }
+
+      .dashboard-receipt-preview img {
+        width: 100%;
+        height: auto;
+        max-width: 100%;
+        object-fit: contain;
+        display: block;
+      }
+
+      .dashboard-no-receipt {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        min-height: 200px;
+        color: rgba(255, 255, 255, 0.4);
+        font-size: 0.85rem;
+      }
+
+      .dashboard-receipt-details {
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        overflow-y: auto;
+        min-height: 0;
+      }
+
+      .dashboard-receipt-details p {
+        margin: 0;
+        font-size: 0.85rem;
+        color: rgba(255, 255, 255, 0.9);
+      }
+
+      .dashboard-receipt-details p strong {
+        color: rgba(128, 179, 255, 0.85);
+        margin-right: 0.25rem;
+      }
+
+      .dashboard-modal-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 0.5rem;
+      }
+
+      .dashboard-modal-close {
+        background: transparent;
+        border: none;
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 1.5rem;
+        cursor: pointer;
+        line-height: 1;
+        padding: 0;
+        transition: color 0.15s ease;
+      }
+
+      .dashboard-modal-close:hover {
+        color: #ffffff;
+      }
+
+      .dashboard-receipt-status {
+        color: #80b3ff !important;
+        font-weight: 600;
+        text-transform: capitalize;
+      }
+
+      .dashboard-receipt-download {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: auto;
+        padding: 0.65rem 1rem;
+        background: rgba(128, 179, 255, 0.12);
+        border: 1px solid rgba(128, 179, 255, 0.4);
+        border-radius: 2px;
+        color: #80b3ff;
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-decoration: none;
+        transition: all 0.2s ease;
+      }
+
+      .dashboard-receipt-download:hover {
+        background: rgba(128, 179, 255, 0.22);
+        border-color: #80b3ff;
+        color: #ffffff;
+      }
+
+      @media (max-width: 640px) {
+        .dashboard-receipt-modal {
+          grid-template-columns: 1fr;
+          grid-template-rows: auto 1fr;
+          max-height: 90vh;
+          overflow-y: auto;
         }
       }
     `,

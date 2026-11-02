@@ -13,6 +13,7 @@ import {
 import { TransferSubmission } from '../../../core/models/bank-transfer.model';
 import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
 import { slugify } from '../../../core/services/provider-store.service';
+import { ExperienceService } from '../../../core/services/experience.service';
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -217,9 +218,9 @@ import { slugify } from '../../../core/services/provider-store.service';
       <!-- Sección 3: Postulaciones Recientes (Prestadores & Socios Fundadores) -->
       <section class="dash-card">
         <div class="card-head">
-          <h2 class="card-title">Últimas Postulaciones Recibidas</h2>
-          <a routerLink="/postulaciones" class="view-all-link">
-            <span>Ver todas las postulaciones ({{ store.applicationStats().total }})</span>
+          <h2 class="card-title">Últimas Propuestas y Postulaciones</h2>
+          <a routerLink="/propuestas" class="view-all-link">
+            <span>Ver todas las propuestas ({{ store.applicationStats().total }})</span>
           </a>
         </div>
 
@@ -310,14 +311,11 @@ import { slugify } from '../../../core/services/provider-store.service';
               <span class="pending-pill">0 pendientes</span>
             }
             <a
-              routerLink="/postulaciones"
+              routerLink="/propuestas"
               [queryParams]="{ tab: 'experiencias' }"
               class="view-all-link"
             >
               <span>Ver propuestas ({{ store.experienceRequests().length }})</span>
-            </a>
-            <a routerLink="/experiencias" class="view-all-link">
-              <span>Ver Experiencias de la Web →</span>
             </a>
           </div>
         </div>
@@ -378,6 +376,99 @@ import { slugify } from '../../../core/services/provider-store.service';
                       <button type="button" class="btn-review" (click)="openExperienceRequest(req)">
                         Revisar
                       </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </section>
+
+      <!-- Sección 5: Experiencias de la Web (Siguiente estadio de las propuestas) -->
+      <section class="dash-card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Experiencias de la Web</h2>
+          </div>
+          <div class="head-actions">
+            <span class="pending-pill">{{ webExperiences().length }} publicadas</span>
+            <a routerLink="/experiencias" class="view-all-link">
+              <span>Ver catálogo completo</span>
+            </a>
+          </div>
+        </div>
+
+        @if (webExperiences().length === 0) {
+          <p class="empty-text">No hay experiencias cargadas en el catálogo.</p>
+        } @else {
+          <div class="table-wrap">
+            <table class="dash-data-table">
+              <thead>
+                <tr>
+                  <th>Experiencia</th>
+                  <th>Ruta Web Oficial</th>
+                  <th>Región & Dificultad</th>
+                  <th>Arancel</th>
+                  <th>Cupo</th>
+                  <th>Estado</th>
+                  <th class="text-right">Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (exp of webExperiences(); track exp.id) {
+                  <tr>
+                    <td>
+                      <div class="exp-cell-wrap">
+                        <img
+                          [src]="exp.coverImage || '/assets/images/kayak-club-de-experiencias.jpg'"
+                          [alt]="exp.title"
+                          class="exp-cell-thumb"
+                        />
+                        <div class="exp-cell-text">
+                          <strong class="exp-title-cell">{{ exp.title }}</strong>
+                          <span class="exp-kicker-sub font-mono">{{ exp.kicker || 'EXPEDICIÓN' }}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <a
+                        [href]="exp.detailRoute || '/experiencias/' + exp.slug"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="route-link-cell"
+                        title="Abrir ruta pública"
+                      >
+                        <code>/.../{{ exp.slug }}</code>
+                        <mat-icon class="link-icon-mini">open_in_new</mat-icon>
+                      </a>
+                    </td>
+                    <td>
+                      <div class="cell-stack">
+                        <span class="row-region">{{ exp.region }}</span>
+                        <span class="diff-tag">{{ exp.difficulty }}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="cell-stack">
+                        <strong class="amount-cell">{{ exp.priceArs | ars }}</strong>
+                        @if (exp.priceUsd) {
+                          <span class="row-usd">USD {{ exp.priceUsd }}</span>
+                        }
+                      </div>
+                    </td>
+                    <td>
+                      <span class="cupo-tag">{{ exp.maxSpotsPerGroup }} pers.</span>
+                    </td>
+                    <td>
+                      <span class="badge-status-pill is-active">
+                        {{ exp.status === 'publicada' ? 'Publicada' : 'Pausada' }}
+                      </span>
+                    </td>
+                    <td class="text-right">
+                      <a routerLink="/experiencias" class="btn-review">
+                        Editar
+                      </a>
                     </td>
                   </tr>
                 }
@@ -1146,6 +1237,51 @@ import { slugify } from '../../../core/services/provider-store.service';
         font-weight: 700;
         color: #ffffff;
         margin: 0;
+      }
+
+      .card-sub-info {
+        font-size: 0.8rem;
+        color: rgba(255, 255, 255, 0.7);
+        display: block;
+        margin-top: 0.35rem;
+      }
+
+      .route-link-cell {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        color: #ffaa73;
+        text-decoration: none;
+        font-size: 0.82rem;
+        font-family: var(--font-mono, monospace);
+        background: rgba(255, 95, 0, 0.1);
+        padding: 0.25rem 0.55rem;
+        border-radius: 3px;
+        border: 1px solid rgba(255, 95, 0, 0.25);
+        transition: all 0.2s ease;
+      }
+
+      .route-link-cell:hover {
+        background: rgba(255, 95, 0, 0.2);
+        color: #ffffff;
+        border-color: #ff5f00;
+      }
+
+      .link-icon-mini {
+        font-size: 14px;
+        width: 14px;
+        height: 14px;
+      }
+
+      .cupo-tag {
+        display: inline-block;
+        padding: 0.25rem 0.55rem;
+        border-radius: 3px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: #ffffff;
+        font-size: 0.78rem;
+        font-weight: 600;
       }
 
       .view-all-link {
@@ -2342,6 +2478,8 @@ import { slugify } from '../../../core/services/provider-store.service';
 })
 export class AdminDashboardComponent {
   readonly store = inject(AdminStoreService);
+  private readonly experienceService = inject(ExperienceService);
+  readonly webExperiences = this.experienceService.experiences;
 
   readonly admin = this.store.currentAdmin;
   readonly stats = this.store.stats;

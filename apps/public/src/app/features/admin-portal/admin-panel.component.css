@@ -31,86 +31,151 @@
   overflow-x: clip;
 }
 
-/* Subdomain Strip */
-.subdomain-strip {
-  background: #090503;
-  border-bottom: 1px solid rgba(255, 95, 0, 0.25);
-  padding: 0.45rem 2rem;
-  font-size: 0.78rem;
-}
-
-.subdomain-content {
-  max-width: 1200px;
-  margin: 0 auto;
+/* Top Nav Unificado (Idéntico a Login) */
+.portal-top-nav {
+  position: relative;
+  z-index: 100;
+  height: 70px;
+  background: rgba(9, 4, 2, 0.95);
+  border-bottom: 1px solid rgba(255, 95, 0, 0.28);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  flex-wrap: wrap;
+  padding: 0 2rem;
 }
 
-.subdomain-left {
+.nav-brand-col {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
 }
 
-.subdomain-host {
-  color: #ffcc00;
-  font-family: var(--font-mono, monospace);
-  font-size: 0.78rem;
+.brand-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-decoration: none;
+}
+
+.portal-emblem-img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  display: block;
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.brand-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 0.08em;
+  line-height: 1.1;
+}
+
+.brand-tag {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #ff5f00;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+}
+
+.nav-right-col {
+  display: flex;
+  align-items: center;
+  gap: 1.15rem;
+  position: relative;
+}
+
+.portal-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 9999px;
+  background: rgba(255, 95, 0, 0.14);
+  border: 1px solid rgba(255, 95, 0, 0.45);
+  color: #ff7b2b;
+  font-size: 0.75rem;
   font-weight: 700;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
-.subdomain-right {
-  display: flex;
-  align-items: center;
-}
-
-.back-public-link {
+.nav-back-link {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  color: #ffcc00;
+  color: rgba(255, 255, 255, 0.7);
   text-decoration: none;
-  font-family: var(--font-mono, monospace);
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  transition: all 0.2s ease;
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: color 0.2s ease;
 }
 
-.back-public-link:hover {
-  color: #ffe066;
-  text-shadow: 0 0 8px rgba(255, 204, 0, 0.5);
+.nav-back-link:hover {
+  color: #ff5f00;
 }
 
-.back-public-link mat-icon {
-  font-size: 14px;
-  width: 14px;
-  height: 14px;
+.nav-back-link .link-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
 }
 
-/* Portal Header */
-.portal-header {
-  background: rgba(18, 9, 4, 0.94);
-  border-bottom: 1px solid rgba(255, 95, 0, 0.35);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  position: sticky;
-  top: 0;
-  z-index: 100;
+/* Breadcrumb Bar Naranja */
+.portal-breadcrumb-bar {
+  background: #ff5f00;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+  padding: 0.55rem 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  position: relative;
+  z-index: 90;
 }
 
-.header-inner {
-  max-width: 1240px;
+.breadcrumb-inner {
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 0.75rem 1.5rem;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1.5rem;
+  gap: 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bc-link {
+  color: #0b0704;
+  text-decoration: none;
+  opacity: 0.85;
+  transition: opacity 0.2s;
+}
+
+.bc-link:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.bc-sep {
+  color: rgba(11, 7, 4, 0.45);
+  font-weight: 900;
+}
+
+.bc-section {
+  color: #0b0704;
+  opacity: 0.9;
+}
+
+.bc-current {
+  color: #0b0704;
+  font-weight: 900;
 }
 
 .header-left {
@@ -266,8 +331,8 @@
 .user-meta {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
-  text-align: right;
+  align-items: flex-start;
+  text-align: left;
   min-width: 0;
 }
 
@@ -276,7 +341,7 @@
   font-weight: 700;
   color: #ffffff;
   line-height: 1.1;
-  text-align: right;
+  text-align: left;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -289,7 +354,7 @@
   color: #ff5f00;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  text-align: right;
+  text-align: left;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -537,6 +602,10 @@
 
   .portal-main {
     padding: 0.35rem 0.75rem 2rem;
+  }
+
+  .portal-badge-pill {
+    display: none !important;
   }
 
   .user-meta {

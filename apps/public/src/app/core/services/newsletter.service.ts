@@ -431,6 +431,14 @@ export class NewsletterService {
         if (!rpcErr && rpcPayload?.status) {
           if (rpcPayload.status === 'already_registered_email') {
             this._isLoading.set(false);
+            this.notificationService
+              .notifyAlreadyRegistered({
+                email: cleanEmail,
+                fullName: cleanName,
+              })
+              .catch((err) =>
+                console.warn('[NewsletterService] Error enviando aviso de cuenta existente:', err),
+              );
             return {
               success: false,
               message:
@@ -492,6 +500,16 @@ export class NewsletterService {
 
           if (activeEmail !== cleanEmail) {
             this._isLoading.set(false);
+            this.notificationService
+              .notifyAlreadyRegistered({
+                email: cleanEmail,
+                fullName: existing.full_name || cleanName,
+                position: existing.position,
+                tier: existing.membership_tier,
+              })
+              .catch((err) =>
+                console.warn('[NewsletterService] Error enviando aviso de cuenta existente:', err),
+              );
             return {
               success: false,
               message:
@@ -931,9 +949,24 @@ export class NewsletterService {
 
   async signInWithGoogle(redirectTo?: string): Promise<{ success: boolean; message: string }> {
     if (!this.isSupabaseConnected()) {
+      const demoSocio = this._entries()[0] || {
+        id: 'socio_founder_demo',
+        email: 'gonzagramaglia@gmail.com',
+        fullName: 'Gonzalo Gramaglia',
+        dni: '38123456',
+        phone: '5493515490431',
+        membershipTier: 'fundador' as const,
+        position: 1,
+        status: 'confirmed' as const,
+        source: 'local_dev' as const,
+        createdAt: new Date(),
+      };
+      this._currentMember.set(demoSocio);
+      this.persistCurrentMember(demoSocio);
+      this.setLoginSuccessFlag();
       return {
-        success: false,
-        message: 'Modo local activo. Conexión a Supabase Auth no disponible.',
+        success: true,
+        message: 'Modo desarrollo: Sesión local iniciada.',
       };
     }
 

@@ -62,6 +62,8 @@ export class LoginComponent implements OnInit {
     this.isLoading.set(false);
     if (!res.success) {
       this.error.set(res.message);
+    } else if (res.message?.includes('Modo desarrollo')) {
+      void this.router.navigate(['/perfil']);
     }
   }
 

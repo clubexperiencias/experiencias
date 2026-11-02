@@ -334,7 +334,7 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        padding: 0.42rem 0.85rem;
+        padding: 0.48rem 1.05rem;
         background: rgba(255, 255, 255, 0.08);
         border: 1px solid rgba(255, 95, 0, 0.45);
         color: #ffffff;
@@ -344,14 +344,21 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
         text-decoration: none;
         letter-spacing: 0.02em;
         cursor: pointer;
-        transition: all 0.2s ease;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        white-space: nowrap;
       }
 
       .btn-back-panel:hover {
-        background: rgba(255, 95, 0, 0.2);
-        border-color: #ff5f00;
-        color: #ffaa73;
-        transform: translateY(-1px);
+        background: rgba(255, 95, 0, 0.3);
+        border-color: #ff7728;
+        color: #ffffff;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 18px rgba(255, 95, 0, 0.45);
+      }
+
+      .btn-back-panel:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 6px rgba(255, 95, 0, 0.3);
       }
 
       .card-subheading {

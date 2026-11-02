@@ -151,6 +151,30 @@ describe('NotificationService', () => {
     });
   });
 
+  describe('notifyAlreadyRegistered', () => {
+    it('should POST ALREADY_REGISTERED to /api/notify', async () => {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ success: true }),
+      } as Response);
+
+      const result = await service.notifyAlreadyRegistered({
+        fullName: 'Gonzalo Gramaglia',
+        email: 'gonzagramaglia@gmail.com',
+        position: 1,
+        tier: 'fundador',
+      });
+
+      expect(result.success).toBe(true);
+      const callArgs = fetchSpy.mock.calls[0];
+      const sentBody = JSON.parse(callArgs[1]?.body as string);
+      expect(sentBody.type).toBe('ALREADY_REGISTERED');
+      expect(sentBody.data.email).toBe('gonzagramaglia@gmail.com');
+      expect(sentBody.data.position).toBe(1);
+      expect(sentBody.data.tier).toBe('fundador');
+    });
+  });
+
   describe('error handling', () => {
     it('should catch network failures and return success: false without throwing', async () => {
       vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('Network offline'));

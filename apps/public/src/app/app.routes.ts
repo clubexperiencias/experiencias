@@ -9,16 +9,25 @@ const search = isBrowser ? window.location.search.toLowerCase() : '';
 
 const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local');
 
+const storedPortal = isBrowser ? (sessionStorage.getItem('detected_portal') || '') : '';
+if (isBrowser) {
+  if (search.includes('portal=admin') || search.includes('admin=true')) {
+    sessionStorage.setItem('detected_portal', 'admin');
+  } else if (search.includes('portal=prestador') || search.includes('prestador=true')) {
+    sessionStorage.setItem('detected_portal', 'prestador');
+  }
+}
+
 // Detección estricta de subdominios (y soporte para pruebas locales con subdominio o ?portal=admin/prestador)
 const isAdminHost =
   host.startsWith('admin.') ||
   host.includes('admin.experiencias') ||
-  (isLocalHost && (search.includes('portal=admin') || search.includes('admin=true')));
+  (isLocalHost && (search.includes('portal=admin') || search.includes('admin=true') || storedPortal === 'admin'));
 
 const isProviderHost =
   host.startsWith('prestadores.') ||
   host.includes('prestadores.experiencias') ||
-  (isLocalHost && (search.includes('portal=prestador') || search.includes('prestador=true')));
+  (isLocalHost && (search.includes('portal=prestador') || search.includes('portal=true') || storedPortal === 'prestador'));
 
 // ══════════════════════════════════════════════════════════════════════
 // 1. Rutas exclusivas de administración central (admin.experiencias.club)
@@ -66,12 +75,17 @@ const adminRoutes: Routes = [
           ),
       },
       {
-        path: 'postulaciones',
+        path: 'propuestas',
         title: 'Portal de Admin del Club de Experiencias',
         loadComponent: () =>
           import('./features/admin-portal/admin-applications/admin-applications.component').then(
             (m) => m.AdminApplicationsComponent,
           ),
+      },
+      {
+        path: 'postulaciones',
+        redirectTo: 'propuestas',
+        pathMatch: 'full',
       },
       {
         path: 'experiencias',
@@ -397,12 +411,17 @@ const publicRoutes: Routes = [
           ),
       },
       {
-        path: 'postulaciones',
+        path: 'propuestas',
         title: 'Portal de Admin del Club de Experiencias',
         loadComponent: () =>
           import('./features/admin-portal/admin-applications/admin-applications.component').then(
             (m) => m.AdminApplicationsComponent,
           ),
+      },
+      {
+        path: 'postulaciones',
+        redirectTo: 'propuestas',
+        pathMatch: 'full',
       },
       {
         path: 'experiencias',
