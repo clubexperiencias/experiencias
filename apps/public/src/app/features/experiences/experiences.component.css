@@ -126,7 +126,7 @@
 
 .hero-quick-stats {
   display: grid;
-  grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr;
+  grid-template-columns: 1fr auto 1fr auto 1fr;
   align-items: center;
   background: hsla(220, 24%, 9%, 0.35);
   border: 1px solid rgba(255, 212, 42, 0.28);

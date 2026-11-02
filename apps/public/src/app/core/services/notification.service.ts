@@ -114,6 +114,28 @@ export class NotificationService {
   }
 
   /**
+   * Envía aviso cuando un usuario que ya está registrado intenta registrarse nuevamente.
+   */
+  async notifyAlreadyRegistered(member: {
+    email: string;
+    fullName?: string;
+    position?: number | string;
+    tier?: string;
+  }): Promise<NotificationResult> {
+    const payload = {
+      type: 'ALREADY_REGISTERED',
+      data: {
+        email: member.email,
+        fullName: member.fullName || '',
+        position: member.position,
+        tier: member.tier,
+      },
+    };
+
+    return this.postNotify(payload, member.email);
+  }
+
+  /**
    * Genera el enlace directo a WhatsApp con mensaje prearmado para avisar del pago.
    */
   getWhatsAppNotificationUrl(

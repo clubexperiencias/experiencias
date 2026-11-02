@@ -19,18 +19,14 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
           <div class="title-row">
             <h1 class="card-heading">Experiencias de la Web</h1>
             <a routerLink="/dashboard" class="btn-back-panel">Volver al Panel</a>
+            <button type="button" class="btn-primary-orange" (click)="openCreateModal()">
+              <span>Crear Nueva Experiencia</span>
+            </button>
           </div>
           <p class="card-subheading">
             Administrá y editá toda la información de las rutas públicas de experiencias.club en
             tiempo real: textos, aranceles, cupos, multimedia, itinerarios y estado de publicación.
           </p>
-        </div>
-
-        <div class="header-actions">
-          <button type="button" class="btn-primary-orange" (click)="openCreateModal()">
-            <mat-icon>add</mat-icon>
-            <span>Crear Nueva Experiencia</span>
-          </button>
         </div>
       </div>
 
@@ -40,30 +36,6 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
           <span>{{ feedbackToast() }}</span>
         </div>
       }
-
-      <!-- Resumen de Métricas -->
-      <div class="summary-strip">
-        <div class="summary-item">
-          <span class="sum-label">Experiencias Totales</span>
-          <strong class="sum-value">{{ experiences().length }}</strong>
-          <span class="sum-sub">{{ activeCount() }} publicadas activas</span>
-        </div>
-        <div class="summary-item">
-          <span class="sum-label">Rutas Web Disponibles</span>
-          <strong class="sum-value text-orange">{{ publicSlugs().join(', ') || 'Ninguna' }}</strong>
-          <span class="sum-sub">URLs integradas en la plataforma</span>
-        </div>
-        <div class="summary-item">
-          <span class="sum-label">Arancel Base Activo</span>
-          <strong class="sum-value text-blue">{{ primaryArsPrice() | ars }}</strong>
-          <span class="sum-sub">Referencia en catálogo</span>
-        </div>
-        <div class="summary-item">
-          <span class="sum-label">Cupo Promedio</span>
-          <strong class="sum-value">{{ avgCapacity() }} personas</strong>
-          <span class="sum-sub">Por grupo de salida</span>
-        </div>
-      </div>
 
       <!-- Tabla / Lista de Experiencias -->
       <div class="experiences-table-card">
@@ -80,7 +52,7 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                 <th>Ruta Web Oficial</th>
                 <th>Región & Dificultad</th>
                 <th>Arancel</th>
-                <th>Cupo / Salida</th>
+                <th>Cupo</th>
                 <th>Estado</th>
                 <th class="text-right">Acciones</th>
               </tr>
@@ -108,13 +80,13 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                   <td>
                     <div class="route-badge-box">
                       <a
-                        [href]="exp.detailRoute || '/experiencias/' + exp.slug"
+                        [href]="getPublicExperienceUrl(exp)"
                         target="_blank"
                         rel="noopener noreferrer"
                         class="route-badge-link"
                         title="Abrir ruta pública"
                       >
-                        <code>{{ exp.detailRoute || '/experiencias/' + exp.slug }}</code>
+                        <code>/.../{{ exp.slug }}</code>
                         <mat-icon class="external-icon">open_in_new</mat-icon>
                       </a>
                     </div>
@@ -147,7 +119,7 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                     @if (exp.status === 'publicada') {
                       <span class="status-pill is-published">Publicada</span>
                     } @else if (exp.status === 'oculta') {
-                      <span class="status-pill is-hidden">Dada de baja / Pausada</span>
+                      <span class="status-pill is-hidden">Pausada</span>
                     } @else {
                       <span class="status-pill is-draft">Borrador</span>
                     }
@@ -167,7 +139,7 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                         <span>Editar</span>
                       </button>
 
-                      <!-- Dar de baja o Activar -->
+                      <!-- Pausar o Activar -->
                       @if (exp.status === 'publicada') {
                         <button
                           type="button"
@@ -175,7 +147,7 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                           (click)="toggleStatus(exp, 'oculta')"
                           title="Pausar ruta y ocultarla de la web pública"
                         >
-                          Dar de baja
+                          PAUSAR
                         </button>
                       } @else {
                         <button
@@ -184,20 +156,9 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                           (click)="toggleStatus(exp, 'publicada')"
                           title="Volver a publicar ruta en la web pública"
                         >
-                          Activar
+                          ACTIVAR
                         </button>
                       }
-
-                      <!-- Link directo a la web -->
-                      <a
-                        [href]="exp.detailRoute || '/experiencias/' + exp.slug"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="btn-view-web"
-                        title="Ver en la web pública"
-                      >
-                        <mat-icon>visibility</mat-icon>
-                      </a>
                     </div>
                   </td>
                 </tr>
@@ -600,15 +561,21 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
         text-decoration: none;
         letter-spacing: 0.02em;
         cursor: pointer;
-        transition: all 0.2s ease;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
         white-space: nowrap;
       }
 
       .btn-back-panel:hover {
-        background: rgba(255, 95, 0, 0.2);
-        border-color: #ff5f00;
-        color: #ff7722;
-        transform: translateY(-1px);
+        background: rgba(255, 95, 0, 0.3);
+        border-color: #ff7728;
+        color: #ffffff;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 18px rgba(255, 95, 0, 0.45);
+      }
+
+      .btn-back-panel:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 6px rgba(255, 95, 0, 0.3);
       }
 
       .btn-primary-orange {
@@ -1556,5 +1523,13 @@ export class AdminExperiencesComponent {
   private showToast(msg: string): void {
     this.feedbackToast.set(msg);
     setTimeout(() => this.feedbackToast.set(null), 4500);
+  }
+
+  getPublicExperienceUrl(exp: { publicUrl?: string; slug?: string; detailRoute?: string }): string {
+    if (exp.publicUrl && exp.publicUrl.trim().length > 0) {
+      return exp.publicUrl.trim();
+    }
+    const route = exp.detailRoute || `/experiencias/${exp.slug || ''}`;
+    return `https://experiencias.club${route.startsWith('/') ? '' : '/'}${route}`;
   }
 }

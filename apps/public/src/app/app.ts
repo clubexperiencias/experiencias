@@ -90,15 +90,26 @@ export class App {
     const search = isBrowser ? window.location.search.toLowerCase() : '';
     const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local');
 
+    const storedPortal = isBrowser ? (sessionStorage.getItem('detected_portal') || '') : '';
+    if (isBrowser) {
+      if (search.includes('portal=admin') || search.includes('admin=true')) {
+        sessionStorage.setItem('detected_portal', 'admin');
+      } else if (search.includes('portal=prestador') || search.includes('prestador=true')) {
+        sessionStorage.setItem('detected_portal', 'prestador');
+      }
+    }
+
     const isAdminHost =
       host.startsWith('admin.') ||
       host.includes('admin.experiencias') ||
-      (isLocalHost && (search.includes('portal=admin') || search.includes('admin=true')));
+      url.startsWith('/admin') ||
+      (isLocalHost && (search.includes('portal=admin') || search.includes('admin=true') || storedPortal === 'admin'));
 
     const isProviderHost =
       host.startsWith('prestadores.') ||
       host.includes('prestadores.experiencias') ||
-      (isLocalHost && (search.includes('portal=prestador') || search.includes('prestador=true')));
+      url.startsWith('/prestadores') ||
+      (isLocalHost && (search.includes('portal=prestador') || search.includes('prestador=true') || storedPortal === 'prestador'));
 
     const metadata = this.getPageMetadata(url);
     let title = `Club de Experiencias | ${metadata.section}`;

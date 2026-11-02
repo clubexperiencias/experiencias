@@ -1,5 +1,5 @@
-import { Component, computed, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { ProviderStoreService } from '../../../core/services/provider-store.service';
@@ -25,11 +25,21 @@ type ExpFilterTab = 'todas' | 'publicadas' | 'solicitudes' | 'revision' | 'borra
   templateUrl: './provider-experiences.component.html',
   styleUrl: './provider-experiences.component.css',
 })
-export class ProviderExperiencesComponent {
+export class ProviderExperiencesComponent implements OnInit {
   readonly store = inject(ProviderStoreService);
+  private readonly route = inject(ActivatedRoute);
   readonly stats = this.store.providerStats;
 
   readonly activeTab = signal<ExpFilterTab>('todas');
+
+  ngOnInit(): void {
+    this.route.queryParams.subscribe((params) => {
+      const tab = params['tab'] || params['filtro'];
+      if (tab === 'solicitudes' || tab === 'publicadas' || tab === 'todas') {
+        this.activeTab.set(tab as ExpFilterTab);
+      }
+    });
+  }
   readonly searchQuery = signal('');
   readonly requests = this.store.providerExperienceRequests;
   readonly requestModalOpen = signal(false);
@@ -218,5 +228,42 @@ export class ProviderExperiencesComponent {
   private showToast(msg: string): void {
     this.feedbackToast.set(msg);
     setTimeout(() => this.feedbackToast.set(null), 4000);
+  }
+
+  refresh(): void {
+    this.store.reloadFromStorage();
+  }
+
+  downloadCatalog(): void {
+    const list = this.rows();
+    const headers = ['Título', 'Estado', 'Región', 'Dificultad', 'Duración', 'Precio ARS', 'Capacidad', 'Socios Anotados', 'Ingresos Confirmados'];
+    const escapeCsv = (val: unknown): string => {
+      let str = val != null ? String(val) : '';
+      if (/^[=+\-@\t\r]/.test(str)) str = "'" + str;
+      return `"${str.replace(/"/g, '""')}"`;
+    };
+    const rows = [
+      headers.map(escapeCsv).join(','),
+      ...list.map((r) =>
+        [
+          escapeCsv(r.experience.title),
+          escapeCsv(r.experience.status),
+          escapeCsv(r.experience.region),
+          escapeCsv(r.experience.difficulty),
+          escapeCsv(r.experience.durationLabel),
+          escapeCsv(r.experience.priceArs),
+          escapeCsv(r.experience.capacityPerDate),
+          escapeCsv(r.enrolledCount),
+          escapeCsv(r.confirmedRevenue),
+        ].join(','),
+      ),
+    ];
+    const blob = new Blob(['\uFEFF' + rows.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `catalogo_experiencias_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
   }
 }

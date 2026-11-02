@@ -16,18 +16,14 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
       <div class="members-header">
         <div class="header-titles">
           <span class="section-kicker">GESTIÓN UNIFICADA</span>
-          <h2 class="card-heading">Comprobantes y Socios Anotados</h2>
+          <div class="title-row">
+            <h2 class="card-heading">Comprobantes y Socios Anotados</h2>
+            <a routerLink="/dashboard" class="btn-back-panel">Volver al Panel</a>
+          </div>
           <p class="card-subheading">
             Validá comprobantes de transferencia bancaria y consultá la nómina de exploradores
             inscriptos para tus experiencias.
           </p>
-        </div>
-
-        <div class="header-actions">
-          <button type="button" class="export-btn" (click)="copyRoster()">
-            {{ copied() ? '¡Nómina Copiada!' : 'Copiar Planilla de Asistencia' }}
-          </button>
-          <a routerLink="/dashboard" class="btn-back-panel">Volver al Panel</a>
         </div>
       </div>
 
@@ -227,6 +223,21 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
             </tbody>
           </table>
         </div>
+
+        <!-- Acciones al pie de la tabla -->
+        <div class="table-footer-actions">
+          <button
+            type="button"
+            class="btn-footer-action"
+            (click)="refresh()"
+          >
+            Refrescar Datos
+          </button>
+
+          <button type="button" class="btn-footer-action" (click)="downloadRoster()">
+            Descargar Planilla
+          </button>
+        </div>
       }
 
       <!-- Modal de Comprobantes Unificado -->
@@ -421,12 +432,6 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         gap: 0.25rem;
         max-width: 680px;
       }
-      .header-actions {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        flex-wrap: wrap;
-      }
       .section-kicker {
         font-size: 0.72rem;
         font-weight: 700;
@@ -439,6 +444,52 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         font-weight: 700;
         color: #ffffff;
         margin: 0;
+      }
+      .title-row {
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
+        flex-wrap: wrap;
+      }
+      .card-subheading {
+        font-size: 0.88rem;
+        color: rgba(255, 255, 255, 0.75);
+        margin: 0;
+        max-width: 680px;
+      }
+      .table-footer-actions {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        margin-top: 0.5rem;
+        box-sizing: border-box;
+      }
+      .btn-footer-action {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.6rem 1.15rem;
+        border-radius: 2px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition:
+          background 0.2s ease,
+          border-color 0.2s ease,
+          filter 0.2s ease;
+        background: rgba(10, 16, 40, 0.75);
+        border: 1px solid rgba(128, 179, 255, 0.35);
+        color: #ffffff;
+      }
+      .btn-footer-action:hover:not(:disabled) {
+        background: rgba(22, 33, 85, 0.85);
+        border-color: rgba(128, 179, 255, 0.6);
+        filter: brightness(1.15);
+      }
+      .btn-footer-action:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
       }
       .btn-back-panel {
         display: inline-flex;
@@ -454,40 +505,21 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         text-decoration: none;
         letter-spacing: 0.02em;
         cursor: pointer;
-        transition: all 0.2s ease;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
         white-space: nowrap;
       }
+
       .btn-back-panel:hover {
-        background: rgba(128, 179, 255, 0.2);
-        border-color: #80b3ff;
-        color: #80b3ff;
-        transform: translateY(-1px);
+        background: rgba(128, 179, 255, 0.3);
+        border-color: #a6c8ff;
+        color: #ffffff;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 18px rgba(128, 179, 255, 0.45);
       }
-      .card-subheading {
-        font-size: 0.88rem;
-        color: rgba(255, 255, 255, 0.75);
-        margin: 0;
-        max-width: 680px;
-      }
-      .export-btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0.48rem 1.05rem;
-        background: rgba(128, 179, 255, 0.15);
-        border: 1px solid rgba(128, 179, 255, 0.45);
-        border-radius: 4px;
-        color: #80b3ff;
-        font-size: 0.82rem;
-        font-weight: 700;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        white-space: nowrap;
-      }
-      .export-btn:hover {
-        background: #80b3ff;
-        color: #070d18;
-        transform: translateY(-1px);
+
+      .btn-back-panel:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 6px rgba(128, 179, 255, 0.3);
       }
       .filters-bar {
         display: flex;
@@ -1131,16 +1163,21 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
           gap: 1rem;
           align-items: stretch;
         }
-        .header-actions {
-          width: 100%;
-          display: flex;
+        .title-row {
+          flex-direction: column;
+          align-items: flex-start;
           gap: 0.5rem;
         }
-        .header-actions .export-btn,
-        .header-actions .btn-back-panel {
-          flex: 1;
+        .title-row .btn-back-panel {
+          align-self: flex-start;
+        }
+        .table-footer-actions {
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+        .btn-footer-action {
+          width: 100%;
           justify-content: center;
-          text-align: center;
         }
         .filters-bar {
           flex-direction: column;
@@ -1319,6 +1356,47 @@ export class ProviderMembersComponent {
       `Hola ${name}, te escribo desde la coordinación de la expedición "${experience}" para la salida del ${date}.`,
     );
     return `https://wa.me/${cleanPhone}?text=${message}`;
+  }
+
+  refresh(): void {
+    // Los datos son reactivos en memoria; forzar re-render actualizando la búsqueda
+    const q = this.searchQuery();
+    this.searchQuery.set(q + ' ');
+    setTimeout(() => this.searchQuery.set(q), 0);
+  }
+
+  downloadRoster(): void {
+    const list = this.filteredMembers();
+    const headers = ['Nombre', 'DNI', 'Teléfono', 'Email', 'Experiencia', 'Fecha', 'Cupos', 'Importe', 'Estado', 'Referencia'];
+    const escapeCsv = (val: unknown): string => {
+      let str = val != null ? String(val) : '';
+      if (/^[=+\-@\t\r]/.test(str)) str = "'" + str;
+      return `"${str.replace(/"/g, '""')}"`;
+    };
+    const rows = [
+      headers.map(escapeCsv).join(','),
+      ...list.map((m) =>
+        [
+          escapeCsv(m.fullName),
+          escapeCsv(m.dni),
+          escapeCsv(m.phone),
+          escapeCsv(m.email),
+          escapeCsv(m.experienceTitle),
+          escapeCsv(m.date),
+          escapeCsv(m.participants),
+          escapeCsv(m.amountArs),
+          escapeCsv(m.status.toUpperCase()),
+          escapeCsv(m.reference),
+        ].join(','),
+      ),
+    ];
+    const blob = new Blob(['\uFEFF' + rows.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `socios_anotados_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
   }
 
   copyRoster(): void {

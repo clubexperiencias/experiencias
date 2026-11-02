@@ -1,8 +1,21 @@
 import { Component, HostListener, computed, inject, signal } from '@angular/core';
-import { Router, RouterLink, RouterOutlet } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
+import { filter } from 'rxjs';
 import { ProviderStoreService } from '../../core/services/provider-store.service';
 import { ProviderLoginComponent } from './provider-login/provider-login.component';
+
+const ROUTE_LABELS: Record<string, string> = {
+  socios: 'SOCIOS',
+  comprobantes: 'COMPROBANTES',
+  propuestas: 'PROPUESTAS',
+  postulaciones: 'PROPUESTAS',
+  experiencias: 'EXPERIENCIAS',
+  nueva: 'NUEVA',
+  editar: 'EDITAR',
+  perfil: 'PERFIL',
+};
 
 @Component({
   selector: 'app-provider-panel',
@@ -10,122 +23,123 @@ import { ProviderLoginComponent } from './provider-login/provider-login.componen
   imports: [RouterOutlet, RouterLink, MatIconModule, ProviderLoginComponent],
   template: `
     <div class="provider-portal-root">
-      <!-- Domain indicator strip con estilo perfil / azul #80b3ff -->
-      <div class="subdomain-strip">
-        <div class="subdomain-content">
-          <div class="subdomain-left">
-            <span class="subdomain-host">prestadores.experiencias.club</span>
-          </div>
-          <div class="subdomain-right">
-            <a
-              href="https://experiencias.club"
-              class="back-public-link"
-              target="_blank"
-              rel="noopener"
-              title="Ir a experiencias.club"
-            >
-              <mat-icon>open_in_new</mat-icon>
-              <span>Ir a experiencias.club</span>
-            </a>
-          </div>
-        </div>
-      </div>
-
       @if (!store.isAuthenticated()) {
         <!-- Login & Registro cuando no hay sesión activa -->
         <app-provider-login />
       } @else {
-        <!-- Header oficial de Prestadores con logos provistos -->
-        <header class="portal-header">
-          <div class="header-inner">
-            <div class="header-left">
-              <a routerLink="/dashboard" class="portal-brand">
-                <img
-                  src="/assets/aistudio/logo-prestadores-experiencias_9372e925.png"
-                  alt="Logo Prestadores Experiencias"
-                  class="brand-emblem-img"
-                  referrerpolicy="no-referrer"
-                />
-                <div class="brand-text">
-                  <span class="brand-title">EXPERIENCIAS.CLUB</span>
-                  <span class="brand-tag">PRESTADORES</span>
-                </div>
-              </a>
+        <!-- Barra Superior Unificada idéntica al Login -->
+        <header class="portal-top-nav">
+          <div class="nav-brand-col">
+            <a [routerLink]="dashboardLink()" class="brand-link" title="Panel de Prestadores">
+              <img
+                src="/assets/aistudio/logo-prestadores-experiencias_9372e925.png"
+                alt="Emblema Prestadores"
+                class="portal-emblem-img"
+                referrerpolicy="no-referrer"
+              />
+              <div class="brand-text">
+                <span class="brand-title">EXPERIENCIAS.CLUB</span>
+                <span class="brand-tag">PRESTADORES</span>
+              </div>
+            </a>
+          </div>
+
+          <div class="nav-right-col">
+            <div class="portal-badge-pill">
+              <span>Panel Operativo</span>
             </div>
 
-            <!-- Menú de perfil -->
-            <div class="header-right">
-              <!-- Menú de Prestador activo -->
-              <button
-                type="button"
-                class="user-pill"
-                [class.is-open]="userMenuOpen()"
-                (click)="toggleUserMenu()"
-                aria-label="Menú de prestador"
-                [attr.aria-expanded]="userMenuOpen()"
-              >
-                <mat-icon class="user-pill-icon">{{ userMenuOpen() ? 'close' : 'menu' }}</mat-icon>
-                <div class="user-meta">
-                  <strong class="user-name">{{ provider()?.name || 'Patricio Facundo' }}</strong>
-                  <span class="user-agency">{{ provider()?.agency }}</span>
-                </div>
-              </button>
+            <!-- Menú de prestador activo -->
+            <button
+              type="button"
+              class="user-pill"
+              [class.is-open]="userMenuOpen()"
+              (click)="toggleUserMenu()"
+              aria-label="Menú de prestador"
+              [attr.aria-expanded]="userMenuOpen()"
+            >
+              <div class="user-meta">
+                <strong class="user-name">{{ provider()?.name || 'Catamarca Kayak' }}</strong>
+                <span class="user-agency">{{ provider()?.agency || 'Prestador Oficial' }}</span>
+              </div>
+              <mat-icon class="user-pill-icon">{{ userMenuOpen() ? 'close' : 'menu' }}</mat-icon>
+            </button>
 
-              @if (userMenuOpen()) {
-                <div class="dropdown-menu enlarged-menu" (click)="$event.stopPropagation()">
-                  <!-- Opciones de Navegación del Menú Agrandadas -->
-                  <div class="dropdown-nav-list">
-                    <a
-                      routerLink="/dashboard"
-                      class="dropdown-item enlarged-item"
-                      (click)="userMenuOpen.set(false)"
-                    >
-                      <mat-icon class="menu-item-icon">dashboard</mat-icon>
-                      <div class="menu-item-info">
-                        <strong class="menu-item-title">Panel de Control</strong>
-                      </div>
-                    </a>
-
-                    <a
-                      routerLink="/experiencias"
-                      class="dropdown-item enlarged-item"
-                      (click)="userMenuOpen.set(false)"
-                    >
-                      <mat-icon class="menu-item-icon">hiking</mat-icon>
-                      <div class="menu-item-info">
-                        <strong class="menu-item-title">Mis Experiencias</strong>
-                      </div>
-                    </a>
-
-                    <a
-                      routerLink="/socios"
-                      class="dropdown-item enlarged-item"
-                      (click)="userMenuOpen.set(false)"
-                    >
-                      <mat-icon class="menu-item-icon">people</mat-icon>
-                      <div class="menu-item-info">
-                        <strong class="menu-item-title">Socios y Comprobantes</strong>
-                      </div>
-                    </a>
-                  </div>
-
-                  <div class="dropdown-divider"></div>
-
-                  <button
-                    type="button"
-                    class="dropdown-item enlarged-item logout-item"
-                    (click)="logout()"
+            @if (userMenuOpen()) {
+              <div class="dropdown-menu enlarged-menu" (click)="$event.stopPropagation()">
+                <!-- Opciones de Navegación del Menú Agrandadas -->
+                <div class="dropdown-nav-list">
+                  <a
+                    [routerLink]="dashboardLink()"
+                    class="dropdown-item enlarged-item"
+                    (click)="userMenuOpen.set(false)"
                   >
-                    <mat-icon class="menu-item-icon">logout</mat-icon>
+                    <mat-icon class="menu-item-icon">dashboard</mat-icon>
                     <div class="menu-item-info">
-                      <strong class="menu-item-title">Cerrar sesión</strong>
+                      <strong class="menu-item-title">Panel de Control</strong>
                     </div>
-                  </button>
+                  </a>
+
+                  <a
+                    [routerLink]="experiencesLink()"
+                    class="dropdown-item enlarged-item"
+                    (click)="userMenuOpen.set(false)"
+                  >
+                    <mat-icon class="menu-item-icon">hiking</mat-icon>
+                    <div class="menu-item-info">
+                      <strong class="menu-item-title">Mis Experiencias</strong>
+                    </div>
+                  </a>
+
+                  <a
+                    [routerLink]="membersLink()"
+                    class="dropdown-item enlarged-item"
+                    (click)="userMenuOpen.set(false)"
+                  >
+                    <mat-icon class="menu-item-icon">people</mat-icon>
+                    <div class="menu-item-info">
+                      <strong class="menu-item-title">Socios y Comprobantes</strong>
+                    </div>
+                  </a>
                 </div>
-              }
-            </div>
+
+                <div class="dropdown-divider"></div>
+
+                <button
+                  type="button"
+                  class="dropdown-item enlarged-item logout-item"
+                  (click)="logout()"
+                >
+                  <mat-icon class="menu-item-icon">logout</mat-icon>
+                  <div class="menu-item-info">
+                    <strong class="menu-item-title">Cerrar sesión</strong>
+                  </div>
+                </button>
+              </div>
+            }
           </div>
         </header>
+
+        <!-- Breadcrumb Bar con Fondo Temático Azul/Cyan #80b3ff -->
+        <nav class="portal-breadcrumb-bar" aria-label="Ruta de navegación">
+          <div class="breadcrumb-inner">
+            <a href="https://experiencias.club" target="_blank" rel="noopener noreferrer" class="bc-link">EXPERIENCIAS.CLUB</a>
+            <span class="bc-sep">/</span>
+            @if (breadcrumbs().length === 0) {
+              <span class="bc-current" aria-current="page">PRESTADORES</span>
+            } @else {
+              <a [routerLink]="dashboardLink()" class="bc-link">PRESTADORES</a>
+              @for (item of breadcrumbs(); track item.label) {
+                <span class="bc-sep">/</span>
+                @if (item.link) {
+                  <a [routerLink]="item.link" class="bc-link">{{ item.label }}</a>
+                } @else {
+                  <span class="bc-current" aria-current="page">{{ item.label }}</span>
+                }
+              }
+            }
+          </div>
+        </nav>
 
         <!-- Contenedor principal con fondo relieve similar a /perfil -->
         <main class="portal-main">
@@ -153,24 +167,23 @@ import { ProviderLoginComponent } from './provider-login/provider-login.componen
             </div>
           </section>
         </main>
-      }
-
-      <!-- Footer oficial con logo banner al medio -->
-      <footer class="portal-footer">
-        <div class="footer-inner">
-          <div class="footer-center-logo">
-            <img
-              src="/assets/aistudio/logo-prestadores-experiencias-club_066431fd.png"
-              alt="EXPERIENCIAS.CLUB PRESTADORES"
-              class="footer-banner-img"
-              referrerpolicy="no-referrer"
-            />
-            <p class="footer-subtitle">
-              Portal Oficial de Prestadores y Guías del Club de Experiencias Catamarca
-            </p>
+        <!-- Footer oficial con logo banner al medio -->
+        <footer class="portal-footer">
+          <div class="footer-inner">
+            <div class="footer-center-logo">
+              <img
+                src="/assets/aistudio/logo-prestadores-experiencias-club_066431fd.png"
+                alt="EXPERIENCIAS.CLUB PRESTADORES"
+                class="footer-banner-img"
+                referrerpolicy="no-referrer"
+              />
+              <p class="footer-subtitle">
+                Portal Oficial de Prestadores y Guías del Club de Experiencias Catamarca
+              </p>
+            </div>
           </div>
-        </div>
-      </footer>
+        </footer>
+      }
     </div>
   `,
   styleUrl: './provider-panel.component.css',
@@ -181,6 +194,58 @@ export class ProviderPanelComponent {
 
   readonly provider = this.store.currentProvider;
   readonly userMenuOpen = signal(false);
+  readonly currentUrl = signal(this.router.url);
+
+  readonly basePath = computed(() =>
+    this.currentUrl().includes('/prestadores/panel') ? '/prestadores/panel' : '',
+  );
+  readonly dashboardLink = computed(() => `${this.basePath()}/dashboard`);
+  readonly experiencesLink = computed(() => `${this.basePath()}/experiencias`);
+  readonly membersLink = computed(() => `${this.basePath()}/socios`);
+
+  readonly breadcrumbs = computed<{ label: string; link?: string }[]>(() => {
+    const rawPath = this.currentUrl().split('?')[0].split('#')[0];
+    const segments = rawPath.split('/').filter(Boolean);
+    const isPanelSubpath = rawPath.includes('/prestadores/panel');
+    const basePath = isPanelSubpath ? '/prestadores/panel' : '';
+
+    const cleanSegments = segments.filter(
+      (s) => s !== 'prestadores' && s !== 'panel' && s !== 'dashboard',
+    );
+
+    const items: { label: string; link?: string }[] = [];
+    if (cleanSegments.length === 0) {
+      return items;
+    }
+
+    if (cleanSegments[0] === 'experiencias') {
+      if (cleanSegments.length === 1) {
+        items.push({ label: 'EXPERIENCIAS' });
+      } else if (cleanSegments.includes('nueva')) {
+        items.push({ label: 'EXPERIENCIAS', link: `${basePath}/experiencias` });
+        items.push({ label: 'NUEVA' });
+      } else if (cleanSegments.includes('editar')) {
+        items.push({ label: 'EXPERIENCIAS', link: `${basePath}/experiencias` });
+        items.push({ label: 'EDITAR' });
+      } else {
+        items.push({ label: 'EXPERIENCIAS', link: `${basePath}/experiencias` });
+        items.push({ label: cleanSegments[cleanSegments.length - 1].toUpperCase() });
+      }
+    } else {
+      for (let i = 0; i < cleanSegments.length; i++) {
+        const seg = cleanSegments[i];
+        const label = ROUTE_LABELS[seg.toLowerCase()] || seg.toUpperCase();
+        const isLast = i === cleanSegments.length - 1;
+        items.push({
+          label,
+          link: isLast ? undefined : `${basePath}/${seg}`,
+        });
+      }
+    }
+
+    return items;
+  });
+
   readonly supportWhatsappUrl =
     'https://wa.me/5493515490431?text=' +
     encodeURIComponent(
@@ -189,6 +254,15 @@ export class ProviderPanelComponent {
 
   constructor() {
     void this.store.restoreSupabaseSession();
+
+    this.router.events
+      .pipe(
+        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+        takeUntilDestroyed(),
+      )
+      .subscribe((event) => {
+        this.currentUrl.set(event.urlAfterRedirects || event.url);
+      });
   }
 
   readonly pendingModerationCount = computed(

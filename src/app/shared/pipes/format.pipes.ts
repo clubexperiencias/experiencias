@@ -40,8 +40,17 @@ export class ArsPipe implements PipeTransform {
 export class FechaPipe implements PipeTransform {
   transform(value: string | null | undefined, style: 'corta' | 'larga' | 'hora' = 'corta'): string {
     if (!value) return '';
-    if (style === 'hora') return dateTimeFormatter.format(new Date(value));
-    const date = new Date(`${value.slice(0, 10)}T00:00:00Z`);
-    return style === 'larga' ? longDayFormatter.format(date) : dayFormatter.format(date);
+    try {
+      if (style === 'hora') {
+        const d = new Date(value);
+        return isNaN(d.getTime()) ? value : dateTimeFormatter.format(d);
+      }
+      const rawIso = `${value.slice(0, 10)}T00:00:00Z`;
+      const date = new Date(rawIso);
+      if (isNaN(date.getTime())) return value;
+      return style === 'larga' ? longDayFormatter.format(date) : dayFormatter.format(date);
+    } catch {
+      return value || '';
+    }
   }
 }
