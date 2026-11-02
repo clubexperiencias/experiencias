@@ -31,6 +31,35 @@ export class StorageService {
   }
 
   /**
+   * Resuelve una URL firmada fresca y autorizada para acceder a un comprobante privado.
+   */
+  async getSignedReceiptUrl(storageKey: string, expiresIn = 3600): Promise<string> {
+    if (!storageKey) return '';
+    if (
+      storageKey.startsWith('http://') ||
+      storageKey.startsWith('https://') ||
+      storageKey.startsWith('data:') ||
+      storageKey.startsWith('blob:')
+    ) {
+      return storageKey;
+    }
+    if (!isSupabaseConfigured()) {
+      return storageKey;
+    }
+    try {
+      const { data, error } = await this.supabase.storage
+        .from('comprobantes')
+        .createSignedUrl(storageKey, expiresIn);
+      if (!error && data?.signedUrl) {
+        return data.signedUrl;
+      }
+    } catch (err) {
+      console.warn('[StorageService] Error al generar signed URL de comprobante:', err);
+    }
+    return '';
+  }
+
+  /**
    * Subida nativa directa a Supabase Storage con validación de producción.
    */
   private async uploadToSupabaseStorage(
@@ -47,46 +76,39 @@ export class StorageService {
       .replace(/[^a-zA-Z0-9._-]/g, '-');
     const storageKey = `${yearMonth}/${safeRef}-${Date.now()}-${cleanName}`;
 
-    // 1. Si Supabase está configurado, subir directamente al bucket correspondiente
+    // 1. Si Supabase está configurado, subir directamente solo al bucket correspondiente
     if (isSupabaseConfigured()) {
-      const bucketsToTry =
-        primaryBucket === 'experiencias'
-          ? ['experiencias', 'comprobantes']
-          : ['comprobantes', 'experiencias'];
+      const { error: uploadErr } = await this.supabase.storage
+        .from(primaryBucket)
+        .upload(storageKey, file, {
+          contentType: file.type || 'application/octet-stream',
+          upsert: false,
+        });
 
-      let lastError: Error | null = null;
-
-      for (const bucket of bucketsToTry) {
-        try {
-          const { error: uploadErr } = await this.supabase.storage
-            .from(bucket)
-            .upload(storageKey, file, {
-              contentType: file.type || 'application/octet-stream',
-              upsert: true,
-            });
-
-          if (!uploadErr) {
-            const { data: pubData } = this.supabase.storage
-              .from(bucket)
-              .getPublicUrl(storageKey);
-
-            return {
-              url: pubData?.publicUrl || storageKey,
-              storageKey,
-              provider: 'supabase',
-            };
-          } else {
-            lastError = new Error(uploadErr.message);
-          }
-        } catch (err: unknown) {
-          lastError = err instanceof Error ? err : new Error(String(err));
-        }
+      if (uploadErr) {
+        console.error(`[StorageService] Error al subir a ${primaryBucket}:`, uploadErr.message);
+        throw new Error(`No se pudo subir el archivo a Supabase Storage: ${uploadErr.message}`);
       }
 
-      // Si falló en Supabase Storage, registrar y propagar el error
-      const errMsg = lastError?.message || 'Error desconocido al subir archivo';
-      console.error('[StorageService] Error al subir a Supabase Storage:', errMsg);
-      throw new Error(`No se pudo subir el archivo a Supabase Storage: ${errMsg}`);
+      let resolvedUrl = '';
+      if (primaryBucket === 'experiencias') {
+        const { data: pubData } = this.supabase.storage
+          .from('experiencias')
+          .getPublicUrl(storageKey);
+        resolvedUrl = pubData?.publicUrl || storageKey;
+      } else {
+        // En comprobantes (privado), generar URL firmada temporal sin exponer acceso público
+        const { data: signData, error: signErr } = await this.supabase.storage
+          .from('comprobantes')
+          .createSignedUrl(storageKey, 3600);
+        resolvedUrl = (!signErr && signData?.signedUrl) ? signData.signedUrl : '';
+      }
+
+      return {
+        url: resolvedUrl,
+        storageKey,
+        provider: 'supabase',
+      };
     }
 
     // 2. En producción es crítico NO guardar en Base64/localStorage ni simular subidas falsas
@@ -108,4 +130,3 @@ export class StorageService {
     };
   }
 }
-

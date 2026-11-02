@@ -267,11 +267,20 @@ export class ProviderExperiencesComponent implements OnInit {
     URL.revokeObjectURL(url);
   }
 
-  readonly todayIso = new Date().toISOString().split('T')[0];
+  todayIso = this.getLocalTodayIso();
   readonly activeDateExpId = signal<string | null>(null);
   newDateValue = '';
 
+  private getLocalTodayIso(): string {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
   toggleAddDate(expId: string | null): void {
+    this.todayIso = this.getLocalTodayIso();
     if (this.activeDateExpId() === expId) {
       this.activeDateExpId.set(null);
       this.newDateValue = '';
@@ -283,16 +292,28 @@ export class ProviderExperiencesComponent implements OnInit {
 
   saveNewDate(expId: string): void {
     if (!this.newDateValue) return;
-    this.store.addDateToExperience(expId, this.newDateValue);
-    this.activeDateExpId.set(null);
-    this.newDateValue = '';
-    this.showToast('Fecha de salida agregada con éxito');
+    const ok = this.store.addDateToExperience(expId, this.newDateValue);
+    if (ok) {
+      this.activeDateExpId.set(null);
+      this.newDateValue = '';
+      this.showToast('Fecha de salida agregada con éxito');
+    } else {
+      this.showToast('La fecha ya existe o no pudo sincronizarse con el catálogo');
+    }
   }
 
   removeDate(expId: string, date: string): void {
+    if (this.store.reservedSeats(expId, date) > 0) {
+      this.showToast('No se puede eliminar una fecha con reservas confirmadas');
+      return;
+    }
     if (confirm(`¿Eliminar la fecha de salida (${date})?`)) {
-      this.store.removeDateFromExperience(expId, date);
-      this.showToast('Fecha de salida eliminada');
+      const ok = this.store.removeDateFromExperience(expId, date);
+      if (ok) {
+        this.showToast('Fecha de salida eliminada');
+      } else {
+        this.showToast('No se pudo eliminar la fecha de salida');
+      }
     }
   }
 }

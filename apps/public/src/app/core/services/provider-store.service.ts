@@ -841,6 +841,23 @@ export class ProviderStoreService {
     const currentDates = exp.dates || [];
     if (currentDates.includes(date)) return false;
     const newDates = [...currentDates, date].sort();
+
+    // Sincronizar con el catálogo público en ExperienceService
+    const expMatch =
+      this.expService.getExperienceById(experienceId) ||
+      this.expService.getExperienceBySlug(exp.slug);
+    if (expMatch) {
+      try {
+        void this.expService.updateExperience({
+          id: expMatch.id,
+          dates: newDates,
+        });
+      } catch (err) {
+        console.warn('[ProviderStoreService] Error sincronizando fecha con ExperienceService:', err);
+        return false;
+      }
+    }
+
     this.updateExperience(experienceId, { dates: newDates });
     return true;
   }
@@ -848,7 +865,27 @@ export class ProviderStoreService {
   removeDateFromExperience(experienceId: string, date: string): boolean {
     const exp = this.getExperienceById(experienceId);
     if (!exp) return false;
+    if (this.reservedSeats(experienceId, date) > 0) {
+      return false;
+    }
     const newDates = (exp.dates || []).filter((d) => d !== date);
+
+    // Sincronizar con el catálogo público en ExperienceService
+    const expMatch =
+      this.expService.getExperienceById(experienceId) ||
+      this.expService.getExperienceBySlug(exp.slug);
+    if (expMatch) {
+      try {
+        void this.expService.updateExperience({
+          id: expMatch.id,
+          dates: newDates,
+        });
+      } catch (err) {
+        console.warn('[ProviderStoreService] Error sincronizando eliminación con ExperienceService:', err);
+        return false;
+      }
+    }
+
     this.updateExperience(experienceId, { dates: newDates });
     return true;
   }
@@ -1119,18 +1156,10 @@ export class ProviderStoreService {
     const amountArs = subtotal - discountArs;
     const ref = this.buildReference(experience.slug);
 
-    let receiptUrl = '';
-    let storageKey: string | undefined;
-    let storageProvider: 'supabase' | 'local' = 'supabase';
-
-    try {
-      const uploadRes = await this.storageService.uploadReceipt(input.receiptFile, ref);
-      receiptUrl = uploadRes.url;
-      storageKey = uploadRes.storageKey;
-      storageProvider = uploadRes.provider;
-    } catch (uploadErr) {
-      console.warn('[ProviderStore] Error al subir comprobante a Supabase Storage:', uploadErr);
-    }
+    const uploadRes = await this.storageService.uploadReceipt(input.receiptFile, ref);
+    let receiptUrl = uploadRes.url;
+    const storageKey = uploadRes.storageKey;
+    const storageProvider = uploadRes.provider;
 
     if (isSupabaseConfigured()) {
       try {
@@ -1259,6 +1288,10 @@ export class ProviderStoreService {
     } else {
       this.emails.notifyPaymentRejected(reviewed);
     }
+  }
+
+  async getSignedReceiptUrl(storageKey: string): Promise<string> {
+    return this.storageService.getSignedReceiptUrl(storageKey);
   }
 
   private recordMemberActivity(

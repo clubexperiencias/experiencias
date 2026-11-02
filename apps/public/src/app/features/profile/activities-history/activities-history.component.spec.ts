@@ -34,7 +34,6 @@ const mockActivities: ActivityRecord[] = [
     },
     memoriesCount: 0,
     memoryPhotos: [],
-    reviews: [],
   },
   {
     id: 'act_002',
@@ -64,7 +63,6 @@ const mockActivities: ActivityRecord[] = [
     },
     memoriesCount: 0,
     memoryPhotos: [],
-    reviews: [],
   },
 ];
 

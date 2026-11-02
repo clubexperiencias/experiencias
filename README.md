@@ -37,10 +37,10 @@ npm test
 ## Storage Architecture (Supabase Storage)
 
 All media assets and payment receipts are stored directly in native Supabase Storage buckets:
-- **`experiencias`** (Public Bucket): Stores cover images, albums, videos, and proposal uploads for published and pending activities.
+- **`experiencias`** (Public Bucket): Stores cover images, albums, videos, and proposal uploads for published and pending activities. *(Note: You must create a public bucket named `experiencias` in the Supabase Storage dashboard before applying the migration, as the migration sets up Row-Level Security policies but does not create the bucket itself).*
 - **`comprobantes`** (Private Bucket with RLS): Stores bank transfer receipt documents uploaded during checkout for verification.
 
-To set up storage policies and bucket permissions in Supabase, execute [`supabase/migrations/004_experiencias_storage.sql`](./supabase/migrations/004_experiencias_storage.sql) in the Supabase SQL Editor.
+To configure bucket permissions and access policies in Supabase, execute [`supabase/migrations/004_experiencias_storage.sql`](./supabase/migrations/004_experiencias_storage.sql) in the Supabase SQL Editor.
 
 ## Environments: Development vs Production
 

@@ -21,6 +21,10 @@ describe('StorageService', () => {
           getPublicUrl: vi.fn().mockReturnValue({
             data: { publicUrl: 'https://prod-project.supabase.co/storage/v1/object/public/experiencias/test/foto.jpg' },
           }),
+          createSignedUrl: vi.fn().mockResolvedValue({
+            data: { signedUrl: 'https://prod-project.supabase.co/storage/v1/object/sign/comprobantes/test/comprobante.jpg?token=abc' },
+            error: null,
+          }),
         }),
       },
     };
@@ -60,3 +64,4 @@ describe('StorageService', () => {
     expect(mockSupabase.storage.from).toHaveBeenCalledWith('comprobantes');
   });
 });
+

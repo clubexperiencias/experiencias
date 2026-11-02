@@ -18,21 +18,45 @@ BEGIN
       TO public, anon, authenticated
       USING (bucket_id = 'experiencias');
 
-    -- 2. Permitir subir fotos de experiencias a usuarios autenticados y anon (prestadores y admins)
+    -- 2. Permitir subir fotos de experiencias únicamente a prestadores y admins autenticados
     DROP POLICY IF EXISTS "Subida de fotos de experiencias" ON storage.objects;
     CREATE POLICY "Subida de fotos de experiencias"
       ON storage.objects
       FOR INSERT
-      TO anon, authenticated
-      WITH CHECK (bucket_id = 'experiencias');
+      TO authenticated
+      WITH CHECK (
+        bucket_id = 'experiencias'
+        AND (
+          EXISTS (
+            SELECT 1 FROM public.admin_access
+            WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email') AND active = true
+          )
+          OR EXISTS (
+            SELECT 1 FROM public.provider_access
+            WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email') AND active = true
+          )
+        )
+      );
 
-    -- 3. Permitir actualizar o reemplazar fotos existentes en el bucket
+    -- 3. Permitir actualizar o reemplazar fotos existentes únicamente a prestadores y admins autenticados
     DROP POLICY IF EXISTS "Actualizacion de fotos de experiencias" ON storage.objects;
     CREATE POLICY "Actualizacion de fotos de experiencias"
       ON storage.objects
       FOR UPDATE
-      TO anon, authenticated
-      USING (bucket_id = 'experiencias');
+      TO authenticated
+      USING (
+        bucket_id = 'experiencias'
+        AND (
+          EXISTS (
+            SELECT 1 FROM public.admin_access
+            WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email') AND active = true
+          )
+          OR EXISTS (
+            SELECT 1 FROM public.provider_access
+            WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email') AND active = true
+          )
+        )
+      );
   END IF;
 EXCEPTION
   WHEN OTHERS THEN

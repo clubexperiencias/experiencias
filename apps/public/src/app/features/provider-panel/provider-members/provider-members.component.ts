@@ -1302,10 +1302,25 @@ export class ProviderMembersComponent {
     () => this.filteredMembers().filter((m) => m.status === 'pendiente').length,
   );
 
-  openReceipt(sub: TransferSubmission): void {
+  async openReceipt(sub: TransferSubmission): Promise<void> {
     this.selectedSubmission.set(sub);
     this.rejecting.set(false);
     this.rejectionReason.set('');
+    const key = sub.receipt.storageKey || sub.receipt.url;
+    if (
+      key &&
+      !key.startsWith('http://') &&
+      !key.startsWith('https://') &&
+      !key.startsWith('data:') &&
+      !key.startsWith('blob:')
+    ) {
+      const signed = await this.store.getSignedReceiptUrl(key);
+      if (signed) {
+        this.selectedSubmission.update((s) =>
+          s ? { ...s, receipt: { ...s.receipt, url: signed } } : null,
+        );
+      }
+    }
   }
 
   closeModal(): void {

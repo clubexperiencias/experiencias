@@ -137,10 +137,17 @@ if (activeProdUrl && activeProdAnonKey) {
     }
   }
 
-  // Generar script runtime-env.js en las carpetas public para respaldo
+  // Generar script runtime-env.js en las carpetas public para respaldo (evitando placeholders truthy)
+  const safeRuntimeUrl =
+    activeDevUrl && !activeDevUrl.includes('TU_PROYECTO') && !activeDevUrl.includes('tu-proyecto')
+      ? activeDevUrl
+      : '';
+  const safeRuntimeKey =
+    activeDevAnonKey && !activeDevAnonKey.includes('...') && safeRuntimeUrl ? activeDevAnonKey : '';
+
   const runtimeScript = `window.__SUPABASE_CONFIG__ = {
-  url: '${activeDevUrl}',
-  anonKey: '${activeDevAnonKey}'
+  url: '${safeRuntimeUrl}',
+  anonKey: '${safeRuntimeKey}'
 };
 `;
   const publicDirs = [path.join(rootDir, 'apps', 'public', 'public'), path.join(rootDir, 'public')];
