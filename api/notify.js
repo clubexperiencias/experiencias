@@ -245,10 +245,10 @@ function templatePaymentSubmittedAdmin(sub) {
         <td class="data-label">Importe Transferido</td>
         <td class="data-value" style="color: #ffcc00; font-weight: 800;">$${Number(sub.amountArs).toLocaleString('es-AR')} ARS</td>
       </tr>
-      ${sub.receiptUrl ? `
+      ${sub.receiptUrl && /^https?:\/\//i.test(String(sub.receiptUrl).trim()) ? `
       <tr>
         <td class="data-label">Comprobante de Pago</td>
-        <td class="data-value"><a href="${sub.receiptUrl}" target="_blank" style="color: #ffcc00; text-decoration: underline;">Abrir archivo adjunto</a></td>
+        <td class="data-value"><a href="${escapeHtml(String(sub.receiptUrl).trim())}" target="_blank" rel="noopener noreferrer" style="color: #ffcc00; text-decoration: underline;">Abrir archivo adjunto</a></td>
       </tr>` : ''}
     </table>
 
@@ -463,10 +463,15 @@ module.exports = async function handler(req, res) {
           results.push({ target: 'user', ...userResult });
         }
 
-        // 2. Alerta a Administradores y al Prestador específico
+        // 2. Alerta a Administradores y al Prestador (restringido a destinatarios verificados)
         const recipients = [...config.adminEmails];
-        if (data.providerEmail && !recipients.includes(data.providerEmail)) {
-          recipients.push(data.providerEmail);
+        if (data.providerEmail) {
+          const normalizedProvider = String(data.providerEmail).trim().toLowerCase();
+          if (config.adminEmails.some((a) => a.toLowerCase() === normalizedProvider)) {
+            if (!recipients.includes(normalizedProvider)) {
+              recipients.push(normalizedProvider);
+            }
+          }
         }
 
         if (recipients.length > 0) {

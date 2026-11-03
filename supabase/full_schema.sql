@@ -474,11 +474,18 @@ CREATE POLICY "Permitir guardar email en waitlist"
   WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Permitir lectura general de waitlist" ON public.waitlist;
-CREATE POLICY "Permitir lectura general de waitlist"
+DROP POLICY IF EXISTS "Admins can view all waitlist" ON public.waitlist;
+CREATE POLICY "Admins can view all waitlist"
   ON public.waitlist
   FOR SELECT
-  TO anon, authenticated
-  USING (true);
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.admin_access
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+        AND active = true
+    )
+  );
 
 DROP POLICY IF EXISTS "Permitir consultar waitlist propio" ON public.waitlist;
 CREATE POLICY "Permitir consultar waitlist propio"
@@ -531,11 +538,38 @@ CREATE POLICY "Permitir envío de postulaciones de fundadores"
   WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Permitir consultar postulaciones de fundadores" ON public.postulaciones_fundadores;
-CREATE POLICY "Permitir consultar postulaciones de fundadores"
+DROP POLICY IF EXISTS "Admins can view postulaciones_fundadores" ON public.postulaciones_fundadores;
+CREATE POLICY "Admins can view postulaciones_fundadores"
   ON public.postulaciones_fundadores
   FOR SELECT
-  TO anon, authenticated
-  USING (true);
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.admin_access
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+        AND active = true
+    )
+  );
+
+DROP POLICY IF EXISTS "Admins can update postulaciones_fundadores" ON public.postulaciones_fundadores;
+CREATE POLICY "Admins can update postulaciones_fundadores"
+  ON public.postulaciones_fundadores
+  FOR UPDATE
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.admin_access
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+        AND active = true
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.admin_access
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+        AND active = true
+    )
+  );
 
 -- Políticas postulaciones prestadores
 DROP POLICY IF EXISTS "Permitir envío de postulaciones de prestadores" ON public.postulaciones_prestadores;
@@ -546,18 +580,48 @@ CREATE POLICY "Permitir envío de postulaciones de prestadores"
   WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Permitir consultar postulaciones de prestadores" ON public.postulaciones_prestadores;
-CREATE POLICY "Permitir consultar postulaciones de prestadores"
+DROP POLICY IF EXISTS "Admins can view postulaciones_prestadores" ON public.postulaciones_prestadores;
+CREATE POLICY "Admins can view postulaciones_prestadores"
   ON public.postulaciones_prestadores
   FOR SELECT
-  TO anon, authenticated
-  USING (true);
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.admin_access
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+        AND active = true
+    )
+  );
+
+DROP POLICY IF EXISTS "Admins can update postulaciones_prestadores" ON public.postulaciones_prestadores;
+CREATE POLICY "Admins can update postulaciones_prestadores"
+  ON public.postulaciones_prestadores
+  FOR UPDATE
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.admin_access
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+        AND active = true
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.admin_access
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+        AND active = true
+    )
+  );
 
 -- Permisos y Grants
-GRANT SELECT, INSERT, UPDATE ON public.waitlist TO anon, authenticated;
+GRANT INSERT ON public.waitlist TO anon, authenticated;
+GRANT SELECT, UPDATE ON public.waitlist TO authenticated;
 GRANT SELECT, INSERT ON public.socios TO anon, authenticated;
 GRANT UPDATE (full_name, dni, phone, experiences_wishlist, experiences_other, updated_at) ON public.socios TO authenticated;
-GRANT SELECT, INSERT, UPDATE ON public.postulaciones_fundadores TO anon, authenticated;
-GRANT SELECT, INSERT, UPDATE ON public.postulaciones_prestadores TO anon, authenticated;
+GRANT INSERT ON public.postulaciones_fundadores TO anon, authenticated;
+GRANT SELECT, UPDATE ON public.postulaciones_fundadores TO authenticated;
+GRANT INSERT ON public.postulaciones_prestadores TO anon, authenticated;
+GRANT SELECT, UPDATE ON public.postulaciones_prestadores TO authenticated;
 GRANT USAGE, SELECT ON SEQUENCE public.socios_position_seq TO anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.record_waitlist_email(TEXT, BOOLEAN) TO anon, authenticated;
@@ -605,6 +669,7 @@ CREATE TABLE IF NOT EXISTS public.experiencias (
 
 CREATE INDEX IF NOT EXISTS idx_experiencias_slug ON public.experiencias(slug);
 ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS album_photos JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS date_slots JSONB DEFAULT '[]'::jsonb;
 
 DROP TRIGGER IF EXISTS experiencias_updated_at ON public.experiencias;
 CREATE TRIGGER experiencias_updated_at
@@ -831,6 +896,8 @@ DECLARE
   v_capacity INTEGER := 12;
   v_unit_price INTEGER := 0;
   v_dates JSONB := '[]'::jsonb;
+  v_date_slots JSONB := '[]'::jsonb;
+  v_slot JSONB;
   v_expected_subtotal INTEGER := 0;
   v_expected_discount INTEGER := 0;
   v_expected_total INTEGER := 0;
@@ -846,7 +913,8 @@ BEGIN
     RETURN jsonb_build_object('status', 'unauthorized');
   END IF;
 
-  SELECT capacity_per_date, price_ars, dates INTO v_capacity, v_unit_price, v_dates
+  SELECT capacity_per_date, price_ars, dates, COALESCE(date_slots, '[]'::jsonb)
+  INTO v_capacity, v_unit_price, v_dates, v_date_slots
   FROM public.experiencias
   WHERE id = p_experience_id
   LIMIT 1
@@ -861,6 +929,26 @@ BEGIN
       'status', 'invalid_date',
       'message', 'La fecha seleccionada no está disponible.'
     );
+  END IF;
+
+  -- Validar si el slot específico de fecha está cerrado o tiene cupo diferenciado
+  IF v_date_slots IS NOT NULL AND jsonb_array_length(v_date_slots) > 0 THEN
+    FOR v_slot IN SELECT * FROM jsonb_array_elements(v_date_slots)
+    LOOP
+      IF (v_slot ->> 'date') = p_date THEN
+        IF (v_slot ->> 'closed')::boolean IS TRUE THEN
+          RETURN jsonb_build_object(
+            'status', 'date_closed',
+            'message', 'Esta fecha se encuentra cerrada para nuevas reservas.'
+          );
+        END IF;
+        IF (v_slot ->> 'unlimited')::boolean IS TRUE THEN
+          v_capacity := 999;
+        ELSIF (v_slot ->> 'capacity') IS NOT NULL AND (v_slot ->> 'capacity')::integer > 0 THEN
+          v_capacity := (v_slot ->> 'capacity')::integer;
+        END IF;
+      END IF;
+    END LOOP;
   END IF;
 
   IF v_unit_price IS NOT NULL AND v_unit_price > 0 THEN
@@ -1056,7 +1144,7 @@ BEGIN
 END;
 $$;
 
--- 3.4 Listar envíos de comprobantes para prestadores
+-- 3.4 Listar envíos de comprobantes para prestadores y admins autenticados
 CREATE OR REPLACE FUNCTION public.list_provider_transfer_submissions()
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -1066,6 +1154,19 @@ AS $$
 DECLARE
   v_items JSONB;
 BEGIN
+  IF NOT (
+    EXISTS (
+      SELECT 1 FROM public.admin_access
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', '')) AND active = true
+    )
+    OR EXISTS (
+      SELECT 1 FROM public.provider_access
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', '')) AND active = true
+    )
+  ) THEN
+    RETURN jsonb_build_object('status', 'unauthorized', 'submissions', '[]'::jsonb);
+  END IF;
+
   SELECT COALESCE(jsonb_agg(to_jsonb(t) ORDER BY t.submitted_at DESC), '[]'::jsonb)
   INTO v_items
   FROM public.pagos_transferencias t;
@@ -1088,6 +1189,19 @@ AS $$
 DECLARE
   v_updated public.pagos_transferencias%ROWTYPE;
 BEGIN
+  IF NOT (
+    EXISTS (
+      SELECT 1 FROM public.admin_access
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', '')) AND active = true
+    )
+    OR EXISTS (
+      SELECT 1 FROM public.provider_access
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', '')) AND active = true
+    )
+  ) THEN
+    RETURN jsonb_build_object('status', 'unauthorized');
+  END IF;
+
   IF p_status NOT IN ('aprobado', 'rechazado') THEN
     RETURN jsonb_build_object('status', 'invalid_status');
   END IF;
@@ -1121,8 +1235,11 @@ GRANT EXECUTE ON FUNCTION public.submit_experience_transfer(
 ) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_reserved_seats_by_experience(TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_member_transfer_submissions(TEXT, UUID) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.list_provider_transfer_submissions() TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.review_transfer_submission(UUID, TEXT, TEXT) TO anon, authenticated;
+
+REVOKE EXECUTE ON FUNCTION public.list_provider_transfer_submissions() FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.review_transfer_submission(UUID, TEXT, TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.list_provider_transfer_submissions() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.review_transfer_submission(UUID, TEXT, TEXT) TO authenticated;
 
 -- ============================================================
 -- 4. BUCKET DE STORAGE ('comprobantes') Y POLÍTICAS
@@ -1272,7 +1389,37 @@ CREATE POLICY "Admins can manage provider_access"
     )
   );
 
-GRANT ALL ON public.provider_access TO authenticated;
+REVOKE ALL ON public.provider_access FROM PUBLIC, anon;
+GRANT SELECT, INSERT, UPDATE ON public.provider_access TO authenticated;
+
+-- Validación de campos administrativos: solo admins activos pueden modificar status, active o email
+CREATE OR REPLACE FUNCTION public.check_provider_access_update()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF (NEW.status IS DISTINCT FROM OLD.status OR
+      NEW.active IS DISTINCT FROM OLD.active OR
+      LOWER(NEW.email) IS DISTINCT FROM LOWER(OLD.email)) THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM public.admin_access
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+        AND active = true
+    ) THEN
+      RAISE EXCEPTION 'Acceso denegado: solo administradores activos pueden modificar campos administrativos del prestador';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_check_provider_access_update ON public.provider_access;
+CREATE TRIGGER trg_check_provider_access_update
+  BEFORE UPDATE ON public.provider_access
+  FOR EACH ROW
+  EXECUTE FUNCTION public.check_provider_access_update();
 
 -- ============================================================
 -- 1.1 TABLA HISTÓRICA: Historial de Modificaciones de Datos Bancarios
@@ -1306,19 +1453,14 @@ CREATE POLICY "Providers can view their own banking history"
     LOWER(provider_email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
   );
 
+-- provider_banking_history es de solo inserción automática por trigger (append-only)
 DROP POLICY IF EXISTS "Providers can insert into their own banking history" ON public.provider_banking_history;
-CREATE POLICY "Providers can insert into their own banking history"
-  ON public.provider_banking_history
-  FOR INSERT
-  TO authenticated
-  WITH CHECK (
-    LOWER(provider_email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
-  );
-
 DROP POLICY IF EXISTS "Admins can manage banking history" ON public.provider_banking_history;
-CREATE POLICY "Admins can manage banking history"
+
+DROP POLICY IF EXISTS "Admins can view banking history" ON public.provider_banking_history;
+CREATE POLICY "Admins can view banking history"
   ON public.provider_banking_history
-  FOR ALL
+  FOR SELECT
   TO authenticated
   USING (
     EXISTS (
@@ -1328,7 +1470,73 @@ CREATE POLICY "Admins can manage banking history"
     )
   );
 
-GRANT ALL ON public.provider_banking_history TO authenticated;
+REVOKE ALL ON public.provider_banking_history FROM PUBLIC, anon;
+GRANT SELECT ON public.provider_banking_history TO authenticated;
+
+-- Trigger automático para registrar cambios bancarios
+CREATE OR REPLACE FUNCTION public.handle_provider_banking_history()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_is_admin BOOLEAN;
+  v_changed_by TEXT;
+BEGIN
+  IF (OLD.cbu_alias IS DISTINCT FROM NEW.cbu_alias OR
+      OLD.name IS DISTINCT FROM NEW.name OR
+      OLD.cuit_dni IS DISTINCT FROM NEW.cuit_dni OR
+      OLD.bank_name IS DISTINCT FROM NEW.bank_name) THEN
+
+    SELECT EXISTS (
+      SELECT 1 FROM public.admin_access
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+        AND active = true
+    ) INTO v_is_admin;
+
+    IF v_is_admin THEN
+      v_changed_by := 'admin';
+    ELSE
+      v_changed_by := 'provider';
+    END IF;
+
+    INSERT INTO public.provider_banking_history (
+      provider_email,
+      old_cbu_alias,
+      new_cbu_alias,
+      old_name,
+      new_name,
+      old_cuit_dni,
+      new_cuit_dni,
+      old_bank_name,
+      new_bank_name,
+      changed_by,
+      changed_at
+    ) VALUES (
+      NEW.email,
+      OLD.cbu_alias,
+      NEW.cbu_alias,
+      OLD.name,
+      NEW.name,
+      OLD.cuit_dni,
+      NEW.cuit_dni,
+      OLD.bank_name,
+      NEW.bank_name,
+      v_changed_by,
+      now()
+    );
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_provider_banking_history ON public.provider_access;
+CREATE TRIGGER trg_provider_banking_history
+  AFTER UPDATE ON public.provider_access
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_provider_banking_history();
 
 -- Prestadores iniciales autorizados
 INSERT INTO public.provider_access (
@@ -1663,6 +1871,15 @@ DECLARE
   v_socios JSONB;
   v_waitlist JSONB;
 BEGIN
+  -- Caller authorization: Only active admins
+  IF NOT EXISTS (
+    SELECT 1 FROM public.admin_access
+    WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+      AND active = true
+  ) THEN
+    RAISE EXCEPTION 'Acceso denegado: solo administradores activos pueden acceder a la nómina';
+  END IF;
+
   -- Socios oficiales:
   SELECT COALESCE(
     jsonb_agg(
@@ -1749,6 +1966,15 @@ AS $$
 DECLARE
   v_subs JSONB;
 BEGIN
+  -- Caller authorization: Only active admins
+  IF NOT EXISTS (
+    SELECT 1 FROM public.admin_access
+    WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+      AND active = true
+  ) THEN
+    RAISE EXCEPTION 'Acceso denegado: solo administradores activos pueden acceder a los comprobantes';
+  END IF;
+
   SELECT COALESCE(
     jsonb_agg(
       jsonb_build_object(
@@ -1789,8 +2015,11 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.get_admin_all_members() TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.get_admin_all_submissions() TO anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.get_admin_all_members() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.get_admin_all_members() TO authenticated;
+
+REVOKE EXECUTE ON FUNCTION public.get_admin_all_submissions() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.get_admin_all_submissions() TO authenticated;
 
 -- ============================================================
 -- 5. VISTA DE ESTADÍSTICAS PÚBLICAS

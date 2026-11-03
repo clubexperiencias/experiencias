@@ -157,6 +157,7 @@ export function mapLiveExperienceToProvider(live: Experience): ProviderExperienc
     priceUsd: live.priceUsd,
     capacityPerDate: live.maxSpotsPerGroup,
     dates: live.dates || [],
+    dateSlots: live.dateSlots || [],
     status: live.status,
     coverImage: live.coverImage,
     galleryImages: live.galleryImages,
@@ -782,32 +783,6 @@ export class ProviderStoreService {
           console.warn('[ProviderStore] Error actualizando provider_access:', error);
           return { success: false, message: 'No se pudieron guardar los cambios en la base de datos.' };
         }
-
-        // Registrar auditoría si hubo cambios en datos bancarios o titular
-        const bankingChanged =
-          (updates.cbuAlias !== undefined && updates.cbuAlias !== current.cbuAlias) ||
-          (updates.name !== undefined && updates.name !== current.name) ||
-          (updates.cuitDni !== undefined && updates.cuitDni !== current.cuitDni) ||
-          (updates.bankName !== undefined && updates.bankName !== current.bankName);
-
-        if (bankingChanged) {
-          try {
-            await (this.supabase as any).from('provider_banking_history').insert({
-              provider_email: email,
-              old_cbu_alias: current.cbuAlias || '',
-              new_cbu_alias: updates.cbuAlias?.trim() ?? current.cbuAlias ?? '',
-              old_name: current.name || '',
-              new_name: updates.name?.trim() ?? current.name ?? '',
-              old_cuit_dni: current.cuitDni || '',
-              new_cuit_dni: updates.cuitDni?.trim() ?? current.cuitDni ?? '',
-              old_bank_name: current.bankName || '',
-              new_bank_name: updates.bankName?.trim() ?? current.bankName ?? '',
-              changed_by: 'provider',
-            });
-          } catch (histErr) {
-            console.warn('[ProviderStore] No se pudo asentar historial de cambio bancario:', histErr);
-          }
-        }
       } catch (err: any) {
         console.warn('[ProviderStore] Error de conexión actualizando perfil:', err);
         return { success: false, message: 'Error de conexión con el servidor.' };
@@ -1020,6 +995,7 @@ export class ProviderStoreService {
   toggleDateStatus(experienceId: string, date: string): boolean {
     const exp = this.getExperienceById(experienceId);
     if (!exp) return false;
+    const prevExperiences = this._experiences();
     const currentSlots = exp.dateSlots ? [...exp.dateSlots] : [];
     const existingIndex = currentSlots.findIndex((s) => s.date === date);
 
@@ -1036,6 +1012,23 @@ export class ProviderStoreService {
     }
 
     this.updateExperience(experienceId, { dateSlots: currentSlots });
+
+    const expMatch =
+      this.expService.getExperienceById(experienceId) ||
+      this.expService.getExperienceBySlug(exp.slug);
+    if (expMatch) {
+      void this.expService
+        .updateExperience({
+          id: expMatch.id,
+          dateSlots: currentSlots,
+        })
+        .catch((err) => {
+          console.warn('[ProviderStoreService] Error sincronizando slot con ExperienceService:', err);
+          this._experiences.set(prevExperiences);
+          this.saveExperiences();
+        });
+    }
+
     return true;
   }
 
@@ -1046,6 +1039,7 @@ export class ProviderStoreService {
   ): boolean {
     const exp = this.getExperienceById(experienceId);
     if (!exp) return false;
+    const prevExperiences = this._experiences();
     const currentSlots = exp.dateSlots ? [...exp.dateSlots] : [];
     const idx = currentSlots.findIndex((s) => s.date === date);
 
@@ -1056,6 +1050,23 @@ export class ProviderStoreService {
     }
 
     this.updateExperience(experienceId, { dateSlots: currentSlots });
+
+    const expMatch =
+      this.expService.getExperienceById(experienceId) ||
+      this.expService.getExperienceBySlug(exp.slug);
+    if (expMatch) {
+      void this.expService
+        .updateExperience({
+          id: expMatch.id,
+          dateSlots: currentSlots,
+        })
+        .catch((err) => {
+          console.warn('[ProviderStoreService] Error sincronizando slot con ExperienceService:', err);
+          this._experiences.set(prevExperiences);
+          this.saveExperiences();
+        });
+    }
+
     return true;
   }
 
@@ -1330,6 +1341,9 @@ export class ProviderStoreService {
     }
     if (!experience.dates.includes(input.date)) {
       throw new Error('La fecha elegida no está disponible.');
+    }
+    if (this.isDateClosed(experience, input.date)) {
+      throw new Error('La fecha elegida se encuentra cerrada para nuevas reservas.');
     }
     if (
       !Number.isInteger(input.participants) ||

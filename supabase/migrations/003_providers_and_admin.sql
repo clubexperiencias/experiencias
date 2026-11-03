@@ -73,7 +73,37 @@ CREATE POLICY "Admins can manage provider_access"
     )
   );
 
-GRANT ALL ON public.provider_access TO authenticated;
+REVOKE ALL ON public.provider_access FROM PUBLIC, anon;
+GRANT SELECT, INSERT, UPDATE ON public.provider_access TO authenticated;
+
+-- Validación de campos administrativos: solo admins activos pueden modificar status, active o email
+CREATE OR REPLACE FUNCTION public.check_provider_access_update()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF (NEW.status IS DISTINCT FROM OLD.status OR
+      NEW.active IS DISTINCT FROM OLD.active OR
+      LOWER(NEW.email) IS DISTINCT FROM LOWER(OLD.email)) THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM public.admin_access
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+        AND active = true
+    ) THEN
+      RAISE EXCEPTION 'Acceso denegado: solo administradores activos pueden modificar campos administrativos del prestador';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_check_provider_access_update ON public.provider_access;
+CREATE TRIGGER trg_check_provider_access_update
+  BEFORE UPDATE ON public.provider_access
+  FOR EACH ROW
+  EXECUTE FUNCTION public.check_provider_access_update();
 
 -- ============================================================
 -- 1.1 TABLA HISTÓRICA: Historial de Modificaciones de Datos Bancarios
@@ -107,19 +137,14 @@ CREATE POLICY "Providers can view their own banking history"
     LOWER(provider_email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
   );
 
+-- provider_banking_history es de solo inserción automática por trigger (append-only)
 DROP POLICY IF EXISTS "Providers can insert into their own banking history" ON public.provider_banking_history;
-CREATE POLICY "Providers can insert into their own banking history"
-  ON public.provider_banking_history
-  FOR INSERT
-  TO authenticated
-  WITH CHECK (
-    LOWER(provider_email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
-  );
-
 DROP POLICY IF EXISTS "Admins can manage banking history" ON public.provider_banking_history;
-CREATE POLICY "Admins can manage banking history"
+
+DROP POLICY IF EXISTS "Admins can view banking history" ON public.provider_banking_history;
+CREATE POLICY "Admins can view banking history"
   ON public.provider_banking_history
-  FOR ALL
+  FOR SELECT
   TO authenticated
   USING (
     EXISTS (
@@ -129,7 +154,73 @@ CREATE POLICY "Admins can manage banking history"
     )
   );
 
-GRANT ALL ON public.provider_banking_history TO authenticated;
+REVOKE ALL ON public.provider_banking_history FROM PUBLIC, anon;
+GRANT SELECT ON public.provider_banking_history TO authenticated;
+
+-- Trigger automático para registrar cambios bancarios
+CREATE OR REPLACE FUNCTION public.handle_provider_banking_history()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_is_admin BOOLEAN;
+  v_changed_by TEXT;
+BEGIN
+  IF (OLD.cbu_alias IS DISTINCT FROM NEW.cbu_alias OR
+      OLD.name IS DISTINCT FROM NEW.name OR
+      OLD.cuit_dni IS DISTINCT FROM NEW.cuit_dni OR
+      OLD.bank_name IS DISTINCT FROM NEW.bank_name) THEN
+
+    SELECT EXISTS (
+      SELECT 1 FROM public.admin_access
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+        AND active = true
+    ) INTO v_is_admin;
+
+    IF v_is_admin THEN
+      v_changed_by := 'admin';
+    ELSE
+      v_changed_by := 'provider';
+    END IF;
+
+    INSERT INTO public.provider_banking_history (
+      provider_email,
+      old_cbu_alias,
+      new_cbu_alias,
+      old_name,
+      new_name,
+      old_cuit_dni,
+      new_cuit_dni,
+      old_bank_name,
+      new_bank_name,
+      changed_by,
+      changed_at
+    ) VALUES (
+      NEW.email,
+      OLD.cbu_alias,
+      NEW.cbu_alias,
+      OLD.name,
+      NEW.name,
+      OLD.cuit_dni,
+      NEW.cuit_dni,
+      OLD.bank_name,
+      NEW.bank_name,
+      v_changed_by,
+      now()
+    );
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_provider_banking_history ON public.provider_access;
+CREATE TRIGGER trg_provider_banking_history
+  AFTER UPDATE ON public.provider_access
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_provider_banking_history();
 
 -- Prestadores iniciales autorizados
 INSERT INTO public.provider_access (
@@ -464,6 +555,15 @@ DECLARE
   v_socios JSONB;
   v_waitlist JSONB;
 BEGIN
+  -- Caller authorization: Only active admins
+  IF NOT EXISTS (
+    SELECT 1 FROM public.admin_access
+    WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+      AND active = true
+  ) THEN
+    RAISE EXCEPTION 'Acceso denegado: solo administradores activos pueden acceder a la nómina';
+  END IF;
+
   -- Socios oficiales:
   SELECT COALESCE(
     jsonb_agg(
@@ -550,6 +650,15 @@ AS $$
 DECLARE
   v_subs JSONB;
 BEGIN
+  -- Caller authorization: Only active admins
+  IF NOT EXISTS (
+    SELECT 1 FROM public.admin_access
+    WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+      AND active = true
+  ) THEN
+    RAISE EXCEPTION 'Acceso denegado: solo administradores activos pueden acceder a los comprobantes';
+  END IF;
+
   SELECT COALESCE(
     jsonb_agg(
       jsonb_build_object(
@@ -590,8 +699,11 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.get_admin_all_members() TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.get_admin_all_submissions() TO anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.get_admin_all_members() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.get_admin_all_members() TO authenticated;
+
+REVOKE EXECUTE ON FUNCTION public.get_admin_all_submissions() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.get_admin_all_submissions() TO authenticated;
 
 -- ============================================================
 -- 5. VISTA DE ESTADÍSTICAS PÚBLICAS
