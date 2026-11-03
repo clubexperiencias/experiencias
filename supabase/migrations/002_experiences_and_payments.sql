@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS public.experiencias (
 CREATE INDEX IF NOT EXISTS idx_experiencias_slug ON public.experiencias(slug);
 ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS album_photos JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS date_slots JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS provider_email TEXT DEFAULT 'patriciofacundodiaztillar@gmail.com';
 
 DROP TRIGGER IF EXISTS experiencias_updated_at ON public.experiencias;
 CREATE TRIGGER experiencias_updated_at
@@ -170,7 +171,10 @@ CREATE TABLE IF NOT EXISTS public.pagos_transferencias (
   updated_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+ALTER TABLE public.pagos_transferencias ADD COLUMN IF NOT EXISTS provider_email TEXT DEFAULT '';
+
 CREATE INDEX IF NOT EXISTS idx_pagos_transferencias_email         ON public.pagos_transferencias(email);
+CREATE INDEX IF NOT EXISTS idx_pagos_transferencias_provider      ON public.pagos_transferencias(provider_email);
 CREATE INDEX IF NOT EXISTS idx_pagos_transferencias_experience    ON public.pagos_transferencias(experience_id, date);
 CREATE INDEX IF NOT EXISTS idx_pagos_transferencias_status        ON public.pagos_transferencias(status);
 CREATE INDEX IF NOT EXISTS idx_pagos_transferencias_reference     ON public.pagos_transferencias(reference);
@@ -266,6 +270,7 @@ DECLARE
   v_unit_price INTEGER := 0;
   v_dates JSONB := '[]'::jsonb;
   v_date_slots JSONB := '[]'::jsonb;
+  v_provider_email TEXT := '';
   v_slot JSONB;
   v_expected_subtotal INTEGER := 0;
   v_expected_discount INTEGER := 0;
@@ -282,8 +287,8 @@ BEGIN
     RETURN jsonb_build_object('status', 'unauthorized');
   END IF;
 
-  SELECT capacity_per_date, price_ars, dates, COALESCE(date_slots, '[]'::jsonb)
-  INTO v_capacity, v_unit_price, v_dates, v_date_slots
+  SELECT capacity_per_date, price_ars, dates, COALESCE(date_slots, '[]'::jsonb), COALESCE(provider_email, '')
+  INTO v_capacity, v_unit_price, v_dates, v_date_slots, v_provider_email
   FROM public.experiencias
   WHERE id = p_experience_id
   LIMIT 1
@@ -373,6 +378,7 @@ BEGIN
     reference,
     experience_id,
     experience_title,
+    provider_email,
     date,
     participants,
     amount_ars,
@@ -395,6 +401,7 @@ BEGIN
     UPPER(TRIM(p_reference)),
     p_experience_id,
     p_experience_title,
+    v_provider_email,
     p_date,
     p_participants,
     v_expected_total,
@@ -521,24 +528,39 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
+  v_caller_email TEXT := LOWER(COALESCE(auth.jwt() ->> 'email', ''));
+  v_is_admin BOOLEAN;
+  v_is_provider BOOLEAN;
   v_items JSONB;
 BEGIN
-  IF NOT (
-    EXISTS (
-      SELECT 1 FROM public.admin_access
-      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', '')) AND active = true
-    )
-    OR EXISTS (
-      SELECT 1 FROM public.provider_access
-      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', '')) AND active = true
-    )
-  ) THEN
+  SELECT EXISTS (
+    SELECT 1 FROM public.admin_access
+    WHERE LOWER(email) = v_caller_email AND active = true
+  ) INTO v_is_admin;
+
+  SELECT EXISTS (
+    SELECT 1 FROM public.provider_access
+    WHERE LOWER(email) = v_caller_email AND active = true
+  ) INTO v_is_provider;
+
+  IF NOT (v_is_admin OR v_is_provider) THEN
     RETURN jsonb_build_object('status', 'unauthorized', 'submissions', '[]'::jsonb);
   END IF;
 
-  SELECT COALESCE(jsonb_agg(to_jsonb(t) ORDER BY t.submitted_at DESC), '[]'::jsonb)
-  INTO v_items
-  FROM public.pagos_transferencias t;
+  IF v_is_admin THEN
+    SELECT COALESCE(jsonb_agg(to_jsonb(t) ORDER BY t.submitted_at DESC), '[]'::jsonb)
+    INTO v_items
+    FROM public.pagos_transferencias t;
+  ELSE
+    SELECT COALESCE(jsonb_agg(to_jsonb(t) ORDER BY t.submitted_at DESC), '[]'::jsonb)
+    INTO v_items
+    FROM public.pagos_transferencias t
+    WHERE LOWER(t.provider_email) = v_caller_email
+       OR EXISTS (
+         SELECT 1 FROM public.experiencias e
+         WHERE e.id = t.experience_id AND LOWER(e.provider_email) = v_caller_email
+       );
+  END IF;
 
   RETURN jsonb_build_object('status', 'ok', 'submissions', v_items);
 END;
@@ -556,23 +578,43 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
+  v_caller_email TEXT := LOWER(COALESCE(auth.jwt() ->> 'email', ''));
+  v_is_admin BOOLEAN;
+  v_is_provider BOOLEAN;
   v_updated public.pagos_transferencias%ROWTYPE;
 BEGIN
-  IF NOT (
-    EXISTS (
-      SELECT 1 FROM public.admin_access
-      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', '')) AND active = true
-    )
-    OR EXISTS (
-      SELECT 1 FROM public.provider_access
-      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', '')) AND active = true
-    )
-  ) THEN
+  SELECT EXISTS (
+    SELECT 1 FROM public.admin_access
+    WHERE LOWER(email) = v_caller_email AND active = true
+  ) INTO v_is_admin;
+
+  SELECT EXISTS (
+    SELECT 1 FROM public.provider_access
+    WHERE LOWER(email) = v_caller_email AND active = true
+  ) INTO v_is_provider;
+
+  IF NOT (v_is_admin OR v_is_provider) THEN
     RETURN jsonb_build_object('status', 'unauthorized');
   END IF;
 
   IF p_status NOT IN ('aprobado', 'rechazado') THEN
     RETURN jsonb_build_object('status', 'invalid_status');
+  END IF;
+
+  IF NOT v_is_admin THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM public.pagos_transferencias t
+      WHERE t.id = p_submission_id
+        AND (
+          LOWER(t.provider_email) = v_caller_email
+          OR EXISTS (
+            SELECT 1 FROM public.experiencias e
+            WHERE e.id = t.experience_id AND LOWER(e.provider_email) = v_caller_email
+          )
+        )
+    ) THEN
+      RETURN jsonb_build_object('status', 'unauthorized');
+    END IF;
   END IF;
 
   UPDATE public.pagos_transferencias

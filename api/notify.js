@@ -14,7 +14,15 @@ function getEnvConfig() {
     .map((e) => e.trim())
     .filter(Boolean);
 
-  return { apiKey, fromEmail, adminEmails };
+  const verifiedProviderEmails = (
+    process.env.PROVIDER_NOTIFICATION_EMAILS ||
+    'patriciofacundodiaztillar@gmail.com,vegvarel@gmail.com,gonzagramaglia@gmail.com'
+  )
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+
+  return { apiKey, fromEmail, adminEmails, verifiedProviderEmails };
 }
 
 function sendEmailViaResend({ apiKey, from, to, subject, html }) {
@@ -467,10 +475,11 @@ module.exports = async function handler(req, res) {
         const recipients = [...config.adminEmails];
         if (data.providerEmail) {
           const normalizedProvider = String(data.providerEmail).trim().toLowerCase();
-          if (config.adminEmails.some((a) => a.toLowerCase() === normalizedProvider)) {
-            if (!recipients.includes(normalizedProvider)) {
-              recipients.push(normalizedProvider);
-            }
+          const isVerified =
+            config.adminEmails.some((a) => a.toLowerCase() === normalizedProvider) ||
+            config.verifiedProviderEmails.includes(normalizedProvider);
+          if (isVerified && !recipients.map((r) => r.toLowerCase()).includes(normalizedProvider)) {
+            recipients.push(normalizedProvider);
           }
         }
 

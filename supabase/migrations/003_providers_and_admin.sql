@@ -84,6 +84,11 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
+  -- Service role o scripts de migración directos sin JWT son permitidos
+  IF auth.jwt() IS NULL THEN
+    RETURN NEW;
+  END IF;
+
   IF (NEW.status IS DISTINCT FROM OLD.status OR
       NEW.active IS DISTINCT FROM OLD.active OR
       LOWER(NEW.email) IS DISTINCT FROM LOWER(OLD.email)) THEN
@@ -109,19 +114,24 @@ CREATE TRIGGER trg_check_provider_access_update
 -- 1.1 TABLA HISTÓRICA: Historial de Modificaciones de Datos Bancarios
 -- ============================================================
 CREATE TABLE IF NOT EXISTS public.provider_banking_history (
-  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  provider_email TEXT NOT NULL,
-  old_cbu_alias  TEXT,
-  new_cbu_alias  TEXT NOT NULL,
-  old_name       TEXT,
-  new_name       TEXT NOT NULL,
-  old_cuit_dni   TEXT,
-  new_cuit_dni   TEXT NOT NULL,
-  old_bank_name  TEXT,
-  new_bank_name  TEXT NOT NULL,
-  changed_by     TEXT NOT NULL DEFAULT 'provider',
-  changed_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  provider_email      TEXT NOT NULL,
+  old_cbu_alias       TEXT,
+  new_cbu_alias       TEXT NOT NULL,
+  old_name            TEXT,
+  new_name            TEXT NOT NULL,
+  old_cuit_dni        TEXT,
+  new_cuit_dni        TEXT NOT NULL,
+  old_bank_name       TEXT,
+  new_bank_name       TEXT NOT NULL,
+  old_account_holder  TEXT,
+  new_account_holder  TEXT NOT NULL DEFAULT '',
+  changed_by          TEXT NOT NULL DEFAULT 'provider',
+  changed_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE public.provider_banking_history ADD COLUMN IF NOT EXISTS old_account_holder TEXT;
+ALTER TABLE public.provider_banking_history ADD COLUMN IF NOT EXISTS new_account_holder TEXT NOT NULL DEFAULT '';
 
 CREATE INDEX IF NOT EXISTS idx_provider_banking_history_email ON public.provider_banking_history(provider_email);
 CREATE INDEX IF NOT EXISTS idx_provider_banking_history_date  ON public.provider_banking_history(changed_at DESC);
@@ -171,7 +181,8 @@ BEGIN
   IF (OLD.cbu_alias IS DISTINCT FROM NEW.cbu_alias OR
       OLD.name IS DISTINCT FROM NEW.name OR
       OLD.cuit_dni IS DISTINCT FROM NEW.cuit_dni OR
-      OLD.bank_name IS DISTINCT FROM NEW.bank_name) THEN
+      OLD.bank_name IS DISTINCT FROM NEW.bank_name OR
+      OLD.account_holder IS DISTINCT FROM NEW.account_holder) THEN
 
     SELECT EXISTS (
       SELECT 1 FROM public.admin_access
@@ -195,6 +206,8 @@ BEGIN
       new_cuit_dni,
       old_bank_name,
       new_bank_name,
+      old_account_holder,
+      new_account_holder,
       changed_by,
       changed_at
     ) VALUES (
@@ -207,6 +220,8 @@ BEGIN
       NEW.cuit_dni,
       OLD.bank_name,
       NEW.bank_name,
+      OLD.account_holder,
+      NEW.account_holder,
       v_changed_by,
       now()
     );
@@ -273,9 +288,7 @@ VALUES
     '+54 9 11 5566 7788'
   )
 ON CONFLICT (email) DO UPDATE
-SET active = EXCLUDED.active,
-    status = EXCLUDED.status,
-    agency = EXCLUDED.agency,
+SET agency = EXCLUDED.agency,
     cbu_alias = EXCLUDED.cbu_alias,
     cuit_dni = EXCLUDED.cuit_dni,
     bank_name = EXCLUDED.bank_name,

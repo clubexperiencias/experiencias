@@ -958,29 +958,37 @@ export class ProviderStoreService {
     if (currentDates.includes(date)) return false;
     const newDates = [...currentDates, date].sort();
 
-    const currentSlots = exp.dateSlots ? [...exp.dateSlots] : [];
+    const expMatch =
+      this.expService.getExperienceById(experienceId) ||
+      this.expService.getExperienceBySlug(exp.slug);
+    const baseSlots = expMatch?.dateSlots ?? exp.dateSlots ?? [];
+    const currentSlots = [...baseSlots];
     if (options?.capacity || options?.unlimited || options?.note) {
-      currentSlots.push({
+      const idx = currentSlots.findIndex((s) => s.date === date);
+      const newSlot: ExperienceDateSlot = {
         date,
         capacity: options.capacity,
         unlimited: options.unlimited,
         note: options.note,
         closed: false,
-      });
+      };
+      if (idx >= 0) {
+        currentSlots[idx] = { ...currentSlots[idx], ...newSlot };
+      } else {
+        currentSlots.push(newSlot);
+      }
     }
 
     const prevExperiences = this._experiences();
     this.updateExperience(experienceId, { dates: newDates, dateSlots: currentSlots });
 
     // Sincronizar con el catálogo público en ExperienceService
-    const expMatch =
-      this.expService.getExperienceById(experienceId) ||
-      this.expService.getExperienceBySlug(exp.slug);
     if (expMatch) {
       void this.expService
         .updateExperience({
           id: expMatch.id,
           dates: newDates,
+          dateSlots: currentSlots,
         })
         .catch((err) => {
           console.warn('[ProviderStoreService] Error sincronizando fecha con ExperienceService:', err);
@@ -995,8 +1003,11 @@ export class ProviderStoreService {
   toggleDateStatus(experienceId: string, date: string): boolean {
     const exp = this.getExperienceById(experienceId);
     if (!exp) return false;
-    const prevExperiences = this._experiences();
-    const currentSlots = exp.dateSlots ? [...exp.dateSlots] : [];
+    const expMatch =
+      this.expService.getExperienceById(experienceId) ||
+      this.expService.getExperienceBySlug(exp.slug);
+    const baseSlots = expMatch?.dateSlots ?? exp.dateSlots ?? [];
+    const currentSlots = [...baseSlots];
     const existingIndex = currentSlots.findIndex((s) => s.date === date);
 
     if (existingIndex >= 0) {
@@ -1011,11 +1022,9 @@ export class ProviderStoreService {
       });
     }
 
+    const prevExperiences = this._experiences();
     this.updateExperience(experienceId, { dateSlots: currentSlots });
 
-    const expMatch =
-      this.expService.getExperienceById(experienceId) ||
-      this.expService.getExperienceBySlug(exp.slug);
     if (expMatch) {
       void this.expService
         .updateExperience({
@@ -1039,8 +1048,11 @@ export class ProviderStoreService {
   ): boolean {
     const exp = this.getExperienceById(experienceId);
     if (!exp) return false;
-    const prevExperiences = this._experiences();
-    const currentSlots = exp.dateSlots ? [...exp.dateSlots] : [];
+    const expMatch =
+      this.expService.getExperienceById(experienceId) ||
+      this.expService.getExperienceBySlug(exp.slug);
+    const baseSlots = expMatch?.dateSlots ?? exp.dateSlots ?? [];
+    const currentSlots = [...baseSlots];
     const idx = currentSlots.findIndex((s) => s.date === date);
 
     if (idx >= 0) {
@@ -1049,11 +1061,9 @@ export class ProviderStoreService {
       currentSlots.push({ date, ...slotData });
     }
 
+    const prevExperiences = this._experiences();
     this.updateExperience(experienceId, { dateSlots: currentSlots });
 
-    const expMatch =
-      this.expService.getExperienceById(experienceId) ||
-      this.expService.getExperienceBySlug(exp.slug);
     if (expMatch) {
       void this.expService
         .updateExperience({
@@ -1076,21 +1086,23 @@ export class ProviderStoreService {
     if (this.reservedSeats(experienceId, date) > 0) {
       return false;
     }
+    const expMatch =
+      this.expService.getExperienceById(experienceId) ||
+      this.expService.getExperienceBySlug(exp.slug);
+    const baseSlots = expMatch?.dateSlots ?? exp.dateSlots ?? [];
     const newDates = (exp.dates || []).filter((d) => d !== date);
-    const newSlots = (exp.dateSlots || []).filter((s) => s.date !== date);
+    const newSlots = baseSlots.filter((s) => s.date !== date);
 
     const prevExperiences = this._experiences();
     this.updateExperience(experienceId, { dates: newDates, dateSlots: newSlots });
 
     // Sincronizar con el catálogo público en ExperienceService
-    const expMatch =
-      this.expService.getExperienceById(experienceId) ||
-      this.expService.getExperienceBySlug(exp.slug);
     if (expMatch) {
       void this.expService
         .updateExperience({
           id: expMatch.id,
           dates: newDates,
+          dateSlots: newSlots,
         })
         .catch((err) => {
           console.warn('[ProviderStoreService] Error sincronizando eliminación con ExperienceService:', err);
@@ -1410,6 +1422,12 @@ export class ProviderStoreService {
           );
         }
 
+        if (rpcPayload?.status === 'date_closed') {
+          throw new Error('La fecha elegida se encuentra cerrada para nuevas reservas.');
+        }
+        if (rpcPayload?.status === 'invalid_amount') {
+          throw new Error('El importe transferido no coincide con el total esperado.');
+        }
         if (rpcPayload?.status === 'no_seats_available') {
           throw new Error('No quedan cupos suficientes para esa fecha.');
         }
@@ -1420,7 +1438,9 @@ export class ProviderStoreService {
         if (
           err?.message?.includes('cupos') ||
           err?.message?.includes('válidos') ||
-          err?.message?.includes('servidor')
+          err?.message?.includes('servidor') ||
+          err?.message?.includes('cerrada') ||
+          err?.message?.includes('importe')
         ) {
           throw err;
         }

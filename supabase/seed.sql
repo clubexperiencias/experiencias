@@ -82,9 +82,7 @@ VALUES
     '+54 9 11 5566 7788'
   )
 ON CONFLICT (email) DO UPDATE
-SET active = true,
-    status = 'aprobado',
-    name = EXCLUDED.name,
+SET name = EXCLUDED.name,
     agency = EXCLUDED.agency,
     cbu_alias = EXCLUDED.cbu_alias,
     cuit_dni = EXCLUDED.cuit_dni,
