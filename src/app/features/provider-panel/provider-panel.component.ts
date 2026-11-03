@@ -45,9 +45,9 @@ const ROUTE_LABELS: Record<string, string> = {
           </div>
 
           <div class="nav-right-col">
-            <div class="portal-badge-pill">
+            <a [routerLink]="dashboardLink()" class="portal-nav-btn active-route">
               <span>Panel Operativo</span>
-            </div>
+            </a>
 
             <!-- Menú de prestador activo -->
             <button

@@ -146,8 +146,8 @@ function renderBaseLayout(contentHtml, preheaderText = '') {
         ${contentHtml}
       </div>
       <div class="email-footer">
-        <p style="margin: 0 0 6px;">EXPERIENCIAS.CLUB • San Fernando del Valle de Catamarca, Argentina</p>
-        <p style="margin: 0;"><a href="https://experiencias.club" target="_blank">experiencias.club</a> · Soporte y consultas: <a href="https://wa.me/5493515490431" target="_blank">+54 9 351 549-0431</a></p>
+        <p style="margin: 0 0 6px;">Club de Experiencias • San Fernando del Valle de Catamarca, Argentina</p>
+        <p style="margin: 0;"><a href="https://experiencias.club" target="_blank">https://experiencias.club</a> · Soporte y consultas: <a href="https://wa.me/5493515490431" target="_blank">+54 9 351 549-0431</a></p>
       </div>
     </div>
   </div>
@@ -158,6 +158,14 @@ function renderBaseLayout(contentHtml, preheaderText = '') {
 // 1. Template: Comprobante Recibido (Para el Usuario)
 function templatePaymentSubmittedUser(sub) {
   const fullName = sub.fullName ? escapeHtml(sub.fullName) : 'Explorador';
+  const providerPhone = sub.providerPhone || '5493515490431';
+  let cleanPhone = String(providerPhone).replace(/\D/g, '');
+  if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.substring(1);
+  if (!cleanPhone.startsWith('54')) cleanPhone = '549' + cleanPhone;
+  else if (cleanPhone.startsWith('54') && !cleanPhone.startsWith('549')) cleanPhone = '549' + cleanPhone.substring(2);
+  const waTarget = cleanPhone || '5493515490431';
+  const waUrl = `https://wa.me/${waTarget}`;
+
   const content = `
     <h2 class="card-title">Comprobante de pago recibido</h2>
     <p class="card-lead">
@@ -201,7 +209,7 @@ function templatePaymentSubmittedUser(sub) {
     </div>
 
     <p style="text-align: center; font-size: 13px; color: rgba(255,255,255,0.5); margin: 0;">
-      ¿Necesitás coordinar algo antes? Escribinos por <a href="https://wa.me/5493515490431" target="_blank" style="color: #ffcc00;">WhatsApp Oficial</a>.
+      ¿Necesitás coordinar algo antes? Escribile por <a href="${waUrl}" target="_blank" style="color: #ffcc00; text-decoration: underline;">WhatsApp al prestador del servicio</a>.
     </p>
   `;
 

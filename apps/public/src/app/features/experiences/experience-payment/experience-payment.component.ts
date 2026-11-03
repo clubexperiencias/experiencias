@@ -265,7 +265,7 @@ export class ExperiencePaymentComponent implements OnInit {
     try {
       const member = await this.newsletter.getAuthenticatedMember();
       this.checkoutMember.set(member);
-      if (member) {
+      if (member && this.newsletter.consumeLoginSuccessFlag()) {
         this.triggerAuthSuccessFeedback();
       }
     } catch {

@@ -1,4 +1,4 @@
-import { Component, HostListener, OnInit, inject, signal } from '@angular/core';
+import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
@@ -312,6 +312,16 @@ export class ProfileComponent implements OnInit {
   );
   readonly memberOtherExperience = signal(this.newsletter.currentMember()?.experiencesOther || '');
   readonly profileSaved = signal(Boolean(this.newsletter.currentMember()?.fullName));
+  readonly isProfileComplete = computed(() => {
+    const m = this.newsletter.currentMember();
+    const hasSavedData = Boolean(m?.fullName && (m?.dni || m?.documentNumber) && m?.phone);
+    const currentInputsValid = Boolean(
+      this.memberFullName()?.trim() &&
+      this.memberDni()?.trim() &&
+      this.memberPhone()?.trim()
+    );
+    return (this.profileSaved() && currentInputsValid) || (hasSavedData && currentInputsValid);
+  });
 
   toggleExperienceWishlist(id: string): void {
     const current = this.selectedExperiences();

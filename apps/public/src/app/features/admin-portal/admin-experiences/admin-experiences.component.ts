@@ -20,7 +20,7 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
           <div class="title-row">
             <h1 class="card-heading">Experiencias de la Web</h1>
             <a routerLink="/dashboard" class="btn-back-panel">Volver al Panel</a>
-            <button type="button" class="btn-primary-orange" (click)="openCreateModal()">
+            <button type="button" class="btn-create-exp-yellow" (click)="openCreateModal()">
               <span>Crear Nueva Experiencia</span>
             </button>
           </div>
@@ -226,13 +226,18 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                 </div>
 
                 <div class="form-field">
-                  <label>Descripción detallada de la Experiencia:</label>
+                  <div class="field-label-row">
+                    <label>Descripción atractiva de la Experiencia:</label>
+                    <span class="char-counter">{{ editDescription().length }}/500</span>
+                  </div>
                   <textarea
                     class="form-textarea"
                     rows="3"
                     [(ngModel)]="editDescription"
-                    placeholder="Escribí la descripción completa que leerán los exploradores..."
+                    maxlength="500"
+                    placeholder="Escribí una síntesis atractiva de hasta 2 párrafos concisos para los exploradores..."
                   ></textarea>
+                  <span class="field-hint">Máximo 2 párrafos concisos y atractivos (hasta 500 caracteres).</span>
                 </div>
               </div>
 
@@ -271,7 +276,7 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                   </div>
                 </div>
 
-                <div class="form-grid-3">
+                <div class="form-grid-2">
                   <div class="form-field">
                     <label>Duración estimada:</label>
                     <input
@@ -289,16 +294,6 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                       class="form-input"
                       [(ngModel)]="editAltitude"
                       placeholder="850"
-                    />
-                  </div>
-
-                  <div class="form-field">
-                    <label>Cupo máximo por fecha:</label>
-                    <input
-                      type="number"
-                      class="form-input"
-                      [(ngModel)]="editCapacity"
-                      placeholder="12"
                     />
                   </div>
                 </div>
@@ -322,14 +317,72 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                   </div>
 
                   <div class="form-field">
-                    <label>Fechas programadas (separadas por coma, formato YYYY-MM-DD):</label>
+                    <label>Fechas programadas (YYYY-MM-DD):</label>
                     <input
                       type="text"
                       class="form-input"
                       [(ngModel)]="editDatesRaw"
                       placeholder="2026-11-10, 2026-11-17, 2026-11-24"
                     />
-                    <span class="field-hint">Fechas habilitadas para reservar cupos.</span>
+                    <span class="field-hint">Separadas por coma. Habilitadas para reservar cupos.</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- SECCIÓN: Prestador Asignado & Datos de Cobro (CBU / Liquidación) -->
+              <div class="form-section-card">
+                <h4 class="form-section-title">Prestador Asignado & Datos de Cobro (CBU)</h4>
+                <div class="form-grid-2">
+                  <div class="form-field">
+                    <label>Nombre / Prestador Asignado:</label>
+                    <input
+                      type="text"
+                      class="form-input"
+                      [(ngModel)]="editProviderName"
+                      placeholder="Ej: Gonzalo Gramaglia o Catamarca Kayak"
+                    />
+                  </div>
+
+                  <div class="form-field">
+                    <label>Teléfono / WhatsApp de Contacto:</label>
+                    <input
+                      type="tel"
+                      class="form-input"
+                      [(ngModel)]="editProviderPhone"
+                      placeholder="Ej: +54 9 383 4567890"
+                    />
+                  </div>
+                </div>
+
+                <div class="form-grid-3">
+                  <div class="form-field">
+                    <label>CBU / CVU o Alias:</label>
+                    <input
+                      type="text"
+                      class="form-input text-blue-input"
+                      [(ngModel)]="editProviderCbuAlias"
+                      placeholder="Ej: EXPERIENCIAS.CLUB.MP"
+                    />
+                  </div>
+
+                  <div class="form-field">
+                    <label>CUIT / CUIL:</label>
+                    <input
+                      type="text"
+                      class="form-input"
+                      [(ngModel)]="editProviderCuitDni"
+                      placeholder="Ej: 20-33445566-7"
+                    />
+                  </div>
+
+                  <div class="form-field">
+                    <label>Banco / Entidad:</label>
+                    <input
+                      type="text"
+                      class="form-input"
+                      [(ngModel)]="editProviderBankName"
+                      placeholder="Ej: Banco Nación / Mercado Pago"
+                    />
                   </div>
                 </div>
               </div>
@@ -570,60 +623,57 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        padding: 0.48rem 1.05rem;
-        background: rgba(255, 255, 255, 0.08);
-        border: 1px solid rgba(255, 95, 0, 0.45);
-        color: #ffffff;
+        padding: 0.52rem 1.15rem;
+        background: #ffffff !important;
+        border: 1px solid #ffffff !important;
+        color: #000000 !important;
         border-radius: 4px;
         font-size: 0.82rem;
-        font-weight: 700;
+        font-weight: 800;
         text-decoration: none;
         letter-spacing: 0.02em;
         cursor: pointer;
         transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
         white-space: nowrap;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
       }
 
       .btn-back-panel:hover {
-        background: rgba(255, 95, 0, 0.3);
-        border-color: #ff7728;
-        color: #ffffff;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 18px rgba(255, 95, 0, 0.45);
+        background: #f0f0f0 !important;
+        border-color: #f0f0f0 !important;
+        color: #000000 !important;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
       }
 
       .btn-back-panel:active {
         transform: translateY(0);
-        box-shadow: 0 2px 6px rgba(255, 95, 0, 0.3);
       }
 
-      .btn-primary-orange {
+      .btn-create-exp-yellow {
         display: inline-flex;
         align-items: center;
+        justify-content: center;
         gap: 0.45rem;
-        padding: 0.5rem 1.15rem;
-        background: #ff5f00;
-        color: #070d18;
-        border: 1px solid #ff5f00;
+        padding: 0.52rem 1.25rem;
+        background: #ffcc00 !important;
+        color: #000000 !important;
+        border: 1px solid #ffcc00 !important;
         border-radius: 4px;
         font-size: 0.85rem;
         font-weight: 800;
         cursor: pointer;
         transition: all 0.2s ease;
         white-space: nowrap;
+        box-shadow: 0 4px 15px rgba(255, 204, 0, 0.3);
       }
 
-      .btn-primary-orange:hover {
-        background: #ff7722;
-        border-color: #ff7722;
+      .btn-create-exp-yellow:hover {
+        background: #ffd633 !important;
+        border-color: #ffd633 !important;
+        color: #000000 !important;
         transform: translateY(-1px);
-        box-shadow: 0 4px 15px rgba(255, 95, 0, 0.4);
-      }
-
-      .btn-primary-orange mat-icon {
-        font-size: 18px;
-        width: 18px;
-        height: 18px;
+        box-shadow: 0 6px 18px rgba(255, 204, 0, 0.45);
       }
 
       /* Toast */
@@ -1119,12 +1169,35 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
         display: flex;
         flex-direction: column;
         gap: 0.35rem;
+        justify-content: flex-start;
       }
 
       .form-field label {
         font-size: 0.78rem;
         font-weight: 700;
         color: rgba(255, 255, 255, 0.85);
+        min-height: 1.25rem;
+        display: flex;
+        align-items: flex-end;
+      }
+
+      .field-label-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        min-height: 1.25rem;
+      }
+
+      .char-counter {
+        font-size: 0.72rem;
+        color: rgba(255, 255, 255, 0.55);
+        font-weight: 700;
+        font-family: monospace;
+      }
+
+      .text-blue-input {
+        color: #80b3ff !important;
+        font-weight: 700 !important;
       }
 
       .form-input,
@@ -1513,6 +1586,11 @@ export class AdminExperiencesComponent {
   readonly editHighlightsRaw = signal('');
   readonly editIncludedRaw = signal('');
   readonly editStatus = signal<'publicada' | 'oculta'>('publicada');
+  readonly editProviderName = signal('');
+  readonly editProviderPhone = signal('');
+  readonly editProviderCbuAlias = signal('');
+  readonly editProviderCuitDni = signal('');
+  readonly editProviderBankName = signal('');
 
   openEditModal(exp: Experience): void {
     this.isCreating.set(false);
@@ -1538,6 +1616,11 @@ export class AdminExperiencesComponent {
     this.editIncludedRaw.set((exp.included || []).join('\n'));
     this.editAlbumPhotos.set([...(exp.albumPhotos || [])]);
     this.editStatus.set(exp.status === 'oculta' ? 'oculta' : 'publicada');
+    this.editProviderName.set(exp.providerName || '');
+    this.editProviderPhone.set(exp.providerPhone || '');
+    this.editProviderCbuAlias.set(exp.providerCbuAlias || '');
+    this.editProviderCuitDni.set(exp.providerCuitDni || '');
+    this.editProviderBankName.set(exp.providerBankName || '');
   }
 
   openCreateModal(): void {
@@ -1594,6 +1677,11 @@ export class AdminExperiencesComponent {
     this.editIncludedRaw.set('');
     this.editAlbumPhotos.set([]);
     this.editStatus.set('publicada');
+    this.editProviderName.set('');
+    this.editProviderPhone.set('');
+    this.editProviderCbuAlias.set('');
+    this.editProviderCuitDni.set('');
+    this.editProviderBankName.set('');
   }
 
   closeEditModal(): void {
@@ -1738,6 +1826,11 @@ export class AdminExperiencesComponent {
       priceUsd,
       coverImage: this.editCoverImage().trim() || '/assets/images/kayak-club-de-experiencias.jpg',
       albumPhotos: this.editAlbumPhotos(),
+      providerName: this.editProviderName().trim(),
+      providerPhone: this.editProviderPhone().trim(),
+      providerCbuAlias: this.editProviderCbuAlias().trim(),
+      providerCuitDni: this.editProviderCuitDni().trim(),
+      providerBankName: this.editProviderBankName().trim(),
       videoUrl: this.editVideoUrl().trim(),
       videoPoster: this.editVideoPoster().trim(),
       dates,

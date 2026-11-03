@@ -56,7 +56,7 @@ export class ProvidersComponent {
   readonly providerPhone = signal('');
   readonly providerWebsite = signal('');
   readonly providerCategory = signal('guia_montaña');
-  readonly providerRegion = signal('Puna & Fiambalá');
+  readonly providerRegion = signal('');
   readonly providerDescription = signal('');
   readonly providerSuccess = signal(false);
 

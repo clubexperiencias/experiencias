@@ -490,6 +490,18 @@
   line-height: 1.3;
 }
 
+.activity-title-link {
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.2s ease, text-decoration 0.2s ease;
+}
+
+.activity-title-link:hover,
+.activity-title-link:focus-visible {
+  color: var(--color-gold, #ffd42a);
+  text-decoration: underline;
+}
+
 .activity-provider {
   font-size: 0.8rem;
   color: var(--color-text-soft);

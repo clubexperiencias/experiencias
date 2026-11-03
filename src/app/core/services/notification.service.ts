@@ -29,6 +29,7 @@ export class NotificationService {
     submission: TransferSubmission,
     receiptUrl?: string,
     providerEmail?: string,
+    providerPhone?: string,
   ): Promise<NotificationResult> {
     const payload = {
       type: 'PAYMENT_SUBMITTED',
@@ -44,6 +45,7 @@ export class NotificationService {
         amountArs: submission.amountArs,
         receiptUrl: receiptUrl || submission.receipt?.url || '',
         providerEmail: providerEmail || '',
+        providerPhone: providerPhone || '',
       },
     };
 
@@ -159,12 +161,12 @@ export class NotificationService {
 
     const msg =
       `¡Hola! Acabo de enviar el comprobante de transferencia para mi reserva en Experiencias Club:\n\n` +
-      `📌 *Experiencia:* ${submission.experienceTitle}\n` +
-      `🔖 *Código de Reserva:* ${submission.reference}\n` +
-      `👤 *Pasajero:* ${submission.fullName}\n` +
-      `📅 *Fecha:* ${submission.date}\n` +
-      `👥 *Lugares:* ${submission.participants}\n` +
-      `💰 *Monto:* $${formattedAmount} ARS\n\n` +
+      `* Experiencia: ${submission.experienceTitle}\n` +
+      `* Código de Reserva: ${submission.reference}\n` +
+      `* Pasajero: ${submission.fullName}\n` +
+      `* Fecha: ${submission.date}\n` +
+      `* Lugares: ${submission.participants}\n` +
+      `* Monto: $${formattedAmount} ARS\n\n` +
       `¿Me confirman la acreditación cuando puedan? ¡Muchas gracias!`;
 
     return `https://wa.me/${targetPhone}?text=${encodeURIComponent(msg)}`;

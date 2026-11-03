@@ -17,17 +17,17 @@ import { StorageService } from '../../../core/services/storage.service';
 
 const DEFAULT_REQ_FORM = {
   title: '',
-  kicker: 'EXPEDICIÓN NÁUTICA: VALLE CENTRAL',
+  kicker: 'EXPERIENCIA',
   subheading: '',
-  region: 'Valle Central y Ambato',
+  region: '',
   difficulty: 'Baja (Sin experiencia previa)',
-  duration: '4 Horas (Media Jornada)',
-  altitude: '850 msnm',
+  duration: '4 horas (Media jornada)',
+  altitude: '',
   capacity: 12,
   season: 'Todo el año',
-  dates: 'Sábados y Domingos 15:30 hs',
+  dates: 'A coordinar',
   priceArs: 65000,
-  priceUsd: 70,
+  priceUsd: 41,
   promosAndPricing: '',
   itinerary: '',
   meetingPoint: '',
@@ -103,16 +103,17 @@ const DEFAULT_REQ_FORM = {
                   <strong>"{{ reqForm.title || 'tu propuesta' }}"</strong>. Revisarán el itinerario,
                   logística y tarifas para darla de alta en el catálogo oficial de Experiencias.
                 </p>
-                @if (coverImagePreview()) {
+                @if (finalSuccessCoverUrl() || coverImagePreview()) {
                   <div class="request-success-media-preview">
                     <img
-                      [src]="coverImagePreview()"
+                      [src]="finalSuccessCoverUrl() || coverImagePreview()"
                       alt="Portada cargada"
                       class="success-thumb-img"
+                      referrerpolicy="no-referrer"
                     />
                     <div class="success-thumb-info">
                       <span class="success-thumb-title">Foto de portada adjuntada</span>
-                      <span class="success-thumb-name">{{ coverImageFile()?.name }}</span>
+                      <span class="success-thumb-name">{{ coverImageFile()?.name || 'portada.jpg' }}</span>
                       @if (coverVideoFile()) {
                         <span class="success-thumb-video"
                           >+ Video de portada: {{ coverVideoFile()?.name }}</span
@@ -121,7 +122,7 @@ const DEFAULT_REQ_FORM = {
                     </div>
                   </div>
                 }
-                <button type="button" class="modal-btn-submit" (click)="onClose()">
+                <button type="button" class="modal-btn-submit return-to-panel-btn" (click)="onClose()">
                   Entendido, volver al panel
                 </button>
               </div>
@@ -134,31 +135,18 @@ const DEFAULT_REQ_FORM = {
                     <h4 class="form-section-title">Cabecera y Resumen</h4>
                   </div>
 
-                  <div class="form-group">
-                    <label class="form-label" for="req-title"
-                      >Título Principal de la Experiencia *</label
-                    >
-                    <input
-                      id="req-title"
-                      type="text"
-                      class="form-input"
-                      placeholder="Ej: Travesía en Kayak & Sunset..."
-                      [(ngModel)]="reqForm.title"
-                      name="title"
-                      required
-                    />
-                  </div>
-
                   <div class="form-row">
                     <div class="form-group">
-                      <label class="form-label" for="req-kicker">Categoría *</label>
+                      <label class="form-label" for="req-title"
+                        >Título Principal de la Experiencia *</label
+                      >
                       <input
-                        id="req-kicker"
+                        id="req-title"
                         type="text"
                         class="form-input"
-                        placeholder="Ej: EXPEDICIÓN NÁUTICA..."
-                        [(ngModel)]="reqForm.kicker"
-                        name="kicker"
+                        placeholder="Ej: Travesía en Kayak & Sunset..."
+                        [(ngModel)]="reqForm.title"
+                        name="title"
                         required
                       />
                     </div>
@@ -167,38 +155,38 @@ const DEFAULT_REQ_FORM = {
                       <label class="form-label" for="req-region"
                         >Región Turística de Catamarca *</label
                       >
-                      <select
+                      <input
                         id="req-region"
-                        class="form-input form-select"
+                        type="text"
+                        class="form-input"
+                        placeholder="Ej: Valle Central, Fiambalá, etc."
                         [(ngModel)]="reqForm.region"
                         name="region"
                         required
-                      >
-                        <option value="Valle Central y Ambato">Valle Central y Ambato</option>
-                        <option value="Puna de Atacama">Puna de Atacama</option>
-                        <option value="Fiambalá y Seismiles">Fiambalá y Seismiles</option>
-                        <option value="Antofagasta de la Sierra">Antofagasta de la Sierra</option>
-                        <option value="Belén y Ruta del Telar">Belén y Ruta del Telar</option>
-                        <option value="Andalgalá y Cuesta de Zapata">
-                          Andalgalá y Cuesta de Zapata
-                        </option>
-                      </select>
+                      />
                     </div>
                   </div>
 
                   <div class="form-group">
-                    <label class="form-label" for="req-subheading"
-                      >Bajada o Síntesis Atractiva *</label
-                    >
+                    <div class="label-with-counter">
+                      <label class="form-label" for="req-subheading"
+                        >Síntesis Atractiva *</label
+                      >
+                      <span class="char-counter">
+                        {{ (reqForm.subheading || '').length }}/500
+                      </span>
+                    </div>
                     <textarea
                       id="req-subheading"
                       rows="3"
+                      maxlength="500"
                       class="form-input form-textarea"
                       placeholder="Ej: Remada guiada en kayak en aguas calmas al atardecer..."
                       [(ngModel)]="reqForm.subheading"
                       name="subheading"
                       required
                     ></textarea>
+                    <span class="field-hint">Máximo 2 párrafos descriptivos (hasta 500 caracteres).</span>
                   </div>
                 </div>
 
@@ -357,7 +345,7 @@ const DEFAULT_REQ_FORM = {
                 <div class="form-section">
                   <div class="form-section-header">
                     <span class="form-section-num">3</span>
-                    <h4 class="form-section-title">Especificaciones Técnicas (Specs Rápidas)</h4>
+                    <h4 class="form-section-title">Especificaciones Técnicas</h4>
                   </div>
 
                   <div class="form-grid-3">
@@ -379,16 +367,25 @@ const DEFAULT_REQ_FORM = {
                     </div>
 
                     <div class="form-group">
-                      <label class="form-label" for="req-duration">Duración *</label>
-                      <input
+                      <label class="form-label" for="req-duration">Duración Aproximada *</label>
+                      <select
                         id="req-duration"
-                        type="text"
-                        class="form-input"
-                        placeholder="Ej: 4 Horas (Media Jornada)"
+                        class="form-input form-select"
                         [(ngModel)]="reqForm.duration"
                         name="duration"
                         required
-                      />
+                      >
+                        <option value="1 hora">1 hora</option>
+                        <option value="2 horas">2 horas</option>
+                        <option value="3 horas">3 horas</option>
+                        <option value="4 horas (Media jornada)">4 horas (Media jornada)</option>
+                        <option value="5 horas">5 horas</option>
+                        <option value="6 horas">6 horas</option>
+                        <option value="7 horas">7 horas</option>
+                        <option value="8 horas (Jornada completa)">8 horas (Jornada completa)</option>
+                        <option value="Día completo / Más de 8 horas">Día completo / Más de 8 horas</option>
+                        <option value="2 o más días">2 o más días</option>
+                      </select>
                     </div>
 
                     <div class="form-group">
@@ -402,49 +399,6 @@ const DEFAULT_REQ_FORM = {
                         name="altitude"
                       />
                     </div>
-
-                    <div class="form-group">
-                      <label class="form-label" for="req-capacity">Cupo Máximo por Salida *</label>
-                      <input
-                        id="req-capacity"
-                        type="number"
-                        class="form-input"
-                        placeholder="Ej: 12"
-                        [(ngModel)]="reqForm.capacity"
-                        name="capacity"
-                        min="1"
-                        max="100"
-                        required
-                      />
-                    </div>
-
-                    <div class="form-group">
-                      <label class="form-label" for="req-season">Temporada *</label>
-                      <input
-                        id="req-season"
-                        type="text"
-                        class="form-input"
-                        placeholder="Ej: Todo el año"
-                        [(ngModel)]="reqForm.season"
-                        name="season"
-                        required
-                      />
-                    </div>
-
-                    <div class="form-group">
-                      <label class="form-label" for="req-dates"
-                        >Fechas / Frecuencia Operativa *</label
-                      >
-                      <input
-                        id="req-dates"
-                        type="text"
-                        class="form-input"
-                        placeholder="Ej: Sábados y Domingos 15:30 hs..."
-                        [(ngModel)]="reqForm.dates"
-                        name="dates"
-                        required
-                      />
-                    </div>
                   </div>
                 </div>
 
@@ -455,36 +409,24 @@ const DEFAULT_REQ_FORM = {
                     <h4 class="form-section-title">Arancel por Persona</h4>
                   </div>
 
-                  <div class="form-row">
-                    <div class="form-group">
-                      <label class="form-label" for="req-price-ars"
-                        >Arancel en Pesos ($ ARS) *</label
-                      >
-                      <input
-                        id="req-price-ars"
-                        type="number"
-                        class="form-input"
-                        placeholder="Ej: 65000"
-                        [(ngModel)]="reqForm.priceArs"
-                        name="priceArs"
-                        min="1000"
-                        step="500"
-                        required
-                      />
-                    </div>
-
-                    <div class="form-group">
-                      <label class="form-label" for="req-price-usd"
-                        >Referencia en Dólares (USD opcional)</label
-                      >
-                      <input
-                        id="req-price-usd"
-                        type="number"
-                        class="form-input"
-                        placeholder="Ej: 70"
-                        [(ngModel)]="reqForm.priceUsd"
-                        name="priceUsd"
-                      />
+                  <div class="form-group">
+                    <label class="form-label" for="req-price-ars"
+                      >Arancel en Pesos ($ ARS) *</label
+                    >
+                    <input
+                      id="req-price-ars"
+                      type="number"
+                      class="form-input"
+                      placeholder="Ej: 65000"
+                      [(ngModel)]="reqForm.priceArs"
+                      name="priceArs"
+                      min="1000"
+                      step="500"
+                      required
+                    />
+                    <div class="usd-auto-hint">
+                      Equivalente estimado: <strong class="usd-calc-val">~&#36;{{ Math.round((reqForm.priceArs || 0) / 1600) }} USD</strong>
+                      <span class="usd-formula">(calculado automáticamente a cotización $1.600)</span>
                     </div>
                   </div>
 
@@ -825,11 +767,48 @@ const DEFAULT_REQ_FORM = {
         box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.25);
       }
       .form-select {
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2380b3ff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 1.25rem center;
+        background-size: 14px 14px;
+        padding-right: 2.85rem !important;
         cursor: pointer;
       }
       .form-select option {
         background: #0b1528;
         color: #ffffff;
+      }
+      .label-with-counter {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .char-counter {
+        font-size: 0.72rem;
+        color: rgba(255, 255, 255, 0.5);
+      }
+      .field-hint {
+        font-size: 0.72rem;
+        color: rgba(255, 255, 255, 0.45);
+        margin-top: 0.25rem;
+        display: block;
+      }
+      .usd-auto-hint {
+        font-size: 0.76rem;
+        color: rgba(255, 255, 255, 0.7);
+        margin-top: 0.4rem;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+      }
+      .usd-calc-val {
+        color: #80b3ff;
+      }
+      .usd-formula {
+        color: rgba(255, 255, 255, 0.4);
       }
       .form-textarea {
         resize: vertical;
@@ -1062,10 +1041,28 @@ const DEFAULT_REQ_FORM = {
         text-align: left;
       }
       .success-thumb-img {
-        width: 60px;
-        height: 60px;
-        object-fit: cover;
-        border-radius: 2px;
+        width: 64px !important;
+        height: 64px !important;
+        min-width: 64px !important;
+        min-height: 64px !important;
+        max-width: 64px !important;
+        max-height: 64px !important;
+        flex-shrink: 0 !important;
+        object-fit: cover !important;
+        border-radius: 4px;
+        border: 1px solid rgba(128, 179, 255, 0.4);
+        background: #0d1b38;
+        display: block;
+      }
+      .return-to-panel-btn {
+        background: #ffffff !important;
+        color: #000000 !important;
+        border: 1px solid #ffffff !important;
+        font-weight: 700 !important;
+      }
+      .return-to-panel-btn:hover {
+        background: #f0f0f0 !important;
+        color: #000000 !important;
       }
       .success-thumb-info {
         display: flex;
@@ -1192,11 +1189,15 @@ export class ProviderExperienceProposalModalComponent {
 
   readonly coverImageFile = signal<File | null>(null);
   readonly coverImagePreview = signal<string | null>(null);
+  readonly coverImageDataUrl = signal<string | null>(null);
+  readonly finalSuccessCoverUrl = signal<string | null>(null);
   readonly coverImageError = signal<string | null>(null);
 
   readonly coverVideoFile = signal<File | null>(null);
   readonly coverVideoPreview = signal<string | null>(null);
   readonly coverVideoError = signal<string | null>(null);
+
+  readonly Math = Math;
 
   reqForm = { ...DEFAULT_REQ_FORM };
   private successTimer: ReturnType<typeof setTimeout> | null = null;
@@ -1211,18 +1212,14 @@ export class ProviderExperienceProposalModalComponent {
 
   getFormProgress(): number {
     let score = 0;
-    const total = 10;
+    const total = 7;
     if (this.reqForm.title?.trim()) score++;
+    if (this.reqForm.region?.trim()) score++;
     if (this.reqForm.subheading?.trim()) score++;
     if (this.coverImageFile()) score++;
-    if (this.reqForm.difficulty?.trim() && this.reqForm.region?.trim()) score++;
-    if (this.reqForm.duration?.trim() && this.reqForm.capacity > 0) score++;
-    if (this.reqForm.dates?.trim()) score++;
+    if (this.reqForm.difficulty?.trim() && this.reqForm.duration?.trim()) score++;
     if (this.reqForm.priceArs && this.reqForm.priceArs > 0) score++;
-    if (this.reqForm.itinerary?.trim()) score++;
-    if (this.reqForm.meetingPoint?.trim()) score++;
-    if (this.reqForm.includedServices?.trim() || this.reqForm.participantRequirements?.trim())
-      score++;
+    if (this.reqForm.itinerary?.trim() && this.reqForm.meetingPoint?.trim()) score++;
 
     return Math.min(100, Math.round((score / total) * 100));
   }
@@ -1256,7 +1253,21 @@ export class ProviderExperienceProposalModalComponent {
       URL.revokeObjectURL(this.coverImagePreview()!);
     }
     this.coverImageFile.set(file);
-    this.coverImagePreview.set(URL.createObjectURL(file));
+    const objectUrl = URL.createObjectURL(file);
+    this.coverImagePreview.set(objectUrl);
+    this.finalSuccessCoverUrl.set(objectUrl);
+
+    // Also read as DataURL to guarantee bulletproof thumbnail display
+    if (typeof FileReader !== 'undefined') {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          this.coverImageDataUrl.set(reader.result);
+          this.finalSuccessCoverUrl.set(reader.result);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   }
 
   removeCoverImage(): void {
@@ -1265,6 +1276,8 @@ export class ProviderExperienceProposalModalComponent {
     }
     this.coverImageFile.set(null);
     this.coverImagePreview.set(null);
+    this.coverImageDataUrl.set(null);
+    this.finalSuccessCoverUrl.set(null);
     this.coverImageError.set(null);
   }
 
@@ -1342,28 +1355,21 @@ export class ProviderExperienceProposalModalComponent {
 
     const title = this.reqForm.title?.trim();
     const region = this.reqForm.region?.trim();
-    const season = this.reqForm.season?.trim();
-    const dates = this.reqForm.dates?.trim();
-    if (!title || !region || !season || !dates) return;
-
-    const capacity = Number(this.reqForm.capacity);
-    if (!Number.isFinite(capacity) || capacity < 1 || capacity > 100) {
-      return;
-    }
+    if (!title || !region) return;
 
     const priceArs = Number(this.reqForm.priceArs);
     if (!Number.isFinite(priceArs) || priceArs < 1) {
       return;
     }
 
-    if (!this.coverImageFile()) {
+    if (!this.coverImageFile() && !this.coverImagePreview()) {
       this.coverImageError.set('La foto de portada es obligatoria para enviar la propuesta.');
       return;
     }
     this.submittingRequest.set(true);
 
     const prov = this.store.currentProvider();
-    let coverImageUrl = '/assets/images/kayak-club-de-experiencias.jpg';
+    let coverImageUrl = this.coverImageDataUrl() || this.coverImagePreview() || '/assets/images/kayak-club-de-experiencias.jpg';
     const coverFile = this.coverImageFile();
 
     if (coverFile) {
@@ -1376,6 +1382,8 @@ export class ProviderExperienceProposalModalComponent {
         console.warn('[ProposalModal] No se pudo subir imagen a storage, usando fallback:', err);
       }
     }
+
+    this.finalSuccessCoverUrl.set(this.coverImageDataUrl() || this.coverImagePreview() || coverImageUrl);
 
     let coverVideoUrl: string | undefined = undefined;
     const videoFile = this.coverVideoFile();
@@ -1390,6 +1398,8 @@ export class ProviderExperienceProposalModalComponent {
       }
     }
 
+    const priceUsd = Math.round(priceArs / 1600);
+
     try {
       this.store.submitExperienceRequest({
         providerId: prov?.id || 'prov-patricio',
@@ -1398,17 +1408,17 @@ export class ProviderExperienceProposalModalComponent {
         providerEmail: prov?.email || 'patriciofacundodiaztillar@gmail.com',
         providerPhone: prov?.phone || '+54 383 455 8812',
         title,
-        kicker: this.reqForm.kicker.trim(),
-        subheading: this.reqForm.subheading.trim(),
-        region: this.reqForm.region,
+        kicker: this.reqForm.kicker?.trim() || 'EXPERIENCIA',
+        subheading: this.reqForm.subheading?.trim() || '',
+        region,
         difficulty: this.reqForm.difficulty,
         duration: this.reqForm.duration,
-        altitude: this.reqForm.altitude,
-        capacity,
-        season: this.reqForm.season,
-        dates: this.reqForm.dates,
+        altitude: this.reqForm.altitude || '850 msnm',
+        capacity: Number(this.reqForm.capacity) || 12,
+        season: this.reqForm.season || 'Todo el año',
+        dates: this.reqForm.dates || 'A coordinar',
         priceArs,
-        priceUsd: this.reqForm.priceUsd ? Number(this.reqForm.priceUsd) : null,
+        priceUsd,
         promosAndPricing: this.reqForm.promosAndPricing,
         itinerary: this.reqForm.itinerary,
         meetingPoint: this.reqForm.meetingPoint,
@@ -1416,7 +1426,7 @@ export class ProviderExperienceProposalModalComponent {
         participantRequirements: this.reqForm.participantRequirements,
         notes: this.reqForm.notes,
         coverImage: coverImageUrl,
-        coverImageName: coverFile?.name,
+        coverImageName: coverFile?.name || 'portada.jpg',
         coverVideoUrl,
         coverVideoName: videoFile?.name,
       });

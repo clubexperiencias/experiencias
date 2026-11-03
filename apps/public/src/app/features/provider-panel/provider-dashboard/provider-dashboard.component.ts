@@ -96,6 +96,61 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
         </div>
       </section>
 
+      <!-- Box Perfil Bancario / Invitación a completar datos de prestador -->
+      @if (isBankingComplete()) {
+        <section class="dash-card full-width-card provider-banking-card">
+          <div class="banking-card-head">
+            <div class="banking-head-info">
+              <span class="banking-kicker">DATOS DE LIQUIDACIÓN DE PAGOS</span>
+              <h2 class="card-title">Cuenta Bancaria para Transferencias</h2>
+            </div>
+            <a routerLink="../perfil" class="btn-edit-banking-pill" title="Editar datos bancarios">
+              <mat-icon>edit</mat-icon>
+              <span>Editar Datos</span>
+            </a>
+          </div>
+
+          <div class="banking-details-grid">
+            <div class="banking-col">
+              <span class="banking-col-lbl">CBU / CVU o ALIAS</span>
+              <strong class="banking-col-val text-blue">{{ provider()?.cbuAlias || 'EXPERIENCIAS.CLUB.MP' }}</strong>
+            </div>
+            <div class="banking-col">
+              <span class="banking-col-lbl">NOMBRE / TITULAR</span>
+              <strong class="banking-col-val">{{ provider()?.name || 'Gonzalo Gramaglia' }}</strong>
+            </div>
+            <div class="banking-col">
+              <span class="banking-col-lbl">CUIT / CUIL</span>
+              <strong class="banking-col-val">{{ provider()?.cuitDni || '20-33445566-7' }}</strong>
+            </div>
+            <div class="banking-col">
+              <span class="banking-col-lbl">ENTIDAD</span>
+              <strong class="banking-col-val">{{ provider()?.bankName || 'Banco Nación / Mercado Pago' }}</strong>
+            </div>
+          </div>
+        </section>
+      } @else {
+        <section class="dash-card full-width-card provider-prompt-banner">
+          <div class="prompt-banner-main">
+            <div class="prompt-banner-icon">
+              <mat-icon>account_balance_wallet</mat-icon>
+            </div>
+            <div class="prompt-banner-text">
+              <span class="prompt-banner-kicker">CONFIGURACIÓN PENDIENTE</span>
+              <h3 class="prompt-banner-title">Completá tus datos de prestador</h3>
+              <p class="prompt-banner-desc">
+                Ingresá tus datos de liquidación (CBU, Alias, CUIT y Banco) para que el club pueda transferirte los cobros recaudados de tus experiencias.
+              </p>
+            </div>
+          </div>
+          <div class="prompt-banner-action">
+            <a routerLink="../perfil" class="prompt-banner-btn">
+              <span>Completar Perfil</span>
+            </a>
+          </div>
+        </section>
+      }
+
       <!-- Experiencias Activas - Box de ancho completo que ocupa las dos columnas -->
       <section class="dash-card full-width-card active-experiences-section">
         <div class="card-head">
@@ -220,12 +275,11 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
             <div class="request-new-exp-info">
               <span class="request-new-exp-kicker">NUEVA EXPERIENCIA</span>
               <h3 class="request-new-exp-title">
-                Solicitá a los administradores que carguen una nueva experiencia
+                Sumá una nueva propuesta
               </h3>
               <p class="request-new-exp-desc">
-                ¿Tenés una nueva propuesta, salida o travesía para sumar al catálogo? Completá el
-                formulario con los detalles técnicos, fechas y tarifas para que el equipo de
-                administración la revise y publique.
+                Completá los detalles técnicos, fotos y tarifas de tu salida para que el equipo de
+                administración la revise y publique en el catálogo.
               </p>
             </div>
           </div>
@@ -236,7 +290,7 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
               class="request-form-btn"
               (click)="openRequestModal(); $event.stopPropagation()"
             >
-              <span>Completar formulario</span>
+              <span>Cargar Propuesta</span>
             </button>
           </div>
         </div>
@@ -998,6 +1052,188 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
         background: #a3c7ff;
       }
 
+      /* Perfil Bancario & Banner de Invitación */
+      .provider-banking-card {
+        display: flex;
+        flex-direction: column;
+        gap: 1.15rem;
+        padding: 1.4rem 1.6rem;
+        background: #141f31;
+        border: 1px solid rgba(128, 179, 255, 0.25);
+        border-radius: 4px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+      }
+      .banking-card-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+      }
+      .banking-head-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+      }
+      .banking-kicker {
+        font-size: 0.68rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #80b3ff;
+      }
+      .btn-edit-banking-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.4rem 0.85rem;
+        background: rgba(128, 179, 255, 0.12);
+        border: 1px solid rgba(128, 179, 255, 0.35);
+        border-radius: 2px;
+        color: #80b3ff;
+        font-size: 0.78rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: all 0.2s ease;
+      }
+      .btn-edit-banking-pill mat-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+      }
+      .btn-edit-banking-pill:hover {
+        background: rgba(128, 179, 255, 0.25);
+        border-color: #80b3ff;
+        color: #ffffff;
+      }
+      .banking-details-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1.25rem;
+        padding-top: 0.85rem;
+        border-top: 1px solid rgba(128, 179, 255, 0.15);
+      }
+      @media (max-width: 900px) {
+        .banking-details-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+      @media (max-width: 520px) {
+        .banking-details-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .banking-col {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+      }
+      .banking-col-lbl {
+        font-size: 0.68rem;
+        font-weight: 700;
+        color: rgba(255, 255, 255, 0.55);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .banking-col-val {
+        font-size: 0.94rem;
+        font-weight: 700;
+        color: #ffffff;
+        word-break: break-all;
+      }
+
+      /* Banner Invitación a Completar Perfil */
+      .provider-prompt-banner {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1.5rem;
+        padding: 1.35rem 1.6rem;
+        background: linear-gradient(135deg, rgba(20, 31, 49, 0.95), rgba(30, 48, 80, 0.85));
+        border: 1px dashed rgba(128, 179, 255, 0.45);
+        border-radius: 4px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+      }
+      @media (max-width: 720px) {
+        .provider-prompt-banner {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 1rem;
+        }
+      }
+      .prompt-banner-main {
+        display: flex;
+        align-items: flex-start;
+        gap: 1.15rem;
+      }
+      .prompt-banner-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 4px;
+        background: rgba(128, 179, 255, 0.15);
+        border: 1px solid rgba(128, 179, 255, 0.35);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        color: #80b3ff;
+      }
+      .prompt-banner-icon mat-icon {
+        font-size: 24px;
+        width: 24px;
+        height: 24px;
+      }
+      .prompt-banner-text {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+      }
+      .prompt-banner-kicker {
+        font-size: 0.68rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #ffcc00;
+      }
+      .prompt-banner-title {
+        margin: 0;
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: #ffffff;
+      }
+      .prompt-banner-desc {
+        margin: 0;
+        font-size: 0.84rem;
+        color: rgba(255, 255, 255, 0.78);
+        line-height: 1.4;
+      }
+      .prompt-banner-action {
+        flex-shrink: 0;
+      }
+      .prompt-banner-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.75rem 1.4rem;
+        background: #80b3ff;
+        border: 1px solid #80b3ff;
+        color: #070d18;
+        font-size: 0.88rem;
+        font-weight: 700;
+        border-radius: 2px;
+        cursor: pointer;
+        text-decoration: none;
+        white-space: nowrap;
+        transition: all 0.2s ease;
+        box-shadow: 0 4px 14px rgba(128, 179, 255, 0.25);
+      }
+      .prompt-banner-btn:hover {
+        background: #a6c8ff;
+        border-color: #a6c8ff;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 18px rgba(128, 179, 255, 0.4);
+      }
+
       /* Experiencias Activas - Full Width Box */
       .full-width-card {
         width: 100%;
@@ -1354,9 +1590,9 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
         align-items: center;
         justify-content: center;
         padding: 0.75rem 1.4rem;
-        background: #80b3ff;
-        border: 1px solid #80b3ff;
-        color: #070d18;
+        background: #ffcc00;
+        border: 1px solid #ffcc00;
+        color: #ffffff;
         font-size: 0.88rem;
         font-weight: 700;
         border-radius: 2px;
@@ -1364,12 +1600,13 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
         transition: all 0.2s ease;
         white-space: nowrap;
         letter-spacing: 0.02em;
-        box-shadow: 0 4px 15px rgba(128, 179, 255, 0.25);
+        box-shadow: 0 4px 15px rgba(255, 204, 0, 0.3);
       }
       .request-form-btn:hover {
-        background: #a6c8ff;
-        border-color: #a6c8ff;
-        box-shadow: 0 6px 20px rgba(128, 179, 255, 0.4);
+        background: #ffd633;
+        border-color: #ffd633;
+        color: #ffffff;
+        box-shadow: 0 6px 20px rgba(255, 204, 0, 0.45);
         transform: translateY(-1px);
       }
 
@@ -1703,6 +1940,10 @@ export class ProviderDashboardComponent implements OnInit {
   }
 
   readonly provider = this.store.currentProvider;
+  readonly isBankingComplete = computed(() => {
+    const p = this.provider();
+    return Boolean(p?.cbuAlias?.trim() && p?.cuitDni?.trim());
+  });
   readonly stats = this.store.providerStats;
 
   readonly requestModalOpen = signal(false);

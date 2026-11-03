@@ -77,7 +77,7 @@ const DEFAULT_SUPERADMIN: AdminUser = {
 export class AdminStoreService {
   private readonly supabase = inject(SUPABASE_CLIENT);
   private readonly newsletter = inject(NewsletterService);
-  private readonly providerStore = inject(ProviderStoreService);
+  readonly providerStore = inject(ProviderStoreService);
   private readonly notificationService = inject(NotificationService);
 
   private readonly _currentAdmin = signal<AdminUser | null>(null);
@@ -225,6 +225,7 @@ export class AdminStoreService {
   }
 
   private async initStore(): Promise<void> {
+    this.providerStore.reloadFromStorage();
     const isAuth = await this.restoreSupabaseSession();
     if (isAuth) {
       void this.loadAllMembers();
@@ -244,33 +245,21 @@ export class AdminStoreService {
         this.clearSession();
         return false;
       }
-      const isBrowser = typeof window !== 'undefined';
-      const host = isBrowser ? window.location.hostname.toLowerCase() : '';
-      const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local');
-      if (!isLocalHost) {
-        this._currentAdmin.set(null);
-        this.clearSession();
-        return false;
-      }
-      // Entorno de prueba local
-      const stored = this.loadStoredSession();
-      const admin = stored || DEFAULT_SUPERADMIN;
-      this.saveSession(admin);
-      return true;
+      return this.isAuthenticated();
     }
 
     try {
-      const { data } = await this.supabase.auth.getUser();
-      const email = data.user?.email?.trim().toLowerCase();
-
-      if (!email) {
+      const { data, error: userError } = await this.supabase.auth.getUser();
+      if (userError || !data?.user?.email) {
         this._currentAdmin.set(null);
         this.clearSession();
         return false;
       }
 
+      const email = data.user.email.trim().toLowerCase();
+
       // 1. Consultar si tiene registro en admin_access
-      const { data: adminRow } = await this.supabase
+      const { data: adminRow, error: adminError } = await this.supabase
         .from('admin_access' as any)
         .select('*')
         .eq('email', email)
@@ -288,14 +277,14 @@ export class AdminStoreService {
         '';
       const avatar = googleAvatar || '/assets/images/gonza.jpg';
 
-      if (adminRow) {
+      if (!adminError && adminRow) {
         const admin: AdminUser = {
           id: `admin-${email.replace(/[^a-z0-9]+/g, '-')}`,
           email,
           name: fullName,
           role: (adminRow as any)?.role || 'superadmin',
           avatar,
-          joinedAt: new Date().toISOString(),
+          joinedAt: (adminRow as any)?.created_at || new Date().toISOString(),
         };
         this.saveSession(admin);
         return true;

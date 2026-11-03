@@ -80,33 +80,21 @@
                     <option value="gastronomia">Gastronomía & Vinos de Altura</option>
                     <option value="fotografia">Fotografía / Astroturismo</option>
                     <option value="cabalgatas">Cabalgatas & Rutas Gauchas</option>
-                    <option value="arqueologia">Arqueología & Arte Rupestre</option>
                     <option value="artesanias">Artesanías & Sabores Regionales</option>
                   </select>
                 </label>
 
                 <label class="provider-field">
-                  <span class="field-lbl">Región o Base Operativa <b>*</b></span>
-                  <select
+                  <span class="field-lbl">Región donde se presta el servicio <b>*</b></span>
+                  <input
                     id="p-page-region"
-                    class="provider-select"
+                    type="text"
+                    class="provider-input"
+                    placeholder="Ej. Fiambalá, Belén, Valle Central, etc."
                     [value]="providerRegion()"
-                    (change)="providerRegion.set($any($event.target).value)"
+                    (input)="providerRegion.set($any($event.target).value)"
                     required
-                  >
-                    <option value="Puna & Fiambalá">Puna (Antofagasta, El Peñón) & Fiambalá</option>
-                    <option value="Fiambalá & Tinogasta">
-                      Tinogasta, Fiambalá & Paso San Francisco
-                    </option>
-                    <option value="Belén & Londres">Belén, Londres & Shincal de Quimivil</option>
-                    <option value="Valle Central & Diques">
-                      Valle Central (San Fernando, Dique El Jumeal)
-                    </option>
-                    <option value="Andalgalá & Santa María">
-                      Andalgalá, Santa María & Valles Calchaquíes
-                    </option>
-                    <option value="Toda la Provincia">Toda la Provincia de Catamarca</option>
-                  </select>
+                  />
                 </label>
 
                 <label class="provider-field">
