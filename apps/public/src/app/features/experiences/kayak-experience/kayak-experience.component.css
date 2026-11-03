@@ -473,11 +473,13 @@
 .cta-primary-btn.cta-blue-btn {
   background: #80b3ff;
   color: #0b1120;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 4px 16px rgba(255, 255, 255, 0.4), 0 0 10px rgba(255, 255, 255, 0.2);
 }
 
 .cta-primary-btn.cta-blue-btn:hover:not(:disabled) {
   background: #99c2ff;
-  box-shadow: 0 6px 20px rgba(128, 179, 255, 0.35);
+  box-shadow: 0 6px 22px rgba(255, 255, 255, 0.6), 0 0 14px rgba(255, 255, 255, 0.3);
 }
 
 .cta-primary-btn.is-blocked,

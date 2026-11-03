@@ -22,7 +22,7 @@ export interface Experience {
   durationDays: number;
   durationLabel: string;
   altitudeMeters: number;
-  bestSeason: string;
+  bestSeason?: string;
   priceArs: number;
   priceUsd: number;
   maxSpotsPerGroup: number;

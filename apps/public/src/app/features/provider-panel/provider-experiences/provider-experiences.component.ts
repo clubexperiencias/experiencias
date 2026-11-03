@@ -292,6 +292,11 @@ export class ProviderExperiencesComponent implements OnInit {
 
   saveNewDate(expId: string): void {
     if (!this.newDateValue) return;
+    const today = this.getLocalTodayIso();
+    if (this.newDateValue < today) {
+      this.showToast('No se pueden programar fechas en el pasado');
+      return;
+    }
     const ok = this.store.addDateToExperience(expId, this.newDateValue);
     if (ok) {
       this.activeDateExpId.set(null);

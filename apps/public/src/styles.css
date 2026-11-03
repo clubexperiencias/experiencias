@@ -92,14 +92,16 @@ button {
 
 input,
 textarea,
-select {
-  font-family: inherit;
+select,
+button {
+  font-family: 'Geist', var(--font-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  font-weight: 400;
 }
 
 ::placeholder,
 input::placeholder,
 textarea::placeholder {
-  font-family: inherit;
+  font-family: 'Geist', var(--font-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
 }
 
 /* Utilidades de accesibilidad y foco */

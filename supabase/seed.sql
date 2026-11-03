@@ -96,7 +96,6 @@ INSERT INTO public.experiencias (
   id,
   slug,
   title,
-  short_title,
   tagline,
   description,
   region,
@@ -111,11 +110,9 @@ INSERT INTO public.experiencias (
   public_url,
   cover_image,
   album_photos,
-  kicker,
   video_url,
   video_poster,
   altitude_meters,
-  best_season,
   highlights,
   included,
   not_included
@@ -125,7 +122,6 @@ VALUES
     'exp-kayak',
     'kayak',
     'Travesía en Kayak & Sunset en el Dique El Jumeal',
-    'Travesía en Kayak',
     'Remada guiada al atardecer con brindis de productos catamarqueños.',
     'Remada guiada en kayak en aguas calmas rodeadas de quebradas y vegetación de yungas andinas. Presenciamos la caída del sol reflejada en el dique y coronamos la jornada con un brindis y picada de productos artesanales catamarqueños.',
     'Valle Central y Ambato',
@@ -149,11 +145,9 @@ VALUES
       jsonb_build_object('id', 'k2', 'url', '/assets/images/kayak-2.png', 'caption', 'Navegación en equipo', 'credit', 'Patricio Diaz', 'featured', true, 'isCover', false),
       jsonb_build_object('id', 'k3', 'url', '/assets/images/kayak-3.png', 'caption', 'Quebradas y aguas calmas', 'credit', 'Club de Experiencias', 'featured', false, 'isCover', false)
     ),
-    'EXPEDICIÓN NÁUTICA: VALLE CENTRAL',
     '/assets/videos/kayak.mp4',
     '/assets/images/kayak-video.png',
     850,
-    'Todo el año',
     '["Kayaks dobles y simples estancos de travesía", "Brindis con vinos de altura y embutidos locales", "Instrucción técnica previa de remada y seguridad"]'::jsonb,
     '["Kayaks y remos profesionales", "Chalecos salvavidas reglamentarios certificados", "Seguro de accidentes personales", "Guía profesional náutico", "Picada y brindis andino"]'::jsonb,
     '["Traslados al Club Náutico", "Ropa de recambio"]'::jsonb
@@ -162,7 +156,6 @@ VALUES
     'exp-pomez',
     'campo-de-piedra-pomez',
     'Expedición 4x4 Campo de Piedra Pómez & Volcanes',
-    'Piedra Pómez 4x4',
     'Aventura lunar en el laberinto blanco de la Puna catamarqueña a más de 3.000 msnm.',
     'Travesía en camionetas 4x4 equipadas hacia el majestuoso Campo de Piedra Pómez. Incluye cruce de médanos gigantes, avistaje de vicuñas en Laguna Blanca y merienda andina en el silencio absoluto de la cordillera.',
     'Puna de Atacama',
@@ -183,11 +176,9 @@ VALUES
       jsonb_build_object('id', 'p1', 'url', 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80', 'caption', 'Laberinto de pómez gigante', 'credit', 'Club de Experiencias', 'featured', true, 'isCover', true),
       jsonb_build_object('id', 'p2', 'url', 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=800&q=80', 'caption', 'Cruce de dunas en camionetas 4x4', 'credit', 'Puna Expediciones', 'featured', true, 'isCover', false)
     ),
-    'EXPEDICIÓN ANDINA 4X4 • PUNA',
     '/assets/videos/kayak.mp4',
     '/assets/images/kayak-video.png',
     3150,
-    'Octubre a Mayo',
     '["Laberintos blancos esculpidos por ceniza volcánica", "Cruce guiado de médanos de altura", "Box lunch andino con cordero y quínoa"]'::jsonb,
     '["Vehículo 4x4 con chofer-guía especializado", "Oxígeno a bordo y botiquín de altura", "Almuerzo de campo y bebidas", "Permisos de ingreso al Área Natural Protegida"]'::jsonb,
     '["Alojamiento en El Peñón", "Propinas"]'::jsonb
@@ -196,7 +187,6 @@ VALUES
     'exp-seismiles',
     'ruta-de-los-seismiles',
     'Ruta de los Seismiles y Laguna Verde Andina',
-    'Ruta de los Seismiles',
     'Explorá la segunda cordillera más alta del planeta entre lagunas turquesas y volcanes gigantes.',
     'Travesía por la Ruta Nacional 60 ascendiendo hacia el Paso de San Francisco a más de 4.000 msnm. Admiramos los volcanes más altos del mundo (Pissis, Ojos del Salado, Incahuasi) y lagunas salinas con flamencos rosados.',
     'Fiambalá & Paso de San Francisco',
@@ -216,11 +206,9 @@ VALUES
     jsonb_build_array(
       jsonb_build_object('id', 's1', 'url', 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1200&q=80', 'caption', 'Volcanes gigantes en la cordillera', 'credit', 'Club de Experiencias', 'featured', true, 'isCover', true)
     ),
-    'ALTA MONTAÑA • CORDILLERA DE LOS ANDES',
     '/assets/videos/kayak.mp4',
     '/assets/images/kayak-video.png',
     4200,
-    'Noviembre a Abril',
     '["Lagunas altiplánicas con flamencos", "Vistas panorámicas a volcanes de más de 6.000 msnm", "Visita a refugios históricos de arrieros"]'::jsonb,
     '["Transporte 4x4 climatizado", "Guía de alta montaña registrado", "Seguro y botiquín de oximetría", "Almuerzo térmico cordillerano"]'::jsonb,
     '["Indumentaria técnica de abrigo"]'::jsonb

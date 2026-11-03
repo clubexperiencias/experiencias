@@ -58,7 +58,6 @@ export class ProviderExperienceFormComponent implements OnInit {
 
   readonly form = this.fb.nonNullable.group({
     title: ['', [Validators.required, Validators.minLength(6), Validators.maxLength(100)]],
-    shortTitle: ['', [Validators.maxLength(40)]],
     tagline: ['', [Validators.required, Validators.maxLength(160)]],
     description: ['', [Validators.required, Validators.minLength(30), Validators.maxLength(2500)]],
     region: [this.regions[0], Validators.required],
@@ -88,7 +87,6 @@ export class ProviderExperienceFormComponent implements OnInit {
         this.dates.set([...exp.dates]);
         this.form.patchValue({
           title: exp.title,
-          shortTitle: exp.shortTitle || '',
           tagline: exp.tagline,
           description: exp.description,
           region: exp.region,
@@ -142,7 +140,7 @@ export class ProviderExperienceFormComponent implements OnInit {
     const value = this.form.getRawValue();
     const payload = {
       title: value.title.trim(),
-      shortTitle: value.shortTitle.trim() || undefined,
+      shortTitle: value.title.trim(),
       tagline: value.tagline.trim(),
       description: value.description.trim(),
       region: value.region,

@@ -3,7 +3,8 @@ import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { ExperienceService } from '../../../core/services/experience.service';
-import { Experience } from '../../../core/models/experience.model';
+import { StorageService } from '../../../core/services/storage.service';
+import { Experience, ExperienceAlbumPhoto } from '../../../core/models/experience.model';
 import { ArsPipe } from '../../../shared/pipes/format.pipes';
 
 @Component({
@@ -69,7 +70,6 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                         class="exp-table-thumb"
                       />
                       <div class="exp-cell-text">
-                        <span class="exp-kicker-tag">{{ exp.kicker || 'EXPEDICIÓN' }}</span>
                         <strong class="exp-table-title">{{ exp.title }}</strong>
                         <span class="exp-table-sub">{{ exp.tagline }}</span>
                       </div>
@@ -135,8 +135,7 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                         (click)="openEditModal(exp)"
                         title="Editar toda la información de esta experiencia"
                       >
-                        <mat-icon>edit</mat-icon>
-                        <span>Editar</span>
+                        <span>EDITAR</span>
                       </button>
 
                       <!-- Pausar o Activar -->
@@ -191,53 +190,29 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
               <!-- SECCIÓN 1: Identificación y Rutas -->
               <div class="form-section-card">
                 <h4 class="form-section-title">1. Identificación & Ruta Pública</h4>
-                <div class="form-grid-2">
-                  <div class="form-field">
-                    <label>Ruta / Slug (URL final):</label>
-                    <div class="slug-input-wrap">
-                      <span class="slug-prefix">/experiencias/</span>
-                      <input
-                        type="text"
-                        class="form-input slug-field"
-                        [(ngModel)]="editSlug"
-                        [disabled]="editingExperience()?.slug === 'kayak'"
-                        placeholder="ej: kayak, piedra-pomez, etc."
-                      />
-                    </div>
-                    <span class="field-hint">Determina la URL pública de acceso a la ficha.</span>
-                  </div>
-
-                  <div class="form-field">
-                    <label>Kicker / Categoría superior:</label>
+                <div class="form-field">
+                  <label>Ruta / Slug (URL final):</label>
+                  <div class="slug-input-wrap">
+                    <span class="slug-prefix">/experiencias/</span>
                     <input
                       type="text"
-                      class="form-input"
-                      [(ngModel)]="editKicker"
-                      placeholder="Ej: EXPEDICIÓN NÁUTICA: VALLE CENTRAL"
+                      class="form-input slug-field"
+                      [(ngModel)]="editSlug"
+                      [disabled]="editingExperience()?.slug === 'kayak'"
+                      placeholder="ej: kayak, piedra-pomez, etc."
                     />
                   </div>
+                  <span class="field-hint">Determina la URL pública de acceso a la ficha.</span>
                 </div>
 
-                <div class="form-grid-2">
-                  <div class="form-field">
-                    <label>Título principal de la Experiencia:</label>
-                    <input
-                      type="text"
-                      class="form-input"
-                      [(ngModel)]="editTitle"
-                      placeholder="Ej: Travesía en Kayak & Sunset en el Dique El Jumeal"
-                    />
-                  </div>
-
-                  <div class="form-field">
-                    <label>Título corto (para badges y botones):</label>
-                    <input
-                      type="text"
-                      class="form-input"
-                      [(ngModel)]="editShortTitle"
-                      placeholder="Ej: Travesía en Kayak"
-                    />
-                  </div>
+                <div class="form-field">
+                  <label>Título principal de la Experiencia:</label>
+                  <input
+                    type="text"
+                    class="form-input"
+                    [(ngModel)]="editTitle"
+                    placeholder="Ej: Travesía en Kayak & Sunset en el Dique El Jumeal"
+                  />
                 </div>
 
                 <div class="form-field">
@@ -296,7 +271,7 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                   </div>
                 </div>
 
-                <div class="form-grid-4">
+                <div class="form-grid-3">
                   <div class="form-field">
                     <label>Duración estimada:</label>
                     <input
@@ -318,16 +293,6 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                   </div>
 
                   <div class="form-field">
-                    <label>Temporada sugerida:</label>
-                    <input
-                      type="text"
-                      class="form-input"
-                      [(ngModel)]="editBestSeason"
-                      placeholder="Ej: Todo el año"
-                    />
-                  </div>
-
-                  <div class="form-field">
                     <label>Cupo máximo por fecha:</label>
                     <input
                       type="number"
@@ -339,9 +304,9 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                 </div>
               </div>
 
-              <!-- SECCIÓN 3: Aranceles Oficiales -->
+              <!-- SECCIÓN 3: Arancel Oficial & Fechas Programadas (Unificados) -->
               <div class="form-section-card">
-                <h4 class="form-section-title">3. Aranceles de Reserva Oficiales</h4>
+                <h4 class="form-section-title">3. Arancel Oficial & Fechas Programadas</h4>
                 <div class="form-grid-2">
                   <div class="form-field">
                     <label>Arancel en Pesos Argentinos (ARS):</label>
@@ -351,91 +316,136 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                       [(ngModel)]="editPriceArs"
                       placeholder="65000"
                     />
-                    <span class="field-hint"
-                      >Monto cobrado en transferencias bancarias locales.</span
-                    >
+                    <span class="field-hint">
+                      Equivalente estimado: ~&#36;{{ calculatedUsd() }} USD (calculado a $1.600/USD).
+                    </span>
                   </div>
 
                   <div class="form-field">
-                    <label>Arancel en Dólares Estadounidenses (USD):</label>
+                    <label>Fechas programadas (separadas por coma, formato YYYY-MM-DD):</label>
                     <input
-                      type="number"
+                      type="text"
                       class="form-input"
-                      [(ngModel)]="editPriceUsd"
-                      placeholder="70"
+                      [(ngModel)]="editDatesRaw"
+                      placeholder="2026-11-10, 2026-11-17, 2026-11-24"
                     />
-                    <span class="field-hint">Monto de referencia para pagos internacionales.</span>
+                    <span class="field-hint">Fechas habilitadas para reservar cupos.</span>
                   </div>
                 </div>
               </div>
 
-              <!-- SECCIÓN 4: Multimedia & Recursos Visuales -->
+              <!-- SECCIÓN 4: Multimedia, Video & Portada (con subida a Supabase Storage y Álbum) -->
               <div class="form-section-card">
                 <h4 class="form-section-title">4. Multimedia, Video & Portada</h4>
-                <div class="form-grid-3">
-                  <div class="form-field">
-                    <label>URL Imagen de Portada:</label>
-                    <input
-                      type="text"
-                      class="form-input"
-                      [(ngModel)]="editCoverImage"
-                      placeholder="/assets/images/kayak-club-de-experiencias.jpg"
-                    />
-                  </div>
-
-                  <div class="form-field">
-                    <label>URL Video Oficial (.mp4):</label>
-                    <input
-                      type="text"
-                      class="form-input"
-                      [(ngModel)]="editVideoUrl"
-                      placeholder="/assets/videos/kayak.mp4"
-                    />
-                  </div>
-
-                  <div class="form-field">
-                    <label>URL Poster de Video (Preview):</label>
-                    <input
-                      type="text"
-                      class="form-input"
-                      [(ngModel)]="editVideoPoster"
-                      placeholder="/assets/images/kayak-video.png"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <!-- SECCIÓN 5: Fechas Programadas & Salidas -->
-              <div class="form-section-card">
-                <h4 class="form-section-title">5. Fechas Programadas de Salida</h4>
-                <div class="form-field">
-                  <label>Fechas programadas (separadas por coma, formato YYYY-MM-DD):</label>
-                  <input
-                    type="text"
-                    class="form-input"
-                    [(ngModel)]="editDatesRaw"
-                    placeholder="2026-11-10, 2026-11-17, 2026-11-24"
-                  />
-                  <span class="field-hint"
-                    >Fechas habilitadas para reservar cupos en el proceso de pago.</span
-                  >
-                </div>
-              </div>
-
-              <!-- SECCIÓN 6: Puntos Destacados & Servicios Incluidos -->
-              <div class="form-section-card">
-                <h4 class="form-section-title">6. Puntos Destacados & Servicios Incluidos</h4>
                 <div class="form-grid-2">
                   <div class="form-field">
-                    <label>Puntos Destacados (un ítem por línea):</label>
-                    <textarea
-                      class="form-textarea"
-                      rows="4"
-                      [(ngModel)]="editHighlightsRaw"
-                      placeholder="Remada en kayak doble en aguas mansas&#10;Atardecer dorado sobre el Dique El Jumeal&#10;Brindis de cierre con picada regional"
-                    ></textarea>
+                    <label>Imagen de Portada Principal:</label>
+                    <div class="media-upload-row">
+                      <input
+                        type="text"
+                        class="form-input"
+                        [(ngModel)]="editCoverImage"
+                        placeholder="https://... o seleccioná un archivo"
+                      />
+                      <label class="btn-upload-file" [class.is-uploading]="uploadingCover()">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          (change)="onUploadCoverImage($event)"
+                          style="display: none"
+                        />
+                        <span>{{ uploadingCover() ? 'Subiendo...' : 'Subir Portada' }}</span>
+                      </label>
+                    </div>
+                    @if (editCoverImage()) {
+                      <div class="media-preview-box">
+                        <img [src]="editCoverImage()" alt="Preview Portada" class="media-preview-img" />
+                      </div>
+                    }
                   </div>
 
+                  <div class="form-field">
+                    <label>Video Oficial (.mp4):</label>
+                    <div class="media-upload-row">
+                      <input
+                        type="text"
+                        class="form-input"
+                        [(ngModel)]="editVideoUrl"
+                        placeholder="/assets/videos/kayak.mp4 o seleccioná un video"
+                      />
+                      <label class="btn-upload-file" [class.is-uploading]="uploadingVideo()">
+                        <input
+                          type="file"
+                          accept="video/mp4,video/*"
+                          (change)="onUploadVideo($event)"
+                          style="display: none"
+                        />
+                        <span>{{ uploadingVideo() ? 'Subiendo...' : 'Subir Video' }}</span>
+                      </label>
+                    </div>
+                    <span class="field-hint">Video promocional reproducido en la ficha de la experiencia.</span>
+                  </div>
+                </div>
+
+                <!-- Álbum de Fotos Oficial de la Experiencia -->
+                <div class="album-upload-section">
+                  <div class="album-header-row">
+                    <div>
+                      <label class="album-section-label">Álbum de Fotos de la Experiencia</label>
+                      <span class="field-hint">
+                        {{ editAlbumPhotos().length }} foto(s) en la galería. Podés cargar nuevas imágenes directamente a Supabase Storage.
+                      </span>
+                    </div>
+
+                    <label class="btn-upload-album-file" [class.is-uploading]="uploadingAlbum()">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        (change)="onUploadAlbumPhotos($event)"
+                        style="display: none"
+                      />
+                      <span>{{ uploadingAlbum() ? 'Subiendo...' : '+ Subir Fotos al Álbum' }}</span>
+                    </label>
+                  </div>
+
+                  @if (editAlbumPhotos().length > 0) {
+                    <div class="album-photos-grid">
+                      @for (photo of editAlbumPhotos(); track photo.id; let idx = $index) {
+                        <div class="album-photo-item">
+                          <img [src]="photo.url" [alt]="photo.caption || 'Foto de álbum'" class="album-thumb" />
+                          <div class="album-item-meta">
+                            <input
+                              type="text"
+                              class="album-caption-input"
+                              [value]="photo.caption || ''"
+                              (input)="updatePhotoCaption(idx, $any($event.target).value)"
+                              placeholder="Epígrafe..."
+                            />
+                            <button
+                              type="button"
+                              class="album-delete-btn"
+                              (click)="removeAlbumPhoto(idx)"
+                              title="Eliminar foto del álbum"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  } @else {
+                    <div class="album-empty-placeholder">
+                      <span>No hay fotos cargadas en el álbum. Podés subir imágenes para la galería.</span>
+                    </div>
+                  }
+                </div>
+              </div>
+
+              <!-- SECCIÓN 5: Servicios Incluidos & Qué Debes Traer (Orden invertido) -->
+              <div class="form-section-card">
+                <h4 class="form-section-title">5. Servicios Incluidos & Qué Debes Traer</h4>
+                <div class="form-grid-2">
                   <div class="form-field">
                     <label>Servicios Incluidos (un ítem por línea):</label>
                     <textarea
@@ -445,18 +455,27 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                       placeholder="Kayaks de travesía y remos de carbono&#10;Chaleco salvavidas reglamentario PFD&#10;Guía náutico certificado&#10;Seguro de accidentes"
                     ></textarea>
                   </div>
+
+                  <div class="form-field">
+                    <label>Qué Debes Traer (un ítem por línea):</label>
+                    <textarea
+                      class="form-textarea"
+                      rows="4"
+                      [(ngModel)]="editHighlightsRaw"
+                      placeholder="Muda de ropa cómoda&#10;Protector solar y gorra&#10;Botella de agua personal"
+                    ></textarea>
+                  </div>
                 </div>
               </div>
 
-              <!-- SECCIÓN 7: Estado de la Ruta -->
+              <!-- SECCIÓN 6: Estado de Publicación (Sin borrador) -->
               <div class="form-section-card">
-                <h4 class="form-section-title">7. Estado de Publicación</h4>
+                <h4 class="form-section-title">6. Estado de Publicación</h4>
                 <div class="form-field">
                   <label>Estado en experiencias.club:</label>
                   <select class="form-select" [(ngModel)]="editStatus">
                     <option value="publicada">Publicada (Visible a todos los exploradores)</option>
                     <option value="oculta">Oculta / Pausada (Dada de baja temporalmente)</option>
-                    <option value="borrador">Borrador Privado</option>
                   </select>
                 </div>
               </div>
@@ -692,7 +711,7 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
       .table-count {
         font-size: 0.78rem;
         color: rgba(255, 255, 255, 0.6);
-        font-family: var(--font-mono, monospace);
+        font-family: inherit;
       }
 
       .table-responsive {
@@ -751,14 +770,6 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
         display: flex;
         flex-direction: column;
         gap: 0.15rem;
-      }
-
-      .exp-kicker-tag {
-        font-size: 0.65rem;
-        font-weight: 800;
-        color: #ff5f00;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
       }
 
       .exp-table-title {
@@ -825,9 +836,9 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
       }
 
       .alt-label {
-        color: #ffaa00 !important;
-        font-family: var(--font-mono, monospace);
-        font-size: 0.75rem !important;
+        color: rgba(255, 255, 255, 0.65) !important;
+        font-family: inherit !important;
+        font-size: 0.78rem !important;
       }
 
       .price-cell {
@@ -1125,16 +1136,191 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
         border-radius: 4px;
         padding: 0.6rem 0.85rem;
         color: #ffffff;
+        font-family: 'Geist', var(--font-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
         font-size: 0.85rem;
+        font-weight: 400;
         outline: none;
         box-sizing: border-box;
         transition: border-color 0.2s ease;
+      }
+
+      .form-select {
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 1.25rem center;
+        background-size: 14px 14px;
+        padding-right: 2.85rem !important;
+        cursor: pointer;
+      }
+
+      .form-select option {
+        background: #1a0e08;
+        color: #ffffff;
       }
 
       .form-input:focus,
       .form-textarea:focus,
       .form-select:focus {
         border-color: #ff5f00;
+      }
+
+      .media-upload-row {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+      }
+
+      .btn-upload-file {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        white-space: nowrap;
+        padding: 0.58rem 0.95rem;
+        background: rgba(255, 95, 0, 0.2);
+        border: 1px solid rgba(255, 95, 0, 0.45);
+        border-radius: 4px;
+        color: #ffaa00;
+        font-size: 0.78rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .btn-upload-file:hover {
+        background: rgba(255, 95, 0, 0.35);
+        color: #ffffff;
+      }
+
+      .btn-upload-file.is-uploading {
+        opacity: 0.6;
+        pointer-events: none;
+      }
+
+      .media-preview-box {
+        margin-top: 0.5rem;
+        border-radius: 4px;
+        overflow: hidden;
+        max-width: 160px;
+        max-height: 90px;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+      }
+
+      .media-preview-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+
+      .album-upload-section {
+        margin-top: 1.25rem;
+        padding-top: 1.25rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .album-header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        margin-bottom: 0.85rem;
+      }
+
+      .album-section-label {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #ffffff;
+        display: block;
+        margin-bottom: 0.2rem;
+      }
+
+      .btn-upload-album-file {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.45rem 0.85rem;
+        background: rgba(0, 204, 136, 0.15);
+        border: 1px solid rgba(0, 204, 136, 0.4);
+        border-radius: 4px;
+        color: #00cc88;
+        font-size: 0.78rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .btn-upload-album-file:hover {
+        background: rgba(0, 204, 136, 0.25);
+        color: #ffffff;
+      }
+
+      .btn-upload-album-file.is-uploading {
+        opacity: 0.6;
+        pointer-events: none;
+      }
+
+      .album-photos-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        gap: 0.85rem;
+      }
+
+      .album-photo-item {
+        position: relative;
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 4px;
+        overflow: hidden;
+      }
+
+      .album-thumb {
+        width: 100%;
+        height: 85px;
+        object-fit: cover;
+        display: block;
+      }
+
+      .album-item-meta {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.35rem 0.4rem;
+        background: rgba(10, 5, 2, 0.9);
+      }
+
+      .album-caption-input {
+        width: 100%;
+        background: transparent;
+        border: none;
+        color: #ffffff;
+        font-size: 0.72rem;
+        outline: none;
+      }
+
+      .album-delete-btn {
+        background: none;
+        border: none;
+        color: #ff5f5f;
+        cursor: pointer;
+        font-size: 0.8rem;
+        padding: 0 0.2rem;
+        line-height: 1;
+      }
+
+      .album-delete-btn:hover {
+        color: #ff2a2a;
+      }
+
+      .album-empty-placeholder {
+        padding: 1.25rem;
+        text-align: center;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px dashed rgba(255, 255, 255, 0.18);
+        border-radius: 4px;
+        color: rgba(255, 255, 255, 0.5);
+        font-size: 0.8rem;
       }
 
       .slug-input-wrap {
@@ -1150,7 +1336,7 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
         padding: 0.6rem 0.75rem;
         background: rgba(255, 95, 0, 0.15);
         color: #ffaa00;
-        font-family: var(--font-mono, monospace);
+        font-family: inherit;
         font-size: 0.82rem;
         font-weight: 700;
         border-right: 1px solid rgba(255, 95, 0, 0.35);
@@ -1272,6 +1458,7 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
 })
 export class AdminExperiencesComponent {
   private readonly experienceService = inject(ExperienceService);
+  private readonly storageService = inject(StorageService);
 
   readonly experiences = this.experienceService.experiences;
   readonly feedbackToast = signal<string | null>(null);
@@ -1299,12 +1486,16 @@ export class AdminExperiencesComponent {
   readonly editingExperience = signal<Experience | null>(null);
   readonly isCreating = signal(false);
 
+  // Uploading state
+  readonly uploadingCover = signal(false);
+  readonly uploadingVideo = signal(false);
+  readonly uploadingAlbum = signal(false);
+  readonly editAlbumPhotos = signal<ExperienceAlbumPhoto[]>([]);
+
   // Form Fields
   readonly editId = signal('');
   readonly editSlug = signal('');
   readonly editTitle = signal('');
-  readonly editShortTitle = signal('');
-  readonly editKicker = signal('');
   readonly editTagline = signal('');
   readonly editDescription = signal('');
   readonly editRegion = signal('');
@@ -1312,17 +1503,16 @@ export class AdminExperiencesComponent {
   readonly editDifficulty = signal<'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña'>('Baja');
   readonly editDurationLabel = signal('');
   readonly editAltitude = signal(850);
-  readonly editBestSeason = signal('Todo el año');
   readonly editCapacity = signal(12);
   readonly editPriceArs = signal(65000);
-  readonly editPriceUsd = signal(70);
+  readonly calculatedUsd = computed(() => Math.round((Number(this.editPriceArs()) || 0) / 1600));
   readonly editCoverImage = signal('');
   readonly editVideoUrl = signal('');
   readonly editVideoPoster = signal('');
   readonly editDatesRaw = signal('');
   readonly editHighlightsRaw = signal('');
   readonly editIncludedRaw = signal('');
-  readonly editStatus = signal<'publicada' | 'oculta' | 'borrador'>('publicada');
+  readonly editStatus = signal<'publicada' | 'oculta'>('publicada');
 
   openEditModal(exp: Experience): void {
     this.isCreating.set(false);
@@ -1331,8 +1521,6 @@ export class AdminExperiencesComponent {
     this.editId.set(exp.id);
     this.editSlug.set(exp.slug);
     this.editTitle.set(exp.title);
-    this.editShortTitle.set(exp.shortTitle || exp.title);
-    this.editKicker.set(exp.kicker || 'EXPEDICIÓN');
     this.editTagline.set(exp.tagline || '');
     this.editDescription.set(exp.description || '');
     this.editRegion.set(exp.region || 'Valle Central y Ambato');
@@ -1340,17 +1528,16 @@ export class AdminExperiencesComponent {
     this.editDifficulty.set(exp.difficulty || 'Baja');
     this.editDurationLabel.set(exp.durationLabel || '4 Horas');
     this.editAltitude.set(exp.altitudeMeters || 850);
-    this.editBestSeason.set(exp.bestSeason || 'Todo el año');
     this.editCapacity.set(exp.maxSpotsPerGroup || 12);
     this.editPriceArs.set(exp.priceArs || 65000);
-    this.editPriceUsd.set(exp.priceUsd || 70);
     this.editCoverImage.set(exp.coverImage || '');
     this.editVideoUrl.set(exp.videoUrl || '');
     this.editVideoPoster.set(exp.videoPoster || '');
     this.editDatesRaw.set((exp.dates || []).join(', '));
     this.editHighlightsRaw.set((exp.highlights || []).join('\n'));
     this.editIncludedRaw.set((exp.included || []).join('\n'));
-    this.editStatus.set(exp.status || 'publicada');
+    this.editAlbumPhotos.set([...(exp.albumPhotos || [])]);
+    this.editStatus.set(exp.status === 'oculta' ? 'oculta' : 'publicada');
   }
 
   openCreateModal(): void {
@@ -1360,7 +1547,7 @@ export class AdminExperiencesComponent {
       slug: '',
       title: '',
       shortTitle: '',
-      kicker: 'EXPEDICIÓN',
+      kicker: '',
       tagline: '',
       description: '',
       region: 'Catamarca',
@@ -1369,12 +1556,13 @@ export class AdminExperiencesComponent {
       durationDays: 1,
       durationLabel: 'Media Jornada',
       altitudeMeters: 1000,
-      bestSeason: 'Todo el año',
+      bestSeason: '',
       priceArs: 75000,
-      priceUsd: 80,
+      priceUsd: 47,
       maxSpotsPerGroup: 10,
       coverImage: '/assets/images/kayak-club-de-experiencias.jpg',
       galleryImages: ['/assets/images/kayak-club-de-experiencias.jpg'],
+      albumPhotos: [],
       highlights: [],
       included: [],
       dates: [],
@@ -1389,8 +1577,6 @@ export class AdminExperiencesComponent {
     this.editId.set(newId);
     this.editSlug.set('');
     this.editTitle.set('');
-    this.editShortTitle.set('');
-    this.editKicker.set('EXPEDICIÓN');
     this.editTagline.set('');
     this.editDescription.set('');
     this.editRegion.set('Catamarca');
@@ -1398,22 +1584,105 @@ export class AdminExperiencesComponent {
     this.editDifficulty.set('Baja');
     this.editDurationLabel.set('Media Jornada');
     this.editAltitude.set(1000);
-    this.editBestSeason.set('Todo el año');
     this.editCapacity.set(10);
     this.editPriceArs.set(75000);
-    this.editPriceUsd.set(80);
     this.editCoverImage.set('/assets/images/kayak-club-de-experiencias.jpg');
     this.editVideoUrl.set('');
     this.editVideoPoster.set('');
     this.editDatesRaw.set('');
     this.editHighlightsRaw.set('');
     this.editIncludedRaw.set('');
+    this.editAlbumPhotos.set([]);
     this.editStatus.set('publicada');
   }
 
   closeEditModal(): void {
     this.editingExperience.set(null);
     this.isCreating.set(false);
+  }
+
+  async onUploadCoverImage(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    this.uploadingCover.set(true);
+    try {
+      const slug = this.editSlug() || 'exp';
+      const res = await this.storageService.uploadFile(file, `COVER-${slug}`);
+      this.editCoverImage.set(res.url);
+      this.showToast('✅ Imagen de portada subida con éxito');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error al subir portada';
+      this.showToast(`❌ ${msg}`);
+    } finally {
+      this.uploadingCover.set(false);
+      input.value = '';
+    }
+  }
+
+  async onUploadVideo(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    this.uploadingVideo.set(true);
+    try {
+      const slug = this.editSlug() || 'exp';
+      const res = await this.storageService.uploadFile(file, `VID-${slug}`);
+      this.editVideoUrl.set(res.url);
+      this.showToast('✅ Video subido con éxito');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error al subir video';
+      this.showToast(`❌ ${msg}`);
+    } finally {
+      this.uploadingVideo.set(false);
+      input.value = '';
+    }
+  }
+
+  async onUploadAlbumPhotos(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const files = Array.from(input.files || []);
+    if (!files.length) return;
+
+    this.uploadingAlbum.set(true);
+    try {
+      const slug = this.editSlug() || 'exp';
+      const newPhotos: ExperienceAlbumPhoto[] = [];
+      for (const file of files) {
+        const res = await this.storageService.uploadFile(file, `ALBUM-${slug}`);
+        newPhotos.push({
+          id: `photo-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          url: res.url,
+          caption: '',
+          isCover: false,
+          isFeatured: false,
+        });
+      }
+      this.editAlbumPhotos.update((current) => [...current, ...newPhotos]);
+      this.showToast(`✅ ${newPhotos.length} foto(s) agregada(s) al álbum`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error al subir fotos';
+      this.showToast(`❌ ${msg}`);
+    } finally {
+      this.uploadingAlbum.set(false);
+      input.value = '';
+    }
+  }
+
+  updatePhotoCaption(index: number, caption: string): void {
+    this.editAlbumPhotos.update((photos) => {
+      const updated = [...photos];
+      if (updated[index]) {
+        updated[index] = { ...updated[index], caption };
+      }
+      return updated;
+    });
+  }
+
+  removeAlbumPhoto(index: number): void {
+    this.editAlbumPhotos.update((photos) => photos.filter((_, i) => i !== index));
   }
 
   async saveExperience(): Promise<void> {
@@ -1447,12 +1716,15 @@ export class AdminExperiencesComponent {
       .map((i) => i.trim())
       .filter((i) => i.length > 0);
 
+    const priceArs = Number(this.editPriceArs()) || 0;
+    const priceUsd = Math.round(priceArs / 1600);
+
     const payload: Partial<Experience> & { id: string } = {
       id: this.editId(),
       slug,
       title,
-      shortTitle: this.editShortTitle().trim() || title,
-      kicker: this.editKicker().trim() || 'EXPEDICIÓN',
+      shortTitle: title,
+      kicker: '',
       tagline: this.editTagline().trim(),
       description: this.editDescription().trim(),
       region: this.editRegion().trim() || 'Catamarca',
@@ -1460,11 +1732,12 @@ export class AdminExperiencesComponent {
       difficulty: this.editDifficulty(),
       durationLabel: this.editDurationLabel().trim() || '4 Horas',
       altitudeMeters: Number(this.editAltitude()) || 0,
-      bestSeason: this.editBestSeason().trim() || 'Todo el año',
+      bestSeason: '',
       maxSpotsPerGroup: Number(this.editCapacity()) || 12,
-      priceArs: Number(this.editPriceArs()) || 0,
-      priceUsd: Number(this.editPriceUsd()) || 0,
+      priceArs,
+      priceUsd,
       coverImage: this.editCoverImage().trim() || '/assets/images/kayak-club-de-experiencias.jpg',
+      albumPhotos: this.editAlbumPhotos(),
       videoUrl: this.editVideoUrl().trim(),
       videoPoster: this.editVideoPoster().trim(),
       dates,

@@ -40,7 +40,7 @@ All media assets and payment receipts are stored directly in native Supabase Sto
 - **`experiencias`** (Public Bucket): Stores cover images, albums, videos, and proposal uploads for published and pending activities. *(Note: You must create a public bucket named `experiencias` in the Supabase Storage dashboard before applying the migration, as the migration sets up Row-Level Security policies but does not create the bucket itself).*
 - **`comprobantes`** (Private Bucket with RLS): Stores bank transfer receipt documents uploaded during checkout for verification.
 
-To configure bucket permissions and access policies in Supabase, execute [`supabase/migrations/004_experiencias_storage.sql`](./supabase/migrations/004_experiencias_storage.sql) in the Supabase SQL Editor.
+For a fresh project, run database migrations `001` through `004` in sequential order (refer to the migration guide in [**`docs/DEV_VS_PROD.md`**](./docs/DEV_VS_PROD.md#6-esquema-de-base-de-datos-y-migraciones-supabase)). Specifically, migration [`002_experiencias_y_pagos.sql`](./supabase/migrations/002_experiencias_y_pagos.sql) creates the private `comprobantes` bucket and its access policies, while migration [`004_experiencias_storage.sql`](./supabase/migrations/004_experiencias_storage.sql) configures public read and authenticated provider/admin access policies for the `experiencias` bucket.
 
 ## Environments: Development vs Production
 

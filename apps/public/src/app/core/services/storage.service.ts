@@ -44,7 +44,7 @@ export class StorageService {
       return storageKey;
     }
     if (!isSupabaseConfigured()) {
-      return storageKey;
+      return '';
     }
     try {
       const { data, error } = await this.supabase.storage

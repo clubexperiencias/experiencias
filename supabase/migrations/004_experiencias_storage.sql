@@ -51,9 +51,12 @@ BEGIN
             SELECT 1 FROM public.admin_access
             WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email') AND active = true
           )
-          OR EXISTS (
-            SELECT 1 FROM public.provider_access
-            WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email') AND active = true
+          OR (
+            (auth.uid()::text = owner::text)
+            AND EXISTS (
+              SELECT 1 FROM public.provider_access
+              WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email') AND active = true
+            )
           )
         )
       );

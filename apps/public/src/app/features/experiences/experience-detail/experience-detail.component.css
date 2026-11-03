@@ -255,15 +255,16 @@
 }
 
 .cta-blue-btn {
-  background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
-  color: #ffffff !important;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+  background: #80b3ff;
+  color: #0b1120 !important;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 4px 16px rgba(255, 255, 255, 0.4), 0 0 10px rgba(255, 255, 255, 0.2);
 }
 
 .cta-blue-btn:hover {
-  background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
-  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.55);
+  background: #99c2ff;
+  color: #0b1120 !important;
+  box-shadow: 0 6px 22px rgba(255, 255, 255, 0.6), 0 0 14px rgba(255, 255, 255, 0.3);
   transform: translateY(-2px);
 }
 
@@ -295,6 +296,41 @@
 .date-chip-text {
   font-size: 0.88rem;
   font-weight: 600;
+}
+
+/* ═══════════════ CRONOGRAMA & ITINERARIO ═══════════════ */
+.timeline-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+}
+
+.timeline-step {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  position: relative;
+}
+
+.timeline-time {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-gold);
+}
+
+.timeline-body h4 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0 0 0.3rem;
+}
+
+.timeline-body p {
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--color-text-soft);
+  margin: 0;
 }
 
 /* ═══════════════ HIGHLIGHTS LIST ═══════════════ */

@@ -1317,7 +1317,7 @@ export class ProviderMembersComponent {
       const signed = await this.store.getSignedReceiptUrl(key);
       if (signed) {
         this.selectedSubmission.update((s) =>
-          s ? { ...s, receipt: { ...s.receipt, url: signed } } : null,
+          s && s.id === sub.id ? { ...s, receipt: { ...s.receipt, url: signed } } : s,
         );
       }
     }
@@ -1336,9 +1336,20 @@ export class ProviderMembersComponent {
   approveReceipt(): void {
     const sub = this.selectedSubmission();
     if (!sub) return;
+    const currentUrl = sub.receipt?.url;
     this.store.reviewSubmission(sub.id, 'aprobado');
     const updated = this.store.providerSubmissions().find((s) => s.id === sub.id) || null;
-    this.selectedSubmission.set(updated);
+    this.selectedSubmission.set(
+      updated
+        ? {
+            ...updated,
+            receipt: {
+              ...updated.receipt,
+              url: currentUrl || updated.receipt.url,
+            },
+          }
+        : null,
+    );
   }
 
   confirmReject(): void {
@@ -1346,9 +1357,20 @@ export class ProviderMembersComponent {
     if (!sub) return;
     const reason = this.rejectionReason().trim();
     if (!reason) return;
+    const currentUrl = sub.receipt?.url;
     this.store.reviewSubmission(sub.id, 'rechazado', reason);
     const updated = this.store.providerSubmissions().find((s) => s.id === sub.id) || null;
-    this.selectedSubmission.set(updated);
+    this.selectedSubmission.set(
+      updated
+        ? {
+            ...updated,
+            receipt: {
+              ...updated.receipt,
+              url: currentUrl || updated.receipt.url,
+            },
+          }
+        : null,
+    );
     this.rejecting.set(false);
   }
 

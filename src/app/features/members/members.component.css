@@ -121,7 +121,7 @@
   font-size: 1rem;
   line-height: 1.65;
   color: var(--color-text-soft);
-  margin-bottom: 1.6rem;
+  margin-bottom: 0.2rem;
 }
 
 .hero-quick-stats {
@@ -165,16 +165,17 @@
 
 .card-heading {
   font-family: var(--font-serif);
-  font-size: 1.45rem;
+  font-size: 1.75rem;
   font-weight: 600;
   color: #fff;
+  line-height: 1.2;
   margin: 0.3rem 0 0.5rem;
 }
 
 .card-subheading {
-  font-size: 0.92rem;
+  font-size: 1rem;
   color: var(--color-text-soft);
-  line-height: 1.5;
+  line-height: 1.65;
   margin: 0;
 }
 

@@ -1775,7 +1775,7 @@ export class ProviderDashboardComponent implements OnInit {
       const signed = await this.store.getSignedReceiptUrl(key);
       if (signed) {
         this.selectedSubmission.update((s) =>
-          s ? { ...s, receipt: { ...s.receipt, url: signed } } : null,
+          s && s.id === submission.id ? { ...s, receipt: { ...s.receipt, url: signed } } : s,
         );
       }
     }
@@ -1810,6 +1810,11 @@ export class ProviderDashboardComponent implements OnInit {
 
   saveNewDate(expId: string): void {
     if (!this.newDateValue) return;
+    const today = this.getLocalTodayIso();
+    if (this.newDateValue < today) {
+      alert('No se pueden programar fechas en el pasado.');
+      return;
+    }
     const ok = this.store.addDateToExperience(expId, this.newDateValue);
     if (ok) {
       this.activeDateExpId.set(null);

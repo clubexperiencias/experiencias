@@ -56,7 +56,6 @@ describe('ExperienceService', () => {
       durationDays: 1,
       durationLabel: '2 Horas',
       altitudeMeters: 800,
-      bestSeason: 'Todo el año',
       priceArs: 10000,
       priceUsd: 10,
       maxSpotsPerGroup: 10,

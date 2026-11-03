@@ -8,6 +8,7 @@ import {
   SEED_PROVIDERS,
 } from '../../../core/services/provider-store.service';
 import { SUPABASE_CLIENT, isSupabaseConfigured } from '../../../core/supabase/supabase.client';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-provider-login',
@@ -720,7 +721,13 @@ export class ProviderLoginComponent implements OnInit {
   private readonly pageTitle = inject(Title);
   private readonly supabase = inject(SUPABASE_CLIENT);
 
-  readonly isDevelopmentMode = !isSupabaseConfigured();
+  readonly isDevelopmentMode =
+    !environment.production &&
+    !isSupabaseConfigured() &&
+    typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      window.location.hostname.endsWith('.local'));
   readonly demoProviders = SEED_PROVIDERS.filter((p) => p.name.includes('Patricio'));
   readonly errorMessage = signal<string | null>(null);
   readonly connectingGoogle = signal(false);

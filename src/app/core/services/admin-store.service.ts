@@ -1,5 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { SUPABASE_CLIENT, isSupabaseConfigured } from '../supabase/supabase.client';
+import { environment } from '../../../environments/environment';
 import { TransferSubmission, TransferStatus } from '../models/bank-transfer.model';
 import { NewsletterService } from './newsletter.service';
 import { ProviderStoreService, ExperienceProposalRequest } from './provider-store.service';
@@ -238,6 +239,19 @@ export class AdminStoreService {
 
   async restoreSupabaseSession(): Promise<boolean> {
     if (!isSupabaseConfigured()) {
+      if (environment.production) {
+        this._currentAdmin.set(null);
+        this.clearSession();
+        return false;
+      }
+      const isBrowser = typeof window !== 'undefined';
+      const host = isBrowser ? window.location.hostname.toLowerCase() : '';
+      const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local');
+      if (!isLocalHost) {
+        this._currentAdmin.set(null);
+        this.clearSession();
+        return false;
+      }
       // Entorno de prueba local
       const stored = this.loadStoredSession();
       const admin = stored || DEFAULT_SUPERADMIN;
@@ -294,6 +308,18 @@ export class AdminStoreService {
 
   async signInWithGoogle(): Promise<{ success: boolean; error?: string }> {
     if (!isSupabaseConfigured()) {
+      if (environment.production) {
+        return {
+          success: false,
+          error: 'El servicio de autenticación no está disponible en este momento.',
+        };
+      }
+      const isBrowser = typeof window !== 'undefined';
+      const host = isBrowser ? window.location.hostname.toLowerCase() : '';
+      const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local');
+      if (!isLocalHost) {
+        return { success: false, error: 'Acceso no disponible en este entorno.' };
+      }
       this.saveSession(DEFAULT_SUPERADMIN);
       return { success: true };
     }
@@ -331,7 +357,13 @@ export class AdminStoreService {
   }
 
   quickLogin(): void {
-    if (isSupabaseConfigured()) {
+    if (environment.production || isSupabaseConfigured()) {
+      return;
+    }
+    const isBrowser = typeof window !== 'undefined';
+    const host = isBrowser ? window.location.hostname.toLowerCase() : '';
+    const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local');
+    if (!isLocalHost) {
       return;
     }
     this.saveSession(DEFAULT_SUPERADMIN);
