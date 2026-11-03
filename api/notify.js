@@ -463,12 +463,17 @@ module.exports = async function handler(req, res) {
           results.push({ target: 'user', ...userResult });
         }
 
-        // 2. Alerta a Administradores y Prestadores
-        if (config.adminEmails.length > 0) {
+        // 2. Alerta a Administradores y al Prestador específico
+        const recipients = [...config.adminEmails];
+        if (data.providerEmail && !recipients.includes(data.providerEmail)) {
+          recipients.push(data.providerEmail);
+        }
+
+        if (recipients.length > 0) {
           const adminResult = await sendEmailViaResend({
             apiKey: config.apiKey,
             from: config.fromEmail,
-            to: config.adminEmails,
+            to: recipients,
             subject: `[Nuevo Comprobante] ${data.reference} · ${data.experienceTitle} ($${Number(data.amountArs || 0).toLocaleString('es-AR')})`,
             html: templatePaymentSubmittedAdmin(data),
           });

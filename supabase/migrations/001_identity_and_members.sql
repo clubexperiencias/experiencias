@@ -1,6 +1,6 @@
 -- ============================================================
--- 001_initial_schema.sql
--- EXPERIENCIAS.CLUB • Núcleo de Identidad, Socios, Espera y Accesos Administrativos
+-- 001_identity_and_members.sql
+-- EXPERIENCIAS.CLUB • Identity, Members, Waitlist & Admin Access
 -- ============================================================
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";

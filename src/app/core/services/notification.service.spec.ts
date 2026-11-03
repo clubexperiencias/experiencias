@@ -175,6 +175,24 @@ describe('NotificationService', () => {
     });
   });
 
+  describe('getWhatsAppNotificationUrl', () => {
+    it('should generate valid WhatsApp URL with default admin phone', () => {
+      const url = service.getWhatsAppNotificationUrl(mockSubmission);
+      expect(url).toContain('https://wa.me/5493515490431?text=');
+      expect(url).toContain(encodeURIComponent(mockSubmission.reference));
+    });
+
+    it('should format custom provider local phone to international format', () => {
+      const url = service.getWhatsAppNotificationUrl(mockSubmission, '383 455-8812');
+      expect(url).toContain('https://wa.me/5493834558812?text=');
+    });
+
+    it('should preserve already formatted Argentine international phone', () => {
+      const url = service.getWhatsAppNotificationUrl(mockSubmission, '+54 9 383 455-8812');
+      expect(url).toContain('https://wa.me/5493834558812?text=');
+    });
+  });
+
   describe('error handling', () => {
     it('should catch network failures and return success: false without throwing', async () => {
       vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('Network offline'));

@@ -1,6 +1,6 @@
 -- ============================================================
--- 003_administracion_y_prestadores.sql
--- EXPERIENCIAS.CLUB • Portal de Prestadores, Sincronización Reactiva y Nóminas Administrativas
+-- 003_providers_and_admin.sql
+-- EXPERIENCIAS.CLUB • Providers Portal, Banking Audit, Storage & Admin Views
 -- ============================================================
 
 -- ============================================================
@@ -39,6 +39,20 @@ CREATE POLICY "Providers can read their own access"
     AND active = true
   );
 
+DROP POLICY IF EXISTS "Providers can update their own profile" ON public.provider_access;
+CREATE POLICY "Providers can update their own profile"
+  ON public.provider_access
+  FOR UPDATE
+  TO authenticated
+  USING (
+    LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+    AND active = true
+  )
+  WITH CHECK (
+    LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+    AND active = true
+  );
+
 DROP POLICY IF EXISTS "Admins can manage provider_access" ON public.provider_access;
 CREATE POLICY "Admins can manage provider_access"
   ON public.provider_access
@@ -60,6 +74,62 @@ CREATE POLICY "Admins can manage provider_access"
   );
 
 GRANT ALL ON public.provider_access TO authenticated;
+
+-- ============================================================
+-- 1.1 TABLA HISTÓRICA: Historial de Modificaciones de Datos Bancarios
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.provider_banking_history (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  provider_email TEXT NOT NULL,
+  old_cbu_alias  TEXT,
+  new_cbu_alias  TEXT NOT NULL,
+  old_name       TEXT,
+  new_name       TEXT NOT NULL,
+  old_cuit_dni   TEXT,
+  new_cuit_dni   TEXT NOT NULL,
+  old_bank_name  TEXT,
+  new_bank_name  TEXT NOT NULL,
+  changed_by     TEXT NOT NULL DEFAULT 'provider',
+  changed_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_provider_banking_history_email ON public.provider_banking_history(provider_email);
+CREATE INDEX IF NOT EXISTS idx_provider_banking_history_date  ON public.provider_banking_history(changed_at DESC);
+
+ALTER TABLE public.provider_banking_history ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Providers can view their own banking history" ON public.provider_banking_history;
+CREATE POLICY "Providers can view their own banking history"
+  ON public.provider_banking_history
+  FOR SELECT
+  TO authenticated
+  USING (
+    LOWER(provider_email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+  );
+
+DROP POLICY IF EXISTS "Providers can insert into their own banking history" ON public.provider_banking_history;
+CREATE POLICY "Providers can insert into their own banking history"
+  ON public.provider_banking_history
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    LOWER(provider_email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+  );
+
+DROP POLICY IF EXISTS "Admins can manage banking history" ON public.provider_banking_history;
+CREATE POLICY "Admins can manage banking history"
+  ON public.provider_banking_history
+  FOR ALL
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.admin_access
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+        AND active = true
+    )
+  );
+
+GRANT ALL ON public.provider_banking_history TO authenticated;
 
 -- Prestadores iniciales autorizados
 INSERT INTO public.provider_access (
@@ -560,6 +630,125 @@ BEGIN
       ADD CONSTRAINT postulaciones_fundadores_status_check
       CHECK (status IN ('en_evaluacion', 'aprobada', 'rechazada', 'dado_de_baja'));
   END IF;
+END;
+$$;
+
+-- ============================================================
+-- 7. STORAGE BUCKET Y POLÍTICAS PARA FOTOS DE EXPERIENCIAS ('experiencias')
+-- ============================================================
+
+-- 7.1 Crear o actualizar el bucket público 'experiencias'
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.tables
+    WHERE table_schema = 'storage' AND table_name = 'buckets'
+  ) THEN
+    INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+    VALUES (
+      'experiencias',
+      'experiencias',
+      true,
+      10485760, -- 10 MB límite por foto
+      ARRAY['image/jpeg', 'image/png', 'image/webp']
+    )
+    ON CONFLICT (id) DO UPDATE
+    SET public = true,
+        file_size_limit = 10485760,
+        allowed_mime_types = ARRAY['image/jpeg', 'image/png', 'image/webp'];
+  END IF;
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE NOTICE 'Aviso: No se pudo configurar storage.buckets automáticamente para experiencias (%).', SQLERRM;
+END;
+$$;
+
+-- 7.2 Políticas RLS en storage.objects para el bucket 'experiencias'
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.tables
+    WHERE table_schema = 'storage' AND table_name = 'objects'
+  ) THEN
+    -- Lectura pública de fotos a cualquier visitante
+    DROP POLICY IF EXISTS "Lectura publica de fotos de experiencias" ON storage.objects;
+    CREATE POLICY "Lectura publica de fotos de experiencias"
+      ON storage.objects
+      FOR SELECT
+      TO public, anon, authenticated
+      USING (bucket_id = 'experiencias');
+
+    -- Subida de fotos de experiencias a prestadores y admins autenticados
+    DROP POLICY IF EXISTS "Subida de fotos de experiencias" ON storage.objects;
+    CREATE POLICY "Subida de fotos de experiencias"
+      ON storage.objects
+      FOR INSERT
+      TO authenticated
+      WITH CHECK (
+        bucket_id = 'experiencias'
+        AND (
+          EXISTS (
+            SELECT 1 FROM public.admin_access
+            WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email') AND active = true
+          )
+          OR EXISTS (
+            SELECT 1 FROM public.provider_access
+            WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email') AND active = true
+          )
+        )
+      );
+
+    -- Actualización o reemplazo de fotos existentes
+    DROP POLICY IF EXISTS "Actualizacion de fotos de experiencias" ON storage.objects;
+    CREATE POLICY "Actualizacion de fotos de experiencias"
+      ON storage.objects
+      FOR UPDATE
+      TO authenticated
+      USING (
+        bucket_id = 'experiencias'
+        AND (
+          EXISTS (
+            SELECT 1 FROM public.admin_access
+            WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email') AND active = true
+          )
+          OR (
+            (auth.uid()::text = owner::text)
+            AND EXISTS (
+              SELECT 1 FROM public.provider_access
+              WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email') AND active = true
+            )
+          )
+        )
+      );
+
+    -- Eliminación de fotos de experiencias
+    DROP POLICY IF EXISTS "Eliminacion de fotos de experiencias" ON storage.objects;
+    CREATE POLICY "Eliminacion de fotos de experiencias"
+      ON storage.objects
+      FOR DELETE
+      TO authenticated
+      USING (
+        bucket_id = 'experiencias'
+        AND (
+          EXISTS (
+            SELECT 1 FROM public.admin_access
+            WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email') AND active = true
+          )
+          OR (
+            (auth.uid()::text = owner::text)
+            AND EXISTS (
+              SELECT 1 FROM public.provider_access
+              WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email') AND active = true
+            )
+          )
+        )
+      );
+  END IF;
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE NOTICE 'Aviso: No se pudieron crear políticas en storage.objects para experiencias (%).', SQLERRM;
 END;
 $$;
 

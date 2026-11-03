@@ -1,6 +1,6 @@
 -- ============================================================
--- 002_experiencias_y_pagos.sql
--- EXPERIENCIAS.CLUB • Catálogo Oficial de Experiencias y Gestión de Pagos / Comprobantes
+-- 002_experiences_and_payments.sql
+-- EXPERIENCIAS.CLUB • Experiences Catalog, Bookings & Payment Receipts
 -- ============================================================
 
 -- ============================================================

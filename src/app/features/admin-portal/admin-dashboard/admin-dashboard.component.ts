@@ -26,7 +26,7 @@ import { ExperienceService } from '../../../core/services/experience.service';
         <div class="welcome-main">
           <div class="avatar-ring">
             <img
-              src="/assets/images/gonza.jpg"
+              [src]="admin()?.avatar || '/assets/images/gonza.jpg'"
               [alt]="admin()?.name || 'Gonzalo Gramaglia'"
               class="admin-avatar"
               referrerpolicy="no-referrer"

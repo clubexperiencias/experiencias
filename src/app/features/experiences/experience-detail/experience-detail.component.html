@@ -88,7 +88,7 @@
         </div>
 
         <!-- ═══════════════ CARD: PRÓXIMAS SALIDAS PROGRAMADAS ═══════════════ -->
-        @if (item.dates && item.dates.length > 0) {
+        @if (upcomingDates().length > 0) {
         <div class="exp-detail-section-card">
           <div class="card-inner-header">
             <span class="section-kicker">CALENDARIO DE SALIDAS</span>
@@ -100,7 +100,7 @@
           </div>
 
           <div class="dates-chips-grid">
-            @for (d of item.dates; track d) {
+            @for (d of upcomingDates(); track d) {
             <div class="date-chip-item">
               <span class="date-chip-text">{{ d | fecha: 'larga' }}</span>
             </div>
@@ -229,6 +229,17 @@
             </div>
           </div>
         </div>
+
+        <!-- ═══════════════ BARRA FIJA MÓVIL (STICKY BOOKING BAR) ═══════════════ -->
+        <aside class="mobile-sticky-booking-bar" aria-label="Reserva rápida móvil">
+          <div class="sticky-bar-info">
+            <span class="sticky-bar-price">{{ item.priceArs | ars }}</span>
+            <span class="sticky-bar-note">por persona</span>
+          </div>
+          <a [routerLink]="paymentRoute()" class="sticky-bar-cta">
+            <span>Pagar Experiencia</span>
+          </a>
+        </aside>
         } @else {
         <!-- ═══════════════ ESTADO: EXPERIENCIA NO ENCONTRADA ═══════════════ -->
         <div class="exp-detail-section-card not-found-card">

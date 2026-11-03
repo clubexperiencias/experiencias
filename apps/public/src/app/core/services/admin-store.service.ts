@@ -280,7 +280,13 @@ export class AdminStoreService {
       const userMeta = data.user?.user_metadata || {};
       const fullName =
         (adminRow as any)?.name || userMeta['full_name'] || userMeta['name'] || email.split('@')[0];
-      const avatar = '/assets/images/gonza.jpg';
+      const googleAvatar =
+        userMeta['avatar_url'] ||
+        userMeta['picture'] ||
+        (data.user as any)?.identities?.[0]?.identity_data?.['avatar_url'] ||
+        (data.user as any)?.identities?.[0]?.identity_data?.['picture'] ||
+        '';
+      const avatar = googleAvatar || '/assets/images/gonza.jpg';
 
       if (adminRow) {
         const admin: AdminUser = {

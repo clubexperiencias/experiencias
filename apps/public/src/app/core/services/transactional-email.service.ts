@@ -25,10 +25,10 @@ export class TransactionalEmailService {
   private readonly _outbox = signal<QueuedEmail[]>([]);
   readonly outbox = this._outbox.asReadonly();
 
-  notifyReceiptReceived(submission: TransferSubmission): void {
+  notifyReceiptReceived(submission: TransferSubmission, providerEmail?: string): void {
     this.queue('comprobante_recibido', submission.email, submission.id);
     this.notificationService
-      .notifyPaymentSubmitted(submission, submission.receipt?.url)
+      .notifyPaymentSubmitted(submission, submission.receipt?.url, providerEmail)
       .catch((err) => {
         console.warn('[TransactionalEmail] Error enviando comprobante recibido:', err);
       });
@@ -36,7 +36,6 @@ export class TransactionalEmailService {
 
   notifyProviderNewReceipt(submission: TransferSubmission, providerEmail: string): void {
     this.queue('nuevo_comprobante_prestador', providerEmail, submission.id);
-    // Nota: notifyPaymentSubmitted ya despacha alerta a la lista de administradores/prestadores
   }
 
   notifyPaymentApproved(submission: TransferSubmission): void {

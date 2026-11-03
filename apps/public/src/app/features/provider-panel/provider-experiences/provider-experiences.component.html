@@ -152,12 +152,8 @@
 <section class="kayak-section-card empty-state-card">
   <h2 class="card-heading">No se encontraron experiencias</h2>
   <p class="card-subheading">
-    No tenés experiencias bajo este criterio de filtro o búsqueda. Podés proponer una nueva
-    experiencia al catálogo oficial.
+    No tenés experiencias bajo este criterio de filtro o búsqueda. Podés proponer una nueva experiencia haciendo click arriba en el botón de 'Cargar Propuesta'.
   </p>
-  <button type="button" class="cta-primary-btn" (click)="openRequestModal()">
-    Cargar nueva propuesta
-  </button>
 </section>
 }
 
@@ -285,29 +281,52 @@
       @if (row.nextDates.length) {
         <div class="exp-dates">
           @for (d of row.nextDates; track d.date) {
-            <div class="exp-date">
-              <span class="exp-date-day">{{ d.date | fecha }}</span>
-              <div
-                class="exp-date-bar"
-                role="progressbar"
-                [attr.aria-valuenow]="d.reserved"
-                aria-valuemin="0"
-                [attr.aria-valuemax]="row.experience.capacityPerDate"
-              >
-                <span
-                  [style.width.%]="(d.reserved / row.experience.capacityPerDate) * 100"
-                  [class.bar-full]="d.reserved >= row.experience.capacityPerDate"
-                ></span>
+            <div class="exp-date" [class.date-closed]="d.isClosed" [class.date-past]="d.isPast">
+              <div class="exp-date-meta">
+                <span class="exp-date-day">{{ d.date | fecha }}</span>
+                @if (d.isPast) {
+                  <span class="badge-past">Vencida</span>
+                } @else if (d.isClosed) {
+                  <span class="badge-closed">Pausada</span>
+                }
               </div>
-              <span class="exp-date-count">{{ d.reserved }} / {{ row.experience.capacityPerDate }} cupos</span>
-              <button
-                type="button"
-                class="btn-del-date"
-                (click)="removeDate(row.experience.id, d.date)"
-                title="Eliminar esta fecha de salida"
-              >
-                ✕
-              </button>
+
+              @if (!d.isUnlimited) {
+                <div
+                  class="exp-date-bar"
+                  role="progressbar"
+                  [attr.aria-valuenow]="d.reserved"
+                  aria-valuemin="0"
+                  [attr.aria-valuemax]="d.capacity"
+                >
+                  <span
+                    [style.width.%]="(d.reserved / d.capacity) * 100"
+                    [class.bar-full]="d.reserved >= d.capacity"
+                  ></span>
+                </div>
+                <span class="exp-date-count">{{ d.reserved }} / {{ d.capacity }} cupos</span>
+              } @else {
+                <span class="exp-date-unlimited">Cupo ilimitado ({{ d.reserved }} inscriptos)</span>
+              }
+
+              <div class="date-item-actions">
+                <button
+                  type="button"
+                  class="btn-pause-date"
+                  (click)="toggleDatePause(row.experience.id, d.date)"
+                  [title]="d.isClosed ? 'Reanudar reservas para esta fecha' : 'Pausar reservas para esta fecha'"
+                >
+                  {{ d.isClosed ? 'Reanudar' : 'Pausar' }}
+                </button>
+                <button
+                  type="button"
+                  class="btn-del-date"
+                  (click)="removeDate(row.experience.id, d.date)"
+                  title="Eliminar esta fecha de salida"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
           }
         </div>

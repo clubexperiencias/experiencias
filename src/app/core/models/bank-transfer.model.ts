@@ -35,6 +35,14 @@ export interface ProviderUser {
   joinedAt: string;
 }
 
+export interface ExperienceDateSlot {
+  date: string; // 'YYYY-MM-DD'
+  capacity?: number; // Cupo específico o undefined para usar el cupo por defecto
+  unlimited?: boolean; // True si no tiene límite de cupos
+  closed?: boolean; // True si la fecha fue pausada/cerrada manualmente
+  note?: string; // Nota descriptiva opcional
+}
+
 export interface ProviderExperience {
   id: string;
   slug: string;
@@ -49,6 +57,7 @@ export interface ProviderExperience {
   priceArs: number;
   capacityPerDate: number;
   dates: string[];
+  dateSlots?: ExperienceDateSlot[];
   status: ExperienceStatus;
   moderation?: ExperienceModerationLog;
   publicUrl?: string;

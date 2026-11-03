@@ -171,7 +171,21 @@ export class ExperiencePaymentComponent implements OnInit {
   readonly dateOptions = computed(() => {
     const exp = this.experience();
     if (!exp) return [];
-    return exp.dates.map((date) => ({ date, available: this.store.availableSeats(exp, date) }));
+    const today = new Date().toISOString().split('T')[0];
+    return (exp.dates || [])
+      .filter((date) => date >= today && !this.store.isDateClosed(exp, date))
+      .map((date) => {
+        const available = this.store.availableSeats(exp, date);
+        const capacity = this.store.capacityForDate(exp, date);
+        const isUnlimited = capacity >= 999;
+        return {
+          date,
+          available,
+          isUnlimited,
+          isSoldOut: available <= 0,
+          isLowAvailability: !isUnlimited && available > 0 && available <= 3,
+        };
+      });
   });
 
   readonly seatsForSelectedDate = computed(() => {
@@ -428,6 +442,9 @@ export class ExperiencePaymentComponent implements OnInit {
   }
 
   getWhatsAppUrl(sub: TransferSubmission): string {
-    return this.notificationService.getWhatsAppNotificationUrl(sub);
+    const exp = this.experience();
+    const provider = exp?.providerId ? this.store.getProviderById(exp.providerId) : undefined;
+    const customPhone = provider?.phone ? provider.phone : undefined;
+    return this.notificationService.getWhatsAppNotificationUrl(sub, customPhone);
   }
 }
