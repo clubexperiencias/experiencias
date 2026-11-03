@@ -1,77 +1,51 @@
-# Experiencias
+# Experiencias Club
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.2.4.
+A modern web platform for curated outdoor experiences, expedition reservations, and verified provider management. Built with Angular 19+ (Standalone Components, Signals), Supabase (Auth, Postgres, and Native Storage), and deployed seamlessly on Vercel.
 
-## Development server
+## Quick Start & Development Server
 
-To start a local development server, run:
-
-```bash
-ng serve
-```
-
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+To install dependencies and start the local development server:
 
 ```bash
-ng generate component component-name
+pnpm install
+npm run dev
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+The script automatically runs `scripts/set-env.js` to load `.env.local` into runtime configurations, then starts the dev server. Open your browser and navigate to:
+- **Public Portal:** `http://localhost:4200/`
+- **Provider Portal:** `http://localhost:4200/prestadores/panel` (or `http://localhost:4200/?portal=prestador`)
+- **Admin Portal:** `http://localhost:4200/admin` (or `http://localhost:4200/?portal=admin`)
+
+## Production Build
+
+To build the project for production:
 
 ```bash
-ng generate --help
+npm run build
 ```
 
-## Building
+This compiles the Angular application and distributes build artifacts to `dist/`, synchronizing runtime scripts with the post-build pipeline.
 
-To build the project run:
+## Running Unit Tests
+
+To run unit tests with [Vitest](https://vitest.dev/):
 
 ```bash
-ng build
+npm test
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+## Storage Architecture (Supabase Storage)
 
-## Running unit tests
+All media assets and payment receipts are stored directly in native Supabase Storage buckets:
+- **`experiencias`** (Public Bucket): Stores cover images, albums, videos, and proposal uploads for published and pending activities. *(Note: You must create a public bucket named `experiencias` in the Supabase Storage dashboard before applying the migration, as the migration sets up Row-Level Security policies but does not create the bucket itself).*
+- **`comprobantes`** (Private Bucket with RLS): Stores bank transfer receipt documents uploaded during checkout for verification.
 
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+For a fresh project, run database migrations `001` through `004` in sequential order (refer to the migration guide in [**`docs/DEV_VS_PROD.md`**](./docs/DEV_VS_PROD.md#6-esquema-de-base-de-datos-y-migraciones-supabase)). Specifically, migration [`002_experiencias_y_pagos.sql`](./supabase/migrations/002_experiencias_y_pagos.sql) creates the private `comprobantes` bucket and its access policies, while migration [`004_experiencias_storage.sql`](./supabase/migrations/004_experiencias_storage.sql) configures public read and authenticated provider/admin access policies for the `experiencias` bucket.
 
-```bash
-ng test
-```
+## Environments: Development vs Production
 
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Comprobantes en Cloudflare R2
-
-El endpoint [`api/upload-receipt.js`](./api/upload-receipt.js) recibe el comprobante desde el flujo de pago y lo guarda en R2 mediante la API S3. En Vercel, configurá estas variables para `Preview` y `Production`:
-
-```text
-R2_ACCOUNT_ID=<Account ID de Cloudflare>
-R2_ACCESS_KEY_ID=<Access Key ID del token R2>
-R2_SECRET_ACCESS_KEY=<Secret Access Key del token R2>
-R2_BUCKET_NAME=experiencias-comprobantes
-R2_PUBLIC_URL=https://cdn.experiencias.club
-```
-
-El token debe tener únicamente permisos `Object Read & Write` sobre el bucket elegido. `R2_PUBLIC_URL` debe ser un dominio público conectado al bucket; no uses las credenciales R2 en variables expuestas al navegador. Si R2 no está disponible, la aplicación conserva el respaldo configurado en Supabase Storage.
-
-## Ambientes: Desarrollo vs Producción
-
-Consultá la guía completa en [**`docs/DEV_VS_PROD.md`**](./docs/DEV_VS_PROD.md) para conocer el flujo detallado de variables de entorno, semilla de datos (`supabase/seed.sql`) y configuración de Google OAuth entre local y Vercel.
+For comprehensive instructions on setting up environment variables, seeding mock data, and configuring Google OAuth across local and production environments, refer to [**`docs/DEV_VS_PROD.md`**](./docs/DEV_VS_PROD.md).
 
 ## Additional Resources
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+For more information on Angular CLI commands and architecture, visit the [Angular CLI Documentation](https://angular.dev/tools/cli).

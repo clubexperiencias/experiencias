@@ -1,62 +1,55 @@
-# Guía de Entornos: Desarrollo (Dev) vs Producción (Prod)
+# Environment Guide: Development (Dev) vs Production (Prod)
 **EXPERIENCIAS.CLUB**
 
-Esta guía detalla cómo configurar, alternar y desplegar la plataforma entre el ambiente de **Desarrollo Local** y el ambiente de **Producción**.
+This guide provides step-by-step instructions for configuring, switching, and deploying the platform between the **Local Development** environment and the **Production** environment.
 
 ---
 
-## 1. Arquitectura de Entornos
+## 1. Environment Architecture
 
-| Componente | Desarrollo (Dev / Local) | Producción (Prod / Vercel) |
+| Component | Development (Dev / Local) | Production (Prod / Vercel) |
 | :--- | :--- | :--- |
-| **URL Base** | `http://localhost:4200` (o `3000`) | `https://experiencias.club` |
-| **Portal Admin** | `http://localhost:4200/?portal=admin` o `/admin` | `https://admin.experiencias.club` |
-| **Portal Prestadores** | `http://localhost:4200/?portal=prestador` o `/prestadores/panel` | `https://prestadores.experiencias.club` |
-| **Origen de Variables** | Archivo `.env.local` en la raíz | Panel de Vercel (**Environment Variables**) |
-| **Archivos Angular** | `src/environments/environment.ts` (`production: false`) | `src/environments/environment.prod.ts` (`production: true`) |
-| **Base de Datos** | Proyecto Supabase Dev o Local (`seed.sql`) | Proyecto Supabase Producción |
-| **Storage de Archivos** | Cloudflare R2 (o fallback Supabase/local) | Cloudflare R2 (`experiencias-comprobantes`) |
-| **Notificaciones Email** | Resend API (Simulado o real con `RESEND_API_KEY`) | Resend API (`api/notify.js` serverless en Vercel) |
+| **Base URL** | `http://localhost:4200` (or `3000`) | `https://experiencias.club` |
+| **Admin Portal** | `http://localhost:4200/?portal=admin` or `/admin` | `https://admin.experiencias.club` |
+| **Provider Portal** | `http://localhost:4200/?portal=prestador` or `/prestadores/panel` | `https://prestadores.experiencias.club` |
+| **Variables Source** | `.env.local` file in workspace root | Vercel Project Dashboard (**Environment Variables**) |
+| **Angular Configs** | `src/environments/environment.ts` (`production: false`) | `src/environments/environment.prod.ts` (`production: true`) |
+| **Database** | Supabase Dev / Local Project (`seed.sql`) | Supabase Production Project |
+| **File Storage** | Supabase Storage (`experiencias` & `comprobantes`) | Supabase Storage (`experiencias` & `comprobantes`) |
+| **Email Notifications** | Resend API (Simulated or live via `RESEND_API_KEY`) | Resend API (`api/notify.js` Vercel Serverless Function) |
 
 ---
 
-## 2. Cómo trabajar en MODO DESARROLLO (Local)
+## 2. Working in DEVELOPMENT MODE (Local)
 
-### Paso 1: Configurar el archivo `.env.local`
-Creá tu archivo local a partir de la plantilla:
+### Step 1: Configure `.env.local`
+Create your local environment file from the template:
 ```bash
 cp .env.example .env.local
 ```
 
-Abrí `.env.local` y colocá las credenciales de tu proyecto de desarrollo (o local):
+Open `.env.local` and add your development Supabase credentials and notification settings:
 ```env
 # Supabase
-SUPABASE_URL=https://tu-proyecto-dev.supabase.co
+SUPABASE_URL=https://your-dev-project.supabase.co
 SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
-# Cloudflare R2 (API Tokens)
-R2_ACCOUNT_ID=tu_cloudflare_account_id
-R2_ACCESS_KEY_ID=tu_r2_access_key_id
-R2_SECRET_ACCESS_KEY=tu_r2_secret_access_key
-R2_BUCKET_NAME=experiencias-comprobantes
-R2_PUBLIC_URL=https://pub-xxxx.r2.dev   # o tu subdominio de Cloudflare
-
-# Resend (Notificaciones Email)
-RESEND_API_KEY=re_tu_api_key_aqui      # Opcional en dev: si no está, se simula en consola
+# Resend (Email Notifications)
+RESEND_API_KEY=re_your_api_key_here          # Optional in dev: simulated in console if omitted
 RESEND_FROM_EMAIL=Experiencias Club <onboarding@resend.dev>
 ADMIN_NOTIFICATION_EMAILS=gonzagramaglia@gmail.com,vegvarel@gmail.com,patriciofacundodiaztillar@gmail.com
 ```
 
-> **Nota de seguridad:** `.env.local` está ignorado en `.gitignore` y **nunca** se sube al repositorio de Git.
+> **Security Note:** `.env.local` is ignored by `.gitignore` and **must never** be committed to version control.
 
-### Paso 2: Poblar la base de datos de desarrollo
-1. En tu proyecto de Supabase (o CLI local), abrí el **SQL Editor**.
-2. Copiá y pegá el contenido de [`supabase/seed.sql`](../supabase/seed.sql).
-3. Hacé clic en **Run**.
-   * Esto creará automáticamente las experiencias con fotos y fechas próximas, socios fundadores (`gonzagramaglia@gmail.com`, `vegvarel@gmail.com`, `patriciofacundodiaztillar@gmail.com`), prestadores y comprobantes de prueba.
+### Step 2: Seed the Development Database
+1. In your development Supabase project dashboard (or local CLI), open the **SQL Editor**.
+2. Copy and paste the contents of [`supabase/seed.sql`](../supabase/seed.sql).
+3. Click **Run**.
+   * This automatically populates mock experiences, upcoming departures, founding members (`gonzagramaglia@gmail.com`, `vegvarel@gmail.com`, `patriciofacundodiaztillar@gmail.com`), providers, and test transfer submissions.
 
-### Paso 3: Configurar Google OAuth para Localhost en Supabase
-En **Supabase Dashboard** -> **Authentication** -> **URL Configuration**:
+### Step 3: Configure Google OAuth for Localhost in Supabase
+In **Supabase Dashboard** -> **Authentication** -> **URL Configuration**:
 * **Site URL**: `http://localhost:4200`
 * **Redirect URLs** (Allow List):
   ```text
@@ -65,41 +58,36 @@ En **Supabase Dashboard** -> **Authentication** -> **URL Configuration**:
   http://127.0.0.1:4200/**
   ```
 
-### Paso 4: Iniciar el servidor local
+### Step 4: Start the Development Server
 ```bash
 npm run dev
 ```
-> El script `npm run dev` ejecuta automáticamente `node ./scripts/set-env.js`, que lee `.env.local` y actualiza los archivos `environment.ts` antes de levantar Angular.
+> The `npm run dev` script automatically executes `node ./scripts/set-env.js`, which reads `.env.local` and updates the Angular `environment.ts` files before serving the app.
 
-* **Web pública:** [http://localhost:4200](http://localhost:4200)
-* **Portal de Admin:** [http://localhost:4200/?portal=admin](http://localhost:4200/?portal=admin) o [http://localhost:4200/admin](http://localhost:4200/admin)
-* **Portal de Prestadores:** [http://localhost:4200/?portal=prestador](http://localhost:4200/?portal=prestador) o [http://localhost:4200/prestadores/panel](http://localhost:4200/prestadores/panel)
+* **Public Web:** [http://localhost:4200](http://localhost:4200)
+* **Admin Portal:** [http://localhost:4200/?portal=admin](http://localhost:4200/?portal=admin) or [http://localhost:4200/admin](http://localhost:4200/admin)
+* **Provider Portal:** [http://localhost:4200/?portal=prestador](http://localhost:4200/?portal=prestador) or [http://localhost:4200/prestadores/panel](http://localhost:4200/prestadores/panel)
 
 ---
 
-## 3. Cómo pasar a MODO PRODUCCIÓN
+## 3. Switching to PRODUCTION MODE
 
-En producción, la aplicación se compila y aloja en **Vercel** conectado a tu dominio oficial.
+In production, the application is built and hosted on **Vercel** connected to your official custom domain.
 
-### Paso 1: Configurar Variables de Entorno en Vercel
-En **Vercel Dashboard** -> Seleccioná tu proyecto -> **Settings** -> **Environment Variables**.
-Agregá las siguientes variables asignadas a los entornos **Production** (y **Preview** si corresponde):
+### Step 1: Configure Environment Variables in Vercel
+In **Vercel Dashboard** -> Select Project -> **Settings** -> **Environment Variables**.
+Add the following variables configured for **Production** (and **Preview** if desired):
 
-| Variable | Descripción | Ejemplo / Valor |
+| Variable | Description | Example / Value |
 | :--- | :--- | :--- |
-| `SUPABASE_URL` | URL de la API del proyecto de producción en Supabase | `https://xyzproject.supabase.co` |
-| `SUPABASE_ANON_KEY` | Llave pública anónima de producción de Supabase | `eyJhbGciOi...` |
-| `R2_ACCOUNT_ID` | Account ID de tu cuenta de Cloudflare | `8f21...` |
-| `R2_ACCESS_KEY_ID` | Access Key ID del API Token R2 | `3c8e...` |
-| `R2_SECRET_ACCESS_KEY` | Secret Key del API Token R2 | `d91a...` |
-| `R2_BUCKET_NAME` | Nombre del bucket en Cloudflare R2 | `experiencias-comprobantes` |
-| `R2_PUBLIC_URL` | Dominio público conectado al bucket R2 | `https://cdn.catamarcasecreta.com` |
-| `RESEND_API_KEY` | Llave secreta de la API de Resend para envíos | `re_123456789...` |
-| `RESEND_FROM_EMAIL` | Remitente verificado en Resend | `Experiencias Club <onboarding@resend.dev>` o tu dominio |
-| `ADMIN_NOTIFICATION_EMAILS` | Correos que reciben alertas de nuevos comprobantes | `gonzagramaglia@gmail.com,vegvarel@gmail.com,patriciofacundodiaztillar@gmail.com` |
+| `SUPABASE_URL` | Production Supabase project API URL | `https://xyzproject.supabase.co` |
+| `SUPABASE_ANON_KEY` | Production Supabase anonymous public key | `eyJhbGciOi...` |
+| `RESEND_API_KEY` | Resend API secret key for email dispatch | `re_123456789...` |
+| `RESEND_FROM_EMAIL` | Verified sender email in Resend | `Experiencias Club <onboarding@resend.dev>` or your domain |
+| `ADMIN_NOTIFICATION_EMAILS` | Comma-separated emails to receive payment alerts | `gonzagramaglia@gmail.com,vegvarel@gmail.com,patriciofacundodiaztillar@gmail.com` |
 
-### Paso 2: Configurar Google OAuth en el Supabase de Producción
-En el proyecto de producción de **Supabase Dashboard** -> **Authentication** -> **URL Configuration**:
+### Step 2: Configure Google OAuth in Production Supabase
+In the production project at **Supabase Dashboard** -> **Authentication** -> **URL Configuration**:
 * **Site URL**: `https://experiencias.club`
 * **Redirect URLs** (Allow List):
   ```text
@@ -108,34 +96,34 @@ En el proyecto de producción de **Supabase Dashboard** -> **Authentication** ->
   https://prestadores.experiencias.club/**
   ```
 
-### Paso 3: Aplicar Migraciones en Producción
-En el **SQL Editor** del proyecto de producción de Supabase, ejecutá los archivos de migración en orden:
+### Step 3: Run Database Migrations in Production
+In the **SQL Editor** of your production Supabase project, run the migration scripts in sequence:
 1. `supabase/migrations/001_initial_schema.sql`
 2. `supabase/migrations/002_experiencias_y_pagos.sql`
 3. `supabase/migrations/003_administracion_y_prestadores.sql`
+4. `supabase/migrations/004_experiencias_storage.sql`
 
-*(No ejecutes `seed.sql` en producción a menos que quieras poblar las experiencias iniciales; el catálogo de experiencias también podés crearlo desde el Portal de Admin)*.
+*(Do not execute `seed.sql` in production unless you wish to load initial sample experiences; real experiences can also be created from the Admin Portal)*.
 
-### Paso 4: Desplegar a Producción
-Hacé push a la rama principal:
+### Step 4: Deploy to Production
+Push to your main branch:
 ```bash
 git push origin main
 ```
-Vercel ejecutará automáticamente el script de build:
+Vercel executes the automated build script:
 `node ./scripts/set-env.js && npm run build --workspace=apps/public && node ./scripts/post-build.js`
-* `scripts/set-env.js` detectará las variables de entorno de Vercel y generará `environment.prod.ts`.
-* Angular compilará con `--configuration production` (reemplazando `environment.ts` por `environment.prod.ts`).
-* Las rutas de subdominios (`admin.experiencias.club` y `prestadores.experiencias.club`) quedarán enlazadas en vivo.
+* `scripts/set-env.js` reads Vercel environment variables and generates `environment.prod.ts`.
+* Angular compiles with `--configuration production` (swapping `environment.ts` for `environment.prod.ts`).
+* Subdomain rewrites (`admin.experiencias.club` and `prestadores.experiencias.club`) route directly to their respective portals.
 
 ---
 
-## 4. Cheat Sheet de Comandos Útiles
+## 4. Useful Command Cheat Sheet
 
-| Comando | Acción |
+| Command | Action |
 | :--- | :--- |
-| `npm run dev` | Inicia Angular en modo dev leyendo variables de `.env.local`. |
-| `npm run env` | Ejecuta `scripts/set-env.js` para regenerar los archivos `environment.ts` manualmente. |
-| `npm run build` | Compila el proyecto en modo producción como lo hace Vercel. |
-| `npm test` | Ejecuta las pruebas unitarias de los servicios, guardias y componentes. |
-| `npx tsc --noEmit` | Valida que no existan errores de tipos de TypeScript. |
-
+| `npm run dev` | Starts Angular in dev mode, injecting variables from `.env.local`. |
+| `npm run env` | Runs `scripts/set-env.js` to manually regenerate `environment.ts` files. |
+| `npm run build` | Compiles the production build locally following the Vercel pipeline. |
+| `npm test` | Runs unit test suites across services, guards, and components. |
+| `npx tsc --noEmit` | Validates TypeScript type checking across the entire project with zero code emit. |

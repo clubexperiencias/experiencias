@@ -41,19 +41,6 @@ let supabaseDevAnonKey = '';
 let supabaseProdUrl = '';
 let supabaseProdAnonKey = '';
 
-let r2PublicBaseUrl = (
-  process.env.R2_PUBLIC_URL ||
-  process.env.R2_PUBLIC_BASE_URL ||
-  process.env.CLOUDFLARE_R2_PUBLIC_URL ||
-  'https://cdn.catamarcasecreta.com'
-).trim();
-
-let r2BucketName = (
-  process.env.R2_BUCKET_NAME ||
-  process.env.CLOUDFLARE_R2_BUCKET_NAME ||
-  'experiencias-comprobantes'
-).trim();
-
 for (const [key, value] of Object.entries(process.env)) {
   const upper = key.toUpperCase();
 
@@ -100,7 +87,7 @@ const activeProdAnonKey = supabaseProdAnonKey || supabaseAnonKey;
 const activeDevUrl = supabaseDevUrl || supabaseUrl;
 const activeDevAnonKey = supabaseDevAnonKey || supabaseAnonKey;
 
-console.log('[set-env] Analizando variables de entorno para Supabase y Cloudflare R2...');
+console.log('[set-env] Analizando variables de entorno para Supabase...');
 
 if (activeProdUrl && activeProdAnonKey) {
   console.log(`[set-env] Supabase Prod URL: ${activeProdUrl.substring(0, 18)}...`);
@@ -113,11 +100,6 @@ if (activeProdUrl && activeProdAnonKey) {
     url: '${activeProdUrl}',
     anonKey: '${activeProdAnonKey}',
   },
-
-  cloudflare: {
-    r2PublicBaseUrl: '${r2PublicBaseUrl}',
-    r2BucketName: '${r2BucketName}',
-  },
 };
 `;
 
@@ -127,11 +109,6 @@ if (activeProdUrl && activeProdAnonKey) {
   supabase: {
     url: '${activeDevUrl}',
     anonKey: '${activeDevAnonKey}',
-  },
-
-  cloudflare: {
-    r2PublicBaseUrl: '${r2PublicBaseUrl}',
-    r2BucketName: '${r2BucketName}',
   },
 };
 `;
@@ -160,10 +137,17 @@ if (activeProdUrl && activeProdAnonKey) {
     }
   }
 
-  // Generar script runtime-env.js en las carpetas public para respaldo
+  // Generar script runtime-env.js en las carpetas public para respaldo (evitando placeholders truthy)
+  const safeRuntimeUrl =
+    activeDevUrl && !activeDevUrl.includes('TU_PROYECTO') && !activeDevUrl.includes('tu-proyecto')
+      ? activeDevUrl
+      : '';
+  const safeRuntimeKey =
+    activeDevAnonKey && !activeDevAnonKey.includes('...') && safeRuntimeUrl ? activeDevAnonKey : '';
+
   const runtimeScript = `window.__SUPABASE_CONFIG__ = {
-  url: '${activeDevUrl}',
-  anonKey: '${activeDevAnonKey}'
+  url: '${safeRuntimeUrl}',
+  anonKey: '${safeRuntimeKey}'
 };
 `;
   const publicDirs = [path.join(rootDir, 'apps', 'public', 'public'), path.join(rootDir, 'public')];

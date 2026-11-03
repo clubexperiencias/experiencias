@@ -243,24 +243,78 @@
     }
 
     <!-- Next Dates & Occupancy -->
-    @if (row.nextDates.length) {
     <div class="exp-dates-section">
-      <span class="dates-label">Próximas salidas programadas:</span>
-      <div class="exp-dates">
-        @for (d of row.nextDates; track d.date) {
-        <div class="exp-date">
-          <span class="exp-date-day">{{ d.date | fecha }}</span>
-          <div class="exp-date-bar" role="progressbar" [attr.aria-valuenow]="d.reserved" aria-valuemin="0"
-            [attr.aria-valuemax]="row.experience.capacityPerDate">
-            <span [style.width.%]="(d.reserved / row.experience.capacityPerDate) * 100"
-              [class.bar-full]="d.reserved >= row.experience.capacityPerDate"></span>
-          </div>
-          <span class="exp-date-count">{{ d.reserved }} / {{ row.experience.capacityPerDate }} cupos</span>
-        </div>
-        }
+      <div class="dates-section-head">
+        <span class="dates-label">Próximas salidas programadas:</span>
+        <button
+          type="button"
+          class="btn-add-date-action"
+          (click)="toggleAddDate(row.experience.id)"
+          title="Agregar una nueva fecha de salida"
+        >
+          + Agregar Fecha
+        </button>
       </div>
+
+      @if (activeDateExpId() === row.experience.id) {
+        <div class="inline-add-date-strip">
+          <input
+            type="date"
+            class="input-experience-date"
+            [min]="todayIso"
+            [(ngModel)]="newDateValue"
+          />
+          <button
+            type="button"
+            class="btn-save-exp-date"
+            (click)="saveNewDate(row.experience.id)"
+            [disabled]="!newDateValue"
+          >
+            Guardar
+          </button>
+          <button
+            type="button"
+            class="btn-cancel-exp-date"
+            (click)="toggleAddDate(null)"
+          >
+            Cancelar
+          </button>
+        </div>
+      }
+
+      @if (row.nextDates.length) {
+        <div class="exp-dates">
+          @for (d of row.nextDates; track d.date) {
+            <div class="exp-date">
+              <span class="exp-date-day">{{ d.date | fecha }}</span>
+              <div
+                class="exp-date-bar"
+                role="progressbar"
+                [attr.aria-valuenow]="d.reserved"
+                aria-valuemin="0"
+                [attr.aria-valuemax]="row.experience.capacityPerDate"
+              >
+                <span
+                  [style.width.%]="(d.reserved / row.experience.capacityPerDate) * 100"
+                  [class.bar-full]="d.reserved >= row.experience.capacityPerDate"
+                ></span>
+              </div>
+              <span class="exp-date-count">{{ d.reserved }} / {{ row.experience.capacityPerDate }} cupos</span>
+              <button
+                type="button"
+                class="btn-del-date"
+                (click)="removeDate(row.experience.id, d.date)"
+                title="Eliminar esta fecha de salida"
+              >
+                ✕
+              </button>
+            </div>
+          }
+        </div>
+      } @else {
+        <p class="no-dates-text">No hay salidas programadas. Hacé clic en "+ Agregar Fecha" para habilitar salidas.</p>
+      }
     </div>
-    }
 
     <!-- Experience Actions - Botones rectangulares limpios sin iconos excesivos -->
     <div class="exp-actions">

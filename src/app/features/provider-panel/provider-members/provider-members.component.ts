@@ -1302,10 +1302,25 @@ export class ProviderMembersComponent {
     () => this.filteredMembers().filter((m) => m.status === 'pendiente').length,
   );
 
-  openReceipt(sub: TransferSubmission): void {
+  async openReceipt(sub: TransferSubmission): Promise<void> {
     this.selectedSubmission.set(sub);
     this.rejecting.set(false);
     this.rejectionReason.set('');
+    const key = sub.receipt.storageKey || sub.receipt.url;
+    if (
+      key &&
+      !key.startsWith('http://') &&
+      !key.startsWith('https://') &&
+      !key.startsWith('data:') &&
+      !key.startsWith('blob:')
+    ) {
+      const signed = await this.store.getSignedReceiptUrl(key);
+      if (signed) {
+        this.selectedSubmission.update((s) =>
+          s && s.id === sub.id ? { ...s, receipt: { ...s.receipt, url: signed } } : s,
+        );
+      }
+    }
   }
 
   closeModal(): void {
@@ -1321,9 +1336,20 @@ export class ProviderMembersComponent {
   approveReceipt(): void {
     const sub = this.selectedSubmission();
     if (!sub) return;
+    const currentUrl = sub.receipt?.url;
     this.store.reviewSubmission(sub.id, 'aprobado');
     const updated = this.store.providerSubmissions().find((s) => s.id === sub.id) || null;
-    this.selectedSubmission.set(updated);
+    this.selectedSubmission.set(
+      updated
+        ? {
+            ...updated,
+            receipt: {
+              ...updated.receipt,
+              url: currentUrl || updated.receipt.url,
+            },
+          }
+        : null,
+    );
   }
 
   confirmReject(): void {
@@ -1331,9 +1357,20 @@ export class ProviderMembersComponent {
     if (!sub) return;
     const reason = this.rejectionReason().trim();
     if (!reason) return;
+    const currentUrl = sub.receipt?.url;
     this.store.reviewSubmission(sub.id, 'rechazado', reason);
     const updated = this.store.providerSubmissions().find((s) => s.id === sub.id) || null;
-    this.selectedSubmission.set(updated);
+    this.selectedSubmission.set(
+      updated
+        ? {
+            ...updated,
+            receipt: {
+              ...updated.receipt,
+              url: currentUrl || updated.receipt.url,
+            },
+          }
+        : null,
+    );
     this.rejecting.set(false);
   }
 

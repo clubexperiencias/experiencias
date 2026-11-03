@@ -25,7 +25,7 @@ describe('NotificationService', () => {
       mimeType: 'image/jpeg',
       sizeBytes: 1024,
       url: 'https://cdn.catamarcasecreta.com/comprobantes/receipt.jpg',
-      provider: 'r2',
+      provider: 'supabase',
     },
   };
 

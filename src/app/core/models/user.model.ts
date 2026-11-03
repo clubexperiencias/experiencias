@@ -109,8 +109,6 @@ export interface ServiceProviderProfile {
   bannerUrl: string | null;
   commissionPercent: number; // % que retiene la plataforma por cada venta
   bankAliasCbu: string | null; // Para liquidar pagos al prestador
-  rating: number;
-  reviewsCount: number;
   totalServicesPublished: number;
   totalRevenue: number;
   isVerified: boolean; // Verificación presencial o documental

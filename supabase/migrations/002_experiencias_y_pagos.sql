@@ -10,7 +10,6 @@ CREATE TABLE IF NOT EXISTS public.experiencias (
   id                   TEXT PRIMARY KEY,
   slug                 TEXT NOT NULL UNIQUE,
   title                TEXT NOT NULL,
-  short_title          TEXT,
   tagline              TEXT NOT NULL DEFAULT '',
   description          TEXT NOT NULL DEFAULT '',
   region               TEXT NOT NULL DEFAULT 'Valle Central y Ambato',
@@ -27,11 +26,9 @@ CREATE TABLE IF NOT EXISTS public.experiencias (
   public_url           TEXT DEFAULT '',
   cover_image          TEXT DEFAULT '/assets/images/kayak-club-de-experiencias.jpg',
   album_photos         JSONB DEFAULT '[]'::jsonb,
-  kicker               TEXT DEFAULT 'EXPEDICIÓN NÁUTICA: VALLE CENTRAL',
   video_url            TEXT DEFAULT '/assets/videos/kayak.mp4',
   video_poster         TEXT DEFAULT '/assets/images/kayak-video.png',
   altitude_meters      INTEGER DEFAULT 850,
-  best_season          TEXT DEFAULT 'Todo el año',
   highlights           JSONB DEFAULT '[]'::jsonb,
   included             JSONB DEFAULT '[]'::jsonb,
   not_included         JSONB DEFAULT '[]'::jsonb,
@@ -52,7 +49,6 @@ INSERT INTO public.experiencias (
   id,
   slug,
   title,
-  short_title,
   tagline,
   description,
   region,
@@ -66,17 +62,14 @@ INSERT INTO public.experiencias (
   status,
   public_url,
   cover_image,
-  kicker,
   video_url,
   video_poster,
-  altitude_meters,
-  best_season
+  altitude_meters
 )
 VALUES (
   'exp-kayak',
   'kayak',
   'Travesía en Kayak & Sunset en el Dique El Jumeal',
-  'Travesía en Kayak',
   'Remada guiada al atardecer con brindis de productos catamarqueños.',
   'Remada guiada en kayak en aguas calmas rodeadas de quebradas y vegetación de yungas andinas. Presenciamos la caída del sol reflejada en el dique y coronamos la jornada con un brindis y picada de productos artesanales catamarqueños.',
   'Valle Central y Ambato',
@@ -94,11 +87,9 @@ VALUES (
   'publicada',
   'https://experiencias.club/experiencias/kayak',
   '/assets/images/kayak-club-de-experiencias.jpg',
-  'EXPEDICIÓN NÁUTICA: VALLE CENTRAL',
   '/assets/videos/kayak.mp4',
   '/assets/images/kayak-video.png',
-  850,
-  'Todo el año'
+  850
 )
 ON CONFLICT (id) DO UPDATE SET
   public_url = EXCLUDED.public_url,
@@ -168,8 +159,8 @@ CREATE TABLE IF NOT EXISTS public.pagos_transferencias (
   receipt_size_bytes       INTEGER NOT NULL CHECK (receipt_size_bytes > 0),
   receipt_url              TEXT NOT NULL,
   receipt_storage_key      TEXT,
-  receipt_storage_provider TEXT NOT NULL DEFAULT 'r2'
-                           CHECK (receipt_storage_provider IN ('r2', 'supabase', 'local')),
+  receipt_storage_provider TEXT NOT NULL DEFAULT 'supabase'
+                           CHECK (receipt_storage_provider IN ('supabase', 'local')),
   status                   TEXT NOT NULL DEFAULT 'pendiente'
                            CHECK (status IN ('pendiente', 'aprobado', 'rechazado')),
   rejection_reason         TEXT,
@@ -259,7 +250,7 @@ CREATE OR REPLACE FUNCTION public.submit_experience_transfer(
   p_receipt_size_bytes INTEGER DEFAULT 1,
   p_receipt_url TEXT DEFAULT '',
   p_receipt_storage_key TEXT DEFAULT NULL,
-  p_receipt_storage_provider TEXT DEFAULT 'r2'
+  p_receipt_storage_provider TEXT DEFAULT 'supabase'
 )
 RETURNS JSONB
 LANGUAGE plpgsql

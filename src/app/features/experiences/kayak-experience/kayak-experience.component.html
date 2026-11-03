@@ -12,82 +12,70 @@
     <main class="kayak-main-content">
       <div class="kayak-wrapper">
         @if (exp(); as item) {
-          <!-- ═══════════════ HERO CARD: CABECERA Y RESUMEN TÉCNICO ═══════════════ -->
-          <div class="kayak-section-card hero-kayak-card">
-            <div class="card-inner-header">
-              <span class="section-kicker">{{
-                item.kicker || 'EXPEDICIÓN NÁUTICA: VALLE CENTRAL'
+        <!-- ═══════════════ HERO CARD: CABECERA Y RESUMEN TÉCNICO ═══════════════ -->
+        <div class="kayak-section-card hero-kayak-card">
+          <div class="card-inner-header">
+            <span class="section-kicker">{{
+              item.kicker || 'EXPEDICIÓN NÁUTICA: VALLE CENTRAL'
               }}</span>
-              <h1 class="card-heading">{{ item.title }}</h1>
-              <p class="card-subheading">
-                {{ item.description }}
-              </p>
-            </div>
-
-            <!-- Specs Rápidas -->
-            <div class="kayak-specs-grid">
-              <div class="spec-tile">
-                <span class="spec-label">DIFICULTAD</span>
-                <span class="spec-value">{{ item.difficulty }} (Sin experiencia previa)</span>
-              </div>
-              <div class="spec-tile">
-                <span class="spec-label">DURACIÓN</span>
-                <span class="spec-value">{{ item.durationLabel }}</span>
-              </div>
-              <div class="spec-tile">
-                <span class="spec-label">ALTITUD</span>
-                <span class="spec-value">{{ item.altitudeMeters }} msnm</span>
-              </div>
-              <div class="spec-tile">
-                <span class="spec-label">CUPO MÁXIMO</span>
-                <span class="spec-value">{{ item.maxSpotsPerGroup }} Socios</span>
-              </div>
-              <div class="spec-tile">
-                <span class="spec-label">TEMPORADA</span>
-                <span class="spec-value">{{ item.bestSeason }}</span>
-              </div>
-              <div class="spec-tile">
-                <span class="spec-label">PUNTO DE ENCUENTRO</span>
-                <span class="spec-value">{{ item.meetingPoint || 'Club Náutico El Jumeal' }}</span>
-              </div>
-            </div>
-            <!-- Video Oficial de la Experiencia Integrado -->
-            <div class="kayak-video-media-wrap">
-              <video
-                [src]="item.videoUrl || '/assets/videos/kayak.mp4'"
-                autoplay
-                muted
-                [muted]="true"
-                loop
-                playsinline
-                preload="auto"
-                [poster]="item.videoPoster || '/assets/images/kayak-video.png'"
-                class="kayak-video-element"
-              >
-                Tu navegador no soporta el formato de video.
-              </video>
-            </div>
+            <h1 class="card-heading">{{ item.title }}</h1>
+            <p class="card-subheading">
+              {{ item.description }}
+            </p>
           </div>
 
-          <!-- ═══════════════ CARD: ARANCEL & RESERVA ═══════════════ -->
-          <div class="kayak-section-card pricing-action-card">
-            <div class="pricing-card-flex">
-              <div class="price-data">
-                <span class="price-title">ARANCEL POR PERSONA</span>
-                <div class="price-figures">
-                  <span class="ars-price">${{ item.priceArs.toLocaleString('es-AR') }} ARS</span>
-                  <span class="usd-price">o ${{ item.priceUsd }} USD</span>
-                </div>
-                <span class="price-note">Prioridad para socios de nuestro Club de Experiencias</span>
-              </div>
-
-              <div class="action-btns-group">
-                <a routerLink="/experiencias/kayak/pago" class="cta-primary-btn cta-blue-btn">
-                  <span>Pagar Experiencia</span>
-                </a>
-              </div>
+          <!-- Specs Rápidas -->
+          <div class="kayak-specs-grid">
+            <div class="spec-tile">
+              <span class="spec-label">DIFICULTAD</span>
+              <span class="spec-value">{{ item.difficulty }} (Sin experiencia previa)</span>
+            </div>
+            <div class="spec-tile">
+              <span class="spec-label">DURACIÓN</span>
+              <span class="spec-value">{{ item.durationLabel }}</span>
+            </div>
+            <div class="spec-tile">
+              <span class="spec-label">ALTITUD</span>
+              <span class="spec-value">{{ item.altitudeMeters }} msnm</span>
+            </div>
+            <div class="spec-tile">
+              <span class="spec-label">CUPO MÁXIMO</span>
+              <span class="spec-value">{{ item.maxSpotsPerGroup }} Socios</span>
+            </div>
+            <div class="spec-tile">
+              <span class="spec-label">PUNTO DE ENCUENTRO</span>
+              <span class="spec-value">{{ item.meetingPoint || 'Club Náutico El Jumeal' }}</span>
             </div>
           </div>
+          <!-- Video Oficial de la Experiencia Integrado -->
+          <div class="kayak-video-media-wrap">
+            <video [src]="item.videoUrl || '/assets/videos/kayak.mp4'" autoplay muted [muted]="true" loop playsinline
+              preload="auto" [poster]="item.videoPoster || '/assets/images/kayak-video.png'"
+              class="kayak-video-element">
+              Tu navegador no soporta el formato de video.
+            </video>
+          </div>
+        </div>
+
+        <!-- ═══════════════ CARD: ARANCEL & RESERVA ═══════════════ -->
+        <div class="kayak-section-card pricing-action-card">
+          <div class="pricing-card-flex">
+            <div class="price-data">
+              <span class="price-title">ARANCEL POR PERSONA</span>
+              <div class="price-figures">
+                <span class="ars-price">${{ item.priceArs.toLocaleString('es-AR') }} ARS</span>
+                <span class="usd-price">o ${{ item.priceUsd }} USD</span>
+              </div>
+              <span class="price-note">Prioridad para socios de nuestro Club de Experiencias</span>
+            </div>
+
+            <div class="action-btns-group">
+              <a routerLink="/experiencias/kayak/pago" class="cta-primary-btn cta-blue-btn">
+                <span>Reservar Experiencia</span>
+              </a>
+            </div>
+          </div>
+        </div>
 
         <!-- ═══════════════ CARD: CRONOGRAMA & ITINERARIO ═══════════════ -->
         <div class="kayak-section-card">
@@ -213,21 +201,13 @@
           </div>
 
           <div class="location-media-preview">
-            <img
-              src="/assets/images/dron.jpg"
-              alt="Dique El Jumeal - Club Náutico"
-              class="location-preview-img"
-            />
+            <img src="/assets/images/dron.jpg" alt="Dique El Jumeal - Club Náutico" class="location-preview-img" />
             <span class="location-preview-tag">DIQUE EL JUMEAL (CATAMARCA)</span>
           </div>
 
           <div class="location-actions-row">
-            <a
-              href="https://maps.app.goo.gl/ScXGvgPsYbWr4vws5"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="location-btn maps-btn"
-            >
+            <a href="https://maps.app.goo.gl/ScXGvgPsYbWr4vws5" target="_blank" rel="noopener noreferrer"
+              class="location-btn maps-btn">
               <span>Abrir en Google Maps</span>
             </a>
 
@@ -251,12 +231,12 @@
 
             <div class="action-btns-group">
               <a routerLink="/experiencias/kayak/pago" class="cta-primary-btn cta-blue-btn">
-                <span>Pagar Experiencia</span>
+                <span>Reservar Experiencia</span>
               </a>
             </div>
           </div>
         </div>
-      } @else {
+        } @else {
         <!-- ═══════════════ ESTADO: EXPERIENCIA NO ENCONTRADA ═══════════════ -->
         <div class="kayak-section-card not-found-card">
           <mat-icon class="not-found-icon">explore_off</mat-icon>
@@ -271,7 +251,7 @@
             </a>
           </div>
         </div>
-      }
+        }
       </div>
     </main>
   </div>
@@ -281,52 +261,42 @@
 
   <!-- Modal Login -->
   @if (activeModal() === 'login') {
-    <div class="modal-backdrop" (click)="closeModal()">
-      <div class="modal-card" (click)="$event.stopPropagation()">
-        <div class="modal-header">
-          <div>
-            <span class="modal-kicker">ACCESO DE SOCIOS</span>
-            <h3 class="modal-heading">Iniciar Sesión</h3>
-          </div>
-          <button class="modal-close-btn" (click)="closeModal()" aria-label="Cerrar modal">
-            <mat-icon>close</mat-icon>
-          </button>
+  <div class="modal-backdrop" (click)="closeModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <span class="modal-kicker">ACCESO DE SOCIOS</span>
+          <h3 class="modal-heading">Iniciar Sesión</h3>
+        </div>
+        <button class="modal-close-btn" (click)="closeModal()" aria-label="Cerrar modal">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <p class="modal-lead">
+        Ingresá tu correo electrónico para acceder a tu perfil y cupos reservados:
+      </p>
+
+      <div class="login-modal-box">
+        <div class="login-input-wrap">
+          <label for="kayak-modal-email" class="login-field-lbl">Correo Electrónico</label>
+          <input id="kayak-modal-email" type="email" class="login-modal-input" placeholder="socio@ejemplo.com"
+            [value]="loginEmail()" (input)="loginEmail.set($any($event.target).value)" (keyup.enter)="submitLogin()" />
         </div>
 
-        <p class="modal-lead">
-          Ingresá tu correo electrónico para acceder a tu perfil y cupos reservados:
-        </p>
+        @if (loginError()) {
+        <p class="error-text" style="margin-top: 0.6rem">{{ loginError() }}</p>
+        }
 
-        <div class="login-modal-box">
-          <div class="login-input-wrap">
-            <label for="kayak-modal-email" class="login-field-lbl">Correo Electrónico</label>
-            <input
-              id="kayak-modal-email"
-              type="email"
-              class="login-modal-input"
-              placeholder="socio@ejemplo.com"
-              [value]="loginEmail()"
-              (input)="loginEmail.set($any($event.target).value)"
-              (keyup.enter)="submitLogin()"
-            />
-          </div>
-
-          @if (loginError()) {
-            <p class="error-text" style="margin-top: 0.6rem">{{ loginError() }}</p>
-          }
-
-          <div class="modal-footer" style="margin-top: 1.4rem">
-            <button class="pill-action-btn secondary" (click)="closeModal()">Cancelar</button>
-            <button
-              class="pill-action-btn"
-              (click)="submitLogin()"
-              [disabled]="!loginEmail().trim() || newsletter.isLoading()"
-            >
-              Ingresar
-            </button>
-          </div>
+        <div class="modal-footer" style="margin-top: 1.4rem">
+          <button class="pill-action-btn secondary" (click)="closeModal()">Cancelar</button>
+          <button class="pill-action-btn" (click)="submitLogin()"
+            [disabled]="!loginEmail().trim() || newsletter.isLoading()">
+            Ingresar
+          </button>
         </div>
       </div>
     </div>
+  </div>
   }
 </div>

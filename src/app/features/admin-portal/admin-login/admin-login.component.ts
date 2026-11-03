@@ -4,6 +4,7 @@ import { Title } from '@angular/platform-browser';
 import { MatIconModule } from '@angular/material/icon';
 import { AdminStoreService } from '../../../core/services/admin-store.service';
 import { SUPABASE_CLIENT, isSupabaseConfigured } from '../../../core/supabase/supabase.client';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-admin-login',
@@ -659,7 +660,13 @@ export class AdminLoginComponent implements OnInit {
   private readonly pageTitle = inject(Title);
   private readonly supabase = inject(SUPABASE_CLIENT);
 
-  readonly isDevelopmentMode = !isSupabaseConfigured();
+  readonly isDevelopmentMode =
+    !environment.production &&
+    !isSupabaseConfigured() &&
+    typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      window.location.hostname.endsWith('.local'));
   readonly connectingGoogle = signal(false);
   readonly errorMessage = signal<string | null>(null);
 

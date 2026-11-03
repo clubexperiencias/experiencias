@@ -18,8 +18,9 @@ import { TransactionalEmailService } from './transactional-email.service';
 import { NewsletterService } from './newsletter.service';
 import { ActivityHistoryService } from './activity-history.service';
 import { ExperienceService, KAYAK_ALBUM_PHOTOS } from './experience.service';
-import { CloudflareR2Service } from './cloudflare-r2.service';
+import { StorageService } from './storage.service';
 import { SUPABASE_CLIENT, isSupabaseConfigured } from '../supabase/supabase.client';
+import { environment } from '../../../environments/environment';
 
 const PROVIDER_CONTACT_EMAIL = 'prestadores@experiencias.club';
 const SAMPLE_RECEIPT_URL = '/assets/images/comprobante-ejemplo.png';
@@ -164,8 +165,6 @@ export function mapLiveExperienceToProvider(live: Experience): ProviderExperienc
     notIncluded: live.notIncluded,
     altitudeMeters: live.altitudeMeters,
     bestSeason: live.bestSeason,
-    rating: live.rating,
-    reviewsCount: live.reviewsCount,
     detailRoute: live.detailRoute,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -373,12 +372,10 @@ export class ProviderStoreService {
   private readonly activities = inject(ActivityHistoryService);
   private readonly expService = inject(ExperienceService);
   private readonly supabase = inject(SUPABASE_CLIENT);
-  private readonly r2Service = inject(CloudflareR2Service);
+  private readonly storageService = inject(StorageService);
 
   private readonly _providers = signal<ProviderUser[]>(this.loadStoredProviders());
-  private readonly _currentProvider = signal<ProviderUser | null>(
-    isSupabaseConfigured() ? null : SEED_PROVIDERS[0],
-  );
+  private readonly _currentProvider = signal<ProviderUser | null>(null);
   private readonly _experiences = signal<ProviderExperience[]>(this.loadStoredExperiences());
   private readonly _submissions = signal<TransferSubmission[]>(this.loadStoredSubmissions());
   private readonly _experienceRequests = signal<ExperienceProposalRequest[]>(
@@ -479,6 +476,19 @@ export class ProviderStoreService {
 
   async restoreSupabaseSession(): Promise<void> {
     if (!isSupabaseConfigured()) {
+      if (environment.production) {
+        this._currentProvider.set(null);
+        this.saveSession(null);
+        return;
+      }
+      const isBrowser = typeof window !== 'undefined';
+      const host = isBrowser ? window.location.hostname.toLowerCase() : '';
+      const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local');
+      if (!isLocalHost) {
+        this._currentProvider.set(null);
+        this.saveSession(null);
+        return;
+      }
       const first = this._providers()[0] || SEED_PROVIDERS[0];
       if (first && first.status !== 'dado_de_baja' && first.status !== 'pendiente') {
         this._currentProvider.set(first);
@@ -540,6 +550,18 @@ export class ProviderStoreService {
 
   async signInWithGoogle(): Promise<{ success: boolean; message: string }> {
     if (!isSupabaseConfigured()) {
+      if (environment.production) {
+        return {
+          success: false,
+          message: 'El servicio de autenticación no está disponible en este momento.',
+        };
+      }
+      const isBrowser = typeof window !== 'undefined';
+      const host = isBrowser ? window.location.hostname.toLowerCase() : '';
+      const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local');
+      if (!isLocalHost) {
+        return { success: false, message: 'Acceso no disponible en este entorno.' };
+      }
       this._currentProvider.set(SEED_PROVIDERS[0]);
       this.saveSession(SEED_PROVIDERS[0]);
       return { success: true, message: '' };
@@ -665,6 +687,15 @@ export class ProviderStoreService {
   }
 
   loginAs(providerId: string): void {
+    if (environment.production || isSupabaseConfigured()) {
+      return;
+    }
+    const isBrowser = typeof window !== 'undefined';
+    const host = isBrowser ? window.location.hostname.toLowerCase() : '';
+    const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local');
+    if (!isLocalHost) {
+      return;
+    }
     const provider = this._providers().find((p) => p.id === providerId);
     if (provider) {
       this._currentProvider.set(provider);
@@ -835,6 +866,67 @@ export class ProviderStoreService {
 
     this.saveExperiences();
     return updatedExperience;
+  }
+
+  addDateToExperience(experienceId: string, date: string): boolean {
+    const exp = this.getExperienceById(experienceId);
+    if (!exp) return false;
+    const currentDates = exp.dates || [];
+    if (currentDates.includes(date)) return false;
+    const newDates = [...currentDates, date].sort();
+
+    const prevExperiences = this._experiences();
+    this.updateExperience(experienceId, { dates: newDates });
+
+    // Sincronizar con el catálogo público en ExperienceService
+    const expMatch =
+      this.expService.getExperienceById(experienceId) ||
+      this.expService.getExperienceBySlug(exp.slug);
+    if (expMatch) {
+      void this.expService
+        .updateExperience({
+          id: expMatch.id,
+          dates: newDates,
+        })
+        .catch((err) => {
+          console.warn('[ProviderStoreService] Error sincronizando fecha con ExperienceService:', err);
+          this._experiences.set(prevExperiences);
+          this.saveExperiences();
+        });
+    }
+
+    return true;
+  }
+
+  removeDateFromExperience(experienceId: string, date: string): boolean {
+    const exp = this.getExperienceById(experienceId);
+    if (!exp) return false;
+    if (this.reservedSeats(experienceId, date) > 0) {
+      return false;
+    }
+    const newDates = (exp.dates || []).filter((d) => d !== date);
+
+    const prevExperiences = this._experiences();
+    this.updateExperience(experienceId, { dates: newDates });
+
+    // Sincronizar con el catálogo público en ExperienceService
+    const expMatch =
+      this.expService.getExperienceById(experienceId) ||
+      this.expService.getExperienceBySlug(exp.slug);
+    if (expMatch) {
+      void this.expService
+        .updateExperience({
+          id: expMatch.id,
+          dates: newDates,
+        })
+        .catch((err) => {
+          console.warn('[ProviderStoreService] Error sincronizando eliminación con ExperienceService:', err);
+          this._experiences.set(prevExperiences);
+          this.saveExperiences();
+        });
+    }
+
+    return true;
   }
 
   getExperienceAlbum(experienceId: string): ExperienceAlbumPhoto[] {
@@ -1103,18 +1195,10 @@ export class ProviderStoreService {
     const amountArs = subtotal - discountArs;
     const ref = this.buildReference(experience.slug);
 
-    let receiptUrl = '';
-    let storageKey: string | undefined;
-    let storageProvider: 'r2' | 'supabase' | 'local' = 'r2';
-
-    try {
-      const uploadRes = await this.r2Service.uploadReceipt(input.receiptFile, ref);
-      receiptUrl = uploadRes.url;
-      storageKey = uploadRes.storageKey;
-      storageProvider = uploadRes.provider;
-    } catch (uploadErr) {
-      console.warn('[ProviderStore] Error al subir comprobante a Cloudflare R2 / Storage:', uploadErr);
-    }
+    const uploadRes = await this.storageService.uploadReceipt(input.receiptFile, ref);
+    let receiptUrl = uploadRes.url;
+    const storageKey = uploadRes.storageKey;
+    const storageProvider = uploadRes.provider;
 
     if (isSupabaseConfigured()) {
       try {
@@ -1243,6 +1327,10 @@ export class ProviderStoreService {
     } else {
       this.emails.notifyPaymentRejected(reviewed);
     }
+  }
+
+  async getSignedReceiptUrl(storageKey: string): Promise<string> {
+    return this.storageService.getSignedReceiptUrl(storageKey);
   }
 
   private recordMemberActivity(
@@ -1448,8 +1536,6 @@ export class ProviderStoreService {
       highlights: [],
       included: req.includedServices ? req.includedServices.split('\n').filter(Boolean) : [],
       notIncluded: [],
-      rating: 5.0,
-      reviewsCount: 1,
     };
 
     try {

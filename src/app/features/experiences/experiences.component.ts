@@ -96,8 +96,6 @@ export class ExperiencesComponent implements AfterViewInit, OnDestroy {
     priceArs: 0,
     priceUsd: 0,
     maxSpotsPerGroup: 0,
-    rating: 0,
-    reviewsCount: 0,
     coverImage: '/assets/images/laguna-verde.jpg',
     galleryImages: [],
     highlights: [],

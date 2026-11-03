@@ -29,26 +29,13 @@
         }
       </div>
 
-      <div class="form-row">
-        <div class="form-group" [class.has-error]="fieldInvalid('shortTitle')">
-          <label for="shortTitle" class="form-label">Título corto (para etiquetas o móviles)</label>
-          <input
-            id="shortTitle"
-            type="text"
-            formControlName="shortTitle"
-            class="form-input"
-            placeholder="Ej: Piedra Pómez 4x4"
-          />
-        </div>
-
-        <div class="form-group" [class.has-error]="fieldInvalid('region')">
-          <label for="region" class="form-label">Región turística de Catamarca *</label>
-          <select id="region" formControlName="region" class="form-input form-select">
-            @for (r of regions; track r) {
-              <option [value]="r">{{ r }}</option>
-            }
-          </select>
-        </div>
+      <div class="form-group" [class.has-error]="fieldInvalid('region')">
+        <label for="region" class="form-label">Región turística de Catamarca *</label>
+        <select id="region" formControlName="region" class="form-input form-select">
+          @for (r of regions; track r) {
+            <option [value]="r">{{ r }}</option>
+          }
+        </select>
       </div>
 
       <div class="form-group" [class.has-error]="fieldInvalid('tagline')">

@@ -116,11 +116,18 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
   position: relative;
   z-index: 90;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.portal-breadcrumb-bar::-webkit-scrollbar {
+  display: none;
 }
 
 .breadcrumb-inner {
-  max-width: 1200px;
-  margin: 0 auto;
+  max-width: 100%;
+  margin: 0;
   display: flex;
   align-items: center;
   gap: 0.55rem;
@@ -128,6 +135,8 @@
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  white-space: nowrap;
+  flex-wrap: nowrap;
 }
 
 .bc-link {
@@ -577,5 +586,62 @@
     right: 0;
     width: 260px;
     max-width: calc(100vw - 2rem);
+  }
+
+  .support-box {
+    padding: 1rem 0.85rem;
+    margin-top: 1.5rem;
+  }
+
+  .support-message {
+    font-size: 0.82rem;
+  }
+
+  .support-email-text {
+    word-break: break-all;
+  }
+
+  .portal-footer {
+    padding: 1.5rem 1rem;
+  }
+
+  .footer-banner-img {
+    max-width: 95%;
+    height: auto;
+    max-height: 36px;
+  }
+
+  .footer-subtitle {
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .portal-top-nav {
+    height: 60px;
+  }
+
+  .portal-emblem-img {
+    width: 34px;
+    height: 34px;
+  }
+
+  .brand-title {
+    font-size: 0.88rem;
+  }
+
+  .brand-tag {
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
+  }
+}
+
+@media (max-width: 380px) {
+  .brand-tag {
+    display: none;
+  }
+
+  .brand-title {
+    font-size: 0.82rem;
   }
 }

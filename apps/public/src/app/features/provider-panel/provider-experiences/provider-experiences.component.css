@@ -507,6 +507,107 @@
   font-weight: 600;
 }
 
+.dates-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.btn-add-date-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: rgba(128, 179, 255, 0.15);
+  border: 1px solid rgba(128, 179, 255, 0.4);
+  color: #80b3ff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.25rem 0.6rem;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-add-date-action:hover {
+  background: #80b3ff;
+  color: #070d18;
+}
+
+.inline-add-date-strip {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 0.85rem;
+  background: rgba(14, 22, 54, 0.85);
+  border: 1px solid rgba(128, 179, 255, 0.35);
+  border-radius: 2px;
+  margin: 0.25rem 0;
+  flex-wrap: wrap;
+}
+
+.input-experience-date {
+  background: rgba(7, 13, 28, 0.9);
+  border: 1px solid rgba(128, 179, 255, 0.3);
+  color: #ffffff;
+  padding: 0.35rem 0.6rem;
+  border-radius: 2px;
+  font-size: 0.82rem;
+  font-family: inherit;
+  color-scheme: dark;
+}
+
+.btn-save-exp-date {
+  background: #80b3ff;
+  color: #070d18;
+  border: none;
+  border-radius: 2px;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-save-exp-date:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-cancel-exp-date {
+  color: rgba(255, 255, 255, 0.6);
+  background: none;
+  border: none;
+  font-size: 0.78rem;
+  cursor: pointer;
+  padding: 0.4rem;
+}
+
+.btn-cancel-exp-date:hover {
+  color: #ffffff;
+}
+
+.btn-del-date {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 0.1rem 0.3rem;
+  line-height: 1;
+  border-radius: 2px;
+  transition: color 0.15s ease;
+}
+
+.btn-del-date:hover {
+  color: #ff8080;
+}
+
+.no-dates-text {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0;
+}
+
 .exp-dates {
   display: flex;
   flex-direction: column;

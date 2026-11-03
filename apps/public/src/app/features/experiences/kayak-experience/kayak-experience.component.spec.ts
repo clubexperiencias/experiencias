@@ -44,7 +44,7 @@ describe('KayakExperienceComponent (/experiencias/kayak)', () => {
   it('should display the pricing and blocked CTA to pay experience', () => {
     const primaryCta = fixture.nativeElement.querySelector('.cta-primary-btn');
     expect(primaryCta).toBeTruthy();
-    expect(primaryCta.textContent).toContain('Pagar Experiencia');
+    expect(primaryCta.textContent).toContain('Reservar Experiencia');
     expect(primaryCta.hasAttribute('disabled')).toBe(true);
 
     const arsPrice = fixture.nativeElement.querySelector('.ars-price');
