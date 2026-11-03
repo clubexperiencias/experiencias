@@ -1176,9 +1176,13 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
         font-size: 0.78rem;
         font-weight: 700;
         color: rgba(255, 255, 255, 0.85);
-        min-height: 1.25rem;
+        min-height: 1.35rem;
+        line-height: 1.35rem;
         display: flex;
         align-items: flex-end;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
       .field-label-row {
@@ -1515,6 +1519,10 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
         .form-grid-3,
         .form-grid-4 {
           grid-template-columns: 1fr;
+        }
+        .form-field label {
+          white-space: normal;
+          min-height: auto;
         }
         .action-buttons-cell {
           justify-content: flex-start;

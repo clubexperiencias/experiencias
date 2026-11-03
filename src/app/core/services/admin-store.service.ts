@@ -105,8 +105,12 @@ export class AdminStoreService {
     () => this.providerStore.experienceRequests().filter((r) => r.status === 'pendiente').length,
   );
 
-  async approveExperienceRequest(id: string, publicUrl?: string): Promise<boolean> {
-    return this.providerStore.approveExperienceRequest(id, publicUrl);
+  async approveExperienceRequest(
+    id: string,
+    publicUrl?: string,
+    confirmedDates?: string[],
+  ): Promise<boolean> {
+    return this.providerStore.approveExperienceRequest(id, publicUrl, confirmedDates);
   }
 
   updateExperiencePublicUrl(expId: string, publicUrl: string): void {
@@ -921,22 +925,39 @@ export class AdminStoreService {
                 ? 'pendiente'
                 : 'dado_de_baja';
 
+          const { data: existingAccess } = await (this.supabase.from('provider_access') as any)
+            .select('id')
+            .eq('email', email)
+            .maybeSingle();
+
           const upsertPayload: Record<string, any> = {
             email,
-            name: bankingData?.accountHolder ?? (app.accountHolder || app.fullName),
-            agency: app.description || app.category || 'Prestador Oficial',
             active,
             status: paStatus,
           };
-          const cbu = bankingData?.cbuAlias ?? app.cbuAlias;
-          if (cbu !== undefined) upsertPayload['cbu_alias'] = cbu;
-          const cuit = bankingData?.cuitDni ?? app.cuitDni;
-          if (cuit !== undefined) upsertPayload['cuit_dni'] = cuit;
-          const bank = bankingData?.bankName ?? app.bankName;
-          if (bank !== undefined) upsertPayload['bank_name'] = bank;
-          const holder = bankingData?.accountHolder ?? (app.accountHolder || app.fullName);
-          if (holder !== undefined) upsertPayload['account_holder'] = holder;
-          if (app.phone) upsertPayload['phone'] = app.phone;
+
+          if (!existingAccess) {
+            if (app.fullName && app.fullName.trim()) {
+              upsertPayload['name'] = app.fullName.trim();
+            }
+            const rawAgency = (app.description || app.category || '').trim();
+            const isPlaceholderAgency =
+              !rawAgency ||
+              rawAgency.toLowerCase() === 'sin especificar' ||
+              rawAgency === '-';
+            if (!isPlaceholderAgency) {
+              upsertPayload['agency'] = rawAgency;
+            }
+            const rawPhone = (app.phone || '').trim();
+            const isPlaceholderPhone =
+              !rawPhone ||
+              rawPhone === '-' ||
+              rawPhone.toLowerCase() === 'sin telefono' ||
+              rawPhone.toLowerCase() === 'sin teléfono';
+            if (!isPlaceholderPhone) {
+              upsertPayload['phone'] = rawPhone;
+            }
+          }
 
           const { error: paErr } = await (this.supabase.from('provider_access') as any).upsert(
             upsertPayload,
@@ -945,6 +966,17 @@ export class AdminStoreService {
           if (paErr) {
             console.warn('[AdminStore] Error al upsert provider_access en Supabase:', paErr);
             return false;
+          }
+
+          if (status === 'aprobado') {
+            try {
+              await this.notificationService.notifyProviderApproved({
+                fullName: app.fullName || upsertPayload['name'] || '',
+                email,
+              });
+            } catch (notifyErr) {
+              console.warn('[AdminStore] Error al notificar aprobación de prestador:', notifyErr);
+            }
           }
         }
       }

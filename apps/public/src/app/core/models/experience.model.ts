@@ -48,6 +48,7 @@ export interface Experience {
   isLocked?: boolean;
   detailRoute?: string;
   providerId?: string;
+  providerEmail?: string;
   providerName?: string;
   providerPhone?: string;
   providerCbuAlias?: string;

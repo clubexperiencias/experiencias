@@ -2193,17 +2193,10 @@ export class AdminApplicationsComponent implements OnInit {
   async approveProvider(): Promise<void> {
     const current = this.selectedApp();
     if (!current) return;
-    const banking = {
-      accountHolder: current.accountHolder || current.fullName,
-      cuitDni: current.cuitDni || '',
-      cbuAlias: current.cbuAlias || '',
-      bankName: current.bankName || '',
-    };
     const ok = await this.store.updateApplicationStatus(
       current.id,
       current.type,
       'aprobado',
-      banking,
     );
     if (ok) {
       this.selectedApp.update((a) => (a ? { ...a, status: 'aprobado' } : null));
@@ -2213,17 +2206,10 @@ export class AdminApplicationsComponent implements OnInit {
   async darDeBajaProvider(): Promise<void> {
     const current = this.selectedApp();
     if (!current) return;
-    const banking = {
-      accountHolder: current.accountHolder || current.fullName,
-      cuitDni: current.cuitDni || '',
-      cbuAlias: current.cbuAlias || '',
-      bankName: current.bankName || '',
-    };
     const ok = await this.store.updateApplicationStatus(
       current.id,
       current.type,
       'dado_de_baja',
-      banking,
     );
     if (ok) {
       this.selectedApp.update((a) => (a ? { ...a, status: 'dado_de_baja' } : null));

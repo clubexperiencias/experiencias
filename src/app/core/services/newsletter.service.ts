@@ -1392,7 +1392,7 @@ export class NewsletterService {
   }): Promise<{ success: boolean }> {
     if (this.isSupabaseConnected()) {
       try {
-        await this.supabase.from('postulaciones_prestadores').insert({
+        const { error } = await this.supabase.from('postulaciones_prestadores').insert({
           full_name: data.fullName.trim(),
           category: data.category.trim() || 'guia_montaña',
           region: data.region.trim() || 'Puna & Fiambalá',
@@ -1401,10 +1401,30 @@ export class NewsletterService {
           website: data.website.trim(),
           description: data.description.trim(),
         });
+        if (error) {
+          console.warn('[Supabase] Error guardando postulación de prestador:', error);
+          return { success: false };
+        }
       } catch (err) {
         console.warn('[Supabase] Error guardando postulación de prestador:', err);
+        return { success: false };
       }
     }
+
+    void this.notificationService
+      .notifyProviderApplicationSubmitted({
+        fullName: data.fullName.trim(),
+        category: data.category.trim(),
+        region: data.region.trim(),
+        email: data.email.trim().toLowerCase(),
+        phone: data.phone.trim(),
+        website: data.website.trim(),
+        description: data.description.trim(),
+      })
+      .catch((notifyErr) => {
+        console.warn('[NewsletterService] Error enviando notificación de postulación:', notifyErr);
+      });
+
     return { success: true };
   }
 

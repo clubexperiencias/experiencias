@@ -1,6 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivityHistoryService } from '../../../core/services/activity-history.service';
+import { ExperienceService } from '../../../core/services/experience.service';
 import { ActivityRecord, PaymentReceipt } from '../../../core/models/activity-history.model';
 import {
   BreadcrumbComponent,
@@ -27,6 +28,7 @@ export type ActivitySort = 'desc' | 'asc';
 })
 export class ActivitiesHistoryComponent {
   readonly activityService = inject(ActivityHistoryService);
+  private readonly experienceService = inject(ExperienceService);
   mobileMenuOpen = false;
 
   readonly breadcrumbs: BreadcrumbItem[] = [
@@ -40,8 +42,18 @@ export class ActivitiesHistoryComponent {
   readonly dateTo = signal('');
   readonly sortOrder = signal<ActivitySort>('desc');
 
-  getExperienceRoute(experienceId: string): string {
-    return experienceId === 'exp_kayak_jumeal' ? '/experiencias/kayak' : '/experiencias';
+  getExperienceRoute(experienceId: string, slug?: string): string {
+    if (experienceId === 'exp_kayak_jumeal' || slug === 'kayak') {
+      return '/experiencias/kayak';
+    }
+    const exp =
+      this.experienceService.getPublishedExperienceById(experienceId) ??
+      this.experienceService.getExperienceById(experienceId);
+    if (exp?.slug) {
+      return `/experiencias/${exp.slug}`;
+    }
+    const cleanId = experienceId.replace(/^exp[-_]/, '');
+    return cleanId ? `/experiencias/${cleanId}` : '/experiencias';
   }
 
   openReceipt(receipt: PaymentReceipt): void {

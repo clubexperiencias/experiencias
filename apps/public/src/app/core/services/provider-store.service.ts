@@ -119,6 +119,19 @@ function hoursAgo(hours: number): string {
   return new Date(Date.now() - hours * 3_600_000).toISOString();
 }
 
+export function parseConfirmedProposalDates(datesStr?: string): string[] {
+  if (!datesStr) return [];
+  const trimmed = datesStr.trim();
+  if (!trimmed || trimmed.toLowerCase().includes('a coordinar')) {
+    return [];
+  }
+  const matches = trimmed.match(/\b\d{4}-\d{2}-\d{2}\b/g);
+  if (!matches || matches.length === 0) {
+    return [];
+  }
+  return Array.from(new Set(matches)).sort();
+}
+
 export function slugify(value: string): string {
   return value
     .normalize('NFD')
@@ -507,7 +520,7 @@ export class ProviderStoreService {
       const email = data.user.email.trim().toLowerCase();
 
       const { data: access, error } = await (this.supabase.from('provider_access') as any)
-        .select('email, name, agency, active, status, cbu_alias, cuit_dni, bank_name, account_holder')
+        .select('email, name, agency, active, status, cbu_alias, cuit_dni, bank_name, account_holder, phone')
         .eq('email', email)
         .maybeSingle();
 
@@ -535,7 +548,7 @@ export class ProviderStoreService {
         email,
         name: access.account_holder || access.name || userMeta['full_name'] || userMeta['name'] || existing?.name || email,
         agency: access.agency || existing?.agency || 'Prestador EXPERIENCIAS.CLUB',
-        phone: existing?.phone || '',
+        phone: access.phone || existing?.phone || '',
         cuitDni: access.cuit_dni || existing?.cuitDni || '',
         cbuAlias: access.cbu_alias || existing?.cbuAlias || '',
         bankName: access.bank_name || existing?.bankName || '',
@@ -1690,13 +1703,24 @@ export class ProviderStoreService {
     return newReq;
   }
 
-  async approveExperienceRequest(requestId: string, publicUrl?: string): Promise<boolean> {
+  async approveExperienceRequest(
+    requestId: string,
+    publicUrl?: string,
+    confirmedDates?: string[],
+  ): Promise<boolean> {
     const req = this._experienceRequests().find((r) => r.id === requestId);
     if (!req) return false;
 
     const generatedSlug = slugify(req.title);
     const resolvedUrl =
       publicUrl?.trim() || `https://experiencias.club/experiencias/${generatedSlug}`;
+
+    // Solo usar fechas confirmadas por el prestador o administrador.
+    // Cuando las fechas son "A coordinar", se publican sin fechas reservables fijas ([]).
+    const publishedDates: string[] =
+      confirmedDates && confirmedDates.length > 0
+        ? confirmedDates
+        : parseConfirmedProposalDates(req.dates);
 
     // 1. Crear en el catálogo oficial de ExperienceService antes de reportar aprobación
     const experienceForCatalog: Experience = {
@@ -1721,7 +1745,7 @@ export class ProviderStoreService {
       priceArs: req.priceArs,
       priceUsd: req.priceUsd ?? 70,
       maxSpotsPerGroup: req.capacity,
-      dates: [upcomingDate(7), upcomingDate(14), upcomingDate(21)],
+      dates: publishedDates,
       status: 'publicada',
       publicUrl: resolvedUrl,
       detailRoute: `/experiencias/${generatedSlug}`,
@@ -1734,6 +1758,11 @@ export class ProviderStoreService {
       highlights: [],
       included: req.includedServices ? req.includedServices.split('\n').filter(Boolean) : [],
       notIncluded: [],
+      providerId: req.providerId,
+      providerName: req.providerName
+        ? `${req.providerName}${req.providerAgency ? ' · ' + req.providerAgency : ''}`
+        : undefined,
+      providerPhone: req.providerPhone || undefined,
     };
 
     try {
@@ -1775,7 +1804,7 @@ export class ProviderStoreService {
           durationLabel: req.duration,
           priceArs: req.priceArs,
           capacityPerDate: req.capacity,
-          dates: [upcomingDate(7), upcomingDate(14), upcomingDate(21)],
+          dates: publishedDates,
           status: 'publicada',
           publicUrl: resolvedUrl,
           providerId: req.providerId,

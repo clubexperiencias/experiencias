@@ -2637,17 +2637,10 @@ export class AdminDashboardComponent {
   async approveProvider(): Promise<void> {
     const current = this.selectedApplication();
     if (!current) return;
-    const banking = {
-      accountHolder: current.accountHolder || current.fullName,
-      cuitDni: current.cuitDni || '',
-      cbuAlias: current.cbuAlias || '',
-      bankName: current.bankName || '',
-    };
     const ok = await this.store.updateApplicationStatus(
       current.id,
       current.type,
       'aprobado',
-      banking,
     );
     if (ok) {
       this.selectedApplication.update((a) => (a ? { ...a, status: 'aprobado' } : null));
@@ -2657,17 +2650,10 @@ export class AdminDashboardComponent {
   async darDeBajaProvider(): Promise<void> {
     const current = this.selectedApplication();
     if (!current) return;
-    const banking = {
-      accountHolder: current.accountHolder || current.fullName,
-      cuitDni: current.cuitDni || '',
-      cbuAlias: current.cbuAlias || '',
-      bankName: current.bankName || '',
-    };
     const ok = await this.store.updateApplicationStatus(
       current.id,
       current.type,
       'dado_de_baja',
-      banking,
     );
     if (ok) {
       this.selectedApplication.update((a) => (a ? { ...a, status: 'dado_de_baja' } : null));

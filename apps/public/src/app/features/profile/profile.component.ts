@@ -54,8 +54,18 @@ export class ProfileComponent implements OnInit {
   // Actividades: Solo las últimas dos en la vista previa del perfil
   readonly recentActivities = () => this.activityService.activities().slice(0, 2);
 
-  getExperienceRoute(experienceId: string): string {
-    return experienceId === 'exp_kayak_jumeal' ? '/experiencias/kayak' : '/experiencias';
+  getExperienceRoute(experienceId: string, slug?: string): string {
+    if (experienceId === 'exp_kayak_jumeal' || slug === 'kayak') {
+      return '/experiencias/kayak';
+    }
+    const exp =
+      this.experienceService.getPublishedExperienceById(experienceId) ??
+      this.experienceService.getExperienceById(experienceId);
+    if (exp?.slug) {
+      return `/experiencias/${exp.slug}`;
+    }
+    const cleanId = experienceId.replace(/^exp[-_]/, '');
+    return cleanId ? `/experiencias/${cleanId}` : '/experiencias';
   }
 
   readonly connectingGoogle = signal(false);
@@ -311,16 +321,22 @@ export class ProfileComponent implements OnInit {
     this.newsletter.currentMember()?.experiencesWishlist || [],
   );
   readonly memberOtherExperience = signal(this.newsletter.currentMember()?.experiencesOther || '');
-  readonly profileSaved = signal(Boolean(this.newsletter.currentMember()?.fullName));
+  readonly profileSaved = signal(
+    Boolean(
+      this.newsletter.currentMember()?.fullName?.trim() &&
+        (this.newsletter.currentMember()?.dni?.trim() ||
+          this.newsletter.currentMember()?.documentNumber?.trim()) &&
+        this.newsletter.currentMember()?.phone?.trim(),
+    ),
+  );
   readonly isProfileComplete = computed(() => {
     const m = this.newsletter.currentMember();
-    const hasSavedData = Boolean(m?.fullName && (m?.dni || m?.documentNumber) && m?.phone);
-    const currentInputsValid = Boolean(
-      this.memberFullName()?.trim() &&
-      this.memberDni()?.trim() &&
-      this.memberPhone()?.trim()
+    const hasSavedData = Boolean(
+      m?.fullName?.trim() &&
+        (m?.dni?.trim() || m?.documentNumber?.trim()) &&
+        m?.phone?.trim(),
     );
-    return (this.profileSaved() && currentInputsValid) || (hasSavedData && currentInputsValid);
+    return this.profileSaved() || hasSavedData;
   });
 
   toggleExperienceWishlist(id: string): void {

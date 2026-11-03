@@ -113,19 +113,19 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
           <div class="banking-details-grid">
             <div class="banking-col">
               <span class="banking-col-lbl">CBU / CVU o ALIAS</span>
-              <strong class="banking-col-val text-blue">{{ provider()?.cbuAlias || 'EXPERIENCIAS.CLUB.MP' }}</strong>
+              <strong class="banking-col-val text-blue">{{ provider()?.cbuAlias || 'Sin especificar' }}</strong>
             </div>
             <div class="banking-col">
               <span class="banking-col-lbl">NOMBRE / TITULAR</span>
-              <strong class="banking-col-val">{{ provider()?.name || 'Gonzalo Gramaglia' }}</strong>
+              <strong class="banking-col-val">{{ provider()?.name || 'Sin especificar' }}</strong>
             </div>
             <div class="banking-col">
               <span class="banking-col-lbl">CUIT / CUIL</span>
-              <strong class="banking-col-val">{{ provider()?.cuitDni || '20-33445566-7' }}</strong>
+              <strong class="banking-col-val">{{ provider()?.cuitDni || 'Sin especificar' }}</strong>
             </div>
             <div class="banking-col">
               <span class="banking-col-lbl">ENTIDAD</span>
-              <strong class="banking-col-val">{{ provider()?.bankName || 'Banco Nación / Mercado Pago' }}</strong>
+              <strong class="banking-col-val">{{ provider()?.bankName || 'Sin especificar' }}</strong>
             </div>
           </div>
         </section>
@@ -1592,7 +1592,7 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
         padding: 0.75rem 1.4rem;
         background: #ffcc00;
         border: 1px solid #ffcc00;
-        color: #ffffff;
+        color: #000000;
         font-size: 0.88rem;
         font-weight: 700;
         border-radius: 2px;
@@ -1605,7 +1605,7 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
       .request-form-btn:hover {
         background: #ffd633;
         border-color: #ffd633;
-        color: #ffffff;
+        color: #000000;
         box-shadow: 0 6px 20px rgba(255, 204, 0, 0.45);
         transform: translateY(-1px);
       }
@@ -1942,7 +1942,7 @@ export class ProviderDashboardComponent implements OnInit {
   readonly provider = this.store.currentProvider;
   readonly isBankingComplete = computed(() => {
     const p = this.provider();
-    return Boolean(p?.cbuAlias?.trim() && p?.cuitDni?.trim());
+    return Boolean(p?.cbuAlias?.trim() && p?.cuitDni?.trim() && p?.bankName?.trim());
   });
   readonly stats = this.store.providerStats;
 

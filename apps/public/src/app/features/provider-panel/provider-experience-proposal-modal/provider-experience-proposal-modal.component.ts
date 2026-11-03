@@ -464,6 +464,19 @@ const DEFAULT_REQ_FORM = {
                       required
                     ></textarea>
                   </div>
+
+                  <div class="form-group">
+                    <label class="form-label" for="req-dates">Fechas Programadas o Disponibilidad</label>
+                    <input
+                      id="req-dates"
+                      type="text"
+                      class="form-input"
+                      placeholder="A coordinar (o ingresá fechas YYYY-MM-DD separadas por coma)"
+                      [(ngModel)]="reqForm.dates"
+                      name="dates"
+                    />
+                    <span class="field-hint">Dejá "A coordinar" si las fechas se definirán tras la aprobación.</span>
+                  </div>
                 </div>
 
                 <!-- 6. Equipamiento, Seguridad & Logística -->
@@ -1253,6 +1266,7 @@ export class ProviderExperienceProposalModalComponent {
       URL.revokeObjectURL(this.coverImagePreview()!);
     }
     this.coverImageFile.set(file);
+    this.coverImageDataUrl.set(null);
     const objectUrl = URL.createObjectURL(file);
     this.coverImagePreview.set(objectUrl);
     this.finalSuccessCoverUrl.set(objectUrl);
@@ -1261,7 +1275,7 @@ export class ProviderExperienceProposalModalComponent {
     if (typeof FileReader !== 'undefined') {
       const reader = new FileReader();
       reader.onload = () => {
-        if (typeof reader.result === 'string') {
+        if (this.coverImageFile() === file && typeof reader.result === 'string') {
           this.coverImageDataUrl.set(reader.result);
           this.finalSuccessCoverUrl.set(reader.result);
         }
@@ -1416,7 +1430,7 @@ export class ProviderExperienceProposalModalComponent {
         altitude: this.reqForm.altitude || '850 msnm',
         capacity: Number(this.reqForm.capacity) || 12,
         season: this.reqForm.season || 'Todo el año',
-        dates: this.reqForm.dates || 'A coordinar',
+        dates: this.reqForm.dates?.trim() || 'A coordinar',
         priceArs,
         priceUsd,
         promosAndPricing: this.reqForm.promosAndPricing,

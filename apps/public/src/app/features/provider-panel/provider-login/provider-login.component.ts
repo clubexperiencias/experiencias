@@ -67,8 +67,44 @@ import { environment } from '../../../../environments/environment';
                 Accedé para administrar expediciones y comprobantes.
               </p>
 
-              @if (errorMessage()) {
-                <div class="login-alert-error">
+              @if (accountStatus() === 'pending') {
+                <div class="login-alert-status alert-pending" role="status">
+                  <mat-icon class="alert-icon">hourglass_top</mat-icon>
+                  <div class="alert-content">
+                    <strong class="alert-title">Postulación en Proceso de Revisión</strong>
+                    <p class="alert-text">
+                      Tu postulación como prestador para <code>{{ unapprovedEmail() }}</code> fue recibida y se encuentra en validación por el equipo del Club. Te notificaremos por correo apenas sea aprobada.
+                    </p>
+                  </div>
+                </div>
+              } @else if (accountStatus() === 'unregistered') {
+                <div class="login-alert-status alert-unregistered" role="status">
+                  <mat-icon class="alert-icon">assignment_ind</mat-icon>
+                  <div class="alert-content">
+                    <strong class="alert-title">Cuenta No Registrada como Prestador</strong>
+                    <p class="alert-text">
+                      La cuenta <code>{{ unapprovedEmail() }}</code> aún no completó la postulación para ser prestador oficial de EXPERIENCIAS.CLUB.
+                    </p>
+                    <a
+                      href="https://experiencias.club/prestadores"
+                      class="alert-action-btn"
+                    >
+                      Completar Postulación de Prestador &rarr;
+                    </a>
+                  </div>
+                </div>
+              } @else if (accountStatus() === 'inactive') {
+                <div class="login-alert-status alert-inactive" role="alert">
+                  <mat-icon class="alert-icon">block</mat-icon>
+                  <div class="alert-content">
+                    <strong class="alert-title">Cuenta Inactiva o en Pausa</strong>
+                    <p class="alert-text">
+                      Tu cuenta de prestador (<code>{{ unapprovedEmail() }}</code>) se encuentra inactiva o dada de baja. Si considerás que es un error, por favor contactanos a <a href="mailto:ayuda@experiencias.club" class="link-inline">ayuda@experiencias.club</a>.
+                    </p>
+                  </div>
+                </div>
+              } @else if (errorMessage()) {
+                <div class="login-alert-error" role="alert">
                   <mat-icon class="alert-icon">error_outline</mat-icon>
                   <span>{{ errorMessage() }}</span>
                 </div>
@@ -478,6 +514,101 @@ import { environment } from '../../../../environments/environment';
         margin: 0 0 1.4rem;
       }
 
+      /* ── Alertas de Estado Inteligente ── */
+      .login-alert-status {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.85rem;
+        padding: 0.95rem 1.15rem;
+        border-radius: 4px;
+        font-size: 0.88rem;
+        line-height: 1.45;
+        margin-bottom: 1.35rem;
+        text-align: left;
+        box-sizing: border-box;
+      }
+      .login-alert-status .alert-icon {
+        font-size: 24px;
+        width: 24px;
+        height: 24px;
+        flex-shrink: 0;
+        margin-top: 1px;
+      }
+      .alert-content {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+      }
+      .alert-title {
+        font-size: 0.92rem;
+        font-weight: 800;
+        letter-spacing: 0.01em;
+      }
+      .alert-text {
+        margin: 0;
+        font-size: 0.83rem;
+        line-height: 1.5;
+        color: rgba(255, 255, 255, 0.9);
+      }
+      .alert-text code {
+        background: rgba(0, 0, 0, 0.35);
+        padding: 0.15rem 0.4rem;
+        border-radius: 3px;
+        font-size: 0.8rem;
+        color: #ffffff;
+      }
+      .alert-pending {
+        background: rgba(255, 170, 0, 0.16);
+        border: 1px solid rgba(255, 170, 0, 0.45);
+        color: #ffe082;
+      }
+      .alert-pending .alert-icon,
+      .alert-pending .alert-title {
+        color: #ffcc00;
+      }
+      .alert-unregistered {
+        background: rgba(128, 179, 255, 0.16);
+        border: 1px solid rgba(128, 179, 255, 0.45);
+        color: #d6e8ff;
+      }
+      .alert-unregistered .alert-icon,
+      .alert-unregistered .alert-title {
+        color: #80b3ff;
+      }
+      .alert-action-btn {
+        display: inline-flex;
+        align-items: center;
+        margin-top: 0.4rem;
+        padding: 0.45rem 0.95rem;
+        background: #80b3ff;
+        color: #050a18;
+        font-size: 0.82rem;
+        font-weight: 800;
+        border-radius: 3px;
+        text-decoration: none;
+        width: fit-content;
+        transition: all 0.2s ease;
+      }
+      .alert-action-btn:hover {
+        background: #a3cbff;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(128, 179, 255, 0.35);
+      }
+      .alert-inactive {
+        background: rgba(255, 68, 68, 0.18);
+        border: 1px solid rgba(255, 68, 68, 0.45);
+        color: #fca5a5;
+      }
+      .alert-inactive .alert-icon,
+      .alert-inactive .alert-title {
+        color: #ef4444;
+      }
+      .link-inline {
+        color: #ffffff;
+        text-decoration: underline;
+        font-weight: 700;
+      }
+
       /* ── Alerta de Error ── */
       .login-alert-error {
         display: flex;
@@ -752,6 +883,8 @@ export class ProviderLoginComponent implements OnInit {
   readonly demoProviders = SEED_PROVIDERS.filter((p) => p.name.includes('Patricio'));
   readonly errorMessage = signal<string | null>(null);
   readonly connectingGoogle = signal(false);
+  readonly accountStatus = signal<'none' | 'pending' | 'unregistered' | 'inactive'>('none');
+  readonly unapprovedEmail = signal<string>('');
 
   constructor() {
     this.pageTitle.setTitle('Portal de Prestadores del Club de Experiencias');
@@ -760,22 +893,88 @@ export class ProviderLoginComponent implements OnInit {
   async ngOnInit(): Promise<void> {
     if (isSupabaseConfigured()) {
       try {
+        const restored = await this.store.restoreSupabaseSession();
+        if (restored && this.store.isProviderApproved()) {
+          const isBrowser = typeof window !== 'undefined';
+          const host = isBrowser ? window.location.hostname.toLowerCase() : '';
+          const search = isBrowser ? window.location.search.toLowerCase() : '';
+          const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local');
+          const isProviderHost =
+            host.startsWith('prestadores.') ||
+            host.includes('prestadores.experiencias') ||
+            (isLocalHost && (search.includes('portal=prestador') || search.includes('prestador=true')));
+
+          const targetPath = isProviderHost ? '/dashboard' : '/prestadores/panel/dashboard';
+          this.router.navigate([targetPath]);
+          return;
+        }
+
         const { data } = await this.supabase.auth.getUser();
-        const email = data.user?.email;
-        if (email && (!this.store.isAuthenticated() || !this.store.isProviderApproved())) {
-          this.errorMessage.set(
-            `La cuenta de Google (${email}) no tiene un perfil de prestador aprobado en la plataforma.`,
-          );
+        const rawEmail = data.user?.email;
+        if (rawEmail) {
+          const cleanEmail = rawEmail.trim().toLowerCase();
+          this.unapprovedEmail.set(cleanEmail);
+          await this.evaluateUnapprovedStatus(cleanEmail);
           await this.supabase.auth.signOut();
         }
       } catch {
-        // Ignorar
+        // Ignorar errores de verificación inicial
       }
+    }
+  }
+
+  private async evaluateUnapprovedStatus(email: string): Promise<void> {
+    try {
+      // 1. Verificar si existe registro en provider_access
+      const { data: access } = await (this.supabase.from('provider_access') as any)
+        .select('status, active')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (access) {
+        if (access.status === 'dado_de_baja' || access.active === false) {
+          this.accountStatus.set('inactive');
+          return;
+        }
+        if (access.status === 'pendiente') {
+          this.accountStatus.set('pending');
+          return;
+        }
+      }
+
+      // 2. Verificar postulaciones_prestadores
+      const { data: app } = await (this.supabase.from('postulaciones_prestadores') as any)
+        .select('status')
+        .eq('email', email)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (app) {
+        if (
+          app.status === 'rechazado' ||
+          app.status === 'rechazada' ||
+          app.status === 'dado_de_baja'
+        ) {
+          this.accountStatus.set('inactive');
+        } else {
+          this.accountStatus.set('pending');
+        }
+        return;
+      }
+
+      // 3. Si no existe ni en provider_access ni en postulaciones_prestadores
+      this.accountStatus.set('unregistered');
+    } catch (err) {
+      console.warn('[ProviderLogin] Error al verificar estado de postulación:', err);
+      this.accountStatus.set('unregistered');
     }
   }
 
   async signInGoogle(): Promise<void> {
     this.errorMessage.set(null);
+    this.accountStatus.set('none');
+    this.unapprovedEmail.set('');
     this.connectingGoogle.set(true);
     const result = await this.store.signInWithGoogle();
     this.connectingGoogle.set(false);

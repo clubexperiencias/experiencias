@@ -45,7 +45,7 @@ const ROUTE_LABELS: Record<string, string> = {
           </div>
 
           <div class="nav-right-col">
-            <a routerLink="/dashboard" class="portal-nav-btn active-route">
+            <a routerLink="dashboard" class="portal-nav-btn active-route">
               <span>Área Restringida</span>
             </a>
 
