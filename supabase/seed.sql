@@ -82,11 +82,13 @@ VALUES
     '+54 9 11 5566 7788'
   )
 ON CONFLICT (email) DO UPDATE
-SET active = true,
-    status = 'aprobado',
-    name = EXCLUDED.name,
+SET name = EXCLUDED.name,
     agency = EXCLUDED.agency,
     cbu_alias = EXCLUDED.cbu_alias,
+    cuit_dni = EXCLUDED.cuit_dni,
+    bank_name = EXCLUDED.bank_name,
+    account_holder = EXCLUDED.account_holder,
+    phone = EXCLUDED.phone,
     updated_at = now();
 
 -- ------------------------------------------------------------------------------
@@ -405,7 +407,7 @@ BEGIN
       'comprobante_banco_galicia_001.pdf',
       'application/pdf',
       245000,
-      'https://cdn.catamarcasecreta.com/comprobantes/EXP-KAYAK-2026-001.pdf',
+      'https://experiencias.club/assets/images/comprobante-ejemplo.png',
       'comprobantes/EXP-KAYAK-2026-001.pdf',
       'supabase',
       'aprobado',
@@ -427,7 +429,7 @@ BEGIN
       'transferencia_mp_lucia.jpg',
       'image/jpeg',
       512000,
-      'https://cdn.catamarcasecreta.com/comprobantes/EXP-KAYAK-2026-002.jpg',
+      'https://experiencias.club/assets/images/comprobante-ejemplo.png',
       'comprobantes/EXP-KAYAK-2026-002.jpg',
       'supabase',
       'aprobado',
@@ -449,7 +451,7 @@ BEGIN
       'ticket_transferencia_esteban.png',
       'image/png',
       410000,
-      'https://cdn.catamarcasecreta.com/comprobantes/EXP-KAYAK-2026-003.png',
+      'https://experiencias.club/assets/images/comprobante-ejemplo.png',
       'comprobantes/EXP-KAYAK-2026-003.png',
       'supabase',
       'pendiente',
@@ -471,7 +473,7 @@ BEGIN
       'comprobante_uala_sofia.pdf',
       'application/pdf',
       198000,
-      'https://cdn.catamarcasecreta.com/comprobantes/EXP-POMEZ-2026-001.pdf',
+      'https://experiencias.club/assets/images/comprobante-ejemplo.png',
       'comprobantes/EXP-POMEZ-2026-001.pdf',
       'supabase',
       'pendiente',
@@ -493,7 +495,7 @@ BEGIN
       'captura_borrosa.jpg',
       'image/jpeg',
       120000,
-      'https://cdn.catamarcasecreta.com/comprobantes/EXP-POMEZ-2026-002.jpg',
+      'https://experiencias.club/assets/images/comprobante-ejemplo.png',
       'comprobantes/EXP-POMEZ-2026-002.jpg',
       'supabase',
       'rechazado',
@@ -572,5 +574,37 @@ VALUES
     'https://instagram.com/trekking_ambato',
     'Guía de senderismo y trekking en yungas y cerros del cordón del Ambato.',
     'pendiente'
+  )
+ON CONFLICT DO NOTHING;
+
+-- ------------------------------------------------------------------------------
+-- 9. HISTORIAL DE AUDITORÍA BANCARIA DE PRESTADORES (provider_banking_history)
+-- ------------------------------------------------------------------------------
+INSERT INTO public.provider_banking_history (
+  provider_email,
+  old_cbu_alias,
+  new_cbu_alias,
+  old_name,
+  new_name,
+  old_cuit_dni,
+  new_cuit_dni,
+  old_bank_name,
+  new_bank_name,
+  changed_by,
+  changed_at
+)
+VALUES
+  (
+    'patriciofacundodiaztillar@gmail.com',
+    'ALIAS.ANTERIOR.MP',
+    '3840200500000056402423',
+    'Patricio Diaz',
+    'Patricio Facundo Diaz Tillar',
+    '20-30456123-4',
+    '20-30456123-4',
+    'Mercado Pago',
+    'Ualá Bank S.A.U.',
+    'provider',
+    now() - INTERVAL '5 days'
   )
 ON CONFLICT DO NOTHING;

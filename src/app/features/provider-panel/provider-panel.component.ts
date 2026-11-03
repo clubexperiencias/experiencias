@@ -101,6 +101,17 @@ const ROUTE_LABELS: Record<string, string> = {
                       <strong class="menu-item-title">Socios y Comprobantes</strong>
                     </div>
                   </a>
+
+                  <a
+                    [routerLink]="profileLink()"
+                    class="dropdown-item enlarged-item"
+                    (click)="userMenuOpen.set(false)"
+                  >
+                    <mat-icon class="menu-item-icon">manage_accounts</mat-icon>
+                    <div class="menu-item-info">
+                      <strong class="menu-item-title">Editar Perfil</strong>
+                    </div>
+                  </a>
                 </div>
 
                 <div class="dropdown-divider"></div>
@@ -202,6 +213,7 @@ export class ProviderPanelComponent {
   readonly dashboardLink = computed(() => `${this.basePath()}/dashboard`);
   readonly experiencesLink = computed(() => `${this.basePath()}/experiencias`);
   readonly membersLink = computed(() => `${this.basePath()}/socios`);
+  readonly profileLink = computed(() => `${this.basePath()}/perfil`);
 
   readonly breadcrumbs = computed<{ label: string; link?: string }[]>(() => {
     const rawPath = this.currentUrl().split('?')[0].split('#')[0];

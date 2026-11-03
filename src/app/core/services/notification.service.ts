@@ -28,6 +28,7 @@ export class NotificationService {
   async notifyPaymentSubmitted(
     submission: TransferSubmission,
     receiptUrl?: string,
+    providerEmail?: string,
   ): Promise<NotificationResult> {
     const payload = {
       type: 'PAYMENT_SUBMITTED',
@@ -42,6 +43,7 @@ export class NotificationService {
         participants: submission.participants,
         amountArs: submission.amountArs,
         receiptUrl: receiptUrl || submission.receipt?.url || '',
+        providerEmail: providerEmail || '',
       },
     };
 
@@ -143,7 +145,16 @@ export class NotificationService {
     customPhone?: string,
   ): string {
     const defaultPhone = '5493515490431';
-    const targetPhone = (customPhone || defaultPhone).replace(/\D/g, '');
+    let clean = (customPhone || defaultPhone).replace(/\D/g, '');
+    if (clean.startsWith('0')) {
+      clean = clean.substring(1);
+    }
+    if (!clean.startsWith('54')) {
+      clean = '549' + clean;
+    } else if (clean.startsWith('54') && !clean.startsWith('549')) {
+      clean = '549' + clean.substring(2);
+    }
+    const targetPhone = clean || defaultPhone;
     const formattedAmount = Number(submission.amountArs || 0).toLocaleString('es-AR');
 
     const msg =

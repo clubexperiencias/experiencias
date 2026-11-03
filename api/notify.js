@@ -14,7 +14,15 @@ function getEnvConfig() {
     .map((e) => e.trim())
     .filter(Boolean);
 
-  return { apiKey, fromEmail, adminEmails };
+  const verifiedProviderEmails = (
+    process.env.PROVIDER_NOTIFICATION_EMAILS ||
+    'patriciofacundodiaztillar@gmail.com,vegvarel@gmail.com,gonzagramaglia@gmail.com'
+  )
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+
+  return { apiKey, fromEmail, adminEmails, verifiedProviderEmails };
 }
 
 function sendEmailViaResend({ apiKey, from, to, subject, html }) {
@@ -245,10 +253,10 @@ function templatePaymentSubmittedAdmin(sub) {
         <td class="data-label">Importe Transferido</td>
         <td class="data-value" style="color: #ffcc00; font-weight: 800;">$${Number(sub.amountArs).toLocaleString('es-AR')} ARS</td>
       </tr>
-      ${sub.receiptUrl ? `
+      ${sub.receiptUrl && /^https?:\/\//i.test(String(sub.receiptUrl).trim()) ? `
       <tr>
         <td class="data-label">Comprobante de Pago</td>
-        <td class="data-value"><a href="${sub.receiptUrl}" target="_blank" style="color: #ffcc00; text-decoration: underline;">Abrir archivo adjunto</a></td>
+        <td class="data-value"><a href="${escapeHtml(String(sub.receiptUrl).trim())}" target="_blank" rel="noopener noreferrer" style="color: #ffcc00; text-decoration: underline;">Abrir archivo adjunto</a></td>
       </tr>` : ''}
     </table>
 
@@ -463,12 +471,23 @@ module.exports = async function handler(req, res) {
           results.push({ target: 'user', ...userResult });
         }
 
-        // 2. Alerta a Administradores y Prestadores
-        if (config.adminEmails.length > 0) {
+        // 2. Alerta a Administradores y al Prestador (restringido a destinatarios verificados)
+        const recipients = [...config.adminEmails];
+        if (data.providerEmail) {
+          const normalizedProvider = String(data.providerEmail).trim().toLowerCase();
+          const isVerified =
+            config.adminEmails.some((a) => a.toLowerCase() === normalizedProvider) ||
+            config.verifiedProviderEmails.includes(normalizedProvider);
+          if (isVerified && !recipients.map((r) => r.toLowerCase()).includes(normalizedProvider)) {
+            recipients.push(normalizedProvider);
+          }
+        }
+
+        if (recipients.length > 0) {
           const adminResult = await sendEmailViaResend({
             apiKey: config.apiKey,
             from: config.fromEmail,
-            to: config.adminEmails,
+            to: recipients,
             subject: `[Nuevo Comprobante] ${data.reference} · ${data.experienceTitle} ($${Number(data.amountArs || 0).toLocaleString('es-AR')})`,
             html: templatePaymentSubmittedAdmin(data),
           });

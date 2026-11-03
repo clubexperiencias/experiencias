@@ -496,8 +496,8 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         align-items: center;
         justify-content: center;
         padding: 0.48rem 1.05rem;
-        background: rgba(255, 255, 255, 0.08);
-        border: 1px solid rgba(128, 179, 255, 0.45);
+        background: #80b3ff;
+        border: 1px solid #80b3ff;
         color: #ffffff;
         border-radius: 4px;
         font-size: 0.82rem;
@@ -507,14 +507,15 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         cursor: pointer;
         transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
         white-space: nowrap;
+        box-shadow: 0 4px 14px rgba(128, 179, 255, 0.25);
       }
 
       .btn-back-panel:hover {
-        background: rgba(128, 179, 255, 0.3);
-        border-color: #a6c8ff;
+        background: #9cc4ff;
+        border-color: #9cc4ff;
         color: #ffffff;
         transform: translateY(-2px);
-        box-shadow: 0 4px 18px rgba(128, 179, 255, 0.45);
+        box-shadow: 0 6px 18px rgba(128, 179, 255, 0.4);
       }
 
       .btn-back-panel:active {

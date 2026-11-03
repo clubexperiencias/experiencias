@@ -107,6 +107,7 @@ export class ProviderExperiencesComponent implements OnInit {
     const list = this.store.providerExperiences();
     const tab = this.activeTab();
     const query = this.searchQuery().trim().toLowerCase();
+    const today = new Date().toISOString().split('T')[0];
 
     return list
       .filter((exp) => {
@@ -145,10 +146,20 @@ export class ProviderExperiencesComponent implements OnInit {
           confirmedRevenue: submissions
             .filter((s) => s.status === 'aprobado')
             .reduce((total, s) => total + s.amountArs, 0),
-          nextDates: experience.dates.slice(0, 3).map((date) => ({
-            date,
-            reserved: this.store.reservedSeats(experience.id, date),
-          })),
+          nextDates: experience.dates.map((date) => {
+            const reserved = this.store.reservedSeats(experience.id, date);
+            const capacity = this.store.capacityForDate(experience, date);
+            const isClosed = this.store.isDateClosed(experience, date);
+            const isUnlimited = capacity >= 999;
+            return {
+              date,
+              reserved,
+              capacity,
+              isClosed,
+              isUnlimited,
+              isPast: date < today,
+            };
+          }),
         };
       });
   });
@@ -307,9 +318,16 @@ export class ProviderExperiencesComponent implements OnInit {
     }
   }
 
+  toggleDatePause(expId: string, date: string): void {
+    this.store.toggleDateStatus(expId, date);
+    const exp = this.store.getExperienceById(expId);
+    const isNowClosed = exp ? this.store.isDateClosed(exp, date) : false;
+    this.showToast(isNowClosed ? `Fecha ${date} pausada para nuevas reservas` : `Fecha ${date} reabierta`);
+  }
+
   removeDate(expId: string, date: string): void {
     if (this.store.reservedSeats(expId, date) > 0) {
-      this.showToast('No se puede eliminar una fecha con reservas confirmadas');
+      this.showToast('No se puede eliminar una fecha con reservas confirmadas. Podés pausarla en su lugar.');
       return;
     }
     if (confirm(`¿Eliminar la fecha de salida (${date})?`)) {

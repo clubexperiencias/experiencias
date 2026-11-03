@@ -29,12 +29,12 @@
         <div class="kayak-wrapper">
           @let exp = experience()!;
           <section class="kayak-section-card pay-confirmation" aria-live="polite">
-            <span class="section-kicker">COMPROBANTE EN REVISIÓN</span>
-            <h1 class="card-heading">Recibimos tu comprobante</h1>
+            <span class="section-kicker">RESERVA CONFIRMADA</span>
+            <h1 class="card-heading">¡Tu lugar está reservado!</h1>
             <p class="card-subheading">
-              El prestador va a verificar la transferencia y te vamos a escribir a
-              <strong>{{ sub.email }}</strong> cuando tu lugar quede confirmado. Tus cupos ya están
-              reservados mientras tanto.
+              Recibimos tu comprobante de pago. Tus cupos para la salida del
+              <strong>{{ sub.date | fecha: 'larga' }}</strong> ya se encuentran asegurados. Enviamos los detalles de la expedición a
+              <strong>{{ sub.email }}</strong>.
             </p>
 
             <dl class="pay-summary-list">
@@ -180,9 +180,15 @@
                           >
                             <span class="pay-date-day">{{ option.date | fecha }}</span>
                             <span class="pay-date-seats">
-                              {{
-                                option.available === 0 ? 'Sin cupo' : option.available + ' lugares'
-                              }}
+                              @if (option.available === 0) {
+                                Sin cupo
+                              } @else if (option.isUnlimited) {
+                                Cupos disponibles
+                              } @else if (option.isLowAvailability) {
+                                ¡Últimos {{ option.available }} lugares!
+                              } @else {
+                                {{ option.available }} lugares
+                              }
                             </span>
                           </button>
                         }

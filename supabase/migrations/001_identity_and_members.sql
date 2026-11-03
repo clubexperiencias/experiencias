@@ -1,6 +1,6 @@
 -- ============================================================
--- 001_initial_schema.sql
--- EXPERIENCIAS.CLUB • Núcleo de Identidad, Socios, Espera y Accesos Administrativos
+-- 001_identity_and_members.sql
+-- EXPERIENCIAS.CLUB • Identity, Members, Waitlist & Admin Access
 -- ============================================================
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
@@ -474,11 +474,18 @@ CREATE POLICY "Permitir guardar email en waitlist"
   WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Permitir lectura general de waitlist" ON public.waitlist;
-CREATE POLICY "Permitir lectura general de waitlist"
+DROP POLICY IF EXISTS "Admins can view all waitlist" ON public.waitlist;
+CREATE POLICY "Admins can view all waitlist"
   ON public.waitlist
   FOR SELECT
-  TO anon, authenticated
-  USING (true);
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.admin_access
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+        AND active = true
+    )
+  );
 
 DROP POLICY IF EXISTS "Permitir consultar waitlist propio" ON public.waitlist;
 CREATE POLICY "Permitir consultar waitlist propio"
@@ -531,11 +538,38 @@ CREATE POLICY "Permitir envío de postulaciones de fundadores"
   WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Permitir consultar postulaciones de fundadores" ON public.postulaciones_fundadores;
-CREATE POLICY "Permitir consultar postulaciones de fundadores"
+DROP POLICY IF EXISTS "Admins can view postulaciones_fundadores" ON public.postulaciones_fundadores;
+CREATE POLICY "Admins can view postulaciones_fundadores"
   ON public.postulaciones_fundadores
   FOR SELECT
-  TO anon, authenticated
-  USING (true);
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.admin_access
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+        AND active = true
+    )
+  );
+
+DROP POLICY IF EXISTS "Admins can update postulaciones_fundadores" ON public.postulaciones_fundadores;
+CREATE POLICY "Admins can update postulaciones_fundadores"
+  ON public.postulaciones_fundadores
+  FOR UPDATE
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.admin_access
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+        AND active = true
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.admin_access
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+        AND active = true
+    )
+  );
 
 -- Políticas postulaciones prestadores
 DROP POLICY IF EXISTS "Permitir envío de postulaciones de prestadores" ON public.postulaciones_prestadores;
@@ -546,18 +580,48 @@ CREATE POLICY "Permitir envío de postulaciones de prestadores"
   WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Permitir consultar postulaciones de prestadores" ON public.postulaciones_prestadores;
-CREATE POLICY "Permitir consultar postulaciones de prestadores"
+DROP POLICY IF EXISTS "Admins can view postulaciones_prestadores" ON public.postulaciones_prestadores;
+CREATE POLICY "Admins can view postulaciones_prestadores"
   ON public.postulaciones_prestadores
   FOR SELECT
-  TO anon, authenticated
-  USING (true);
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.admin_access
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+        AND active = true
+    )
+  );
+
+DROP POLICY IF EXISTS "Admins can update postulaciones_prestadores" ON public.postulaciones_prestadores;
+CREATE POLICY "Admins can update postulaciones_prestadores"
+  ON public.postulaciones_prestadores
+  FOR UPDATE
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.admin_access
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+        AND active = true
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.admin_access
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+        AND active = true
+    )
+  );
 
 -- Permisos y Grants
-GRANT SELECT, INSERT, UPDATE ON public.waitlist TO anon, authenticated;
+GRANT INSERT ON public.waitlist TO anon, authenticated;
+GRANT SELECT, UPDATE ON public.waitlist TO authenticated;
 GRANT SELECT, INSERT ON public.socios TO anon, authenticated;
 GRANT UPDATE (full_name, dni, phone, experiences_wishlist, experiences_other, updated_at) ON public.socios TO authenticated;
-GRANT SELECT, INSERT, UPDATE ON public.postulaciones_fundadores TO anon, authenticated;
-GRANT SELECT, INSERT, UPDATE ON public.postulaciones_prestadores TO anon, authenticated;
+GRANT INSERT ON public.postulaciones_fundadores TO anon, authenticated;
+GRANT SELECT, UPDATE ON public.postulaciones_fundadores TO authenticated;
+GRANT INSERT ON public.postulaciones_prestadores TO anon, authenticated;
+GRANT SELECT, UPDATE ON public.postulaciones_prestadores TO authenticated;
 GRANT USAGE, SELECT ON SEQUENCE public.socios_position_seq TO anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.record_waitlist_email(TEXT, BOOLEAN) TO anon, authenticated;

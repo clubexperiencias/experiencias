@@ -35,6 +35,13 @@ export interface Experience {
   included: string[];
   notIncluded?: string[];
   dates?: string[];
+  dateSlots?: {
+    date: string;
+    capacity?: number;
+    unlimited?: boolean;
+    closed?: boolean;
+    note?: string;
+  }[];
   status?: 'publicada' | 'borrador' | 'oculta';
   publicUrl?: string;
   isExclusiveClub: boolean;

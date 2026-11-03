@@ -1,6 +1,6 @@
 -- ============================================================
--- 003_administracion_y_prestadores.sql
--- EXPERIENCIAS.CLUB • Portal de Prestadores, Sincronización Reactiva y Nóminas Administrativas
+-- 003_providers_and_admin.sql
+-- EXPERIENCIAS.CLUB • Providers Portal, Banking Audit, Storage & Admin Views
 -- ============================================================
 
 -- ============================================================
@@ -39,6 +39,20 @@ CREATE POLICY "Providers can read their own access"
     AND active = true
   );
 
+DROP POLICY IF EXISTS "Providers can update their own profile" ON public.provider_access;
+CREATE POLICY "Providers can update their own profile"
+  ON public.provider_access
+  FOR UPDATE
+  TO authenticated
+  USING (
+    LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+    AND active = true
+  )
+  WITH CHECK (
+    LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+    AND active = true
+  );
+
 DROP POLICY IF EXISTS "Admins can manage provider_access" ON public.provider_access;
 CREATE POLICY "Admins can manage provider_access"
   ON public.provider_access
@@ -59,7 +73,169 @@ CREATE POLICY "Admins can manage provider_access"
     )
   );
 
-GRANT ALL ON public.provider_access TO authenticated;
+REVOKE ALL ON public.provider_access FROM PUBLIC, anon;
+GRANT SELECT, INSERT, UPDATE ON public.provider_access TO authenticated;
+
+-- Validación de campos administrativos: solo admins activos pueden modificar status, active o email
+CREATE OR REPLACE FUNCTION public.check_provider_access_update()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  -- Service role o scripts de migración directos sin JWT son permitidos
+  IF auth.jwt() IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  IF (NEW.status IS DISTINCT FROM OLD.status OR
+      NEW.active IS DISTINCT FROM OLD.active OR
+      LOWER(NEW.email) IS DISTINCT FROM LOWER(OLD.email)) THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM public.admin_access
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+        AND active = true
+    ) THEN
+      RAISE EXCEPTION 'Acceso denegado: solo administradores activos pueden modificar campos administrativos del prestador';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_check_provider_access_update ON public.provider_access;
+CREATE TRIGGER trg_check_provider_access_update
+  BEFORE UPDATE ON public.provider_access
+  FOR EACH ROW
+  EXECUTE FUNCTION public.check_provider_access_update();
+
+-- ============================================================
+-- 1.1 TABLA HISTÓRICA: Historial de Modificaciones de Datos Bancarios
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.provider_banking_history (
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  provider_email      TEXT NOT NULL,
+  old_cbu_alias       TEXT,
+  new_cbu_alias       TEXT NOT NULL,
+  old_name            TEXT,
+  new_name            TEXT NOT NULL,
+  old_cuit_dni        TEXT,
+  new_cuit_dni        TEXT NOT NULL,
+  old_bank_name       TEXT,
+  new_bank_name       TEXT NOT NULL,
+  old_account_holder  TEXT,
+  new_account_holder  TEXT NOT NULL DEFAULT '',
+  changed_by          TEXT NOT NULL DEFAULT 'provider',
+  changed_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.provider_banking_history ADD COLUMN IF NOT EXISTS old_account_holder TEXT;
+ALTER TABLE public.provider_banking_history ADD COLUMN IF NOT EXISTS new_account_holder TEXT NOT NULL DEFAULT '';
+
+CREATE INDEX IF NOT EXISTS idx_provider_banking_history_email ON public.provider_banking_history(provider_email);
+CREATE INDEX IF NOT EXISTS idx_provider_banking_history_date  ON public.provider_banking_history(changed_at DESC);
+
+ALTER TABLE public.provider_banking_history ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Providers can view their own banking history" ON public.provider_banking_history;
+CREATE POLICY "Providers can view their own banking history"
+  ON public.provider_banking_history
+  FOR SELECT
+  TO authenticated
+  USING (
+    LOWER(provider_email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+  );
+
+-- provider_banking_history es de solo inserción automática por trigger (append-only)
+DROP POLICY IF EXISTS "Providers can insert into their own banking history" ON public.provider_banking_history;
+DROP POLICY IF EXISTS "Admins can manage banking history" ON public.provider_banking_history;
+
+DROP POLICY IF EXISTS "Admins can view banking history" ON public.provider_banking_history;
+CREATE POLICY "Admins can view banking history"
+  ON public.provider_banking_history
+  FOR SELECT
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.admin_access
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+        AND active = true
+    )
+  );
+
+REVOKE ALL ON public.provider_banking_history FROM PUBLIC, anon;
+GRANT SELECT ON public.provider_banking_history TO authenticated;
+
+-- Trigger automático para registrar cambios bancarios
+CREATE OR REPLACE FUNCTION public.handle_provider_banking_history()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_is_admin BOOLEAN;
+  v_changed_by TEXT;
+BEGIN
+  IF (OLD.cbu_alias IS DISTINCT FROM NEW.cbu_alias OR
+      OLD.name IS DISTINCT FROM NEW.name OR
+      OLD.cuit_dni IS DISTINCT FROM NEW.cuit_dni OR
+      OLD.bank_name IS DISTINCT FROM NEW.bank_name OR
+      OLD.account_holder IS DISTINCT FROM NEW.account_holder) THEN
+
+    SELECT EXISTS (
+      SELECT 1 FROM public.admin_access
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+        AND active = true
+    ) INTO v_is_admin;
+
+    IF v_is_admin THEN
+      v_changed_by := 'admin';
+    ELSE
+      v_changed_by := 'provider';
+    END IF;
+
+    INSERT INTO public.provider_banking_history (
+      provider_email,
+      old_cbu_alias,
+      new_cbu_alias,
+      old_name,
+      new_name,
+      old_cuit_dni,
+      new_cuit_dni,
+      old_bank_name,
+      new_bank_name,
+      old_account_holder,
+      new_account_holder,
+      changed_by,
+      changed_at
+    ) VALUES (
+      NEW.email,
+      OLD.cbu_alias,
+      NEW.cbu_alias,
+      OLD.name,
+      NEW.name,
+      OLD.cuit_dni,
+      NEW.cuit_dni,
+      OLD.bank_name,
+      NEW.bank_name,
+      OLD.account_holder,
+      NEW.account_holder,
+      v_changed_by,
+      now()
+    );
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_provider_banking_history ON public.provider_access;
+CREATE TRIGGER trg_provider_banking_history
+  AFTER UPDATE ON public.provider_access
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_provider_banking_history();
 
 -- Prestadores iniciales autorizados
 INSERT INTO public.provider_access (
@@ -112,9 +288,7 @@ VALUES
     '+54 9 11 5566 7788'
   )
 ON CONFLICT (email) DO UPDATE
-SET active = EXCLUDED.active,
-    status = EXCLUDED.status,
-    agency = EXCLUDED.agency,
+SET agency = EXCLUDED.agency,
     cbu_alias = EXCLUDED.cbu_alias,
     cuit_dni = EXCLUDED.cuit_dni,
     bank_name = EXCLUDED.bank_name,
@@ -394,6 +568,15 @@ DECLARE
   v_socios JSONB;
   v_waitlist JSONB;
 BEGIN
+  -- Caller authorization: Only active admins
+  IF NOT EXISTS (
+    SELECT 1 FROM public.admin_access
+    WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+      AND active = true
+  ) THEN
+    RAISE EXCEPTION 'Acceso denegado: solo administradores activos pueden acceder a la nómina';
+  END IF;
+
   -- Socios oficiales:
   SELECT COALESCE(
     jsonb_agg(
@@ -480,6 +663,15 @@ AS $$
 DECLARE
   v_subs JSONB;
 BEGIN
+  -- Caller authorization: Only active admins
+  IF NOT EXISTS (
+    SELECT 1 FROM public.admin_access
+    WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+      AND active = true
+  ) THEN
+    RAISE EXCEPTION 'Acceso denegado: solo administradores activos pueden acceder a los comprobantes';
+  END IF;
+
   SELECT COALESCE(
     jsonb_agg(
       jsonb_build_object(
@@ -520,8 +712,11 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.get_admin_all_members() TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.get_admin_all_submissions() TO anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.get_admin_all_members() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.get_admin_all_members() TO authenticated;
+
+REVOKE EXECUTE ON FUNCTION public.get_admin_all_submissions() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.get_admin_all_submissions() TO authenticated;
 
 -- ============================================================
 -- 5. VISTA DE ESTADÍSTICAS PÚBLICAS
@@ -560,6 +755,125 @@ BEGIN
       ADD CONSTRAINT postulaciones_fundadores_status_check
       CHECK (status IN ('en_evaluacion', 'aprobada', 'rechazada', 'dado_de_baja'));
   END IF;
+END;
+$$;
+
+-- ============================================================
+-- 7. STORAGE BUCKET Y POLÍTICAS PARA FOTOS DE EXPERIENCIAS ('experiencias')
+-- ============================================================
+
+-- 7.1 Crear o actualizar el bucket público 'experiencias'
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.tables
+    WHERE table_schema = 'storage' AND table_name = 'buckets'
+  ) THEN
+    INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+    VALUES (
+      'experiencias',
+      'experiencias',
+      true,
+      10485760, -- 10 MB límite por foto
+      ARRAY['image/jpeg', 'image/png', 'image/webp']
+    )
+    ON CONFLICT (id) DO UPDATE
+    SET public = true,
+        file_size_limit = 10485760,
+        allowed_mime_types = ARRAY['image/jpeg', 'image/png', 'image/webp'];
+  END IF;
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE NOTICE 'Aviso: No se pudo configurar storage.buckets automáticamente para experiencias (%).', SQLERRM;
+END;
+$$;
+
+-- 7.2 Políticas RLS en storage.objects para el bucket 'experiencias'
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.tables
+    WHERE table_schema = 'storage' AND table_name = 'objects'
+  ) THEN
+    -- Lectura pública de fotos a cualquier visitante
+    DROP POLICY IF EXISTS "Lectura publica de fotos de experiencias" ON storage.objects;
+    CREATE POLICY "Lectura publica de fotos de experiencias"
+      ON storage.objects
+      FOR SELECT
+      TO public, anon, authenticated
+      USING (bucket_id = 'experiencias');
+
+    -- Subida de fotos de experiencias a prestadores y admins autenticados
+    DROP POLICY IF EXISTS "Subida de fotos de experiencias" ON storage.objects;
+    CREATE POLICY "Subida de fotos de experiencias"
+      ON storage.objects
+      FOR INSERT
+      TO authenticated
+      WITH CHECK (
+        bucket_id = 'experiencias'
+        AND (
+          EXISTS (
+            SELECT 1 FROM public.admin_access
+            WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email') AND active = true
+          )
+          OR EXISTS (
+            SELECT 1 FROM public.provider_access
+            WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email') AND active = true
+          )
+        )
+      );
+
+    -- Actualización o reemplazo de fotos existentes
+    DROP POLICY IF EXISTS "Actualizacion de fotos de experiencias" ON storage.objects;
+    CREATE POLICY "Actualizacion de fotos de experiencias"
+      ON storage.objects
+      FOR UPDATE
+      TO authenticated
+      USING (
+        bucket_id = 'experiencias'
+        AND (
+          EXISTS (
+            SELECT 1 FROM public.admin_access
+            WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email') AND active = true
+          )
+          OR (
+            (auth.uid()::text = owner::text)
+            AND EXISTS (
+              SELECT 1 FROM public.provider_access
+              WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email') AND active = true
+            )
+          )
+        )
+      );
+
+    -- Eliminación de fotos de experiencias
+    DROP POLICY IF EXISTS "Eliminacion de fotos de experiencias" ON storage.objects;
+    CREATE POLICY "Eliminacion de fotos de experiencias"
+      ON storage.objects
+      FOR DELETE
+      TO authenticated
+      USING (
+        bucket_id = 'experiencias'
+        AND (
+          EXISTS (
+            SELECT 1 FROM public.admin_access
+            WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email') AND active = true
+          )
+          OR (
+            (auth.uid()::text = owner::text)
+            AND EXISTS (
+              SELECT 1 FROM public.provider_access
+              WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email') AND active = true
+            )
+          )
+        )
+      );
+  END IF;
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE NOTICE 'Aviso: No se pudieron crear políticas en storage.objects para experiencias (%).', SQLERRM;
 END;
 $$;
 

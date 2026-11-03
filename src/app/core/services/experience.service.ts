@@ -358,6 +358,10 @@ export class ExperienceService {
           payload['album_photos'] = merged.albumPhotos;
         }
 
+        if (merged.dateSlots !== undefined) {
+          payload['date_slots'] = merged.dateSlots;
+        }
+
         const { data, error } = await this.supabase
           .from('experiencias')
           .update(payload as any)
@@ -646,6 +650,7 @@ export class ExperienceService {
                 : isKayak
                   ? KAYAK_DEFAULT_EXPERIENCE.dates
                   : [],
+            dateSlots: Array.isArray(exp.date_slots) ? exp.date_slots : undefined,
             status: exp.status || 'publicada',
             publicUrl: exp.public_url || `https://experiencias.club/experiencias/${exp.slug}`,
             isExclusiveClub: true,

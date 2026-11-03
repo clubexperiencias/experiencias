@@ -62,6 +62,13 @@ export class ExperienceDetailComponent {
     return e ? `/experiencias/${e.slug}/pago` : '/experiencias';
   });
 
+  readonly upcomingDates = computed<string[]>(() => {
+    const e = this.exp();
+    if (!e || !e.dates) return [];
+    const today = new Date().toISOString().split('T')[0];
+    return e.dates.filter((d) => d >= today).sort();
+  });
+
   readonly itinerarySteps = computed<{ time: string; title: string; description: string }[]>(() => {
     const e = this.exp();
     if (!e) return [];

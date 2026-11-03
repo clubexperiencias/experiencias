@@ -1,6 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import {
   ExperienceAlbumPhoto,
+  ExperienceDateSlot,
   MAX_PARTICIPANTS_PER_BOOKING,
   NewProviderExperience,
   NewTransferSubmission,
@@ -156,6 +157,7 @@ export function mapLiveExperienceToProvider(live: Experience): ProviderExperienc
     priceUsd: live.priceUsd,
     capacityPerDate: live.maxSpotsPerGroup,
     dates: live.dates || [],
+    dateSlots: live.dateSlots || [],
     status: live.status,
     coverImage: live.coverImage,
     galleryImages: live.galleryImages,
@@ -524,10 +526,17 @@ export class ProviderStoreService {
     }
 
     const existing = this._providers().find((provider) => provider.email.toLowerCase() === email);
+    const userMeta = data.user?.user_metadata || {};
+    const googleAvatar =
+      userMeta['avatar_url'] ||
+      userMeta['picture'] ||
+      (data.user as any)?.identities?.[0]?.identity_data?.['avatar_url'] ||
+      (data.user as any)?.identities?.[0]?.identity_data?.['picture'] ||
+      '';
     const provider: ProviderUser = {
       id: existing?.id ?? `provider-${email.replace(/[^a-z0-9]+/g, '-')}`,
       email,
-      name: access.account_holder || access.name || existing?.name || email,
+      name: access.account_holder || access.name || userMeta['full_name'] || userMeta['name'] || existing?.name || email,
       agency: access.agency || existing?.agency || 'Prestador EXPERIENCIAS.CLUB',
       phone: existing?.phone || '',
       cuitDni: access.cuit_dni || existing?.cuitDni || '',
@@ -536,6 +545,7 @@ export class ProviderStoreService {
       verified: true,
       status: 'aprobado',
       role: 'prestador',
+      avatar: googleAvatar || existing?.avatar || '/assets/aistudio/patricio.jpg',
       joinedAt: existing?.joinedAt ?? new Date().toISOString(),
     };
 
@@ -743,19 +753,60 @@ export class ProviderStoreService {
     this.saveSession(null);
   }
 
-  updateProfile(updates: Partial<ProviderUser>): void {
+  async updateProfile(updates: Partial<ProviderUser>): Promise<{ success: boolean; message?: string }> {
     const current = this._currentProvider();
-    if (!current) return;
-    const updated = { ...current, ...updates };
+    if (!current) return { success: false, message: 'No hay sesión de prestador activa.' };
+
+    const email = current.email.trim().toLowerCase();
+    const updated: ProviderUser = { ...current, ...updates };
+
+    if (isSupabaseConfigured()) {
+      try {
+        const payload: Record<string, any> = {
+          updated_at: new Date().toISOString(),
+        };
+        if (updates.name !== undefined) {
+          payload['name'] = updates.name.trim();
+          payload['account_holder'] = updates.name.trim();
+        }
+        if (updates.agency !== undefined) payload['agency'] = updates.agency.trim();
+        if (updates.phone !== undefined) payload['phone'] = updates.phone.trim();
+        if (updates.cuitDni !== undefined) payload['cuit_dni'] = updates.cuitDni.trim();
+        if (updates.cbuAlias !== undefined) payload['cbu_alias'] = updates.cbuAlias.trim();
+        if (updates.bankName !== undefined) payload['bank_name'] = updates.bankName.trim();
+
+        const { error } = await (this.supabase.from('provider_access') as any)
+          .update(payload)
+          .eq('email', email);
+
+        if (error) {
+          console.warn('[ProviderStore] Error actualizando provider_access:', error);
+          return { success: false, message: 'No se pudieron guardar los cambios en la base de datos.' };
+        }
+      } catch (err: any) {
+        console.warn('[ProviderStore] Error de conexión actualizando perfil:', err);
+        return { success: false, message: 'Error de conexión con el servidor.' };
+      }
+    }
+
     this._currentProvider.set(updated);
     this._providers.update((list) => list.map((p) => (p.id === current.id ? updated : p)));
     this.saveSession(updated);
     this.saveProviders();
+    return { success: true };
   }
 
   // ==========================================
   // Experience Management & Moderation
   // ==========================================
+  getProviderById(id: string): ProviderUser | undefined {
+    return this._providers().find((p) => p.id === id);
+  }
+
+  getProviderByEmail(email: string): ProviderUser | undefined {
+    return this._providers().find((p) => p.email.toLowerCase() === email.trim().toLowerCase());
+  }
+
   getExperienceById(id: string): ProviderExperience | undefined {
     return this._experiences().find((e) => e.id === id);
   }
@@ -770,6 +821,21 @@ export class ProviderStoreService {
     return undefined;
   }
 
+  getDateSlot(experience: ProviderExperience, date: string): ExperienceDateSlot | undefined {
+    return experience.dateSlots?.find((s) => s.date === date);
+  }
+
+  capacityForDate(experience: ProviderExperience, date: string): number {
+    const slot = this.getDateSlot(experience, date);
+    if (slot?.unlimited) return 999;
+    return slot?.capacity ?? experience.capacityPerDate ?? 12;
+  }
+
+  isDateClosed(experience: ProviderExperience, date: string): boolean {
+    const slot = this.getDateSlot(experience, date);
+    return Boolean(slot?.closed);
+  }
+
   reservedSeats(experienceId: string, date: string): number {
     return this._submissions()
       .filter((s) => s.experienceId === experienceId && s.date === date && s.status !== 'rechazado')
@@ -777,7 +843,20 @@ export class ProviderStoreService {
   }
 
   availableSeats(experience: ProviderExperience, date: string): number {
-    return Math.max(0, experience.capacityPerDate - this.reservedSeats(experience.id, date));
+    if (this.isDateClosed(experience, date)) return 0;
+    const capacity = this.capacityForDate(experience, date);
+    if (capacity >= 999) return 999;
+    return Math.max(0, capacity - this.reservedSeats(experience.id, date));
+  }
+
+  /**
+   * Retorna sólo las fechas vigentes (a partir de hoy) que no estén cerradas.
+   */
+  getUpcomingDates(experience: ProviderExperience): string[] {
+    const today = new Date().toISOString().split('T')[0];
+    return (experience.dates || [])
+      .filter((d) => d >= today && !this.isDateClosed(experience, d))
+      .sort();
   }
 
   submissionsFor(experienceId: string): TransferSubmission[] {
@@ -868,28 +947,131 @@ export class ProviderStoreService {
     return updatedExperience;
   }
 
-  addDateToExperience(experienceId: string, date: string): boolean {
+  addDateToExperience(
+    experienceId: string,
+    date: string,
+    options?: { capacity?: number; unlimited?: boolean; note?: string },
+  ): boolean {
     const exp = this.getExperienceById(experienceId);
     if (!exp) return false;
     const currentDates = exp.dates || [];
     if (currentDates.includes(date)) return false;
     const newDates = [...currentDates, date].sort();
 
-    const prevExperiences = this._experiences();
-    this.updateExperience(experienceId, { dates: newDates });
-
-    // Sincronizar con el catálogo público en ExperienceService
     const expMatch =
       this.expService.getExperienceById(experienceId) ||
       this.expService.getExperienceBySlug(exp.slug);
+    const baseSlots = expMatch?.dateSlots ?? exp.dateSlots ?? [];
+    const currentSlots = [...baseSlots];
+    if (options?.capacity || options?.unlimited || options?.note) {
+      const idx = currentSlots.findIndex((s) => s.date === date);
+      const newSlot: ExperienceDateSlot = {
+        date,
+        capacity: options.capacity,
+        unlimited: options.unlimited,
+        note: options.note,
+        closed: false,
+      };
+      if (idx >= 0) {
+        currentSlots[idx] = { ...currentSlots[idx], ...newSlot };
+      } else {
+        currentSlots.push(newSlot);
+      }
+    }
+
+    const prevExperiences = this._experiences();
+    this.updateExperience(experienceId, { dates: newDates, dateSlots: currentSlots });
+
+    // Sincronizar con el catálogo público en ExperienceService
     if (expMatch) {
       void this.expService
         .updateExperience({
           id: expMatch.id,
           dates: newDates,
+          dateSlots: currentSlots,
         })
         .catch((err) => {
           console.warn('[ProviderStoreService] Error sincronizando fecha con ExperienceService:', err);
+          this._experiences.set(prevExperiences);
+          this.saveExperiences();
+        });
+    }
+
+    return true;
+  }
+
+  toggleDateStatus(experienceId: string, date: string): boolean {
+    const exp = this.getExperienceById(experienceId);
+    if (!exp) return false;
+    const expMatch =
+      this.expService.getExperienceById(experienceId) ||
+      this.expService.getExperienceBySlug(exp.slug);
+    const baseSlots = expMatch?.dateSlots ?? exp.dateSlots ?? [];
+    const currentSlots = [...baseSlots];
+    const existingIndex = currentSlots.findIndex((s) => s.date === date);
+
+    if (existingIndex >= 0) {
+      currentSlots[existingIndex] = {
+        ...currentSlots[existingIndex],
+        closed: !currentSlots[existingIndex].closed,
+      };
+    } else {
+      currentSlots.push({
+        date,
+        closed: true,
+      });
+    }
+
+    const prevExperiences = this._experiences();
+    this.updateExperience(experienceId, { dateSlots: currentSlots });
+
+    if (expMatch) {
+      void this.expService
+        .updateExperience({
+          id: expMatch.id,
+          dateSlots: currentSlots,
+        })
+        .catch((err) => {
+          console.warn('[ProviderStoreService] Error sincronizando slot con ExperienceService:', err);
+          this._experiences.set(prevExperiences);
+          this.saveExperiences();
+        });
+    }
+
+    return true;
+  }
+
+  updateDateSlot(
+    experienceId: string,
+    date: string,
+    slotData: Partial<ExperienceDateSlot>,
+  ): boolean {
+    const exp = this.getExperienceById(experienceId);
+    if (!exp) return false;
+    const expMatch =
+      this.expService.getExperienceById(experienceId) ||
+      this.expService.getExperienceBySlug(exp.slug);
+    const baseSlots = expMatch?.dateSlots ?? exp.dateSlots ?? [];
+    const currentSlots = [...baseSlots];
+    const idx = currentSlots.findIndex((s) => s.date === date);
+
+    if (idx >= 0) {
+      currentSlots[idx] = { ...currentSlots[idx], ...slotData };
+    } else {
+      currentSlots.push({ date, ...slotData });
+    }
+
+    const prevExperiences = this._experiences();
+    this.updateExperience(experienceId, { dateSlots: currentSlots });
+
+    if (expMatch) {
+      void this.expService
+        .updateExperience({
+          id: expMatch.id,
+          dateSlots: currentSlots,
+        })
+        .catch((err) => {
+          console.warn('[ProviderStoreService] Error sincronizando slot con ExperienceService:', err);
           this._experiences.set(prevExperiences);
           this.saveExperiences();
         });
@@ -904,20 +1086,23 @@ export class ProviderStoreService {
     if (this.reservedSeats(experienceId, date) > 0) {
       return false;
     }
-    const newDates = (exp.dates || []).filter((d) => d !== date);
-
-    const prevExperiences = this._experiences();
-    this.updateExperience(experienceId, { dates: newDates });
-
-    // Sincronizar con el catálogo público en ExperienceService
     const expMatch =
       this.expService.getExperienceById(experienceId) ||
       this.expService.getExperienceBySlug(exp.slug);
+    const baseSlots = expMatch?.dateSlots ?? exp.dateSlots ?? [];
+    const newDates = (exp.dates || []).filter((d) => d !== date);
+    const newSlots = baseSlots.filter((s) => s.date !== date);
+
+    const prevExperiences = this._experiences();
+    this.updateExperience(experienceId, { dates: newDates, dateSlots: newSlots });
+
+    // Sincronizar con el catálogo público en ExperienceService
     if (expMatch) {
       void this.expService
         .updateExperience({
           id: expMatch.id,
           dates: newDates,
+          dateSlots: newSlots,
         })
         .catch((err) => {
           console.warn('[ProviderStoreService] Error sincronizando eliminación con ExperienceService:', err);
@@ -1169,6 +1354,9 @@ export class ProviderStoreService {
     if (!experience.dates.includes(input.date)) {
       throw new Error('La fecha elegida no está disponible.');
     }
+    if (this.isDateClosed(experience, input.date)) {
+      throw new Error('La fecha elegida se encuentra cerrada para nuevas reservas.');
+    }
     if (
       !Number.isInteger(input.participants) ||
       input.participants < 1 ||
@@ -1234,6 +1422,12 @@ export class ProviderStoreService {
           );
         }
 
+        if (rpcPayload?.status === 'date_closed') {
+          throw new Error('La fecha elegida se encuentra cerrada para nuevas reservas.');
+        }
+        if (rpcPayload?.status === 'invalid_amount') {
+          throw new Error('El importe transferido no coincide con el total esperado.');
+        }
         if (rpcPayload?.status === 'no_seats_available') {
           throw new Error('No quedan cupos suficientes para esa fecha.');
         }
@@ -1244,7 +1438,9 @@ export class ProviderStoreService {
         if (
           err?.message?.includes('cupos') ||
           err?.message?.includes('válidos') ||
-          err?.message?.includes('servidor')
+          err?.message?.includes('servidor') ||
+          err?.message?.includes('cerrada') ||
+          err?.message?.includes('importe')
         ) {
           throw err;
         }
@@ -1295,8 +1491,10 @@ export class ProviderStoreService {
       );
     }
     this.recordMemberActivity(experience, submission);
-    this.emails.notifyReceiptReceived(submission);
-    this.emails.notifyProviderNewReceipt(submission, PROVIDER_CONTACT_EMAIL);
+    const provider = experience.providerId ? this.getProviderById(experience.providerId) : undefined;
+    const targetProviderEmail = provider?.email || PROVIDER_CONTACT_EMAIL;
+    this.emails.notifyReceiptReceived(submission, targetProviderEmail);
+    this.emails.notifyProviderNewReceipt(submission, targetProviderEmail);
     return submission;
   }
 
