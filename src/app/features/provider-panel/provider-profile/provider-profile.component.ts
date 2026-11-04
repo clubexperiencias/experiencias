@@ -3,6 +3,7 @@ import { Router, RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { ProviderStoreService } from '../../../core/services/provider-store.service';
+import { StorageService } from '../../../core/services/storage.service';
 
 @Component({
   selector: 'app-provider-profile',
@@ -22,17 +23,6 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
         </div>
       </div>
 
-      <!-- Alerta informativa de auditoría bancaria -->
-      <aside class="audit-notice-card" aria-label="Aviso de seguridad bancaria">
-        <mat-icon class="audit-icon">verified_user</mat-icon>
-        <div class="audit-text">
-          <strong class="audit-title">Registro Seguro de Datos Bancarios</strong>
-          <p class="audit-desc">
-            Podés actualizar tus datos de cobro cuando lo necesites. Cada modificación queda registrada con fecha y hora de auditoría para asegurar la trazabilidad y la correcta liquidación de tus servicios.
-          </p>
-        </div>
-      </aside>
-
       <div class="profile-card">
         <form [formGroup]="form" (ngSubmit)="onSave()" class="profile-form">
           <div class="form-section">
@@ -44,7 +34,7 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
             </div>
 
             <div class="form-grid">
-              <div class="form-group full-col">
+              <div class="form-group">
                 <label class="form-label">CBU o Alias de Destino <span class="req-star">*</span></label>
                 <input
                   type="text"
@@ -54,6 +44,17 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
                   required
                 />
                 <span class="field-hint">Alias o CBU de 22 dígitos exactos</span>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Entidad Bancaria o Billetera <span class="req-star">*</span></label>
+                <input
+                  type="text"
+                  formControlName="bankName"
+                  class="form-input"
+                  placeholder="Ej. Banco Nación / Mercado Pago"
+                  required
+                />
               </div>
 
               <div class="form-group">
@@ -77,16 +78,15 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
                   required
                 />
               </div>
+            </div>
 
-              <div class="form-group full-col">
-                <label class="form-label">Entidad Bancaria o Billetera <span class="req-star">*</span></label>
-                <input
-                  type="text"
-                  formControlName="bankName"
-                  class="form-input"
-                  placeholder="Ej. Banco Nación / Mercado Pago"
-                  required
-                />
+            <!-- Alerta informativa de auditoría bancaria -->
+            <div class="audit-notice-card" aria-label="Aviso de seguridad bancaria">
+              <div class="audit-text">
+                <strong class="audit-title">Registro Seguro de Datos Bancarios</strong>
+                <p class="audit-desc">
+                  Podés actualizar tus datos de cobro cuando lo necesites. Cada modificación queda registrada con fecha y hora de auditoría para asegurar la trazabilidad y la correcta liquidación de tus servicios.
+                </p>
               </div>
             </div>
           </div>
@@ -138,8 +138,9 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                   <label class="form-label">Nombre de Usuario / Enlace Público (Slug)</label>
                   <a
-                    [routerLink]="['/prestadores', form.get('slug')?.value || currentSlug()]"
+                    [href]="getPublicProfileUrl(form.get('slug')?.value || currentSlug())"
                     target="_blank"
+                    rel="noopener noreferrer"
                     class="live-profile-pill"
                     title="Abrir perfil público en una nueva pestaña"
                   >
@@ -170,26 +171,94 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
                 >
               </div>
 
-              <div class="form-group">
-                <label class="form-label">Foto de Perfil / Logo (URL)</label>
-                <input
-                  type="text"
-                  formControlName="avatar"
-                  class="form-input"
-                  placeholder="Ej. /assets/aistudio/patricio.jpg o https://..."
-                />
-                <span class="field-hint">Imagen redonda o isotipo del prestador</span>
+              <div class="form-group media-field-group">
+                <label class="form-label" for="profile-avatar-input">Foto de Perfil / Logo</label>
+                <div class="media-input-wrapper">
+                  @if (form.get('avatar')?.value) {
+                    <div class="media-thumb-preview avatar-thumb" title="Vista previa de avatar">
+                      <img [src]="form.get('avatar')?.value" alt="Preview Avatar" />
+                    </div>
+                  }
+                  <input
+                    id="profile-avatar-input"
+                    type="text"
+                    formControlName="avatar"
+                    class="form-input"
+                    placeholder="URL de imagen o subí un archivo..."
+                  />
+                  <label class="btn-file-upload" [class.is-loading]="isUploadingAvatar()" title="Elegir y subir imagen a Supabase Storage">
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      class="sr-only"
+                      (change)="onFileSelected($event, 'avatar')"
+                      [disabled]="isUploadingAvatar()"
+                    />
+                    <mat-icon class="upload-icon">{{ isUploadingAvatar() ? 'hourglass_empty' : 'cloud_upload' }}</mat-icon>
+                    <span>{{ isUploadingAvatar() ? 'Subiendo...' : 'Subir imagen' }}</span>
+                  </label>
+                </div>
+                @if (isExternalUrl(form.get('avatar')?.value)) {
+                  <button
+                    type="button"
+                    class="btn-migrate-url"
+                    (click)="uploadFromUrl('avatar')"
+                    [disabled]="isUploadingAvatar()"
+                    title="Subir esta imagen externa al bucket de Supabase Storage"
+                  >
+                    <mat-icon class="migrate-icon">cloud_sync</mat-icon>
+                    <span>Subir esta imagen a Supabase Storage</span>
+                  </button>
+                }
+                @if (uploadAvatarError()) {
+                  <span class="field-error-text">{{ uploadAvatarError() }}</span>
+                }
+                <span class="field-hint">Imagen redonda o isotipo del prestador. Se guarda en Supabase Storage.</span>
               </div>
 
-              <div class="form-group">
-                <label class="form-label">Foto de Portada de la Agencia (URL)</label>
-                <input
-                  type="text"
-                  formControlName="coverImage"
-                  class="form-input"
-                  placeholder="Ej. /assets/images/kayak-club-de-experiencias.jpg o https://..."
-                />
-                <span class="field-hint">Banner panorámico superior de tu perfil público</span>
+              <div class="form-group media-field-group">
+                <label class="form-label" for="profile-cover-input">Foto de Portada de la Agencia</label>
+                <div class="media-input-wrapper">
+                  @if (form.get('coverImage')?.value) {
+                    <div class="media-thumb-preview cover-thumb" title="Vista previa de portada">
+                      <img [src]="form.get('coverImage')?.value" alt="Preview Portada" />
+                    </div>
+                  }
+                  <input
+                    id="profile-cover-input"
+                    type="text"
+                    formControlName="coverImage"
+                    class="form-input"
+                    placeholder="URL de imagen o subí un archivo..."
+                  />
+                  <label class="btn-file-upload" [class.is-loading]="isUploadingCover()" title="Elegir y subir imagen a Supabase Storage">
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      class="sr-only"
+                      (change)="onFileSelected($event, 'coverImage')"
+                      [disabled]="isUploadingCover()"
+                    />
+                    <mat-icon class="upload-icon">{{ isUploadingCover() ? 'hourglass_empty' : 'cloud_upload' }}</mat-icon>
+                    <span>{{ isUploadingCover() ? 'Subiendo...' : 'Subir imagen' }}</span>
+                  </label>
+                </div>
+                @if (isExternalUrl(form.get('coverImage')?.value)) {
+                  <button
+                    type="button"
+                    class="btn-migrate-url"
+                    (click)="uploadFromUrl('coverImage')"
+                    [disabled]="isUploadingCover()"
+                    title="Subir esta imagen externa al bucket de Supabase Storage"
+                  >
+                    <mat-icon class="migrate-icon">cloud_sync</mat-icon>
+                    <span>Subir esta imagen a Supabase Storage</span>
+                  </button>
+                }
+                @if (uploadCoverError()) {
+                  <span class="field-error-text">{{ uploadCoverError() }}</span>
+                }
+                <span class="field-hint">Banner panorámico superior de tu perfil público. Se guarda en Supabase Storage.</span>
               </div>
 
               <div class="form-group">
@@ -249,7 +318,7 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
             <button
               type="submit"
               class="cta-save-btn"
-              [disabled]="form.invalid || isSaving()"
+              [disabled]="form.invalid || isSaving() || isUploadingAvatar() || isUploadingCover()"
             >
               @if (isSaving()) {
                 <span>Guardando...</span>
@@ -341,20 +410,12 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
       .audit-notice-card {
         display: flex;
         align-items: flex-start;
-        gap: 1rem;
         padding: 1.15rem 1.35rem;
         background: rgba(13, 30, 68, 0.55);
         border: 1px solid rgba(128, 179, 255, 0.35);
         border-radius: 2px;
         backdrop-filter: blur(10px);
-      }
-      .audit-icon {
-        color: #80b3ff;
-        font-size: 1.5rem;
-        width: 1.5rem;
-        height: 1.5rem;
-        flex-shrink: 0;
-        margin-top: 0.15rem;
+        margin-top: 1.25rem;
       }
       .audit-text {
         display: flex;
@@ -478,6 +539,115 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
         min-height: 80px;
         line-height: 1.5;
       }
+      .media-field-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+      }
+      .media-input-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .media-input-wrapper .form-input {
+        flex: 1;
+        min-width: 0;
+      }
+      .media-thumb-preview {
+        width: 38px;
+        height: 38px;
+        flex-shrink: 0;
+        border: 1px solid rgba(128, 179, 255, 0.4);
+        background: #070d18;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .media-thumb-preview.avatar-thumb {
+        border-radius: 50%;
+      }
+      .media-thumb-preview.cover-thumb {
+        border-radius: 2px;
+      }
+      .media-thumb-preview img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .btn-file-upload {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4rem;
+        height: 40px;
+        padding: 0 0.9rem;
+        background: rgba(128, 179, 255, 0.15);
+        border: 1px solid rgba(128, 179, 255, 0.4);
+        border-radius: 2px;
+        color: #80b3ff;
+        font-size: 0.8rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+        user-select: none;
+        flex-shrink: 0;
+      }
+      .btn-file-upload:hover {
+        background: rgba(128, 179, 255, 0.28);
+        border-color: #80b3ff;
+        color: #ffffff;
+      }
+      .btn-file-upload.is-loading {
+        opacity: 0.65;
+        cursor: not-allowed;
+      }
+      .upload-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+      }
+      .btn-migrate-url {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.35rem 0.65rem;
+        background: rgba(128, 179, 255, 0.08);
+        border: 1px dashed rgba(128, 179, 255, 0.5);
+        border-radius: 2px;
+        color: #80b3ff;
+        font-size: 0.76rem;
+        font-weight: 600;
+        cursor: pointer;
+        width: fit-content;
+        transition: all 0.2s ease;
+      }
+      .btn-migrate-url:hover {
+        background: rgba(128, 179, 255, 0.2);
+        border-color: #80b3ff;
+        color: #ffffff;
+      }
+      .btn-migrate-url .migrate-icon {
+        font-size: 15px;
+        width: 15px;
+        height: 15px;
+      }
+      .field-error-text {
+        color: #ff8080;
+        font-size: 0.78rem;
+      }
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
       .alert-success {
         display: flex;
         align-items: center;
@@ -587,10 +757,15 @@ export class ProviderProfileComponent {
   private readonly fb = inject(FormBuilder);
   private readonly router = inject(Router);
   readonly store = inject(ProviderStoreService);
+  readonly storageService = inject(StorageService);
 
   readonly savedSuccess = signal(false);
   readonly errorMessage = signal<string | null>(null);
   readonly isSaving = signal(false);
+  readonly isUploadingAvatar = signal(false);
+  readonly isUploadingCover = signal(false);
+  readonly uploadAvatarError = signal<string | null>(null);
+  readonly uploadCoverError = signal<string | null>(null);
 
   readonly currentSlug = computed(() => {
     const p = this.store.currentProvider();
@@ -644,7 +819,7 @@ export class ProviderProfileComponent {
   }
 
   async onSave(): Promise<void> {
-    if (this.form.invalid) return;
+    if (this.form.invalid || this.isSaving() || this.isUploadingAvatar() || this.isUploadingCover()) return;
 
     this.isSaving.set(true);
     this.errorMessage.set(null);
@@ -668,6 +843,113 @@ export class ProviderProfileComponent {
       setTimeout(() => this.savedSuccess.set(false), 5000);
     } else {
       this.errorMessage.set(result.message || 'Error al guardar los cambios.');
+    }
+  }
+
+  getPublicProfileUrl(slug?: string): string {
+    const raw = (slug || this.currentSlug() || '').trim();
+    const clean =
+      raw
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9-]+/g, '-')
+        .replace(/(^-|-$)+/g, '') || this.currentSlug();
+
+    if (
+      typeof window !== 'undefined' &&
+      (window.location.hostname === 'localhost' || window.location.hostname.includes('127.0.0.1'))
+    ) {
+      return `/prestadores/${clean}`;
+    }
+    return `https://experiencias.club/prestadores/${clean}`;
+  }
+
+  isExternalUrl(url?: string): boolean {
+    if (!url) return false;
+    const clean = url.trim().toLowerCase();
+    return (clean.startsWith('http://') || clean.startsWith('https://')) && !clean.includes('supabase.co');
+  }
+
+  async onFileSelected(event: Event, field: 'avatar' | 'coverImage'): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      if (field === 'avatar') {
+        this.uploadAvatarError.set('El archivo seleccionado debe ser una imagen válida (JPG, PNG, WEBP o SVG).');
+      } else {
+        this.uploadCoverError.set('El archivo seleccionado debe ser una imagen válida (JPG, PNG, WEBP).');
+      }
+      input.value = '';
+      return;
+    }
+
+    if (file.size > 8 * 1024 * 1024) {
+      if (field === 'avatar') {
+        this.uploadAvatarError.set('La imagen de perfil no debe superar los 8 MB.');
+      } else {
+        this.uploadCoverError.set('La imagen de portada no debe superar los 8 MB.');
+      }
+      input.value = '';
+      return;
+    }
+
+    const isAvatar = field === 'avatar';
+    const setLoading = isAvatar ? this.isUploadingAvatar : this.isUploadingCover;
+    const setError = isAvatar ? this.uploadAvatarError : this.uploadCoverError;
+
+    setLoading.set(true);
+    setError.set(null);
+
+    try {
+      const res = await this.storageService.uploadFile(file, isAvatar ? 'AVATAR' : 'PORTADA');
+      if (res?.url) {
+        this.form.patchValue({ [field]: res.url });
+        this.form.markAsDirty();
+      }
+    } catch (err: any) {
+      console.warn('[ProviderProfile] Error subiendo imagen a Supabase Storage:', err);
+      setError.set(err?.message || 'Error al subir la imagen a Supabase Storage. Reintentá.');
+    } finally {
+      setLoading.set(false);
+      input.value = '';
+    }
+  }
+
+  async uploadFromUrl(field: 'avatar' | 'coverImage'): Promise<void> {
+    const currentUrl = this.form.get(field)?.value?.trim();
+    if (!currentUrl) return;
+
+    const isAvatar = field === 'avatar';
+    const setLoading = isAvatar ? this.isUploadingAvatar : this.isUploadingCover;
+    const setError = isAvatar ? this.uploadAvatarError : this.uploadCoverError;
+
+    setLoading.set(true);
+    setError.set(null);
+
+    try {
+      const res = await fetch(currentUrl);
+      if (!res.ok) throw new Error('No se pudo acceder a la imagen remota.');
+      const blob = await res.blob();
+      const mime = (blob.type || '').toLowerCase();
+      const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (!allowedMimes.includes(mime)) {
+        throw new Error('El archivo remoto no es una imagen válida (debe ser JPG, PNG o WebP).');
+      }
+      const ext = mime.split('/')[1] === 'jpeg' ? 'jpg' : (mime.split('/')[1] || 'jpg');
+      const file = new File([blob], `${field}-${Date.now()}.${ext}`, { type: mime });
+      const uploadRes = await this.storageService.uploadFile(file, isAvatar ? 'AVATAR' : 'PORTADA');
+      if (uploadRes?.url) {
+        this.form.patchValue({ [field]: uploadRes.url });
+        this.form.markAsDirty();
+      }
+    } catch (err: any) {
+      console.warn('[ProviderProfile] Error migrando URL externa a Supabase Storage:', err);
+      setError.set('No se pudo transferir directamente la URL externa. Por favor descargala y subila con el botón "Subir imagen".');
+    } finally {
+      setLoading.set(false);
     }
   }
 

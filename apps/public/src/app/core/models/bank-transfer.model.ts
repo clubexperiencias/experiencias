@@ -72,6 +72,9 @@ export interface ProviderExperience {
   providerEmail?: string;
   providerSlug?: string;
   providerPhone?: string;
+  providerCbuAlias?: string;
+  providerCuitDni?: string;
+  providerBankName?: string;
   coverImage?: string;
   albumPhotos?: ExperienceAlbumPhoto[];
   createdAt: string;

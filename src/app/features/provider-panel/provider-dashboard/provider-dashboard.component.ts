@@ -94,67 +94,49 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         </div>
       </section>
 
-      <!-- Box Perfil Bancario / Invitación a completar datos de prestador -->
-      @if (isBankingComplete()) {
-        <section class="dash-card full-width-card provider-banking-card">
-          <div class="banking-card-head">
-            <div class="banking-head-info">
-              <span class="banking-kicker">DATOS DE LIQUIDACIÓN DE PAGOS</span>
-              <h2 class="card-title">Cuenta Bancaria Registrada para Liquidaciones</h2>
-            </div>
-            <a routerLink="../perfil" class="btn-edit-banking-pill" title="Editar datos bancarios">
-              <mat-icon>edit</mat-icon>
-              <span>Editar Datos</span>
-            </a>
+      <!-- Box Perfil Bancario -->
+      <section class="dash-card full-width-card provider-banking-card">
+        <div class="banking-card-head">
+          <div class="banking-head-info">
+            <span class="banking-kicker">DATOS DE LIQUIDACIÓN DE PAGOS</span>
+            <h2 class="card-title">Cuenta Bancaria Registrada para Liquidaciones</h2>
           </div>
+          <a
+            routerLink="../perfil"
+            class="btn-edit-banking-pill"
+            [title]="isBankingComplete() ? 'Editar datos bancarios' : 'Completar datos bancarios'"
+          >
+            <mat-icon>{{ isBankingComplete() ? 'edit' : 'add_circle_outline' }}</mat-icon>
+            <span>{{ isBankingComplete() ? 'Editar Datos' : 'Completar Datos' }}</span>
+          </a>
+        </div>
 
-          <div class="banking-details-grid">
-            <div class="banking-col">
-              <span class="banking-col-lbl">CBU / CVU o ALIAS</span>
-              <strong class="banking-col-val text-blue">{{ provider()?.cbuAlias || 'Sin especificar' }}</strong>
-            </div>
-            <div class="banking-col">
-              <span class="banking-col-lbl">NOMBRE / TITULAR</span>
-              <strong class="banking-col-val">{{ provider()?.name || 'Sin especificar' }}</strong>
-            </div>
-            <div class="banking-col">
-              <span class="banking-col-lbl">CUIT / CUIL</span>
-              <strong class="banking-col-val">{{ provider()?.cuitDni || 'Sin especificar' }}</strong>
-            </div>
-            <div class="banking-col">
-              <span class="banking-col-lbl">ENTIDAD</span>
-              <strong class="banking-col-val">{{ provider()?.bankName || 'Sin especificar' }}</strong>
-            </div>
+        <div class="banking-details-grid">
+          <div class="banking-col">
+            <span class="banking-col-lbl">CBU / CVU o ALIAS</span>
+            <strong class="banking-col-val text-blue">{{ provider()?.cbuAlias || '-' }}</strong>
           </div>
-        </section>
-      } @else {
-        <section class="dash-card full-width-card provider-prompt-banner">
-          <div class="prompt-banner-main">
-            <div class="prompt-banner-icon">
-              <mat-icon>account_balance_wallet</mat-icon>
-            </div>
-            <div class="prompt-banner-text">
-              <span class="prompt-banner-kicker">CONFIGURACIÓN PENDIENTE</span>
-              <h3 class="prompt-banner-title">Completá tus datos de prestador</h3>
-              <p class="prompt-banner-desc">
-                Ingresá tus datos de liquidación (CBU, Alias, CUIT y Banco) para que el club pueda transferirte los cobros recaudados de tus experiencias.
-              </p>
-            </div>
+          <div class="banking-col">
+            <span class="banking-col-lbl">NOMBRE / TITULAR</span>
+            <strong class="banking-col-val">{{ provider()?.name || '-' }}</strong>
           </div>
-          <div class="prompt-banner-action">
-            <a routerLink="../perfil" class="prompt-banner-btn">
-              <span>Completar Perfil</span>
-            </a>
+          <div class="banking-col">
+            <span class="banking-col-lbl">CUIT / CUIL</span>
+            <strong class="banking-col-val">{{ provider()?.cuitDni || '-' }}</strong>
           </div>
-        </section>
-      }
+          <div class="banking-col">
+            <span class="banking-col-lbl">ENTIDAD</span>
+            <strong class="banking-col-val">{{ provider()?.bankName || '-' }}</strong>
+          </div>
+        </div>
+      </section>
 
       <!-- Experiencias Activas - Box de ancho completo que ocupa las dos columnas -->
       <section class="dash-card full-width-card active-experiences-section">
         <div class="card-head">
           <h2 class="card-title">Experiencias Activas</h2>
           <a routerLink="../experiencias" class="view-all-link" title="Ver todas tus experiencias">
-            <span>Ver todas tus experiencias</span>
+            <span>Ver todas tus experiencias ({{ store.providerExperiences().length }})</span>
           </a>
         </div>
 
@@ -299,7 +281,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         <div class="card-head">
           <h2 class="card-title">Últimos Pagos de Socios del Club</h2>
           <a routerLink="../socios" class="view-all-link" title="Ver todos los socios inscriptos">
-            <span>Ver todos los socios inscriptos</span>
+            <span>Ver todos los socios inscriptos ({{ stats().totalEnrolled }})</span>
           </a>
         </div>
 

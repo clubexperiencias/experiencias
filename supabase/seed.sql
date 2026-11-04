@@ -75,20 +75,20 @@ VALUES
     'Catamarca Experiencias & Expediciones',
     true,
     'aprobado',
-    'EXPERIENCIAS.CLUB.MP',
-    '20-33445566-7',
-    'Banco Nación / Mercado Pago',
+    'GONZA.EXPERIENCIAS',
+    '20-35894120-7',
+    'Banco Santander',
     'Gonzalo Gramaglia',
     '+54 9 11 5566 7788'
   )
 ON CONFLICT (email) DO UPDATE
 SET name = EXCLUDED.name,
     agency = EXCLUDED.agency,
-    cbu_alias = EXCLUDED.cbu_alias,
-    cuit_dni = EXCLUDED.cuit_dni,
-    bank_name = EXCLUDED.bank_name,
-    account_holder = EXCLUDED.account_holder,
-    phone = EXCLUDED.phone,
+    cbu_alias = COALESCE(NULLIF(public.provider_access.cbu_alias, ''), EXCLUDED.cbu_alias),
+    cuit_dni = COALESCE(NULLIF(public.provider_access.cuit_dni, ''), EXCLUDED.cuit_dni),
+    bank_name = COALESCE(NULLIF(public.provider_access.bank_name, ''), EXCLUDED.bank_name),
+    account_holder = COALESCE(NULLIF(public.provider_access.account_holder, ''), EXCLUDED.account_holder),
+    phone = COALESCE(NULLIF(public.provider_access.phone, ''), EXCLUDED.phone),
     updated_at = now();
 
 -- ------------------------------------------------------------------------------

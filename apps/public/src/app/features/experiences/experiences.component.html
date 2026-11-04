@@ -57,8 +57,7 @@
                 <div class="exp-card-main">
                   <div class="exp-card-media">
                     <img [src]="exp.coverImage" [alt]="exp.title" class="exp-card-img" />
-                    <span class="exp-region-tag" [class.is-enabled-tag]="!exp.isLocked">{{ exp.region }} ({{
-                      exp.altitudeMeters }} msnm)</span>
+                    <span class="exp-region-tag" [class.is-enabled-tag]="!exp.isLocked">{{ exp.region }}</span>
                   </div>
 
                   <div class="exp-card-content">
@@ -180,8 +179,7 @@
                 <div class="exp-card-main">
                   <div class="exp-card-media horizontal-media">
                     <img [src]="exp.coverImage" [alt]="exp.title" class="exp-card-img" />
-                    <span class="exp-region-tag" [class.is-enabled-tag]="!exp.isLocked">{{ exp.region }} ({{
-                      exp.altitudeMeters }} msnm)</span>
+                    <span class="exp-region-tag" [class.is-enabled-tag]="!exp.isLocked">{{ exp.region }}</span>
                   </div>
 
                   <div class="exp-card-content horizontal-content">

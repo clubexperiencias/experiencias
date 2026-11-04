@@ -59,8 +59,6 @@ export class ExperiencePaymentComponent implements OnInit {
   private readonly newsletter = inject(NewsletterService);
   private readonly notificationService = inject(NotificationService);
 
-  readonly cbu = BANK_TRANSFER_DESTINATION.cbu;
-  readonly transferDestination = BANK_TRANSFER_DESTINATION;
   readonly acceptedTypes = RECEIPT_ACCEPTED_TYPES.join(',');
   readonly mobileMenuOpen = signal(false);
   readonly authReady = signal(!isSupabaseConfigured());
@@ -99,6 +97,14 @@ export class ExperiencePaymentComponent implements OnInit {
           capacityPerDate: liveExp.maxSpotsPerGroup,
           dates: liveExp.dates || [],
           status: liveExp.status,
+          providerId: liveExp.providerId || storeExp?.providerId || '',
+          providerName: liveExp.providerName || storeExp?.providerName || '',
+          providerEmail: liveExp.providerEmail || storeExp?.providerEmail,
+          providerSlug: liveExp.providerSlug || storeExp?.providerSlug,
+          providerPhone: liveExp.providerPhone || storeExp?.providerPhone,
+          providerCbuAlias: liveExp.providerCbuAlias || storeExp?.providerCbuAlias,
+          providerCuitDni: liveExp.providerCuitDni || storeExp?.providerCuitDni,
+          providerBankName: liveExp.providerBankName || storeExp?.providerBankName,
         } as ProviderExperience;
       }
       return undefined;
@@ -250,7 +256,66 @@ export class ExperiencePaymentComponent implements OnInit {
   readonly submitError = signal<string | null>(null);
   readonly confirmation = signal<TransferSubmission | null>(null);
 
-  readonly cbuGroups = this.cbu.match(/.{1,4}/g) ?? [this.cbu];
+  readonly computedTransferDestination = computed(() => {
+    const exp = this.experience();
+    const slug = this.slug();
+    const liveExp =
+      this.expService.getPublishedExperienceBySlug(slug) ||
+      this.expService.getExperienceBySlug(slug);
+
+    const providerEmail = exp?.providerEmail || liveExp?.providerEmail;
+    const providerId = exp?.providerId || liveExp?.providerId;
+    const prov =
+      (providerId ? this.store.getProviderById(providerId) : undefined) ||
+      (providerEmail ? this.store.getProviderByEmail(providerEmail) : undefined);
+
+    const cbu =
+      exp?.providerCbuAlias?.trim() ||
+      liveExp?.providerCbuAlias?.trim() ||
+      prov?.cbuAlias?.trim() ||
+      BANK_TRANSFER_DESTINATION.cbu;
+
+    const accountHolder =
+      exp?.providerName?.trim() ||
+      liveExp?.providerName?.trim() ||
+      prov?.name?.trim() ||
+      BANK_TRANSFER_DESTINATION.accountHolder;
+
+    const taxId =
+      exp?.providerCuitDni?.trim() ||
+      liveExp?.providerCuitDni?.trim() ||
+      prov?.cuitDni?.trim() ||
+      BANK_TRANSFER_DESTINATION.taxId;
+
+    const entity =
+      exp?.providerBankName?.trim() ||
+      liveExp?.providerBankName?.trim() ||
+      prov?.bankName?.trim() ||
+      BANK_TRANSFER_DESTINATION.entity;
+
+    return {
+      cbu,
+      accountHolder,
+      taxId,
+      entity,
+    };
+  });
+
+  get transferDestination() {
+    return this.computedTransferDestination();
+  }
+
+  get cbu(): string {
+    return this.computedTransferDestination().cbu;
+  }
+
+  get cbuGroups(): string[] {
+    const cbuVal = this.cbu;
+    if (!/^\d{22}$/.test(cbuVal)) {
+      return [cbuVal];
+    }
+    return cbuVal.match(/.{1,4}/g) ?? [cbuVal];
+  }
 
   ngOnInit(): void {
     void this.initializeCheckout();
@@ -443,8 +508,10 @@ export class ExperiencePaymentComponent implements OnInit {
 
   getWhatsAppUrl(sub: TransferSubmission): string {
     const exp = this.experience();
-    const provider = exp?.providerId ? this.store.getProviderById(exp.providerId) : undefined;
-    const customPhone = provider?.phone ? provider.phone : undefined;
+    const provider =
+      (exp?.providerId ? this.store.getProviderById(exp.providerId) : undefined) ||
+      (exp?.providerEmail ? this.store.getProviderByEmail(exp.providerEmail) : undefined);
+    const customPhone = exp?.providerPhone || provider?.phone;
     return this.notificationService.getWhatsAppNotificationUrl(sub, customPhone);
   }
 }

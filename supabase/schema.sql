@@ -341,6 +341,10 @@ CREATE TABLE IF NOT EXISTS public.propuestas_experiencias (
   cover_image_name         TEXT,
   cover_video_url          TEXT,
   cover_video_name         TEXT,
+  album_photos             JSONB DEFAULT '[]'::jsonb,
+  provider_cbu_alias       TEXT,
+  provider_bank_name       TEXT,
+  provider_cuit_dni        TEXT,
   status                   TEXT NOT NULL DEFAULT 'pendiente'
                            CHECK (status IN ('pendiente', 'aprobada', 'rechazada')),
   created_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -350,6 +354,10 @@ CREATE TABLE IF NOT EXISTS public.propuestas_experiencias (
 
 CREATE INDEX IF NOT EXISTS idx_propuestas_experiencias_email ON public.propuestas_experiencias(provider_email);
 CREATE INDEX IF NOT EXISTS idx_propuestas_experiencias_status ON public.propuestas_experiencias(status);
+ALTER TABLE public.propuestas_experiencias ADD COLUMN IF NOT EXISTS album_photos JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.propuestas_experiencias ADD COLUMN IF NOT EXISTS provider_cbu_alias TEXT;
+ALTER TABLE public.propuestas_experiencias ADD COLUMN IF NOT EXISTS provider_bank_name TEXT;
+ALTER TABLE public.propuestas_experiencias ADD COLUMN IF NOT EXISTS provider_cuit_dni TEXT;
 
 -- 2.9 pagos_transferencias (Registro de Comprobantes de Pago)
 CREATE TABLE IF NOT EXISTS public.pagos_transferencias (

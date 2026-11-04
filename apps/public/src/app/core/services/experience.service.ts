@@ -493,7 +493,7 @@ export class ExperienceService {
 
   async createExperience(newExp: Experience): Promise<void> {
     const list = this._experiences();
-    const slug =
+    let slug =
       newExp.slug ||
       newExp.title
         .toLowerCase()
@@ -506,10 +506,12 @@ export class ExperienceService {
       throw new Error('El slug de la experiencia no puede estar vacío.');
     }
     if (RESERVED_EXPERIENCE_SLUGS.has(slug.toLowerCase())) {
-      throw new Error(`El slug "${slug}" está reservado por el sistema y no puede ser utilizado.`);
+      slug = `${slug}-exp`;
     }
-    if (list.some((e) => e.slug.toLowerCase() === slug.toLowerCase())) {
-      throw new Error(`Ya existe una experiencia con el slug "${slug}".`);
+    const baseSlug = slug;
+    let suffix = 2;
+    while (list.some((e) => e.slug.toLowerCase() === slug.toLowerCase())) {
+      slug = `${baseSlug}-${suffix++}`;
     }
 
     const experience: Experience = {

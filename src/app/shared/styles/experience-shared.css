@@ -1,7 +1,7 @@
 /* ==========================================================================
-   Ficha Técnica Dedicada • Travesía en Kayak • /experiencias/kayak
+   Estilos Compartidos de Fichas y Módulos de Experiencias
    ========================================================================== */
-@import '../../waitlist/waitlist.component.css';
+@import '../../features/waitlist/waitlist.component.css';
 
 .kayak-page-container {
   min-height: 100vh;

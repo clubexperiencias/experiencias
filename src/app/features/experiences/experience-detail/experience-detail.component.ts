@@ -70,6 +70,49 @@ export class ExperienceDetailComponent {
     return e ? `/experiencias/${e.slug}/pago` : '/experiencias';
   });
 
+  isUrl(value?: string): boolean {
+    if (!value) return false;
+    return /^https?:\/\//i.test(value.trim());
+  }
+
+  private isValidGoogleMapsUrl(url: string): boolean {
+    if (!/^https?:\/\//i.test(url)) return false;
+    try {
+      const parsed = new URL(url);
+      const host = parsed.hostname.toLowerCase();
+      const pathname = parsed.pathname.toLowerCase();
+      if (host === 'maps.app.goo.gl') return true;
+      if (host === 'goo.gl' && pathname.startsWith('/maps')) return true;
+      const isGoogleDomain = /(^|\.)google\.(com|com\.[a-z]{2}|[a-z]{2})$/i.test(host);
+      if (isGoogleDomain && (pathname.startsWith('/maps') || /(^|\.)maps\.google\./i.test(host))) {
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
+  getGoogleMapsUrl(meetingPoint?: string, region?: string): string {
+    if (!meetingPoint) {
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+        region ? region + ', Catamarca' : 'Catamarca',
+      )}`;
+    }
+    const trimmed = meetingPoint.trim();
+    if (this.isValidGoogleMapsUrl(trimmed)) {
+      return trimmed;
+    }
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+      trimmed + (region ? ', ' + region : ', Catamarca'),
+    )}`;
+  }
+
+  hasAlbumPhotos(item?: { albumPhotos?: any[] } | null): boolean {
+    if (!item || !Array.isArray(item.albumPhotos)) return false;
+    return item.albumPhotos.some((p) => !p.isCover) || item.albumPhotos.length > 1;
+  }
+
   readonly upcomingDates = computed<string[]>(() => {
     const e = this.exp();
     if (!e || !e.dates) return [];
@@ -137,6 +180,39 @@ export class ExperienceDetailComponent {
             'Regreso al club náutico, entrega de equipos y cierre gastronómico con degustación de productos artesanales locales.',
         },
       ];
+    }
+
+    if (e.itinerary && e.itinerary.trim()) {
+      const lines = e.itinerary
+        .split('\n')
+        .map((l) => l.trim())
+        .filter(Boolean);
+      if (lines.length > 0) {
+        return lines.map((line, idx) => {
+          const matchTime = line.match(/^(\d{1,2}:\d{2}(?:\s*hs)?)(?:\s*[-–:]\s*|\s+)(.*)$/i);
+          if (matchTime) {
+            const time = matchTime[1];
+            const rest = matchTime[2];
+            const parts = rest.split(/\s+[-–]\s+|\s*:\s+/);
+            const title = parts[0] || `Etapa ${idx + 1}`;
+            const description = parts.slice(1).join(' - ') || parts[0];
+            return { time, title, description };
+          }
+          const parts = line.split(/\s+[-–]\s+|\s*:\s+/);
+          if (parts.length > 1) {
+            return {
+              time: `Etapa ${idx + 1}`,
+              title: parts[0],
+              description: parts.slice(1).join(' - '),
+            };
+          }
+          return {
+            time: `Etapa ${idx + 1}`,
+            title: `Actividad ${idx + 1}`,
+            description: line,
+          };
+        });
+      }
     }
 
     return [
