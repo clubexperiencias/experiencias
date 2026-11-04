@@ -18,7 +18,6 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
           <span class="section-kicker">GESTIÓN UNIFICADA</span>
           <div class="title-row">
             <h2 class="card-heading">Comprobantes y Socios Anotados</h2>
-            <a routerLink="/dashboard" class="btn-back-panel">Volver al Panel</a>
           </div>
           <p class="card-subheading">
             Validá comprobantes de transferencia bancaria y consultá la nómina de exploradores
@@ -53,192 +52,235 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         </div>
       </div>
 
-      <!-- Filters Bar - Rectangular -->
-      <div class="filters-bar">
-        <div class="search-box">
-          <input
-            type="text"
-            class="search-input"
-            placeholder="Buscar por socio, DNI, email o referencia..."
-            [ngModel]="searchQuery()"
-            (ngModelChange)="searchQuery.set($event)"
-          />
+      <!-- Box de Datos Bancarios de Liquidación -->
+      <div class="bank-details-card">
+        <div class="bank-card-header">
+          <div class="bank-header-left">
+            <span class="bank-card-kicker">DATOS BANCARIOS DE LIQUIDACIÓN</span>
+            <span class="bank-card-desc">Cuenta registrada para la liquidación y cobro de aranceles de tus experiencias</span>
+          </div>
+          <a routerLink="../perfil" class="btn-edit-bank" title="Modificar datos bancarios">
+            <mat-icon>edit</mat-icon>
+            <span>Editar en Perfil</span>
+          </a>
         </div>
-
-        <div class="filter-group">
-          <label class="filter-label" for="filter-exp">Experiencia:</label>
-          <select
-            id="filter-exp"
-            class="filter-select"
-            [ngModel]="selectedExpId()"
-            (ngModelChange)="selectedExpId.set($event)"
-          >
-            <option value="">Todas las experiencias</option>
-            @for (exp of store.providerExperiences(); track exp.id) {
-              <option [value]="exp.id">{{ exp.title }}</option>
-            }
-          </select>
-        </div>
-
-        <div class="filter-group">
-          <label class="filter-label" for="filter-status">Estado de pago:</label>
-          <select
-            id="filter-status"
-            class="filter-select"
-            [ngModel]="selectedStatus()"
-            (ngModelChange)="selectedStatus.set($event)"
-          >
-            <option value="todos">Todos los estados</option>
-            <option value="pendiente">Pendientes de revisión</option>
-            <option value="aprobado">Aprobados / Confirmados</option>
-            <option value="rechazado">Rechazados</option>
-          </select>
+        <div class="fin-bank-banner">
+          <div class="fin-bank-item">
+            <span class="fin-bank-lbl">CBU / CVU o ALIAS</span>
+            <strong class="fin-bank-val code-font text-blue">{{
+              store.currentProvider()?.cbuAlias || 'Sin especificar'
+            }}</strong>
+          </div>
+          <div class="fin-bank-item">
+            <span class="fin-bank-lbl">NOMBRE / TITULAR</span>
+            <strong class="fin-bank-val">{{
+              store.currentProvider()?.name || 'Sin especificar'
+            }}</strong>
+          </div>
+          <div class="fin-bank-item">
+            <span class="fin-bank-lbl">CUIT / CUIL</span>
+            <strong class="fin-bank-val code-font">{{
+              store.currentProvider()?.cuitDni || 'Sin especificar'
+            }}</strong>
+          </div>
+          <div class="fin-bank-item">
+            <span class="fin-bank-lbl">ENTIDAD BANCARIA</span>
+            <strong class="fin-bank-val">{{
+              store.currentProvider()?.bankName || 'Sin especificar'
+            }}</strong>
+          </div>
         </div>
       </div>
 
-      <!-- Banner de Filtro Activo por Experiencia -->
-      @if (selectedExpName(); as expName) {
-        <div class="active-filter-chip">
-          <span
-            >Filtrando por experiencia: <strong>{{ expName }}</strong></span
-          >
-          <button
-            type="button"
-            class="clear-filter-btn"
-            (click)="selectedExpId.set('')"
-            title="Quitar filtro de experiencia"
-          >
-            Ver todas las experiencias
-          </button>
-        </div>
-      }
+      <!-- Tarjeta Unificada: Filtros y Tabla de Socios / Comprobantes -->
+      <div class="unified-table-card">
+        <!-- Filters Bar Integrada -->
+        <div class="filters-bar">
+          <div class="search-box">
+            <input
+              type="text"
+              class="search-input"
+              placeholder="Buscar por socio, DNI, email o referencia..."
+              [ngModel]="searchQuery()"
+              (ngModelChange)="searchQuery.set($event)"
+            />
+          </div>
 
-      <!-- Members & Receipts Table - Rectangular sobrio -->
-      @if (filteredMembers().length === 0) {
-        <div class="empty-box">
-          <h3>No se encontraron registros con esos criterios</h3>
-          <p>Probá cambiando los filtros o la búsqueda.</p>
-        </div>
-      } @else {
-        <div class="table-wrapper">
-          <table class="members-table">
-            <thead>
-              <tr>
-                <th>Socio / Titular</th>
-                <th>Contacto</th>
-                <th>Experiencia & Fecha</th>
-                <th>Cupos</th>
-                <th>Monto</th>
-                <th>Estado</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (sub of filteredMembers(); track sub.id) {
-                <tr [class.is-pending]="sub.status === 'pendiente'">
-                  <td>
-                    <div class="member-identity">
-                      <strong>{{ sub.fullName }}</strong>
-                      <span class="member-dni">DNI: {{ sub.dni }}</span>
-                    </div>
-                  </td>
-
-                  <td>
-                    <div class="member-contact">
-                      <div class="contact-info">
-                        <span class="contact-phone">{{ sub.phone }}</span>
-                        <a [href]="'mailto:' + sub.email" class="contact-email">
-                          {{ sub.email }}
-                        </a>
-                      </div>
-                      @if (sub.phone) {
-                        <a
-                          [href]="
-                            getWhatsappLink(sub.phone, sub.fullName, sub.experienceTitle, sub.date)
-                          "
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          class="contact-wa-btn"
-                          title="Contactar a esta persona por WhatsApp en otra pestaña"
-                        >
-                          WhatsApp
-                        </a>
-                      }
-                    </div>
-                  </td>
-
-                  <td>
-                    <div class="exp-cell">
-                      <span class="exp-cell-title">{{ sub.experienceTitle }}</span>
-                      <span class="exp-cell-date">{{ sub.date | fecha }}</span>
-                    </div>
-                  </td>
-
-                  <td>
-                    <span class="cupo-badge"
-                      >{{ sub.participants }}
-                      {{ sub.participants === 1 ? 'persona' : 'personas' }}</span
-                    >
-                  </td>
-
-                  <td>
-                    <div class="amount-cell">
-                      <strong>{{ sub.amountArs | ars }}</strong>
-                      @if (sub.discountCode) {
-                        <span class="discount-tag">{{ sub.discountCode }}</span>
-                      }
-                    </div>
-                  </td>
-
-                  <td>
-                    <span
-                      class="table-status-pill"
-                      [class.pill-aprobado]="sub.status === 'aprobado'"
-                      [class.pill-pendiente]="sub.status === 'pendiente'"
-                      [class.pill-rechazado]="sub.status === 'rechazado'"
-                    >
-                      {{
-                        sub.status === 'aprobado'
-                          ? 'Aprobado'
-                          : sub.status === 'rechazado'
-                            ? 'Rechazado'
-                            : 'Pendiente'
-                      }}
-                    </span>
-                  </td>
-
-                  <!-- Columna Acciones: Ver comprobante abre el modal unificado sin símbolo -->
-                  <td>
-                    <button
-                      type="button"
-                      class="view-receipt-btn"
-                      (click)="openReceipt(sub)"
-                      title="Ver y validar comprobante bancario"
-                    >
-                      Ver comprobante
-                    </button>
-                  </td>
-                </tr>
+          <div class="filter-group">
+            <label class="filter-label" for="filter-exp">Experiencia:</label>
+            <select
+              id="filter-exp"
+              class="filter-select"
+              [ngModel]="selectedExpId()"
+              (ngModelChange)="selectedExpId.set($event)"
+            >
+              <option value="">Todas las experiencias</option>
+              @for (exp of store.providerExperiences(); track exp.id) {
+                <option [value]="exp.id">{{ exp.title }}</option>
               }
-            </tbody>
-          </table>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label" for="filter-status">Estado de pago:</label>
+            <select
+              id="filter-status"
+              class="filter-select"
+              [ngModel]="selectedStatus()"
+              (ngModelChange)="selectedStatus.set($event)"
+            >
+              <option value="todos">Todos los estados</option>
+              <option value="pendiente">Pendientes de revisión</option>
+              <option value="aprobado">Aprobados / Confirmados</option>
+              <option value="rechazado">Rechazados</option>
+            </select>
+          </div>
         </div>
 
-        <!-- Acciones al pie de la tabla -->
-        <div class="table-footer-actions">
-          <button
-            type="button"
-            class="btn-footer-action"
-            (click)="refresh()"
-          >
-            Refrescar Datos
-          </button>
+        <!-- Banner de Filtro Activo por Experiencia -->
+        @if (selectedExpName(); as expName) {
+          <div class="active-filter-chip">
+            <span
+              >Filtrando por experiencia: <strong>{{ expName }}</strong></span
+            >
+            <button
+              type="button"
+              class="clear-filter-btn"
+              (click)="selectedExpId.set('')"
+              title="Quitar filtro de experiencia"
+            >
+              Ver todas las experiencias
+            </button>
+          </div>
+        }
 
-          <button type="button" class="btn-footer-action" (click)="downloadRoster()">
-            Descargar Planilla
-          </button>
-        </div>
-      }
+        <!-- Members & Receipts Table o Estado Vacío -->
+        @if (filteredMembers().length === 0) {
+          <div class="empty-box">
+            <h3>No se encontraron registros con esos criterios</h3>
+            <p>Probá cambiando los filtros o la búsqueda.</p>
+          </div>
+        } @else {
+          <div class="table-wrapper">
+            <table class="members-table">
+              <thead>
+                <tr>
+                  <th>Socio / Titular</th>
+                  <th>Contacto</th>
+                  <th>Experiencia & Fecha</th>
+                  <th>Cupos</th>
+                  <th>Monto</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (sub of filteredMembers(); track sub.id) {
+                  <tr [class.is-pending]="sub.status === 'pendiente'">
+                    <td>
+                      <div class="member-identity">
+                        <strong>{{ sub.fullName }}</strong>
+                        <span class="member-dni">DNI: {{ sub.dni }}</span>
+                      </div>
+                    </td>
+
+                    <td>
+                      <div class="member-contact">
+                        <div class="contact-info">
+                          <span class="contact-phone">{{ sub.phone }}</span>
+                          <a [href]="'mailto:' + sub.email" class="contact-email">
+                            {{ sub.email }}
+                          </a>
+                        </div>
+                        @if (sub.phone) {
+                          <a
+                            [href]="
+                              getWhatsappLink(sub.phone, sub.fullName, sub.experienceTitle, sub.date)
+                            "
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="contact-wa-btn"
+                            title="Contactar a esta persona por WhatsApp en otra pestaña"
+                          >
+                            WhatsApp
+                          </a>
+                        }
+                      </div>
+                    </td>
+
+                    <td>
+                      <div class="exp-cell">
+                        <span class="exp-cell-title">{{ sub.experienceTitle }}</span>
+                        <span class="exp-cell-date">{{ sub.date | fecha }}</span>
+                      </div>
+                    </td>
+
+                    <td>
+                      <span class="cupo-badge"
+                        >{{ sub.participants }}
+                        {{ sub.participants === 1 ? 'persona' : 'personas' }}</span
+                      >
+                    </td>
+
+                    <td>
+                      <div class="amount-cell">
+                        <strong>{{ sub.amountArs | ars }}</strong>
+                        @if (sub.discountCode) {
+                          <span class="discount-tag">{{ sub.discountCode }}</span>
+                        }
+                      </div>
+                    </td>
+
+                    <td>
+                      <span
+                        class="table-status-pill"
+                        [class.pill-aprobado]="sub.status === 'aprobado'"
+                        [class.pill-pendiente]="sub.status === 'pendiente'"
+                        [class.pill-rechazado]="sub.status === 'rechazado'"
+                      >
+                        {{
+                          sub.status === 'aprobado'
+                            ? 'Aprobado'
+                            : sub.status === 'rechazado'
+                              ? 'Rechazado'
+                              : 'Pendiente'
+                        }}
+                      </span>
+                    </td>
+
+                    <!-- Columna Acciones: Ver comprobante abre el modal unificado sin símbolo -->
+                    <td>
+                      <button
+                        type="button"
+                        class="view-receipt-btn"
+                        (click)="openReceipt(sub)"
+                        title="Ver y validar comprobante bancario"
+                      >
+                        Ver comprobante
+                      </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Acciones al pie de la tabla dentro de la tarjeta unificada -->
+          <div class="table-footer-actions">
+            <button
+              type="button"
+              class="btn-footer-action"
+              (click)="refresh()"
+            >
+              Refrescar Datos
+            </button>
+
+            <button type="button" class="btn-footer-action" (click)="downloadRoster()">
+              Descargar Planilla
+            </button>
+          </div>
+        }
+      </div>
 
       <!-- Modal de Comprobantes Unificado -->
       @if (selectedSubmission(); as sub) {
@@ -302,8 +344,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                 <span class="pay-label">Monto esperado</span>
                 <strong class="rc-check-amount">{{ sub.amountArs | ars }}</strong>
                 <span class="rc-check-hint">
-                  Verificá que el comprobante coincida con este monto y con el CBU:
-                  {{ store.currentProvider()?.cbuAlias }}.
+                  Verificá que el comprobante coincida con el importe correspondiente a la reserva.
                 </span>
               </div>
 
@@ -521,6 +562,140 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
       .btn-back-panel:active {
         transform: translateY(0);
         box-shadow: 0 2px 6px rgba(128, 179, 255, 0.3);
+      }
+
+      /* Bank Details Card (Liquidación de Pagos) */
+      .bank-details-card {
+        background: rgba(22, 33, 85, 0.55);
+        border: 1px solid rgba(128, 179, 255, 0.25);
+        border-radius: 4px;
+        padding: 1rem 1.25rem;
+        backdrop-filter: blur(14px);
+        display: flex;
+        flex-direction: column;
+        gap: 0.85rem;
+      }
+      .bank-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+      }
+      .bank-header-left {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+      }
+      .bank-card-kicker {
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: #80b3ff;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .bank-card-desc {
+        font-size: 0.8rem;
+        color: rgba(255, 255, 255, 0.7);
+      }
+      .btn-edit-bank {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.38rem 0.8rem;
+        background: rgba(128, 179, 255, 0.12);
+        border: 1px solid rgba(128, 179, 255, 0.35);
+        color: #80b3ff;
+        border-radius: 2px;
+        font-size: 0.76rem;
+        font-weight: 700;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .btn-edit-bank mat-icon {
+        font-size: 14px;
+        width: 14px;
+        height: 14px;
+      }
+      .btn-edit-bank:hover {
+        background: #80b3ff;
+        color: #070d18;
+      }
+      .fin-bank-banner {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1rem;
+        padding: 0.9rem 1.15rem;
+        background: rgba(7, 13, 28, 0.6);
+        border: 1px solid rgba(128, 179, 255, 0.25);
+        border-radius: 2px;
+      }
+      .fin-bank-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+      }
+      .fin-bank-lbl {
+        font-size: 0.68rem;
+        text-transform: uppercase;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        color: rgba(255, 255, 255, 0.55);
+      }
+      .fin-bank-val {
+        font-size: 0.88rem;
+        color: #ffffff;
+        word-break: break-all;
+      }
+      .code-font {
+        font-family: monospace;
+        color: #ffffff;
+        letter-spacing: 0.04em;
+      }
+
+      /* Unified Table Card (Filtros + Tabla integrados en un solo bloque) */
+      .unified-table-card {
+        background: rgba(22, 33, 85, 0.55);
+        border: 1px solid rgba(128, 179, 255, 0.25);
+        border-radius: 4px;
+        overflow: hidden;
+        backdrop-filter: blur(14px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        display: flex;
+        flex-direction: column;
+      }
+      .unified-table-card .filters-bar {
+        background: rgba(14, 23, 56, 0.65);
+        border: none;
+        border-bottom: 1px solid rgba(128, 179, 255, 0.2);
+        border-radius: 0;
+        backdrop-filter: none;
+      }
+      .unified-table-card .active-filter-chip {
+        border-left: none;
+        border-right: none;
+        border-top: none;
+        border-radius: 0;
+        border-bottom: 1px solid rgba(128, 179, 255, 0.2);
+      }
+      .unified-table-card .table-wrapper {
+        background: transparent;
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+        backdrop-filter: none;
+      }
+      .unified-table-card .empty-box {
+        background: transparent;
+        border: none;
+        backdrop-filter: none;
+      }
+      .unified-table-card .table-footer-actions {
+        background: rgba(10, 16, 40, 0.5);
+        border-top: 1px solid rgba(128, 179, 255, 0.15);
+        padding: 0.85rem 1.25rem;
+        margin-top: 0;
       }
       .filters-bar {
         display: flex;
@@ -1209,7 +1384,8 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         }
       }
       @media (max-width: 480px) {
-        .summary-strip {
+        .summary-strip,
+        .fin-bank-banner {
           grid-template-columns: 1fr;
         }
       }

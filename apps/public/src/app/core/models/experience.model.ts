@@ -49,6 +49,7 @@ export interface Experience {
   detailRoute?: string;
   providerId?: string;
   providerEmail?: string;
+  providerSlug?: string;
   providerName?: string;
   providerPhone?: string;
   providerCbuAlias?: string;

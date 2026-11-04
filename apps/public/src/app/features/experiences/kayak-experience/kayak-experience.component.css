@@ -138,6 +138,24 @@
   color: var(--color-gold);
 }
 
+.spec-tile-clickable {
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.spec-tile-clickable:hover {
+  background: rgba(128, 179, 255, 0.2);
+  border-color: rgba(128, 179, 255, 0.45);
+  transform: translateY(-2px);
+}
+
+.spec-value-link {
+  color: #80b3ff !important;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .spec-link {
   text-decoration: none;
   display: inline-flex;

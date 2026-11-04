@@ -1,5 +1,5 @@
 import { Component, HostListener, computed, inject, signal } from '@angular/core';
-import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Title } from '@angular/platform-browser';
 import { MatIconModule } from '@angular/material/icon';
 import { filter } from 'rxjs';
@@ -20,7 +20,7 @@ const ROUTE_LABELS: Record<string, string> = {
 @Component({
   selector: 'app-admin-panel',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, MatIconModule, AdminLoginComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, MatIconModule, AdminLoginComponent],
   template: `
     <div class="admin-portal-root">
       @if (!store.isAuthenticated()) {
@@ -45,7 +45,12 @@ const ROUTE_LABELS: Record<string, string> = {
           </div>
 
           <div class="nav-right-col">
-            <a routerLink="dashboard" class="portal-nav-btn active-route">
+            <a
+              routerLink="dashboard"
+              class="portal-nav-btn"
+              routerLinkActive="active-route"
+              [routerLinkActiveOptions]="{ paths: 'exact', queryParams: 'ignored', matrixParams: 'ignored', fragment: 'ignored' }"
+            >
               <span>Área Restringida</span>
             </a>
 

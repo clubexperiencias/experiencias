@@ -28,7 +28,7 @@
 
     <!-- Contenido Principal de Perfil -->
     <main class="profile-main-content">
-      <div class="profile-wrapper">
+      <div class="profile-wrapper" [class.profile-complete-order]="isProfileComplete()">
         <!-- ═══════════════ PLANTILLA: DATOS DE MEMBRESÍA ═══════════════ -->
         <ng-template #membershipCard>
           <div class="profile-completion-card current-status-banner">

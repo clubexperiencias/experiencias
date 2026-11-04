@@ -152,6 +152,12 @@ CREATE TABLE IF NOT EXISTS public.provider_access (
   bank_name      TEXT NOT NULL DEFAULT '',
   account_holder TEXT NOT NULL DEFAULT '',
   phone          TEXT NOT NULL DEFAULT '',
+  website        TEXT NOT NULL DEFAULT '',
+  social_media   TEXT NOT NULL DEFAULT '',
+  slug           TEXT NOT NULL DEFAULT '',
+  bio            TEXT NOT NULL DEFAULT '',
+  avatar_url     TEXT NOT NULL DEFAULT '',
+  cover_url      TEXT NOT NULL DEFAULT '',
   created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -165,6 +171,36 @@ ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS cuit_dni TEXT NOT NU
 ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS bank_name TEXT NOT NULL DEFAULT '';
 ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS account_holder TEXT NOT NULL DEFAULT '';
 ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS phone TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS website TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS social_media TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS slug TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS bio TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS avatar_url TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS cover_url TEXT NOT NULL DEFAULT '';
+-- Normalizar posibles slugs duplicados no vacíos antes de crear el índice único
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables 
+    WHERE table_schema = 'public' AND table_name = 'provider_access'
+  ) THEN
+    WITH duplicates AS (
+      SELECT id, slug,
+             ROW_NUMBER() OVER (PARTITION BY slug ORDER BY id) AS rn
+      FROM public.provider_access
+      WHERE slug IS NOT NULL AND slug <> ''
+    )
+    UPDATE public.provider_access pa
+    SET slug = pa.slug || '-' || SUBSTRING(pa.id::text, 1, 6)
+    FROM duplicates d
+    WHERE pa.id = d.id AND d.rn > 1;
+  END IF;
+END $$;
+
+DROP INDEX IF EXISTS public.idx_provider_access_slug;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_provider_access_nonempty_slug
+  ON public.provider_access(slug)
+  WHERE slug IS NOT NULL AND slug <> '';
 
 -- 2.7 provider_banking_history (Auditoría de Modificaciones Bancarias)
 CREATE TABLE IF NOT EXISTS public.provider_banking_history (
@@ -253,6 +289,7 @@ ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS album_photos JSONB DEFA
 ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS date_slots JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS provider_email TEXT DEFAULT 'patriciofacundodiaztillar@gmail.com';
 ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS provider_name TEXT;
+ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS provider_slug TEXT;
 ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS provider_phone TEXT;
 ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS provider_cbu_alias TEXT;
 ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS provider_cuit_dni TEXT;
@@ -426,6 +463,27 @@ SELECT
 FROM public.socios;
 
 GRANT SELECT ON public.waitlist_stats TO anon, authenticated;
+
+-- 3.2 Vista pública segura de prestadores aprobados (sin información bancaria o fiscal)
+DROP VIEW IF EXISTS public.public_provider_profiles CASCADE;
+CREATE VIEW public.public_provider_profiles AS
+SELECT
+  email,
+  name,
+  agency,
+  slug,
+  bio,
+  phone,
+  website,
+  social_media,
+  avatar_url,
+  cover_url,
+  active,
+  status
+FROM public.provider_access
+WHERE active = true AND status = 'aprobado';
+
+GRANT SELECT ON public.public_provider_profiles TO anon, authenticated;
 
 -- ==============================================================================
 -- 4. TRIGGERS Y FUNCIONES DE NORMALIZACIÓN

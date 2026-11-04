@@ -333,9 +333,14 @@ import { environment } from '../../../../environments/environment';
         right: 0.75rem;
         height: 3px;
         background: #80b3ff;
-        transform: scaleX(1);
+        transform: scaleX(0);
         transform-origin: center;
         transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      .portal-nav-btn:hover::after,
+      .portal-nav-btn.active-route::after {
+        transform: scaleX(1);
       }
 
       .badge-icon {

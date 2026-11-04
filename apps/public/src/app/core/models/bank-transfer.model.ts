@@ -24,14 +24,20 @@ export interface ProviderUser {
   email: string;
   name: string;
   agency: string;
+  slug?: string;
+  bio?: string;
   phone: string;
+  website?: string;
+  socialMedia?: string;
   cuitDni: string;
   cbuAlias: string;
   bankName: string;
   verified: boolean;
+  active?: boolean;
   status?: 'aprobado' | 'pendiente' | 'rechazado' | 'dado_de_baja';
   role: 'prestador';
   avatar?: string;
+  coverImage?: string;
   joinedAt: string;
 }
 
@@ -63,6 +69,9 @@ export interface ProviderExperience {
   publicUrl?: string;
   providerId: string;
   providerName: string;
+  providerEmail?: string;
+  providerSlug?: string;
+  providerPhone?: string;
   coverImage?: string;
   albumPhotos?: ExperienceAlbumPhoto[];
   createdAt: string;

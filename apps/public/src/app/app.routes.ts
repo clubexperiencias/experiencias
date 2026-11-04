@@ -281,6 +281,10 @@ const publicRoutes: Routes = [
     pathMatch: 'full',
   },
   {
+    path: 'experiencias/prestadores/:slug',
+    redirectTo: 'prestadores/:slug',
+  },
+  {
     path: 'experiencias/kayak',
     data: { slug: 'kayak' },
     loadComponent: () =>
@@ -514,6 +518,18 @@ const publicRoutes: Routes = [
     path: 'prestadores/dashboard',
     redirectTo: 'prestadores/panel/dashboard',
     pathMatch: 'full',
+  },
+  {
+    path: 'prestadores/:slug',
+    title: 'Perfil de Prestador - Experiencias Club',
+    loadComponent: () =>
+      import('./features/providers/provider-public-profile/provider-public-profile.component').then(
+        (m) => m.ProviderPublicProfileComponent,
+      ),
+  },
+  {
+    path: 'prestador/:slug',
+    redirectTo: 'prestadores/:slug',
   },
 
   {

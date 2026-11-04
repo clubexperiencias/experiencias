@@ -1,0 +1,196 @@
+<div class="public-provider-page">
+  <app-header [(mobileMenuOpen)]="mobileMenuOpen"></app-header>
+  <app-breadcrumb [items]="breadcrumbs()"></app-breadcrumb>
+
+  <div class="app-wallpaper-body">
+    <div class="ambient-overlay"></div>
+
+    <main class="provider-main-container">
+      @if (loading()) {
+        <div class="loading-state-card">
+          <div class="loading-spinner"></div>
+          <p class="loading-text">Cargando perfil del prestador...</p>
+        </div>
+      } @else if (notFound() || !provider()) {
+        <div class="not-found-card">
+          <mat-icon class="not-found-icon">person_off</mat-icon>
+          <h1 class="card-heading">Prestador no encontrado</h1>
+          <p class="card-subheading">
+            El perfil que buscás no existe o ha sido modificado.
+          </p>
+          <div class="actions-row">
+            <a routerLink="/experiencias" class="btn-primary">Explorar Catálogo de Experiencias</a>
+            <a routerLink="/prestadores" class="btn-secondary">Comunidad de Prestadores</a>
+          </div>
+        </div>
+      } @else {
+        @let p = provider()!;
+
+        <!-- Header Hero con Portada y Avatar -->
+        <article class="provider-hero-card">
+          <div class="cover-image-container">
+            <img
+              [src]="p.coverImage || '/assets/images/laguna_blanca.jpg'"
+              [alt]="p.agency || p.name"
+              class="cover-image"
+            />
+            <div class="cover-gradient-overlay"></div>
+          </div>
+
+          <div class="profile-header-content">
+            <div class="avatar-row">
+              <div class="avatar-wrap">
+                @if (p.avatar) {
+                  <img
+                    [src]="p.avatar"
+                    [alt]="p.name"
+                    class="avatar-img"
+                  />
+                } @else {
+                  <div class="avatar-placeholder" [attr.aria-label]="p.agency || p.name">
+                    {{ getInitials(p.agency || p.name) }}
+                  </div>
+                }
+              </div>
+
+              <div class="badges-row">
+                <span class="verified-badge">
+                  <mat-icon class="badge-icon">verified</mat-icon>
+                  Prestador Oficial Verificado
+                </span>
+                @if (p.role === 'prestador') {
+                  <span class="category-badge">Guía & Anfitrión Local</span>
+                }
+              </div>
+            </div>
+
+            <div class="provider-identity">
+              <span class="section-kicker">FICHA DE PRESTADOR & AGENCIA</span>
+              <h1 class="provider-agency-title">{{ p.agency || p.name }}</h1>
+              @if (p.agency && p.name && p.agency !== p.name) {
+                <p class="operator-subtitle">
+                  <mat-icon class="sub-icon">person</mat-icon>
+                  Titular responsable: <strong>{{ p.name }}</strong>
+                </p>
+              }
+
+              @if (p.bio) {
+                <p class="provider-bio-text">{{ p.bio }}</p>
+              } @else {
+                <p class="provider-bio-text">
+                  Prestador oficial habilitado por el Club de Experiencias. Brinda salidas guiadas con guías matriculados, seguros al día y los más altos estándares de calidad y sustentabilidad andina.
+                </p>
+              }
+            </div>
+
+            <!-- Botones de Acción / Contacto -->
+            <div class="contact-actions-bar">
+              @if (p.phone) {
+                <a
+                  [href]="'https://wa.me/' + cleanWhatsApp(p.phone)"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="action-pill action-pill-wa"
+                  title="Contactar al prestador por WhatsApp"
+                >
+                  <mat-icon class="pill-icon">chat</mat-icon>
+                  <span>Contactar por WhatsApp</span>
+                </a>
+              }
+
+              @if (p.website) {
+                <a
+                  [href]="formatWebsiteUrl(p.website)"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="action-pill"
+                  title="Visitar sitio web oficial"
+                >
+                  <mat-icon class="pill-icon">language</mat-icon>
+                  <span>Sitio Web Oficial</span>
+                </a>
+              }
+
+              @if (p.socialMedia) {
+                <a
+                  [href]="formatSocialUrl(p.socialMedia)"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="action-pill"
+                  title="Ver perfil en redes sociales"
+                >
+                  <mat-icon class="pill-icon">share</mat-icon>
+                  <span>Red Social</span>
+                </a>
+              }
+            </div>
+          </div>
+        </article>
+
+        <!-- Experiencias Operadas por este Prestador -->
+        <section class="provider-experiences-section">
+          <div class="section-title-wrap">
+            <span class="section-kicker">CATÁLOGO EXCLUSIVO</span>
+            <h2 class="card-heading">Experiencias Operadas por {{ p.agency || p.name }}</h2>
+            <p class="card-subheading">
+              Salidas confirmadas y actividades con cupos exclusivos para socios del Club.
+            </p>
+          </div>
+
+          @if (providerExperiences().length > 0) {
+            <div class="experiences-catalog-grid">
+              @for (exp of providerExperiences(); track exp.id) {
+                <div class="exp-card">
+                  <div class="exp-media">
+                    <img [src]="exp.coverImage" [alt]="exp.title" class="exp-img" />
+                    <span class="region-badge">{{ exp.region }}</span>
+                  </div>
+
+                  <div class="exp-body">
+                    <h3 class="exp-card-title">{{ exp.title }}</h3>
+                    <p class="exp-card-tagline">{{ exp.tagline }}</p>
+
+                    <div class="exp-specs-line">
+                      <span><mat-icon class="spec-mini-icon">schedule</mat-icon> {{ exp.durationLabel }}</span>
+                      <span><mat-icon class="spec-mini-icon">terrain</mat-icon> {{ exp.difficulty }}</span>
+                      <span><mat-icon class="spec-mini-icon">group</mat-icon> Hasta {{ exp.maxSpotsPerGroup }} socios</span>
+                    </div>
+
+                    <div class="exp-card-footer">
+                      <div class="price-wrap">
+                        <span class="price-val">{{ exp.priceArs | ars }}</span>
+                        @if (exp.priceUsd) {
+                          <span class="price-usd">o ${{ exp.priceUsd }} USD</span>
+                        }
+                      </div>
+
+                      <a
+                        [routerLink]="exp.detailRoute || ['/experiencias', exp.slug]"
+                        class="btn-exp-cta"
+                      >
+                        <span>Ver Experiencia</span>
+                        <mat-icon class="arrow-icon">arrow_forward</mat-icon>
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          } @else {
+            <div class="empty-exp-box">
+              <mat-icon class="empty-icon">explore</mat-icon>
+              <h3>Próximamente más experiencias</h3>
+              <p>Este prestador está preparando nuevas fechas y salidas para la temporada.</p>
+              <a routerLink="/experiencias" class="btn-primary" style="margin-top: 1rem; display: inline-flex;">
+                Ver Todas las Experiencias del Club
+              </a>
+            </div>
+          }
+        </section>
+      }
+    </main>
+  </div>
+
+  <app-footer></app-footer>
+</div>
+

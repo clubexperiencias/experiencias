@@ -109,6 +109,15 @@
   animation-delay: 0.28s;
 }
 
+/* Inversión dinámica de la cascada de entrada cuando las boxes se dan vuelta (perfil completo) */
+.profile-wrapper.profile-complete-order #historial-seccion {
+  animation-delay: 0.12s;
+}
+
+.profile-wrapper.profile-complete-order .profile-completion-card {
+  animation-delay: 0.28s;
+}
+
 .confirmed-card .confirmed-desc {
   margin-bottom: 0 !important;
 }

@@ -100,7 +100,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
           <div class="banking-card-head">
             <div class="banking-head-info">
               <span class="banking-kicker">DATOS DE LIQUIDACIÓN DE PAGOS</span>
-              <h2 class="card-title">Cuenta Bancaria para Transferencias</h2>
+              <h2 class="card-title">Cuenta Bancaria Registrada para Liquidaciones</h2>
             </div>
             <a routerLink="../perfil" class="btn-edit-banking-pill" title="Editar datos bancarios">
               <mat-icon>edit</mat-icon>
@@ -301,32 +301,6 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
           <a routerLink="../socios" class="view-all-link" title="Ver todos los socios inscriptos">
             <span>Ver todos los socios inscriptos</span>
           </a>
-        </div>
-
-        <!-- Bank Details Info Strip -->
-        <div class="fin-bank-banner">
-          <div class="fin-bank-item">
-            <span class="fin-bank-lbl">CBU</span>
-            <strong class="fin-bank-val code-font">{{
-              provider()?.cbuAlias || '3840200500000056402423'
-            }}</strong>
-          </div>
-          <div class="fin-bank-item">
-            <span class="fin-bank-lbl">Nombre</span>
-            <strong class="fin-bank-val">{{
-              provider()?.name || 'Patricio Facundo Diaz Tillar'
-            }}</strong>
-          </div>
-          <div class="fin-bank-item">
-            <span class="fin-bank-lbl">CUIT/CUIL</span>
-            <strong class="fin-bank-val code-font">{{
-              provider()?.cuitDni || '20-38628297-9'
-            }}</strong>
-          </div>
-          <div class="fin-bank-item">
-            <span class="fin-bank-lbl">Entidad</span>
-            <strong class="fin-bank-val">{{ provider()?.bankName || 'Uala Bank S.A.U' }}</strong>
-          </div>
         </div>
 
         @if (recentSubmissions().length === 0) {

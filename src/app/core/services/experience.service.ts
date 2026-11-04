@@ -107,6 +107,9 @@ export const KAYAK_DEFAULT_EXPERIENCE: Experience = {
   isExclusiveClub: true,
   isLocked: false,
   detailRoute: '/experiencias/kayak',
+  providerEmail: 'patriciofacundodiaztillar@gmail.com',
+  providerName: 'Catamarca Kayak & Aventura Náutica',
+  providerSlug: 'catamarca-kayak',
 };
 
 export const POMEZ_ALBUM_PHOTOS: ExperienceAlbumPhoto[] = [
@@ -181,6 +184,9 @@ export const POMEZ_DEFAULT_EXPERIENCE: Experience = {
   isExclusiveClub: true,
   isLocked: false,
   detailRoute: '/experiencias/campo-de-piedra-pomez',
+  providerEmail: 'vegvarel@gmail.com',
+  providerName: 'Catamarca Expediciones & Trekking',
+  providerSlug: 'catamarca-expediciones',
 };
 
 export const SEISMILES_ALBUM_PHOTOS: ExperienceAlbumPhoto[] = [
@@ -256,6 +262,9 @@ export const SEISMILES_DEFAULT_EXPERIENCE: Experience = {
   isExclusiveClub: true,
   isLocked: false,
   detailRoute: '/experiencias/ruta-de-los-seismiles',
+  providerEmail: 'vegvarel@gmail.com',
+  providerName: 'Catamarca Expediciones & Trekking',
+  providerSlug: 'catamarca-expediciones',
 };
 
 export const DEFAULT_EXPERIENCES: Experience[] = [
@@ -283,6 +292,53 @@ export class ExperienceService {
 
   getPublishedExperienceById(id: string): Experience | undefined {
     return this.publishedExperiences().find((e: Experience) => e.id === id || e.slug === id);
+  }
+
+  getExperiencesByProvider(
+    providerIdentity:
+      | string
+      | { slug?: string | null; email?: string | null; agency?: string | null; name?: string | null },
+  ): Experience[] {
+    const normalizeAgency = (val: string) =>
+      val
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)+/g, '');
+
+    let querySlug = '';
+    let queryEmail = '';
+    let queryAgencyNorm = '';
+
+    if (typeof providerIdentity === 'string') {
+      const clean = providerIdentity.trim().toLowerCase();
+      if (!clean) return [];
+      querySlug = clean;
+      queryEmail = clean;
+      queryAgencyNorm = normalizeAgency(clean);
+    } else if (providerIdentity && typeof providerIdentity === 'object') {
+      querySlug = (providerIdentity.slug || '').trim().toLowerCase();
+      queryEmail = (providerIdentity.email || '').trim().toLowerCase();
+      const rawAgency = (providerIdentity.agency || providerIdentity.name || '').trim();
+      queryAgencyNorm = rawAgency ? normalizeAgency(rawAgency) : '';
+    } else {
+      return [];
+    }
+
+    if (!querySlug && !queryEmail && !queryAgencyNorm) return [];
+
+    return this.publishedExperiences().filter((e) => {
+      const expSlug = (e.providerSlug || '').trim().toLowerCase();
+      const expEmail = (e.providerEmail || '').trim().toLowerCase();
+      const expAgency = (e.providerName || '').trim();
+      const expAgencyNorm = expAgency ? normalizeAgency(expAgency) : '';
+
+      if (querySlug && expSlug && expSlug === querySlug) return true;
+      if (queryEmail && expEmail && expEmail === queryEmail) return true;
+      if (queryAgencyNorm && expAgencyNorm && expAgencyNorm === queryAgencyNorm) return true;
+      return false;
+    });
   }
   readonly hasRemoteExperiences = this._hasRemoteExperiences.asReadonly();
   readonly remoteLoadPromise: Promise<boolean> = isSupabaseConfigured()
@@ -375,6 +431,10 @@ export class ExperienceService {
 
         if (merged.providerEmail !== undefined) {
           payload['provider_email'] = merged.providerEmail;
+        }
+
+        if (updated.providerSlug !== undefined) {
+          payload['provider_slug'] = updated.providerSlug || null;
         }
 
         const { data, error } = await this.supabase
@@ -496,6 +556,7 @@ export class ExperienceService {
           provider_name: experience.providerName || null,
           provider_phone: experience.providerPhone || null,
           provider_email: experience.providerEmail || null,
+          provider_slug: experience.providerSlug || null,
         };
 
         const { error } = await this.supabase.from('experiencias').insert(payload as any);
@@ -688,7 +749,7 @@ export class ExperienceService {
         'duration_label, price_ars, price_usd, capacity_per_date, cover_image, ' +
         'video_url, video_poster, altitude_meters, dates, highlights, included, ' +
         'not_included, status, public_url, album_photos, provider_name, provider_phone, ' +
-        'provider_email, date_slots, created_at';
+        'provider_email, provider_slug, date_slots, created_at';
 
       const { data, error } = await this.supabase
         .from('experiencias')
@@ -770,7 +831,12 @@ export class ExperienceService {
                 : [],
             dateSlots: Array.isArray(exp.date_slots) ? exp.date_slots : undefined,
             providerEmail: exp.provider_email || undefined,
-            providerName: exp.provider_name || undefined,
+            providerSlug:
+              exp.provider_slug ||
+              (exp.slug === 'kayak' ? 'catamarca-kayak' : undefined),
+            providerName:
+              exp.provider_name ||
+              (exp.slug === 'kayak' ? 'Catamarca Kayak & Aventura Náutica' : undefined),
             providerPhone: exp.provider_phone || undefined,
             providerCbuAlias: banking?.cbu_alias || undefined,
             providerCuitDni: banking?.cuit_dni || undefined,

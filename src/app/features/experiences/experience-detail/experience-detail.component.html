@@ -35,19 +35,36 @@
               <span class="spec-value">{{ item.durationLabel }}</span>
             </div>
             <div class="spec-tile">
-              <span class="spec-label">REGIÓN</span>
-              <span class="spec-value">{{ item.region }}</span>
+              <span class="spec-label">ALTITUD</span>
+              <span class="spec-value">{{
+                item.altitudeMeters > 0 ? item.altitudeMeters + ' msnm' : 'N/A'
+                }}</span>
             </div>
             <div class="spec-tile">
               <span class="spec-label">CUPO MÁXIMO</span>
               <span class="spec-value">{{ item.maxSpotsPerGroup }} Socios</span>
             </div>
             <div class="spec-tile">
-              <span class="spec-label">ALTITUD</span>
-              <span class="spec-value">{{
-                item.altitudeMeters > 0 ? item.altitudeMeters + ' msnm' : 'N/A'
-                }}</span>
+              <span class="spec-label">PUNTO DE ENCUENTRO</span>
+              <span class="spec-value">{{ item.meetingPoint || item.region }}</span>
             </div>
+            @if (item.providerName) {
+              @if (item.providerSlug) {
+              <a
+                [routerLink]="['/prestadores', item.providerSlug]"
+                class="spec-tile spec-tile-clickable"
+                title="Ver perfil oficial del prestador"
+              >
+                <span class="spec-label">PRESTADOR</span>
+                <span class="spec-value spec-value-link">{{ item.providerName }}</span>
+              </a>
+              } @else {
+              <div class="spec-tile">
+                <span class="spec-label">PRESTADOR</span>
+                <span class="spec-value">{{ item.providerName }}</span>
+              </div>
+              }
+            }
           </div>
 
           <!-- Media Principal: Video o Imagen de Portada -->
