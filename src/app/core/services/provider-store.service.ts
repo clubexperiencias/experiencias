@@ -18,7 +18,7 @@ import { Experience } from '../models/experience.model';
 import { TransactionalEmailService } from './transactional-email.service';
 import { NewsletterService } from './newsletter.service';
 import { ActivityHistoryService } from './activity-history.service';
-import { ExperienceService, KAYAK_ALBUM_PHOTOS } from './experience.service';
+import { ExperienceService, KAYAK_ALBUM_PHOTOS, RESERVED_EXPERIENCE_SLUGS } from './experience.service';
 import { StorageService } from './storage.service';
 import { SUPABASE_CLIENT, isSupabaseConfigured } from '../supabase/supabase.client';
 import { environment } from '../../../environments/environment';
@@ -1991,6 +1991,9 @@ export class ProviderStoreService {
           provider_agency: newReq.providerAgency || '',
           provider_email: newReq.providerEmail.trim().toLowerCase(),
           provider_phone: newReq.providerPhone || '',
+          provider_cbu_alias: newReq.providerCbuAlias || '',
+          provider_bank_name: newReq.providerBankName || '',
+          provider_cuit_dni: newReq.providerCuitDni || '',
           title: newReq.title,
           kicker: newReq.kicker || 'EXPERIENCIA',
           subheading: newReq.subheading || '',
@@ -2019,10 +2022,18 @@ export class ProviderStoreService {
 
         const { error } = await (this.supabase.from('propuestas_experiencias') as any).insert(proposalPayload);
         if (error) {
-          // Si la columna album_photos no existiera aún en Supabase, reintentar sin ella
-          if (error.message?.includes('album_photos') || error.code === '42703') {
+          // Si columnas agregadas recientemente (album_photos o bancarias) no existieran en DB
+          if (
+            error.code === '42703' ||
+            /album_photos|provider_cbu_alias|provider_bank_name|provider_cuit_dni/.test(
+              error.message || '',
+            )
+          ) {
             const fallbackPayload = { ...proposalPayload };
             delete fallbackPayload['album_photos'];
+            delete fallbackPayload['provider_cbu_alias'];
+            delete fallbackPayload['provider_bank_name'];
+            delete fallbackPayload['provider_cuit_dni'];
             const retryRes = await (this.supabase.from('propuestas_experiencias') as any).insert(fallbackPayload);
             if (retryRes.error) {
               console.warn('[ProviderStore] Error insertando propuesta en Supabase (fallback):', retryRes.error);
@@ -2068,6 +2079,9 @@ export class ProviderStoreService {
           providerAgency: row.provider_agency || '',
           providerEmail: row.provider_email,
           providerPhone: row.provider_phone || '',
+          providerCbuAlias: row.provider_cbu_alias || undefined,
+          providerBankName: row.provider_bank_name || undefined,
+          providerCuitDni: row.provider_cuit_dni || undefined,
           title: row.title,
           kicker: row.kicker || 'EXPERIENCIA',
           subheading: row.subheading || '',
@@ -2127,18 +2141,28 @@ export class ProviderStoreService {
     const resolvedProviderName = (req.providerAgency || req.providerName || '').trim();
     const resolvedProviderPhone = req.providerPhone?.trim() || undefined;
 
-    const baseSlug = slugify(req.title) || 'experiencia';
+    let baseSlug = slugify(req.title) || 'experiencia';
+    if (RESERVED_EXPERIENCE_SLUGS.has(baseSlug.toLowerCase())) {
+      baseSlug = `${baseSlug}-exp`;
+    }
     let generatedSlug = baseSlug;
     let suffix = 2;
     const existingSlugs = new Set([
       ...this.expService.experiences().map((e) => e.slug.toLowerCase()),
       ...this._experiences().map((e) => e.slug.toLowerCase()),
     ]);
-    while (existingSlugs.has(generatedSlug.toLowerCase())) {
+    const existingIds = new Set([
+      ...this.expService.experiences().map((e) => e.id.toLowerCase()),
+      ...this._experiences().map((e) => e.id.toLowerCase()),
+    ]);
+    while (
+      existingSlugs.has(generatedSlug.toLowerCase()) ||
+      existingIds.has(('exp-' + generatedSlug).toLowerCase())
+    ) {
       generatedSlug = `${baseSlug}-${suffix++}`;
     }
-    const resolvedUrl =
-      publicUrl?.trim() || `https://experiencias.club/experiencias/${generatedSlug}`;
+    const finalId = 'exp-' + generatedSlug;
+    const resolvedUrl = `https://experiencias.club/experiencias/${generatedSlug}`;
 
     // Solo usar fechas confirmadas por el prestador o administrador.
     // Cuando las fechas son "A coordinar", se publican sin fechas reservables fijas ([]).
@@ -2149,7 +2173,7 @@ export class ProviderStoreService {
 
     // 1. Crear en el catálogo oficial de ExperienceService antes de reportar aprobación
     const experienceForCatalog: Experience = {
-      id: 'exp-' + generatedSlug,
+      id: finalId,
       slug: generatedSlug,
       title: req.title,
       shortTitle: req.title.split('&')[0].trim(),
@@ -2238,10 +2262,8 @@ export class ProviderStoreService {
         (e) => e.title.toLowerCase() === req.title.toLowerCase(),
       );
       if (!exists) {
-        const resolvedUrl =
-          publicUrl?.trim() || `https://experiencias.club/experiencias/${generatedSlug}`;
         const newExp: ProviderExperience = {
-          id: 'exp-' + generatedSlug,
+          id: finalId,
           slug: generatedSlug,
           title: req.title,
           shortTitle: req.title.split('&')[0].trim(),

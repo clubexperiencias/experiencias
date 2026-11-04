@@ -281,7 +281,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         <div class="card-head">
           <h2 class="card-title">Últimos Pagos de Socios del Club</h2>
           <a routerLink="../socios" class="view-all-link" title="Ver todos los socios inscriptos">
-            <span>Ver todos los socios inscriptos ({{ store.providerSubmissions().length }})</span>
+            <span>Ver todos los socios inscriptos ({{ stats().totalEnrolled }})</span>
           </a>
         </div>
 

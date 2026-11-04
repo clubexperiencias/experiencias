@@ -189,7 +189,7 @@ import { StorageService } from '../../../core/services/storage.service';
                   <label class="btn-file-upload" [class.is-loading]="isUploadingAvatar()" title="Elegir y subir imagen a Supabase Storage">
                     <input
                       type="file"
-                      accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                      accept="image/png,image/jpeg,image/webp"
                       class="sr-only"
                       (change)="onFileSelected($event, 'avatar')"
                       [disabled]="isUploadingAvatar()"
@@ -318,7 +318,7 @@ import { StorageService } from '../../../core/services/storage.service';
             <button
               type="submit"
               class="cta-save-btn"
-              [disabled]="form.invalid || isSaving()"
+              [disabled]="form.invalid || isSaving() || isUploadingAvatar() || isUploadingCover()"
             >
               @if (isSaving()) {
                 <span>Guardando...</span>
@@ -819,7 +819,7 @@ export class ProviderProfileComponent {
   }
 
   async onSave(): Promise<void> {
-    if (this.form.invalid) return;
+    if (this.form.invalid || this.isSaving() || this.isUploadingAvatar() || this.isUploadingCover()) return;
 
     this.isSaving.set(true);
     this.errorMessage.set(null);
@@ -933,8 +933,13 @@ export class ProviderProfileComponent {
       const res = await fetch(currentUrl);
       if (!res.ok) throw new Error('No se pudo acceder a la imagen remota.');
       const blob = await res.blob();
-      const ext = blob.type.split('/')[1] || 'jpg';
-      const file = new File([blob], `${field}-${Date.now()}.${ext}`, { type: blob.type || 'image/jpeg' });
+      const mime = (blob.type || '').toLowerCase();
+      const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (!allowedMimes.includes(mime)) {
+        throw new Error('El archivo remoto no es una imagen válida (debe ser JPG, PNG o WebP).');
+      }
+      const ext = mime.split('/')[1] === 'jpeg' ? 'jpg' : (mime.split('/')[1] || 'jpg');
+      const file = new File([blob], `${field}-${Date.now()}.${ext}`, { type: mime });
       const uploadRes = await this.storageService.uploadFile(file, isAvatar ? 'AVATAR' : 'PORTADA');
       if (uploadRes?.url) {
         this.form.patchValue({ [field]: uploadRes.url });

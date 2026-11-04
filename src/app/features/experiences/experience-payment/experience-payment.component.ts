@@ -267,8 +267,7 @@ export class ExperiencePaymentComponent implements OnInit {
     const providerId = exp?.providerId || liveExp?.providerId;
     const prov =
       (providerId ? this.store.getProviderById(providerId) : undefined) ||
-      (providerEmail ? this.store.getProviderByEmail(providerEmail) : undefined) ||
-      (typeof window !== 'undefined' ? this.store.currentProvider() : null);
+      (providerEmail ? this.store.getProviderByEmail(providerEmail) : undefined);
 
     const cbu =
       exp?.providerCbuAlias?.trim() ||
@@ -277,9 +276,9 @@ export class ExperiencePaymentComponent implements OnInit {
       BANK_TRANSFER_DESTINATION.cbu;
 
     const accountHolder =
-      prov?.name?.trim() ||
       exp?.providerName?.trim() ||
       liveExp?.providerName?.trim() ||
+      prov?.name?.trim() ||
       BANK_TRANSFER_DESTINATION.accountHolder;
 
     const taxId =

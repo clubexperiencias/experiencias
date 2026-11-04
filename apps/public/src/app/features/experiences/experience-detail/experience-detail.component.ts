@@ -75,6 +75,24 @@ export class ExperienceDetailComponent {
     return /^https?:\/\//i.test(value.trim());
   }
 
+  private isValidGoogleMapsUrl(url: string): boolean {
+    if (!/^https?:\/\//i.test(url)) return false;
+    try {
+      const parsed = new URL(url);
+      const host = parsed.hostname.toLowerCase();
+      const pathname = parsed.pathname.toLowerCase();
+      if (host === 'maps.app.goo.gl') return true;
+      if (host === 'goo.gl' && pathname.startsWith('/maps')) return true;
+      const isGoogleDomain = /(^|\.)google\.(com|com\.[a-z]{2}|[a-z]{2})$/i.test(host);
+      if (isGoogleDomain && (pathname.startsWith('/maps') || /(^|\.)maps\.google\./i.test(host))) {
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
   getGoogleMapsUrl(meetingPoint?: string, region?: string): string {
     if (!meetingPoint) {
       return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
@@ -82,7 +100,7 @@ export class ExperienceDetailComponent {
       )}`;
     }
     const trimmed = meetingPoint.trim();
-    if (/^https?:\/\//i.test(trimmed)) {
+    if (this.isValidGoogleMapsUrl(trimmed)) {
       return trimmed;
     }
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
@@ -171,16 +189,16 @@ export class ExperienceDetailComponent {
         .filter(Boolean);
       if (lines.length > 0) {
         return lines.map((line, idx) => {
-          const matchTime = line.match(/^(\d{1,2}:\d{2}(?:\s*hs)?)\s*[-–:]\s*(.*)$/i);
+          const matchTime = line.match(/^(\d{1,2}:\d{2}(?:\s*hs)?)(?:\s*[-–:]\s*|\s+)(.*)$/i);
           if (matchTime) {
             const time = matchTime[1];
             const rest = matchTime[2];
-            const parts = rest.split(/[-–:]\s*/);
+            const parts = rest.split(/\s+[-–]\s+|\s*:\s+/);
             const title = parts[0] || `Etapa ${idx + 1}`;
             const description = parts.slice(1).join(' - ') || parts[0];
             return { time, title, description };
           }
-          const parts = line.split(/[-–:]\s*/);
+          const parts = line.split(/\s+[-–]\s+|\s*:\s+/);
           if (parts.length > 1) {
             return {
               time: `Etapa ${idx + 1}`,

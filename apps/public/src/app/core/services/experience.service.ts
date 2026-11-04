@@ -751,7 +751,7 @@ export class ExperienceService {
         'duration_label, price_ars, price_usd, capacity_per_date, cover_image, ' +
         'video_url, video_poster, altitude_meters, dates, highlights, included, ' +
         'not_included, status, public_url, album_photos, provider_name, provider_phone, ' +
-        'provider_email, provider_slug, provider_cbu_alias, provider_cuit_dni, provider_bank_name, date_slots, created_at';
+        'provider_email, provider_slug, date_slots, created_at';
 
       const { data, error } = await this.supabase
         .from('experiencias')
@@ -840,9 +840,9 @@ export class ExperienceService {
               exp.provider_name ||
               (exp.slug === 'kayak' ? 'Catamarca Kayak & Aventura Náutica' : undefined),
             providerPhone: exp.provider_phone || undefined,
-            providerCbuAlias: exp.provider_cbu_alias || banking?.cbu_alias || undefined,
-            providerCuitDni: exp.provider_cuit_dni || banking?.cuit_dni || undefined,
-            providerBankName: exp.provider_bank_name || banking?.bank_name || undefined,
+            providerCbuAlias: banking?.cbu_alias || undefined,
+            providerCuitDni: banking?.cuit_dni || undefined,
+            providerBankName: banking?.bank_name || undefined,
             status: exp.status || 'publicada',
             publicUrl: exp.public_url || `https://experiencias.club/experiencias/${exp.slug}`,
             isExclusiveClub: true,

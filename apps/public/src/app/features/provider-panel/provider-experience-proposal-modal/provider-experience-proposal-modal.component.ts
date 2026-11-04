@@ -2336,7 +2336,8 @@ export class ProviderExperienceProposalModalComponent {
 
       if (host === 'maps.app.goo.gl') return true;
       if (host === 'goo.gl' && pathname.startsWith('/maps')) return true;
-      if (host.includes('google.') && (pathname.startsWith('/maps') || host.startsWith('maps.google.'))) {
+      const isGoogleDomain = /(^|\.)google\.(com|com\.[a-z]{2}|[a-z]{2})$/i.test(host);
+      if (isGoogleDomain && (pathname.startsWith('/maps') || /(^|\.)maps\.google\./i.test(host))) {
         return true;
       }
       return false;
@@ -3012,14 +3013,17 @@ export class ProviderExperienceProposalModalComponent {
 
     if (Object.keys(profileUpdates).length > 0) {
       try {
-        await this.store.updateProfile(profileUpdates);
+        const profileOk = await this.store.updateProfile(profileUpdates);
+        if (!profileOk) {
+          console.warn('[ProposalModal] No se pudieron sincronizar los datos de cobro en el perfil del prestador.');
+        }
       } catch (err) {
         console.warn('[ProposalModal] Error actualizando perfil de prestador desde propuesta:', err);
       }
     }
 
     // Subir foto destacada 1 si existe
-    let feat1Url = this.featuredPhoto1DataUrl() || this.featuredPhoto1Preview() || undefined;
+    let feat1Url: string | undefined = undefined;
     const feat1File = this.featuredPhoto1File();
     if (feat1File) {
       try {
@@ -3028,10 +3032,15 @@ export class ProviderExperienceProposalModalComponent {
       } catch (err) {
         console.warn('[ProposalModal] Error subiendo destacada 1:', err);
       }
+    } else if (
+      this.featuredPhoto1Preview()?.startsWith('http') &&
+      !this.featuredPhoto1Preview()?.startsWith('blob:')
+    ) {
+      feat1Url = this.featuredPhoto1Preview() || undefined;
     }
 
     // Subir foto destacada 2 si existe
-    let feat2Url = this.featuredPhoto2DataUrl() || this.featuredPhoto2Preview() || undefined;
+    let feat2Url: string | undefined = undefined;
     const feat2File = this.featuredPhoto2File();
     if (feat2File) {
       try {
@@ -3040,12 +3049,17 @@ export class ProviderExperienceProposalModalComponent {
       } catch (err) {
         console.warn('[ProposalModal] Error subiendo destacada 2:', err);
       }
+    } else if (
+      this.featuredPhoto2Preview()?.startsWith('http') &&
+      !this.featuredPhoto2Preview()?.startsWith('blob:')
+    ) {
+      feat2Url = this.featuredPhoto2Preview() || undefined;
     }
 
     // Subir fotos de galería común si existen
     const galleryItems: { url: string; name: string }[] = [];
     for (const item of this.galleryPhotos()) {
-      let finalUrl = item.dataUrl || item.previewUrl;
+      let finalUrl: string | undefined = undefined;
       if (item.file) {
         try {
           const res = await this.storageService.uploadFile(item.file, 'PROPOSAL');
@@ -3053,6 +3067,8 @@ export class ProviderExperienceProposalModalComponent {
         } catch (err) {
           console.warn('[ProposalModal] Error subiendo foto de galería:', err);
         }
+      } else if (item.previewUrl?.startsWith('http') && !item.previewUrl?.startsWith('blob:')) {
+        finalUrl = item.previewUrl;
       }
       if (finalUrl) {
         galleryItems.push({ url: finalUrl, name: item.name });
