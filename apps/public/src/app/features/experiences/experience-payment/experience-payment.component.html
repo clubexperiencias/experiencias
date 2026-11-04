@@ -289,8 +289,8 @@
 
                       <div class="pay-transfer-row pay-cbu-row">
                         <div>
-                          <span class="pay-label">CBU a transferir</span>
-                          <p class="pay-cbu pay-mono" [attr.aria-label]="'CBU ' + cbu">
+                          <span class="pay-label">CBU / CVU o Alias a transferir</span>
+                          <p class="pay-cbu pay-mono" [attr.aria-label]="'CBU o Alias ' + cbu">
                             @for (group of cbuGroups; track $index) {
                               <span>{{ group }}</span>
                             }
@@ -304,7 +304,7 @@
                         </button>
                       </div>
                       <div class="pay-transfer-row pay-transfer-detail">
-                        <span class="pay-label">Nombre</span>
+                        <span class="pay-label">Nombre / Titular</span>
                         <strong>{{ transferDestination.accountHolder }}</strong>
                       </div>
                       <div class="pay-transfer-row pay-transfer-detail">
@@ -312,7 +312,7 @@
                         <strong class="pay-mono">{{ transferDestination.taxId }}</strong>
                       </div>
                       <div class="pay-transfer-row pay-transfer-detail">
-                        <span class="pay-label">Entidad</span>
+                        <span class="pay-label">Entidad Bancaria o Billetera</span>
                         <strong>{{ transferDestination.entity }}</strong>
                       </div>
                     </div>

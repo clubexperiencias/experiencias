@@ -46,7 +46,7 @@
             </div>
             <div class="spec-tile">
               <span class="spec-label">PUNTO DE ENCUENTRO</span>
-              <span class="spec-value">{{ item.meetingPoint || item.region }}</span>
+              <span class="spec-value">{{ isUrl(item.meetingPoint) ? (item.region || 'Ver ubicación en Maps') : (item.meetingPoint || item.region) }}</span>
             </div>
             @if (item.providerName) {
               @if (item.providerSlug) {
@@ -202,25 +202,28 @@
             <span class="section-kicker">LOGÍSTICA Y UBICACIÓN</span>
             <h2 class="card-heading">Punto de Encuentro</h2>
             <p class="card-subheading">
-              {{
-              item.meetingPoint ||
-              'Se coordina directamente con el prestador y los socios inscriptos.'
-              }}
-              ({{ item.region }})
+              @if (isUrl(item.meetingPoint)) {
+                Ubicación exacta disponible para abrir en Google Maps ({{ item.region }}).
+              } @else {
+                {{
+                item.meetingPoint ||
+                'Se coordina directamente con el prestador y los socios inscriptos.'
+                }}
+                ({{ item.region }})
+              }
             </p>
           </div>
 
           <div class="location-actions-row">
-            <a [href]="
-                    'https://www.google.com/maps/search/?api=1&query=' +
-                    (item.meetingPoint ? item.meetingPoint + ', Catamarca' : 'Catamarca')
-                  " target="_blank" rel="noopener noreferrer" class="location-btn maps-btn">
+            <a [href]="getGoogleMapsUrl(item.meetingPoint, item.region)" target="_blank" rel="noopener noreferrer" class="location-btn maps-btn">
               <span>Abrir en Google Maps</span>
             </a>
 
+            @if (hasAlbumPhotos(item)) {
             <a [routerLink]="['/experiencias', item.slug, 'fotos']" class="location-btn gallery-btn">
               <span>Fotos de Experiencias Pasadas</span>
             </a>
+            }
           </div>
         </div>
         }

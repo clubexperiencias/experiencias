@@ -70,6 +70,31 @@ export class ExperienceDetailComponent {
     return e ? `/experiencias/${e.slug}/pago` : '/experiencias';
   });
 
+  isUrl(value?: string): boolean {
+    if (!value) return false;
+    return /^https?:\/\//i.test(value.trim());
+  }
+
+  getGoogleMapsUrl(meetingPoint?: string, region?: string): string {
+    if (!meetingPoint) {
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+        region ? region + ', Catamarca' : 'Catamarca',
+      )}`;
+    }
+    const trimmed = meetingPoint.trim();
+    if (/^https?:\/\//i.test(trimmed)) {
+      return trimmed;
+    }
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+      trimmed + (region ? ', ' + region : ', Catamarca'),
+    )}`;
+  }
+
+  hasAlbumPhotos(item?: { albumPhotos?: any[] } | null): boolean {
+    if (!item || !Array.isArray(item.albumPhotos)) return false;
+    return item.albumPhotos.some((p) => !p.isCover) || item.albumPhotos.length > 1;
+  }
+
   readonly upcomingDates = computed<string[]>(() => {
     const e = this.exp();
     if (!e || !e.dates) return [];
@@ -137,6 +162,39 @@ export class ExperienceDetailComponent {
             'Regreso al club náutico, entrega de equipos y cierre gastronómico con degustación de productos artesanales locales.',
         },
       ];
+    }
+
+    if (e.itinerary && e.itinerary.trim()) {
+      const lines = e.itinerary
+        .split('\n')
+        .map((l) => l.trim())
+        .filter(Boolean);
+      if (lines.length > 0) {
+        return lines.map((line, idx) => {
+          const matchTime = line.match(/^(\d{1,2}:\d{2}(?:\s*hs)?)\s*[-–:]\s*(.*)$/i);
+          if (matchTime) {
+            const time = matchTime[1];
+            const rest = matchTime[2];
+            const parts = rest.split(/[-–:]\s*/);
+            const title = parts[0] || `Etapa ${idx + 1}`;
+            const description = parts.slice(1).join(' - ') || parts[0];
+            return { time, title, description };
+          }
+          const parts = line.split(/[-–:]\s*/);
+          if (parts.length > 1) {
+            return {
+              time: `Etapa ${idx + 1}`,
+              title: parts[0],
+              description: parts.slice(1).join(' - '),
+            };
+          }
+          return {
+            time: `Etapa ${idx + 1}`,
+            title: `Actividad ${idx + 1}`,
+            description: line,
+          };
+        });
+      }
     }
 
     return [

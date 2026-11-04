@@ -75,6 +75,17 @@ const ROUTE_LABELS: Record<string, string> = {
                 <!-- Opciones de Navegación del Menú Agrandadas -->
                 <div class="dropdown-nav-list">
                   <a
+                    [routerLink]="profileLink()"
+                    class="dropdown-item enlarged-item"
+                    (click)="userMenuOpen.set(false)"
+                  >
+                    <mat-icon class="menu-item-icon">manage_accounts</mat-icon>
+                    <div class="menu-item-info">
+                      <strong class="menu-item-title">Editar Perfil</strong>
+                    </div>
+                  </a>
+
+                  <a
                     [routerLink]="dashboardLink()"
                     class="dropdown-item enlarged-item"
                     (click)="userMenuOpen.set(false)"
@@ -104,17 +115,6 @@ const ROUTE_LABELS: Record<string, string> = {
                     <mat-icon class="menu-item-icon">people</mat-icon>
                     <div class="menu-item-info">
                       <strong class="menu-item-title">Socios y Comprobantes</strong>
-                    </div>
-                  </a>
-
-                  <a
-                    [routerLink]="profileLink()"
-                    class="dropdown-item enlarged-item"
-                    (click)="userMenuOpen.set(false)"
-                  >
-                    <mat-icon class="menu-item-icon">manage_accounts</mat-icon>
-                    <div class="menu-item-info">
-                      <strong class="menu-item-title">Editar Perfil</strong>
                     </div>
                   </a>
                 </div>

@@ -341,6 +341,7 @@ CREATE TABLE IF NOT EXISTS public.propuestas_experiencias (
   cover_image_name         TEXT,
   cover_video_url          TEXT,
   cover_video_name         TEXT,
+  album_photos             JSONB DEFAULT '[]'::jsonb,
   status                   TEXT NOT NULL DEFAULT 'pendiente'
                            CHECK (status IN ('pendiente', 'aprobada', 'rechazada')),
   created_at               TIMESTAMPTZ NOT NULL DEFAULT now(),

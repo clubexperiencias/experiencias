@@ -19,6 +19,8 @@ import { NotificationService } from '../../../core/services/notification.service
 import { SUPABASE_CLIENT, isSupabaseConfigured } from '../../../core/supabase/supabase.client';
 import { FechaPipe } from '../../../shared/pipes/format.pipes';
 import { Router, RouterLink } from '@angular/router';
+import { ProviderUser } from '../../../core/models/bank-transfer.model';
+import { ExperienceAlbumPhoto } from '../../../core/models/experience.model';
 
 const DEFAULT_REQ_FORM = {
   title: '',
@@ -39,6 +41,10 @@ const DEFAULT_REQ_FORM = {
   includedServices: '',
   participantRequirements: '',
   notes: '',
+  cbuAlias: '',
+  bankName: '',
+  accountHolder: '',
+  cuitDni: '',
 };
 
 @Component({
@@ -48,12 +54,6 @@ const DEFAULT_REQ_FORM = {
   template: `
     @if (isOpen()) {
       <div class="proposal-page-wrapper">
-        <div class="proposal-page-nav-bar">
-          <a [routerLink]="backLink()" class="back-to-exp-link">
-            Volver a Experiencias
-          </a>
-        </div>
-
         <div
           #modalDialog
           tabindex="-1"
@@ -388,7 +388,6 @@ const DEFAULT_REQ_FORM = {
                         </option>
                         <option value="Moderada">Moderada</option>
                         <option value="Exigente">Exigente</option>
-                        <option value="Alta Montaña">Alta Montaña</option>
                       </select>
                     </div>
 
@@ -410,7 +409,6 @@ const DEFAULT_REQ_FORM = {
                         <option value="7 horas">7 horas</option>
                         <option value="8 horas (Jornada completa)">8 horas (Jornada completa)</option>
                         <option value="Día completo / Más de 8 horas">Día completo / Más de 8 horas</option>
-                        <option value="2 o más días">2 o más días</option>
                       </select>
                     </div>
 
@@ -456,14 +454,21 @@ const DEFAULT_REQ_FORM = {
                     <div class="usd-box-wrapper">
                       <div class="usd-header-row">
                         <label class="usd-box-label" for="req-price-usd">Referencia en Dólares (USD)</label>
-                        <button
-                          type="button"
-                          class="btn-usd-mode-toggle"
-                          (click)="toggleUsdAutoCalc()"
-                          [title]="isUsdAutoCalc() ? 'Activar ingreso manual de USD' : 'Reactivar cálculo automático'"
-                        >
-                          {{ isUsdAutoCalc() ? 'Modo: Automático' : 'Modo: Manual' }}
-                        </button>
+                        <div class="usd-rate-control">
+                          <span class="rate-label">Cotización referencial:</span>
+                          <span class="rate-prefix">&#36;</span>
+                          <input
+                            type="number"
+                            class="rate-input"
+                            [ngModel]="usdExchangeRate()"
+                            (ngModelChange)="onExchangeRateChange($event)"
+                            name="usdExchangeRate"
+                            min="100"
+                            step="50"
+                            title="Modificar cotización del dólar para el cálculo"
+                          />
+                          <span class="rate-suffix">ARS / USD</span>
+                        </div>
                       </div>
 
                       <div class="usd-input-wrapper">
@@ -474,42 +479,12 @@ const DEFAULT_REQ_FORM = {
                           class="form-input usd-input"
                           placeholder="Ej: 45"
                           [(ngModel)]="reqForm.priceUsd"
-                          (input)="onManualUsdInput()"
                           name="priceUsd"
                           min="1"
+                          readonly
                         />
-                      </div>
-
-                      <div class="usd-rate-control">
-                        <span class="rate-label">Cotización referencial:</span>
-                        <span class="rate-prefix">&#36;</span>
-                        <input
-                          type="number"
-                          class="rate-input"
-                          [ngModel]="usdExchangeRate()"
-                          (ngModelChange)="onExchangeRateChange($event)"
-                          name="usdExchangeRate"
-                          min="100"
-                          step="50"
-                          title="Modificar cotización del dólar para el cálculo"
-                        />
-                        <span class="rate-suffix">ARS / USD</span>
                       </div>
                     </div>
-                  </div>
-
-                  <div class="form-group">
-                    <label class="form-label" for="req-promos"
-                      >Promociones, Descuentos u Otros Precios a Considerar</label
-                    >
-                    <textarea
-                      id="req-promos"
-                      rows="3"
-                      class="form-input form-textarea"
-                      placeholder="Ej: Descuento 15% grupos familiares, menores sin cargo..."
-                      [(ngModel)]="reqForm.promosAndPricing"
-                      name="promosAndPricing"
-                    ></textarea>
                   </div>
                 </div>
 
@@ -615,17 +590,26 @@ const DEFAULT_REQ_FORM = {
 
                   <div class="form-group">
                     <label class="form-label" for="req-meeting"
-                      >Punto de Encuentro & Ubicación *</label
+                      >Punto de Encuentro & Ubicación (Link de Google Maps) *</label
                     >
                     <input
                       id="req-meeting"
-                      type="text"
+                      type="url"
                       class="form-input"
-                      placeholder="Ej: Dique El Jumeal, Club Náutico (RP 1)..."
+                      [class.input-error]="meetingPointError()"
+                      placeholder="Ej: https://maps.app.goo.gl/... o https://www.google.com/maps/..."
                       [(ngModel)]="reqForm.meetingPoint"
+                      (ngModelChange)="onMeetingPointChange($event)"
                       name="meetingPoint"
                       required
                     />
+                    @if (meetingPointError()) {
+                      <span class="field-error-text">{{ meetingPointError() }}</span>
+                    } @else {
+                      <span class="field-hint">
+                        Ingresá el enlace de Google Maps para que el botón de Maps abra la ubicación exacta directamente.
+                      </span>
+                    }
                   </div>
 
                   <div class="form-row">
@@ -659,19 +643,374 @@ const DEFAULT_REQ_FORM = {
                       ></textarea>
                     </div>
                   </div>
+                </div>
 
-                  <div class="form-group">
-                    <label class="form-label" for="req-notes"
-                      >Notas o Enlace a Fotos / Videos en Drive (Opcional)</label
-                    >
-                    <input
-                      id="req-notes"
-                      type="text"
-                      class="form-input"
-                      placeholder="Ej: https://drive.google.com/drive/folders/... (fotos o videos)"
-                      [(ngModel)]="reqForm.notes"
-                      name="notes"
-                    />
+                <!-- 7. Álbum de Fotos de la Experiencia (Opcional) -->
+                <div class="form-section album-form-section">
+                  <div class="form-section-header">
+                    <span class="form-section-num">7</span>
+                    <div class="section-title-wrap">
+                      <h4 class="form-section-title">
+                        Álbum de Fotos de la Experiencia <span class="badge-optional">(Opcional)</span>
+                      </h4>
+                      <p class="form-section-desc">
+                        Opcional: podés sumar hasta 2 fotos destacadas y hasta 9 de galería común para que se muestre el botón de fotos de experiencias pasadas en el catálogo (<code>/experiencias/:slug/fotos</code>). Si no cargás fotos adicionales, la experiencia se publicará sin galería de fotos pasadas.
+                      </p>
+                    </div>
+                  </div>
+
+                  <!-- Resumen visual de estado -->
+                  <div class="album-counters-bar">
+                    <div class="counter-badge" [class.is-valid]="!!(coverImagePreview() || coverImageFile())">
+                      <span class="badge-dot"></span>
+                      <span>Portada: <strong>{{ (coverImagePreview() || coverImageFile()) ? '1 / 1' : '0 / 1' }}</strong></span>
+                    </div>
+                    <div class="counter-badge" [class.is-valid]="featuredCount() === 2">
+                      <span class="badge-dot"></span>
+                      <span>Destacadas: <strong>{{ featuredCount() }} / 2</strong></span>
+                    </div>
+                    <div class="counter-badge" [class.is-valid]="galleryPhotos().length > 0">
+                      <span class="badge-dot"></span>
+                      <span>Galería común: <strong>{{ galleryPhotos().length }} / 9</strong></span>
+                    </div>
+                  </div>
+
+                  <!-- Bloque 1: Portada (1 foto) -->
+                  <div class="album-slot-block">
+                    <div class="slot-block-header">
+                      <span class="slot-role-tag role-cover">PORTADA PRINCIPAL (1/1)</span>
+                      <span class="slot-hint">Imagen de portada del catálogo y presentación principal.</span>
+                    </div>
+
+                    @if (coverImagePreview()) {
+                      <div class="album-photo-card is-cover-card">
+                        <div class="card-thumb-wrap">
+                          <img [src]="coverImagePreview()" alt="Foto de portada" class="card-thumb-img" />
+                          <span class="card-role-indicator">Portada activa</span>
+                        </div>
+                        <div class="card-meta">
+                          <span class="card-file-name" [title]="coverImageFile()?.name || 'Foto de portada'">
+                            {{ coverImageFile()?.name || 'Foto de portada principal' }}
+                          </span>
+                          @if (coverImageFile()) {
+                            <span class="card-file-size">{{ formatFileSize(coverImageFile()?.size) }}</span>
+                          }
+                        </div>
+                        <div class="card-actions">
+                          <label class="btn-card-action">
+                            <span>Cambiar</span>
+                            <input
+                              type="file"
+                              class="sr-only"
+                              accept="image/*"
+                              (change)="onCoverImageSelected($event)"
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            class="btn-card-action btn-danger"
+                            (click)="removeCoverImage()"
+                          >
+                            Quitar
+                          </button>
+                        </div>
+                      </div>
+                    } @else {
+                      <label
+                        class="album-dropzone"
+                        [class.dropzone-error]="coverImageError()"
+                        (dragover)="$event.preventDefault()"
+                        (drop)="onCoverImageDrop($event)"
+                      >
+                        <input
+                          type="file"
+                          class="sr-only"
+                          accept="image/*"
+                          (change)="onCoverImageSelected($event)"
+                        />
+                        <div class="dropzone-body">
+                          <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                            <circle cx="8.5" cy="8.5" r="1.5" />
+                            <polyline points="21 15 16 10 5 21" />
+                          </svg>
+                          <span class="dropzone-text-main">Subir Foto de Portada *</span>
+                          <span class="dropzone-text-sub">Arrastrá o hacé click para seleccionar (JPG, PNG, WEBP)</span>
+                        </div>
+                      </label>
+                    }
+                  </div>
+
+                  <!-- Bloque 2: Dos Fotos Destacadas -->
+                  <div class="album-slot-block">
+                    <div class="slot-block-header">
+                      <span class="slot-role-tag role-featured">FOTOS DESTACADAS (2 FOTOS)</span>
+                      <span class="slot-hint">Dos imágenes de gran atractivo visual que encabezan la galería.</span>
+                    </div>
+
+                    <div class="featured-slots-grid">
+                      <!-- Destacada 1 -->
+                      <div class="featured-slot-item">
+                        <div class="featured-slot-title">
+                          <span class="featured-slot-num">1</span>
+                          <span>Destacada 1</span>
+                        </div>
+
+                        @if (featuredPhoto1Preview()) {
+                          <div class="album-photo-card is-featured-card">
+                            <div class="card-thumb-wrap">
+                              <img [src]="featuredPhoto1Preview()" alt="Destacada 1" class="card-thumb-img" />
+                              <span class="card-role-indicator">Destacada 1</span>
+                            </div>
+                            <div class="card-meta">
+                              <span class="card-file-name" [title]="featuredPhoto1File()?.name || 'Destacada 1'">
+                                {{ featuredPhoto1File()?.name || 'destacada-1.jpg' }}
+                              </span>
+                            </div>
+                            <div class="card-actions">
+                              <label class="btn-card-action">
+                                <span>Cambiar</span>
+                                <input
+                                  type="file"
+                                  class="sr-only"
+                                  accept="image/*"
+                                  (change)="onFeaturedPhotoSelected($event, 1)"
+                                />
+                              </label>
+                              <button
+                                type="button"
+                                class="btn-card-action btn-danger"
+                                (click)="removeFeaturedPhoto(1)"
+                              >
+                                Quitar
+                              </button>
+                            </div>
+                          </div>
+                        } @else {
+                          <label
+                            class="album-dropzone dropzone-sm"
+                            (dragover)="$event.preventDefault()"
+                            (drop)="onFeaturedPhotoDrop($event, 1)"
+                          >
+                            <input
+                              type="file"
+                              class="sr-only"
+                              accept="image/*"
+                              (change)="onFeaturedPhotoSelected($event, 1)"
+                            />
+                            <div class="dropzone-body">
+                              <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                              </svg>
+                              <span class="dropzone-text-main">Subir Destacada 1</span>
+                              <span class="dropzone-text-sub">JPG, PNG, WEBP</span>
+                            </div>
+                          </label>
+                        }
+                      </div>
+
+                      <!-- Destacada 2 -->
+                      <div class="featured-slot-item">
+                        <div class="featured-slot-title">
+                          <span class="featured-slot-num">2</span>
+                          <span>Destacada 2</span>
+                        </div>
+
+                        @if (featuredPhoto2Preview()) {
+                          <div class="album-photo-card is-featured-card">
+                            <div class="card-thumb-wrap">
+                              <img [src]="featuredPhoto2Preview()" alt="Destacada 2" class="card-thumb-img" />
+                              <span class="card-role-indicator">Destacada 2</span>
+                            </div>
+                            <div class="card-meta">
+                              <span class="card-file-name" [title]="featuredPhoto2File()?.name || 'Destacada 2'">
+                                {{ featuredPhoto2File()?.name || 'destacada-2.jpg' }}
+                              </span>
+                            </div>
+                            <div class="card-actions">
+                              <label class="btn-card-action">
+                                <span>Cambiar</span>
+                                <input
+                                  type="file"
+                                  class="sr-only"
+                                  accept="image/*"
+                                  (change)="onFeaturedPhotoSelected($event, 2)"
+                                />
+                              </label>
+                              <button
+                                type="button"
+                                class="btn-card-action btn-danger"
+                                (click)="removeFeaturedPhoto(2)"
+                              >
+                                Quitar
+                              </button>
+                            </div>
+                          </div>
+                        } @else {
+                          <label
+                            class="album-dropzone dropzone-sm"
+                            (dragover)="$event.preventDefault()"
+                            (drop)="onFeaturedPhotoDrop($event, 2)"
+                          >
+                            <input
+                              type="file"
+                              class="sr-only"
+                              accept="image/*"
+                              (change)="onFeaturedPhotoSelected($event, 2)"
+                            />
+                            <div class="dropzone-body">
+                              <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                              </svg>
+                              <span class="dropzone-text-main">Subir Destacada 2</span>
+                              <span class="dropzone-text-sub">JPG, PNG, WEBP</span>
+                            </div>
+                          </label>
+                        }
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Bloque 3: Galería Común (Hasta 9 Fotos) -->
+                  <div class="album-slot-block">
+                    <div class="slot-block-header">
+                      <span class="slot-role-tag role-gallery">FOTOS DE GALERÍA COMÚN (HASTA 9)</span>
+                      <span class="slot-hint">Imágenes del entorno o participantes (quedan {{ 9 - galleryPhotos().length }} lugares).</span>
+                    </div>
+
+                    @if (galleryPhotos().length < 9) {
+                      <label
+                        class="album-dropzone dropzone-gallery"
+                        (dragover)="$event.preventDefault()"
+                        (drop)="onGalleryPhotosDrop($event)"
+                      >
+                        <input
+                          type="file"
+                          class="sr-only"
+                          accept="image/*"
+                          multiple
+                          (change)="onGalleryPhotosSelected($event)"
+                        />
+                        <div class="dropzone-body">
+                          <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                            <rect x="2" y="2" width="20" height="20" rx="3" ry="3" />
+                            <circle cx="8.5" cy="8.5" r="1.5" />
+                            <polyline points="21 15 16 10 5 21" />
+                            <line x1="12" y1="8" x2="12" y2="16" />
+                            <line x1="8" y1="12" x2="16" y2="12" />
+                          </svg>
+                          <span class="dropzone-text-main">Agregar Fotos a la Galería ({{ galleryPhotos().length }} / 9)</span>
+                          <span class="dropzone-text-sub">
+                            Podés seleccionar o arrastrar múltiples fotos a la vez
+                          </span>
+                        </div>
+                      </label>
+                    }
+
+                    @if (galleryPhotoError()) {
+                      <span class="field-error-text">{{ galleryPhotoError() }}</span>
+                    }
+
+                    @if (galleryPhotos().length > 0) {
+                      <div class="gallery-thumbs-grid">
+                        @for (item of galleryPhotos(); track item.id; let idx = $index) {
+                          <div class="gallery-thumb-item">
+                            <img [src]="item.previewUrl" [alt]="item.name" class="gallery-thumb-img" />
+                            <span class="thumb-index-pill">#{{ idx + 1 }}</span>
+                            <button
+                              type="button"
+                              class="btn-thumb-remove"
+                              (click)="removeGalleryPhoto(item.id)"
+                              title="Quitar foto de galería"
+                              aria-label="Quitar foto"
+                            >
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                                <line x1="18" y1="6" x2="6" y2="18" />
+                                <line x1="6" y1="6" x2="18" y2="18" />
+                              </svg>
+                            </button>
+                          </div>
+                        }
+                      </div>
+                    }
+                  </div>
+                </div>
+
+                <!-- 8. Datos Bancarios para Liquidación de Pagos -->
+                <div class="form-section">
+                  <div class="form-section-header">
+                    <span class="form-section-num">8</span>
+                    <div class="section-title-wrap">
+                      <h4 class="form-section-title">Datos Bancarios para Liquidación de Pagos</h4>
+                      <p class="form-section-desc">
+                        Cuenta bancaria o virtual donde se liquidan las recaudaciones de esta experiencia. Vinculada a tu perfil de prestador.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label class="form-label" for="req-cbu-alias">
+                        CBU o Alias de Destino <span class="req-star">*</span>
+                      </label>
+                      <input
+                        id="req-cbu-alias"
+                        type="text"
+                        class="form-input text-mono"
+                        placeholder="Ej. EXPERIENCIAS.CLUB.MP o 22 dígitos"
+                        [(ngModel)]="reqForm.cbuAlias"
+                        name="cbuAlias"
+                        required
+                      />
+                      <span class="field-hint">Alias o CBU de 22 dígitos exactos</span>
+                    </div>
+
+                    <div class="form-group">
+                      <label class="form-label" for="req-bank-name">
+                        Entidad Bancaria o Billetera <span class="req-star">*</span>
+                      </label>
+                      <input
+                        id="req-bank-name"
+                        type="text"
+                        class="form-input"
+                        placeholder="Ej. Banco Nación / Mercado Pago"
+                        [(ngModel)]="reqForm.bankName"
+                        name="bankName"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label class="form-label" for="req-account-holder">
+                        Nombre / Titular de la Cuenta <span class="req-star">*</span>
+                      </label>
+                      <input
+                        id="req-account-holder"
+                        type="text"
+                        class="form-input"
+                        placeholder="Nombre y Apellido del Titular"
+                        [(ngModel)]="reqForm.accountHolder"
+                        name="accountHolder"
+                        required
+                      />
+                    </div>
+
+                    <div class="form-group">
+                      <label class="form-label" for="req-cuit-dni">
+                        CUIT o CUIL <span class="req-star">*</span>
+                      </label>
+                      <input
+                        id="req-cuit-dni"
+                        type="text"
+                        class="form-input text-mono"
+                        placeholder="Ej. 20-12345678-9"
+                        [(ngModel)]="reqForm.cuitDni"
+                        name="cuitDni"
+                        required
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -934,6 +1273,24 @@ const DEFAULT_REQ_FORM = {
         color: #ffffff;
         margin: 0;
       }
+      .section-title-wrap {
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+      }
+      .form-section-desc {
+        font-size: 0.78rem;
+        color: rgba(255, 255, 255, 0.65);
+        margin: 0;
+        line-height: 1.4;
+      }
+      .req-star {
+        color: #80b3ff;
+      }
+      .text-mono {
+        font-family: monospace;
+        letter-spacing: 0.03em;
+      }
       .form-group {
         display: flex;
         flex-direction: column;
@@ -975,9 +1332,10 @@ const DEFAULT_REQ_FORM = {
         border-color: #80b3ff;
         box-shadow: 0 0 0 2px rgba(128, 179, 255, 0.25);
       }
-      .form-input.ng-invalid.ng-touched {
-        border-color: #ef4444;
-        box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.25);
+      .form-input.ng-invalid.ng-touched,
+      .form-input.input-error {
+        border-color: #ef4444 !important;
+        box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.25) !important;
       }
       .form-select {
         appearance: none;
@@ -1020,6 +1378,8 @@ const DEFAULT_REQ_FORM = {
         display: flex;
         justify-content: space-between;
         align-items: center;
+        flex-wrap: wrap;
+        gap: 0.5rem;
         margin-bottom: 0.45rem;
       }
       .usd-box-label {
@@ -1028,21 +1388,6 @@ const DEFAULT_REQ_FORM = {
         text-transform: uppercase;
         letter-spacing: 0.03em;
         color: #80b3ff;
-      }
-      .btn-usd-mode-toggle {
-        background: rgba(128, 179, 255, 0.12);
-        border: 1px solid rgba(128, 179, 255, 0.35);
-        color: #80b3ff;
-        border-radius: 3px;
-        padding: 0.2rem 0.55rem;
-        font-size: 0.7rem;
-        font-weight: 700;
-        cursor: pointer;
-        transition: all 0.2s ease;
-      }
-      .btn-usd-mode-toggle:hover {
-        background: #80b3ff;
-        color: #070d18;
       }
       .usd-input-wrapper {
         position: relative;
@@ -1060,11 +1405,16 @@ const DEFAULT_REQ_FORM = {
       .usd-input {
         padding-left: 3.4rem !important;
       }
+      .usd-input[readonly] {
+        background: rgba(10, 18, 38, 0.5);
+        color: #cbd5e1;
+        cursor: default;
+      }
       .usd-rate-control {
         display: flex;
         align-items: center;
         gap: 0.35rem;
-        margin-top: 0.5rem;
+        margin-top: 0;
         font-size: 0.76rem;
         color: rgba(255, 255, 255, 0.65);
       }
@@ -1510,7 +1860,298 @@ const DEFAULT_REQ_FORM = {
         background: rgba(128, 179, 255, 0.28);
         border-color: rgba(128, 179, 255, 0.6);
       }
+      /* Álbum de Fotos de la Experiencia */
+      .album-counters-bar {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.65rem;
+        margin: 0.25rem 0 0.5rem;
+      }
+      .counter-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.3rem 0.65rem;
+        background: rgba(128, 179, 255, 0.08);
+        border: 1px solid rgba(128, 179, 255, 0.25);
+        border-radius: 4px;
+        font-size: 0.74rem;
+        color: rgba(255, 255, 255, 0.75);
+      }
+      .counter-badge .badge-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #94a3b8;
+      }
+      .counter-badge.is-valid {
+        border-color: rgba(52, 211, 153, 0.5);
+        background: rgba(16, 185, 129, 0.12);
+        color: #34d399;
+      }
+      .counter-badge.is-valid .badge-dot {
+        background: #10b981;
+        box-shadow: 0 0 6px rgba(16, 185, 129, 0.7);
+      }
+      .album-slot-block {
+        display: flex;
+        flex-direction: column;
+        gap: 0.65rem;
+        padding: 0.95rem 1.1rem;
+        background: rgba(7, 13, 28, 0.45);
+        border: 1px solid rgba(128, 179, 255, 0.16);
+        border-radius: 4px;
+        margin-top: 0.35rem;
+      }
+      .slot-block-header {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        flex-wrap: wrap;
+      }
+      .slot-role-tag {
+        font-size: 0.68rem;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        padding: 0.2rem 0.55rem;
+        border-radius: 3px;
+      }
+      .role-cover {
+        background: rgba(245, 158, 11, 0.15);
+        color: #fbbf24;
+        border: 1px solid rgba(245, 158, 11, 0.45);
+      }
+      .role-featured {
+        background: rgba(96, 165, 250, 0.15);
+        color: #60a5fa;
+        border: 1px solid rgba(96, 165, 250, 0.45);
+      }
+      .role-gallery {
+        background: rgba(148, 163, 184, 0.15);
+        color: #cbd5e1;
+        border: 1px solid rgba(148, 163, 184, 0.35);
+      }
+      .slot-hint {
+        font-size: 0.73rem;
+        color: rgba(255, 255, 255, 0.55);
+      }
+      .featured-slots-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+      }
+      .featured-slot-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.45rem;
+      }
+      .featured-slot-title {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        font-size: 0.76rem;
+        font-weight: 700;
+        color: #80b3ff;
+      }
+      .featured-slot-num {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: rgba(128, 179, 255, 0.22);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.68rem;
+        color: #ffffff;
+      }
+      .album-dropzone {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 1.15rem;
+        border: 1.5px dashed rgba(128, 179, 255, 0.35);
+        border-radius: 4px;
+        background: rgba(7, 13, 28, 0.55);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-align: center;
+      }
+      .album-dropzone:hover {
+        border-color: #80b3ff;
+        background: rgba(128, 179, 255, 0.08);
+      }
+      .album-dropzone.dropzone-sm {
+        min-height: 105px;
+        padding: 0.85rem;
+      }
+      .album-dropzone.dropzone-gallery {
+        min-height: 100px;
+        padding: 1rem;
+      }
+      .dropzone-body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.3rem;
+      }
+      .dropzone-text-main {
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: #ffffff;
+      }
+      .dropzone-text-sub {
+        font-size: 0.7rem;
+        color: rgba(255, 255, 255, 0.5);
+      }
+      .album-photo-card {
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
+        padding: 0.65rem 0.85rem;
+        background: rgba(10, 18, 38, 0.85);
+        border: 1px solid rgba(128, 179, 255, 0.3);
+        border-radius: 4px;
+      }
+      .card-thumb-wrap {
+        position: relative;
+        width: 82px;
+        height: 58px;
+        border-radius: 3px;
+        overflow: hidden;
+        flex-shrink: 0;
+        background: #000000;
+      }
+      .card-thumb-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .card-role-indicator {
+        position: absolute;
+        bottom: 2px;
+        left: 2px;
+        right: 2px;
+        font-size: 0.58rem;
+        font-weight: 700;
+        text-align: center;
+        background: rgba(0, 0, 0, 0.78);
+        color: #ffffff;
+        border-radius: 2px;
+        padding: 1px 2px;
+      }
+      .card-meta {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+      }
+      .card-file-name {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #ffffff;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .card-file-size {
+        font-size: 0.68rem;
+        color: rgba(255, 255, 255, 0.45);
+      }
+      .card-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        flex-shrink: 0;
+      }
+      .btn-card-action {
+        font-size: 0.7rem;
+        font-weight: 700;
+        padding: 0.32rem 0.65rem;
+        border-radius: 3px;
+        border: 1px solid rgba(128, 179, 255, 0.4);
+        background: rgba(128, 179, 255, 0.15);
+        color: #80b3ff;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        line-height: 1;
+      }
+      .btn-card-action:hover {
+        background: #80b3ff;
+        color: #070d18;
+      }
+      .btn-card-action.btn-danger {
+        border-color: rgba(239, 68, 68, 0.4);
+        background: rgba(239, 68, 68, 0.15);
+        color: #f87171;
+      }
+      .btn-card-action.btn-danger:hover {
+        background: #ef4444;
+        color: #ffffff;
+      }
+      .gallery-thumbs-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(85px, 1fr));
+        gap: 0.65rem;
+        margin-top: 0.65rem;
+      }
+      .gallery-thumb-item {
+        position: relative;
+        aspect-ratio: 1;
+        border-radius: 4px;
+        overflow: hidden;
+        border: 1px solid rgba(128, 179, 255, 0.28);
+        background: #000000;
+      }
+      .gallery-thumb-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .thumb-index-pill {
+        position: absolute;
+        top: 4px;
+        left: 4px;
+        font-size: 0.62rem;
+        font-weight: 800;
+        background: rgba(0, 0, 0, 0.78);
+        color: #80b3ff;
+        padding: 1px 4px;
+        border-radius: 2px;
+        line-height: 1.2;
+      }
+      .btn-thumb-remove {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, 0.8);
+        border: none;
+        color: #f87171;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2px;
+        transition: all 0.15s ease;
+      }
+      .btn-thumb-remove:hover {
+        background: #ef4444;
+        color: #ffffff;
+      }
+      .btn-thumb-remove svg {
+        width: 12px;
+        height: 12px;
+      }
       @media (max-width: 680px) {
+        .featured-slots-grid {
+          grid-template-columns: 1fr;
+        }
         .proposal-page-wrapper {
           padding: 0.25rem 0 2rem;
         }
@@ -1570,6 +2211,15 @@ export class ProviderExperienceProposalModalComponent {
   constructor() {
     this.loadDraft();
     effect(() => {
+      const prov = this.store.currentProvider();
+      if (prov) {
+        if (!this.reqForm.cbuAlias?.trim()) this.reqForm.cbuAlias = prov.cbuAlias || '';
+        if (!this.reqForm.bankName?.trim()) this.reqForm.bankName = prov.bankName || '';
+        if (!this.reqForm.accountHolder?.trim()) this.reqForm.accountHolder = prov.name || '';
+        if (!this.reqForm.cuitDni?.trim()) this.reqForm.cuitDni = prov.cuitDni || '';
+      }
+    });
+    effect(() => {
       if (this.isOpen()) {
         if (typeof document !== 'undefined') {
           this.previousActiveElement = document.activeElement as HTMLElement | null;
@@ -1580,6 +2230,23 @@ export class ProviderExperienceProposalModalComponent {
         }, 0);
       }
     });
+  }
+
+  private syncBankingWithProvider(): void {
+    const prov = this.store.currentProvider();
+    if (!prov) return;
+    if (!this.reqForm.cbuAlias?.trim()) {
+      this.reqForm.cbuAlias = prov.cbuAlias || '';
+    }
+    if (!this.reqForm.bankName?.trim()) {
+      this.reqForm.bankName = prov.bankName || '';
+    }
+    if (!this.reqForm.accountHolder?.trim()) {
+      this.reqForm.accountHolder = prov.name || '';
+    }
+    if (!this.reqForm.cuitDni?.trim()) {
+      this.reqForm.cuitDni = prov.cuitDni || '';
+    }
   }
 
   private getFocusableElements(): HTMLElement[] {
@@ -1611,6 +2278,26 @@ export class ProviderExperienceProposalModalComponent {
   readonly coverVideoPreview = signal<string | null>(null);
   readonly coverVideoError = signal<string | null>(null);
 
+  // Álbum de fotos: 2 destacadas y hasta 9 de galería común
+  readonly featuredPhoto1File = signal<File | null>(null);
+  readonly featuredPhoto1Preview = signal<string | null>(null);
+  readonly featuredPhoto1DataUrl = signal<string | null>(null);
+
+  readonly featuredPhoto2File = signal<File | null>(null);
+  readonly featuredPhoto2Preview = signal<string | null>(null);
+  readonly featuredPhoto2DataUrl = signal<string | null>(null);
+
+  readonly galleryPhotos = signal<
+    { id: string; file?: File; previewUrl: string; dataUrl?: string; name: string }[]
+  >([]);
+  readonly galleryPhotoError = signal<string | null>(null);
+
+  readonly featuredCount = computed(
+    () => (this.featuredPhoto1Preview() ? 1 : 0) + (this.featuredPhoto2Preview() ? 1 : 0),
+  );
+  readonly galleryCount = computed(() => this.galleryPhotos().length);
+
+  readonly meetingPointError = signal<string | null>(null);
   readonly formValidationError = signal<string | null>(null);
 
   // USD Rate and Calculation
@@ -1637,16 +2324,56 @@ export class ProviderExperienceProposalModalComponent {
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   }
 
+  isValidGoogleMapsUrl(url?: string): boolean {
+    if (!url) return false;
+    const trimmed = url.trim();
+    if (!/^https?:\/\//i.test(trimmed)) return false;
+
+    try {
+      const parsed = new URL(trimmed);
+      const host = parsed.hostname.toLowerCase();
+      const pathname = parsed.pathname.toLowerCase();
+
+      if (host === 'maps.app.goo.gl') return true;
+      if (host === 'goo.gl' && pathname.startsWith('/maps')) return true;
+      if (host.includes('google.') && (pathname.startsWith('/maps') || host.startsWith('maps.google.'))) {
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
+  onMeetingPointChange(val: string): void {
+    const trimmed = val ? val.trim() : '';
+    if (!trimmed) {
+      this.meetingPointError.set(null);
+      this.saveDraft();
+      return;
+    }
+    if (!this.isValidGoogleMapsUrl(trimmed)) {
+      this.meetingPointError.set(
+        'Ingresá un enlace válido de Google Maps (ej. https://maps.app.goo.gl/... o https://www.google.com/maps/...).',
+      );
+    } else {
+      this.meetingPointError.set(null);
+    }
+    this.saveDraft();
+  }
+
   getFormProgress(): number {
     let score = 0;
-    const total = 7;
+    const total = 9;
     if (this.reqForm.title?.trim()) score++;
     if (this.reqForm.region?.trim()) score++;
     if (this.reqForm.subheading?.trim()) score++;
     if (this.coverImageFile() || this.coverImagePreview()) score++;
     if (this.reqForm.difficulty?.trim() && this.reqForm.duration?.trim()) score++;
     if (this.reqForm.priceArs && this.reqForm.priceArs > 0) score++;
-    if (this.reqForm.itinerary?.trim() && this.reqForm.meetingPoint?.trim()) score++;
+    if (this.reqForm.itinerary?.trim()) score++;
+    if (this.reqForm.meetingPoint?.trim() && this.isValidGoogleMapsUrl(this.reqForm.meetingPoint)) score++;
+    if (this.reqForm.cbuAlias?.trim() && this.reqForm.bankName?.trim()) score++;
 
     return Math.min(100, Math.round((score / total) * 100));
   }
@@ -1754,6 +2481,139 @@ export class ProviderExperienceProposalModalComponent {
     this.coverVideoError.set(null);
   }
 
+  onFeaturedPhotoSelected(event: Event, slot: 1 | 2): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    this.handleFeaturedPhotoFile(file, slot);
+    input.value = '';
+  }
+
+  onFeaturedPhotoDrop(event: DragEvent, slot: 1 | 2): void {
+    event.preventDefault();
+    const file = event.dataTransfer?.files?.[0];
+    if (!file) return;
+    this.handleFeaturedPhotoFile(file, slot);
+  }
+
+  private handleFeaturedPhotoFile(file: File, slot: 1 | 2): void {
+    if (!file.type.startsWith('image/')) return;
+    if (file.size > 5 * 1024 * 1024) return;
+
+    const objectUrl = URL.createObjectURL(file);
+    if (slot === 1) {
+      if (this.featuredPhoto1Preview()) URL.revokeObjectURL(this.featuredPhoto1Preview()!);
+      this.featuredPhoto1File.set(file);
+      this.featuredPhoto1Preview.set(objectUrl);
+    } else {
+      if (this.featuredPhoto2Preview()) URL.revokeObjectURL(this.featuredPhoto2Preview()!);
+      this.featuredPhoto2File.set(file);
+      this.featuredPhoto2Preview.set(objectUrl);
+    }
+
+    if (typeof FileReader !== 'undefined') {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          if (slot === 1) {
+            this.featuredPhoto1DataUrl.set(reader.result);
+          } else {
+            this.featuredPhoto2DataUrl.set(reader.result);
+          }
+          this.saveDraft();
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  removeFeaturedPhoto(slot: 1 | 2): void {
+    if (slot === 1) {
+      if (this.featuredPhoto1Preview()) URL.revokeObjectURL(this.featuredPhoto1Preview()!);
+      this.featuredPhoto1File.set(null);
+      this.featuredPhoto1Preview.set(null);
+      this.featuredPhoto1DataUrl.set(null);
+    } else {
+      if (this.featuredPhoto2Preview()) URL.revokeObjectURL(this.featuredPhoto2Preview()!);
+      this.featuredPhoto2File.set(null);
+      this.featuredPhoto2Preview.set(null);
+      this.featuredPhoto2DataUrl.set(null);
+    }
+    this.saveDraft();
+  }
+
+  onGalleryPhotosSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+    this.addGalleryFiles(Array.from(input.files));
+    input.value = '';
+  }
+
+  onGalleryPhotosDrop(event: DragEvent): void {
+    event.preventDefault();
+    if (!event.dataTransfer?.files || event.dataTransfer.files.length === 0) return;
+    this.addGalleryFiles(Array.from(event.dataTransfer.files));
+  }
+
+  private addGalleryFiles(files: File[]): void {
+    this.galleryPhotoError.set(null);
+    const validImages = files.filter((f) => f.type.startsWith('image/'));
+    if (validImages.length === 0) {
+      this.galleryPhotoError.set('Solo se admiten archivos de imagen (JPG, PNG, WEBP).');
+      return;
+    }
+
+    const currentCount = this.galleryPhotos().length;
+    const availableSlots = 9 - currentCount;
+    if (availableSlots <= 0) {
+      this.galleryPhotoError.set('Ya alcanzaste el límite máximo de 9 fotos de galería común.');
+      return;
+    }
+
+    const toProcess = validImages.slice(0, availableSlots);
+    if (validImages.length > availableSlots) {
+      this.galleryPhotoError.set(`Se agregaron ${availableSlots} fotos (límite de 9 alcanzado).`);
+    }
+
+    for (const file of toProcess) {
+      if (file.size > 5 * 1024 * 1024) continue;
+      const objectUrl = URL.createObjectURL(file);
+      const id = `gal_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      const newEntry = {
+        id,
+        file,
+        previewUrl: objectUrl,
+        name: file.name,
+      };
+
+      this.galleryPhotos.update((list) => [...list, newEntry]);
+
+      if (typeof FileReader !== 'undefined') {
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (typeof reader.result === 'string') {
+            this.galleryPhotos.update((list) =>
+              list.map((item) => (item.id === id ? { ...item, dataUrl: reader.result as string } : item)),
+            );
+            this.saveDraft();
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+    this.saveDraft();
+  }
+
+  removeGalleryPhoto(id: string): void {
+    const found = this.galleryPhotos().find((p) => p.id === id);
+    if (found?.previewUrl) {
+      URL.revokeObjectURL(found.previewUrl);
+    }
+    this.galleryPhotos.update((list) => list.filter((p) => p.id !== id));
+    this.galleryPhotoError.set(null);
+    this.saveDraft();
+  }
+
   onPriceArsChange(val: number): void {
     if (this.isUsdAutoCalc()) {
       const rate = this.usdExchangeRate() || 1400;
@@ -1846,6 +2706,7 @@ export class ProviderExperienceProposalModalComponent {
           ...data.reqForm,
         };
       }
+      this.syncBankingWithProvider();
       if (data.usdExchangeRate) {
         this.usdExchangeRate.set(Number(data.usdExchangeRate) || 1400);
       }
@@ -1885,6 +2746,10 @@ export class ProviderExperienceProposalModalComponent {
         this.reqForm.includedServices?.trim() ||
         this.reqForm.participantRequirements?.trim() ||
         this.reqForm.notes?.trim() ||
+        this.reqForm.cbuAlias?.trim() ||
+        this.reqForm.bankName?.trim() ||
+        this.reqForm.accountHolder?.trim() ||
+        this.reqForm.cuitDni?.trim() ||
         this.scheduledDates().length > 0 ||
         this.coverImageDataUrl()
       );
@@ -1930,13 +2795,22 @@ export class ProviderExperienceProposalModalComponent {
   discardDraft(): void {
     this.clearDraft();
     this.reqForm = { ...DEFAULT_REQ_FORM };
+    this.syncBankingWithProvider();
     this.scheduledDates.set([]);
     this.isDateFlexible.set(true);
     this.isUsdAutoCalc.set(true);
     this.usdExchangeRate.set(1400);
     this.formValidationError.set(null);
+    this.meetingPointError.set(null);
     this.removeCoverImage();
     this.removeCoverVideo();
+    this.removeFeaturedPhoto(1);
+    this.removeFeaturedPhoto(2);
+    for (const item of this.galleryPhotos()) {
+      if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+    }
+    this.galleryPhotos.set([]);
+    this.galleryPhotoError.set(null);
   }
 
   onClose(): void {
@@ -1956,8 +2830,16 @@ export class ProviderExperienceProposalModalComponent {
       this.isUsdAutoCalc.set(true);
       this.usdExchangeRate.set(1400);
       this.formValidationError.set(null);
+      this.meetingPointError.set(null);
       this.removeCoverImage();
       this.removeCoverVideo();
+      this.removeFeaturedPhoto(1);
+      this.removeFeaturedPhoto(2);
+      for (const item of this.galleryPhotos()) {
+        if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+      }
+      this.galleryPhotos.set([]);
+      this.galleryPhotoError.set(null);
     }
     this.requestSuccess.set(false);
     this.submittingRequest.set(false);
@@ -1977,6 +2859,7 @@ export class ProviderExperienceProposalModalComponent {
     const subheading = this.reqForm.subheading?.trim();
     const itinerary = this.reqForm.itinerary?.trim();
     const meetingPoint = this.reqForm.meetingPoint?.trim();
+    const isMapsValid = this.isValidGoogleMapsUrl(meetingPoint);
     const priceArs = Number(this.reqForm.priceArs);
     const hasCoverImage = Boolean(this.coverImageFile() || this.coverImagePreview());
     const hasValidDates = this.isDateFlexible() || this.scheduledDates().length > 0;
@@ -1988,6 +2871,7 @@ export class ProviderExperienceProposalModalComponent {
       !subheading ||
       !itinerary ||
       !meetingPoint ||
+      !isMapsValid ||
       !Number.isFinite(priceArs) ||
       priceArs < 1 ||
       !hasCoverImage ||
@@ -1998,13 +2882,20 @@ export class ProviderExperienceProposalModalComponent {
       if (!hasCoverImage) {
         this.coverImageError.set('La foto de portada es obligatoria para enviar la propuesta.');
       }
+      if (!meetingPoint) {
+        this.meetingPointError.set('Ingresá el enlace de Google Maps para el punto de encuentro.');
+      } else if (!isMapsValid) {
+        this.meetingPointError.set(
+          'Ingresá un enlace válido de Google Maps (maps.app.goo.gl o google.com/maps).',
+        );
+      }
 
       const missing: string[] = [];
       if (!title) missing.push('Título');
       if (!region) missing.push('Región');
       if (!subheading) missing.push('Bajada');
       if (!itinerary) missing.push('Itinerario');
-      if (!meetingPoint) missing.push('Punto de encuentro');
+      if (!meetingPoint || !isMapsValid) missing.push('Punto de encuentro (link válido de Google Maps)');
       if (!Number.isFinite(priceArs) || priceArs < 1) missing.push('Arancel');
       if (!hasCoverImage) missing.push('Foto de Portada');
       if (!hasValidDates) missing.push('Fechas de Salida');
@@ -2097,13 +2988,135 @@ export class ProviderExperienceProposalModalComponent {
       Number(this.reqForm.priceUsd) ||
       Math.round(priceArs / (this.usdExchangeRate() || 1400));
 
+    const cbuAlias = this.reqForm.cbuAlias?.trim() || '';
+    const bankName = this.reqForm.bankName?.trim() || '';
+    const accountHolder = this.reqForm.accountHolder?.trim() || '';
+    const cuitDni = this.reqForm.cuitDni?.trim() || '';
+
+    // Sincronizar datos bancarios con el perfil del prestador
+    const currentProv = this.store.currentProvider();
+    const profileUpdates: Partial<ProviderUser> = {};
+
+    if (cbuAlias && cbuAlias !== (currentProv?.cbuAlias || '')) {
+      profileUpdates.cbuAlias = cbuAlias;
+    }
+    if (bankName && bankName !== (currentProv?.bankName || '')) {
+      profileUpdates.bankName = bankName;
+    }
+    if (accountHolder && accountHolder !== (currentProv?.name || '')) {
+      profileUpdates.name = accountHolder;
+    }
+    if (cuitDni && cuitDni !== (currentProv?.cuitDni || '')) {
+      profileUpdates.cuitDni = cuitDni;
+    }
+
+    if (Object.keys(profileUpdates).length > 0) {
+      try {
+        await this.store.updateProfile(profileUpdates);
+      } catch (err) {
+        console.warn('[ProposalModal] Error actualizando perfil de prestador desde propuesta:', err);
+      }
+    }
+
+    // Subir foto destacada 1 si existe
+    let feat1Url = this.featuredPhoto1DataUrl() || this.featuredPhoto1Preview() || undefined;
+    const feat1File = this.featuredPhoto1File();
+    if (feat1File) {
+      try {
+        const res = await this.storageService.uploadFile(feat1File, 'PROPOSAL');
+        if (res?.url) feat1Url = res.url;
+      } catch (err) {
+        console.warn('[ProposalModal] Error subiendo destacada 1:', err);
+      }
+    }
+
+    // Subir foto destacada 2 si existe
+    let feat2Url = this.featuredPhoto2DataUrl() || this.featuredPhoto2Preview() || undefined;
+    const feat2File = this.featuredPhoto2File();
+    if (feat2File) {
+      try {
+        const res = await this.storageService.uploadFile(feat2File, 'PROPOSAL');
+        if (res?.url) feat2Url = res.url;
+      } catch (err) {
+        console.warn('[ProposalModal] Error subiendo destacada 2:', err);
+      }
+    }
+
+    // Subir fotos de galería común si existen
+    const galleryItems: { url: string; name: string }[] = [];
+    for (const item of this.galleryPhotos()) {
+      let finalUrl = item.dataUrl || item.previewUrl;
+      if (item.file) {
+        try {
+          const res = await this.storageService.uploadFile(item.file, 'PROPOSAL');
+          if (res?.url) finalUrl = res.url;
+        } catch (err) {
+          console.warn('[ProposalModal] Error subiendo foto de galería:', err);
+        }
+      }
+      if (finalUrl) {
+        galleryItems.push({ url: finalUrl, name: item.name });
+      }
+    }
+
+    // Armar álbum completo: 1 portada, 2 destacadas, hasta 9 de galería común
+    const albumPhotos: ExperienceAlbumPhoto[] = [];
+
+    if (coverImageUrl) {
+      albumPhotos.push({
+        id: `photo_${Date.now()}_cover`,
+        url: coverImageUrl,
+        title: title,
+        caption: 'Foto de portada principal',
+        isCover: true,
+        isFeatured: false,
+        order: 1,
+      });
+    }
+
+    if (feat1Url) {
+      albumPhotos.push({
+        id: `photo_${Date.now()}_feat1`,
+        url: feat1Url,
+        title: `${title} - Destacada 1`,
+        isCover: false,
+        isFeatured: true,
+        order: 2,
+      });
+    }
+
+    if (feat2Url) {
+      albumPhotos.push({
+        id: `photo_${Date.now()}_feat2`,
+        url: feat2Url,
+        title: `${title} - Destacada 2`,
+        isCover: false,
+        isFeatured: true,
+        order: 3,
+      });
+    }
+
+    galleryItems.forEach((g, idx) => {
+      albumPhotos.push({
+        id: `photo_${Date.now()}_gal_${idx + 1}`,
+        url: g.url,
+        title: g.name || `${title} - Galería ${idx + 1}`,
+        isCover: false,
+        isFeatured: false,
+        order: 4 + idx,
+      });
+    });
+
     try {
       await this.store.submitExperienceRequest({
         providerId,
-        providerName,
+        providerName: accountHolder || providerName,
         providerAgency: providerAgency || 'Prestador Oficial EXPERIENCIAS.CLUB',
         providerEmail,
         providerPhone: providerPhone || undefined,
+        providerCbuAlias: cbuAlias || currentProv?.cbuAlias,
+        providerBankName: bankName || currentProv?.bankName,
+        providerCuitDni: cuitDni || currentProv?.cuitDni,
         title,
         kicker: this.reqForm.kicker?.trim() || 'EXPERIENCIA',
         subheading: this.reqForm.subheading?.trim() || '',
@@ -2126,6 +3139,8 @@ export class ProviderExperienceProposalModalComponent {
         coverImageName: coverFile?.name || 'portada.jpg',
         coverVideoUrl,
         coverVideoName: videoFile?.name,
+        albumPhotos,
+        galleryImages: albumPhotos.map((p) => p.url),
       });
 
       // Disparar notificación por correo (Admin y Prestador)

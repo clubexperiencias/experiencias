@@ -31,6 +31,7 @@ export interface Experience {
   albumPhotos?: ExperienceAlbumPhoto[];
   videoUrl?: string;
   videoPoster?: string;
+  itinerary?: string;
   highlights: string[];
   included: string[];
   notIncluded?: string[];

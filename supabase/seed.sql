@@ -75,9 +75,9 @@ VALUES
     'Catamarca Experiencias & Expediciones',
     true,
     'aprobado',
-    'EXPERIENCIAS.CLUB.MP',
-    '20-33445566-7',
-    'Banco Nación / Mercado Pago',
+    NULL,
+    NULL,
+    NULL,
     'Gonzalo Gramaglia',
     '+54 9 11 5566 7788'
   )

@@ -1,4 +1,4 @@
-@import '../kayak-experience/kayak-experience.component.css';
+@import '../../../shared/styles/experience-shared.css';
 @import '../../../shared/styles/panel-form.css';
 
 .pay-layout {

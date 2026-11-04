@@ -164,7 +164,7 @@ export const MEMBERSHIP_TIERS: MembershipTierInfo[] = [
     description:
       'Miembro activo del club con capacidad de reserva inmediata y descuentos directos con prestadores.',
     howToReach:
-      'Suscripción mensual recurrente. Se habilitará en el lanzamiento de la temporada 2027.',
+      'Suscripción mensual recurrente.',
     benefits: [
       'Todos los beneficios de Socio Emergente',
       '10% OFF directo en todas las expediciones y salidas',
@@ -181,7 +181,7 @@ export const MEMBERSHIP_TIERS: MembershipTierInfo[] = [
     badgeText: 'FASE 3 · VITALICIO ABSOLUTO',
     description:
       'Máximo estatus del club con Membresía Absoluta vitalicia. Sin cuotas mensuales de por vida.',
-    howToReach: 'Aporte patrimonial único evaluado por el Comité Directivo.',
+    howToReach: 'Aporte patrimonial único evaluado por el Comité del Club.',
     lifetimePriceArs: 95000,
     benefits: [
       'Todos los beneficios de Socio Emergente y Socio Pleno',

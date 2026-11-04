@@ -68,25 +68,25 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
           <div class="fin-bank-item">
             <span class="fin-bank-lbl">CBU / CVU o ALIAS</span>
             <strong class="fin-bank-val code-font text-blue">{{
-              store.currentProvider()?.cbuAlias || 'Sin especificar'
+              store.currentProvider()?.cbuAlias || '-'
             }}</strong>
           </div>
           <div class="fin-bank-item">
             <span class="fin-bank-lbl">NOMBRE / TITULAR</span>
             <strong class="fin-bank-val">{{
-              store.currentProvider()?.name || 'Sin especificar'
+              store.currentProvider()?.name || '-'
             }}</strong>
           </div>
           <div class="fin-bank-item">
             <span class="fin-bank-lbl">CUIT / CUIL</span>
             <strong class="fin-bank-val code-font">{{
-              store.currentProvider()?.cuitDni || 'Sin especificar'
+              store.currentProvider()?.cuitDni || '-'
             }}</strong>
           </div>
           <div class="fin-bank-item">
             <span class="fin-bank-lbl">ENTIDAD BANCARIA</span>
             <strong class="fin-bank-val">{{
-              store.currentProvider()?.bankName || 'Sin especificar'
+              store.currentProvider()?.bankName || '-'
             }}</strong>
           </div>
         </div>
