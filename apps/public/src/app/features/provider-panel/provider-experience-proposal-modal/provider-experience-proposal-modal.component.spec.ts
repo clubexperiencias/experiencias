@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { ProviderExperienceProposalModalComponent } from './provider-experience-proposal-modal.component';
 import { ProviderStoreService } from '../../../core/services/provider-store.service';
 import { StorageService } from '../../../core/services/storage.service';
@@ -14,6 +15,7 @@ describe('ProviderExperienceProposalModalComponent Draft Persistence', () => {
     await TestBed.configureTestingModule({
       imports: [ProviderExperienceProposalModalComponent],
       providers: [
+        provideRouter([]),
         ProviderStoreService,
         {
           provide: StorageService,
@@ -91,8 +93,12 @@ describe('ProviderExperienceProposalModalComponent Draft Persistence', () => {
   it('should clear draft from localStorage when proposal is submitted successfully', async () => {
     component.reqForm.title = 'Kayak Sunset';
     component.reqForm.region = 'Valle Central';
+    component.reqForm.subheading = 'Sunset en kayak en el dique';
+    component.reqForm.itinerary = '16:00 Recepción, 17:00 Salida, 19:00 Regreso';
+    component.reqForm.meetingPoint = 'Club Náutico';
     component.reqForm.priceArs = 55000;
     component.coverImageDataUrl.set('data:image/jpeg;base64,mock');
+    component.coverImagePreview.set('data:image/jpeg;base64,mock');
     component.saveDraft();
     expect(localStorage.getItem(ProviderExperienceProposalModalComponent.DRAFT_STORAGE_KEY)).toBeTruthy();
 

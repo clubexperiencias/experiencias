@@ -266,7 +266,7 @@ export class AdminStoreService {
       const { data: adminRow, error: adminError } = await this.supabase
         .from('admin_access' as any)
         .select('*')
-        .eq('email', email)
+        .ilike('email', email)
         .eq('active', true)
         .maybeSingle();
 
@@ -293,6 +293,9 @@ export class AdminStoreService {
         this.saveSession(admin);
         return true;
       } else {
+        if (adminError) {
+          console.error('[AdminStore] Error al consultar admin_access:', adminError);
+        }
         this._currentAdmin.set(null);
         this.clearSession();
         return false;
@@ -858,6 +861,7 @@ export class AdminStoreService {
 
         this._applications.set(combined);
         this.persistApplications(combined);
+        await this.providerStore.loadProposalsFromSupabase();
         this._isLoadingApplications.set(false);
         return;
       }

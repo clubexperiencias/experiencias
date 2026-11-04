@@ -395,14 +395,12 @@
 
               <div class="tier-jump-card">
                 <span class="jump-tag">CÓMO ACCEDER</span>
-                <p>Registro gratuito con tu email a la lista de espera oficial del club.</p>
+                <p>Creando tu perfil al vincular tu cuenta de Google.</p>
               </div>
 
               <ul class="tier-benefits">
-                <li>Acceso anticipado a preventa de temporada 2026</li>
-                <li>Comunidad privada de expedicionarios andinos</li>
-                <li>Bitácoras exclusivas y novedades de rutas andinas</li>
-                <li>Prioridad en cupos de expediciones inaugurales</li>
+                <li>Enterarse de las nuevas experiencias y descuentos antes que nadie</li>
+                <li>Cupo asegurado prioritario en fechas de alta demanda</li>
               </ul>
 
               <div class="tier-card-footer">
@@ -432,17 +430,16 @@
               </div>
 
               <div class="tier-jump-card highlight">
+                <span class="jump-tag">CÓMO ACCEDER</span>
                 <p>
-                  Membresía mensual con acceso directo a cupos prioritarios y beneficios ($23.000
-                  ARS/mes · sin permanencia).
+                  Suscripción mensual recurrente. Se habilitará en el lanzamiento de la temporada 2027.
                 </p>
               </div>
 
               <ul class="tier-benefits">
-                <li><strong>10% de descuento directo</strong> en todas las expediciones</li>
-                <li>Prioridad de reserva con los mejores guías y prestadores</li>
-                <li>Historial de salidas con comprobantes respaldados</li>
-                <li>Acceso a la bitácora privada de recuerdos fotográficos</li>
+                <li>Todos los beneficios de Socio Emergente</li>
+                <li><strong>10% OFF directo</strong> en todas las expediciones y salidas</li>
+                <li>Asistencia personalizada de viaje con guías locales</li>
               </ul>
 
               <div class="tier-card-footer">
@@ -466,7 +463,7 @@
                     </svg>
                     Activar Membresía Mensual
                   </span>
-                  <span class="cta-sub-text">$23.000 ARS/mes · Cancelación libre</span>
+                  <span class="cta-sub-text">Tarifa a definir · Temporada 2027</span>
                 </a>
               </div>
             </div>
@@ -479,16 +476,18 @@
               </div>
 
               <div class="tier-jump-card founder">
-                <span class="jump-tag">CÓMO DAR EL SALTO</span>
-                <p>Postulación aprobada por comité directivo + Membresía Vitalicia única.</p>
+                <span class="jump-tag">CÓMO ACCEDER</span>
+                <p>Aporte patrimonial único evaluado por el Comité Directivo.</p>
               </div>
 
               <ul class="tier-benefits">
-                <li><strong>Sin cuotas mensuales de por vida</strong> (pase perpetuo)</li>
-                <li><strong>20% de descuento vitalicio</strong> en todas las salidas</li>
-                <li>Acceso exclusivo a travesías secretas y seismiles</li>
-                <li>Kit de bienvenida oficial y merch del club de regalo</li>
-                <li>Voz y voto en nuevas rutas y expediciones a incorporar</li>
+                <li>Todos los beneficios de Socio Emergente y Socio Pleno</li>
+                <li>
+                  <strong>20% OFF permanente</strong> en todas las expediciones para titular y
+                  acompañante
+                </li>
+                <li>Participación formal en el Consejo Consultivo del Club</li>
+                <li>Acceso prioritario a experiencias privadas de lujo del Club</li>
               </ul>
 
               <div class="tier-card-footer">
@@ -775,19 +774,6 @@
           } @else {
             <!-- Estado de Éxito / Confirmación de Postulación -->
             <div class="founder-success-card">
-              <div class="success-seal">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  class="seal-svg"
-                >
-                  <circle cx="12" cy="12" r="10" />
-                  <polyline points="16 10 11 15 8 12" />
-                </svg>
-              </div>
-
               <span class="success-kicker">POSTULACIÓN REGISTRADA FORMALMENTE</span>
               <h4 class="success-title">¡Carta de Admisión en Evaluación!</h4>
               <p class="success-description">
@@ -1043,8 +1029,25 @@
                     <option value="gastronomia">Gastronomía & Vinos de Altura</option>
                     <option value="fotografia">Fotografía / Bitácora Audiovisual</option>
                     <option value="artesanias">Artesanías & Productos Regionales</option>
+                    <option value="otro">Otro (especificar a continuación)</option>
                   </select>
                 </div>
+
+                @if (providerCategory() === 'otro') {
+                  <div class="provider-field full">
+                    <label for="p-custom-category">Especificá tu Categoría de Servicio *</label>
+                    <input
+                      id="p-custom-category"
+                      type="text"
+                      class="provider-input"
+                      placeholder="Ej. Cicloturismo, Buceo de altura, Guía arqueológico, etc."
+                      maxlength="80"
+                      [value]="providerCustomCategory()"
+                      (input)="providerCustomCategory.set($any($event.target).value)"
+                      required
+                    />
+                  </div>
+                }
 
                 <div class="provider-field">
                   <label for="p-email">Correo Electrónico</label>
@@ -1084,12 +1087,17 @@
               </div>
 
               <div class="modal-footer" style="margin-top: 0.5rem">
+                @if (providerError()) {
+                  <p class="provider-error-msg" style="color: #ef4444; margin-bottom: 0.75rem; font-size: 0.875rem;">
+                    {{ providerError() }}
+                  </p>
+                }
                 <button
                   class="pill-action-btn provider-submit-btn"
                   (click)="submitProvider()"
-                  [disabled]="!providerName().trim() || !providerEmail().trim()"
+                  [disabled]="providerSubmitting() || !providerName().trim() || !providerEmail().trim()"
                 >
-                  Postularme como Prestador
+                  {{ providerSubmitting() ? 'Enviando...' : 'Postularme como Prestador' }}
                 </button>
               </div>
             </div>
@@ -1097,8 +1105,8 @@
             <div class="provider-success-banner">
               <h4>¡Postulación Recibida con Éxito!</h4>
               <p>
-                Nos contactaremos con vos para validar tus certificaciones y coordinar tu alta en la
-                plataforma.
+                Te llegará un mail de bienvenida y próximos pasos a
+                <strong>{{ providerEmail() }}</strong> cuando se habilite tu perfil de prestador.
               </p>
             </div>
           }

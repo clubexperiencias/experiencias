@@ -422,6 +422,87 @@ export interface Database {
         };
         Relationships: [];
       };
+
+      /**
+       * Tabla: Propuestas de Experiencias cargadas por Prestadores (/experiencias/nueva)
+       */
+      propuestas_experiencias: {
+        Row: {
+          id: string;
+          provider_id: string;
+          provider_name: string;
+          provider_agency: string;
+          provider_email: string;
+          provider_phone: string | null;
+          title: string;
+          kicker: string;
+          subheading: string;
+          region: string;
+          difficulty: string;
+          duration: string;
+          altitude: string | null;
+          capacity: number;
+          season: string;
+          dates: string;
+          price_ars: number;
+          price_usd: number | null;
+          promos_and_pricing: string | null;
+          itinerary: string;
+          meeting_point: string;
+          included_services: string;
+          participant_requirements: string;
+          notes: string | null;
+          cover_image: string | null;
+          cover_image_name: string | null;
+          cover_video_url: string | null;
+          cover_video_name: string | null;
+          status: 'pendiente' | 'aprobada' | 'rechazada';
+          created_at: string;
+          reviewed_at: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          id: string;
+          provider_id: string;
+          provider_name: string;
+          provider_agency?: string;
+          provider_email: string;
+          provider_phone?: string | null;
+          title: string;
+          kicker?: string;
+          subheading?: string;
+          region?: string;
+          difficulty?: string;
+          duration?: string;
+          altitude?: string | null;
+          capacity?: number;
+          season?: string;
+          dates?: string;
+          price_ars: number;
+          price_usd?: number | null;
+          promos_and_pricing?: string | null;
+          itinerary?: string;
+          meeting_point?: string;
+          included_services?: string;
+          participant_requirements?: string;
+          notes?: string | null;
+          cover_image?: string | null;
+          cover_image_name?: string | null;
+          cover_video_url?: string | null;
+          cover_video_name?: string | null;
+          status?: 'pendiente' | 'aprobada' | 'rechazada';
+          created_at?: string;
+          reviewed_at?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          status?: 'pendiente' | 'aprobada' | 'rechazada';
+          reviewed_at?: string | null;
+          updated_at?: string;
+          notes?: string | null;
+        };
+        Relationships: [];
+      };
     };
 
     Views: {
@@ -443,6 +524,12 @@ export interface Database {
         Returns: Json;
       };
       check_email_registration_status: {
+        Args: {
+          p_email: string;
+        };
+        Returns: Json;
+      };
+      check_provider_status: {
         Args: {
           p_email: string;
         };

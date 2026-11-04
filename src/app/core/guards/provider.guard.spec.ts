@@ -34,16 +34,17 @@ describe('providerGuard', () => {
     });
   });
 
-  it('should allow navigation if provider is authenticated and approved', async () => {
+  it('should allow navigation if provider is authenticated and approved after session restore', async () => {
     providerStoreMock.isAuthenticated.mockReturnValue(true);
     providerStoreMock.isProviderApproved.mockReturnValue(true);
+    providerStoreMock.restoreSupabaseSession.mockResolvedValue(true);
 
     const result = await TestBed.runInInjectionContext(() =>
       providerGuard(dummyRoute, dummyState),
     );
 
     expect(result).toBe(true);
-    expect(providerStoreMock.restoreSupabaseSession).not.toHaveBeenCalled();
+    expect(providerStoreMock.restoreSupabaseSession).toHaveBeenCalled();
   });
 
   it('should allow navigation if restoreSupabaseSession validates provider approval', async () => {

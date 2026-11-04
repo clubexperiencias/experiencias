@@ -3,6 +3,7 @@ import {
   ElementRef,
   HostListener,
   ViewChild,
+  computed,
   effect,
   inject,
   input,
@@ -14,6 +15,10 @@ import { FormsModule, NgForm } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { ProviderStoreService } from '../../../core/services/provider-store.service';
 import { StorageService } from '../../../core/services/storage.service';
+import { NotificationService } from '../../../core/services/notification.service';
+import { SUPABASE_CLIENT, isSupabaseConfigured } from '../../../core/supabase/supabase.client';
+import { FechaPipe } from '../../../shared/pipes/format.pipes';
+import { Router, RouterLink } from '@angular/router';
 
 const DEFAULT_REQ_FORM = {
   title: '',
@@ -27,7 +32,7 @@ const DEFAULT_REQ_FORM = {
   season: 'Todo el año',
   dates: 'A coordinar',
   priceArs: 65000,
-  priceUsd: 41,
+  priceUsd: 46,
   promosAndPricing: '',
   itinerary: '',
   meetingPoint: '',
@@ -39,29 +44,33 @@ const DEFAULT_REQ_FORM = {
 @Component({
   selector: 'app-provider-experience-proposal-modal',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule],
+  imports: [CommonModule, FormsModule, MatIconModule, RouterLink, FechaPipe],
   template: `
     @if (isOpen()) {
-      <div class="exp-request-modal-backdrop" (click)="onClose()">
+      <div class="proposal-page-wrapper">
+        <div class="proposal-page-nav-bar">
+          <a [routerLink]="backLink()" class="back-to-exp-link">
+            Volver a Experiencias
+          </a>
+        </div>
+
         <div
           #modalDialog
           tabindex="-1"
-          class="exp-request-modal"
-          (click)="$event.stopPropagation()"
-          role="dialog"
-          aria-modal="true"
+          class="exp-request-card"
+          role="region"
           aria-labelledby="req-modal-title"
         >
           <div class="exp-request-header">
             <div class="modal-top-progress-stripe" [style.width.%]="getFormProgress()"></div>
             <div class="exp-request-header-content">
-              <span class="exp-request-kicker">SOLICITUD DE ALTA</span>
+              <span class="exp-request-kicker">NUEVA EXPERIENCIA</span>
               <h2 id="req-modal-title" class="exp-request-title">
-                Solicitar Nueva Experiencia a Administradores
+                Cargar Propuesta de Experiencia
               </h2>
               <p class="exp-request-sub">
-                Completá la ficha técnica y logística de tu propuesta para que los administradores
-                la revisen y carguen al catálogo.
+                Completá los detalles técnicos, fotos y tarifas de tu salida para que el equipo de
+                administración la revise y publique en el catálogo.
               </p>
 
               <!-- Barra de Progreso Arriba -->
@@ -82,14 +91,6 @@ const DEFAULT_REQ_FORM = {
                 </div>
               </div>
             </div>
-            <button
-              type="button"
-              class="modal-close-icon-btn"
-              (click)="onClose()"
-              aria-label="Cerrar modal"
-            >
-              &times;
-            </button>
           </div>
 
           <div class="exp-request-body">
@@ -122,9 +123,18 @@ const DEFAULT_REQ_FORM = {
                     </div>
                   </div>
                 }
-                <button type="button" class="modal-btn-submit return-to-panel-btn" (click)="onClose()">
-                  Entendido, volver al panel
-                </button>
+                <div class="request-success-actions">
+                  <a
+                    [routerLink]="backLink()"
+                    [queryParams]="{ tab: 'solicitudes' }"
+                    class="modal-btn-submit return-to-panel-btn"
+                  >
+                    Ver mis solicitudes
+                  </a>
+                  <a [routerLink]="dashboardLink()" class="modal-btn-dashboard">
+                    Volver al Panel
+                  </a>
+                </div>
               </div>
             } @else {
               @if (hasDraft()) {
@@ -345,7 +355,7 @@ const DEFAULT_REQ_FORM = {
                             </svg>
                             <span class="dropzone-main-text">Subir video de portada</span>
                             <span class="dropzone-sub-text"
-                              >Hacé click o arrastrá un video (MP4, MOV, WEBM)</span
+                              >Hacé click o arrastrá un video de hasta 50 MB (MP4, MOV, WEBM)</span
                             >
                           </div>
                         </label>
@@ -435,14 +445,56 @@ const DEFAULT_REQ_FORM = {
                       class="form-input"
                       placeholder="Ej: 65000"
                       [(ngModel)]="reqForm.priceArs"
+                      (ngModelChange)="onPriceArsChange($event)"
                       name="priceArs"
                       min="1000"
                       step="500"
                       required
                     />
-                    <div class="usd-auto-hint">
-                      Equivalente estimado: <strong class="usd-calc-val">~&#36;{{ Math.round((reqForm.priceArs || 0) / 1600) }} USD</strong>
-                      <span class="usd-formula">(calculado automáticamente a cotización $1.600)</span>
+
+                    <!-- Control flexible de Tarifa USD y Cotización Referencial -->
+                    <div class="usd-box-wrapper">
+                      <div class="usd-header-row">
+                        <label class="usd-box-label" for="req-price-usd">Referencia en Dólares (USD)</label>
+                        <button
+                          type="button"
+                          class="btn-usd-mode-toggle"
+                          (click)="toggleUsdAutoCalc()"
+                          [title]="isUsdAutoCalc() ? 'Activar ingreso manual de USD' : 'Reactivar cálculo automático'"
+                        >
+                          {{ isUsdAutoCalc() ? 'Modo: Automático' : 'Modo: Manual' }}
+                        </button>
+                      </div>
+
+                      <div class="usd-input-wrapper">
+                        <span class="usd-currency-prefix">USD</span>
+                        <input
+                          id="req-price-usd"
+                          type="number"
+                          class="form-input usd-input"
+                          placeholder="Ej: 45"
+                          [(ngModel)]="reqForm.priceUsd"
+                          (input)="onManualUsdInput()"
+                          name="priceUsd"
+                          min="1"
+                        />
+                      </div>
+
+                      <div class="usd-rate-control">
+                        <span class="rate-label">Cotización referencial:</span>
+                        <span class="rate-prefix">&#36;</span>
+                        <input
+                          type="number"
+                          class="rate-input"
+                          [ngModel]="usdExchangeRate()"
+                          (ngModelChange)="onExchangeRateChange($event)"
+                          name="usdExchangeRate"
+                          min="100"
+                          step="50"
+                          title="Modificar cotización del dólar para el cálculo"
+                        />
+                        <span class="rate-suffix">ARS / USD</span>
+                      </div>
                     </div>
                   </div>
 
@@ -481,17 +533,76 @@ const DEFAULT_REQ_FORM = {
                     ></textarea>
                   </div>
 
-                  <div class="form-group">
-                    <label class="form-label" for="req-dates">Fechas Programadas o Disponibilidad</label>
-                    <input
-                      id="req-dates"
-                      type="text"
-                      class="form-input"
-                      placeholder="A coordinar (o ingresá fechas YYYY-MM-DD separadas por coma)"
-                      [(ngModel)]="reqForm.dates"
-                      name="dates"
-                    />
-                    <span class="field-hint">Dejá "A coordinar" si las fechas se definirán tras la aprobación.</span>
+                  <div class="form-group dates-picker-group">
+                    <label class="form-label" for="scheduled-date-picker">Fechas Programadas o Disponibilidad</label>
+
+                    <!-- Opción flexible: A coordinar -->
+                    <label class="flexible-dates-checkbox-label">
+                      <input
+                        type="checkbox"
+                        [ngModel]="isDateFlexible()"
+                        (ngModelChange)="toggleFlexibleDates($event)"
+                        name="flexibleDates"
+                        class="custom-checkbox"
+                      />
+                      <span>Salidas a coordinar / Todo el año (disponibilidad a convenir con el explorador)</span>
+                    </label>
+
+                    <!-- Selector visual de fechas fijas -->
+                    <div class="dates-add-controls">
+                      <div class="dates-input-row">
+                        <input
+                          id="scheduled-date-picker"
+                          type="date"
+                          [min]="todayIso"
+                          [ngModel]="newScheduledDate()"
+                          (ngModelChange)="newScheduledDate.set($event)"
+                          name="newScheduledDate"
+                          class="form-input datepicker-input"
+                        />
+                        <button
+                          type="button"
+                          class="btn-add-date-chip"
+                          (click)="addScheduledDate()"
+                          [disabled]="!newScheduledDate()"
+                        >
+                          + Agregar Fecha
+                        </button>
+                      </div>
+                      @if (scheduledDateError()) {
+                        <span class="field-error">{{ scheduledDateError() }}</span>
+                      }
+                    </div>
+
+                    <!-- Lista de Chips Interactivos de Fechas -->
+                    @if (scheduledDates().length > 0) {
+                      <div class="scheduled-chips-container">
+                        <span class="chips-title">Fechas fijas programadas ({{ scheduledDates().length }}):</span>
+                        <div class="chips-list">
+                          @for (date of scheduledDates(); track date) {
+                            <div class="date-chip">
+                              <span>{{ date | fecha }}</span>
+                              <button
+                                type="button"
+                                class="chip-remove"
+                                (click)="removeScheduledDate(date)"
+                                title="Quitar fecha"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          }
+                        </div>
+                      </div>
+                    }
+
+                    @if (!isDateFlexible() && scheduledDates().length === 0) {
+                      <span class="field-error">Agregá al menos una fecha programada o marcá la opción "Salidas a coordinar".</span>
+                    }
+
+                    <span class="field-hint">
+                      Resumen guardado: <strong>{{ reqForm.dates || 'A coordinar' }}</strong>
+                    </span>
                   </div>
                 </div>
 
@@ -564,15 +675,22 @@ const DEFAULT_REQ_FORM = {
                   </div>
                 </div>
 
+                @if (formValidationError()) {
+                  <div class="form-validation-alert" role="alert">
+                    <mat-icon class="alert-icon">error_outline</mat-icon>
+                    <span>{{ formValidationError() }}</span>
+                  </div>
+                }
+
                 <div class="modal-form-actions">
-                  <button type="button" class="modal-btn-cancel" (click)="onClose()">
+                  <a [routerLink]="backLink()" class="modal-btn-cancel">
                     Cancelar
-                  </button>
+                  </a>
                   <button type="submit" class="modal-btn-submit" [disabled]="submittingRequest()">
                     @if (submittingRequest()) {
                       Enviando...
                     } @else {
-                      Enviar Solicitud a Administradores
+                      Enviar Propuesta a Administradores
                     }
                   </button>
                 </div>
@@ -585,31 +703,58 @@ const DEFAULT_REQ_FORM = {
   `,
   styles: [
     `
-      .exp-request-modal-backdrop {
-        position: fixed;
-        inset: 0;
-        z-index: 3500;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 1.5rem;
-        background: rgba(4, 8, 20, 0.72);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        animation: fadeIn 0.15s ease;
-      }
-      .exp-request-modal {
-        background: rgba(9, 18, 36, 0.84);
-        border: 1px solid rgba(128, 179, 255, 0.45);
-        border-radius: 4px;
+      .proposal-page-wrapper {
         width: 100%;
-        max-width: 840px;
-        max-height: 90vh;
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 0.5rem 0 3.5rem 0;
         display: flex;
         flex-direction: column;
-        box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
+        gap: 1.15rem;
+      }
+      .proposal-page-nav-bar {
+        display: flex;
+        align-items: center;
+      }
+      .back-to-exp-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.48rem 1.05rem;
+        background: #80b3ff;
+        border: 1px solid #80b3ff;
+        color: #070d18;
+        border-radius: 4px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        text-decoration: none !important;
+        letter-spacing: 0.02em;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        white-space: nowrap;
+        box-shadow: 0 4px 14px rgba(128, 179, 255, 0.25);
+      }
+      .back-to-exp-link:hover {
+        background: #9cc4ff;
+        border-color: #9cc4ff;
+        color: #070d18;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 18px rgba(128, 179, 255, 0.4);
+      }
+      .back-to-exp-link:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 6px rgba(128, 179, 255, 0.3);
+      }
+      .exp-request-card {
+        background: rgba(9, 18, 36, 0.88);
+        border: 1px solid rgba(128, 179, 255, 0.35);
+        border-radius: 4px;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
         overflow: hidden;
       }
       .draft-notice-banner {
@@ -864,19 +1009,203 @@ const DEFAULT_REQ_FORM = {
         margin-top: 0.25rem;
         display: block;
       }
-      .usd-auto-hint {
-        font-size: 0.76rem;
-        color: rgba(255, 255, 255, 0.7);
-        margin-top: 0.4rem;
-        display: flex;
-        align-items: center;
-        gap: 0.4rem;
+      .usd-box-wrapper {
+        margin-top: 0.65rem;
+        padding: 0.75rem 0.95rem;
+        background: rgba(128, 179, 255, 0.05);
+        border: 1px solid rgba(128, 179, 255, 0.18);
+        border-radius: 4px;
       }
-      .usd-calc-val {
+      .usd-header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.45rem;
+      }
+      .usd-box-label {
+        font-size: 0.78rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
         color: #80b3ff;
       }
-      .usd-formula {
-        color: rgba(255, 255, 255, 0.4);
+      .btn-usd-mode-toggle {
+        background: rgba(128, 179, 255, 0.12);
+        border: 1px solid rgba(128, 179, 255, 0.35);
+        color: #80b3ff;
+        border-radius: 3px;
+        padding: 0.2rem 0.55rem;
+        font-size: 0.7rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .btn-usd-mode-toggle:hover {
+        background: #80b3ff;
+        color: #070d18;
+      }
+      .usd-input-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+      }
+      .usd-currency-prefix {
+        position: absolute;
+        left: 0.85rem;
+        color: #80b3ff;
+        font-weight: 700;
+        font-size: 0.82rem;
+        pointer-events: none;
+      }
+      .usd-input {
+        padding-left: 3.4rem !important;
+      }
+      .usd-rate-control {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        margin-top: 0.5rem;
+        font-size: 0.76rem;
+        color: rgba(255, 255, 255, 0.65);
+      }
+      .rate-input {
+        width: 75px;
+        padding: 0.2rem 0.4rem;
+        background: rgba(10, 18, 38, 0.8);
+        border: 1px solid rgba(128, 179, 255, 0.35);
+        border-radius: 3px;
+        color: #ffffff;
+        font-size: 0.76rem;
+        font-weight: 600;
+        text-align: right;
+      }
+      .rate-input:focus {
+        border-color: #80b3ff;
+        outline: none;
+      }
+      .dates-picker-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.65rem;
+      }
+      .flexible-dates-checkbox-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.6rem;
+        font-size: 0.82rem;
+        color: #ffffff;
+        cursor: pointer;
+        padding: 0.45rem 0.75rem;
+        background: rgba(128, 179, 255, 0.06);
+        border: 1px solid rgba(128, 179, 255, 0.2);
+        border-radius: 4px;
+        user-select: none;
+      }
+      .custom-checkbox {
+        width: 1.05rem;
+        height: 1.05rem;
+        accent-color: #80b3ff;
+        cursor: pointer;
+      }
+      .dates-add-controls {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+      }
+      .dates-input-row {
+        display: flex;
+        gap: 0.65rem;
+        align-items: center;
+      }
+      .datepicker-input {
+        max-width: 210px;
+        color-scheme: dark;
+      }
+      .btn-add-date-chip {
+        padding: 0.52rem 0.95rem;
+        background: rgba(128, 179, 255, 0.16);
+        border: 1px solid rgba(128, 179, 255, 0.4);
+        color: #80b3ff;
+        border-radius: 4px;
+        font-size: 0.8125rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+      }
+      .btn-add-date-chip:hover:not(:disabled) {
+        background: #80b3ff;
+        color: #070d18;
+      }
+      .btn-add-date-chip:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+      .scheduled-chips-container {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        margin-top: 0.25rem;
+      }
+      .chips-title {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: rgba(255, 255, 255, 0.6);
+        font-weight: 600;
+      }
+      .chips-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+      }
+      .date-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.35rem 0.75rem;
+        background: rgba(128, 179, 255, 0.12);
+        border: 1px solid rgba(128, 179, 255, 0.3);
+        border-radius: 4px;
+        color: #ffffff;
+        font-size: 0.8125rem;
+        font-weight: 600;
+      }
+      .chip-remove {
+        background: transparent;
+        border: none;
+        color: rgba(255, 255, 255, 0.6);
+        cursor: pointer;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.85rem;
+        transition: color 0.15s ease;
+      }
+      .chip-remove:hover {
+        color: #ff6666;
+      }
+      .form-validation-alert {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        padding: 0.85rem 1.15rem;
+        background: rgba(255, 80, 80, 0.12);
+        border: 1px solid rgba(255, 80, 80, 0.45);
+        border-radius: 4px;
+        color: #ffcccc;
+        font-size: 0.84rem;
+        font-weight: 500;
+        margin-top: 1rem;
+        line-height: 1.4;
+      }
+      .form-validation-alert .alert-icon {
+        color: #ff6666;
+        font-size: 1.25rem;
+        width: 1.25rem;
+        height: 1.25rem;
+        flex-shrink: 0;
       }
       .form-textarea {
         resize: vertical;
@@ -1154,12 +1483,36 @@ const DEFAULT_REQ_FORM = {
         font-size: 0.72rem;
         color: rgba(255, 255, 255, 0.6);
       }
+      .request-success-actions {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.85rem;
+        flex-wrap: wrap;
+        width: 100%;
+        margin-top: 0.5rem;
+      }
+      .modal-btn-dashboard {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.75rem 1.5rem;
+        background: rgba(128, 179, 255, 0.15);
+        color: #ffffff !important;
+        border: 1px solid rgba(128, 179, 255, 0.35);
+        border-radius: 4px;
+        text-decoration: none !important;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: all 0.2s ease;
+      }
+      .modal-btn-dashboard:hover {
+        background: rgba(128, 179, 255, 0.28);
+        border-color: rgba(128, 179, 255, 0.6);
+      }
       @media (max-width: 680px) {
-        .exp-request-modal-backdrop {
-          padding: 0.5rem;
-        }
-        .exp-request-modal {
-          max-height: 96vh;
+        .proposal-page-wrapper {
+          padding: 0.25rem 0 2rem;
         }
         .exp-request-header {
           padding: 1.25rem 1rem 1rem;
@@ -1188,8 +1541,23 @@ const DEFAULT_REQ_FORM = {
 export class ProviderExperienceProposalModalComponent {
   private readonly store = inject(ProviderStoreService);
   private readonly storageService = inject(StorageService);
+  private readonly notificationService = inject(NotificationService);
+  private readonly supabase = inject(SUPABASE_CLIENT);
+  private readonly router = inject(Router);
 
-  readonly isOpen = input<boolean>(false);
+  readonly backLink = computed(() => {
+    const isPanel =
+      typeof window !== 'undefined' && window.location.pathname.includes('/prestadores/panel');
+    return isPanel ? '/prestadores/panel/experiencias' : '/experiencias';
+  });
+
+  readonly dashboardLink = computed(() => {
+    const isPanel =
+      typeof window !== 'undefined' && window.location.pathname.includes('/prestadores/panel');
+    return isPanel ? '/prestadores/panel/dashboard' : '/dashboard';
+  });
+
+  readonly isOpen = input<boolean>(true);
   readonly closeModal = output<void>();
   readonly submitted = output<void>();
 
@@ -1230,33 +1598,6 @@ export class ProviderExperienceProposalModalComponent {
     }
   }
 
-  @HostListener('keydown', ['$event'])
-  handleKeydown(event: KeyboardEvent): void {
-    if (!this.isOpen() || event.key !== 'Tab') return;
-
-    const focusable = this.getFocusableElements();
-    if (focusable.length === 0) {
-      event.preventDefault();
-      return;
-    }
-
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    const active = typeof document !== 'undefined' ? document.activeElement : null;
-
-    if (event.shiftKey) {
-      if (active === first || !this.modalDialog?.nativeElement.contains(active)) {
-        event.preventDefault();
-        last.focus();
-      }
-    } else {
-      if (active === last || !this.modalDialog?.nativeElement.contains(active)) {
-        event.preventDefault();
-        first.focus();
-      }
-    }
-  }
-
   readonly requestSuccess = signal(false);
   readonly submittingRequest = signal(false);
 
@@ -1269,6 +1610,19 @@ export class ProviderExperienceProposalModalComponent {
   readonly coverVideoFile = signal<File | null>(null);
   readonly coverVideoPreview = signal<string | null>(null);
   readonly coverVideoError = signal<string | null>(null);
+
+  readonly formValidationError = signal<string | null>(null);
+
+  // USD Rate and Calculation
+  readonly usdExchangeRate = signal<number>(1400);
+  readonly isUsdAutoCalc = signal<boolean>(true);
+
+  // Scheduled Dates & Datepicker
+  readonly todayIso = new Date().toISOString().slice(0, 10);
+  readonly isDateFlexible = signal<boolean>(true);
+  readonly scheduledDates = signal<string[]>([]);
+  readonly newScheduledDate = signal<string>('');
+  readonly scheduledDateError = signal<string | null>(null);
 
   readonly Math = Math;
 
@@ -1289,7 +1643,7 @@ export class ProviderExperienceProposalModalComponent {
     if (this.reqForm.title?.trim()) score++;
     if (this.reqForm.region?.trim()) score++;
     if (this.reqForm.subheading?.trim()) score++;
-    if (this.coverImageFile()) score++;
+    if (this.coverImageFile() || this.coverImagePreview()) score++;
     if (this.reqForm.difficulty?.trim() && this.reqForm.duration?.trim()) score++;
     if (this.reqForm.priceArs && this.reqForm.priceArs > 0) score++;
     if (this.reqForm.itinerary?.trim() && this.reqForm.meetingPoint?.trim()) score++;
@@ -1377,8 +1731,10 @@ export class ProviderExperienceProposalModalComponent {
       this.coverVideoError.set('El archivo seleccionado debe ser un video (MP4, MOV, WEBM).');
       return;
     }
-    if (file.size > 150 * 1024 * 1024) {
-      this.coverVideoError.set('El video supera el límite máximo de 150 MB.');
+    if (file.size > 50 * 1024 * 1024) {
+      this.coverVideoError.set(
+        'El video supera el límite de 50 MB. Podés incluir un enlace de Drive o YouTube en las notas si el archivo es más pesado.',
+      );
       return;
     }
     this.coverVideoError.set(null);
@@ -1398,11 +1754,77 @@ export class ProviderExperienceProposalModalComponent {
     this.coverVideoError.set(null);
   }
 
-  @HostListener('window:keydown.escape')
-  onEscape(): void {
-    if (this.isOpen()) {
-      this.onClose();
+  onPriceArsChange(val: number): void {
+    if (this.isUsdAutoCalc()) {
+      const rate = this.usdExchangeRate() || 1400;
+      this.reqForm.priceUsd = Math.round((Number(val) || 0) / rate);
     }
+    this.formValidationError.set(null);
+    this.saveDraft();
+  }
+
+  onExchangeRateChange(newRate: number): void {
+    const rate = Number(newRate) || 1400;
+    this.usdExchangeRate.set(rate);
+    if (this.isUsdAutoCalc()) {
+      this.reqForm.priceUsd = Math.round((Number(this.reqForm.priceArs) || 0) / rate);
+    }
+    this.saveDraft();
+  }
+
+  onManualUsdInput(): void {
+    this.isUsdAutoCalc.set(false);
+    this.saveDraft();
+  }
+
+  toggleUsdAutoCalc(): void {
+    const next = !this.isUsdAutoCalc();
+    this.isUsdAutoCalc.set(next);
+    if (next) {
+      const rate = this.usdExchangeRate() || 1400;
+      this.reqForm.priceUsd = Math.round((Number(this.reqForm.priceArs) || 0) / rate);
+    }
+    this.saveDraft();
+  }
+
+  syncDatesForm(): void {
+    const list = [...this.scheduledDates()];
+    if (this.isDateFlexible()) {
+      if (!list.includes('A coordinar')) {
+        list.unshift('A coordinar');
+      }
+    }
+    this.reqForm.dates = list.length > 0 ? list.join(', ') : (this.isDateFlexible() ? 'A coordinar' : '');
+    this.formValidationError.set(null);
+    this.saveDraft();
+  }
+
+  addScheduledDate(): void {
+    const val = this.newScheduledDate();
+    if (!val) return;
+    if (val < this.todayIso) {
+      this.scheduledDateError.set('La fecha debe ser futura.');
+      return;
+    }
+    if (this.scheduledDates().includes(val)) {
+      this.scheduledDateError.set('Esta fecha ya está cargada.');
+      return;
+    }
+    this.scheduledDates.update((dates) => [...dates, val].sort());
+    this.newScheduledDate.set('');
+    this.scheduledDateError.set(null);
+    this.formValidationError.set(null);
+    this.syncDatesForm();
+  }
+
+  removeScheduledDate(dateToRemove: string): void {
+    this.scheduledDates.update((dates) => dates.filter((d) => d !== dateToRemove));
+    this.syncDatesForm();
+  }
+
+  toggleFlexibleDates(checked: boolean): void {
+    this.isDateFlexible.set(checked);
+    this.syncDatesForm();
   }
 
   loadDraft(): void {
@@ -1423,6 +1845,19 @@ export class ProviderExperienceProposalModalComponent {
           ...DEFAULT_REQ_FORM,
           ...data.reqForm,
         };
+      }
+      if (data.usdExchangeRate) {
+        this.usdExchangeRate.set(Number(data.usdExchangeRate) || 1400);
+      }
+      if (data.isUsdAutoCalc !== undefined) {
+        this.isUsdAutoCalc.set(Boolean(data.isUsdAutoCalc));
+      }
+      if (this.reqForm.dates) {
+        const parts = this.reqForm.dates.split(',').map((p: string) => p.trim());
+        const hasCoord = parts.some((p: string) => p.toLowerCase().includes('coordinar'));
+        this.isDateFlexible.set(hasCoord);
+        const isoDates = parts.filter((p: string) => /^\d{4}-\d{2}-\d{2}$/.test(p));
+        this.scheduledDates.set(isoDates);
       }
       if (data.coverImageDataUrl && typeof data.coverImageDataUrl === 'string') {
         this.coverImageDataUrl.set(data.coverImageDataUrl);
@@ -1450,6 +1885,7 @@ export class ProviderExperienceProposalModalComponent {
         this.reqForm.includedServices?.trim() ||
         this.reqForm.participantRequirements?.trim() ||
         this.reqForm.notes?.trim() ||
+        this.scheduledDates().length > 0 ||
         this.coverImageDataUrl()
       );
 
@@ -1457,13 +1893,12 @@ export class ProviderExperienceProposalModalComponent {
         return;
       }
 
-      const payload: {
-        reqForm: typeof DEFAULT_REQ_FORM;
-        coverImageDataUrl?: string | null;
-        updatedAt: number;
-      } = {
+      // No guardamos base64 pesados en localStorage para evitar QuotaExceededError.
+      // Se guarda solo el estado del formulario y configuraciones; las imágenes quedan en memoria.
+      const payload = {
         reqForm: this.reqForm,
-        coverImageDataUrl: this.coverImageDataUrl(),
+        usdExchangeRate: this.usdExchangeRate(),
+        isUsdAutoCalc: this.isUsdAutoCalc(),
         updatedAt: Date.now(),
       };
 
@@ -1473,18 +1908,8 @@ export class ProviderExperienceProposalModalComponent {
           JSON.stringify(payload),
         );
         this.hasDraft.set(true);
-      } catch {
-        // If saving the base64 image exceeds localStorage quota, save only the form text
-        payload.coverImageDataUrl = null;
-        try {
-          localStorage.setItem(
-            ProviderExperienceProposalModalComponent.DRAFT_STORAGE_KEY,
-            JSON.stringify(payload),
-          );
-          this.hasDraft.set(true);
-        } catch (innerErr) {
-          console.warn('[ProposalModal] Error guardando borrador en localStorage:', innerErr);
-        }
+      } catch (err) {
+        console.warn('[ProposalModal] Error guardando borrador en localStorage:', err);
       }
     } catch (err) {
       console.warn('[ProposalModal] Error al preparar guardado de borrador:', err);
@@ -1505,6 +1930,11 @@ export class ProviderExperienceProposalModalComponent {
   discardDraft(): void {
     this.clearDraft();
     this.reqForm = { ...DEFAULT_REQ_FORM };
+    this.scheduledDates.set([]);
+    this.isDateFlexible.set(true);
+    this.isUsdAutoCalc.set(true);
+    this.usdExchangeRate.set(1400);
+    this.formValidationError.set(null);
     this.removeCoverImage();
     this.removeCoverVideo();
   }
@@ -1521,38 +1951,119 @@ export class ProviderExperienceProposalModalComponent {
     // If user closed the modal without sending, the draft is kept in memory & localStorage.
     if (this.requestSuccess()) {
       this.reqForm = { ...DEFAULT_REQ_FORM };
+      this.scheduledDates.set([]);
+      this.isDateFlexible.set(true);
+      this.isUsdAutoCalc.set(true);
+      this.usdExchangeRate.set(1400);
+      this.formValidationError.set(null);
       this.removeCoverImage();
       this.removeCoverVideo();
     }
     this.requestSuccess.set(false);
     this.submittingRequest.set(false);
     this.closeModal.emit();
+    this.router.navigate([this.backLink()]);
   }
 
   async submitRequestForm(form?: NgForm): Promise<void> {
+    this.formValidationError.set(null);
+
     if (form) {
       form.control.markAllAsTouched();
-      if (form.invalid) {
-        return;
-      }
     }
 
     const title = this.reqForm.title?.trim();
     const region = this.reqForm.region?.trim();
-    if (!title || !region) return;
-
+    const subheading = this.reqForm.subheading?.trim();
+    const itinerary = this.reqForm.itinerary?.trim();
+    const meetingPoint = this.reqForm.meetingPoint?.trim();
     const priceArs = Number(this.reqForm.priceArs);
-    if (!Number.isFinite(priceArs) || priceArs < 1) {
+    const hasCoverImage = Boolean(this.coverImageFile() || this.coverImagePreview());
+    const hasValidDates = this.isDateFlexible() || this.scheduledDates().length > 0;
+
+    const isInvalid = Boolean(
+      (form && form.invalid) ||
+      !title ||
+      !region ||
+      !subheading ||
+      !itinerary ||
+      !meetingPoint ||
+      !Number.isFinite(priceArs) ||
+      priceArs < 1 ||
+      !hasCoverImage ||
+      !hasValidDates
+    );
+
+    if (isInvalid) {
+      if (!hasCoverImage) {
+        this.coverImageError.set('La foto de portada es obligatoria para enviar la propuesta.');
+      }
+
+      const missing: string[] = [];
+      if (!title) missing.push('Título');
+      if (!region) missing.push('Región');
+      if (!subheading) missing.push('Bajada');
+      if (!itinerary) missing.push('Itinerario');
+      if (!meetingPoint) missing.push('Punto de encuentro');
+      if (!Number.isFinite(priceArs) || priceArs < 1) missing.push('Arancel');
+      if (!hasCoverImage) missing.push('Foto de Portada');
+      if (!hasValidDates) missing.push('Fechas de Salida');
+
+      this.formValidationError.set(
+        missing.length > 0
+          ? `Campos obligatorios incompletos: ${missing.join(', ')}. Por favor revisá los campos destacados arriba.`
+          : 'Por favor completá todos los campos requeridos antes de enviar.'
+      );
+
+      if (typeof document !== 'undefined') {
+        setTimeout(() => {
+          const firstInvalid = document.querySelector(
+            '.exp-modal-form input.ng-invalid, .exp-modal-form select.ng-invalid, .exp-modal-form textarea.ng-invalid, .media-dropzone.has-error'
+          );
+          if (firstInvalid) {
+            firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            if (firstInvalid instanceof HTMLElement) {
+              firstInvalid.focus();
+            }
+          } else if (!hasCoverImage) {
+            document.querySelector('.media-dropzone')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 50);
+      }
       return;
     }
 
-    if (!this.coverImageFile() && !this.coverImagePreview()) {
-      this.coverImageError.set('La foto de portada es obligatoria para enviar la propuesta.');
-      return;
-    }
     this.submittingRequest.set(true);
 
+    // Obtener los datos reales del prestador autenticado
     const prov = this.store.currentProvider();
+    let providerEmail = (prov?.email || '').trim().toLowerCase();
+    let providerName = (prov?.name || '').trim();
+    let providerAgency = (prov?.agency || '').trim();
+    let providerPhone = (prov?.phone || '').trim();
+    let providerId = (prov?.id || '').trim();
+
+    if (!providerEmail && isSupabaseConfigured()) {
+      try {
+        const { data: userData } = await this.supabase.auth.getUser();
+        const u = userData?.user;
+        if (u?.email) {
+          providerEmail = u.email.trim().toLowerCase();
+          const meta = u.user_metadata || {};
+          providerName = providerName || meta['full_name'] || meta['name'] || providerEmail;
+          providerId = providerId || `provider-${providerEmail.replace(/[^a-z0-9]+/g, '-')}`;
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    if (!providerEmail) {
+      providerEmail = 'prestador@experiencias.club';
+      providerName = providerName || 'Prestador del Club';
+      providerId = providerId || 'provider-anon';
+    }
+
     let coverImageUrl = this.coverImageDataUrl() || this.coverImagePreview() || '/assets/images/kayak-club-de-experiencias.jpg';
     const coverFile = this.coverImageFile();
 
@@ -1582,15 +2093,17 @@ export class ProviderExperienceProposalModalComponent {
       }
     }
 
-    const priceUsd = Math.round(priceArs / 1600);
+    const priceUsd =
+      Number(this.reqForm.priceUsd) ||
+      Math.round(priceArs / (this.usdExchangeRate() || 1400));
 
     try {
-      this.store.submitExperienceRequest({
-        providerId: prov?.id || 'prov-patricio',
-        providerName: prov?.name || 'Patricio Facundo Diaz Tillar',
-        providerAgency: prov?.agency || 'Catamarca Kayak & Aventura Náutica',
-        providerEmail: prov?.email || 'patriciofacundodiaztillar@gmail.com',
-        providerPhone: prov?.phone || '+54 383 455 8812',
+      await this.store.submitExperienceRequest({
+        providerId,
+        providerName,
+        providerAgency: providerAgency || 'Prestador Oficial EXPERIENCIAS.CLUB',
+        providerEmail,
+        providerPhone: providerPhone || undefined,
         title,
         kicker: this.reqForm.kicker?.trim() || 'EXPERIENCIA',
         subheading: this.reqForm.subheading?.trim() || '',
@@ -1615,16 +2128,40 @@ export class ProviderExperienceProposalModalComponent {
         coverVideoName: videoFile?.name,
       });
 
+      // Disparar notificación por correo (Admin y Prestador)
+      void this.notificationService.notifyExperienceProposalSubmitted({
+        title,
+        providerName,
+        providerAgency,
+        providerEmail,
+        providerPhone,
+        region,
+        difficulty: this.reqForm.difficulty,
+        duration: this.reqForm.duration,
+        priceArs,
+        meetingPoint: this.reqForm.meetingPoint,
+        itinerary: this.reqForm.itinerary,
+      }).catch((notifyErr) => {
+        console.warn('[ProposalModal] Error enviando notificación de propuesta:', notifyErr);
+      });
+
       this.clearDraft();
 
       this.successTimer = setTimeout(() => {
         this.submittingRequest.set(false);
         this.requestSuccess.set(true);
         this.submitted.emit();
-      }, 850);
+      }, 700);
     } catch (err: any) {
       this.submittingRequest.set(false);
-      alert(err?.message || 'Error al enviar la propuesta.');
+      this.formValidationError.set(
+        err?.message || 'Ocurrió un error al enviar la propuesta. Por favor verificá tu conexión e intentá nuevamente.',
+      );
+      if (typeof document !== 'undefined') {
+        setTimeout(() => {
+          document.querySelector('.form-validation-alert')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 50);
+      }
     }
   }
 }

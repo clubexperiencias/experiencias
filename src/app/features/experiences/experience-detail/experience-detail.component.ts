@@ -36,9 +36,17 @@ export class ExperienceDetailComponent {
   readonly mobileMenuOpen = signal(false);
 
   private readonly slug = toSignal(
-    this.route.paramMap.pipe(map((params) => params.get('slug') ?? '')),
+    this.route.paramMap.pipe(
+      map(
+        (params) =>
+          params.get('slug') ?? (this.route.snapshot.data?.['slug'] as string) ?? '',
+      ),
+    ),
     {
-      initialValue: this.route.snapshot.paramMap.get('slug') ?? '',
+      initialValue:
+        this.route.snapshot.paramMap.get('slug') ??
+        (this.route.snapshot.data?.['slug'] as string) ??
+        '',
     },
   );
 

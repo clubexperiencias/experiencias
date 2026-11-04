@@ -166,8 +166,11 @@ export class ProfileComponent implements OnInit {
   readonly providerPhone = signal('');
   readonly providerWebsite = signal('');
   readonly providerCategory = signal('guia_montaña');
+  readonly providerCustomCategory = signal('');
   readonly providerRegion = signal('Puna & Fiambalá');
   readonly providerSuccess = signal(false);
+  readonly providerError = signal<string | null>(null);
+  readonly providerSubmitting = signal(false);
 
   // Postulación de Socio Fundador (Carta de Admisión)
   readonly founderName = signal('');
@@ -293,16 +296,64 @@ export class ProfileComponent implements OnInit {
     this.founderSuccess.set(true);
   }
 
-  submitProvider(): void {
-    if (!this.providerEmail().trim() || !this.providerName().trim()) return;
-    this.providerSuccess.set(true);
-    setTimeout(() => {
-      this.providerName.set('');
-      this.providerEmail.set('');
-      this.providerPhone.set('');
-      this.providerSuccess.set(false);
-      this.closeModal();
-    }, 2800);
+  async submitProvider(): Promise<void> {
+    if (this.providerSubmitting()) return;
+
+    const email = this.providerEmail().trim().toLowerCase();
+    const name = this.providerName().trim();
+    if (
+      !email ||
+      !name ||
+      (this.providerCategory() === 'otro' && !this.providerCustomCategory().trim())
+    ) {
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+    if (!emailRegex.test(email)) {
+      this.providerError.set('Ingresá un correo electrónico válido.');
+      return;
+    }
+
+    const finalCategory =
+      this.providerCategory() === 'otro'
+        ? this.providerCustomCategory().trim() || 'Otro'
+        : this.providerCategory();
+
+    this.providerError.set(null);
+    this.providerSubmitting.set(true);
+
+    try {
+      const result = await this.newsletter.submitProviderApplication({
+        fullName: name,
+        category: finalCategory,
+        region: this.providerRegion(),
+        email,
+        phone: this.providerPhone().trim(),
+        website: this.providerWebsite().trim(),
+        description: '',
+      });
+
+      if (!result?.success) {
+        this.providerError.set(
+          'No se pudo enviar la postulación. Por favor verificá tus datos e intentá de nuevo.',
+        );
+        return;
+      }
+
+      this.providerSuccess.set(true);
+      setTimeout(() => {
+        this.providerName.set('');
+        this.providerEmail.set('');
+        this.providerPhone.set('');
+        this.providerCategory.set('guia_montaña');
+        this.providerCustomCategory.set('');
+        this.providerSuccess.set(false);
+        this.closeModal();
+      }, 2800);
+    } finally {
+      this.providerSubmitting.set(false);
+    }
   }
 
   readonly wishlistExperiences = [

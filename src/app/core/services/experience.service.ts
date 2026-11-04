@@ -285,11 +285,14 @@ export class ExperienceService {
     return this.publishedExperiences().find((e: Experience) => e.id === id || e.slug === id);
   }
   readonly hasRemoteExperiences = this._hasRemoteExperiences.asReadonly();
+  readonly remoteLoadPromise: Promise<boolean> = isSupabaseConfigured()
+    ? this.loadFromSupabase()
+    : Promise.resolve(true);
 
-  constructor() {
-    if (isSupabaseConfigured()) {
-      void this.loadFromSupabase();
-    }
+  constructor() {}
+
+  async reloadFromSupabase(): Promise<boolean> {
+    return this.loadFromSupabase();
   }
 
   getExperienceBySlug(slug: string): Experience | undefined {
@@ -634,9 +637,7 @@ export class ExperienceService {
               (d) => !existingSlugs.has(d.slug) && !deletedIds.has(d.id) && !deletedIds.has(d.slug),
             );
             return [
-              ...activeList.map((e) =>
-                e.slug === 'kayak' ? { ...KAYAK_DEFAULT_EXPERIENCE, ...e } : e,
-              ),
+              ...activeList,
               ...missingDefaults,
             ];
           }
@@ -680,7 +681,7 @@ export class ExperienceService {
     }
   }
 
-  private async loadFromSupabase(): Promise<void> {
+  private async loadFromSupabase(): Promise<boolean> {
     try {
       const publicColumns =
         'id, slug, title, tagline, description, region, meeting_point, difficulty, ' +
@@ -696,7 +697,7 @@ export class ExperienceService {
 
       if (error) {
         console.warn('[ExperienceService] No se pudieron cargar las experiencias remotas:', error);
-        return;
+        return false;
       }
 
       if (data && data.length > 0) {
@@ -723,7 +724,6 @@ export class ExperienceService {
 
         const remoteExperiences: Experience[] = data.map((exp: any) => {
           const image = exp.cover_image || KAYAK_IMAGE;
-          const isKayak = exp.slug === 'kayak';
           const email = (exp.provider_email || '').trim().toLowerCase();
           const banking = providerBankingMap.get(email);
           return {
@@ -735,12 +735,11 @@ export class ExperienceService {
             tagline: exp.tagline,
             description: exp.description,
             region: exp.region,
-            meetingPoint:
-              exp.meeting_point || (isKayak ? KAYAK_DEFAULT_EXPERIENCE.meetingPoint : ''),
+            meetingPoint: exp.meeting_point || '',
             difficulty: exp.difficulty || 'Baja',
             durationDays: 1,
             durationLabel: exp.duration_label || '4 horas',
-            altitudeMeters: exp.altitude_meters ?? (isKayak ? 850 : 0),
+            altitudeMeters: exp.altitude_meters ?? 0,
             bestSeason: '',
             priceArs: exp.price_ars,
             priceUsd: exp.price_usd ?? 70,
@@ -750,36 +749,25 @@ export class ExperienceService {
             albumPhotos:
               Array.isArray(exp.album_photos) && exp.album_photos.length > 0
                 ? exp.album_photos
-                : isKayak
-                  ? KAYAK_DEFAULT_EXPERIENCE.albumPhotos
-                  : undefined,
-            videoUrl: exp.video_url || (isKayak ? KAYAK_DEFAULT_EXPERIENCE.videoUrl : undefined),
-            videoPoster:
-              exp.video_poster || (isKayak ? KAYAK_DEFAULT_EXPERIENCE.videoPoster : undefined),
+                : undefined,
+            videoUrl: exp.video_url || undefined,
+            videoPoster: exp.video_poster || undefined,
             highlights:
               Array.isArray(exp.highlights) && exp.highlights.length > 0
                 ? exp.highlights
-                : isKayak
-                  ? KAYAK_DEFAULT_EXPERIENCE.highlights
-                  : [],
+                : [],
             included:
               Array.isArray(exp.included) && exp.included.length > 0
                 ? exp.included
-                : isKayak
-                  ? KAYAK_DEFAULT_EXPERIENCE.included
-                  : [],
+                : [],
             notIncluded:
               Array.isArray(exp.not_included) && exp.not_included.length > 0
                 ? exp.not_included
-                : isKayak
-                  ? KAYAK_DEFAULT_EXPERIENCE.notIncluded
-                  : [],
+                : [],
             dates:
               Array.isArray(exp.dates) && exp.dates.length > 0
                 ? exp.dates
-                : isKayak
-                  ? KAYAK_DEFAULT_EXPERIENCE.dates
-                  : [],
+                : [],
             dateSlots: Array.isArray(exp.date_slots) ? exp.date_slots : undefined,
             providerEmail: exp.provider_email || undefined,
             providerName: exp.provider_name || undefined,
@@ -799,8 +787,10 @@ export class ExperienceService {
         this._experiences.set(remoteExperiences);
         this.persistToLocalStorage(remoteExperiences);
       }
+      return true;
     } catch (err) {
       console.warn('[ExperienceService] Error cargando desde Supabase:', err);
+      return false;
     }
   }
 }

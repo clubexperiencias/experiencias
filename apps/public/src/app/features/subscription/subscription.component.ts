@@ -11,6 +11,7 @@ import {
   BreadcrumbItem,
 } from '../../shared/components/breadcrumb/breadcrumb.component';
 import { FounderAdComponent } from '../../shared/components/founder-ad/founder-ad.component';
+import { ArsPipe } from '../../shared/pipes/format.pipes';
 
 export type PaymentMethodChoice = 'card' | 'mercadopago' | 'transfer';
 export type ManageModalType = 'change_payment' | 'pause_confirm' | 'cancel_confirm' | null;
@@ -27,6 +28,7 @@ export type ManageModalType = 'change_payment' | 'pause_confirm' | 'cancel_confi
     HeaderComponent,
     BreadcrumbComponent,
     FounderAdComponent,
+    ArsPipe,
   ],
   templateUrl: './subscription.component.html',
   styleUrl: './subscription.component.css',

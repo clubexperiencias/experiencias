@@ -1,11 +1,10 @@
 import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { ProviderStoreService, ExperienceProposalRequest } from '../../../core/services/provider-store.service';
 import { TransferSubmission } from '../../../core/models/bank-transfer.model';
 import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
-import { ProviderExperienceProposalModalComponent } from '../provider-experience-proposal-modal/provider-experience-proposal-modal.component';
 
 @Component({
   selector: 'app-provider-dashboard',
@@ -16,7 +15,6 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
     MatIconModule,
     ArsPipe,
     FechaPipe,
-    ProviderExperienceProposalModalComponent,
   ],
   template: `
     <div class="dash-container">
@@ -270,7 +268,7 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
         }
 
         <!-- Box: Solicitar a los administradores que carguen una nueva experiencia -->
-        <div class="request-new-exp-card" (click)="openRequestModal()">
+        <div class="request-new-exp-card" (click)="goToNewProposal()">
           <div class="request-new-exp-content">
             <div class="request-new-exp-info">
               <span class="request-new-exp-kicker">NUEVA EXPERIENCIA</span>
@@ -285,13 +283,13 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
           </div>
 
           <div class="request-new-exp-action">
-            <button
-              type="button"
+            <a
+              [routerLink]="newProposalLink()"
               class="request-form-btn"
-              (click)="openRequestModal(); $event.stopPropagation()"
+              (click)="$event.stopPropagation()"
             >
               <span>Cargar Propuesta</span>
-            </button>
+            </a>
           </div>
         </div>
       </section>
@@ -510,12 +508,6 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
           </div>
         </div>
       }
-
-      <!-- Modal: Formulario para Solicitar Alta de Nueva Experiencia -->
-      <app-provider-experience-proposal-modal
-        [isOpen]="requestModalOpen()"
-        (closeModal)="requestModalOpen.set(false)"
-      />
     </div>
   `,
   styles: [
@@ -1929,12 +1921,23 @@ import { ProviderExperienceProposalModalComponent } from '../provider-experience
 export class ProviderDashboardComponent implements OnInit {
   readonly store = inject(ProviderStoreService);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   readonly selectedSubmission = signal<TransferSubmission | null>(null);
+
+  readonly newProposalLink = computed(() => {
+    const isPanel =
+      typeof window !== 'undefined' && window.location.pathname.includes('/prestadores/panel');
+    return isPanel ? '/prestadores/panel/experiencias/nueva' : '/experiencias/nueva';
+  });
+
+  goToNewProposal(): void {
+    this.router.navigate([this.newProposalLink()]);
+  }
 
   ngOnInit(): void {
     this.route.queryParams.subscribe((params) => {
       if (params['solicitar'] === '1' || params['nueva'] === '1') {
-        this.openRequestModal();
+        this.goToNewProposal();
       }
     });
   }
@@ -1945,16 +1948,6 @@ export class ProviderDashboardComponent implements OnInit {
     return Boolean(p?.cbuAlias?.trim() && p?.cuitDni?.trim() && p?.bankName?.trim());
   });
   readonly stats = this.store.providerStats;
-
-  readonly requestModalOpen = signal(false);
-
-  openRequestModal(): void {
-    this.requestModalOpen.set(true);
-  }
-
-  closeRequestModal(): void {
-    this.requestModalOpen.set(false);
-  }
 
   readonly activeExperiences = computed(() =>
     this.store.providerExperiences().filter((e) => e.status === 'publicada'),

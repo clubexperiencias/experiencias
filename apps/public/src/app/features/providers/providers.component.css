@@ -293,23 +293,22 @@
 /* Banner de éxito */
 .wide-success {
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
   gap: 1.2rem;
-  padding: 1.8rem;
+  padding: 2.2rem 1.8rem;
   border-radius: 3px;
   background: rgba(14, 28, 42, 0.35);
   border: 1px solid rgba(128, 179, 255, 0.35);
 }
 
-.success-check-icon {
-  color: #80b3ff;
-  flex-shrink: 0;
-}
-
-.success-check-icon mat-icon {
-  font-size: 2.2rem;
-  width: 2.2rem;
-  height: 2.2rem;
+.success-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 640px;
 }
 
 .success-kicker {
