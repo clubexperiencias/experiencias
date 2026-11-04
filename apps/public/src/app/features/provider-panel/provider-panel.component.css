@@ -454,6 +454,12 @@
   padding: 0.85rem 1.5rem 3.5rem;
 }
 
+@media (min-width: 900px) and (max-width: 1440px) {
+  .portal-main {
+    padding-left: 5.25rem;
+  }
+}
+
 .portal-content-container {
   max-width: 1120px;
   margin: 0 auto;

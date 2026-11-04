@@ -52,12 +52,12 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         </div>
       </div>
 
-      <!-- Box de Datos Bancarios para Transferencias de Socios -->
+      <!-- Box de Datos Bancarios de Liquidación -->
       <div class="bank-details-card">
         <div class="bank-card-header">
           <div class="bank-header-left">
-            <span class="bank-card-kicker">DATOS BANCARIOS PARA TRANSFERENCIAS</span>
-            <span class="bank-card-desc">Cuenta donde los socios transfieren los aranceles de tus experiencias</span>
+            <span class="bank-card-kicker">DATOS BANCARIOS DE LIQUIDACIÓN</span>
+            <span class="bank-card-desc">Cuenta registrada para la liquidación y cobro de aranceles de tus experiencias</span>
           </div>
           <a routerLink="../perfil" class="btn-edit-bank" title="Modificar datos bancarios">
             <mat-icon>edit</mat-icon>
@@ -344,8 +344,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                 <span class="pay-label">Monto esperado</span>
                 <strong class="rc-check-amount">{{ sub.amountArs | ars }}</strong>
                 <span class="rc-check-hint">
-                  Verificá que el comprobante coincida con este monto y con el CBU:
-                  {{ store.currentProvider()?.cbuAlias }}.
+                  Verificá que el comprobante coincida con el importe correspondiente a la reserva.
                 </span>
               </div>
 

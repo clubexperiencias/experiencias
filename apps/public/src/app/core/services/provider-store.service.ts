@@ -873,12 +873,15 @@ export class ProviderStoreService {
           expUpdate['provider_slug'] = updates.slug.trim().toLowerCase();
         }
         if (Object.keys(expUpdate).length > 0) {
-          try {
-            await (this.supabase.from('experiencias') as any)
-              .update(expUpdate)
-              .eq('provider_email', email);
-          } catch {
-            // non-fatal
+          const { error: expError } = await (this.supabase.from('experiencias') as any)
+            .update(expUpdate)
+            .eq('provider_email', email);
+          if (expError) {
+            console.warn('[ProviderStore] Error sincronizando experiencias:', expError);
+            return {
+              success: false,
+              message: 'No se pudieron sincronizar las experiencias vinculadas al prestador.',
+            };
           }
         }
       } catch (err: any) {
@@ -892,15 +895,26 @@ export class ProviderStoreService {
     this.saveSession(updated);
     this.saveProviders();
 
-    if (updates.agency !== undefined && updates.agency.trim()) {
-      const newAgency = updates.agency.trim();
+    if (
+      (updates.agency !== undefined && updates.agency.trim()) ||
+      (updates.slug !== undefined && updates.slug.trim())
+    ) {
+      const newAgency = updates.agency !== undefined ? updates.agency.trim() : undefined;
+      const newSlug = updates.slug !== undefined ? updates.slug.trim().toLowerCase() : undefined;
       this._experiences.update((list) =>
-        list.map((e) =>
-          e.providerId === current.id ||
-          (e.providerEmail || '').toLowerCase() === email
-            ? { ...e, providerName: newAgency }
-            : e,
-        ),
+        list.map((e) => {
+          if (
+            e.providerId === current.id ||
+            (e.providerEmail || '').toLowerCase() === email
+          ) {
+            return {
+              ...e,
+              ...(newAgency ? { providerName: newAgency } : {}),
+              ...(newSlug ? { providerSlug: newSlug } : {}),
+            };
+          }
+          return e;
+        }),
       );
       this.saveExperiences();
     }
@@ -923,6 +937,53 @@ export class ProviderStoreService {
     const clean = (slugOrId || '').trim().toLowerCase();
     if (!clean) return null;
 
+    const mapRemoteToPublicProvider = (remoteData: any, fallbackSlug: string): ProviderUser => ({
+      id: `prov-${remoteData.email.replace(/[^a-z0-9]+/g, '-')}`,
+      email: remoteData.email,
+      name: remoteData.name || remoteData.agency || remoteData.email,
+      agency: remoteData.agency || 'Prestador Catamarca',
+      slug: remoteData.slug || fallbackSlug,
+      bio: remoteData.bio || '',
+      phone: remoteData.phone || '',
+      website: remoteData.website || '',
+      socialMedia: remoteData.social_media || '',
+      cuitDni: '',
+      cbuAlias: '',
+      bankName: '',
+      verified: true,
+      status: remoteData.status || 'aprobado',
+      role: 'prestador',
+      avatar: remoteData.avatar_url || '',
+      coverImage: remoteData.cover_url || '/assets/images/kayak-club-de-experiencias.jpg',
+      joinedAt: new Date().toISOString(),
+    });
+
+    const queryRemotePublicProfile = async (querySlug: string, queryEmail: string) => {
+      let remoteData: any = null;
+      const { data, error } = await (this.supabase as any)
+        .from('public_provider_profiles')
+        .select(
+          'email, name, agency, active, status, phone, website, social_media, slug, bio, avatar_url, cover_url',
+        )
+        .or(`slug.eq.${querySlug},email.eq.${queryEmail}`)
+        .maybeSingle();
+
+      if (!error && data) {
+        remoteData = data;
+      } else if (error) {
+        const { data: fallbackData } = await (this.supabase.from('provider_access') as any)
+          .select(
+            'email, name, agency, active, status, phone, website, social_media, slug, bio, avatar_url, cover_url',
+          )
+          .eq('active', true)
+          .eq('status', 'aprobado')
+          .or(`slug.eq.${querySlug},email.eq.${queryEmail}`)
+          .maybeSingle();
+        remoteData = fallbackData;
+      }
+      return remoteData;
+    };
+
     const found = this._providers().find(
       (p) =>
         (p.slug || '').toLowerCase() === clean ||
@@ -935,37 +996,32 @@ export class ProviderStoreService {
           .replace(/[^a-z0-9]+/g, '-')
           .replace(/(^-|-$)+/g, '') === clean,
     );
-    if (found) return found;
+
+    if (found) {
+      if (!isSupabaseConfigured()) {
+        return found.status === 'aprobado' && (found.active ?? true)
+          ? { ...found, cuitDni: '', cbuAlias: '', bankName: '' }
+          : null;
+      }
+      try {
+        const querySlug = (found.slug || clean).trim().toLowerCase();
+        const queryEmail = (found.email || clean).trim().toLowerCase();
+        const remoteData = await queryRemotePublicProfile(querySlug, queryEmail);
+
+        if (remoteData && remoteData.active === true && remoteData.status === 'aprobado') {
+          return mapRemoteToPublicProvider(remoteData, found.slug || clean);
+        }
+        return null;
+      } catch {
+        return null;
+      }
+    }
 
     if (isSupabaseConfigured()) {
       try {
-        const { data, error } = await (this.supabase.from('provider_access') as any)
-          .select('email, name, agency, active, status, cbu_alias, cuit_dni, bank_name, account_holder, phone, website, social_media, slug, bio, avatar_url, cover_url')
-          .or(`slug.eq.${clean},email.eq.${clean}`)
-          .maybeSingle();
-
-        if (data && data.active === true) {
-          const provider: ProviderUser = {
-            id: `prov-${data.email.replace(/[^a-z0-9]+/g, '-')}`,
-            email: data.email,
-            name: data.name || data.account_holder || data.email,
-            agency: data.agency || 'Prestador Catamarca',
-            slug: data.slug || clean,
-            bio: data.bio || '',
-            phone: data.phone || '',
-            website: data.website || '',
-            socialMedia: data.social_media || '',
-            cuitDni: data.cuit_dni || '',
-            cbuAlias: data.cbu_alias || '',
-            bankName: data.bank_name || '',
-            verified: true,
-            status: data.status || 'aprobado',
-            role: 'prestador',
-            avatar: data.avatar_url || '/assets/aistudio/patricio.jpg',
-            coverImage: data.cover_url || '/assets/images/kayak-club-de-experiencias.jpg',
-            joinedAt: new Date().toISOString(),
-          };
-          return provider;
+        const remoteData = await queryRemotePublicProfile(clean, clean);
+        if (remoteData && remoteData.active === true && remoteData.status === 'aprobado') {
+          return mapRemoteToPublicProvider(remoteData, clean);
         }
       } catch (err) {
         console.warn('[ProviderStore] Error consultando perfil público:', err);
@@ -2028,6 +2084,14 @@ export class ProviderStoreService {
     const req = this._experienceRequests().find((r) => r.id === requestId);
     if (!req) return false;
 
+    const normalizedEmail = (req.providerEmail || '').trim().toLowerCase();
+    const existingProvider =
+      (req.providerId ? this.getProviderById(req.providerId) : undefined) ||
+      (normalizedEmail ? this.getProviderByEmail(normalizedEmail) : undefined);
+    const resolvedProviderSlug = existingProvider?.slug || undefined;
+    const resolvedProviderName = (req.providerAgency || req.providerName || '').trim();
+    const resolvedProviderPhone = req.providerPhone?.trim() || undefined;
+
     const generatedSlug = slugify(req.title);
     const resolvedUrl =
       publicUrl?.trim() || `https://experiencias.club/experiencias/${generatedSlug}`;
@@ -2076,10 +2140,10 @@ export class ProviderStoreService {
       included: req.includedServices ? req.includedServices.split('\n').filter(Boolean) : [],
       notIncluded: [],
       providerId: req.providerId,
-      providerName: req.providerName
-        ? `${req.providerName}${req.providerAgency ? ' · ' + req.providerAgency : ''}`
-        : undefined,
-      providerPhone: req.providerPhone || undefined,
+      providerEmail: normalizedEmail || undefined,
+      providerSlug: resolvedProviderSlug,
+      providerName: resolvedProviderName || undefined,
+      providerPhone: resolvedProviderPhone,
     };
 
     try {
@@ -2142,7 +2206,10 @@ export class ProviderStoreService {
           status: 'publicada',
           publicUrl: resolvedUrl,
           providerId: req.providerId,
-          providerName: `${req.providerName} · ${req.providerAgency}`,
+          providerEmail: normalizedEmail || undefined,
+          providerSlug: resolvedProviderSlug,
+          providerName: resolvedProviderName,
+          providerPhone: resolvedProviderPhone,
           coverImage: req.coverImage || '/assets/images/kayak-club-de-experiencias.jpg',
           createdAt: new Date().toISOString(),
         };

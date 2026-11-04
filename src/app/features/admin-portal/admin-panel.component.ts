@@ -49,7 +49,7 @@ const ROUTE_LABELS: Record<string, string> = {
               routerLink="dashboard"
               class="portal-nav-btn"
               routerLinkActive="active-route"
-              [routerLinkActiveOptions]="{ exact: true }"
+              [routerLinkActiveOptions]="{ paths: 'exact', queryParams: 'ignored', matrixParams: 'ignored', fragment: 'ignored' }"
             >
               <span>Área Restringida</span>
             </a>

@@ -53,7 +53,11 @@ export class ProviderPublicProfileComponent implements OnInit {
   readonly providerExperiences = computed<Experience[]>(() => {
     const p = this.provider();
     if (!p) return [];
-    return this.expService.getExperiencesByProvider(p.slug || p.email || p.agency);
+    return this.expService.getExperiencesByProvider({
+      slug: p.slug,
+      email: p.email,
+      agency: p.agency,
+    });
   });
 
   async ngOnInit(): Promise<void> {
@@ -93,6 +97,13 @@ export class ProviderPublicProfileComponent implements OnInit {
   cleanWhatsApp(phone: string | undefined): string {
     if (!phone) return '';
     return phone.replace(/[^0-9]/g, '');
+  }
+
+  getInitials(name?: string): string {
+    if (!name) return 'PR';
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   }
 }
 

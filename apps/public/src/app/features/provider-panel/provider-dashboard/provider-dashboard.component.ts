@@ -100,7 +100,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
           <div class="banking-card-head">
             <div class="banking-head-info">
               <span class="banking-kicker">DATOS DE LIQUIDACIÓN DE PAGOS</span>
-              <h2 class="card-title">Cuenta Bancaria para Transferencias</h2>
+              <h2 class="card-title">Cuenta Bancaria Registrada para Liquidaciones</h2>
             </div>
             <a routerLink="../perfil" class="btn-edit-banking-pill" title="Editar datos bancarios">
               <mat-icon>edit</mat-icon>

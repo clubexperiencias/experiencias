@@ -47,14 +47,21 @@
               <span class="spec-value">{{ item.meetingPoint || 'Club Náutico Dique El Jumeal' }}</span>
             </div>
             @if (item.providerName) {
-            <a
-              [routerLink]="['/prestadores', item.providerSlug || 'catamarca-kayak']"
-              class="spec-tile spec-tile-clickable"
-              title="Ver perfil oficial del prestador"
-            >
-              <span class="spec-label">PRESTADOR</span>
-              <span class="spec-value spec-value-link">{{ item.providerName }}</span>
-            </a>
+              @if (item.providerSlug) {
+              <a
+                [routerLink]="['/prestadores', item.providerSlug]"
+                class="spec-tile spec-tile-clickable"
+                title="Ver perfil oficial del prestador"
+              >
+                <span class="spec-label">PRESTADOR</span>
+                <span class="spec-value spec-value-link">{{ item.providerName }}</span>
+              </a>
+              } @else {
+              <div class="spec-tile">
+                <span class="spec-label">PRESTADOR</span>
+                <span class="spec-value">{{ item.providerName }}</span>
+              </div>
+              }
             }
           </div>
           <!-- Video Oficial de la Experiencia Integrado -->

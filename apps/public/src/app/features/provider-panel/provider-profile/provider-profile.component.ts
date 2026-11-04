@@ -28,7 +28,7 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
         <div class="audit-text">
           <strong class="audit-title">Registro Seguro de Datos Bancarios</strong>
           <p class="audit-desc">
-            Podés actualizar tus datos de cobro cuando lo necesites. Cada modificación queda registrada con fecha y hora de auditoría para asegurar la trazabilidad y la correcta acreditación de los comprobantes de tus socios.
+            Podés actualizar tus datos de cobro cuando lo necesites. Cada modificación queda registrada con fecha y hora de auditoría para asegurar la trazabilidad y la correcta liquidación de tus servicios.
           </p>
         </div>
       </aside>
@@ -37,9 +37,9 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
         <form [formGroup]="form" (ngSubmit)="onSave()" class="profile-form">
           <div class="form-section">
             <div>
-              <h3 class="section-title">Datos Bancarios para Transferencias de Socios</h3>
+              <h3 class="section-title">Datos Bancarios para Liquidación de Pagos</h3>
               <p class="section-desc">
-                Es la cuenta bancaria o billetera donde los socios transferirán los importes bonificados de sus reservas.
+                Es la cuenta bancaria o virtual donde se liquidan las recaudaciones y aranceles de tus experiencias.
               </p>
             </div>
 
@@ -651,16 +651,14 @@ export class ProviderProfileComponent {
     this.savedSuccess.set(false);
 
     const values = this.form.getRawValue();
-    if (values.slug) {
-      values.slug = values.slug
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9-]+/g, '-')
-        .replace(/(^-|-$)+/g, '');
-    } else {
-      values.slug = this.currentSlug();
-    }
+    const rawSlug = (values.slug || '').trim();
+    const normalizedSlug = rawSlug
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9-]+/g, '-')
+      .replace(/(^-|-$)+/g, '');
+    values.slug = normalizedSlug || this.currentSlug();
 
     const result = await this.store.updateProfile(values);
 

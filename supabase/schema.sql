@@ -177,7 +177,30 @@ ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS slug TEXT NOT NULL D
 ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS bio TEXT NOT NULL DEFAULT '';
 ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS avatar_url TEXT NOT NULL DEFAULT '';
 ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS cover_url TEXT NOT NULL DEFAULT '';
-CREATE INDEX IF NOT EXISTS idx_provider_access_slug ON public.provider_access(slug);
+-- Normalizar posibles slugs duplicados no vacíos antes de crear el índice único
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables 
+    WHERE table_schema = 'public' AND table_name = 'provider_access'
+  ) THEN
+    WITH duplicates AS (
+      SELECT id, slug,
+             ROW_NUMBER() OVER (PARTITION BY slug ORDER BY id) AS rn
+      FROM public.provider_access
+      WHERE slug IS NOT NULL AND slug <> ''
+    )
+    UPDATE public.provider_access pa
+    SET slug = pa.slug || '-' || SUBSTRING(pa.id::text, 1, 6)
+    FROM duplicates d
+    WHERE pa.id = d.id AND d.rn > 1;
+  END IF;
+END $$;
+
+DROP INDEX IF EXISTS public.idx_provider_access_slug;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_provider_access_nonempty_slug
+  ON public.provider_access(slug)
+  WHERE slug IS NOT NULL AND slug <> '';
 
 -- 2.7 provider_banking_history (Auditoría de Modificaciones Bancarias)
 CREATE TABLE IF NOT EXISTS public.provider_banking_history (
@@ -440,6 +463,27 @@ SELECT
 FROM public.socios;
 
 GRANT SELECT ON public.waitlist_stats TO anon, authenticated;
+
+-- 3.2 Vista pública segura de prestadores aprobados (sin información bancaria o fiscal)
+DROP VIEW IF EXISTS public.public_provider_profiles CASCADE;
+CREATE VIEW public.public_provider_profiles AS
+SELECT
+  email,
+  name,
+  agency,
+  slug,
+  bio,
+  phone,
+  website,
+  social_media,
+  avatar_url,
+  cover_url,
+  active,
+  status
+FROM public.provider_access
+WHERE active = true AND status = 'aprobado';
+
+GRANT SELECT ON public.public_provider_profiles TO anon, authenticated;
 
 -- ==============================================================================
 -- 4. TRIGGERS Y FUNCIONES DE NORMALIZACIÓN

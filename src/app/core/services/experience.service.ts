@@ -184,6 +184,9 @@ export const POMEZ_DEFAULT_EXPERIENCE: Experience = {
   isExclusiveClub: true,
   isLocked: false,
   detailRoute: '/experiencias/campo-de-piedra-pomez',
+  providerEmail: 'vegvarel@gmail.com',
+  providerName: 'Catamarca Expediciones & Trekking',
+  providerSlug: 'catamarca-expediciones',
 };
 
 export const SEISMILES_ALBUM_PHOTOS: ExperienceAlbumPhoto[] = [
@@ -259,6 +262,9 @@ export const SEISMILES_DEFAULT_EXPERIENCE: Experience = {
   isExclusiveClub: true,
   isLocked: false,
   detailRoute: '/experiencias/ruta-de-los-seismiles',
+  providerEmail: 'vegvarel@gmail.com',
+  providerName: 'Catamarca Expediciones & Trekking',
+  providerSlug: 'catamarca-expediciones',
 };
 
 export const DEFAULT_EXPERIENCES: Experience[] = [
@@ -288,20 +294,51 @@ export class ExperienceService {
     return this.publishedExperiences().find((e: Experience) => e.id === id || e.slug === id);
   }
 
-  getExperiencesByProvider(providerSlugOrEmail: string): Experience[] {
-    const clean = (providerSlugOrEmail || '').trim().toLowerCase();
-    if (!clean) return [];
-    return this.publishedExperiences().filter(
-      (e) =>
-        (e.providerSlug || '').toLowerCase() === clean ||
-        (e.providerEmail || '').toLowerCase() === clean ||
-        (e.providerName || '')
-          .toLowerCase()
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/(^-|-$)+/g, '') === clean,
-    );
+  getExperiencesByProvider(
+    providerIdentity:
+      | string
+      | { slug?: string | null; email?: string | null; agency?: string | null; name?: string | null },
+  ): Experience[] {
+    const normalizeAgency = (val: string) =>
+      val
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)+/g, '');
+
+    let querySlug = '';
+    let queryEmail = '';
+    let queryAgencyNorm = '';
+
+    if (typeof providerIdentity === 'string') {
+      const clean = providerIdentity.trim().toLowerCase();
+      if (!clean) return [];
+      querySlug = clean;
+      queryEmail = clean;
+      queryAgencyNorm = normalizeAgency(clean);
+    } else if (providerIdentity && typeof providerIdentity === 'object') {
+      querySlug = (providerIdentity.slug || '').trim().toLowerCase();
+      queryEmail = (providerIdentity.email || '').trim().toLowerCase();
+      const rawAgency = (providerIdentity.agency || providerIdentity.name || '').trim();
+      queryAgencyNorm = rawAgency ? normalizeAgency(rawAgency) : '';
+    } else {
+      return [];
+    }
+
+    if (!querySlug && !queryEmail && !queryAgencyNorm) return [];
+
+    return this.publishedExperiences().filter((e) => {
+      const expSlug = (e.providerSlug || '').trim().toLowerCase();
+      const expEmail = (e.providerEmail || '').trim().toLowerCase();
+      const expAgency = (e.providerName || '').trim();
+      const expAgencyNorm = expAgency ? normalizeAgency(expAgency) : '';
+
+      if (querySlug && expSlug && expSlug === querySlug) return true;
+      if (queryEmail && expEmail && expEmail === queryEmail) return true;
+      if (queryAgencyNorm && expAgencyNorm && expAgencyNorm === queryAgencyNorm) return true;
+      return false;
+    });
   }
   readonly hasRemoteExperiences = this._hasRemoteExperiences.asReadonly();
   readonly remoteLoadPromise: Promise<boolean> = isSupabaseConfigured()
@@ -394,6 +431,10 @@ export class ExperienceService {
 
         if (merged.providerEmail !== undefined) {
           payload['provider_email'] = merged.providerEmail;
+        }
+
+        if (updated.providerSlug !== undefined) {
+          payload['provider_slug'] = updated.providerSlug || null;
         }
 
         const { data, error } = await this.supabase
@@ -515,6 +556,7 @@ export class ExperienceService {
           provider_name: experience.providerName || null,
           provider_phone: experience.providerPhone || null,
           provider_email: experience.providerEmail || null,
+          provider_slug: experience.providerSlug || null,
         };
 
         const { error } = await this.supabase.from('experiencias').insert(payload as any);

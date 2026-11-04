@@ -49,7 +49,7 @@ const ROUTE_LABELS: Record<string, string> = {
               [routerLink]="dashboardLink()"
               class="portal-nav-btn"
               routerLinkActive="active-route"
-              [routerLinkActiveOptions]="{ exact: true }"
+              [routerLinkActiveOptions]="{ paths: 'exact', queryParams: 'ignored', matrixParams: 'ignored', fragment: 'ignored' }"
             >
               <span>Panel Operativo</span>
             </a>

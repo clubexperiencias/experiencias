@@ -40,11 +40,17 @@
           <div class="profile-header-content">
             <div class="avatar-row">
               <div class="avatar-wrap">
-                <img
-                  [src]="p.avatar || '/assets/aistudio/patricio.jpg'"
-                  [alt]="p.name"
-                  class="avatar-img"
-                />
+                @if (p.avatar) {
+                  <img
+                    [src]="p.avatar"
+                    [alt]="p.name"
+                    class="avatar-img"
+                  />
+                } @else {
+                  <div class="avatar-placeholder" [attr.aria-label]="p.agency || p.name">
+                    {{ getInitials(p.agency || p.name) }}
+                  </div>
+                }
               </div>
 
               <div class="badges-row">
