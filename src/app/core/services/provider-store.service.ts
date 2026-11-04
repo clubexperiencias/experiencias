@@ -390,7 +390,7 @@ export class ProviderStoreService {
   private readonly storageService = inject(StorageService);
 
   private readonly _providers = signal<ProviderUser[]>(this.loadStoredProviders());
-  private readonly _currentProvider = signal<ProviderUser | null>(null);
+  private readonly _currentProvider = signal<ProviderUser | null>(this.loadStoredSession());
   private readonly _experiences = signal<ProviderExperience[]>(this.loadStoredExperiences());
   private readonly _submissions = signal<TransferSubmission[]>(this.loadStoredSubmissions());
   private readonly _experienceRequests = signal<ExperienceProposalRequest[]>(
@@ -404,6 +404,10 @@ export class ProviderStoreService {
           this._experienceRequests.set(this.loadStoredRequests());
         }
       });
+      const stored = this.loadStoredSession();
+      if (stored?.email) {
+        void this.loadProposalsFromSupabase(stored.email);
+      }
     }
   }
 
@@ -521,8 +525,12 @@ export class ProviderStoreService {
 
       const { data: access, error } = await (this.supabase.from('provider_access') as any)
         .select('email, name, agency, active, status, cbu_alias, cuit_dni, bank_name, account_holder, phone')
-        .eq('email', email)
+        .ilike('email', email)
         .maybeSingle();
+
+      if (error) {
+        console.warn('[ProviderStore] Error consultando provider_access:', error);
+      }
 
       if (
         error ||
@@ -566,6 +574,7 @@ export class ProviderStoreService {
         );
       this._currentProvider.set(provider);
       this.saveSession(provider);
+      void this.loadProposalsFromSupabase(email);
       return true;
     } catch (err) {
       console.warn('[ProviderStore] Error restaurando sesión Supabase:', err);
@@ -825,7 +834,13 @@ export class ProviderStoreService {
   }
 
   getExperienceById(id: string): ProviderExperience | undefined {
-    return this._experiences().find((e) => e.id === id);
+    const fromStore = this._experiences().find((e) => e.id === id || e.slug === id);
+    if (fromStore) return fromStore;
+    const live = this.expService.getExperienceById(id) || this.expService.getExperienceBySlug(id);
+    if (live) {
+      return mapLiveExperienceToProvider(live);
+    }
+    return undefined;
   }
 
   getExperienceBySlug(slug: string): ProviderExperience | undefined {
@@ -946,7 +961,7 @@ export class ProviderStoreService {
     let updatedExperience: ProviderExperience | undefined;
     this._experiences.update((list) =>
       list.map((e) => {
-        if (e.id !== id) return e;
+        if (e.id !== id && e.slug !== id) return e;
         updatedExperience = {
           ...e,
           ...updates,
@@ -957,7 +972,18 @@ export class ProviderStoreService {
     );
 
     if (!updatedExperience) {
-      throw new Error('Experiencia no encontrada.');
+      const live = this.expService.getExperienceById(id) || this.expService.getExperienceBySlug(id);
+      if (live) {
+        const mapped = mapLiveExperienceToProvider(live);
+        updatedExperience = {
+          ...mapped,
+          ...updates,
+          updatedAt: new Date().toISOString(),
+        };
+        this._experiences.update((list) => [...list, updatedExperience!]);
+      } else {
+        throw new Error('Experiencia no encontrada.');
+      }
     }
 
     this.saveExperiences();
@@ -1689,9 +1715,9 @@ export class ProviderStoreService {
     }
   }
 
-  submitExperienceRequest(
+  async submitExperienceRequest(
     data: Omit<ExperienceProposalRequest, 'id' | 'status' | 'createdAt'>,
-  ): ExperienceProposalRequest {
+  ): Promise<ExperienceProposalRequest> {
     const newReq: ExperienceProposalRequest = {
       ...data,
       id: 'req-' + Date.now(),
@@ -1700,7 +1726,112 @@ export class ProviderStoreService {
     };
     this._experienceRequests.update((list) => [newReq, ...list]);
     this.saveRequests();
+
+    // Persistir en Supabase en tabla propuestas_experiencias
+    if (isSupabaseConfigured()) {
+      try {
+        const { error } = await (this.supabase.from('propuestas_experiencias') as any).insert({
+          id: newReq.id,
+          provider_id: newReq.providerId,
+          provider_name: newReq.providerName,
+          provider_agency: newReq.providerAgency || '',
+          provider_email: newReq.providerEmail.trim().toLowerCase(),
+          provider_phone: newReq.providerPhone || '',
+          title: newReq.title,
+          kicker: newReq.kicker || 'EXPERIENCIA',
+          subheading: newReq.subheading || '',
+          region: newReq.region || '',
+          difficulty: newReq.difficulty || 'Moderada',
+          duration: newReq.duration || '4 horas',
+          altitude: newReq.altitude || '',
+          capacity: newReq.capacity || 12,
+          season: newReq.season || 'Todo el año',
+          dates: newReq.dates || 'A coordinar',
+          price_ars: newReq.priceArs,
+          price_usd: newReq.priceUsd || null,
+          promos_and_pricing: newReq.promosAndPricing || '',
+          itinerary: newReq.itinerary || '',
+          meeting_point: newReq.meetingPoint || '',
+          included_services: newReq.includedServices || '',
+          participant_requirements: newReq.participantRequirements || '',
+          notes: newReq.notes || '',
+          cover_image: newReq.coverImage || '',
+          cover_image_name: newReq.coverImageName || '',
+          cover_video_url: newReq.coverVideoUrl || '',
+          cover_video_name: newReq.coverVideoName || '',
+          status: 'pendiente',
+        });
+        if (error) {
+          console.warn('[ProviderStore] Error insertando propuesta en Supabase:', error);
+        }
+      } catch (dbErr) {
+        console.warn('[ProviderStore] Error al guardar propuesta en base de datos:', dbErr);
+      }
+    }
+
     return newReq;
+  }
+
+  async loadProposalsFromSupabase(providerEmail?: string): Promise<void> {
+    if (!isSupabaseConfigured()) return;
+    try {
+      let query = (this.supabase.from('propuestas_experiencias') as any).select('*');
+      if (providerEmail) {
+        query = query.ilike('provider_email', providerEmail.trim().toLowerCase());
+      }
+      const { data, error } = await query.order('created_at', { ascending: false });
+      if (error) {
+        console.warn('[ProviderStore] Error consultando propuestas en Supabase:', error);
+        return;
+      }
+      if (data && Array.isArray(data)) {
+        const mapped: ExperienceProposalRequest[] = data.map((row: any) => ({
+          id: row.id,
+          providerId: row.provider_id,
+          providerName: row.provider_name,
+          providerAgency: row.provider_agency || '',
+          providerEmail: row.provider_email,
+          providerPhone: row.provider_phone || '',
+          title: row.title,
+          kicker: row.kicker || 'EXPERIENCIA',
+          subheading: row.subheading || '',
+          region: row.region || '',
+          difficulty: row.difficulty || 'Moderada',
+          duration: row.duration || '4 horas',
+          altitude: row.altitude || '',
+          capacity: row.capacity || 12,
+          season: row.season || 'Todo el año',
+          dates: row.dates || 'A coordinar',
+          priceArs: row.price_ars,
+          priceUsd: row.price_usd,
+          promosAndPricing: row.promos_and_pricing || '',
+          itinerary: row.itinerary || '',
+          meetingPoint: row.meeting_point || '',
+          includedServices: row.included_services || '',
+          participantRequirements: row.participant_requirements || '',
+          notes: row.notes || '',
+          coverImage: row.cover_image || '',
+          coverImageName: row.cover_image_name || '',
+          coverVideoUrl: row.cover_video_url || '',
+          coverVideoName: row.cover_video_name || '',
+          status: row.status as 'pendiente' | 'aprobada' | 'rechazada',
+          createdAt: row.created_at || new Date().toISOString(),
+          reviewedAt: row.reviewed_at || undefined,
+        }));
+
+        const existingMap = new Map(this._experienceRequests().map((r) => [r.id, r]));
+        for (const m of mapped) {
+          existingMap.set(m.id, m);
+        }
+        const merged = Array.from(existingMap.values()).sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        );
+        this._experienceRequests.set(merged);
+        this.saveRequests();
+      }
+    } catch (err) {
+      console.warn('[ProviderStore] Excepción al cargar propuestas de Supabase:', err);
+    }
   }
 
   async approveExperienceRequest(
@@ -1780,6 +1911,16 @@ export class ProviderStoreService {
     );
     this.saveRequests();
 
+    if (isSupabaseConfigured()) {
+      void (this.supabase.from('propuestas_experiencias') as any)
+        .update({
+          status: 'aprobada',
+          reviewed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', requestId);
+    }
+
     if (req) {
       const exists = this._experiences().some(
         (e) => e.title.toLowerCase() === req.title.toLowerCase(),
@@ -1835,6 +1976,16 @@ export class ProviderStoreService {
       ),
     );
     this.saveRequests();
+
+    if (isSupabaseConfigured()) {
+      void (this.supabase.from('propuestas_experiencias') as any)
+        .update({
+          status: 'rechazada',
+          reviewed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', requestId);
+    }
   }
 
   private loadStoredRequests(): ExperienceProposalRequest[] {

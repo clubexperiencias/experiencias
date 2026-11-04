@@ -1,6 +1,6 @@
 <div class="kayak-section-card form-card">
   <header class="form-header">
-    <a routerLink="../experiencias" class="back-link"> Volver al listado de experiencias </a>
+    <a [routerLink]="backLink()" class="btn-back-panel"> Volver a Experiencias </a>
     <h1 class="card-heading">
       {{ isEditMode() ? 'Editar Experiencia' : 'Nueva Experiencia para el Club' }}
     </h1>
@@ -10,6 +10,15 @@
     </p>
   </header>
 
+  @if (isEditMode() && notFound()) {
+    <div class="empty-state-card" style="margin-top: 1.5rem; text-align: center; padding: 2.5rem 1.5rem;">
+      <h2 class="card-heading">Experiencia no encontrada</h2>
+      <p class="card-subheading">No pudimos encontrar la experiencia que intentás editar en el catálogo.</p>
+      <a [routerLink]="backLink()" class="btn-back-panel" style="margin-top: 1.25rem; display: inline-flex;">
+        Volver a Experiencias
+      </a>
+    </div>
+  } @else {
   @if (!isEditMode() && hasDraft()) {
     <div class="draft-notice-banner" role="status">
       <div class="draft-notice-info">
@@ -226,10 +235,12 @@
 
     <!-- Action Buttons - Rectangulares sobrios -->
     <div class="form-actions-strip">
-      <a routerLink="../experiencias" class="cancel-btn"> Cancelar </a>
+      <a [routerLink]="backLink()" class="cancel-btn"> Cancelar </a>
 
       <div class="save-buttons-group">
-        <button type="button" class="draft-btn" (click)="save(false)">Guardar como Borrador</button>
+        <button type="button" class="draft-btn" (click)="save(false)">
+          {{ isEditMode() ? 'Guardar Cambios' : 'Guardar como Borrador' }}
+        </button>
 
         <button type="button" class="publish-request-btn" (click)="save(true)">
           Guardar y Solicitar Publicación al Admin
@@ -237,4 +248,5 @@
       </div>
     </div>
   </form>
+  }
 </div>

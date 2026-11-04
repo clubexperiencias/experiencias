@@ -12,7 +12,7 @@ const ROUTE_LABELS: Record<string, string> = {
   propuestas: 'PROPUESTAS',
   postulaciones: 'PROPUESTAS',
   experiencias: 'EXPERIENCIAS',
-  nueva: 'NUEVA',
+  nueva: 'NUEVA PROPUESTA',
   editar: 'EDITAR',
   perfil: 'PERFIL',
 };

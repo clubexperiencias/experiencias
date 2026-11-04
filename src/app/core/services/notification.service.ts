@@ -189,6 +189,42 @@ export class NotificationService {
   }
 
   /**
+   * Envía aviso de nueva propuesta de experiencia al prestador y administradores.
+   */
+  async notifyExperienceProposalSubmitted(data: {
+    title: string;
+    providerName: string;
+    providerAgency?: string;
+    providerEmail: string;
+    providerPhone?: string;
+    region?: string;
+    difficulty?: string;
+    duration?: string;
+    priceArs: number;
+    meetingPoint?: string;
+    itinerary?: string;
+  }): Promise<NotificationResult> {
+    const payload = {
+      type: 'EXPERIENCE_PROPOSAL_SUBMITTED',
+      data: {
+        title: data.title,
+        providerName: data.providerName,
+        providerAgency: data.providerAgency || '',
+        providerEmail: data.providerEmail,
+        providerPhone: data.providerPhone || '',
+        region: data.region || 'Catamarca',
+        difficulty: data.difficulty || 'Moderada',
+        duration: data.duration || '4 horas',
+        priceArs: data.priceArs,
+        meetingPoint: data.meetingPoint || '',
+        itinerary: data.itinerary || '',
+      },
+    };
+
+    return this.postNotify(payload, data.providerEmail);
+  }
+
+  /**
    * Genera el enlace directo a WhatsApp con mensaje prearmado para avisar del pago.
    */
   getWhatsAppNotificationUrl(

@@ -81,8 +81,25 @@
                     <option value="fotografia">Fotografía / Astroturismo</option>
                     <option value="cabalgatas">Cabalgatas & Rutas Gauchas</option>
                     <option value="artesanias">Artesanías & Sabores Regionales</option>
+                    <option value="otro">Otro (especificar a continuación)</option>
                   </select>
                 </label>
+
+                @if (providerCategory() === 'otro') {
+                  <label class="provider-field full-width">
+                    <span class="field-lbl">Especificá tu Categoría de Servicio <b>*</b></span>
+                    <input
+                      id="p-page-custom-category"
+                      type="text"
+                      class="provider-input"
+                      placeholder="Ej. Cicloturismo, Buceo de altura, Guía arqueológico, etc."
+                      maxlength="80"
+                      [value]="providerCustomCategory()"
+                      (input)="providerCustomCategory.set($any($event.target).value)"
+                      required
+                    />
+                  </label>
+                }
 
                 <label class="provider-field">
                   <span class="field-lbl">Región donde se presta el servicio <b>*</b></span>
@@ -152,13 +169,21 @@
                 </label>
               </div>
 
+              @if (submitError()) {
+                <div class="provider-error-banner" role="alert" style="margin-bottom: 1.25rem; padding: 0.85rem 1rem; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 4px; color: #fca5a5; font-size: 0.88rem;">
+                  {{ submitError() }}
+                </div>
+              }
+
               <div class="form-submit-row">
                 <button
                   type="submit"
                   class="provider-page-submit-btn"
                   [disabled]="
+                    isSubmitting() ||
                     !providerName().trim() ||
                     !providerCategory().trim() ||
+                    (providerCategory() === 'otro' && !providerCustomCategory().trim()) ||
                     !providerRegion().trim() ||
                     !providerEmail().trim() ||
                     !providerPhone().trim() ||
@@ -166,22 +191,18 @@
                     !providerDescription().trim()
                   "
                 >
-                  <span>Postularme como Prestador Fundador</span>
+                  <span>{{ isSubmitting() ? 'Enviando postulación...' : 'Postularme como Prestador Fundador' }}</span>
                 </button>
               </div>
             </form>
           } @else {
             <div class="provider-success-banner wide-success">
-              <div class="success-check-icon">
-                <mat-icon>verified</mat-icon>
-              </div>
               <div class="success-content">
                 <span class="success-kicker">POSTULACIÓN RECIBIDA</span>
                 <h3>¡Gracias por sumarte, {{ providerName() }}!</h3>
                 <p>
-                  Nos pondremos en contacto con vos al correo
-                  <strong>{{ providerEmail() }}</strong> para validar habilitaciones y coordinar tu
-                  alta prioritaria en el Club de Experiencias.
+                  Te llegará un mail de bienvenida y próximos pasos a
+                  <strong>{{ providerEmail() }}</strong> cuando se habilite tu perfil de prestador.
                 </p>
                 <button type="button" class="secondary-btn" (click)="resetForm()">
                   Enviar otra postulación
@@ -229,14 +250,12 @@
 
               <div class="tier-jump-card">
                 <span class="jump-tag">CÓMO ACCEDER</span>
-                <p>Registro gratuito con tu email a la lista de espera oficial del club.</p>
+                <p>Creando tu perfil al vincular tu cuenta de Google.</p>
               </div>
 
               <ul class="tier-benefits">
-                <li>Acceso anticipado a preventa de temporada 2026</li>
-                <li>Comunidad privada de expedicionarios andinos</li>
-                <li>Bitácoras exclusivas y novedades de rutas andinas</li>
-                <li>Prioridad en cupos de expediciones inaugurales</li>
+                <li>Enterarse de las nuevas experiencias y descuentos antes que nadie</li>
+                <li>Cupo asegurado prioritario en fechas de alta demanda</li>
               </ul>
 
               <div class="tier-card-footer">
@@ -289,17 +308,16 @@
               </div>
 
               <div class="tier-jump-card highlight">
+                <span class="jump-tag">CÓMO ACCEDER</span>
                 <p>
-                  Membresía mensual con acceso directo a cupos prioritarios y beneficios ($23.000
-                  ARS/mes · sin permanencia).
+                  Suscripción mensual recurrente. Se habilitará en el lanzamiento de la temporada 2027.
                 </p>
               </div>
 
               <ul class="tier-benefits">
-                <li><strong>10% de descuento directo</strong> en todas las expediciones</li>
-                <li>Prioridad de reserva con los mejores guías y prestadores</li>
-                <li>Historial de salidas con comprobantes respaldados</li>
-                <li>Acceso a la bitácora privada de recuerdos fotográficos</li>
+                <li>Todos los beneficios de Socio Emergente</li>
+                <li><strong>10% OFF directo</strong> en todas las expediciones y salidas</li>
+                <li>Asistencia personalizada de viaje con guías locales</li>
               </ul>
 
               <div class="tier-card-footer">
@@ -323,7 +341,7 @@
                     </svg>
                     Activar Membresía Mensual
                   </span>
-                  <span class="cta-sub-text">$23.000 ARS/mes · Cancelación libre</span>
+                  <span class="cta-sub-text">Tarifa a definir · Temporada 2027</span>
                 </a>
               </div>
             </div>
@@ -336,16 +354,18 @@
               </div>
 
               <div class="tier-jump-card founder">
-                <span class="jump-tag">CÓMO DAR EL SALTO</span>
-                <p>Postulación aprobada por comité directivo + Membresía Vitalicia única.</p>
+                <span class="jump-tag">CÓMO ACCEDER</span>
+                <p>Aporte patrimonial único evaluado por el Comité Directivo.</p>
               </div>
 
               <ul class="tier-benefits">
-                <li><strong>Sin cuotas mensuales de por vida</strong> (pase perpetuo)</li>
-                <li><strong>20% de descuento vitalicio</strong> en todas las salidas</li>
-                <li>Acceso exclusivo a travesías secretas y seismiles</li>
-                <li>Kit de bienvenida oficial y merch del club de regalo</li>
-                <li>Voz y voto en nuevas rutas y expediciones a incorporar</li>
+                <li>Todos los beneficios de Socio Emergente y Socio Pleno</li>
+                <li>
+                  <strong>20% OFF permanente</strong> en todas las expediciones para titular y
+                  acompañante
+                </li>
+                <li>Participación formal en el Consejo Consultivo del Club</li>
+                <li>Acceso prioritario a experiencias privadas de lujo del Club</li>
               </ul>
 
               <div class="tier-card-footer">

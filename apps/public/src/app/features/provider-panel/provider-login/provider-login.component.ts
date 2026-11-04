@@ -79,7 +79,6 @@ import { environment } from '../../../../environments/environment';
                 </div>
               } @else if (accountStatus() === 'unregistered') {
                 <div class="login-alert-status alert-unregistered" role="status">
-                  <mat-icon class="alert-icon">assignment_ind</mat-icon>
                   <div class="alert-content">
                     <strong class="alert-title">Cuenta No Registrada como Prestador</strong>
                     <p class="alert-text">
@@ -89,7 +88,7 @@ import { environment } from '../../../../environments/environment';
                       href="https://experiencias.club/prestadores"
                       class="alert-action-btn"
                     >
-                      Completar Postulación de Prestador &rarr;
+                      Completar Postulación de Prestador
                     </a>
                   </div>
                 </div>
@@ -890,22 +889,25 @@ export class ProviderLoginComponent implements OnInit {
     this.pageTitle.setTitle('Portal de Prestadores del Club de Experiencias');
   }
 
+  private resolveDashboardPath(): string {
+    const isBrowser = typeof window !== 'undefined';
+    const host = isBrowser ? window.location.hostname.toLowerCase() : '';
+    const search = isBrowser ? window.location.search.toLowerCase() : '';
+    const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local');
+    const isProviderHost =
+      host.startsWith('prestadores.') ||
+      host.includes('prestadores.experiencias') ||
+      (isLocalHost && (search.includes('portal=prestador') || search.includes('prestador=true')));
+
+    return isProviderHost ? '/dashboard' : '/prestadores/panel/dashboard';
+  }
+
   async ngOnInit(): Promise<void> {
     if (isSupabaseConfigured()) {
       try {
         const restored = await this.store.restoreSupabaseSession();
         if (restored && this.store.isProviderApproved()) {
-          const isBrowser = typeof window !== 'undefined';
-          const host = isBrowser ? window.location.hostname.toLowerCase() : '';
-          const search = isBrowser ? window.location.search.toLowerCase() : '';
-          const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local');
-          const isProviderHost =
-            host.startsWith('prestadores.') ||
-            host.includes('prestadores.experiencias') ||
-            (isLocalHost && (search.includes('portal=prestador') || search.includes('prestador=true')));
-
-          const targetPath = isProviderHost ? '/dashboard' : '/prestadores/panel/dashboard';
-          this.router.navigate([targetPath]);
+          this.router.navigate([this.resolveDashboardPath()]);
           return;
         }
 
@@ -925,11 +927,76 @@ export class ProviderLoginComponent implements OnInit {
 
   private async evaluateUnapprovedStatus(email: string): Promise<void> {
     try {
-      // 1. Verificar si existe registro en provider_access
-      const { data: access } = await (this.supabase.from('provider_access') as any)
+      const cleanEmail = email.trim().toLowerCase();
+
+      // 1. Intentar verificación mediante RPC segura (Security Definer)
+      try {
+        const { data: rpcRes, error: rpcErr } = await (this.supabase as any).rpc(
+          'check_provider_status',
+          { p_email: cleanEmail },
+        );
+        if (!rpcErr && rpcRes && typeof (rpcRes as any).status === 'string') {
+          const st = (rpcRes as any).status;
+          if (st === 'inactive' || st === 'pending') {
+            this.accountStatus.set(st);
+            return;
+          }
+          if (st === 'approved') {
+            const restored = await this.store.restoreSupabaseSession();
+            if (restored && this.store.isProviderApproved()) {
+              this.router.navigate([this.resolveDashboardPath()]);
+              return;
+            }
+          }
+        }
+      } catch (rpcEx) {
+        console.warn('[ProviderLogin] RPC check_provider_status fallback:', rpcEx);
+      }
+
+      // 2. Verificar vía backend /api/notify (con service role key para bypass de RLS)
+      try {
+        const notifyRes = await fetch('/api/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'CHECK_PROVIDER_STATUS',
+            data: { email: cleanEmail },
+          }),
+        });
+        if (notifyRes.ok) {
+          const resJson = await notifyRes.json();
+          if (resJson?.success && typeof resJson.status === 'string') {
+            const st = resJson.status;
+            if (st === 'inactive' || st === 'pending') {
+              this.accountStatus.set(st);
+              return;
+            }
+            if (st === 'approved') {
+              const restored = await this.store.restoreSupabaseSession();
+              if (restored && this.store.isProviderApproved()) {
+                this.router.navigate([this.resolveDashboardPath()]);
+                return;
+              }
+            }
+            if (st === 'unregistered') {
+              this.accountStatus.set('unregistered');
+              return;
+            }
+          }
+        }
+      } catch (notifyEx) {
+        console.warn('[ProviderLogin] /api/notify status check fallback:', notifyEx);
+      }
+
+      // 3. Fallback a consultas directas en tablas de Supabase
+      const { data: access, error: accessErr } = await (this.supabase.from('provider_access') as any)
         .select('status, active')
-        .eq('email', email)
+        .ilike('email', cleanEmail)
         .maybeSingle();
+
+      if (accessErr) {
+        console.warn('[ProviderLogin] Error al verificar provider_access:', accessErr);
+      }
 
       if (access) {
         if (access.status === 'dado_de_baja' || access.active === false) {
@@ -942,19 +1009,23 @@ export class ProviderLoginComponent implements OnInit {
         }
       }
 
-      // 2. Verificar postulaciones_prestadores
-      const { data: app } = await (this.supabase.from('postulaciones_prestadores') as any)
+      const { data: app, error: appErr } = await (this.supabase.from('postulaciones_prestadores') as any)
         .select('status')
-        .eq('email', email)
+        .ilike('email', cleanEmail)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
+      if (appErr) {
+        console.warn('[ProviderLogin] Error al verificar postulaciones_prestadores:', appErr);
+      }
+
       if (app) {
+        const s = (app.status || '').toLowerCase();
         if (
-          app.status === 'rechazado' ||
-          app.status === 'rechazada' ||
-          app.status === 'dado_de_baja'
+          s === 'rechazado' ||
+          s === 'rechazada' ||
+          s === 'dado_de_baja'
         ) {
           this.accountStatus.set('inactive');
         } else {
@@ -963,10 +1034,9 @@ export class ProviderLoginComponent implements OnInit {
         return;
       }
 
-      // 3. Si no existe ni en provider_access ni en postulaciones_prestadores
       this.accountStatus.set('unregistered');
     } catch (err) {
-      console.warn('[ProviderLogin] Error al verificar estado de postulación:', err);
+      console.warn('[ProviderLogin] Error general al verificar estado de postulación:', err);
       this.accountStatus.set('unregistered');
     }
   }
@@ -986,17 +1056,7 @@ export class ProviderLoginComponent implements OnInit {
   quickLogin(providerId: string): void {
     if (this.isDevelopmentMode) {
       this.store.loginAs(providerId);
-      const isBrowser = typeof window !== 'undefined';
-      const host = isBrowser ? window.location.hostname.toLowerCase() : '';
-      const search = isBrowser ? window.location.search.toLowerCase() : '';
-      const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local');
-      const isProviderHost =
-        host.startsWith('prestadores.') ||
-        host.includes('prestadores.experiencias') ||
-        (isLocalHost && (search.includes('portal=prestador') || search.includes('prestador=true')));
-
-      const targetPath = isProviderHost ? '/dashboard' : '/prestadores/panel/dashboard';
-      this.router.navigate([targetPath]);
+      this.router.navigate([this.resolveDashboardPath()]);
     }
   }
 }

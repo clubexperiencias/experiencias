@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -29,6 +29,13 @@ export class ProviderExperienceFormComponent implements OnInit {
   readonly isEditMode = signal(false);
   readonly editingExpId = signal<string | null>(null);
   readonly currentStatus = signal<ExperienceStatus>('borrador');
+  readonly notFound = signal(false);
+
+  readonly backLink = computed(() => {
+    const isPanel =
+      typeof window !== 'undefined' && window.location.pathname.includes('/prestadores/panel');
+    return isPanel ? '/prestadores/panel/experiencias' : '/experiencias';
+  });
 
   static readonly DRAFT_STORAGE_KEY = 'experiencias_provider_experience_form_draft';
   readonly hasDraft = signal<boolean>(false);
@@ -99,6 +106,8 @@ export class ProviderExperienceFormComponent implements OnInit {
           priceArs: exp.priceArs,
           capacityPerDate: exp.capacityPerDate,
         });
+      } else {
+        this.notFound.set(true);
       }
     } else {
       this.loadDraft();
@@ -243,9 +252,26 @@ export class ProviderExperienceFormComponent implements OnInit {
     this.form.markAllAsTouched();
     if (requestPublication && this.dates().length === 0) {
       this.datesError.set('Agregá al menos una fecha futura para solicitar publicación.');
+      if (typeof document !== 'undefined') {
+        const dateInput = document.querySelector('.input-date-control, .dates-chips-container');
+        dateInput?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
       return;
     }
-    if (this.form.invalid) return;
+    if (this.form.invalid) {
+      if (typeof document !== 'undefined') {
+        const firstInvalid = document.querySelector(
+          '.panel-form input.ng-invalid, .panel-form select.ng-invalid, .panel-form textarea.ng-invalid',
+        );
+        if (firstInvalid) {
+          firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          if (firstInvalid instanceof HTMLElement) {
+            firstInvalid.focus();
+          }
+        }
+      }
+      return;
+    }
 
     const value = this.form.getRawValue();
     const payload = {
@@ -292,6 +318,6 @@ export class ProviderExperienceFormComponent implements OnInit {
       this.clearDraft();
     }
 
-    this.router.navigate(['/prestadores/experiencias']);
+    this.router.navigate([this.backLink()]);
   }
 }

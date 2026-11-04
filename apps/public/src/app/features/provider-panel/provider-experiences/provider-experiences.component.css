@@ -756,6 +756,19 @@
   color: #80b3ff;
 }
 
+.btn-edit {
+  background: rgba(128, 179, 255, 0.16) !important;
+  border-color: rgba(128, 179, 255, 0.5) !important;
+  color: #80b3ff !important;
+  font-weight: 700 !important;
+}
+
+.btn-edit:hover {
+  background: #80b3ff !important;
+  border-color: #80b3ff !important;
+  color: #070d18 !important;
+}
+
 .btn-highlight {
   background: rgba(128, 179, 255, 0.18) !important;
   border-color: rgba(128, 179, 255, 0.5) !important;

@@ -5,10 +5,10 @@
     <div class="heading-row">
       <h2 class="card-heading">Experiencias</h2>
       <a routerLink="/dashboard" class="btn-back-panel">Volver al Panel</a>
-      <button type="button" class="new-proposal-btn" (click)="openRequestModal()"
+      <a [routerLink]="newProposalLink()" class="new-proposal-btn"
         title="Cargar nueva solicitud de experiencia">
         Cargar Propuesta
-      </button>
+      </a>
     </div>
     <p class="card-subheading">
       Administrá tus experiencias publicadas, revisá solicitudes enviadas y gestioná cupos de
@@ -137,6 +137,10 @@
         <div class="req-meta-item">
           <span class="req-lbl">Cupo Máximo</span>
           <strong>{{ req.capacity }} pers.</strong>
+        </div>
+        <div class="req-meta-item">
+          <span class="req-lbl">Fechas / Disponibilidad</span>
+          <strong>{{ req.dates || 'A coordinar' }}</strong>
         </div>
       </div>
     </li>
@@ -337,11 +341,11 @@
 
     <!-- Experience Actions - Botones rectangulares limpios sin iconos excesivos -->
     <div class="exp-actions">
-      <!-- Solicitud de edición o pausa vía WhatsApp -->
-      <a [href]="getWhatsappEditOrPauseLink(row.experience)" target="_blank" rel="noopener noreferrer"
-        class="pay-copy-btn"
-        title="Contactar al equipo por WhatsApp para solicitar edición de datos, fechas o pausa de la experiencia">
-        Solicitud de edición o pausa
+      <!-- Botón directo Editar a /experiencias/:id/editar -->
+      <a [routerLink]="getEditExperienceLink(row.experience.id)"
+        class="pay-copy-btn btn-edit"
+        title="Editar datos, logística y tarifas de esta experiencia">
+        Editar
       </a>
 
       <!-- View Enrolled Members and Receipts filtrando por esta experiencia -->
@@ -469,9 +473,6 @@
   </div>
 </div>
 }
-
-<!-- Modal: Solicitud de Nueva Experiencia -->
-<app-provider-experience-proposal-modal [isOpen]="requestModalOpen()" (closeModal)="requestModalOpen.set(false)" />
 
 <!-- Modal: Álbum de Fotos de Experiencia -->
 <app-provider-experience-album-modal [isOpen]="albumModalExp() !== null" [experience]="albumModalExp()"

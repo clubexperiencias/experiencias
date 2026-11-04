@@ -140,13 +140,15 @@ const providerRoutes: Routes = [
       },
       {
         path: 'experiencias/nueva',
+        title: 'Nueva Propuesta de Experiencia - Experiencias Club',
         loadComponent: () =>
-          import('./features/provider-panel/provider-experience-form/provider-experience-form.component').then(
-            (m) => m.ProviderExperienceFormComponent,
-          ),
+          import(
+            './features/provider-panel/provider-experience-proposal-modal/provider-experience-proposal-modal.component'
+          ).then((m) => m.ProviderExperienceProposalModalComponent),
       },
       {
         path: 'experiencias/:id/editar',
+        title: 'Editar Experiencia - Experiencias Club',
         loadComponent: () =>
           import('./features/provider-panel/provider-experience-form/provider-experience-form.component').then(
             (m) => m.ProviderExperienceFormComponent,
@@ -280,9 +282,10 @@ const publicRoutes: Routes = [
   },
   {
     path: 'experiencias/kayak',
+    data: { slug: 'kayak' },
     loadComponent: () =>
-      import('./features/experiences/kayak-experience/kayak-experience.component').then(
-        (m) => m.KayakExperienceComponent,
+      import('./features/experiences/experience-detail/experience-detail.component').then(
+        (m) => m.ExperienceDetailComponent,
       ),
   },
   {
@@ -471,13 +474,15 @@ const publicRoutes: Routes = [
       },
       {
         path: 'experiencias/nueva',
+        title: 'Nueva Propuesta de Experiencia - Experiencias Club',
         loadComponent: () =>
-          import('./features/provider-panel/provider-experience-form/provider-experience-form.component').then(
-            (m) => m.ProviderExperienceFormComponent,
-          ),
+          import(
+            './features/provider-panel/provider-experience-proposal-modal/provider-experience-proposal-modal.component'
+          ).then((m) => m.ProviderExperienceProposalModalComponent),
       },
       {
         path: 'experiencias/:id/editar',
+        title: 'Editar Experiencia - Experiencias Club',
         loadComponent: () =>
           import('./features/provider-panel/provider-experience-form/provider-experience-form.component').then(
             (m) => m.ProviderExperienceFormComponent,

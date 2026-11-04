@@ -191,6 +191,29 @@
   text-decoration-color: #000000;
 }
 
+.footer-become-provider-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #000000 !important;
+  text-decoration: none !important;
+  font-weight: 600;
+  font-size: 0.76rem;
+  transition: all 0.2s ease;
+  padding: 0.25rem 0.65rem;
+  background: #80b3ff;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.footer-become-provider-btn:hover {
+  color: #000000 !important;
+  background: #a3cbff;
+  border-color: rgba(0, 0, 0, 0.35);
+  transform: translateY(-1px);
+}
+
 .social-ig-link {
   display: inline-flex;
   align-items: center;
@@ -314,5 +337,11 @@
   .footer-links {
     justify-content: center;
     width: 100%;
+  }
+
+  .footer-become-provider-btn {
+    flex-basis: 100%;
+    order: 3;
+    margin-top: 0.25rem;
   }
 }

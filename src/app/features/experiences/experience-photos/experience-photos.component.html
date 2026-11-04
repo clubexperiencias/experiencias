@@ -123,13 +123,6 @@
           <!-- ═══════════════ 3. RESTO DE FOTOS DEL ÁLBUM (HASTA 12 TOTAL) ═══════════════ -->
           @if (galleryPhotos().length > 0) {
             <section class="section-block">
-              <div class="section-label-bar">
-                <span class="subheading-kicker">GALERÍA COMPLETA DEL ÁLBUM</span>
-                <span class="photos-count-badge"
-                  >{{ galleryPhotos().length }} fotos adicionales</span
-                >
-              </div>
-
               <div class="photos-grid photos-grid-3cols">
                 @for (photo of galleryPhotos(); track photo.id; let idx = $index) {
                   <article

@@ -148,7 +148,64 @@ function verifyPostulacionExists(email, config) {
     try {
       const cleanEmail = String(email).trim().toLowerCase();
       const url = new URL(
-        `${config.supabaseUrl}/rest/v1/postulaciones_prestadores?email=eq.${encodeURIComponent(cleanEmail)}&select=id,full_name,category,region,email,phone,website,description,created_at&order=created_at.desc&limit=1`,
+        `${config.supabaseUrl}/rest/v1/postulaciones_prestadores?email=ilike.${encodeURIComponent(cleanEmail)}&select=id,full_name,category,region,email,phone,website,description,status,created_at&order=created_at.desc&limit=1`,
+      );
+      const req = https.request(
+        {
+          hostname: url.hostname,
+          port: url.port || 443,
+          path: url.pathname + url.search,
+          method: 'GET',
+          headers: {
+            apikey: privilegedKey,
+            Authorization: `Bearer ${privilegedKey}`,
+          },
+        },
+        (res) => {
+          if (res.statusCode < 200 || res.statusCode >= 300) {
+            return resolve(null);
+          }
+          let data = '';
+          res.on('data', (c) => (data += c));
+          res.on('end', () => {
+            try {
+              const records = JSON.parse(data);
+              if (!Array.isArray(records) || records.length === 0) {
+                return resolve(null);
+              }
+              const record = records[0];
+              if (!record || typeof record !== 'object') {
+                return resolve(null);
+              }
+              resolve(record);
+            } catch {
+              resolve(null);
+            }
+          });
+        },
+      );
+      req.setTimeout(8000, () => {
+        req.destroy();
+        resolve(null);
+      });
+      req.on('error', () => resolve(null));
+      req.end();
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+function verifyProviderAccess(email, config) {
+  return new Promise((resolve) => {
+    const privilegedKey = config.supabaseServiceRoleKey || config.supabaseKey;
+    if (!config.supabaseUrl || !privilegedKey || !email) {
+      return resolve(null);
+    }
+    try {
+      const cleanEmail = String(email).trim().toLowerCase();
+      const url = new URL(
+        `${config.supabaseUrl}/rest/v1/provider_access?email=ilike.${encodeURIComponent(cleanEmail)}&select=email,name,agency,status,active&limit=1`,
       );
       const req = https.request(
         {
@@ -801,6 +858,92 @@ function templateProviderApproved(data) {
   return renderBaseLayout(content, `¡Tu cuenta de Prestador ha sido aprobada en EXPERIENCIAS.CLUB!`, 'blue');
 }
 
+// 10. Template: Nueva Propuesta de Experiencia (Para Administradores)
+function templateExperienceProposalAdmin(data) {
+  const title = escapeHtml(data.title || 'Nueva Experiencia');
+  const providerName = escapeHtml(data.providerName || 'Prestador');
+  const providerAgency = escapeHtml(data.providerAgency || '-');
+  const providerEmail = escapeHtml(data.providerEmail || '-');
+  const providerPhone = escapeHtml(data.providerPhone || '-');
+  const region = escapeHtml(data.region || 'Catamarca');
+  const difficulty = escapeHtml(data.difficulty || '-');
+  const duration = escapeHtml(data.duration || '-');
+  const priceArs = Number(data.priceArs || 0).toLocaleString('es-AR');
+  const meetingPoint = escapeHtml(data.meetingPoint || '-');
+  const itinerary = escapeHtml(data.itinerary || '-');
+
+  const content = `
+    <h2 class="card-title">Nueva Propuesta de Experiencia</h2>
+    <p class="card-lead">
+      El prestador <strong>${providerName}</strong> (${providerAgency}) ha enviado una nueva propuesta de expedición para revisión y publicación en <strong>EXPERIENCIAS.CLUB</strong>.
+    </p>
+
+    <table class="data-table">
+      <tr>
+        <td class="data-label">Experiencia</td>
+        <td class="data-value"><strong>${title}</strong></td>
+      </tr>
+      <tr>
+        <td class="data-label">Prestador</td>
+        <td class="data-value">${providerName} &lt;${providerEmail}&gt; (${providerPhone})</td>
+      </tr>
+      <tr>
+        <td class="data-label">Región</td>
+        <td class="data-value">${region}</td>
+      </tr>
+      <tr>
+        <td class="data-label">Dificultad / Duración</td>
+        <td class="data-value">${difficulty} · ${duration}</td>
+      </tr>
+      <tr>
+        <td class="data-label">Arancel por Persona</td>
+        <td class="data-value">$${priceArs} ARS</td>
+      </tr>
+      <tr>
+        <td class="data-label">Punto de Encuentro</td>
+        <td class="data-value">${meetingPoint}</td>
+      </tr>
+      <tr>
+        <td class="data-label">Itinerario</td>
+        <td class="data-value">${itinerary}</td>
+      </tr>
+    </table>
+
+    <div style="text-align: center; margin: 28px 0 16px;">
+      <a href="https://admin.experiencias.club/propuestas" class="btn-primary" target="_blank">Revisar Propuesta en Administración</a>
+    </div>
+  `;
+
+  return renderBaseLayout(content, `[Nueva Propuesta] ${data.title} · ${providerName}`, 'blue');
+}
+
+// 11. Template: Confirmación de Propuesta de Experiencia (Para el Prestador)
+function templateExperienceProposalProvider(data) {
+  const title = escapeHtml(data.title || 'tu experiencia');
+  const providerName = escapeHtml(data.providerName || 'Prestador');
+
+  const content = `
+    <h2 class="card-title">Recibimos tu propuesta de experiencia</h2>
+    <p class="card-lead">
+      Hola <strong>${providerName}</strong>, recibimos la propuesta de <strong>"${title}"</strong> para el catálogo del Club de Experiencias.
+    </p>
+
+    <p style="font-size: 14px; color: rgba(255,255,255,0.82); line-height: 1.65; margin: 20px 0;">
+      El equipo de administración revisará los detalles técnicos, itinerario y logística de la salida. Te notificaremos apenas la experiencia sea aprobada y habilitada para reservas de los socios.
+    </p>
+
+    <div style="text-align: center; margin: 28px 0 16px;">
+      <a href="https://prestadores.experiencias.club/experiencias" class="btn-primary" target="_blank">Ver mis propuestas</a>
+    </div>
+
+    <p style="text-align: center; font-size: 13px; color: rgba(255,255,255,0.5); margin: 0;">
+      ¿Necesitás ajustar algún dato o agregar material? Contactanos por WhatsApp al <a href="https://wa.me/5493515490431" target="_blank" style="color: #80b3ff; text-decoration: underline;">+54 9 351 549-0431</a>.
+    </p>
+  `;
+
+  return renderBaseLayout(content, `Recibimos tu propuesta: ${data.title}`, 'blue');
+}
+
 // -----------------------------------------------------------------------------
 // Handler Principal Serverless (Vercel)
 // -----------------------------------------------------------------------------
@@ -838,9 +981,10 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const { type, data } = req.body || {};
+    const { type, action, data } = req.body || {};
+    const messageType = type || action;
 
-    if (!type || !data) {
+    if (!messageType || !data) {
       return res.status(400).json({
         success: false,
         error: 'Cuerpo de solicitud incompleto. Se requiere type y data.',
@@ -850,7 +994,7 @@ module.exports = async function handler(req, res) {
     const config = getEnvConfig();
     const results = [];
 
-    switch (type) {
+    switch (messageType) {
       case 'PAYMENT_SUBMITTED': {
         // 1. Email al usuario
         if (data.email) {
@@ -1039,6 +1183,76 @@ module.exports = async function handler(req, res) {
           html: templateProviderApproved(data),
         });
         results.push({ target: 'provider_approved', ...approvedResult });
+        break;
+      }
+
+      case 'CHECK_PROVIDER_STATUS': {
+        const email = String(data?.email || '').trim().toLowerCase();
+        if (!email) {
+          return res.status(400).json({ success: false, error: 'Falta email.' });
+        }
+
+        // 1. Revisar provider_access
+        const accessRecord = await verifyProviderAccess(email, config);
+        if (accessRecord) {
+          if (accessRecord.status === 'dado_de_baja' || accessRecord.active === false) {
+            return res.status(200).json({ success: true, status: 'inactive' });
+          }
+          if (accessRecord.status === 'aprobado' && accessRecord.active === true) {
+            return res.status(200).json({ success: true, status: 'approved' });
+          }
+          return res.status(200).json({ success: true, status: 'pending' });
+        }
+
+        // 2. Revisar postulaciones_prestadores
+        const applicationRecord = await verifyPostulacionExists(email, config);
+        if (applicationRecord) {
+          const appStatus = (applicationRecord.status || '').toLowerCase();
+          if (
+            appStatus === 'rechazado' ||
+            appStatus === 'rechazada' ||
+            appStatus === 'dado_de_baja'
+          ) {
+            return res.status(200).json({ success: true, status: 'inactive' });
+          }
+          if (appStatus === 'aprobado' || appStatus === 'aprobada') {
+            return res.status(200).json({ success: true, status: 'approved' });
+          }
+          return res.status(200).json({ success: true, status: 'pending' });
+        }
+
+        return res.status(200).json({ success: true, status: 'unregistered' });
+      }
+
+      case 'EXPERIENCE_PROPOSAL_SUBMITTED': {
+        if (!data?.title || !data?.providerEmail) {
+          return res.status(400).json({
+            success: false,
+            error: 'Faltan datos de la propuesta o correo del prestador.',
+          });
+        }
+
+        // 1. Acuse de recibo al prestador
+        const providerResult = await sendEmailViaResend({
+          apiKey: config.apiKey,
+          from: config.fromEmail,
+          to: data.providerEmail,
+          subject: `Recibimos tu propuesta de experiencia: ${data.title}`,
+          html: templateExperienceProposalProvider(data),
+        });
+        results.push({ target: 'provider', ...providerResult });
+
+        // 2. Alerta a administradores
+        if (config.adminEmails && config.adminEmails.length > 0) {
+          const adminResult = await sendEmailViaResend({
+            apiKey: config.apiKey,
+            from: config.fromEmail,
+            to: config.adminEmails,
+            subject: `[Nueva Propuesta de Experiencia] ${data.title} · ${data.providerName || 'Prestador'}`,
+            html: templateExperienceProposalAdmin(data),
+          });
+          results.push({ target: 'admin', ...adminResult });
+        }
         break;
       }
 

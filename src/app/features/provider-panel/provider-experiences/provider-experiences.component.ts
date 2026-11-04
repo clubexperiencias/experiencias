@@ -5,7 +5,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { ProviderStoreService } from '../../../core/services/provider-store.service';
 import { ProviderExperience } from '../../../core/models/bank-transfer.model';
 import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
-import { ProviderExperienceProposalModalComponent } from '../provider-experience-proposal-modal/provider-experience-proposal-modal.component';
 import { ProviderExperienceAlbumModalComponent } from '../provider-experience-album-modal/provider-experience-album-modal.component';
 
 type ExpFilterTab = 'todas' | 'publicadas' | 'solicitudes' | 'revision' | 'borradores' | 'ocultas';
@@ -19,7 +18,6 @@ type ExpFilterTab = 'todas' | 'publicadas' | 'solicitudes' | 'revision' | 'borra
     MatIconModule,
     ArsPipe,
     FechaPipe,
-    ProviderExperienceProposalModalComponent,
     ProviderExperienceAlbumModalComponent,
   ],
   templateUrl: './provider-experiences.component.html',
@@ -42,7 +40,16 @@ export class ProviderExperiencesComponent implements OnInit {
   }
   readonly searchQuery = signal('');
   readonly requests = this.store.providerExperienceRequests;
-  readonly requestModalOpen = signal(false);
+  readonly newProposalLink = computed(() => {
+    const isPanel =
+      typeof window !== 'undefined' && window.location.pathname.includes('/prestadores/panel');
+    return isPanel ? '/prestadores/panel/experiencias/nueva' : '/experiencias/nueva';
+  });
+  getEditExperienceLink(id: string): string {
+    const isPanel =
+      typeof window !== 'undefined' && window.location.pathname.includes('/prestadores/panel');
+    return isPanel ? `/prestadores/panel/experiencias/${id}/editar` : `/experiencias/${id}/editar`;
+  }
   readonly albumModalExp = signal<ProviderExperience | null>(null);
   readonly selectedExpForDelete = signal<ProviderExperience | null>(null);
   readonly deleteErrorModal = signal<string | null>(null);
@@ -86,10 +93,6 @@ export class ProviderExperiencesComponent implements OnInit {
         r.subheading?.toLowerCase().includes(query),
     );
   });
-
-  openRequestModal(): void {
-    this.requestModalOpen.set(true);
-  }
 
   openAlbumModal(exp: ProviderExperience): void {
     this.albumModalExp.set(exp);

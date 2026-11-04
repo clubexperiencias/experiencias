@@ -90,6 +90,19 @@ CREATE TABLE IF NOT EXISTS public.admin_access (
 
 CREATE INDEX IF NOT EXISTS idx_admin_access_email ON public.admin_access(email);
 
+-- Administradores autorizados por defecto
+INSERT INTO public.admin_access (email, name, role, active)
+VALUES
+  ('gonzagramaglia@gmail.com', 'Gonzalo Gramaglia', 'superadmin', true),
+  ('vegvarel@gmail.com', 'Pablo Vegvarel', 'superadmin', true),
+  ('patriciofacundodiaztillar@gmail.com', 'Patricio Facundo Díaz Tillar', 'superadmin', true),
+  ('admin@experiencias.club', 'Administrador Experiencias', 'superadmin', true)
+ON CONFLICT (email) DO UPDATE
+SET active = true,
+    name = EXCLUDED.name,
+    role = EXCLUDED.role,
+    updated_at = now();
+
 -- 2.4 postulaciones_fundadores (Postulaciones para Socio Fundador)
 CREATE TABLE IF NOT EXISTS public.postulaciones_fundadores (
   id                   UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -264,6 +277,46 @@ EXCEPTION
   WHEN OTHERS THEN
     NULL;
 END $$;
+
+-- 2.8.1 propuestas_experiencias (Solicitudes y Propuestas de Prestadores para el Catálogo)
+CREATE TABLE IF NOT EXISTS public.propuestas_experiencias (
+  id                       TEXT PRIMARY KEY,
+  provider_id              TEXT NOT NULL,
+  provider_name            TEXT NOT NULL,
+  provider_agency          TEXT NOT NULL DEFAULT '',
+  provider_email           TEXT NOT NULL,
+  provider_phone           TEXT,
+  title                    TEXT NOT NULL,
+  kicker                   TEXT NOT NULL DEFAULT 'EXPERIENCIA',
+  subheading               TEXT NOT NULL DEFAULT '',
+  region                   TEXT NOT NULL DEFAULT '',
+  difficulty               TEXT NOT NULL DEFAULT 'Moderada',
+  duration                 TEXT NOT NULL DEFAULT '4 horas',
+  altitude                 TEXT,
+  capacity                 INTEGER NOT NULL DEFAULT 12,
+  season                   TEXT NOT NULL DEFAULT 'Todo el año',
+  dates                    TEXT NOT NULL DEFAULT 'A coordinar',
+  price_ars                INTEGER NOT NULL DEFAULT 0,
+  price_usd                INTEGER,
+  promos_and_pricing       TEXT,
+  itinerary                TEXT NOT NULL DEFAULT '',
+  meeting_point            TEXT NOT NULL DEFAULT '',
+  included_services        TEXT NOT NULL DEFAULT '',
+  participant_requirements TEXT NOT NULL DEFAULT '',
+  notes                    TEXT,
+  cover_image              TEXT,
+  cover_image_name         TEXT,
+  cover_video_url          TEXT,
+  cover_video_name         TEXT,
+  status                   TEXT NOT NULL DEFAULT 'pendiente'
+                           CHECK (status IN ('pendiente', 'aprobada', 'rechazada')),
+  created_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
+  reviewed_at              TIMESTAMPTZ,
+  updated_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_propuestas_experiencias_email ON public.propuestas_experiencias(provider_email);
+CREATE INDEX IF NOT EXISTS idx_propuestas_experiencias_status ON public.propuestas_experiencias(status);
 
 -- 2.9 pagos_transferencias (Registro de Comprobantes de Pago)
 CREATE TABLE IF NOT EXISTS public.pagos_transferencias (
@@ -792,6 +845,65 @@ BEGIN
   );
 END;
 $$;
+
+CREATE OR REPLACE FUNCTION public.check_provider_status(
+  p_email TEXT
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_email TEXT := LOWER(TRIM(COALESCE(p_email, '')));
+  v_access_status TEXT;
+  v_access_active BOOLEAN;
+  v_app_status TEXT;
+BEGIN
+  IF v_email = '' THEN
+    RETURN jsonb_build_object('status', 'unregistered');
+  END IF;
+
+  -- 1. Revisar provider_access
+  SELECT status, active
+  INTO v_access_status, v_access_active
+  FROM public.provider_access
+  WHERE LOWER(email) = v_email
+  LIMIT 1;
+
+  IF FOUND THEN
+    IF v_access_status = 'dado_de_baja' OR v_access_active = false THEN
+      RETURN jsonb_build_object('status', 'inactive');
+    ELSIF v_access_status = 'aprobado' AND v_access_active = true THEN
+      RETURN jsonb_build_object('status', 'approved');
+    ELSE
+      RETURN jsonb_build_object('status', 'pending');
+    END IF;
+  END IF;
+
+  -- 2. Revisar postulaciones_prestadores
+  SELECT status
+  INTO v_app_status
+  FROM public.postulaciones_prestadores
+  WHERE LOWER(email) = v_email
+  ORDER BY created_at DESC
+  LIMIT 1;
+
+  IF FOUND THEN
+    IF LOWER(v_app_status) IN ('rechazado', 'rechazada', 'dado_de_baja') THEN
+      RETURN jsonb_build_object('status', 'inactive');
+    ELSIF LOWER(v_app_status) IN ('aprobado', 'aprobada') THEN
+      RETURN jsonb_build_object('status', 'approved');
+    ELSE
+      RETURN jsonb_build_object('status', 'pending');
+    END IF;
+  END IF;
+
+  RETURN jsonb_build_object('status', 'unregistered');
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.check_provider_status(TEXT) TO anon, authenticated, service_role;
 
 CREATE OR REPLACE FUNCTION public.get_socio_by_session_or_token(
   p_email TEXT,
@@ -1760,18 +1872,13 @@ CREATE POLICY "Admins can insert socios"
 
 -- 6.4 Políticas en admin_access
 DROP POLICY IF EXISTS "Admins can view admin_access" ON public.admin_access;
-CREATE POLICY "Admins can view admin_access"
+DROP POLICY IF EXISTS "Users can view own admin_access" ON public.admin_access;
+CREATE POLICY "Users can view own admin_access"
   ON public.admin_access
   FOR SELECT
   TO authenticated
   USING (
     LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
-    OR EXISTS (
-      SELECT 1 FROM public.admin_access a2
-      WHERE LOWER(a2.email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
-        AND a2.role = 'superadmin'
-        AND a2.active = true
-    )
   );
 
 -- 6.5 Políticas en postulaciones_fundadores
@@ -1833,9 +1940,10 @@ DROP POLICY IF EXISTS "Users can read own postulaciones_prestadores" ON public.p
 CREATE POLICY "Users can read own postulaciones_prestadores"
   ON public.postulaciones_prestadores
   FOR SELECT
-  TO authenticated
+  TO authenticated, anon
   USING (
     LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+    OR auth.role() = 'authenticated'
   );
 
 DROP POLICY IF EXISTS "Admins can update postulaciones_prestadores" ON public.postulaciones_prestadores;
@@ -1904,6 +2012,44 @@ CREATE POLICY "Admins and providers can view banking history"
   USING (
     LOWER(provider_email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
     OR EXISTS (
+      SELECT 1 FROM public.admin_access
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+        AND active = true
+    )
+  );
+
+-- 6.8.1 Políticas en propuestas_experiencias
+ALTER TABLE public.propuestas_experiencias ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Prestadores pueden insertar propuestas" ON public.propuestas_experiencias;
+CREATE POLICY "Prestadores pueden insertar propuestas"
+  ON public.propuestas_experiencias
+  FOR INSERT
+  TO anon, authenticated
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Lectura de propuestas para prestadores y administradores" ON public.propuestas_experiencias;
+CREATE POLICY "Lectura de propuestas para prestadores y administradores"
+  ON public.propuestas_experiencias
+  FOR SELECT
+  TO anon, authenticated
+  USING (
+    LOWER(provider_email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+    OR auth.role() = 'authenticated'
+    OR EXISTS (
+      SELECT 1 FROM public.admin_access
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+        AND active = true
+    )
+  );
+
+DROP POLICY IF EXISTS "Admins pueden actualizar propuestas" ON public.propuestas_experiencias;
+CREATE POLICY "Admins pueden actualizar propuestas"
+  ON public.propuestas_experiencias
+  FOR UPDATE
+  TO authenticated
+  USING (
+    EXISTS (
       SELECT 1 FROM public.admin_access
       WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
         AND active = true
@@ -2129,13 +2275,13 @@ BEGIN
       'experiencias',
       'experiencias',
       true,
-      10485760,
-      ARRAY['image/jpeg', 'image/png', 'image/webp']
+      52428800,
+      ARRAY['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm', 'video/quicktime']
     )
     ON CONFLICT (id) DO UPDATE
     SET public = true,
-        file_size_limit = 10485760,
-        allowed_mime_types = ARRAY['image/jpeg', 'image/png', 'image/webp'];
+        file_size_limit = 52428800,
+        allowed_mime_types = ARRAY['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm', 'video/quicktime'];
   END IF;
 EXCEPTION
   WHEN OTHERS THEN

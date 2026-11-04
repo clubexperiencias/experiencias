@@ -56,9 +56,12 @@ export class ProvidersComponent {
   readonly providerPhone = signal('');
   readonly providerWebsite = signal('');
   readonly providerCategory = signal('guia_montaña');
+  readonly providerCustomCategory = signal('');
   readonly providerRegion = signal('');
   readonly providerDescription = signal('');
   readonly providerSuccess = signal(false);
+  readonly isSubmitting = signal(false);
+  readonly submitError = signal<string | null>(null);
 
   selectCategory(category: string): void {
     this.providerCategory.set(category);
@@ -109,18 +112,40 @@ export class ProvidersComponent {
     this.mobileMenuOpen.set(false);
   }
 
-  submitProvider(): void {
-    if (!this.providerName().trim() || !this.providerEmail().trim()) return;
-    this.providerSuccess.set(true);
-    void this.newsletter.submitProviderApplication({
+  async submitProvider(): Promise<void> {
+    if (
+      !this.providerName().trim() ||
+      !this.providerEmail().trim() ||
+      (this.providerCategory() === 'otro' && !this.providerCustomCategory().trim())
+    ) {
+      return;
+    }
+    const finalCategory =
+      this.providerCategory() === 'otro'
+        ? this.providerCustomCategory().trim() || 'Otro'
+        : this.providerCategory();
+
+    this.isSubmitting.set(true);
+    this.submitError.set(null);
+
+    const result = await this.newsletter.submitProviderApplication({
       fullName: this.providerName(),
-      category: this.providerCategory(),
+      category: finalCategory,
       region: this.providerRegion(),
       email: this.providerEmail(),
       phone: this.providerPhone(),
       website: this.providerWebsite(),
       description: this.providerDescription(),
     });
+
+    this.isSubmitting.set(false);
+    if (result.success) {
+      this.providerSuccess.set(true);
+    } else {
+      this.submitError.set(
+        'No se pudo registrar la postulación. Por favor verificá tu conexión e intentalo nuevamente.',
+      );
+    }
   }
 
   resetForm(): void {
@@ -128,8 +153,13 @@ export class ProvidersComponent {
     this.providerEmail.set('');
     this.providerPhone.set('');
     this.providerWebsite.set('');
+    this.providerCategory.set('guia_montaña');
+    this.providerCustomCategory.set('');
+    this.providerRegion.set('');
     this.providerDescription.set('');
     this.providerSuccess.set(false);
+    this.submitError.set(null);
+    this.isSubmitting.set(false);
   }
 
   goToHomeSubscribe(): void {

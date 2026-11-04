@@ -94,6 +94,7 @@ export class WaitlistComponent {
   readonly providerPhone = signal('');
   readonly providerWebsite = signal('');
   readonly providerCategory = signal('guia_montaña');
+  readonly providerCustomCategory = signal('');
   readonly providerRegion = signal('Puna & Fiambalá');
   readonly providerSuccess = signal(false);
 
@@ -422,17 +423,33 @@ export class WaitlistComponent {
     if (
       !this.providerEmail().trim() ||
       !this.providerName().trim() ||
+      (this.providerCategory() === 'otro' && !this.providerCustomCategory().trim()) ||
       this.providerName().trim().length > 120 ||
       this.providerEmail().trim().length > 254 ||
       this.providerPhone().trim().length > 25 ||
       this.providerWebsite().trim().length > 2048
     )
       return;
+    const finalCategory =
+      this.providerCategory() === 'otro'
+        ? this.providerCustomCategory().trim() || 'Otro'
+        : this.providerCategory();
     this.providerSuccess.set(true);
+    void this.newsletter.submitProviderApplication({
+      fullName: this.providerName(),
+      category: finalCategory,
+      region: this.providerRegion(),
+      email: this.providerEmail(),
+      phone: this.providerPhone(),
+      website: this.providerWebsite(),
+      description: '',
+    });
     setTimeout(() => {
       this.providerName.set('');
       this.providerEmail.set('');
       this.providerPhone.set('');
+      this.providerCategory.set('guia_montaña');
+      this.providerCustomCategory.set('');
       this.providerSuccess.set(false);
       this.closeModal();
     }, 2800);
