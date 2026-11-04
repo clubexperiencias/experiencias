@@ -30,7 +30,7 @@ import { environment } from '../../../../environments/environment';
         </div>
 
         <div class="nav-right-col">
-          <div class="portal-badge-pill">
+          <div class="portal-nav-btn active-route">
             <span>Área Restringida</span>
           </div>
         </div>
@@ -227,19 +227,40 @@ import { environment } from '../../../../environments/environment';
         gap: 1rem;
       }
 
-      .portal-badge-pill {
+      .portal-nav-btn {
         display: inline-flex;
         align-items: center;
-        gap: 0.4rem;
-        padding: 0.35rem 0.75rem;
-        border-radius: 9999px;
-        background: rgba(255, 95, 0, 0.14);
-        border: 1px solid rgba(255, 95, 0, 0.45);
-        color: #ff7b2b;
-        font-size: 0.75rem;
-        font-weight: 700;
-        letter-spacing: 0.05em;
+        justify-content: center;
+        height: 64px;
+        box-sizing: border-box;
+        padding: 0 1.15rem;
+        white-space: nowrap;
+        flex-shrink: 0;
+        background: transparent;
+        border: none;
+        border-radius: 0;
+        color: #ffffff;
+        font-size: 0.82rem;
+        font-weight: 800;
+        letter-spacing: 0.09em;
         text-transform: uppercase;
+        font-family: var(--font-sans);
+        text-decoration: none;
+        position: relative;
+        transition: color 0.15s ease;
+      }
+
+      .portal-nav-btn::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0.75rem;
+        right: 0.75rem;
+        height: 3px;
+        background: #ff5f00;
+        transform: scaleX(1);
+        transform-origin: center;
+        transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
       }
 
       .badge-icon {
@@ -639,7 +660,7 @@ import { environment } from '../../../../environments/environment';
         .portal-top-nav {
           padding: 0 1rem;
         }
-        .portal-badge-pill {
+        .portal-nav-btn {
           display: none;
         }
         .portal-breadcrumb-bar {
@@ -677,6 +698,11 @@ export class AdminLoginComponent implements OnInit {
   async ngOnInit(): Promise<void> {
     if (isSupabaseConfigured()) {
       try {
+        const isRestored = await this.store.restoreSupabaseSession();
+        if (isRestored && this.store.isAuthenticated()) {
+          return;
+        }
+
         const { data } = await this.supabase.auth.getUser();
         const email = data.user?.email;
         if (email && !this.store.isAuthenticated()) {

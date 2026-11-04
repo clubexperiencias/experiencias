@@ -77,7 +77,7 @@ const DEFAULT_SUPERADMIN: AdminUser = {
 export class AdminStoreService {
   private readonly supabase = inject(SUPABASE_CLIENT);
   private readonly newsletter = inject(NewsletterService);
-  private readonly providerStore = inject(ProviderStoreService);
+  readonly providerStore = inject(ProviderStoreService);
   private readonly notificationService = inject(NotificationService);
 
   private readonly _currentAdmin = signal<AdminUser | null>(null);
@@ -105,8 +105,12 @@ export class AdminStoreService {
     () => this.providerStore.experienceRequests().filter((r) => r.status === 'pendiente').length,
   );
 
-  async approveExperienceRequest(id: string, publicUrl?: string): Promise<boolean> {
-    return this.providerStore.approveExperienceRequest(id, publicUrl);
+  async approveExperienceRequest(
+    id: string,
+    publicUrl?: string,
+    confirmedDates?: string[],
+  ): Promise<boolean> {
+    return this.providerStore.approveExperienceRequest(id, publicUrl, confirmedDates);
   }
 
   updateExperiencePublicUrl(expId: string, publicUrl: string): void {
@@ -225,6 +229,7 @@ export class AdminStoreService {
   }
 
   private async initStore(): Promise<void> {
+    this.providerStore.reloadFromStorage();
     const isAuth = await this.restoreSupabaseSession();
     if (isAuth) {
       void this.loadAllMembers();
@@ -244,33 +249,21 @@ export class AdminStoreService {
         this.clearSession();
         return false;
       }
-      const isBrowser = typeof window !== 'undefined';
-      const host = isBrowser ? window.location.hostname.toLowerCase() : '';
-      const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local');
-      if (!isLocalHost) {
-        this._currentAdmin.set(null);
-        this.clearSession();
-        return false;
-      }
-      // Entorno de prueba local
-      const stored = this.loadStoredSession();
-      const admin = stored || DEFAULT_SUPERADMIN;
-      this.saveSession(admin);
-      return true;
+      return this.isAuthenticated();
     }
 
     try {
-      const { data } = await this.supabase.auth.getUser();
-      const email = data.user?.email?.trim().toLowerCase();
-
-      if (!email) {
+      const { data, error: userError } = await this.supabase.auth.getUser();
+      if (userError || !data?.user?.email) {
         this._currentAdmin.set(null);
         this.clearSession();
         return false;
       }
 
+      const email = data.user.email.trim().toLowerCase();
+
       // 1. Consultar si tiene registro en admin_access
-      const { data: adminRow } = await this.supabase
+      const { data: adminRow, error: adminError } = await this.supabase
         .from('admin_access' as any)
         .select('*')
         .eq('email', email)
@@ -288,14 +281,14 @@ export class AdminStoreService {
         '';
       const avatar = googleAvatar || '/assets/images/gonza.jpg';
 
-      if (adminRow) {
+      if (!adminError && adminRow) {
         const admin: AdminUser = {
           id: `admin-${email.replace(/[^a-z0-9]+/g, '-')}`,
           email,
           name: fullName,
           role: (adminRow as any)?.role || 'superadmin',
           avatar,
-          joinedAt: new Date().toISOString(),
+          joinedAt: (adminRow as any)?.created_at || new Date().toISOString(),
         };
         this.saveSession(admin);
         return true;
@@ -622,7 +615,7 @@ export class AdminStoreService {
         const { data: tableData, error: tableErr } = await this.supabase
           .from('pagos_transferencias' as any)
           .select('*')
-          .order('submitted_at', { ascending: false });
+          .order('created_at', { ascending: false });
 
         if (!tableErr && Array.isArray(tableData)) {
           const mapped: TransferSubmission[] = tableData.map((p: any) => ({
@@ -630,7 +623,7 @@ export class AdminStoreService {
             reference: p.reference,
             experienceId: p.experience_id,
             experienceTitle: p.experience_title,
-            date: p.date,
+            date: p.selected_date || p.date,
             participants: p.participants,
             amountArs: p.amount_ars,
             discountCode: p.discount_code,
@@ -644,12 +637,12 @@ export class AdminStoreService {
               mimeType: p.receipt_mime_type || 'image/jpeg',
               sizeBytes: p.receipt_size_bytes || 1,
               url: p.receipt_url,
-              storageKey: p.receipt_storage_key || p.receipt_url,
+              storageKey: p.receipt_storage_path || p.receipt_storage_key || p.receipt_url,
               provider: p.receipt_storage_provider,
             },
             status: p.status,
             rejectionReason: p.rejection_reason,
-            submittedAt: p.submitted_at,
+            submittedAt: p.created_at || p.submitted_at || new Date().toISOString(),
             reviewedAt: p.reviewed_at,
           }));
 
@@ -932,22 +925,39 @@ export class AdminStoreService {
                 ? 'pendiente'
                 : 'dado_de_baja';
 
+          const { data: existingAccess } = await (this.supabase.from('provider_access') as any)
+            .select('id')
+            .eq('email', email)
+            .maybeSingle();
+
           const upsertPayload: Record<string, any> = {
             email,
-            name: bankingData?.accountHolder ?? (app.accountHolder || app.fullName),
-            agency: app.description || app.category || 'Prestador Oficial',
             active,
             status: paStatus,
           };
-          const cbu = bankingData?.cbuAlias ?? app.cbuAlias;
-          if (cbu !== undefined) upsertPayload['cbu_alias'] = cbu;
-          const cuit = bankingData?.cuitDni ?? app.cuitDni;
-          if (cuit !== undefined) upsertPayload['cuit_dni'] = cuit;
-          const bank = bankingData?.bankName ?? app.bankName;
-          if (bank !== undefined) upsertPayload['bank_name'] = bank;
-          const holder = bankingData?.accountHolder ?? (app.accountHolder || app.fullName);
-          if (holder !== undefined) upsertPayload['account_holder'] = holder;
-          if (app.phone) upsertPayload['phone'] = app.phone;
+
+          if (!existingAccess) {
+            if (app.fullName && app.fullName.trim()) {
+              upsertPayload['name'] = app.fullName.trim();
+            }
+            const rawAgency = (app.description || app.category || '').trim();
+            const isPlaceholderAgency =
+              !rawAgency ||
+              rawAgency.toLowerCase() === 'sin especificar' ||
+              rawAgency === '-';
+            if (!isPlaceholderAgency) {
+              upsertPayload['agency'] = rawAgency;
+            }
+            const rawPhone = (app.phone || '').trim();
+            const isPlaceholderPhone =
+              !rawPhone ||
+              rawPhone === '-' ||
+              rawPhone.toLowerCase() === 'sin telefono' ||
+              rawPhone.toLowerCase() === 'sin teléfono';
+            if (!isPlaceholderPhone) {
+              upsertPayload['phone'] = rawPhone;
+            }
+          }
 
           const { error: paErr } = await (this.supabase.from('provider_access') as any).upsert(
             upsertPayload,
@@ -956,6 +966,17 @@ export class AdminStoreService {
           if (paErr) {
             console.warn('[AdminStore] Error al upsert provider_access en Supabase:', paErr);
             return false;
+          }
+
+          if (status === 'aprobado') {
+            try {
+              await this.notificationService.notifyProviderApproved({
+                fullName: app.fullName || upsertPayload['name'] || '',
+                email,
+              });
+            } catch (notifyErr) {
+              console.warn('[AdminStore] Error al notificar aprobación de prestador:', notifyErr);
+            }
           }
         }
       }

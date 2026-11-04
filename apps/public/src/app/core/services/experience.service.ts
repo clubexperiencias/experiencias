@@ -362,6 +362,18 @@ export class ExperienceService {
           payload['date_slots'] = merged.dateSlots;
         }
 
+        if (merged.providerName !== undefined) {
+          payload['provider_name'] = merged.providerName;
+        }
+
+        if (merged.providerPhone !== undefined) {
+          payload['provider_phone'] = merged.providerPhone;
+        }
+
+        if (merged.providerEmail !== undefined) {
+          payload['provider_email'] = merged.providerEmail;
+        }
+
         const { data, error } = await this.supabase
           .from('experiencias')
           .update(payload as any)
@@ -370,6 +382,42 @@ export class ExperienceService {
 
         if (error || !data || data.length === 0) {
           throw error || new Error(`No se encontró la experiencia remota con id ${merged.id}`);
+        }
+
+        const targetProviderEmail = (
+          updated.providerEmail ||
+          merged.providerEmail ||
+          (data[0] as any)?.provider_email ||
+          ''
+        )
+          .trim()
+          .toLowerCase();
+
+        if (
+          targetProviderEmail &&
+          (updated.providerCbuAlias !== undefined ||
+            updated.providerCuitDni !== undefined ||
+            updated.providerBankName !== undefined)
+        ) {
+          const providerBankingUpdate: Record<string, any> = {};
+          if (updated.providerCbuAlias !== undefined) {
+            providerBankingUpdate['cbu_alias'] = updated.providerCbuAlias;
+          }
+          if (updated.providerCuitDni !== undefined) {
+            providerBankingUpdate['cuit_dni'] = updated.providerCuitDni;
+          }
+          if (updated.providerBankName !== undefined) {
+            providerBankingUpdate['bank_name'] = updated.providerBankName;
+          }
+
+          if (Object.keys(providerBankingUpdate).length > 0) {
+            const { error: pbErr } = await (this.supabase.from('provider_access') as any)
+              .update(providerBankingUpdate)
+              .eq('email', targetProviderEmail);
+            if (pbErr) {
+              console.warn('[ExperienceService] Error al actualizar provider_access:', pbErr);
+            }
+          }
         }
       } catch (err) {
         console.warn('[ExperienceService] Fallo remoto:', err);
@@ -442,6 +490,9 @@ export class ExperienceService {
           status: experience.status,
           public_url: experience.publicUrl,
           album_photos: experience.albumPhotos || [],
+          provider_name: experience.providerName || null,
+          provider_phone: experience.providerPhone || null,
+          provider_email: experience.providerEmail || null,
         };
 
         const { error } = await this.supabase.from('experiencias').insert(payload as any);
@@ -450,6 +501,35 @@ export class ExperienceService {
           this._experiences.set(list);
           this.persistToLocalStorage(list);
           throw error;
+        }
+
+        const targetProviderEmail = (experience.providerEmail || '').trim().toLowerCase();
+        if (
+          targetProviderEmail &&
+          (experience.providerCbuAlias || experience.providerCuitDni || experience.providerBankName)
+        ) {
+          const providerBankingUpdate: Record<string, any> = {};
+          if (experience.providerCbuAlias !== undefined) {
+            providerBankingUpdate['cbu_alias'] = experience.providerCbuAlias;
+          }
+          if (experience.providerCuitDni !== undefined) {
+            providerBankingUpdate['cuit_dni'] = experience.providerCuitDni;
+          }
+          if (experience.providerBankName !== undefined) {
+            providerBankingUpdate['bank_name'] = experience.providerBankName;
+          }
+
+          if (Object.keys(providerBankingUpdate).length > 0) {
+            const { error: pbErr } = await (this.supabase.from('provider_access') as any)
+              .update(providerBankingUpdate)
+              .eq('email', targetProviderEmail);
+            if (pbErr) {
+              console.warn(
+                '[ExperienceService] Error al actualizar provider_access en createExperience:',
+                pbErr,
+              );
+            }
+          }
         }
       } catch (err) {
         console.warn('[ExperienceService] Fallo al crear remoto:', err);
@@ -580,11 +660,38 @@ export class ExperienceService {
     }
   }
 
+  async loadProviderBanking(
+    providerEmail: string,
+  ): Promise<{ cbuAlias?: string; cuitDni?: string; bankName?: string } | null> {
+    if (!isSupabaseConfigured() || !providerEmail) return null;
+    try {
+      const { data, error } = await (this.supabase.from('provider_access') as any)
+        .select('cbu_alias, cuit_dni, bank_name')
+        .eq('email', providerEmail.trim().toLowerCase())
+        .maybeSingle();
+      if (error || !data) return null;
+      return {
+        cbuAlias: data.cbu_alias || undefined,
+        cuitDni: data.cuit_dni || undefined,
+        bankName: data.bank_name || undefined,
+      };
+    } catch {
+      return null;
+    }
+  }
+
   private async loadFromSupabase(): Promise<void> {
     try {
+      const publicColumns =
+        'id, slug, title, tagline, description, region, meeting_point, difficulty, ' +
+        'duration_label, price_ars, price_usd, capacity_per_date, cover_image, ' +
+        'video_url, video_poster, altitude_meters, dates, highlights, included, ' +
+        'not_included, status, public_url, album_photos, provider_name, provider_phone, ' +
+        'provider_email, date_slots, created_at';
+
       const { data, error } = await this.supabase
         .from('experiencias')
-        .select('*')
+        .select(publicColumns)
         .order('created_at', { ascending: true });
 
       if (error) {
@@ -593,9 +700,32 @@ export class ExperienceService {
       }
 
       if (data && data.length > 0) {
+        let providerBankingMap = new Map<
+          string,
+          { cbu_alias?: string; cuit_dni?: string; bank_name?: string }
+        >();
+        try {
+          const { data: sessionData } = await this.supabase.auth.getSession();
+          if (sessionData?.session?.user) {
+            const { data: accessRows } = await (this.supabase.from('provider_access') as any)
+              .select('email, cbu_alias, cuit_dni, bank_name');
+            if (Array.isArray(accessRows)) {
+              for (const row of accessRows) {
+                if (row?.email) {
+                  providerBankingMap.set(row.email.trim().toLowerCase(), row);
+                }
+              }
+            }
+          }
+        } catch {
+          // Si no está autenticado o el acceso está restringido por RLS, se mantienen vacíos los datos bancarios
+        }
+
         const remoteExperiences: Experience[] = data.map((exp: any) => {
           const image = exp.cover_image || KAYAK_IMAGE;
           const isKayak = exp.slug === 'kayak';
+          const email = (exp.provider_email || '').trim().toLowerCase();
+          const banking = providerBankingMap.get(email);
           return {
             id: exp.id,
             slug: exp.slug,
@@ -651,6 +781,12 @@ export class ExperienceService {
                   ? KAYAK_DEFAULT_EXPERIENCE.dates
                   : [],
             dateSlots: Array.isArray(exp.date_slots) ? exp.date_slots : undefined,
+            providerEmail: exp.provider_email || undefined,
+            providerName: exp.provider_name || undefined,
+            providerPhone: exp.provider_phone || undefined,
+            providerCbuAlias: banking?.cbu_alias || undefined,
+            providerCuitDni: banking?.cuit_dni || undefined,
+            providerBankName: banking?.bank_name || undefined,
             status: exp.status || 'publicada',
             publicUrl: exp.public_url || `https://experiencias.club/experiencias/${exp.slug}`,
             isExclusiveClub: true,

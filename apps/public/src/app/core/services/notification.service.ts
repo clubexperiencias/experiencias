@@ -1,5 +1,6 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { TransferSubmission } from '../models/bank-transfer.model';
+import { SUPABASE_CLIENT, isSupabaseConfigured } from '../supabase/supabase.client';
 
 export interface NotificationResult {
   success: boolean;
@@ -17,6 +18,7 @@ export interface NotificationLogEntry {
 
 @Injectable({ providedIn: 'root' })
 export class NotificationService {
+  private readonly supabase = inject(SUPABASE_CLIENT);
   private readonly _notificationsLog = signal<NotificationLogEntry[]>([]);
   readonly notificationsLog = this._notificationsLog.asReadonly();
 
@@ -29,6 +31,7 @@ export class NotificationService {
     submission: TransferSubmission,
     receiptUrl?: string,
     providerEmail?: string,
+    providerPhone?: string,
   ): Promise<NotificationResult> {
     const payload = {
       type: 'PAYMENT_SUBMITTED',
@@ -44,6 +47,7 @@ export class NotificationService {
         amountArs: submission.amountArs,
         receiptUrl: receiptUrl || submission.receipt?.url || '',
         providerEmail: providerEmail || '',
+        providerPhone: providerPhone || '',
       },
     };
 
@@ -138,6 +142,53 @@ export class NotificationService {
   }
 
   /**
+   * Envía confirmación de postulación recibida al prestador y alerta a los administradores.
+   */
+  async notifyProviderApplicationSubmitted(data: {
+    fullName: string;
+    email: string;
+    phone?: string;
+    category?: string;
+    region?: string;
+    website?: string;
+    description?: string;
+  }): Promise<NotificationResult> {
+    const payload = {
+      type: 'PROVIDER_APPLICATION_SUBMITTED',
+      data: {
+        fullName: data.fullName,
+        email: data.email,
+        phone: data.phone || '',
+        category: data.category || '',
+        region: data.region || '',
+        website: data.website || '',
+        description: data.description || '',
+      },
+    };
+
+    return this.postNotify(payload, data.email);
+  }
+
+  /**
+   * Envía aviso de aprobación al prestador con instrucciones de ingreso al portal.
+   */
+  async notifyProviderApproved(provider: {
+    fullName?: string;
+    name?: string;
+    email: string;
+  }): Promise<NotificationResult> {
+    const payload = {
+      type: 'PROVIDER_APPROVED',
+      data: {
+        fullName: provider.fullName || provider.name || '',
+        email: provider.email,
+      },
+    };
+
+    return this.postNotify(payload, provider.email);
+  }
+
+  /**
    * Genera el enlace directo a WhatsApp con mensaje prearmado para avisar del pago.
    */
   getWhatsAppNotificationUrl(
@@ -159,12 +210,12 @@ export class NotificationService {
 
     const msg =
       `¡Hola! Acabo de enviar el comprobante de transferencia para mi reserva en Experiencias Club:\n\n` +
-      `📌 *Experiencia:* ${submission.experienceTitle}\n` +
-      `🔖 *Código de Reserva:* ${submission.reference}\n` +
-      `👤 *Pasajero:* ${submission.fullName}\n` +
-      `📅 *Fecha:* ${submission.date}\n` +
-      `👥 *Lugares:* ${submission.participants}\n` +
-      `💰 *Monto:* $${formattedAmount} ARS\n\n` +
+      `* Experiencia: ${submission.experienceTitle}\n` +
+      `* Código de Reserva: ${submission.reference}\n` +
+      `* Pasajero: ${submission.fullName}\n` +
+      `* Fecha: ${submission.date}\n` +
+      `* Lugares: ${submission.participants}\n` +
+      `* Monto: $${formattedAmount} ARS\n\n` +
       `¿Me confirman la acreditación cuando puedan? ¡Muchas gracias!`;
 
     return `https://wa.me/${targetPhone}?text=${encodeURIComponent(msg)}`;
@@ -172,11 +223,24 @@ export class NotificationService {
 
   private async postNotify(payload: any, targetEmail: string): Promise<NotificationResult> {
     try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+
+      if (isSupabaseConfigured() && this.supabase) {
+        try {
+          const { data } = await this.supabase.auth.getSession();
+          if (data?.session?.access_token) {
+            headers['Authorization'] = `Bearer ${data.session.access_token}`;
+          }
+        } catch {
+          // Si falla obtener la sesión, continuamos sin token de autorización
+        }
+      }
+
       const response = await fetch('/api/notify', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify(payload),
       });
 

@@ -47,4 +47,11 @@ export interface Experience {
   isExclusiveClub: boolean;
   isLocked?: boolean;
   detailRoute?: string;
+  providerId?: string;
+  providerEmail?: string;
+  providerName?: string;
+  providerPhone?: string;
+  providerCbuAlias?: string;
+  providerCuitDni?: string;
+  providerBankName?: string;
 }

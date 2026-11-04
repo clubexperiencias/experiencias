@@ -51,7 +51,7 @@ type ApplicationFilterTab =
           <strong class="sum-value">{{ store.applicationStats().fundadoresCount }}</strong>
           <span class="sum-sub">Aspirantes al padrón vitalicio</span>
         </div>
-        <div class="summary-item highlight-box">
+        <div class="summary-item highlight-box" (click)="activeTab.set('experiencias')" style="cursor: pointer;" title="Ver Nuevas Experiencias">
           <span class="sum-label">Nuevas Experiencias</span>
           <strong class="sum-value text-orange">{{ store.experienceRequests().length }}</strong>
           <span class="sum-sub"
@@ -503,64 +503,47 @@ type ApplicationFilterTab =
                     </p>
                   </div>
 
-                  <!-- Datos Bancarios para Liquidación de Pagos -->
+                  <!-- Datos Bancarios para Liquidación de Pagos (Provistos por el prestador) -->
                   <div class="provider-banking-box full-span">
                     <div class="banking-box-header">
                       <mat-icon class="banking-icon">account_balance</mat-icon>
                       <div>
                         <h4 class="banking-box-title">Datos Bancarios para Liquidación de Pagos</h4>
                         <p class="banking-box-sub">
-                          Configurá la cuenta del prestador para transferir la recaudación de las
-                          experiencias reservadas.
+                          @if (selectedApp()!.cbuAlias || selectedApp()!.cuitDni) {
+                            Información provista por el prestador desde su panel operativo.
+                          } @else {
+                            El prestador cargará sus datos de cobro (CBU/Alias, CUIT y Banco) directamente desde su panel.
+                          }
                         </p>
                       </div>
                     </div>
 
-                    <div class="banking-form-grid">
-                      <div class="banking-input-group">
-                        <label class="banking-input-label">Nombre / Titular de la cuenta</label>
-                        <input
-                          type="text"
-                          class="banking-form-input"
-                          placeholder="Ej: Esteban Carrizo o Catamarca 4x4 SRL"
-                          [ngModel]="providerAccountHolder()"
-                          (ngModelChange)="providerAccountHolder.set($event)"
-                        />
+                    @if (selectedApp()!.cbuAlias || selectedApp()!.cuitDni) {
+                      <div class="banking-display-grid">
+                        <div class="banking-display-item">
+                          <span class="banking-item-lbl">Titular</span>
+                          <strong class="banking-item-val">{{ selectedApp()!.accountHolder || selectedApp()!.fullName }}</strong>
+                        </div>
+                        <div class="banking-display-item">
+                          <span class="banking-item-lbl">CUIT / CUIL</span>
+                          <strong class="banking-item-val">{{ selectedApp()!.cuitDni || '—' }}</strong>
+                        </div>
+                        <div class="banking-display-item">
+                          <span class="banking-item-lbl">CBU / CVU o Alias</span>
+                          <strong class="banking-item-val text-blue">{{ selectedApp()!.cbuAlias || '—' }}</strong>
+                        </div>
+                        <div class="banking-display-item">
+                          <span class="banking-item-lbl">Entidad</span>
+                          <strong class="banking-item-val">{{ selectedApp()!.bankName || '—' }}</strong>
+                        </div>
                       </div>
-
-                      <div class="banking-input-group">
-                        <label class="banking-input-label">CUIT / CUIL</label>
-                        <input
-                          type="text"
-                          class="banking-form-input"
-                          placeholder="Ej: 20-31889900-4"
-                          [ngModel]="providerCuitDni()"
-                          (ngModelChange)="providerCuitDni.set($event)"
-                        />
+                    } @else {
+                      <div class="banking-pending-notice">
+                        <mat-icon>info</mat-icon>
+                        <span>Pendiente de carga por parte del prestador en su perfil.</span>
                       </div>
-
-                      <div class="banking-input-group">
-                        <label class="banking-input-label">CBU / CVU o Alias</label>
-                        <input
-                          type="text"
-                          class="banking-form-input"
-                          placeholder="Ej: CATAMARCA.4X4.MP o 00000031..."
-                          [ngModel]="providerCbuAlias()"
-                          (ngModelChange)="providerCbuAlias.set($event)"
-                        />
-                      </div>
-
-                      <div class="banking-input-group">
-                        <label class="banking-input-label">Entidad (Banco o Billetera)</label>
-                        <input
-                          type="text"
-                          class="banking-form-input"
-                          placeholder="Ej: Banco Nación, Galicia, Mercado Pago"
-                          [ngModel]="providerBankName()"
-                          (ngModelChange)="providerBankName.set($event)"
-                        />
-                      </div>
-                    </div>
+                    }
                   </div>
                 } @else {
                   <div class="detail-item full-span">
@@ -581,43 +564,18 @@ type ApplicationFilterTab =
             <div class="modal-actions">
               <div class="state-buttons">
                 @if (selectedApp()!.type === 'prestador') {
-                  @if (selectedApp()!.status === 'aprobado') {
-                    <button
-                      type="button"
-                      class="btn-state btn-save-banking"
-                      (click)="saveProviderBankingData()"
-                    >
-                      Guardar Datos Bancarios
+                  @if (selectedApp()!.status !== 'aprobado') {
+                    <button type="button" class="btn-state btn-approve" (click)="approveProvider()">
+                      Aprobar Prestador
                     </button>
+                  }
+                  @if (selectedApp()!.status !== 'dado_de_baja') {
                     <button
                       type="button"
                       class="btn-state btn-reject"
                       (click)="darDeBajaProvider()"
                     >
                       Dar de baja
-                    </button>
-                  } @else {
-                    <button type="button" class="btn-state btn-approve" (click)="approveProvider()">
-                      Aprobar Prestador
-                    </button>
-                    @if (selectedApp()!.status !== 'dado_de_baja') {
-                      <button
-                        type="button"
-                        class="btn-state btn-reject"
-                        (click)="darDeBajaProvider()"
-                      >
-                        Dar de baja
-                      </button>
-                    }
-                  }
-
-                  @if (selectedApp()!.status !== 'pendiente') {
-                    <button
-                      type="button"
-                      class="btn-state btn-pending"
-                      (click)="changeStatus('pendiente')"
-                    >
-                      Marcar Pendiente
                     </button>
                   }
                 } @else {
@@ -638,16 +596,6 @@ type ApplicationFilterTab =
                       (click)="changeStatus('dado_de_baja')"
                     >
                       Dar de baja
-                    </button>
-                  }
-
-                  @if (selectedApp()!.status !== 'pendiente') {
-                    <button
-                      type="button"
-                      class="btn-state btn-pending"
-                      (click)="changeStatus('pendiente')"
-                    >
-                      Marcar Pendiente
                     </button>
                   }
                 }
@@ -1898,14 +1846,19 @@ type ApplicationFilterTab =
       }
 
       .btn-approve {
-        background: rgba(16, 185, 129, 0.2);
-        border: 1px solid rgba(16, 185, 129, 0.6);
-        color: #34d399;
+        background: #10b981 !important;
+        border: 1px solid #10b981 !important;
+        color: #ffffff !important;
+        font-weight: 800 !important;
+        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35) !important;
       }
 
       .btn-approve:hover:not(:disabled) {
-        background: #10b981;
-        color: #0b0704;
+        background: #059669 !important;
+        border-color: #059669 !important;
+        color: #ffffff !important;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.45) !important;
       }
 
       .btn-reject {
@@ -2029,62 +1982,82 @@ type ApplicationFilterTab =
         margin: 0;
       }
 
-      .banking-form-grid {
+      .banking-display-grid {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
         gap: 0.85rem;
+        margin-top: 0.35rem;
       }
 
       @media (max-width: 600px) {
-        .banking-form-grid {
+        .banking-display-grid {
           grid-template-columns: 1fr;
         }
       }
 
-      .banking-input-group {
+      .banking-display-item {
         display: flex;
         flex-direction: column;
-        gap: 0.3rem;
+        gap: 0.2rem;
       }
 
-      .banking-input-label {
-        font-size: 0.72rem;
-        font-weight: 700;
-        color: rgba(255, 255, 255, 0.65);
+      .banking-item-lbl {
+        font-size: 0.68rem;
         text-transform: uppercase;
-        letter-spacing: 0.05em;
+        letter-spacing: 0.06em;
+        color: rgba(255, 255, 255, 0.55);
+        font-weight: 700;
       }
 
-      .banking-form-input {
-        width: 100%;
-        background: rgba(7, 13, 28, 0.7);
-        border: 1px solid rgba(128, 179, 255, 0.3);
-        border-radius: 2px;
-        padding: 0.45rem 0.65rem;
+      .banking-item-val {
+        font-size: 0.88rem;
         color: #ffffff;
-        font-size: 0.82rem;
-        box-sizing: border-box;
+        font-weight: 600;
+        word-break: break-all;
       }
 
-      .banking-form-input:focus {
-        outline: none;
-        border-color: #80b3ff;
-        background: rgba(7, 13, 28, 0.9);
+      .banking-pending-notice {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.65rem 0.85rem;
+        background: rgba(128, 179, 255, 0.08);
+        border: 1px dashed rgba(128, 179, 255, 0.3);
+        border-radius: 3px;
+        color: rgba(255, 255, 255, 0.75);
+        font-size: 0.8rem;
+      }
+
+      .banking-pending-notice mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+        color: #80b3ff;
       }
 
       .btn-close {
-        padding: 0.5rem 1rem;
-        background: transparent;
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        color: #ffffff;
-        font-size: 0.78rem;
-        font-weight: 700;
-        border-radius: 2px;
-        cursor: pointer;
+        flex: 0 0 auto !important;
+        align-self: center !important;
+        height: 38px !important;
+        max-height: 38px !important;
+        padding: 0 1.25rem !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background: rgba(255, 255, 255, 0.08) !important;
+        border: 1px solid rgba(255, 255, 255, 0.25) !important;
+        color: #ffffff !important;
+        font-size: 0.82rem !important;
+        font-weight: 700 !important;
+        border-radius: 2px !important;
+        cursor: pointer !important;
+        white-space: nowrap !important;
+        box-sizing: border-box !important;
       }
 
       .btn-close:hover {
-        border-color: #ffffff;
+        background: rgba(255, 255, 255, 0.16) !important;
+        border-color: #ffffff !important;
       }
     `,
   ],
@@ -2105,8 +2078,11 @@ export class AdminApplicationsComponent implements OnInit {
   readonly providerBankName = signal<string>('');
 
   ngOnInit(): void {
+    this.store.providerStore.reloadFromStorage();
     this.route.queryParams.subscribe((params) => {
       if (params['tab'] === 'experiencias') {
+        this.activeTab.set('experiencias');
+      } else if (!params['tab'] && this.store.pendingExperienceRequestsCount() > 0) {
         this.activeTab.set('experiencias');
       }
     });
@@ -2162,6 +2138,7 @@ export class AdminApplicationsComponent implements OnInit {
   });
 
   refresh(): void {
+    this.store.providerStore.reloadFromStorage();
     void this.store.loadAllApplications();
   }
 
@@ -2216,40 +2193,26 @@ export class AdminApplicationsComponent implements OnInit {
   async approveProvider(): Promise<void> {
     const current = this.selectedApp();
     if (!current) return;
-    const banking = {
-      accountHolder: this.providerAccountHolder().trim() || current.fullName,
-      cuitDni: this.providerCuitDni().trim(),
-      cbuAlias: this.providerCbuAlias().trim(),
-      bankName: this.providerBankName().trim(),
-    };
     const ok = await this.store.updateApplicationStatus(
       current.id,
       current.type,
       'aprobado',
-      banking,
     );
     if (ok) {
-      this.selectedApp.update((a) => (a ? { ...a, status: 'aprobado', ...banking } : null));
+      this.selectedApp.update((a) => (a ? { ...a, status: 'aprobado' } : null));
     }
   }
 
   async darDeBajaProvider(): Promise<void> {
     const current = this.selectedApp();
     if (!current) return;
-    const banking = {
-      accountHolder: this.providerAccountHolder().trim() || current.fullName,
-      cuitDni: this.providerCuitDni().trim(),
-      cbuAlias: this.providerCbuAlias().trim(),
-      bankName: this.providerBankName().trim(),
-    };
     const ok = await this.store.updateApplicationStatus(
       current.id,
       current.type,
       'dado_de_baja',
-      banking,
     );
     if (ok) {
-      this.selectedApp.update((a) => (a ? { ...a, status: 'dado_de_baja', ...banking } : null));
+      this.selectedApp.update((a) => (a ? { ...a, status: 'dado_de_baja' } : null));
     }
   }
 

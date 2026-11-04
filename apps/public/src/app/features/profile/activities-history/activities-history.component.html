@@ -105,7 +105,16 @@
                   >
                 </div>
 
-                <h2 class="activity-title" [title]="act.title">{{ act.title }}</h2>
+                <h2 class="activity-title" [title]="act.title">
+                  <a
+                    [href]="getExperienceRoute(act.experienceId, act.slug)"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="activity-title-link"
+                  >
+                    {{ act.title }}
+                  </a>
+                </h2>
                 <p class="activity-provider" [title]="'Prestador: ' + act.provider.name">
                   Prestador: <strong>{{ act.provider.name }}</strong>
                 </p>
@@ -129,14 +138,6 @@
                   >
                     <span>Comprobante</span>
                   </button>
-                  <a
-                    [href]="getExperienceRoute(act.experienceId)"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="receipt-btn btn-view-details"
-                  >
-                    Ver detalles
-                  </a>
                 </div>
               </div>
             </article>

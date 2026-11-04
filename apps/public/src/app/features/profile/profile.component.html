@@ -29,30 +29,25 @@
     <!-- Contenido Principal de Perfil -->
     <main class="profile-main-content">
       <div class="profile-wrapper">
-        <!-- ═══════════════ FILA 1: DATOS DE MEMBRESÍA ═══════════════ -->
-        <div class="profile-completion-card current-status-banner">
-          <div class="completion-header">
-            <span class="section-kicker">DATOS DE MEMBRESÍA</span>
-            <h2 class="card-heading completion-title">
-              Completá tu perfil de
-              {{
-                newsletter.isMonthlyActive()
-                  ? 'Socio
-                  Pleno'
-                  : 'Socio Emergente'
-              }}
-            </h2>
-            <p class="completion-membership-desc">
-              Registramos tu suscripción con
-              <strong>{{ newsletter.currentMember()?.email || 'test@gmail.com' }}</strong
-              >. Ya formás parte de la lista de espera oficial del club como
-              <strong>{{ newsletter.isMonthlyActive() ? 'Socio Pleno' : 'Socio Emergente' }}</strong
-              >. Priorizaremos tu cupo según qué expediciones realices y qué tan completo tengas tu
-              perfil.
-            </p>
-          </div>
+        <!-- ═══════════════ PLANTILLA: DATOS DE MEMBRESÍA ═══════════════ -->
+        <ng-template #membershipCard>
+          <div class="profile-completion-card current-status-banner">
+            <div class="completion-header">
+              <span class="section-kicker">DATOS DE MEMBRESÍA</span>
+              <h2 class="card-heading completion-title">
+                {{ isProfileComplete() ? 'Editá' : 'Completá' }} tu perfil de {{ newsletter.isMonthlyActive() ? 'Socio Pleno' : 'Socio Emergente' }}
+              </h2>
+              <p class="completion-membership-desc">
+                Registramos tu suscripción con
+                <strong>{{ newsletter.currentMember()?.email || 'test@gmail.com' }}</strong
+                >. Ya formás parte de la lista de espera oficial del club como
+                <strong>{{ newsletter.isMonthlyActive() ? 'Socio Pleno' : 'Socio Emergente' }}</strong
+                >. Priorizaremos tu cupo según qué expediciones realices y qué tan completo tengas tu
+                perfil.
+              </p>
+            </div>
 
-          <form
+            <form
             class="profile-completion-form"
             (submit)="$event.preventDefault(); saveMemberProfile()"
           >
@@ -224,8 +219,14 @@
             }
           </form>
         </div>
+      </ng-template>
 
-        <!-- ═══════════════ FILA 4: ACTIVIDADES & COMPROBANTES ═══════════════ -->
+      <!-- Arriba de actividades cuando el perfil está INCOMPLETO -->
+      @if (!isProfileComplete()) {
+        <ng-container *ngTemplateOutlet="membershipCard" />
+      }
+
+      <!-- ═══════════════ FILA 4: ACTIVIDADES & COMPROBANTES ═══════════════ -->
         <div class="profile-section-card" id="historial-seccion">
           <div class="section-header-row">
             <div>
@@ -250,7 +251,16 @@
                     <span class="activity-region">{{ act.region }} ({{ act.altitude }})</span>
                   </div>
 
-                  <h4 class="activity-title">{{ act.title }}</h4>
+                  <h4 class="activity-title">
+                    <a
+                      [href]="getExperienceRoute(act.experienceId, act.slug)"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="activity-title-link"
+                    >
+                      {{ act.title }}
+                    </a>
+                  </h4>
                   <p class="activity-provider">
                     Prestador: <strong>{{ act.provider.name }}</strong>
                   </p>
@@ -271,14 +281,6 @@
                     >
                       Comprobante
                     </button>
-                    <a
-                      [href]="getExperienceRoute(act.experienceId)"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="receipt-btn btn-view-details"
-                    >
-                      Ver detalles
-                    </a>
                   </div>
                 </div>
               </div>
@@ -297,6 +299,11 @@
             </a>
           </div>
         </div>
+
+        <!-- Abajo de actividades cuando el perfil está COMPLETO -->
+        @if (isProfileComplete()) {
+          <ng-container *ngTemplateOutlet="membershipCard" />
+        }
       </div>
     </main>
   </div>

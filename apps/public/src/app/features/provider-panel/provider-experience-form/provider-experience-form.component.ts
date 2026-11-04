@@ -30,6 +30,9 @@ export class ProviderExperienceFormComponent implements OnInit {
   readonly editingExpId = signal<string | null>(null);
   readonly currentStatus = signal<ExperienceStatus>('borrador');
 
+  static readonly DRAFT_STORAGE_KEY = 'experiencias_provider_experience_form_draft';
+  readonly hasDraft = signal<boolean>(false);
+
   readonly difficulties: ProviderExperience['difficulty'][] = [
     'Baja',
     'Moderada',
@@ -97,6 +100,13 @@ export class ProviderExperienceFormComponent implements OnInit {
           capacityPerDate: exp.capacityPerDate,
         });
       }
+    } else {
+      this.loadDraft();
+      this.form.valueChanges.subscribe(() => {
+        if (!this.isEditMode()) {
+          this.saveDraft();
+        }
+      });
     }
   }
 
@@ -118,10 +128,110 @@ export class ProviderExperienceFormComponent implements OnInit {
     this.dates.update((list) => [...list, value].sort());
     this.newDate.set('');
     this.datesError.set(null);
+    if (!this.isEditMode()) {
+      this.saveDraft();
+    }
   }
 
   removeDate(date: string): void {
     this.dates.update((list) => list.filter((d) => d !== date));
+    if (!this.isEditMode()) {
+      this.saveDraft();
+    }
+  }
+
+  selectPresetImage(url: string): void {
+    this.selectedCoverImage.set(url);
+    if (!this.isEditMode()) {
+      this.saveDraft();
+    }
+  }
+
+  loadDraft(): void {
+    if (typeof localStorage === 'undefined') return;
+    try {
+      const raw = localStorage.getItem(ProviderExperienceFormComponent.DRAFT_STORAGE_KEY);
+      if (!raw) {
+        this.hasDraft.set(false);
+        return;
+      }
+      const data = JSON.parse(raw);
+      if (!data || typeof data !== 'object') {
+        this.hasDraft.set(false);
+        return;
+      }
+      if (data.formValue && typeof data.formValue === 'object') {
+        this.form.patchValue(data.formValue);
+      }
+      if (Array.isArray(data.dates)) {
+        this.dates.set(data.dates);
+      }
+      if (typeof data.selectedCoverImage === 'string') {
+        this.selectedCoverImage.set(data.selectedCoverImage);
+      }
+      this.hasDraft.set(true);
+    } catch (err) {
+      console.warn('[ExperienceForm] Error al cargar borrador:', err);
+      this.hasDraft.set(false);
+    }
+  }
+
+  saveDraft(): void {
+    if (typeof localStorage === 'undefined' || this.isEditMode()) return;
+    try {
+      const val = this.form.getRawValue();
+      const hasContent = Boolean(
+        val.title?.trim() ||
+        val.tagline?.trim() ||
+        val.description?.trim() ||
+        val.meetingPoint?.trim() ||
+        val.durationLabel?.trim() ||
+        this.dates().length > 0
+      );
+
+      if (!hasContent) {
+        return;
+      }
+
+      const payload = {
+        formValue: val,
+        dates: this.dates(),
+        selectedCoverImage: this.selectedCoverImage(),
+        updatedAt: Date.now(),
+      };
+      localStorage.setItem(ProviderExperienceFormComponent.DRAFT_STORAGE_KEY, JSON.stringify(payload));
+      this.hasDraft.set(true);
+    } catch (err) {
+      console.warn('[ExperienceForm] Error al guardar borrador:', err);
+    }
+  }
+
+  clearDraft(): void {
+    if (typeof localStorage !== 'undefined') {
+      try {
+        localStorage.removeItem(ProviderExperienceFormComponent.DRAFT_STORAGE_KEY);
+      } catch {
+        // ignore
+      }
+    }
+    this.hasDraft.set(false);
+  }
+
+  discardDraft(): void {
+    this.clearDraft();
+    this.form.reset({
+      title: '',
+      tagline: '',
+      description: '',
+      region: this.regions[0],
+      meetingPoint: '',
+      difficulty: 'Baja',
+      durationLabel: '',
+      priceArs: 65000,
+      capacityPerDate: 12,
+    });
+    this.dates.set([]);
+    this.selectedCoverImage.set(this.presetImages[0].url);
   }
 
   fieldInvalid(name: keyof typeof this.form.controls): boolean {
@@ -179,6 +289,7 @@ export class ProviderExperienceFormComponent implements OnInit {
         },
         requestPublication,
       );
+      this.clearDraft();
     }
 
     this.router.navigate(['/prestadores/experiencias']);

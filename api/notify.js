@@ -22,7 +22,178 @@ function getEnvConfig() {
     .map((e) => e.trim().toLowerCase())
     .filter(Boolean);
 
-  return { apiKey, fromEmail, adminEmails, verifiedProviderEmails };
+  const supabaseUrl = (
+    process.env.SUPABASE_URL ||
+    process.env.SUPABASE_PROD_URL ||
+    process.env.PUBLIC_SUPABASE_URL ||
+    ''
+  ).trim();
+  const supabaseServiceRoleKey = (
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_SERVICE_KEY ||
+    ''
+  ).trim();
+  const supabaseKey = (
+    supabaseServiceRoleKey ||
+    process.env.SUPABASE_ANON_KEY ||
+    process.env.SUPABASE_PROD_ANON_KEY ||
+    ''
+  ).trim();
+
+  return {
+    apiKey,
+    fromEmail,
+    adminEmails,
+    verifiedProviderEmails,
+    supabaseUrl,
+    supabaseKey,
+    supabaseServiceRoleKey,
+  };
+}
+
+const rateLimitMap = new Map();
+function checkRateLimit(key, maxLimit = 3, windowMs = 5 * 60 * 1000) {
+  const now = Date.now();
+  const history = rateLimitMap.get(key) || [];
+  const valid = history.filter((ts) => now - ts < windowMs);
+  if (valid.length >= maxLimit) {
+    return false;
+  }
+  valid.push(now);
+  rateLimitMap.set(key, valid);
+  return true;
+}
+
+function verifySupabaseCallerAdmin(token, config) {
+  return new Promise((resolve) => {
+    if (!config.supabaseUrl || !config.supabaseKey || !token) {
+      return resolve(false);
+    }
+    try {
+      const url = new URL(`${config.supabaseUrl}/auth/v1/user`);
+      const options = {
+        hostname: url.hostname,
+        port: url.port || 443,
+        path: url.pathname,
+        method: 'GET',
+        headers: {
+          apikey: config.supabaseKey,
+          Authorization: `Bearer ${token}`,
+        },
+      };
+      const req = https.request(options, (res) => {
+        let data = '';
+        res.on('data', (chunk) => (data += chunk));
+        res.on('end', () => {
+          if (res.statusCode < 200 || res.statusCode >= 300) {
+            return resolve(false);
+          }
+          try {
+            const user = JSON.parse(data);
+            const email = (user?.email || '').trim().toLowerCase();
+            if (!email) return resolve(false);
+
+            if (config.adminEmails.map((e) => e.toLowerCase()).includes(email)) {
+              return resolve(true);
+            }
+
+            const adminUrl = new URL(
+              `${config.supabaseUrl}/rest/v1/admin_access?email=eq.${encodeURIComponent(email)}&active=eq.true&select=id`,
+            );
+            const adminReq = https.request(
+              {
+                hostname: adminUrl.hostname,
+                port: adminUrl.port || 443,
+                path: adminUrl.pathname + adminUrl.search,
+                method: 'GET',
+                headers: {
+                  apikey: config.supabaseKey,
+                  Authorization: `Bearer ${token}`,
+                },
+              },
+              (adminRes) => {
+                let adminData = '';
+                adminRes.on('data', (c) => (adminData += c));
+                adminRes.on('end', () => {
+                  try {
+                    const records = JSON.parse(adminData);
+                    resolve(Array.isArray(records) && records.length > 0);
+                  } catch {
+                    resolve(false);
+                  }
+                });
+              },
+            );
+            adminReq.on('error', () => resolve(false));
+            adminReq.end();
+          } catch {
+            resolve(false);
+          }
+        });
+      });
+      req.on('error', () => resolve(false));
+      req.end();
+    } catch {
+      resolve(false);
+    }
+  });
+}
+
+function verifyPostulacionExists(email, config) {
+  return new Promise((resolve) => {
+    const privilegedKey = config.supabaseServiceRoleKey || config.supabaseKey;
+    if (!config.supabaseUrl || !privilegedKey || !email) {
+      return resolve(null);
+    }
+    try {
+      const cleanEmail = String(email).trim().toLowerCase();
+      const url = new URL(
+        `${config.supabaseUrl}/rest/v1/postulaciones_prestadores?email=eq.${encodeURIComponent(cleanEmail)}&select=id,full_name,category,region,email,phone,website,description,created_at&order=created_at.desc&limit=1`,
+      );
+      const req = https.request(
+        {
+          hostname: url.hostname,
+          port: url.port || 443,
+          path: url.pathname + url.search,
+          method: 'GET',
+          headers: {
+            apikey: privilegedKey,
+            Authorization: `Bearer ${privilegedKey}`,
+          },
+        },
+        (res) => {
+          if (res.statusCode < 200 || res.statusCode >= 300) {
+            return resolve(null);
+          }
+          let data = '';
+          res.on('data', (c) => (data += c));
+          res.on('end', () => {
+            try {
+              const records = JSON.parse(data);
+              if (!Array.isArray(records) || records.length === 0) {
+                return resolve(null);
+              }
+              const record = records[0];
+              if (!record || typeof record !== 'object') {
+                return resolve(null);
+              }
+              resolve(record);
+            } catch {
+              resolve(null);
+            }
+          });
+        },
+      );
+      req.setTimeout(8000, () => {
+        req.destroy();
+        resolve(null);
+      });
+      req.on('error', () => resolve(null));
+      req.end();
+    } catch {
+      resolve(null);
+    }
+  });
 }
 
 function sendEmailViaResend({ apiKey, from, to, subject, html }) {
@@ -95,8 +266,23 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
-function renderBaseLayout(contentHtml, preheaderText = '') {
+function renderBaseLayout(contentHtml, preheaderText = '', theme = 'gold') {
   const safePreheader = escapeHtml(preheaderText);
+  const isBlue = theme === 'blue' || theme === 'prestador' || theme === 'provider';
+  const accent = isBlue ? '#80b3ff' : '#ffcc00';
+  const containerBorder = isBlue ? 'rgba(128, 179, 255, 0.28)' : 'rgba(255, 204, 0, 0.22)';
+  const headerBorder = isBlue ? 'rgba(128, 179, 255, 0.28)' : 'rgba(255, 204, 0, 0.25)';
+  const tableBorder = isBlue ? 'rgba(128, 179, 255, 0.22)' : 'rgba(255, 204, 0, 0.18)';
+  const tableRowBorder = isBlue ? 'rgba(128, 179, 255, 0.12)' : 'rgba(255, 204, 0, 0.1)';
+  const voucherBg = isBlue ? 'rgba(128, 179, 255, 0.08)' : 'rgba(255, 204, 0, 0.05)';
+  const voucherBorder = isBlue ? '#80b3ff' : '#ffcc00';
+  const btnPrimaryBg = isBlue ? '#80b3ff' : '#ffcc00';
+  const btnPrimaryColor = '#050a14';
+  const btnPrimaryShadow = isBlue ? 'rgba(128, 179, 255, 0.35)' : 'rgba(255, 204, 0, 0.25)';
+  const btnSecBorder = isBlue ? 'rgba(128, 179, 255, 0.45)' : 'rgba(255, 204, 0, 0.4)';
+  const footerBorder = isBlue ? 'rgba(128, 179, 255, 0.18)' : 'rgba(255, 204, 0, 0.15)';
+  const subText = isBlue ? 'PORTAL DE PRESTADORES & GUÍAS' : 'CATAMARCA • EXPEDICIONES ANDINAS';
+
   return `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -106,30 +292,30 @@ function renderBaseLayout(contentHtml, preheaderText = '') {
   <style>
     body { margin: 0; padding: 0; background-color: #05070a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #ffffff; -webkit-font-smoothing: antialiased; }
     .email-wrapper { padding: 32px 12px; background-color: #05070a; }
-    .email-container { max-width: 580px; margin: 0 auto; background: #0c0f16; border: 1px solid rgba(255, 204, 0, 0.22); border-radius: 4px; overflow: hidden; box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6); }
-    .email-header { background: #080a0f; padding: 26px 32px; border-bottom: 1px solid rgba(255, 204, 0, 0.25); text-align: center; }
+    .email-container { max-width: 580px; margin: 0 auto; background: #0c0f16; border: 1px solid ${containerBorder}; border-radius: 4px; overflow: hidden; box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6); }
+    .email-header { background: #080a0f; padding: 26px 32px; border-bottom: 1px solid ${headerBorder}; text-align: center; }
     .email-logo-text { font-size: 19px; font-weight: 800; letter-spacing: 0.14em; color: #ffffff; margin: 0; text-transform: uppercase; }
-    .email-logo-sub { font-size: 10px; font-weight: 800; letter-spacing: 0.22em; color: #ffcc00; text-transform: uppercase; margin-top: 5px; display: block; }
+    .email-logo-sub { font-size: 10px; font-weight: 800; letter-spacing: 0.22em; color: ${accent}; text-transform: uppercase; margin-top: 5px; display: block; }
     .email-body { padding: 36px 32px; }
     .card-title { font-size: 22px; font-weight: 800; color: #ffffff; margin: 0 0 14px; line-height: 1.3; letter-spacing: -0.01em; }
     .card-lead { font-size: 15px; color: rgba(255, 255, 255, 0.84); line-height: 1.65; margin: 0 0 24px; }
-    .data-table { width: 100%; border-collapse: collapse; margin: 22px 0 26px; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 204, 0, 0.18); border-radius: 3px; }
-    .data-table td { padding: 12px 16px; border-bottom: 1px solid rgba(255, 204, 0, 0.1); font-size: 14px; }
+    .data-table { width: 100%; border-collapse: collapse; margin: 22px 0 26px; background: rgba(255, 255, 255, 0.02); border: 1px solid ${tableBorder}; border-radius: 3px; }
+    .data-table td { padding: 12px 16px; border-bottom: 1px solid ${tableRowBorder}; font-size: 14px; }
     .data-table tr:last-child td { border-bottom: none; }
-    .data-label { color: #ffcc00; font-weight: 700; width: 42%; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; }
+    .data-label { color: ${accent}; font-weight: 700; width: 42%; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; }
     .data-value { color: #ffffff; font-weight: 600; text-align: right; }
-    .data-mono { font-family: 'Courier New', Courier, monospace; letter-spacing: 0.06em; color: #ffcc00; font-weight: 700; }
-    .voucher-box { background: rgba(255, 204, 0, 0.05); border: 1px solid #ffcc00; border-radius: 4px; padding: 20px 22px; margin: 24px 0; }
-    .voucher-tag { font-size: 11px; font-weight: 800; letter-spacing: 0.14em; color: #ffcc00; text-transform: uppercase; }
+    .data-mono { font-family: 'Courier New', Courier, monospace; letter-spacing: 0.06em; color: ${accent}; font-weight: 700; }
+    .voucher-box { background: ${voucherBg}; border: 1px solid ${voucherBorder}; border-radius: 4px; padding: 20px 22px; margin: 24px 0; }
+    .voucher-tag { font-size: 11px; font-weight: 800; letter-spacing: 0.14em; color: ${accent}; text-transform: uppercase; }
     .voucher-code { font-size: 24px; font-weight: 800; color: #ffffff; margin: 8px 0; letter-spacing: 0.06em; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-    .btn-primary { display: inline-block; background-color: #ffcc00; color: #0a0b0e !important; font-size: 14px; font-weight: 800; text-decoration: none; padding: 14px 28px; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.08em; margin: 12px 0; text-align: center; box-shadow: 0 4px 14px rgba(255, 204, 0, 0.25); }
-    .btn-secondary { display: inline-block; background-color: transparent; border: 1px solid rgba(255, 204, 0, 0.4); color: #ffcc00 !important; font-size: 13px; font-weight: 700; text-decoration: none; padding: 10px 20px; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.06em; margin: 8px 0; text-align: center; }
+    .btn-primary { display: inline-block; background-color: ${btnPrimaryBg}; color: ${btnPrimaryColor} !important; font-size: 14px; font-weight: 800; text-decoration: none; padding: 14px 28px; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.08em; margin: 12px 0; text-align: center; box-shadow: 0 4px 14px ${btnPrimaryShadow}; }
+    .btn-secondary { display: inline-block; background-color: transparent; border: 1px solid ${btnSecBorder}; color: ${accent} !important; font-size: 13px; font-weight: 700; text-decoration: none; padding: 10px 20px; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.06em; margin: 8px 0; text-align: center; }
     .btn-whatsapp { display: inline-block; background-color: #25D366; color: #070d18 !important; font-size: 14px; font-weight: 800; text-decoration: none; padding: 13px 26px; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.05em; margin: 10px 0; text-align: center; }
     .alert-box { background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.35); border-radius: 4px; padding: 16px 20px; color: #fca5a5; margin: 20px 0; font-size: 14px; line-height: 1.55; }
     .tips-list { margin: 18px 0; padding-left: 18px; font-size: 14px; color: rgba(255, 255, 255, 0.82); line-height: 1.7; }
     .tips-list li { margin-bottom: 8px; }
-    .email-footer { background: #080a0f; padding: 24px 32px; text-align: center; font-size: 12px; color: rgba(255, 255, 255, 0.45); border-top: 1px solid rgba(255, 204, 0, 0.15); line-height: 1.6; }
-    .email-footer a { color: #ffcc00; text-decoration: none; }
+    .email-footer { background: #080a0f; padding: 24px 32px; text-align: center; font-size: 12px; color: rgba(255, 255, 255, 0.45); border-top: 1px solid ${footerBorder}; line-height: 1.6; }
+    .email-footer a { color: ${accent}; text-decoration: none; }
   </style>
 </head>
 <body>
@@ -140,14 +326,14 @@ function renderBaseLayout(contentHtml, preheaderText = '') {
     <div class="email-container">
       <div class="email-header">
         <h1 class="email-logo-text">EXPERIENCIAS.CLUB</h1>
-        <span class="email-logo-sub">CATAMARCA • EXPEDICIONES ANDINAS</span>
+        <span class="email-logo-sub">${subText}</span>
       </div>
       <div class="email-body">
         ${contentHtml}
       </div>
       <div class="email-footer">
-        <p style="margin: 0 0 6px;">EXPERIENCIAS.CLUB • San Fernando del Valle de Catamarca, Argentina</p>
-        <p style="margin: 0;"><a href="https://experiencias.club" target="_blank">experiencias.club</a> · Soporte y consultas: <a href="https://wa.me/5493515490431" target="_blank">+54 9 351 549-0431</a></p>
+        <p style="margin: 0 0 6px;">Club de Experiencias • San Fernando del Valle de Catamarca, Argentina</p>
+        <p style="margin: 0;"><a href="https://experiencias.club" target="_blank">https://experiencias.club</a> · Soporte y consultas: <a href="https://wa.me/5493515490431" target="_blank">+54 9 351 549-0431</a></p>
       </div>
     </div>
   </div>
@@ -155,9 +341,45 @@ function renderBaseLayout(contentHtml, preheaderText = '') {
 </html>`;
 }
 
+const TRUSTED_PROVIDER_PHONES = {
+  'patriciofacundodiaztillar@gmail.com': '5493834558812',
+  'vegvarel@gmail.com': '5493515490431',
+  'gonzagramaglia@gmail.com': '5493515490431',
+};
+const OFFICIAL_CLUB_SUPPORT_PHONE = '5493515490431';
+
+function normalizeArgentinePhone(rawPhone) {
+  if (!rawPhone) return OFFICIAL_CLUB_SUPPORT_PHONE;
+  let digits = String(rawPhone).replace(/\D/g, '');
+  if (digits.startsWith('0')) {
+    digits = digits.substring(1);
+  }
+  // Remove Argentina domestic mobile "15" prefix after trunk 0 or after area code
+  if (digits.startsWith('15')) {
+    digits = digits.substring(2);
+  } else {
+    digits = digits.replace(/^(\d{2,4})15(\d{6,8})$/, '$1$2');
+  }
+
+  if (digits.startsWith('54')) {
+    if (!digits.startsWith('549')) {
+      digits = '549' + digits.substring(2);
+    }
+    digits = digits.replace(/^(549\d{2,4})15(\d{6,8})$/, '$1$2');
+    return digits;
+  }
+
+  return '549' + digits;
+}
+
 // 1. Template: Comprobante Recibido (Para el Usuario)
 function templatePaymentSubmittedUser(sub) {
   const fullName = sub.fullName ? escapeHtml(sub.fullName) : 'Explorador';
+  const providerEmail = (sub.providerEmail || '').trim().toLowerCase();
+  const trustedPhone = TRUSTED_PROVIDER_PHONES[providerEmail] || OFFICIAL_CLUB_SUPPORT_PHONE;
+  const waTarget = normalizeArgentinePhone(trustedPhone);
+  const waUrl = `https://wa.me/${waTarget}`;
+
   const content = `
     <h2 class="card-title">Comprobante de pago recibido</h2>
     <p class="card-lead">
@@ -201,7 +423,7 @@ function templatePaymentSubmittedUser(sub) {
     </div>
 
     <p style="text-align: center; font-size: 13px; color: rgba(255,255,255,0.5); margin: 0;">
-      ¿Necesitás coordinar algo antes? Escribinos por <a href="https://wa.me/5493515490431" target="_blank" style="color: #ffcc00;">WhatsApp Oficial</a>.
+      ¿Necesitás coordinar algo antes? Escribile por <a href="${waUrl}" target="_blank" style="color: #ffcc00; text-decoration: underline;">WhatsApp al prestador del servicio</a>.
     </p>
   `;
 
@@ -426,13 +648,184 @@ function templateAlreadyRegisteredUser(data) {
   return renderBaseLayout(content, `Ya contás con una membresía activa en EXPERIENCIAS.CLUB`);
 }
 
+// 7. Template: Postulación de Prestador Recibida (Para el Postulante)
+function templateProviderApplicationSubmitted(data) {
+  const fullName = data.fullName ? escapeHtml(data.fullName) : 'Prestador';
+  const category = data.category ? escapeHtml(data.category) : 'Actividades y Guías';
+  const region = data.region ? escapeHtml(data.region) : 'Catamarca';
+  const phone = data.phone ? escapeHtml(data.phone) : '-';
+
+  const content = `
+    <h2 class="card-title">Postulación de Prestador Recibida</h2>
+    <p class="card-lead">
+      Hola <strong>${fullName}</strong>, recibimos tu solicitud para sumarte como prestador oficial y guía en <strong>EXPERIENCIAS.CLUB</strong>.
+    </p>
+
+    <div class="voucher-box">
+      <span class="voucher-tag">ESTADO DE POSTULACIÓN</span>
+      <div class="voucher-code" style="font-size: 19px; letter-spacing: 0.03em;">EN PROCESO DE EVALUACIÓN</div>
+      <div style="font-size: 13px; color: rgba(255,255,255,0.75); margin-top: 6px;">
+        Revisión técnica de habilitaciones y propuesta de salidas.
+      </div>
+    </div>
+
+    <table class="data-table">
+      <tr>
+        <td class="data-label">Postulante</td>
+        <td class="data-value">${fullName}</td>
+      </tr>
+      <tr>
+        <td class="data-label">Rubro / Especialidad</td>
+        <td class="data-value">${category}</td>
+      </tr>
+      <tr>
+        <td class="data-label">Región / Zona</td>
+        <td class="data-value">${region}</td>
+      </tr>
+      <tr>
+        <td class="data-label">Teléfono de Contacto</td>
+        <td class="data-value">${phone}</td>
+      </tr>
+    </table>
+
+    <p style="font-size: 14px; color: rgba(255,255,255,0.82); line-height: 1.65; margin: 20px 0;">
+      Nuestro equipo revisará tus datos y propuesta de expediciones. Una vez aprobada tu cuenta, recibirás un correo de confirmación con las instrucciones para ingresar al <strong>Portal de Prestadores</strong> mediante tu cuenta de Google.
+    </p>
+
+    <div style="text-align: center; margin: 28px 0 16px;">
+      <a href="https://prestadores.experiencias.club" class="btn-primary" target="_blank">Portal de Prestadores</a>
+    </div>
+
+    <p style="text-align: center; font-size: 13px; color: rgba(255,255,255,0.5); margin: 0;">
+      ¿Tenés dudas o querés adjuntar certificaciones adicionales? Escribinos a <a href="mailto:prestadores@experiencias.club" style="color: #80b3ff; text-decoration: underline;">prestadores@experiencias.club</a> o vía WhatsApp al <a href="https://wa.me/5493515490431" style="color: #80b3ff; text-decoration: underline;">+54 9 351 549-0431</a>.
+    </p>
+  `;
+
+  return renderBaseLayout(content, `Recibimos tu postulación como prestador en EXPERIENCIAS.CLUB`, 'blue');
+}
+
+// 8. Template: Nueva Postulación de Prestador (Para Administradores)
+function templateProviderApplicationAdmin(data) {
+  const fullName = data.fullName ? escapeHtml(data.fullName) : 'Nuevo Postulante';
+  const email = data.email ? escapeHtml(data.email) : '-';
+  const phone = data.phone ? escapeHtml(data.phone) : '-';
+  const category = data.category ? escapeHtml(data.category) : '-';
+  const region = data.region ? escapeHtml(data.region) : '-';
+  const website = data.website ? escapeHtml(data.website) : '-';
+  const description = data.description ? escapeHtml(data.description) : '-';
+
+  const content = `
+    <h2 class="card-title">Nueva Postulación de Prestador</h2>
+    <p class="card-lead">
+      Se ha recibido una nueva solicitud para el panel de prestadores en <strong>EXPERIENCIAS.CLUB</strong>.
+    </p>
+
+    <table class="data-table">
+      <tr>
+        <td class="data-label">Nombre / Guía</td>
+        <td class="data-value">${fullName}</td>
+      </tr>
+      <tr>
+        <td class="data-label">Email</td>
+        <td class="data-value">${email}</td>
+      </tr>
+      <tr>
+        <td class="data-label">Teléfono / WhatsApp</td>
+        <td class="data-value">${phone}</td>
+      </tr>
+      <tr>
+        <td class="data-label">Especialidad</td>
+        <td class="data-value">${category}</td>
+      </tr>
+      <tr>
+        <td class="data-label">Región Operativa</td>
+        <td class="data-value">${region}</td>
+      </tr>
+      <tr>
+        <td class="data-label">Sitio / Redes</td>
+        <td class="data-value">${website}</td>
+      </tr>
+      <tr>
+        <td class="data-label">Descripción</td>
+        <td class="data-value">${description}</td>
+      </tr>
+    </table>
+
+    <div style="text-align: center; margin-top: 24px;">
+      <a href="https://admin.experiencias.club/postulaciones" class="btn-primary" target="_blank">Revisar en Panel de Control</a>
+    </div>
+  `;
+
+  return renderBaseLayout(content, `[Nueva Postulación Prestador] ${fullName} · ${category}`, 'blue');
+}
+
+// 9. Template: Cuenta de Prestador Aprobada (Para el Prestador)
+function templateProviderApproved(data) {
+  const fullName = data.fullName || data.name ? escapeHtml(data.fullName || data.name) : 'Prestador';
+  const email = escapeHtml(data.email || '');
+
+  const content = `
+    <h2 class="card-title" style="color: #80b3ff;">¡Tu cuenta de Prestador ha sido aprobada! 🎉</h2>
+    <p class="card-lead">
+      Hola <strong>${fullName}</strong>, tu perfil de prestador oficial en <strong>EXPERIENCIAS.CLUB</strong> fue validado y activado por el equipo de administración.
+    </p>
+
+    <div class="voucher-box">
+      <span class="voucher-tag">ACCESO HABILITADO</span>
+      <div class="voucher-code" style="font-size: 21px;">PRESTADOR OFICIAL</div>
+      <div style="font-size: 13px; color: rgba(255,255,255,0.75); margin-top: 6px;">
+        Usuario autorizado: <strong style="color: #80b3ff;">${email}</strong>
+      </div>
+    </div>
+
+    <h3 style="font-size: 14px; font-weight: 700; color: #80b3ff; text-transform: uppercase; letter-spacing: 0.08em; margin: 24px 0 12px;">
+      Instrucciones para ingresar al portal:
+    </h3>
+
+    <ul class="tips-list">
+      <li><strong>Enlace directo:</strong> Ingresá a <a href="https://prestadores.experiencias.club" target="_blank" style="color: #80b3ff; text-decoration: underline;">https://prestadores.experiencias.club</a> (o desde <a href="https://experiencias.club/prestadores/login" target="_blank" style="color: #80b3ff; text-decoration: underline;">/prestadores/login</a>).</li>
+      <li><strong>Método de acceso:</strong> Hacé clic en <em>"Iniciar sesión con Google (Prestadores)"</em> utilizando esta cuenta (<strong>${email}</strong>). No necesitás recordar ninguna contraseña.</li>
+      <li><strong>Gestión de salidas:</strong> Podrás cargar y proponer nuevas expediciones, fijar cupos y tarifas para los socios del club.</li>
+      <li><strong>Comprobantes y transferencias:</strong> Revisá en tiempo real los comprobantes de transferencias enviados por los socios y coordiná las salidas.</li>
+    </ul>
+
+    <div style="text-align: center; margin: 30px 0 16px;">
+      <a href="https://prestadores.experiencias.club" class="btn-primary" target="_blank">Ingresar al Portal de Prestadores</a>
+    </div>
+
+    <p style="text-align: center; font-size: 13px; color: rgba(255,255,255,0.5); margin: 0;">
+      ¿Tenés consultas operativas o requerís soporte? Escribinos por WhatsApp al <a href="https://wa.me/5493515490431" target="_blank" style="color: #80b3ff; text-decoration: underline;">+54 9 351 549-0431</a> o a <a href="mailto:prestadores@experiencias.club" style="color: #80b3ff; text-decoration: underline;">prestadores@experiencias.club</a>.
+    </p>
+  `;
+
+  return renderBaseLayout(content, `¡Tu cuenta de Prestador ha sido aprobada en EXPERIENCIAS.CLUB!`, 'blue');
+}
+
 // -----------------------------------------------------------------------------
 // Handler Principal Serverless (Vercel)
 // -----------------------------------------------------------------------------
 
 module.exports = async function handler(req, res) {
-  // Configurar CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  // Configurar CORS restringido a los orígenes oficiales del club
+  const allowedOrigins = [
+    'https://experiencias.club',
+    'https://admin.experiencias.club',
+    'https://prestadores.experiencias.club',
+  ];
+  const reqOrigin = req.headers.origin || req.headers.Origin || '';
+  const isAllowedOrigin =
+    allowedOrigins.includes(reqOrigin) ||
+    /^https:\/\/[a-z0-9-]+-clubexperiencias\.vercel\.app$/.test(reqOrigin) ||
+    /^https:\/\/[a-z0-9-]+-gonzagramaglias-projects\.vercel\.app$/.test(reqOrigin) ||
+    /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(reqOrigin);
+
+  if (isAllowedOrigin) {
+    res.setHeader('Access-Control-Allow-Origin', reqOrigin);
+  } else if (!reqOrigin) {
+    res.setHeader('Access-Control-Allow-Origin', 'https://experiencias.club');
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', 'https://experiencias.club');
+  }
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
@@ -553,6 +946,99 @@ module.exports = async function handler(req, res) {
           html: templateAlreadyRegisteredUser(data),
         });
         results.push({ target: 'already_registered', ...alreadyRegisteredResult });
+        break;
+      }
+
+      case 'PROVIDER_APPLICATION_SUBMITTED': {
+        if (!data.email) {
+          return res.status(400).json({ success: false, error: 'Falta email del postulante.' });
+        }
+
+        const clientIp =
+          req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+          req.socket?.remoteAddress ||
+          'unknown';
+        const rateLimitKey = `app_${String(data.email).trim().toLowerCase()}_${clientIp}`;
+        if (!checkRateLimit(rateLimitKey, 3, 5 * 60 * 1000)) {
+          return res.status(429).json({
+            success: false,
+            error: 'Demasiadas solicitudes enviadas. Por favor aguardá unos minutos.',
+          });
+        }
+
+        const applicationRecord = await verifyPostulacionExists(data.email, config);
+        if (!applicationRecord) {
+          return res.status(404).json({
+            success: false,
+            error: 'No se encontró un registro de postulación previo para este correo.',
+          });
+        }
+
+        const verifiedData = {
+          fullName: applicationRecord.full_name || applicationRecord.fullName || '',
+          category: applicationRecord.category || '',
+          region: applicationRecord.region || '',
+          email: applicationRecord.email || String(data.email).trim().toLowerCase(),
+          phone: applicationRecord.phone || '',
+          website: applicationRecord.website || '',
+          description: applicationRecord.description || '',
+        };
+
+        // 1. Email al postulante
+        const applicantResult = await sendEmailViaResend({
+          apiKey: config.apiKey,
+          from: config.fromEmail,
+          to: verifiedData.email,
+          subject: `Recibimos tu postulación como prestador en EXPERIENCIAS.CLUB`,
+          html: templateProviderApplicationSubmitted(verifiedData),
+        });
+        results.push({ target: 'applicant', ...applicantResult });
+
+        // 2. Alerta a administradores
+        if (config.adminEmails && config.adminEmails.length > 0) {
+          const adminResult = await sendEmailViaResend({
+            apiKey: config.apiKey,
+            from: config.fromEmail,
+            to: config.adminEmails,
+            subject: `[Nueva Postulación Prestador] ${verifiedData.fullName || 'Prestador'} · ${verifiedData.category || 'Guía'}`,
+            html: templateProviderApplicationAdmin(verifiedData),
+          });
+          results.push({ target: 'admin', ...adminResult });
+        }
+        break;
+      }
+
+      case 'PROVIDER_APPROVED': {
+        if (!data.email) {
+          return res.status(400).json({ success: false, error: 'Falta email del prestador.' });
+        }
+
+        const authHeader = req.headers.authorization || req.headers.Authorization || '';
+        const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+
+        if (!token) {
+          return res.status(401).json({
+            success: false,
+            error: 'Acceso no autorizado: se requiere token de sesión de administrador.',
+          });
+        }
+
+        const isAdmin = await verifySupabaseCallerAdmin(token, config);
+        if (!isAdmin) {
+          return res.status(403).json({
+            success: false,
+            error: 'Acceso denegado: se requieren permisos de administrador para aprobar.',
+          });
+        }
+
+        const approvedResult = await sendEmailViaResend({
+          apiKey: config.apiKey,
+          from: config.fromEmail,
+          to: data.email,
+          subject: `¡Tu cuenta de Prestador ha sido aprobada en EXPERIENCIAS.CLUB!`,
+          html: templateProviderApproved(data),
+        });
+        results.push({ target: 'provider_approved', ...approvedResult });
         break;
       }
 

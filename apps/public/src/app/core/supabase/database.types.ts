@@ -357,7 +357,9 @@ export interface Database {
           reference: string;
           experience_id: string;
           experience_title: string;
+          provider_email?: string | null;
           date: string;
+          selected_date?: string;
           participants: number;
           amount_ars: number;
           discount_code: string | null;
@@ -372,10 +374,12 @@ export interface Database {
           receipt_size_bytes: number;
           receipt_url: string;
           receipt_storage_key: string | null;
+          receipt_storage_path?: string | null;
           receipt_storage_provider: 'supabase' | 'local' | string;
           status: 'pendiente' | 'aprobado' | 'rechazado';
           rejection_reason: string | null;
           submitted_at: string;
+          created_at?: string;
           reviewed_at: string | null;
           updated_at: string;
         };
@@ -384,7 +388,9 @@ export interface Database {
           reference: string;
           experience_id: string;
           experience_title: string;
-          date: string;
+          provider_email?: string | null;
+          date?: string;
+          selected_date?: string;
           participants: number;
           amount_ars: number;
           discount_code?: string | null;
@@ -399,10 +405,12 @@ export interface Database {
           receipt_size_bytes: number;
           receipt_url: string;
           receipt_storage_key?: string | null;
+          receipt_storage_path?: string | null;
           receipt_storage_provider?: 'supabase' | 'local' | string;
           status?: 'pendiente' | 'aprobado' | 'rechazado';
           rejection_reason?: string | null;
           submitted_at?: string;
+          created_at?: string;
           reviewed_at?: string | null;
           updated_at?: string;
         };
@@ -441,6 +449,17 @@ export interface Database {
         Returns: Json;
       };
       register_emergente_socio: {
+        Args: {
+          p_email: string;
+          p_full_name: string;
+          p_dni: string;
+          p_phone: string;
+          p_experiences_wishlist?: Json;
+          p_experiences_other?: string | null;
+        };
+        Returns: Json;
+      };
+      register_socio_atomic: {
         Args: {
           p_email: string;
           p_full_name: string;

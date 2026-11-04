@@ -10,6 +10,23 @@
     </p>
   </header>
 
+  @if (!isEditMode() && hasDraft()) {
+    <div class="draft-notice-banner" role="status">
+      <div class="draft-notice-info">
+        <mat-icon class="draft-notice-icon">save</mat-icon>
+        <span>Borrador guardado en este navegador. Se conservará hasta que envíes la propuesta.</span>
+      </div>
+      <button
+        type="button"
+        class="draft-notice-discard-btn"
+        (click)="discardDraft()"
+        title="Borrar borrador y reiniciar formulario"
+      >
+        Descartar borrador
+      </button>
+    </div>
+  }
+
   <form [formGroup]="form" class="panel-form">
     <!-- Basic Information -->
     <fieldset class="form-fieldset">
@@ -144,7 +161,7 @@
           <div
             class="preset-card"
             [class.is-selected]="selectedCoverImage() === preset.url"
-            (click)="selectedCoverImage.set(preset.url)"
+            (click)="selectPresetImage(preset.url)"
           >
             <img
               [src]="preset.url"
