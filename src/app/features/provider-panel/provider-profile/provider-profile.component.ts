@@ -1,5 +1,5 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { ProviderStoreService } from '../../../core/services/provider-store.service';
@@ -7,13 +7,15 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
 @Component({
   selector: 'app-provider-profile',
   standalone: true,
-  imports: [ReactiveFormsModule, MatIconModule],
+  imports: [ReactiveFormsModule, MatIconModule, RouterLink],
   template: `
     <div class="profile-container">
       <div class="profile-head">
-        <div>
+        <div class="header-titles">
           <span class="section-kicker">CUENTA Y FISCALIDAD</span>
-          <h2 class="card-heading">Perfil del Prestador y Datos de Cobro</h2>
+          <div class="heading-row">
+            <h2 class="card-heading">Perfil del Prestador y Datos de Cobro</h2>
+          </div>
           <p class="card-subheading">
             Esta información se utiliza para las fichas técnicas de tus experiencias y los datos de destino donde los socios transfieren los pagos.
           </p>
@@ -34,9 +36,79 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
       <div class="profile-card">
         <form [formGroup]="form" (ngSubmit)="onSave()" class="profile-form">
           <div class="form-section">
+            <div>
+              <h3 class="section-title">Datos Bancarios para Transferencias de Socios</h3>
+              <p class="section-desc">
+                Es la cuenta bancaria o billetera donde los socios transferirán los importes bonificados de sus reservas.
+              </p>
+            </div>
+
+            <div class="form-grid">
+              <div class="form-group full-col">
+                <label class="form-label">CBU o Alias de Destino <span class="req-star">*</span></label>
+                <input
+                  type="text"
+                  formControlName="cbuAlias"
+                  class="form-input text-mono"
+                  placeholder="Ej. EXPERIENCIAS.CLUB.MP o 22 dígitos"
+                  required
+                />
+                <span class="field-hint">Alias o CBU de 22 dígitos exactos</span>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Nombre / Titular de la Cuenta <span class="req-star">*</span></label>
+                <input
+                  type="text"
+                  formControlName="name"
+                  class="form-input"
+                  placeholder="Ej. Gonzalo Gramaglia"
+                  required
+                />
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">CUIT / CUIL del Titular <span class="req-star">*</span></label>
+                <input
+                  type="text"
+                  formControlName="cuitDni"
+                  class="form-input text-mono"
+                  placeholder="Ej. 20-33445566-7"
+                  required
+                />
+              </div>
+
+              <div class="form-group full-col">
+                <label class="form-label">Entidad Bancaria o Billetera <span class="req-star">*</span></label>
+                <input
+                  type="text"
+                  formControlName="bankName"
+                  class="form-input"
+                  placeholder="Ej. Banco Nación / Mercado Pago"
+                  required
+                />
+              </div>
+            </div>
+          </div>
+
+          <div class="form-section">
             <h3 class="section-title">Datos del Emprendimiento</h3>
 
             <div class="form-grid">
+              <div class="form-group">
+                <label class="form-label">Prestador Asociado a la Cuenta</label>
+                <input
+                  type="text"
+                  [value]="store.currentProvider()?.name || 'Prestador Verificado'"
+                  class="form-input text-muted"
+                  readonly
+                  disabled
+                />
+                <span class="field-hint"
+                  >Nombre oficial registrado del titular de la cuenta</span
+                >
+              </div>
+
               <div class="form-group">
                 <label class="form-label">Email Asociado a la Cuenta</label>
                 <input
@@ -52,75 +124,105 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
               </div>
 
               <div class="form-group">
-                <label class="form-label">Nombre Comercial o Agencia</label>
+                <label class="form-label">Nombre Comercial o Agencia <span class="req-star">*</span></label>
                 <input
                   type="text"
                   formControlName="agency"
                   class="form-input"
                   placeholder="Ej. Catamarca Kayak & Aventura"
+                  required
                 />
               </div>
 
               <div class="form-group">
-                <label class="form-label">Teléfono / WhatsApp de Contacto</label>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <label class="form-label">Nombre de Usuario / Enlace Público (Slug)</label>
+                  <a
+                    [routerLink]="['/prestadores', form.get('slug')?.value || currentSlug()]"
+                    target="_blank"
+                    class="live-profile-pill"
+                    title="Abrir perfil público en una nueva pestaña"
+                  >
+                    Ver perfil público ↗
+                  </a>
+                </div>
+                <input
+                  type="text"
+                  formControlName="slug"
+                  class="form-input text-mono"
+                  [placeholder]="currentSlug()"
+                />
+                <span class="field-hint"
+                  >experiencias.club/prestadores/{{ form.get('slug')?.value || currentSlug() }}</span
+                >
+              </div>
+
+              <div class="form-group full-col">
+                <label class="form-label">Descripción Atractiva del Emprendimiento</label>
+                <textarea
+                  formControlName="bio"
+                  class="form-input form-textarea"
+                  rows="3"
+                  placeholder="Contá a los exploradores sobre tu trayectoria, guías certificados y qué hace únicas a tus salidas..."
+                ></textarea>
+                <span class="field-hint"
+                  >Esta descripción se presentará en tu ficha técnica y en tu perfil público oficial.</span
+                >
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Foto de Perfil / Logo (URL)</label>
+                <input
+                  type="text"
+                  formControlName="avatar"
+                  class="form-input"
+                  placeholder="Ej. /assets/aistudio/patricio.jpg o https://..."
+                />
+                <span class="field-hint">Imagen redonda o isotipo del prestador</span>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Foto de Portada de la Agencia (URL)</label>
+                <input
+                  type="text"
+                  formControlName="coverImage"
+                  class="form-input"
+                  placeholder="Ej. /assets/images/kayak-club-de-experiencias.jpg o https://..."
+                />
+                <span class="field-hint">Banner panorámico superior de tu perfil público</span>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Teléfono / WhatsApp de Contacto <span class="req-star">*</span></label>
                 <input
                   type="text"
                   formControlName="phone"
                   class="form-input"
                   placeholder="Ej. +54 9 383 455-8812"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div class="form-section">
-            <div>
-              <h3 class="section-title">Datos Bancarios para Transferencias de Socios</h3>
-              <p class="section-desc">
-                Es la cuenta bancaria o billetera donde los socios transferirán los importes bonificados de sus reservas.
-              </p>
-            </div>
-
-            <div class="form-grid">
-              <div class="form-group full-col">
-                <label class="form-label">CBU o Alias de Destino</label>
-                <input
-                  type="text"
-                  formControlName="cbuAlias"
-                  class="form-input text-mono"
-                  placeholder="Ej. EXPERIENCIAS.CLUB.MP o 22 dígitos"
-                />
-                <span class="field-hint">Alias o CBU de 22 dígitos exactos</span>
-              </div>
-
-              <div class="form-group">
-                <label class="form-label">Nombre / Titular de la Cuenta</label>
-                <input
-                  type="text"
-                  formControlName="name"
-                  class="form-input"
-                  placeholder="Ej. Gonzalo Gramaglia"
+                  required
                 />
               </div>
 
               <div class="form-group">
-                <label class="form-label">CUIT / CUIL del Titular</label>
+                <label class="form-label">Página Web Oficial</label>
                 <input
                   type="text"
-                  formControlName="cuitDni"
-                  class="form-input text-mono"
-                  placeholder="Ej. 20-33445566-7"
+                  formControlName="website"
+                  class="form-input"
+                  placeholder="Ej. www.catamarcakayak.com"
                 />
+                <span class="field-hint">Sitio web de tu agencia o emprendimiento</span>
               </div>
 
               <div class="form-group full-col">
-                <label class="form-label">Entidad Bancaria o Billetera</label>
+                <label class="form-label">Red Social Principal</label>
                 <input
                   type="text"
-                  formControlName="bankName"
+                  formControlName="socialMedia"
                   class="form-input"
-                  placeholder="Ej. Banco Nación / Mercado Pago"
+                  placeholder="Ej. instagram.com/catamarcakayak"
                 />
+                <span class="field-hint">Perfil de Instagram, Facebook u otra red de difusión</span>
               </div>
             </div>
           </div>
@@ -170,6 +272,25 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
         margin: 0 auto;
         padding-bottom: 3rem;
       }
+      .profile-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1.5rem;
+        flex-wrap: wrap;
+      }
+      .header-titles {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+        width: 100%;
+      }
+      .heading-row {
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
+        flex-wrap: wrap;
+      }
       .section-kicker {
         font-size: 0.72rem;
         font-weight: 700;
@@ -180,12 +301,41 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
         font-size: 1.5rem;
         font-weight: 700;
         color: #ffffff;
-        margin: 0.2rem 0;
+        margin: 0;
+      }
+      .btn-back-panel {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.48rem 1.05rem;
+        background: #80b3ff;
+        border: 1px solid #80b3ff;
+        color: #ffffff;
+        border-radius: 4px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        text-decoration: none;
+        letter-spacing: 0.02em;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        white-space: nowrap;
+        box-shadow: 0 4px 14px rgba(128, 179, 255, 0.25);
+      }
+      .btn-back-panel:hover {
+        background: #9cc4ff;
+        border-color: #9cc4ff;
+        color: #ffffff;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 18px rgba(128, 179, 255, 0.4);
+      }
+      .btn-back-panel:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 6px rgba(128, 179, 255, 0.3);
       }
       .card-subheading {
         font-size: 0.88rem;
         color: rgba(255, 255, 255, 0.7);
-        margin: 0;
+        margin: 0.25rem 0 0;
         line-height: 1.5;
       }
       .audit-notice-card {
@@ -287,6 +437,11 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
         font-weight: 600;
         color: rgba(255, 255, 255, 0.85);
       }
+      .req-star {
+        color: #ffcc00;
+        font-weight: 700;
+        margin-left: 0.15rem;
+      }
       .form-input {
         background: rgba(7, 13, 28, 0.6);
         border: 1px solid rgba(128, 179, 255, 0.25);
@@ -305,6 +460,23 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
       .text-mono {
         font-family: var(--font-mono, monospace) !important;
         letter-spacing: 0.05em;
+      }
+      .live-profile-pill {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #80b3ff;
+        text-decoration: none;
+        letter-spacing: 0.02em;
+        transition: color 0.2s ease;
+      }
+      .live-profile-pill:hover {
+        color: #ffffff;
+        text-decoration: underline;
+      }
+      .form-textarea {
+        resize: vertical;
+        min-height: 80px;
+        line-height: 1.5;
       }
       .alert-success {
         display: flex;
@@ -399,6 +571,15 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
         opacity: 0.5;
         cursor: not-allowed;
       }
+      @media (max-width: 768px) {
+        .heading-row {
+          gap: 0.5rem;
+        }
+        .heading-row .btn-back-panel {
+          justify-content: center;
+          text-align: center;
+        }
+      }
     `,
   ],
 })
@@ -411,11 +592,31 @@ export class ProviderProfileComponent {
   readonly errorMessage = signal<string | null>(null);
   readonly isSaving = signal(false);
 
+  readonly currentSlug = computed(() => {
+    const p = this.store.currentProvider();
+    if (p?.slug) return p.slug;
+    if (p?.agency) {
+      return p.agency
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)+/g, '');
+    }
+    return 'prestador-oficial';
+  });
+
   readonly form = this.fb.nonNullable.group({
     name: [this.store.currentProvider()?.name || '', Validators.required],
     agency: [this.store.currentProvider()?.agency || '', Validators.required],
+    slug: [this.store.currentProvider()?.slug || ''],
+    bio: [this.store.currentProvider()?.bio || ''],
+    avatar: [this.store.currentProvider()?.avatar || ''],
+    coverImage: [this.store.currentProvider()?.coverImage || ''],
     cuitDni: [this.store.currentProvider()?.cuitDni || '', Validators.required],
     phone: [this.store.currentProvider()?.phone || '', Validators.required],
+    website: [this.store.currentProvider()?.website || ''],
+    socialMedia: [this.store.currentProvider()?.socialMedia || ''],
     cbuAlias: [this.store.currentProvider()?.cbuAlias || '', Validators.required],
     bankName: [this.store.currentProvider()?.bankName || '', Validators.required],
   });
@@ -427,8 +628,14 @@ export class ProviderProfileComponent {
         this.form.patchValue({
           name: p.name || '',
           agency: p.agency || '',
+          slug: p.slug || '',
+          bio: p.bio || '',
+          avatar: p.avatar || '',
+          coverImage: p.coverImage || '',
           cuitDni: p.cuitDni || '',
           phone: p.phone || '',
+          website: p.website || '',
+          socialMedia: p.socialMedia || '',
           cbuAlias: p.cbuAlias || '',
           bankName: p.bankName || '',
         });
@@ -444,6 +651,17 @@ export class ProviderProfileComponent {
     this.savedSuccess.set(false);
 
     const values = this.form.getRawValue();
+    if (values.slug) {
+      values.slug = values.slug
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9-]+/g, '-')
+        .replace(/(^-|-$)+/g, '');
+    } else {
+      values.slug = this.currentSlug();
+    }
+
     const result = await this.store.updateProfile(values);
 
     this.isSaving.set(false);

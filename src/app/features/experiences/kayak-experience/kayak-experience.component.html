@@ -44,8 +44,18 @@
             </div>
             <div class="spec-tile">
               <span class="spec-label">PUNTO DE ENCUENTRO</span>
-              <span class="spec-value">{{ item.meetingPoint || 'Club Náutico El Jumeal' }}</span>
+              <span class="spec-value">{{ item.meetingPoint || 'Club Náutico Dique El Jumeal' }}</span>
             </div>
+            @if (item.providerName) {
+            <a
+              [routerLink]="['/prestadores', item.providerSlug || 'catamarca-kayak']"
+              class="spec-tile spec-tile-clickable"
+              title="Ver perfil oficial del prestador"
+            >
+              <span class="spec-label">PRESTADOR</span>
+              <span class="spec-value spec-value-link">{{ item.providerName }}</span>
+            </a>
+            }
           </div>
           <!-- Video Oficial de la Experiencia Integrado -->
           <div class="kayak-video-media-wrap">

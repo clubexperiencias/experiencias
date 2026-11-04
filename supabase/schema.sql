@@ -152,6 +152,12 @@ CREATE TABLE IF NOT EXISTS public.provider_access (
   bank_name      TEXT NOT NULL DEFAULT '',
   account_holder TEXT NOT NULL DEFAULT '',
   phone          TEXT NOT NULL DEFAULT '',
+  website        TEXT NOT NULL DEFAULT '',
+  social_media   TEXT NOT NULL DEFAULT '',
+  slug           TEXT NOT NULL DEFAULT '',
+  bio            TEXT NOT NULL DEFAULT '',
+  avatar_url     TEXT NOT NULL DEFAULT '',
+  cover_url      TEXT NOT NULL DEFAULT '',
   created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -165,6 +171,13 @@ ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS cuit_dni TEXT NOT NU
 ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS bank_name TEXT NOT NULL DEFAULT '';
 ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS account_holder TEXT NOT NULL DEFAULT '';
 ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS phone TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS website TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS social_media TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS slug TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS bio TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS avatar_url TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS cover_url TEXT NOT NULL DEFAULT '';
+CREATE INDEX IF NOT EXISTS idx_provider_access_slug ON public.provider_access(slug);
 
 -- 2.7 provider_banking_history (Auditoría de Modificaciones Bancarias)
 CREATE TABLE IF NOT EXISTS public.provider_banking_history (
@@ -253,6 +266,7 @@ ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS album_photos JSONB DEFA
 ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS date_slots JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS provider_email TEXT DEFAULT 'patriciofacundodiaztillar@gmail.com';
 ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS provider_name TEXT;
+ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS provider_slug TEXT;
 ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS provider_phone TEXT;
 ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS provider_cbu_alias TEXT;
 ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS provider_cuit_dni TEXT;

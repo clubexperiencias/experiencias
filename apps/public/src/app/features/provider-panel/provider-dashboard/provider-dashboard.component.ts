@@ -303,32 +303,6 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
           </a>
         </div>
 
-        <!-- Bank Details Info Strip -->
-        <div class="fin-bank-banner">
-          <div class="fin-bank-item">
-            <span class="fin-bank-lbl">CBU</span>
-            <strong class="fin-bank-val code-font">{{
-              provider()?.cbuAlias || '3840200500000056402423'
-            }}</strong>
-          </div>
-          <div class="fin-bank-item">
-            <span class="fin-bank-lbl">Nombre</span>
-            <strong class="fin-bank-val">{{
-              provider()?.name || 'Patricio Facundo Diaz Tillar'
-            }}</strong>
-          </div>
-          <div class="fin-bank-item">
-            <span class="fin-bank-lbl">CUIT/CUIL</span>
-            <strong class="fin-bank-val code-font">{{
-              provider()?.cuitDni || '20-38628297-9'
-            }}</strong>
-          </div>
-          <div class="fin-bank-item">
-            <span class="fin-bank-lbl">Entidad</span>
-            <strong class="fin-bank-val">{{ provider()?.bankName || 'Uala Bank S.A.U' }}</strong>
-          </div>
-        </div>
-
         @if (recentSubmissions().length === 0) {
           <p class="empty-text">Aún no hay comprobantes de pago registrados.</p>
         } @else {

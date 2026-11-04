@@ -1,6 +1,6 @@
 import { Component, HostListener, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { filter } from 'rxjs';
 import { ProviderStoreService } from '../../core/services/provider-store.service';
@@ -20,7 +20,7 @@ const ROUTE_LABELS: Record<string, string> = {
 @Component({
   selector: 'app-provider-panel',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, MatIconModule, ProviderLoginComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, MatIconModule, ProviderLoginComponent],
   template: `
     <div class="provider-portal-root">
       @if (!store.isAuthenticated()) {
@@ -45,7 +45,12 @@ const ROUTE_LABELS: Record<string, string> = {
           </div>
 
           <div class="nav-right-col">
-            <a [routerLink]="dashboardLink()" class="portal-nav-btn active-route">
+            <a
+              [routerLink]="dashboardLink()"
+              class="portal-nav-btn"
+              routerLinkActive="active-route"
+              [routerLinkActiveOptions]="{ exact: true }"
+            >
               <span>Panel Operativo</span>
             </a>
 
@@ -152,6 +157,19 @@ const ROUTE_LABELS: Record<string, string> = {
           </div>
         </nav>
 
+        <!-- Botón Flotante Volver Atrás réplica de la web principal -->
+        @if (canShowBackButton()) {
+          <button
+            type="button"
+            class="desktop-floating-btn desktop-floating-back-btn"
+            (click)="goBack()"
+            aria-label="Volver atrás"
+            title="Volver atrás"
+          >
+            <mat-icon class="floating-btn-icon">arrow_back</mat-icon>
+          </button>
+        }
+
         <!-- Contenedor principal con fondo relieve similar a /perfil -->
         <main class="portal-main">
           <div class="portal-content-container">
@@ -257,6 +275,28 @@ export class ProviderPanelComponent {
 
     return items;
   });
+
+  readonly canShowBackButton = computed(() => {
+    const rawPath = this.currentUrl().split('?')[0].split('#')[0];
+    const cleanSegments = rawPath
+      .split('/')
+      .filter(Boolean)
+      .filter((s) => s !== 'prestadores' && s !== 'panel' && s !== 'dashboard');
+    return cleanSegments.length > 0;
+  });
+
+  goBack(): void {
+    const list = this.breadcrumbs();
+    if (list && list.length > 1) {
+      for (let i = list.length - 2; i >= 0; i--) {
+        if (list[i]?.link) {
+          this.router.navigateByUrl(list[i].link!);
+          return;
+        }
+      }
+    }
+    this.router.navigateByUrl(this.dashboardLink());
+  }
 
   readonly supportWhatsappUrl =
     'https://wa.me/5493515490431?text=' +

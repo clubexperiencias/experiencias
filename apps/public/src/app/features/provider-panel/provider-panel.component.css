@@ -125,9 +125,14 @@
   right: 0.75rem;
   height: 3px;
   background: #80b3ff;
-  transform: scaleX(1);
+  transform: scaleX(0);
   transform-origin: center;
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.portal-nav-btn:hover::after,
+.portal-nav-btn.active-route::after {
+  transform: scaleX(1);
 }
 
 .portal-nav-btn:hover {
@@ -670,5 +675,70 @@
 
   .brand-title {
     font-size: 0.82rem;
+  }
+}
+
+/* ==========================================================================
+   Botón Flotante Volver Atrás (Réplica de la web principal)
+   ========================================================================== */
+.desktop-floating-btn {
+  position: fixed;
+  top: 125px;
+  z-index: 800;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #000000;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
+  transition:
+    background-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.15s ease,
+    opacity 0.2s ease,
+    visibility 0.2s ease;
+  user-select: none;
+  padding: 0;
+  text-decoration: none;
+}
+
+.desktop-floating-back-btn {
+  left: 1.85rem;
+}
+
+.desktop-floating-btn:hover {
+  background: #f2f2f2;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+
+.desktop-floating-btn:active {
+  transform: scale(0.96);
+}
+
+.floating-btn-icon {
+  font-size: 22px;
+  width: 22px;
+  height: 22px;
+  color: #000000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 899px) {
+  .desktop-floating-btn {
+    top: auto;
+    bottom: 1.25rem;
+    z-index: 900;
+  }
+
+  .desktop-floating-back-btn {
+    left: 1.25rem;
+    right: auto;
   }
 }

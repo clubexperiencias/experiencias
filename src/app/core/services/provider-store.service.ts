@@ -192,7 +192,11 @@ export const SEED_PROVIDERS: ProviderUser[] = [
     email: 'patriciofacundodiaztillar@gmail.com',
     name: 'Patricio Facundo Diaz Tillar',
     agency: 'Catamarca Kayak & Aventura Náutica',
+    slug: 'catamarca-kayak',
+    bio: 'Pioneros en turismo náutico y expediciones en kayak en los diques andinos de Catamarca. Instructores certificados, flota propia y experiencias seguras en aguas mansas con degustaciones de productos regionales al atardecer.',
     phone: '+54 383 455 8812',
+    website: 'https://experiencias.club/experiencias/kayak',
+    socialMedia: 'instagram.com/catamarca.kayak',
     cuitDni: '20-30456123-4',
     cbuAlias: '3840200500000056402423',
     bankName: 'Uala Bank S.A.U',
@@ -200,6 +204,7 @@ export const SEED_PROVIDERS: ProviderUser[] = [
     status: 'aprobado',
     role: 'prestador',
     avatar: '/assets/aistudio/patricio.jpg',
+    coverImage: '/assets/images/kayak-club-de-experiencias.jpg',
     joinedAt: '2024-03-15T10:00:00Z',
   },
   {
@@ -207,7 +212,11 @@ export const SEED_PROVIDERS: ProviderUser[] = [
     email: 'vegvarel@gmail.com',
     name: 'vegvarel',
     agency: 'Catamarca Expediciones & Trekking',
+    slug: 'catamarca-expediciones',
+    bio: 'Especialistas en travesías 4x4 y alta montaña en la Puna catamarqueña. Rutas al Campo de Piedra Pómez, Volcán Galán y Seismiles con logística integral y guías de montaña habilitados.',
     phone: '+54 383 488 9900',
+    website: 'https://experiencias.club',
+    socialMedia: 'instagram.com/catamarcaexpediciones',
     cuitDni: '20-33221144-5',
     cbuAlias: 'VEGVAREL.EXPERIENCIAS',
     bankName: 'Banco Nación',
@@ -215,6 +224,7 @@ export const SEED_PROVIDERS: ProviderUser[] = [
     status: 'aprobado',
     role: 'prestador',
     avatar: '/assets/aistudio/patricio.jpg',
+    coverImage: '/assets/images/catamarca_pomez.jpg',
     joinedAt: '2024-05-10T11:00:00Z',
   },
   {
@@ -222,7 +232,11 @@ export const SEED_PROVIDERS: ProviderUser[] = [
     email: 'gonzagramaglia@gmail.com',
     name: 'Gonzalo Gramaglia',
     agency: 'Catamarca Experiencias & Expediciones',
+    slug: 'gonzagramaglia',
+    bio: 'Expediciones y experiencias exclusivas por las quebradas y cordillera catamarqueña para socios del club.',
     phone: '+54 9 11 5566 7788',
+    website: 'https://experiencias.club',
+    socialMedia: 'instagram.com/experiencias.club',
     cuitDni: '20-33445566-7',
     cbuAlias: 'EXPERIENCIAS.CLUB.MP',
     bankName: 'Banco Nación / Mercado Pago',
@@ -230,6 +244,7 @@ export const SEED_PROVIDERS: ProviderUser[] = [
     status: 'aprobado',
     role: 'prestador',
     avatar: '/assets/images/gonza.jpg',
+    coverImage: '/assets/images/laguna_blanca.jpg',
     joinedAt: '2024-01-01T00:00:00Z',
   },
 ];
@@ -256,7 +271,7 @@ const SEED_EXPERIENCES: ProviderExperience[] = [
     status: 'publicada',
     publicUrl: 'https://experiencias.club/experiencias/kayak',
     providerId: 'prov-patricio',
-    providerName: 'Patricio Facundo · Catamarca Kayak & Aventura Náutica',
+    providerName: 'Catamarca Kayak & Aventura Náutica',
     coverImage: '/assets/images/kayak-club-de-experiencias.jpg',
     albumPhotos: KAYAK_ALBUM_PHOTOS,
     createdAt: hoursAgo(24 * 30),
@@ -536,7 +551,7 @@ export class ProviderStoreService {
       const email = data.user.email.trim().toLowerCase();
 
       const { data: access, error } = await (this.supabase.from('provider_access') as any)
-        .select('email, name, agency, active, status, cbu_alias, cuit_dni, bank_name, account_holder, phone')
+        .select('email, name, agency, active, status, cbu_alias, cuit_dni, bank_name, account_holder, phone, website, social_media, slug, bio, avatar_url, cover_url')
         .eq('email', email)
         .maybeSingle();
 
@@ -569,14 +584,29 @@ export class ProviderStoreService {
         email,
         name: access.account_holder || access.name || userMeta['full_name'] || userMeta['name'] || existing?.name || email,
         agency: access.agency || existing?.agency || 'Prestador EXPERIENCIAS.CLUB',
+        slug:
+          access.slug ||
+          existing?.slug ||
+          (access.agency
+            ? access.agency
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/(^-|-$)+/g, '')
+            : `prov-${email.split('@')[0]}`),
+        bio: access.bio || existing?.bio || '',
         phone: access.phone || existing?.phone || '',
+        website: access.website || existing?.website || '',
+        socialMedia: access.social_media || existing?.socialMedia || '',
         cuitDni: access.cuit_dni || existing?.cuitDni || '',
         cbuAlias: access.cbu_alias || existing?.cbuAlias || '',
         bankName: access.bank_name || existing?.bankName || '',
         verified: true,
         status: 'aprobado',
         role: 'prestador',
-        avatar: googleAvatar || existing?.avatar || '/assets/aistudio/patricio.jpg',
+        avatar: access.avatar_url || googleAvatar || existing?.avatar || '/assets/aistudio/patricio.jpg',
+        coverImage: access.cover_url || existing?.coverImage || '/assets/images/kayak-club-de-experiencias.jpg',
         joinedAt: existing?.joinedAt ?? new Date().toISOString(),
       };
 
@@ -815,7 +845,13 @@ export class ProviderStoreService {
           payload['account_holder'] = updates.name.trim();
         }
         if (updates.agency !== undefined) payload['agency'] = updates.agency.trim();
+        if (updates.slug !== undefined) payload['slug'] = updates.slug.trim().toLowerCase();
+        if (updates.bio !== undefined) payload['bio'] = updates.bio.trim();
+        if (updates.avatar !== undefined) payload['avatar_url'] = updates.avatar.trim();
+        if (updates.coverImage !== undefined) payload['cover_url'] = updates.coverImage.trim();
         if (updates.phone !== undefined) payload['phone'] = updates.phone.trim();
+        if (updates.website !== undefined) payload['website'] = updates.website.trim();
+        if (updates.socialMedia !== undefined) payload['social_media'] = updates.socialMedia.trim();
         if (updates.cuitDni !== undefined) payload['cuit_dni'] = updates.cuitDni.trim();
         if (updates.cbuAlias !== undefined) payload['cbu_alias'] = updates.cbuAlias.trim();
         if (updates.bankName !== undefined) payload['bank_name'] = updates.bankName.trim();
@@ -828,6 +864,23 @@ export class ProviderStoreService {
           console.warn('[ProviderStore] Error actualizando provider_access:', error);
           return { success: false, message: 'No se pudieron guardar los cambios en la base de datos.' };
         }
+
+        const expUpdate: Record<string, any> = {};
+        if (updates.agency !== undefined && updates.agency.trim()) {
+          expUpdate['provider_name'] = updates.agency.trim();
+        }
+        if (updates.slug !== undefined && updates.slug.trim()) {
+          expUpdate['provider_slug'] = updates.slug.trim().toLowerCase();
+        }
+        if (Object.keys(expUpdate).length > 0) {
+          try {
+            await (this.supabase.from('experiencias') as any)
+              .update(expUpdate)
+              .eq('provider_email', email);
+          } catch {
+            // non-fatal
+          }
+        }
       } catch (err: any) {
         console.warn('[ProviderStore] Error de conexión actualizando perfil:', err);
         return { success: false, message: 'Error de conexión con el servidor.' };
@@ -838,6 +891,20 @@ export class ProviderStoreService {
     this._providers.update((list) => list.map((p) => (p.id === current.id ? updated : p)));
     this.saveSession(updated);
     this.saveProviders();
+
+    if (updates.agency !== undefined && updates.agency.trim()) {
+      const newAgency = updates.agency.trim();
+      this._experiences.update((list) =>
+        list.map((e) =>
+          e.providerId === current.id ||
+          (e.providerEmail || '').toLowerCase() === email
+            ? { ...e, providerName: newAgency }
+            : e,
+        ),
+      );
+      this.saveExperiences();
+    }
+
     return { success: true };
   }
 
@@ -850,6 +917,62 @@ export class ProviderStoreService {
 
   getProviderByEmail(email: string): ProviderUser | undefined {
     return this._providers().find((p) => p.email.toLowerCase() === email.trim().toLowerCase());
+  }
+
+  async getPublicProvider(slugOrId: string): Promise<ProviderUser | null> {
+    const clean = (slugOrId || '').trim().toLowerCase();
+    if (!clean) return null;
+
+    const found = this._providers().find(
+      (p) =>
+        (p.slug || '').toLowerCase() === clean ||
+        p.id.toLowerCase() === clean ||
+        p.email.toLowerCase() === clean ||
+        (p.agency || '')
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/(^-|-$)+/g, '') === clean,
+    );
+    if (found) return found;
+
+    if (isSupabaseConfigured()) {
+      try {
+        const { data, error } = await (this.supabase.from('provider_access') as any)
+          .select('email, name, agency, active, status, cbu_alias, cuit_dni, bank_name, account_holder, phone, website, social_media, slug, bio, avatar_url, cover_url')
+          .or(`slug.eq.${clean},email.eq.${clean}`)
+          .maybeSingle();
+
+        if (data && data.active === true) {
+          const provider: ProviderUser = {
+            id: `prov-${data.email.replace(/[^a-z0-9]+/g, '-')}`,
+            email: data.email,
+            name: data.name || data.account_holder || data.email,
+            agency: data.agency || 'Prestador Catamarca',
+            slug: data.slug || clean,
+            bio: data.bio || '',
+            phone: data.phone || '',
+            website: data.website || '',
+            socialMedia: data.social_media || '',
+            cuitDni: data.cuit_dni || '',
+            cbuAlias: data.cbu_alias || '',
+            bankName: data.bank_name || '',
+            verified: true,
+            status: data.status || 'aprobado',
+            role: 'prestador',
+            avatar: data.avatar_url || '/assets/aistudio/patricio.jpg',
+            coverImage: data.cover_url || '/assets/images/kayak-club-de-experiencias.jpg',
+            joinedAt: new Date().toISOString(),
+          };
+          return provider;
+        }
+      } catch (err) {
+        console.warn('[ProviderStore] Error consultando perfil público:', err);
+      }
+    }
+
+    return null;
   }
 
   getExperienceById(id: string): ProviderExperience | undefined {

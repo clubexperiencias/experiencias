@@ -117,7 +117,9 @@ INSERT INTO public.experiencias (
   altitude_meters,
   highlights,
   included,
-  not_included
+  not_included,
+  provider_name,
+  provider_email
 )
 VALUES
   (
@@ -152,7 +154,9 @@ VALUES
     850,
     '["Kayaks dobles y simples estancos de travesía", "Brindis con vinos de altura y embutidos locales", "Instrucción técnica previa de remada y seguridad"]'::jsonb,
     '["Kayaks y remos profesionales", "Chalecos salvavidas reglamentarios certificados", "Seguro de accidentes personales", "Guía profesional náutico", "Picada y brindis andino"]'::jsonb,
-    '["Traslados al Club Náutico", "Ropa de recambio"]'::jsonb
+    '["Traslados al Club Náutico", "Ropa de recambio"]'::jsonb,
+    'Catamarca Kayak & Aventura Náutica',
+    'patriciofacundodiaztillar@gmail.com'
   ),
   (
     'exp-pomez',
@@ -183,7 +187,9 @@ VALUES
     3150,
     '["Laberintos blancos esculpidos por ceniza volcánica", "Cruce guiado de médanos de altura", "Box lunch andino con cordero y quínoa"]'::jsonb,
     '["Vehículo 4x4 con chofer-guía especializado", "Oxígeno a bordo y botiquín de altura", "Almuerzo de campo y bebidas", "Permisos de ingreso al Área Natural Protegida"]'::jsonb,
-    '["Alojamiento en El Peñón", "Propinas"]'::jsonb
+    '["Alojamiento en El Peñón", "Propinas"]'::jsonb,
+    'Catamarca Expediciones & Trekking',
+    'vegvarel@gmail.com'
   ),
   (
     'exp-seismiles',
@@ -213,7 +219,9 @@ VALUES
     4200,
     '["Lagunas altiplánicas con flamencos", "Vistas panorámicas a volcanes de más de 6.000 msnm", "Visita a refugios históricos de arrieros"]'::jsonb,
     '["Transporte 4x4 climatizado", "Guía de alta montaña registrado", "Seguro y botiquín de oximetría", "Almuerzo térmico cordillerano"]'::jsonb,
-    '["Indumentaria técnica de abrigo"]'::jsonb
+    '["Indumentaria técnica de abrigo"]'::jsonb,
+    'Catamarca Experiencias & Expediciones',
+    'gonzagramaglia@gmail.com'
   )
 ON CONFLICT (id) DO UPDATE
 SET slug = EXCLUDED.slug,
@@ -224,6 +232,8 @@ SET slug = EXCLUDED.slug,
     dates = EXCLUDED.dates,
     status = EXCLUDED.status,
     album_photos = EXCLUDED.album_photos,
+    provider_name = EXCLUDED.provider_name,
+    provider_email = EXCLUDED.provider_email,
     updated_at = now();
 
 -- ------------------------------------------------------------------------------

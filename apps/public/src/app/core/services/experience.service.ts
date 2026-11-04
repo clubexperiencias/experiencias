@@ -107,6 +107,9 @@ export const KAYAK_DEFAULT_EXPERIENCE: Experience = {
   isExclusiveClub: true,
   isLocked: false,
   detailRoute: '/experiencias/kayak',
+  providerEmail: 'patriciofacundodiaztillar@gmail.com',
+  providerName: 'Catamarca Kayak & Aventura Náutica',
+  providerSlug: 'catamarca-kayak',
 };
 
 export const POMEZ_ALBUM_PHOTOS: ExperienceAlbumPhoto[] = [
@@ -283,6 +286,22 @@ export class ExperienceService {
 
   getPublishedExperienceById(id: string): Experience | undefined {
     return this.publishedExperiences().find((e: Experience) => e.id === id || e.slug === id);
+  }
+
+  getExperiencesByProvider(providerSlugOrEmail: string): Experience[] {
+    const clean = (providerSlugOrEmail || '').trim().toLowerCase();
+    if (!clean) return [];
+    return this.publishedExperiences().filter(
+      (e) =>
+        (e.providerSlug || '').toLowerCase() === clean ||
+        (e.providerEmail || '').toLowerCase() === clean ||
+        (e.providerName || '')
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/(^-|-$)+/g, '') === clean,
+    );
   }
   readonly hasRemoteExperiences = this._hasRemoteExperiences.asReadonly();
   readonly remoteLoadPromise: Promise<boolean> = isSupabaseConfigured()
@@ -688,7 +707,7 @@ export class ExperienceService {
         'duration_label, price_ars, price_usd, capacity_per_date, cover_image, ' +
         'video_url, video_poster, altitude_meters, dates, highlights, included, ' +
         'not_included, status, public_url, album_photos, provider_name, provider_phone, ' +
-        'provider_email, date_slots, created_at';
+        'provider_email, provider_slug, date_slots, created_at';
 
       const { data, error } = await this.supabase
         .from('experiencias')
@@ -770,7 +789,12 @@ export class ExperienceService {
                 : [],
             dateSlots: Array.isArray(exp.date_slots) ? exp.date_slots : undefined,
             providerEmail: exp.provider_email || undefined,
-            providerName: exp.provider_name || undefined,
+            providerSlug:
+              exp.provider_slug ||
+              (exp.slug === 'kayak' ? 'catamarca-kayak' : undefined),
+            providerName:
+              exp.provider_name ||
+              (exp.slug === 'kayak' ? 'Catamarca Kayak & Aventura Náutica' : undefined),
             providerPhone: exp.provider_phone || undefined,
             providerCbuAlias: banking?.cbu_alias || undefined,
             providerCuitDni: banking?.cuit_dni || undefined,
