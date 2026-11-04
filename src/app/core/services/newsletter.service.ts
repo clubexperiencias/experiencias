@@ -546,54 +546,24 @@ export class NewsletterService {
             message: `¡Bienvenido al Club! Sos el Socio Emergente #${entry.position}.`,
           };
         } else {
-          // Si ya hay sesión activa en Supabase Auth con este mismo correo, vincular automáticamente
-          let activeAuthId: string | null = null;
-          try {
-            const { data: sessData } = await this.supabase.auth.getSession();
-            if (sessData?.session?.user?.email?.toLowerCase() === cleanEmail) {
-              activeAuthId = sessData.session.user.id;
-            }
-          } catch {
-            // Sin sesión activa
-          }
+          // Fallback de registro seguro a través de RPC atómica SECURITY DEFINER
+          const { data: atomicRes, error: atomicErr } = await this.supabase.rpc(
+            'register_socio_atomic',
+            {
+              p_email: cleanEmail,
+              p_full_name: cleanName,
+              p_dni: cleanDni,
+              p_phone: cleanPhone,
+              p_experiences_wishlist: dto.experiencesWishlist || [],
+              p_experiences_other: dto.experiencesOther || null,
+            },
+          );
 
-          // Insertar nuevo socio con número secuencial automático (desde 100)
-          let { data: inserted, error: insErr } = await this.supabase
-            .from('socios')
-            .insert({
-              email: cleanEmail,
-              full_name: cleanName,
-              dni: cleanDni,
-              phone: cleanPhone,
-              experiences_wishlist: dto.experiencesWishlist || [],
-              experiences_other: dto.experiencesOther || null,
-              membership_tier: 'emergente',
-              ...(activeAuthId ? { auth_user_id: activeAuthId, google_linked: true } : {}),
-            })
-            .select()
-            .single();
-
-          if (insErr && activeAuthId) {
-            // Fallback por si la columna google_linked aún no se ejecutó en Supabase SQL
-            const retry = await this.supabase
-              .from('socios')
-              .insert({
-                email: cleanEmail,
-                full_name: cleanName,
-                dni: cleanDni,
-                phone: cleanPhone,
-                experiences_wishlist: dto.experiencesWishlist || [],
-                experiences_other: dto.experiencesOther || null,
-                membership_tier: 'emergente',
-                auth_user_id: activeAuthId,
-              })
-              .select()
-              .single();
-            inserted = retry.data;
-            insErr = retry.error;
-          }
-
-          if (insErr && insErr.message?.toLowerCase().includes('idx_socios_dni_unique')) {
+          const atomicPayload = atomicRes as any;
+          if (
+            atomicPayload?.status === 'already_registered_dni' ||
+            atomicErr?.message?.toLowerCase().includes('idx_socios_dni_unique')
+          ) {
             this._isLoading.set(false);
             return {
               success: false,
@@ -601,50 +571,70 @@ export class NewsletterService {
             };
           }
 
-          if (!insErr && inserted) {
-            const entry = mapDbRowToEntry(inserted);
-            const updatedEntries = [entry, ...this._entries()];
-            this._entries.set(updatedEntries);
-            this._currentMember.set(entry);
-            this.persistEntries(updatedEntries);
-            this.persistCurrentMember(entry);
-
-            // Marcar en waitlist como convertido (y google_linked si corresponde)
-            const isGoogleLinked = Boolean(entry.googleLinked || entry.authUserId);
-            const { error: wlErr } = await this.supabase.from('waitlist').upsert(
-              {
-                email: cleanEmail,
-                converted: true,
-                ...(isGoogleLinked ? { google_linked: true } : {}),
-              },
-              { onConflict: 'email' },
-            );
-
-            if (wlErr) {
-              await this.supabase
-                .from('waitlist')
-                .update({ converted: true })
-                .eq('email', cleanEmail);
-            }
-
+          if (
+            atomicErr ||
+            atomicPayload?.status !== 'created' ||
+            !atomicPayload?.socio
+          ) {
             this._isLoading.set(false);
-            this.setLoginSuccessFlag();
-            this.notificationService
-              .notifyWelcomeMember({
-                fullName: entry.fullName || cleanName,
-                email: entry.email,
-                position: entry.position,
-              })
-              .catch((err) => console.warn('[NewsletterService] Error enviando bienvenida:', err));
             return {
-              success: true,
-              socio: entry,
-              message: `¡Bienvenido al Club! Sos el Socio Emergente #${entry.position}.`,
+              success: false,
+              message:
+                atomicPayload?.message ||
+                (atomicPayload?.status === 'already_registered' ||
+                atomicPayload?.status === 'already_registered_email'
+                  ? 'Ya existe un socio registrado con este correo electrónico. Iniciá sesión para acceder a tu cuenta.'
+                  : 'No se pudo completar el registro del socio.'),
             };
           }
+
+          const entry = mapDbRowToEntry(atomicPayload.socio);
+          const updatedEntries = [entry, ...this._entries().filter((e) => e.email !== cleanEmail)];
+          this._entries.set(updatedEntries);
+          this._currentMember.set(entry);
+          this.persistEntries(updatedEntries);
+          this.persistCurrentMember(entry);
+
+          // Marcar en waitlist como convertido (y google_linked si corresponde)
+          const isGoogleLinked = Boolean(entry.googleLinked || entry.authUserId);
+          const { error: wlErr } = await this.supabase.from('waitlist').upsert(
+            {
+              email: cleanEmail,
+              converted: true,
+              ...(isGoogleLinked ? { google_linked: true } : {}),
+            },
+            { onConflict: 'email' },
+          );
+
+          if (wlErr) {
+            await this.supabase
+              .from('waitlist')
+              .update({ converted: true })
+              .eq('email', cleanEmail);
+          }
+
+          this._isLoading.set(false);
+          this.setLoginSuccessFlag();
+          this.notificationService
+            .notifyWelcomeMember({
+              fullName: entry.fullName || cleanName,
+              email: entry.email,
+              position: entry.position,
+            })
+            .catch((err) => console.warn('[NewsletterService] Error enviando bienvenida:', err));
+          return {
+            success: true,
+            socio: entry,
+            message: `¡Bienvenido al Club! Sos el Socio Emergente #${entry.position}.`,
+          };
         }
       } catch (err) {
         console.warn('[Supabase] Error registrando socio en remoto:', err);
+        this._isLoading.set(false);
+        return {
+          success: false,
+          message: 'Error de conexión al registrar el socio. Por favor reintentá.',
+        };
       }
     }
 

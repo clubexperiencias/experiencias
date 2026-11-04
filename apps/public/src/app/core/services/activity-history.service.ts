@@ -60,11 +60,15 @@ export class ActivityHistoryService {
     this._activities.set(
       (payments ?? []).map((payment) => {
         const experience = experienceById.get(payment.experience_id);
-        const dateLabel = new Intl.DateTimeFormat('es-AR', {
-          day: 'numeric',
-          month: 'long',
-          year: 'numeric',
-        }).format(new Date(`${payment.date}T12:00:00`));
+        const rawDate = payment.selected_date || payment.date;
+        const parsedDate = rawDate ? new Date(`${rawDate}T12:00:00`) : new Date();
+        const dateLabel = isNaN(parsedDate.getTime())
+          ? (rawDate || '')
+          : new Intl.DateTimeFormat('es-AR', {
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+            }).format(parsedDate);
 
         return {
           id: `act_${payment.id}`,

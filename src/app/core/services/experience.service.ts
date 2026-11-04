@@ -385,6 +385,7 @@ export class ExperienceService {
         }
 
         const targetProviderEmail = (
+          updated.providerEmail ||
           merged.providerEmail ||
           (data[0] as any)?.provider_email ||
           ''
@@ -394,19 +395,19 @@ export class ExperienceService {
 
         if (
           targetProviderEmail &&
-          (merged.providerCbuAlias !== undefined ||
-            merged.providerCuitDni !== undefined ||
-            merged.providerBankName !== undefined)
+          (updated.providerCbuAlias !== undefined ||
+            updated.providerCuitDni !== undefined ||
+            updated.providerBankName !== undefined)
         ) {
           const providerBankingUpdate: Record<string, any> = {};
-          if (merged.providerCbuAlias !== undefined) {
-            providerBankingUpdate['cbu_alias'] = merged.providerCbuAlias;
+          if (updated.providerCbuAlias !== undefined) {
+            providerBankingUpdate['cbu_alias'] = updated.providerCbuAlias;
           }
-          if (merged.providerCuitDni !== undefined) {
-            providerBankingUpdate['cuit_dni'] = merged.providerCuitDni;
+          if (updated.providerCuitDni !== undefined) {
+            providerBankingUpdate['cuit_dni'] = updated.providerCuitDni;
           }
-          if (merged.providerBankName !== undefined) {
-            providerBankingUpdate['bank_name'] = merged.providerBankName;
+          if (updated.providerBankName !== undefined) {
+            providerBankingUpdate['bank_name'] = updated.providerBankName;
           }
 
           if (Object.keys(providerBankingUpdate).length > 0) {

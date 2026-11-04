@@ -698,6 +698,11 @@ export class AdminLoginComponent implements OnInit {
   async ngOnInit(): Promise<void> {
     if (isSupabaseConfigured()) {
       try {
+        const isRestored = await this.store.restoreSupabaseSession();
+        if (isRestored && this.store.isAuthenticated()) {
+          return;
+        }
+
         const { data } = await this.supabase.auth.getUser();
         const email = data.user?.email;
         if (email && !this.store.isAuthenticated()) {

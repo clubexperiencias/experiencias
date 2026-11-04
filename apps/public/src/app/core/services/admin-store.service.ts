@@ -615,7 +615,7 @@ export class AdminStoreService {
         const { data: tableData, error: tableErr } = await this.supabase
           .from('pagos_transferencias' as any)
           .select('*')
-          .order('submitted_at', { ascending: false });
+          .order('created_at', { ascending: false });
 
         if (!tableErr && Array.isArray(tableData)) {
           const mapped: TransferSubmission[] = tableData.map((p: any) => ({
@@ -623,7 +623,7 @@ export class AdminStoreService {
             reference: p.reference,
             experienceId: p.experience_id,
             experienceTitle: p.experience_title,
-            date: p.date,
+            date: p.selected_date || p.date,
             participants: p.participants,
             amountArs: p.amount_ars,
             discountCode: p.discount_code,
@@ -637,12 +637,12 @@ export class AdminStoreService {
               mimeType: p.receipt_mime_type || 'image/jpeg',
               sizeBytes: p.receipt_size_bytes || 1,
               url: p.receipt_url,
-              storageKey: p.receipt_storage_key || p.receipt_url,
+              storageKey: p.receipt_storage_path || p.receipt_storage_key || p.receipt_url,
               provider: p.receipt_storage_provider,
             },
             status: p.status,
             rejectionReason: p.rejection_reason,
-            submittedAt: p.submitted_at,
+            submittedAt: p.created_at || p.submitted_at || new Date().toISOString(),
             reviewedAt: p.reviewed_at,
           }));
 

@@ -127,7 +127,23 @@ const DEFAULT_REQ_FORM = {
                 </button>
               </div>
             } @else {
-              <form #proposalForm="ngForm" class="exp-modal-form" (ngSubmit)="submitRequestForm(proposalForm)">
+              @if (hasDraft()) {
+                <div class="draft-notice-banner" role="status">
+                  <div class="draft-notice-info">
+                    <mat-icon class="draft-notice-icon">save</mat-icon>
+                    <span>Borrador guardado en este navegador. Se conservará hasta que envíes la propuesta.</span>
+                  </div>
+                  <button
+                    type="button"
+                    class="draft-notice-discard-btn"
+                    (click)="discardDraft()"
+                    title="Borrar borrador y reiniciar formulario"
+                  >
+                    Descartar borrador
+                  </button>
+                </div>
+              }
+              <form #proposalForm="ngForm" class="exp-modal-form" (ngSubmit)="submitRequestForm(proposalForm)" (input)="saveDraft()" (change)="saveDraft()">
                 <!-- 1. Cabecera y Resumen de la Experiencia -->
                 <div class="form-section">
                   <div class="form-section-header">
@@ -595,6 +611,45 @@ const DEFAULT_REQ_FORM = {
         backdrop-filter: blur(20px);
         -webkit-backdrop-filter: blur(20px);
         overflow: hidden;
+      }
+      .draft-notice-banner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 0.65rem 0.95rem;
+        margin-bottom: 1.25rem;
+        background: rgba(37, 99, 235, 0.12);
+        border: 1px solid rgba(96, 165, 250, 0.35);
+        border-radius: 4px;
+        font-size: 0.8125rem;
+        color: #93c5fd;
+      }
+      .draft-notice-info {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .draft-notice-icon {
+        font-size: 1.1rem;
+        width: 1.1rem;
+        height: 1.1rem;
+        color: #60a5fa;
+      }
+      .draft-notice-discard-btn {
+        background: transparent;
+        border: none;
+        color: #f87171;
+        font-size: 0.75rem;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: underline;
+        padding: 0.2rem 0.4rem;
+        white-space: nowrap;
+        transition: color 0.15s ease;
+      }
+      .draft-notice-discard-btn:hover {
+        color: #ef4444;
       }
       .exp-request-header {
         position: relative;
@@ -1141,12 +1196,17 @@ export class ProviderExperienceProposalModalComponent {
   @ViewChild('modalDialog') modalDialog?: ElementRef<HTMLElement>;
   private previousActiveElement: HTMLElement | null = null;
 
+  static readonly DRAFT_STORAGE_KEY = 'experiencias_provider_proposal_draft';
+  readonly hasDraft = signal<boolean>(false);
+
   constructor() {
+    this.loadDraft();
     effect(() => {
       if (this.isOpen()) {
         if (typeof document !== 'undefined') {
           this.previousActiveElement = document.activeElement as HTMLElement | null;
         }
+        this.loadDraft();
         setTimeout(() => {
           this.focusInitialElement();
         }, 0);
@@ -1278,6 +1338,7 @@ export class ProviderExperienceProposalModalComponent {
         if (this.coverImageFile() === file && typeof reader.result === 'string') {
           this.coverImageDataUrl.set(reader.result);
           this.finalSuccessCoverUrl.set(reader.result);
+          this.saveDraft();
         }
       };
       reader.readAsDataURL(file);
@@ -1293,6 +1354,7 @@ export class ProviderExperienceProposalModalComponent {
     this.coverImageDataUrl.set(null);
     this.finalSuccessCoverUrl.set(null);
     this.coverImageError.set(null);
+    this.saveDraft();
   }
 
   onCoverVideoSelected(event: Event): void {
@@ -1343,6 +1405,110 @@ export class ProviderExperienceProposalModalComponent {
     }
   }
 
+  loadDraft(): void {
+    if (typeof localStorage === 'undefined') return;
+    try {
+      const raw = localStorage.getItem(ProviderExperienceProposalModalComponent.DRAFT_STORAGE_KEY);
+      if (!raw) {
+        this.hasDraft.set(false);
+        return;
+      }
+      const data = JSON.parse(raw);
+      if (!data || typeof data !== 'object') {
+        this.hasDraft.set(false);
+        return;
+      }
+      if (data.reqForm && typeof data.reqForm === 'object') {
+        this.reqForm = {
+          ...DEFAULT_REQ_FORM,
+          ...data.reqForm,
+        };
+      }
+      if (data.coverImageDataUrl && typeof data.coverImageDataUrl === 'string') {
+        this.coverImageDataUrl.set(data.coverImageDataUrl);
+        this.coverImagePreview.set(data.coverImageDataUrl);
+        this.finalSuccessCoverUrl.set(data.coverImageDataUrl);
+      }
+      this.hasDraft.set(true);
+    } catch (err) {
+      console.warn('[ProposalModal] Error al cargar borrador:', err);
+      this.hasDraft.set(false);
+    }
+  }
+
+  saveDraft(): void {
+    if (typeof localStorage === 'undefined') return;
+    try {
+      const hasMeaningfulContent = Boolean(
+        this.reqForm.title?.trim() ||
+        this.reqForm.subheading?.trim() ||
+        this.reqForm.region?.trim() ||
+        this.reqForm.altitude?.trim() ||
+        this.reqForm.itinerary?.trim() ||
+        this.reqForm.meetingPoint?.trim() ||
+        this.reqForm.promosAndPricing?.trim() ||
+        this.reqForm.includedServices?.trim() ||
+        this.reqForm.participantRequirements?.trim() ||
+        this.reqForm.notes?.trim() ||
+        this.coverImageDataUrl()
+      );
+
+      if (!hasMeaningfulContent) {
+        return;
+      }
+
+      const payload: {
+        reqForm: typeof DEFAULT_REQ_FORM;
+        coverImageDataUrl?: string | null;
+        updatedAt: number;
+      } = {
+        reqForm: this.reqForm,
+        coverImageDataUrl: this.coverImageDataUrl(),
+        updatedAt: Date.now(),
+      };
+
+      try {
+        localStorage.setItem(
+          ProviderExperienceProposalModalComponent.DRAFT_STORAGE_KEY,
+          JSON.stringify(payload),
+        );
+        this.hasDraft.set(true);
+      } catch {
+        // If saving the base64 image exceeds localStorage quota, save only the form text
+        payload.coverImageDataUrl = null;
+        try {
+          localStorage.setItem(
+            ProviderExperienceProposalModalComponent.DRAFT_STORAGE_KEY,
+            JSON.stringify(payload),
+          );
+          this.hasDraft.set(true);
+        } catch (innerErr) {
+          console.warn('[ProposalModal] Error guardando borrador en localStorage:', innerErr);
+        }
+      }
+    } catch (err) {
+      console.warn('[ProposalModal] Error al preparar guardado de borrador:', err);
+    }
+  }
+
+  clearDraft(): void {
+    if (typeof localStorage !== 'undefined') {
+      try {
+        localStorage.removeItem(ProviderExperienceProposalModalComponent.DRAFT_STORAGE_KEY);
+      } catch {
+        // ignore
+      }
+    }
+    this.hasDraft.set(false);
+  }
+
+  discardDraft(): void {
+    this.clearDraft();
+    this.reqForm = { ...DEFAULT_REQ_FORM };
+    this.removeCoverImage();
+    this.removeCoverVideo();
+  }
+
   onClose(): void {
     if (this.previousActiveElement && typeof this.previousActiveElement.focus === 'function') {
       this.previousActiveElement.focus();
@@ -1351,11 +1517,15 @@ export class ProviderExperienceProposalModalComponent {
       clearTimeout(this.successTimer);
       this.successTimer = null;
     }
-    this.reqForm = { ...DEFAULT_REQ_FORM };
+    // Only reset in-memory form if the request was successfully sent.
+    // If user closed the modal without sending, the draft is kept in memory & localStorage.
+    if (this.requestSuccess()) {
+      this.reqForm = { ...DEFAULT_REQ_FORM };
+      this.removeCoverImage();
+      this.removeCoverVideo();
+    }
     this.requestSuccess.set(false);
     this.submittingRequest.set(false);
-    this.removeCoverImage();
-    this.removeCoverVideo();
     this.closeModal.emit();
   }
 
@@ -1444,6 +1614,8 @@ export class ProviderExperienceProposalModalComponent {
         coverVideoUrl,
         coverVideoName: videoFile?.name,
       });
+
+      this.clearDraft();
 
       this.successTimer = setTimeout(() => {
         this.submittingRequest.set(false);

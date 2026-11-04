@@ -170,9 +170,36 @@ CREATE TABLE IF NOT EXISTS public.provider_banking_history (
 );
 
 CREATE INDEX IF NOT EXISTS idx_provider_banking_history_email ON public.provider_banking_history(provider_email);
-ALTER TABLE public.provider_banking_history ADD COLUMN IF NOT EXISTS old_account_holder TEXT;
-ALTER TABLE public.provider_banking_history ADD COLUMN IF NOT EXISTS new_account_holder TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.provider_banking_history ADD COLUMN IF NOT EXISTS cbu_alias TEXT;
+ALTER TABLE public.provider_banking_history ADD COLUMN IF NOT EXISTS cuit_dni TEXT;
+ALTER TABLE public.provider_banking_history ADD COLUMN IF NOT EXISTS bank_name TEXT;
 ALTER TABLE public.provider_banking_history ADD COLUMN IF NOT EXISTS account_holder TEXT;
+ALTER TABLE public.provider_banking_history ADD COLUMN IF NOT EXISTS old_cbu_alias TEXT;
+ALTER TABLE public.provider_banking_history ADD COLUMN IF NOT EXISTS new_cbu_alias TEXT DEFAULT '';
+ALTER TABLE public.provider_banking_history ADD COLUMN IF NOT EXISTS old_name TEXT;
+ALTER TABLE public.provider_banking_history ADD COLUMN IF NOT EXISTS new_name TEXT DEFAULT '';
+ALTER TABLE public.provider_banking_history ADD COLUMN IF NOT EXISTS old_cuit_dni TEXT;
+ALTER TABLE public.provider_banking_history ADD COLUMN IF NOT EXISTS new_cuit_dni TEXT DEFAULT '';
+ALTER TABLE public.provider_banking_history ADD COLUMN IF NOT EXISTS old_bank_name TEXT;
+ALTER TABLE public.provider_banking_history ADD COLUMN IF NOT EXISTS new_bank_name TEXT DEFAULT '';
+ALTER TABLE public.provider_banking_history ADD COLUMN IF NOT EXISTS old_account_holder TEXT;
+ALTER TABLE public.provider_banking_history ADD COLUMN IF NOT EXISTS new_account_holder TEXT DEFAULT '';
+
+DO $$
+DECLARE
+  v_col RECORD;
+BEGIN
+  FOR v_col IN
+    SELECT column_name
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'provider_banking_history'
+      AND column_name LIKE 'new_%'
+      AND is_nullable = 'NO'
+  LOOP
+    EXECUTE format('ALTER TABLE public.provider_banking_history ALTER COLUMN %I DROP NOT NULL', v_col.column_name);
+  END LOOP;
+END $$;
 
 -- 2.8 experiencias (Catálogo Oficial de Rutas y Salidas)
 CREATE TABLE IF NOT EXISTS public.experiencias (
@@ -240,35 +267,97 @@ END $$;
 
 -- 2.9 pagos_transferencias (Registro de Comprobantes de Pago)
 CREATE TABLE IF NOT EXISTS public.pagos_transferencias (
-  id                   UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  reference            TEXT NOT NULL UNIQUE,
-  experience_id        TEXT NOT NULL REFERENCES public.experiencias(id) ON UPDATE CASCADE,
-  experience_title     TEXT NOT NULL,
-  full_name            TEXT NOT NULL,
-  email                TEXT NOT NULL,
-  phone                TEXT NOT NULL DEFAULT '',
-  dni                  TEXT NOT NULL DEFAULT '',
-  selected_date        TEXT NOT NULL,
-  participants         INTEGER NOT NULL DEFAULT 1 CHECK (participants >= 1),
-  amount_ars           INTEGER NOT NULL CHECK (amount_ars >= 0),
-  receipt_url          TEXT,
-  receipt_storage_path TEXT,
-  status               TEXT NOT NULL DEFAULT 'pendiente'
-                       CHECK (status IN ('pendiente', 'aprobado', 'rechazado')),
-  rejection_reason     TEXT,
-  reviewed_by          TEXT,
-  reviewed_at          TIMESTAMPTZ,
-  created_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at           TIMESTAMPTZ NOT NULL DEFAULT now()
+  id                       UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  reference                TEXT NOT NULL UNIQUE,
+  experience_id            TEXT NOT NULL REFERENCES public.experiencias(id) ON UPDATE CASCADE,
+  experience_title         TEXT NOT NULL,
+  provider_email           TEXT,
+  full_name                TEXT NOT NULL,
+  email                    TEXT NOT NULL,
+  phone                    TEXT NOT NULL DEFAULT '',
+  dni                      TEXT NOT NULL DEFAULT '',
+  selected_date            TEXT NOT NULL,
+  participants             INTEGER NOT NULL DEFAULT 1 CHECK (participants >= 1),
+  amount_ars               INTEGER NOT NULL CHECK (amount_ars >= 0),
+  discount_code            TEXT,
+  discount_ars             INTEGER NOT NULL DEFAULT 0,
+  socio_id                 UUID REFERENCES public.socios(id) ON DELETE SET NULL,
+  receipt_file_name        TEXT,
+  receipt_mime_type        TEXT,
+  receipt_size_bytes       INTEGER,
+  receipt_url              TEXT,
+  receipt_storage_path     TEXT,
+  receipt_storage_provider TEXT DEFAULT 'supabase',
+  status                   TEXT NOT NULL DEFAULT 'pendiente'
+                           CHECK (status IN ('pendiente', 'aprobado', 'rechazado')),
+  rejection_reason         TEXT,
+  reviewed_by              TEXT,
+  reviewed_at              TIMESTAMPTZ,
+  created_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE INDEX IF NOT EXISTS idx_pagos_reference ON public.pagos_transferencias(reference);
 CREATE INDEX IF NOT EXISTS idx_pagos_email     ON public.pagos_transferencias(email);
 CREATE INDEX IF NOT EXISTS idx_pagos_status    ON public.pagos_transferencias(status);
+ALTER TABLE public.pagos_transferencias ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT now();
+ALTER TABLE public.pagos_transferencias ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMPTZ DEFAULT now();
+ALTER TABLE public.pagos_transferencias ADD COLUMN IF NOT EXISTS selected_date TEXT;
+ALTER TABLE public.pagos_transferencias ADD COLUMN IF NOT EXISTS date TEXT;
 ALTER TABLE public.pagos_transferencias ADD COLUMN IF NOT EXISTS receipt_storage_path TEXT;
+ALTER TABLE public.pagos_transferencias ADD COLUMN IF NOT EXISTS receipt_storage_key TEXT;
+ALTER TABLE public.pagos_transferencias ADD COLUMN IF NOT EXISTS provider_email TEXT;
+ALTER TABLE public.pagos_transferencias ADD COLUMN IF NOT EXISTS discount_code TEXT;
+ALTER TABLE public.pagos_transferencias ADD COLUMN IF NOT EXISTS discount_ars INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE public.pagos_transferencias ADD COLUMN IF NOT EXISTS socio_id UUID;
+ALTER TABLE public.pagos_transferencias ADD COLUMN IF NOT EXISTS receipt_file_name TEXT;
+ALTER TABLE public.pagos_transferencias ADD COLUMN IF NOT EXISTS receipt_mime_type TEXT;
+ALTER TABLE public.pagos_transferencias ADD COLUMN IF NOT EXISTS receipt_size_bytes INTEGER;
+ALTER TABLE public.pagos_transferencias ADD COLUMN IF NOT EXISTS receipt_storage_provider TEXT DEFAULT 'supabase';
 ALTER TABLE public.pagos_transferencias ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
 ALTER TABLE public.pagos_transferencias ADD COLUMN IF NOT EXISTS reviewed_by TEXT;
 ALTER TABLE public.pagos_transferencias ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
+
+DO $$
+BEGIN
+  -- Backfill de created_at a partir de submitted_at si existen registros legacy con created_at nulo
+  UPDATE public.pagos_transferencias
+  SET created_at = COALESCE(submitted_at, now())
+  WHERE created_at IS NULL;
+
+  -- Sincronizar submitted_at si es nulo
+  UPDATE public.pagos_transferencias
+  SET submitted_at = created_at
+  WHERE submitted_at IS NULL;
+
+  -- Backfill de selected_date desde date solo cuando selected_date no existe o está vacío
+  UPDATE public.pagos_transferencias
+  SET selected_date = date
+  WHERE (selected_date IS NULL OR selected_date = '')
+    AND date IS NOT NULL AND date <> '';
+
+  -- Sincronizar date si está vacío a partir de selected_date
+  UPDATE public.pagos_transferencias
+  SET date = selected_date
+  WHERE (date IS NULL OR date = '')
+    AND selected_date IS NOT NULL AND selected_date <> '';
+
+  -- Backfill de receipt_storage_path desde receipt_storage_key solo cuando está vacío
+  UPDATE public.pagos_transferencias
+  SET receipt_storage_path = receipt_storage_key
+  WHERE (receipt_storage_path IS NULL OR receipt_storage_path = '')
+    AND receipt_storage_key IS NOT NULL AND receipt_storage_key <> '';
+
+  -- Sincronizar receipt_storage_key si está vacío
+  UPDATE public.pagos_transferencias
+  SET receipt_storage_key = receipt_storage_path
+  WHERE (receipt_storage_key IS NULL OR receipt_storage_key = '')
+    AND receipt_storage_path IS NOT NULL AND receipt_storage_path <> '';
+
+  -- Asegurar valor por defecto y restricción NOT NULL en created_at
+  ALTER TABLE public.pagos_transferencias ALTER COLUMN created_at SET DEFAULT now();
+  ALTER TABLE public.pagos_transferencias ALTER COLUMN created_at SET NOT NULL;
+END $$;
 
 -- ==============================================================================
 -- 3. VISTAS
@@ -377,6 +466,25 @@ BEGIN
   NEW.full_name = TRIM(COALESCE(NEW.full_name, ''));
   NEW.dni = regexp_replace(COALESCE(NEW.dni, ''), '\D', '', 'g');
   NEW.phone = TRIM(COALESCE(NEW.phone, ''));
+
+  IF NEW.selected_date IS NOT NULL AND (NEW.date IS NULL OR NEW.date = '') THEN
+    NEW.date = NEW.selected_date;
+  ELSIF (NEW.selected_date IS NULL OR NEW.selected_date = '') AND NEW.date IS NOT NULL THEN
+    NEW.selected_date = NEW.date;
+  END IF;
+
+  IF NEW.created_at IS NOT NULL AND NEW.submitted_at IS NULL THEN
+    NEW.submitted_at = NEW.created_at;
+  ELSIF NEW.created_at IS NULL AND NEW.submitted_at IS NOT NULL THEN
+    NEW.created_at = NEW.submitted_at;
+  END IF;
+
+  IF NEW.receipt_storage_path IS NOT NULL AND NEW.receipt_storage_key IS NULL THEN
+    NEW.receipt_storage_key = NEW.receipt_storage_path;
+  ELSIF NEW.receipt_storage_path IS NULL AND NEW.receipt_storage_key IS NOT NULL THEN
+    NEW.receipt_storage_path = NEW.receipt_storage_key;
+  END IF;
+
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -435,6 +543,56 @@ CREATE TRIGGER socios_before_insert_link_auth
   BEFORE INSERT ON public.socios
   FOR EACH ROW EXECUTE FUNCTION public.link_socio_to_existing_auth_user();
 
+-- 4.5.1 Restricción de modificación de columnas en socios para usuarios no-administradores
+CREATE OR REPLACE FUNCTION public.check_socio_update_permissions()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_jwt_role TEXT;
+  v_current_email TEXT;
+  v_is_admin BOOLEAN := false;
+BEGIN
+  -- Si es ejecución interna/sistema sin contexto JWT, permitir
+  IF auth.jwt() IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  v_jwt_role := COALESCE(auth.jwt() ->> 'role', '');
+
+  -- Eximir al rol privilegiado de backend (service_role)
+  IF v_jwt_role = 'service_role' THEN
+    RETURN NEW;
+  END IF;
+
+  v_current_email := LOWER(COALESCE(auth.jwt() ->> 'email', ''));
+
+  SELECT EXISTS (
+    SELECT 1 FROM public.admin_access
+    WHERE LOWER(email) = v_current_email AND active = true
+  ) INTO v_is_admin;
+
+  IF NOT v_is_admin THEN
+    IF NEW.position IS DISTINCT FROM OLD.position OR
+       NEW.membership_tier IS DISTINCT FROM OLD.membership_tier OR
+       NEW.email IS DISTINCT FROM OLD.email OR
+       NEW.created_at IS DISTINCT FROM OLD.created_at OR
+       NEW.registration_token IS DISTINCT FROM OLD.registration_token THEN
+      RAISE EXCEPTION 'Acceso denegado: solo administradores pueden modificar la categoría, posición o credenciales del socio.';
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_check_socio_update ON public.socios;
+CREATE TRIGGER trg_check_socio_update
+  BEFORE UPDATE ON public.socios
+  FOR EACH ROW
+  EXECUTE FUNCTION public.check_socio_update_permissions();
+
 -- 4.6 Control y auditoría de datos bancarios de prestadores
 CREATE OR REPLACE FUNCTION public.check_provider_access_update()
 RETURNS TRIGGER
@@ -442,9 +600,21 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
+  v_jwt_role TEXT;
   v_is_admin BOOLEAN := false;
   v_current_email TEXT;
 BEGIN
+  IF auth.jwt() IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  v_jwt_role := COALESCE(auth.jwt() ->> 'role', '');
+
+  -- Eximir al rol privilegiado de backend (service_role)
+  IF v_jwt_role = 'service_role' THEN
+    RETURN NEW;
+  END IF;
+
   v_current_email := LOWER(COALESCE(auth.jwt() ->> 'email', ''));
 
   SELECT EXISTS (
@@ -1055,7 +1225,7 @@ BEGIN
   SELECT COALESCE(SUM(participants), 0) INTO v_reserved
   FROM public.pagos_transferencias
   WHERE experience_id = p_experience_id
-    AND date = p_date
+    AND selected_date = p_date
     AND status <> 'rechazado';
 
   IF (v_reserved + p_participants) > v_capacity THEN
@@ -1072,7 +1242,7 @@ BEGIN
     experience_id,
     experience_title,
     provider_email,
-    date,
+    selected_date,
     participants,
     amount_ars,
     discount_code,
@@ -1086,7 +1256,7 @@ BEGIN
     receipt_mime_type,
     receipt_size_bytes,
     receipt_url,
-    receipt_storage_key,
+    receipt_storage_path,
     receipt_storage_provider,
     status
   )
@@ -1109,7 +1279,7 @@ BEGIN
     p_receipt_mime_type,
     p_receipt_size_bytes,
     p_receipt_url,
-    p_receipt_storage_key,
+    COALESCE(p_receipt_storage_key, p_receipt_url),
     p_receipt_storage_provider,
     'pendiente'
   )
@@ -1139,7 +1309,7 @@ BEGIN
   SELECT COALESCE(
     jsonb_agg(
       jsonb_build_object(
-        'date', sub.date,
+        'date', sub.selected_date,
         'reserved_seats', sub.reserved_seats
       )
     ),
@@ -1147,11 +1317,11 @@ BEGIN
   )
   INTO v_result
   FROM (
-    SELECT date, SUM(participants)::INTEGER AS reserved_seats
+    SELECT selected_date, SUM(participants)::INTEGER AS reserved_seats
     FROM public.pagos_transferencias
     WHERE experience_id = p_experience_id
       AND status <> 'rechazado'
-    GROUP BY date
+    GROUP BY selected_date
   ) sub;
 
   RETURN v_result;
@@ -1202,7 +1372,7 @@ BEGIN
     RETURN jsonb_build_object('status', 'unauthorized', 'submissions', '[]'::jsonb);
   END IF;
 
-  SELECT COALESCE(jsonb_agg(to_jsonb(t) ORDER BY t.submitted_at DESC), '[]'::jsonb)
+  SELECT COALESCE(jsonb_agg(to_jsonb(t) ORDER BY t.created_at DESC), '[]'::jsonb)
   INTO v_items
   FROM public.pagos_transferencias t
   WHERE t.email = v_email;
@@ -1238,11 +1408,11 @@ BEGIN
   END IF;
 
   IF v_is_admin THEN
-    SELECT COALESCE(jsonb_agg(to_jsonb(t) ORDER BY t.submitted_at DESC), '[]'::jsonb)
+    SELECT COALESCE(jsonb_agg(to_jsonb(t) ORDER BY t.created_at DESC), '[]'::jsonb)
     INTO v_items
     FROM public.pagos_transferencias t;
   ELSE
-    SELECT COALESCE(jsonb_agg(to_jsonb(t) ORDER BY t.submitted_at DESC), '[]'::jsonb)
+    SELECT COALESCE(jsonb_agg(to_jsonb(t) ORDER BY t.created_at DESC), '[]'::jsonb)
     INTO v_items
     FROM public.pagos_transferencias t
     WHERE LOWER(t.provider_email) = v_caller_email
@@ -1450,7 +1620,7 @@ BEGIN
         'reference', p.reference,
         'experienceId', p.experience_id,
         'experienceTitle', p.experience_title,
-        'date', p.date,
+        'date', p.selected_date,
         'participants', p.participants,
         'amountArs', p.amount_ars,
         'discountCode', p.discount_code,
@@ -1465,15 +1635,15 @@ BEGIN
           'mimeType', p.receipt_mime_type,
           'sizeBytes', p.receipt_size_bytes,
           'url', p.receipt_url,
-          'storageKey', p.receipt_storage_key,
+          'storageKey', p.receipt_storage_path,
           'provider', p.receipt_storage_provider
         ),
         'status', p.status,
         'rejectionReason', p.rejection_reason,
-        'submittedAt', p.submitted_at,
+        'submittedAt', p.created_at,
         'reviewedAt', p.reviewed_at
       )
-      ORDER BY p.submitted_at DESC
+      ORDER BY p.created_at DESC
     ),
     '[]'::jsonb
   ) INTO v_subs
@@ -1558,18 +1728,35 @@ CREATE POLICY "Socios can update own profile"
   USING (
     auth_user_id = auth.uid()
     OR LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+    OR EXISTS (
+      SELECT 1 FROM public.admin_access
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+        AND active = true
+    )
   )
   WITH CHECK (
     auth_user_id = auth.uid()
     OR LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+    OR EXISTS (
+      SELECT 1 FROM public.admin_access
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+        AND active = true
+    )
   );
 
 DROP POLICY IF EXISTS "Permitir registro de socios" ON public.socios;
-CREATE POLICY "Permitir registro de socios"
+DROP POLICY IF EXISTS "Admins can insert socios" ON public.socios;
+CREATE POLICY "Admins can insert socios"
   ON public.socios
   FOR INSERT
-  TO anon, authenticated
-  WITH CHECK (true);
+  TO authenticated
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.admin_access
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+        AND active = true
+    )
+  );
 
 -- 6.4 Políticas en admin_access
 DROP POLICY IF EXISTS "Admins can view admin_access" ON public.admin_access;

@@ -28,14 +28,27 @@ function getEnvConfig() {
     process.env.PUBLIC_SUPABASE_URL ||
     ''
   ).trim();
-  const supabaseKey = (
+  const supabaseServiceRoleKey = (
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_SERVICE_KEY ||
+    ''
+  ).trim();
+  const supabaseKey = (
+    supabaseServiceRoleKey ||
     process.env.SUPABASE_ANON_KEY ||
     process.env.SUPABASE_PROD_ANON_KEY ||
     ''
   ).trim();
 
-  return { apiKey, fromEmail, adminEmails, verifiedProviderEmails, supabaseUrl, supabaseKey };
+  return {
+    apiKey,
+    fromEmail,
+    adminEmails,
+    verifiedProviderEmails,
+    supabaseUrl,
+    supabaseKey,
+    supabaseServiceRoleKey,
+  };
 }
 
 const rateLimitMap = new Map();
@@ -95,7 +108,7 @@ function verifySupabaseCallerAdmin(token, config) {
                 method: 'GET',
                 headers: {
                   apikey: config.supabaseKey,
-                  Authorization: `Bearer ${config.supabaseKey}`,
+                  Authorization: `Bearer ${token}`,
                 },
               },
               (adminRes) => {
@@ -128,13 +141,14 @@ function verifySupabaseCallerAdmin(token, config) {
 
 function verifyPostulacionExists(email, config) {
   return new Promise((resolve) => {
-    if (!config.supabaseUrl || !config.supabaseKey || !email) {
-      return resolve(true);
+    const privilegedKey = config.supabaseServiceRoleKey || config.supabaseKey;
+    if (!config.supabaseUrl || !privilegedKey || !email) {
+      return resolve(null);
     }
     try {
       const cleanEmail = String(email).trim().toLowerCase();
       const url = new URL(
-        `${config.supabaseUrl}/rest/v1/postulaciones_prestadores?email=eq.${encodeURIComponent(cleanEmail)}&select=id&limit=1`,
+        `${config.supabaseUrl}/rest/v1/postulaciones_prestadores?email=eq.${encodeURIComponent(cleanEmail)}&select=id,full_name,category,region,email,phone,website,description,created_at&order=created_at.desc&limit=1`,
       );
       const req = https.request(
         {
@@ -143,27 +157,41 @@ function verifyPostulacionExists(email, config) {
           path: url.pathname + url.search,
           method: 'GET',
           headers: {
-            apikey: config.supabaseKey,
-            Authorization: `Bearer ${config.supabaseKey}`,
+            apikey: privilegedKey,
+            Authorization: `Bearer ${privilegedKey}`,
           },
         },
         (res) => {
+          if (res.statusCode < 200 || res.statusCode >= 300) {
+            return resolve(null);
+          }
           let data = '';
           res.on('data', (c) => (data += c));
           res.on('end', () => {
             try {
               const records = JSON.parse(data);
-              resolve(Array.isArray(records) && records.length > 0);
+              if (!Array.isArray(records) || records.length === 0) {
+                return resolve(null);
+              }
+              const record = records[0];
+              if (!record || typeof record !== 'object') {
+                return resolve(null);
+              }
+              resolve(record);
             } catch {
-              resolve(true);
+              resolve(null);
             }
           });
         },
       );
-      req.on('error', () => resolve(true));
+      req.setTimeout(8000, () => {
+        req.destroy();
+        resolve(null);
+      });
+      req.on('error', () => resolve(null));
       req.end();
     } catch {
-      resolve(true);
+      resolve(null);
     }
   });
 }
@@ -938,23 +966,31 @@ module.exports = async function handler(req, res) {
           });
         }
 
-        if (config.supabaseUrl && config.supabaseKey) {
-          const exists = await verifyPostulacionExists(data.email, config);
-          if (!exists) {
-            return res.status(404).json({
-              success: false,
-              error: 'No se encontró un registro de postulación previo para este correo.',
-            });
-          }
+        const applicationRecord = await verifyPostulacionExists(data.email, config);
+        if (!applicationRecord) {
+          return res.status(404).json({
+            success: false,
+            error: 'No se encontró un registro de postulación previo para este correo.',
+          });
         }
+
+        const verifiedData = {
+          fullName: applicationRecord.full_name || applicationRecord.fullName || '',
+          category: applicationRecord.category || '',
+          region: applicationRecord.region || '',
+          email: applicationRecord.email || String(data.email).trim().toLowerCase(),
+          phone: applicationRecord.phone || '',
+          website: applicationRecord.website || '',
+          description: applicationRecord.description || '',
+        };
 
         // 1. Email al postulante
         const applicantResult = await sendEmailViaResend({
           apiKey: config.apiKey,
           from: config.fromEmail,
-          to: data.email,
+          to: verifiedData.email,
           subject: `Recibimos tu postulación como prestador en EXPERIENCIAS.CLUB`,
-          html: templateProviderApplicationSubmitted(data),
+          html: templateProviderApplicationSubmitted(verifiedData),
         });
         results.push({ target: 'applicant', ...applicantResult });
 
@@ -964,8 +1000,8 @@ module.exports = async function handler(req, res) {
             apiKey: config.apiKey,
             from: config.fromEmail,
             to: config.adminEmails,
-            subject: `[Nueva Postulación Prestador] ${data.fullName || 'Prestador'} · ${data.category || 'Guía'}`,
-            html: templateProviderApplicationAdmin(data),
+            subject: `[Nueva Postulación Prestador] ${verifiedData.fullName || 'Prestador'} · ${verifiedData.category || 'Guía'}`,
+            html: templateProviderApplicationAdmin(verifiedData),
           });
           results.push({ target: 'admin', ...adminResult });
         }
@@ -980,21 +1016,19 @@ module.exports = async function handler(req, res) {
         const authHeader = req.headers.authorization || req.headers.Authorization || '';
         const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
 
-        if (config.supabaseUrl && config.supabaseKey) {
-          if (!token) {
-            return res.status(401).json({
-              success: false,
-              error: 'Acceso no autorizado: se requiere token de sesión de administrador.',
-            });
-          }
+        if (!token) {
+          return res.status(401).json({
+            success: false,
+            error: 'Acceso no autorizado: se requiere token de sesión de administrador.',
+          });
+        }
 
-          const isAdmin = await verifySupabaseCallerAdmin(token, config);
-          if (!isAdmin) {
-            return res.status(403).json({
-              success: false,
-              error: 'Acceso denegado: se requieren permisos de administrador para aprobar.',
-            });
-          }
+        const isAdmin = await verifySupabaseCallerAdmin(token, config);
+        if (!isAdmin) {
+          return res.status(403).json({
+            success: false,
+            error: 'Acceso denegado: se requieren permisos de administrador para aprobar.',
+          });
         }
 
         const approvedResult = await sendEmailViaResend({
