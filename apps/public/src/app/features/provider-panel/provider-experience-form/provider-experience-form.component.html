@@ -18,6 +18,19 @@
         Volver a Experiencias
       </a>
     </div>
+  } @else if (isEditMode() && loadError()) {
+    <div class="empty-state-card" style="margin-top: 1.5rem; text-align: center; padding: 2.5rem 1.5rem;">
+      <h2 class="card-heading">Error al cargar la experiencia</h2>
+      <p class="card-subheading">Hubo un problema de conexión al consultar el catálogo. Podés reintentar la carga.</p>
+      <div style="display: flex; gap: 0.75rem; justify-content: center; margin-top: 1.25rem;">
+        <button type="button" class="btn-back-panel" (click)="retryLoad()" style="display: inline-flex;">
+          Reintentar
+        </button>
+        <a [routerLink]="backLink()" class="cancel-btn" style="display: inline-flex; align-items: center;">
+          Volver
+        </a>
+      </div>
+    </div>
   } @else {
   @if (!isEditMode() && hasDraft()) {
     <div class="draft-notice-banner" role="status">
@@ -234,16 +247,22 @@
     </fieldset>
 
     <!-- Action Buttons - Rectangulares sobrios -->
+    @if (saveError()) {
+      <div class="save-error-banner" style="padding: 0.75rem 1rem; margin-bottom: 1rem; border-radius: 4px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5; font-size: 0.875rem;">
+        {{ saveError() }}
+      </div>
+    }
+
     <div class="form-actions-strip">
       <a [routerLink]="backLink()" class="cancel-btn"> Cancelar </a>
 
       <div class="save-buttons-group">
-        <button type="button" class="draft-btn" (click)="save(false)">
-          {{ isEditMode() ? 'Guardar Cambios' : 'Guardar como Borrador' }}
+        <button type="button" class="draft-btn" (click)="save(false)" [disabled]="saving()">
+          {{ saving() ? 'Guardando...' : (isEditMode() ? 'Guardar Cambios' : 'Guardar como Borrador') }}
         </button>
 
-        <button type="button" class="publish-request-btn" (click)="save(true)">
-          Guardar y Solicitar Publicación al Admin
+        <button type="button" class="publish-request-btn" (click)="save(true)" [disabled]="saving()">
+          {{ saving() ? 'Guardando...' : 'Guardar y Solicitar Publicación al Admin' }}
         </button>
       </div>
     </div>

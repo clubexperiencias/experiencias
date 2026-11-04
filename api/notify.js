@@ -64,10 +64,10 @@ function checkRateLimit(key, maxLimit = 3, windowMs = 5 * 60 * 1000) {
   return true;
 }
 
-function verifySupabaseCallerAdmin(token, config) {
+function getSupabaseUser(token, config) {
   return new Promise((resolve) => {
     if (!config.supabaseUrl || !config.supabaseKey || !token) {
-      return resolve(false);
+      return resolve(null);
     }
     try {
       const url = new URL(`${config.supabaseUrl}/auth/v1/user`);
@@ -82,60 +82,77 @@ function verifySupabaseCallerAdmin(token, config) {
         },
       };
       const req = https.request(options, (res) => {
+        if (res.statusCode < 200 || res.statusCode >= 300) {
+          return resolve(null);
+        }
         let data = '';
         res.on('data', (chunk) => (data += chunk));
         res.on('end', () => {
-          if (res.statusCode < 200 || res.statusCode >= 300) {
-            return resolve(false);
-          }
           try {
             const user = JSON.parse(data);
-            const email = (user?.email || '').trim().toLowerCase();
-            if (!email) return resolve(false);
-
-            if (config.adminEmails.map((e) => e.toLowerCase()).includes(email)) {
-              return resolve(true);
-            }
-
-            const adminUrl = new URL(
-              `${config.supabaseUrl}/rest/v1/admin_access?email=eq.${encodeURIComponent(email)}&active=eq.true&select=id`,
-            );
-            const adminReq = https.request(
-              {
-                hostname: adminUrl.hostname,
-                port: adminUrl.port || 443,
-                path: adminUrl.pathname + adminUrl.search,
-                method: 'GET',
-                headers: {
-                  apikey: config.supabaseKey,
-                  Authorization: `Bearer ${token}`,
-                },
-              },
-              (adminRes) => {
-                let adminData = '';
-                adminRes.on('data', (c) => (adminData += c));
-                adminRes.on('end', () => {
-                  try {
-                    const records = JSON.parse(adminData);
-                    resolve(Array.isArray(records) && records.length > 0);
-                  } catch {
-                    resolve(false);
-                  }
-                });
-              },
-            );
-            adminReq.on('error', () => resolve(false));
-            adminReq.end();
+            resolve(user || null);
           } catch {
-            resolve(false);
+            resolve(null);
           }
         });
       });
-      req.on('error', () => resolve(false));
+      req.setTimeout(8000, () => {
+        req.destroy();
+        resolve(null);
+      });
+      req.on('error', () => resolve(null));
       req.end();
     } catch {
-      resolve(false);
+      resolve(null);
     }
+  });
+}
+
+function verifySupabaseCallerAdmin(token, config) {
+  return new Promise((resolve) => {
+    getSupabaseUser(token, config).then((user) => {
+      if (!user) return resolve(false);
+      try {
+        const email = (user?.email || '').trim().toLowerCase();
+        if (!email) return resolve(false);
+
+        if (config.adminEmails.map((e) => e.toLowerCase()).includes(email)) {
+          return resolve(true);
+        }
+
+        const adminUrl = new URL(
+          `${config.supabaseUrl}/rest/v1/admin_access?email=eq.${encodeURIComponent(email)}&active=eq.true&select=id`,
+        );
+        const adminReq = https.request(
+          {
+            hostname: adminUrl.hostname,
+            port: adminUrl.port || 443,
+            path: adminUrl.pathname + adminUrl.search,
+            method: 'GET',
+            headers: {
+              apikey: config.supabaseKey,
+              Authorization: `Bearer ${token}`,
+            },
+          },
+          (adminRes) => {
+            let adminData = '';
+            adminRes.on('data', (c) => (adminData += c));
+            adminRes.on('end', () => {
+              try {
+                const records = JSON.parse(adminData);
+                resolve(Array.isArray(records) && records.length > 0);
+              } catch {
+                resolve(false);
+              }
+            });
+          },
+        );
+        adminReq.on('error', () => resolve(false));
+        adminReq.end();
+      } catch {
+        resolve(false);
+      }
+    });
   });
 }
 
@@ -148,7 +165,7 @@ function verifyPostulacionExists(email, config) {
     try {
       const cleanEmail = String(email).trim().toLowerCase();
       const url = new URL(
-        `${config.supabaseUrl}/rest/v1/postulaciones_prestadores?email=ilike.${encodeURIComponent(cleanEmail)}&select=id,full_name,category,region,email,phone,website,description,status,created_at&order=created_at.desc&limit=1`,
+        `${config.supabaseUrl}/rest/v1/postulaciones_prestadores?email=eq.${encodeURIComponent(cleanEmail)}&select=id,full_name,category,region,email,phone,website,description,status,created_at&order=created_at.desc&limit=1`,
       );
       const req = https.request(
         {
@@ -205,7 +222,7 @@ function verifyProviderAccess(email, config) {
     try {
       const cleanEmail = String(email).trim().toLowerCase();
       const url = new URL(
-        `${config.supabaseUrl}/rest/v1/provider_access?email=ilike.${encodeURIComponent(cleanEmail)}&select=email,name,agency,status,active&limit=1`,
+        `${config.supabaseUrl}/rest/v1/provider_access?email=eq.${encodeURIComponent(cleanEmail)}&select=email,name,agency,status,active&limit=1`,
       );
       const req = https.request(
         {
@@ -1232,11 +1249,62 @@ module.exports = async function handler(req, res) {
           });
         }
 
+        const authHeader = req.headers.authorization || req.headers.Authorization || '';
+        const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+
+        if (!token) {
+          return res.status(401).json({
+            success: false,
+            error: 'Acceso no autorizado: se requiere token de sesión.',
+          });
+        }
+
+        const caller = await getSupabaseUser(token, config);
+        if (!caller) {
+          return res.status(401).json({
+            success: false,
+            error: 'Token de sesión inválido o expirado.',
+          });
+        }
+
+        const callerEmail = (caller.email || '').trim().toLowerCase();
+        const providerEmail = String(data.providerEmail).trim().toLowerCase();
+        if (!callerEmail || callerEmail !== providerEmail) {
+          return res.status(403).json({
+            success: false,
+            error: 'El correo del remitente no coincide con el usuario autenticado.',
+          });
+        }
+
+        const accessRecord = await verifyProviderAccess(providerEmail, config);
+        if (
+          !accessRecord ||
+          accessRecord.active === false ||
+          String(accessRecord.status || '').toLowerCase() !== 'aprobado'
+        ) {
+          return res.status(403).json({
+            success: false,
+            error: 'La cuenta de prestador no está aprobada y activa.',
+          });
+        }
+
+        const clientIp =
+          req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+          req.socket?.remoteAddress ||
+          'unknown';
+        const rateLimitKey = `prop_${providerEmail}_${clientIp}`;
+        if (!checkRateLimit(rateLimitKey, 3, 5 * 60 * 1000)) {
+          return res.status(429).json({
+            success: false,
+            error: 'Demasiadas solicitudes enviadas. Por favor aguardá unos minutos.',
+          });
+        }
+
         // 1. Acuse de recibo al prestador
         const providerResult = await sendEmailViaResend({
           apiKey: config.apiKey,
           from: config.fromEmail,
-          to: data.providerEmail,
+          to: providerEmail,
           subject: `Recibimos tu propuesta de experiencia: ${data.title}`,
           html: templateExperienceProposalProvider(data),
         });

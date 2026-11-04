@@ -397,6 +397,9 @@ export class ProviderStoreService {
     this.loadStoredRequests(),
   );
 
+  private lastSessionRestoreTime = 0;
+  private readonly SESSION_RESTORE_TTL_MS = 60_000;
+
   constructor() {
     if (typeof window !== 'undefined') {
       window.addEventListener('storage', (event) => {
@@ -503,9 +506,17 @@ export class ProviderStoreService {
     this._providers.set(this.loadStoredProviders());
   }
 
-  async restoreSupabaseSession(): Promise<boolean> {
+  async restoreSupabaseSession(force = false): Promise<boolean> {
+    const now = Date.now();
+    if (!force && this.isAuthenticated() && this.isProviderApproved()) {
+      if (now - this.lastSessionRestoreTime < this.SESSION_RESTORE_TTL_MS) {
+        return true;
+      }
+    }
+
     if (!isSupabaseConfigured()) {
       if (environment.production) {
+        this.lastSessionRestoreTime = 0;
         this._currentProvider.set(null);
         this.saveSession(null);
         return false;
@@ -516,6 +527,7 @@ export class ProviderStoreService {
     try {
       const { data, error: userError } = await this.supabase.auth.getUser();
       if (userError || !data?.user?.email) {
+        this.lastSessionRestoreTime = 0;
         this._currentProvider.set(null);
         this.saveSession(null);
         return false;
@@ -525,7 +537,7 @@ export class ProviderStoreService {
 
       const { data: access, error } = await (this.supabase.from('provider_access') as any)
         .select('email, name, agency, active, status, cbu_alias, cuit_dni, bank_name, account_holder, phone')
-        .ilike('email', email)
+        .eq('email', email)
         .maybeSingle();
 
       if (error) {
@@ -538,6 +550,7 @@ export class ProviderStoreService {
         access.active !== true ||
         access.status !== 'aprobado'
       ) {
+        this.lastSessionRestoreTime = 0;
         this._currentProvider.set(null);
         this.saveSession(null);
         return false;
@@ -572,12 +585,17 @@ export class ProviderStoreService {
         this._providers.update((providers) =>
           providers.map((p) => (p.email.toLowerCase() === email ? provider : p)),
         );
+      this.lastSessionRestoreTime = Date.now();
       this._currentProvider.set(provider);
       this.saveSession(provider);
       void this.loadProposalsFromSupabase(email);
       return true;
     } catch (err) {
       console.warn('[ProviderStore] Error restaurando sesión Supabase:', err);
+      if (this.isAuthenticated() && this.isProviderApproved()) {
+        return true;
+      }
+      this.lastSessionRestoreTime = 0;
       this._currentProvider.set(null);
       this.saveSession(null);
       return false;
@@ -775,6 +793,7 @@ export class ProviderStoreService {
     if (isSupabaseConfigured()) {
       await this.supabase.auth.signOut();
     }
+    this.lastSessionRestoreTime = 0;
     this._currentProvider.set(null);
     this.saveSession(null);
   }
@@ -988,6 +1007,40 @@ export class ProviderStoreService {
 
     this.saveExperiences();
     return updatedExperience;
+  }
+
+  async saveExperienceChanges(
+    id: string,
+    updates: Partial<Omit<ProviderExperience, 'id' | 'createdAt' | 'providerId'>>,
+  ): Promise<ProviderExperience> {
+    const snapshot = this._experiences();
+    const updated = this.updateExperience(id, updates);
+    const expMatch =
+      this.expService.getExperienceById(id) ||
+      this.expService.getExperienceBySlug(updated.slug);
+    if (expMatch) {
+      try {
+        await this.expService.updateExperience({
+          id: expMatch.id,
+          title: updated.title,
+          tagline: updated.tagline,
+          description: updated.description,
+          region: updated.region,
+          meetingPoint: updated.meetingPoint,
+          difficulty: updated.difficulty,
+          durationLabel: updated.durationLabel,
+          priceArs: updated.priceArs,
+          maxSpotsPerGroup: updated.capacityPerDate,
+          dates: updated.dates,
+          coverImage: updated.coverImage,
+        });
+      } catch (err) {
+        this._experiences.set(snapshot);
+        this.saveExperiences();
+        throw err;
+      }
+    }
+    return updated;
   }
 
   addDateToExperience(
@@ -1718,9 +1771,13 @@ export class ProviderStoreService {
   async submitExperienceRequest(
     data: Omit<ExperienceProposalRequest, 'id' | 'status' | 'createdAt'>,
   ): Promise<ExperienceProposalRequest> {
+    const id =
+      typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : 'req-' + Date.now();
     const newReq: ExperienceProposalRequest = {
       ...data,
-      id: 'req-' + Date.now(),
+      id,
       status: 'pendiente',
       createdAt: new Date().toISOString(),
     };
@@ -1763,9 +1820,15 @@ export class ProviderStoreService {
         });
         if (error) {
           console.warn('[ProviderStore] Error insertando propuesta en Supabase:', error);
+          this._experienceRequests.update((list) => list.filter((r) => r.id !== newReq.id));
+          this.saveRequests();
+          throw error;
         }
       } catch (dbErr) {
         console.warn('[ProviderStore] Error al guardar propuesta en base de datos:', dbErr);
+        this._experienceRequests.update((list) => list.filter((r) => r.id !== newReq.id));
+        this.saveRequests();
+        throw dbErr;
       }
     }
 
@@ -1912,13 +1975,20 @@ export class ProviderStoreService {
     this.saveRequests();
 
     if (isSupabaseConfigured()) {
-      void (this.supabase.from('propuestas_experiencias') as any)
-        .update({
-          status: 'aprobada',
-          reviewed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', requestId);
+      try {
+        const { error } = await (this.supabase.from('propuestas_experiencias') as any)
+          .update({
+            status: 'aprobada',
+            reviewed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', requestId);
+        if (error) {
+          console.warn('[ProviderStore] Error actualizando estado de propuesta en Supabase:', error);
+        }
+      } catch (err) {
+        console.warn('[ProviderStore] Excepción al actualizar estado en Supabase:', err);
+      }
     }
 
     if (req) {
@@ -1978,13 +2048,21 @@ export class ProviderStoreService {
     this.saveRequests();
 
     if (isSupabaseConfigured()) {
-      void (this.supabase.from('propuestas_experiencias') as any)
+      (this.supabase.from('propuestas_experiencias') as any)
         .update({
           status: 'rechazada',
           reviewed_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
-        .eq('id', requestId);
+        .eq('id', requestId)
+        .then(({ error }: any) => {
+          if (error) {
+            console.warn('[ProviderStore] Error actualizando estado de propuesta en Supabase:', error);
+          }
+        })
+        .catch((err: any) => {
+          console.warn('[ProviderStore] Excepción al rechazar propuesta en Supabase:', err);
+        });
     }
   }
 

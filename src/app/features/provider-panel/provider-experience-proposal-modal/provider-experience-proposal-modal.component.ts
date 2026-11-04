@@ -723,7 +723,7 @@ const DEFAULT_REQ_FORM = {
         padding: 0.48rem 1.05rem;
         background: #80b3ff;
         border: 1px solid #80b3ff;
-        color: #ffffff;
+        color: #070d18;
         border-radius: 4px;
         font-size: 0.82rem;
         font-weight: 700;
@@ -737,7 +737,7 @@ const DEFAULT_REQ_FORM = {
       .back-to-exp-link:hover {
         background: #9cc4ff;
         border-color: #9cc4ff;
-        color: #ffffff;
+        color: #070d18;
         transform: translateY(-2px);
         box-shadow: 0 6px 18px rgba(128, 179, 255, 0.4);
       }
@@ -1598,33 +1598,6 @@ export class ProviderExperienceProposalModalComponent {
     }
   }
 
-  @HostListener('keydown', ['$event'])
-  handleKeydown(event: KeyboardEvent): void {
-    if (!this.isOpen() || event.key !== 'Tab') return;
-
-    const focusable = this.getFocusableElements();
-    if (focusable.length === 0) {
-      event.preventDefault();
-      return;
-    }
-
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    const active = typeof document !== 'undefined' ? document.activeElement : null;
-
-    if (event.shiftKey) {
-      if (active === first || !this.modalDialog?.nativeElement.contains(active)) {
-        event.preventDefault();
-        last.focus();
-      }
-    } else {
-      if (active === last || !this.modalDialog?.nativeElement.contains(active)) {
-        event.preventDefault();
-        first.focus();
-      }
-    }
-  }
-
   readonly requestSuccess = signal(false);
   readonly submittingRequest = signal(false);
 
@@ -1852,13 +1825,6 @@ export class ProviderExperienceProposalModalComponent {
   toggleFlexibleDates(checked: boolean): void {
     this.isDateFlexible.set(checked);
     this.syncDatesForm();
-  }
-
-  @HostListener('window:keydown.escape')
-  onEscape(): void {
-    if (this.isOpen()) {
-      this.onClose();
-    }
   }
 
   loadDraft(): void {

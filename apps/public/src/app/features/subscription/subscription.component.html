@@ -37,7 +37,7 @@
             <div class="subscription-details-grid">
               <div class="detail-box">
                 <span class="detail-lbl">Cuota Mensual</span>
-                <span class="detail-val price-highlight">$23.000 ARS</span>
+                <span class="detail-val price-highlight">{{ newsletter.activeSubscription()?.amountArs ? (newsletter.activeSubscription()?.amountArs | ars) : 'A definir' }}</span>
                 <span class="detail-sub">Sin permanencia</span>
               </div>
 
@@ -132,7 +132,7 @@
             <!-- Franja de condiciones simplificadas (Look & Feel de Emergentes y Fundadores) -->
             <div class="sub-highlights-strip">
               <div class="highlight-item">
-                <strong class="highlight-title">$23.000 ARS / mes</strong>
+                <strong class="highlight-title">A definir</strong>
                 <span class="highlight-desc">Suscripción flexible. </span>
               </div>
               <div class="highlight-item">

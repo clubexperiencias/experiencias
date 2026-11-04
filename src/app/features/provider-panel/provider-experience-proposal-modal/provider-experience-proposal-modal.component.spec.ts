@@ -98,6 +98,7 @@ describe('ProviderExperienceProposalModalComponent Draft Persistence', () => {
     component.reqForm.meetingPoint = 'Club Náutico';
     component.reqForm.priceArs = 55000;
     component.coverImageDataUrl.set('data:image/jpeg;base64,mock');
+    component.coverImagePreview.set('data:image/jpeg;base64,mock');
     component.saveDraft();
     expect(localStorage.getItem(ProviderExperienceProposalModalComponent.DRAFT_STORAGE_KEY)).toBeTruthy();
 

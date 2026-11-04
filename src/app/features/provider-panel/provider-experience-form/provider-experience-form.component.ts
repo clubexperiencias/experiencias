@@ -3,6 +3,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { ProviderStoreService } from '../../../core/services/provider-store.service';
+import { ExperienceService } from '../../../core/services/experience.service';
 import { ExperienceStatus, ProviderExperience } from '../../../core/models/bank-transfer.model';
 import { FechaPipe } from '../../../shared/pipes/format.pipes';
 
@@ -23,6 +24,7 @@ interface PresetImage {
 export class ProviderExperienceFormComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly store = inject(ProviderStoreService);
+  private readonly expService = inject(ExperienceService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
@@ -84,28 +86,26 @@ export class ProviderExperienceFormComponent implements OnInit {
   readonly dates = signal<string[]>([]);
   readonly newDate = signal('');
   readonly datesError = signal<string | null>(null);
+  readonly saving = signal(false);
+  readonly saveError = signal<string | null>(null);
+  readonly loadError = signal(false);
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.isEditMode.set(true);
       this.editingExpId.set(id);
-      const exp = this.store.getExperienceById(id);
+      let exp = this.store.getExperienceById(id);
+      if (!exp) {
+        const loadOk = await this.expService.remoteLoadPromise;
+        exp = this.store.getExperienceById(id);
+        if (!exp && !loadOk) {
+          this.loadError.set(true);
+          return;
+        }
+      }
       if (exp) {
-        this.currentStatus.set(exp.status);
-        this.selectedCoverImage.set(exp.coverImage || this.presetImages[0].url);
-        this.dates.set([...exp.dates]);
-        this.form.patchValue({
-          title: exp.title,
-          tagline: exp.tagline,
-          description: exp.description,
-          region: exp.region,
-          meetingPoint: exp.meetingPoint,
-          difficulty: exp.difficulty,
-          durationLabel: exp.durationLabel,
-          priceArs: exp.priceArs,
-          capacityPerDate: exp.capacityPerDate,
-        });
+        this.populateForm(exp);
       } else {
         this.notFound.set(true);
       }
@@ -116,6 +116,39 @@ export class ProviderExperienceFormComponent implements OnInit {
           this.saveDraft();
         }
       });
+    }
+  }
+
+  private populateForm(exp: ProviderExperience): void {
+    this.currentStatus.set(exp.status);
+    this.selectedCoverImage.set(exp.coverImage || this.presetImages[0].url);
+    this.dates.set([...exp.dates]);
+    this.form.patchValue({
+      title: exp.title,
+      tagline: exp.tagline,
+      description: exp.description,
+      region: exp.region,
+      meetingPoint: exp.meetingPoint,
+      difficulty: exp.difficulty,
+      durationLabel: exp.durationLabel,
+      priceArs: exp.priceArs,
+      capacityPerDate: exp.capacityPerDate,
+    });
+  }
+
+  async retryLoad(): Promise<void> {
+    const id = this.editingExpId();
+    if (!id) return;
+    this.loadError.set(false);
+    this.notFound.set(false);
+    const loadOk = await this.expService.reloadFromSupabase();
+    const exp = this.store.getExperienceById(id);
+    if (exp) {
+      this.populateForm(exp);
+    } else if (!loadOk) {
+      this.loadError.set(true);
+    } else {
+      this.notFound.set(true);
     }
   }
 
@@ -248,7 +281,7 @@ export class ProviderExperienceFormComponent implements OnInit {
     return control.invalid && (control.touched || control.dirty);
   }
 
-  save(requestPublication: boolean): void {
+  async save(requestPublication: boolean): Promise<void> {
     this.form.markAllAsTouched();
     if (requestPublication && this.dates().length === 0) {
       this.datesError.set('Agregá al menos una fecha futura para solicitar publicación.');
@@ -289,35 +322,47 @@ export class ProviderExperienceFormComponent implements OnInit {
       coverImage: this.selectedCoverImage(),
     };
 
-    if (this.isEditMode() && this.editingExpId()) {
-      // Update existing
-      this.store.updateExperience(this.editingExpId()!, {
-        ...payload,
-        status: requestPublication ? 'pendiente_publicacion' : this.currentStatus(),
-        ...(requestPublication
-          ? {
-              moderation: {
-                action: 'publicar',
-                requestedAt: new Date().toISOString(),
-                status: 'pendiente',
-              },
-            }
-          : {}),
-      });
-    } else {
-      // Create new
-      this.store.createExperience(
-        {
-          ...payload,
-          status: requestPublication ? 'pendiente_publicacion' : 'borrador',
-          providerId: this.store.currentProvider()?.id || 'prov-default',
-          providerName: this.store.currentProvider()?.agency || 'Prestador Catamarca',
-        },
-        requestPublication,
-      );
-      this.clearDraft();
-    }
+    this.saveError.set(null);
+    this.saving.set(true);
 
-    this.router.navigate([this.backLink()]);
+    try {
+      if (this.isEditMode() && this.editingExpId()) {
+        // Update existing
+        await this.store.saveExperienceChanges(this.editingExpId()!, {
+          ...payload,
+          status: requestPublication ? 'pendiente_publicacion' : this.currentStatus(),
+          ...(requestPublication
+            ? {
+                moderation: {
+                  action: 'publicar',
+                  requestedAt: new Date().toISOString(),
+                  status: 'pendiente',
+                },
+              }
+            : {}),
+        });
+      } else {
+        // Create new
+        this.store.createExperience(
+          {
+            ...payload,
+            status: requestPublication ? 'pendiente_publicacion' : 'borrador',
+            providerId: this.store.currentProvider()?.id || 'prov-default',
+            providerName: this.store.currentProvider()?.agency || 'Prestador Catamarca',
+          },
+          requestPublication,
+        );
+        this.clearDraft();
+      }
+
+      this.router.navigate([this.backLink()]);
+    } catch (err) {
+      console.error('[ProviderExperienceForm] Error guardando experiencia:', err);
+      this.saveError.set(
+        'No se pudieron guardar los cambios en el servidor. Por favor verificá tu conexión e intentá nuevamente.',
+      );
+    } finally {
+      this.saving.set(false);
+    }
   }
 }

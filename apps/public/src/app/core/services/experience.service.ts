@@ -285,11 +285,14 @@ export class ExperienceService {
     return this.publishedExperiences().find((e: Experience) => e.id === id || e.slug === id);
   }
   readonly hasRemoteExperiences = this._hasRemoteExperiences.asReadonly();
+  readonly remoteLoadPromise: Promise<boolean> = isSupabaseConfigured()
+    ? this.loadFromSupabase()
+    : Promise.resolve(true);
 
-  constructor() {
-    if (isSupabaseConfigured()) {
-      void this.loadFromSupabase();
-    }
+  constructor() {}
+
+  async reloadFromSupabase(): Promise<boolean> {
+    return this.loadFromSupabase();
   }
 
   getExperienceBySlug(slug: string): Experience | undefined {
@@ -678,7 +681,7 @@ export class ExperienceService {
     }
   }
 
-  private async loadFromSupabase(): Promise<void> {
+  private async loadFromSupabase(): Promise<boolean> {
     try {
       const publicColumns =
         'id, slug, title, tagline, description, region, meeting_point, difficulty, ' +
@@ -694,7 +697,7 @@ export class ExperienceService {
 
       if (error) {
         console.warn('[ExperienceService] No se pudieron cargar las experiencias remotas:', error);
-        return;
+        return false;
       }
 
       if (data && data.length > 0) {
@@ -784,8 +787,10 @@ export class ExperienceService {
         this._experiences.set(remoteExperiences);
         this.persistToLocalStorage(remoteExperiences);
       }
+      return true;
     } catch (err) {
       console.warn('[ExperienceService] Error cargando desde Supabase:', err);
+      return false;
     }
   }
 }

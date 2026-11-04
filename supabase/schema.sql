@@ -97,11 +97,7 @@ VALUES
   ('vegvarel@gmail.com', 'Pablo Vegvarel', 'superadmin', true),
   ('patriciofacundodiaztillar@gmail.com', 'Patricio Facundo Díaz Tillar', 'superadmin', true),
   ('admin@experiencias.club', 'Administrador Experiencias', 'superadmin', true)
-ON CONFLICT (email) DO UPDATE
-SET active = true,
-    name = EXCLUDED.name,
-    role = EXCLUDED.role,
-    updated_at = now();
+ON CONFLICT (email) DO NOTHING;
 
 -- 2.4 postulaciones_fundadores (Postulaciones para Socio Fundador)
 CREATE TABLE IF NOT EXISTS public.postulaciones_fundadores (
@@ -1940,10 +1936,14 @@ DROP POLICY IF EXISTS "Users can read own postulaciones_prestadores" ON public.p
 CREATE POLICY "Users can read own postulaciones_prestadores"
   ON public.postulaciones_prestadores
   FOR SELECT
-  TO authenticated, anon
+  TO authenticated
   USING (
     LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
-    OR auth.role() = 'authenticated'
+    OR EXISTS (
+      SELECT 1 FROM public.admin_access
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+        AND active = true
+    )
   );
 
 DROP POLICY IF EXISTS "Admins can update postulaciones_prestadores" ON public.postulaciones_prestadores;
@@ -2032,10 +2032,9 @@ DROP POLICY IF EXISTS "Lectura de propuestas para prestadores y administradores"
 CREATE POLICY "Lectura de propuestas para prestadores y administradores"
   ON public.propuestas_experiencias
   FOR SELECT
-  TO anon, authenticated
+  TO authenticated
   USING (
     LOWER(provider_email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
-    OR auth.role() = 'authenticated'
     OR EXISTS (
       SELECT 1 FROM public.admin_access
       WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))

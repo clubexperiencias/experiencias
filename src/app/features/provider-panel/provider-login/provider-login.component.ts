@@ -916,8 +916,10 @@ export class ProviderLoginComponent implements OnInit {
         if (rawEmail) {
           const cleanEmail = rawEmail.trim().toLowerCase();
           this.unapprovedEmail.set(cleanEmail);
-          await this.evaluateUnapprovedStatus(cleanEmail);
-          await this.supabase.auth.signOut();
+          const navigated = await this.evaluateUnapprovedStatus(cleanEmail);
+          if (!navigated) {
+            await this.supabase.auth.signOut();
+          }
         }
       } catch {
         // Ignorar errores de verificación inicial
@@ -925,7 +927,7 @@ export class ProviderLoginComponent implements OnInit {
     }
   }
 
-  private async evaluateUnapprovedStatus(email: string): Promise<void> {
+  private async evaluateUnapprovedStatus(email: string): Promise<boolean> {
     try {
       const cleanEmail = email.trim().toLowerCase();
 
@@ -939,13 +941,13 @@ export class ProviderLoginComponent implements OnInit {
           const st = (rpcRes as any).status;
           if (st === 'inactive' || st === 'pending') {
             this.accountStatus.set(st);
-            return;
+            return false;
           }
           if (st === 'approved') {
             const restored = await this.store.restoreSupabaseSession();
             if (restored && this.store.isProviderApproved()) {
               this.router.navigate([this.resolveDashboardPath()]);
-              return;
+              return true;
             }
           }
         }
@@ -969,18 +971,18 @@ export class ProviderLoginComponent implements OnInit {
             const st = resJson.status;
             if (st === 'inactive' || st === 'pending') {
               this.accountStatus.set(st);
-              return;
+              return false;
             }
             if (st === 'approved') {
               const restored = await this.store.restoreSupabaseSession();
               if (restored && this.store.isProviderApproved()) {
                 this.router.navigate([this.resolveDashboardPath()]);
-                return;
+                return true;
               }
             }
             if (st === 'unregistered') {
               this.accountStatus.set('unregistered');
-              return;
+              return false;
             }
           }
         }
@@ -991,7 +993,7 @@ export class ProviderLoginComponent implements OnInit {
       // 3. Fallback a consultas directas en tablas de Supabase
       const { data: access, error: accessErr } = await (this.supabase.from('provider_access') as any)
         .select('status, active')
-        .ilike('email', cleanEmail)
+        .eq('email', cleanEmail)
         .maybeSingle();
 
       if (accessErr) {
@@ -1001,17 +1003,17 @@ export class ProviderLoginComponent implements OnInit {
       if (access) {
         if (access.status === 'dado_de_baja' || access.active === false) {
           this.accountStatus.set('inactive');
-          return;
+          return false;
         }
         if (access.status === 'pendiente') {
           this.accountStatus.set('pending');
-          return;
+          return false;
         }
       }
 
       const { data: app, error: appErr } = await (this.supabase.from('postulaciones_prestadores') as any)
         .select('status')
-        .ilike('email', cleanEmail)
+        .eq('email', cleanEmail)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -1031,13 +1033,15 @@ export class ProviderLoginComponent implements OnInit {
         } else {
           this.accountStatus.set('pending');
         }
-        return;
+        return false;
       }
 
       this.accountStatus.set('unregistered');
+      return false;
     } catch (err) {
       console.warn('[ProviderLogin] Error general al verificar estado de postulación:', err);
       this.accountStatus.set('unregistered');
+      return false;
     }
   }
 
