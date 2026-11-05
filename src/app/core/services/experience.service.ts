@@ -422,6 +422,30 @@ export class ExperienceService {
           // Preserve explicit empty string; omit only when the field is absent
           payload['meeting_point_url'] = updated.meetingPointUrl;
         }
+
+        if (Object.prototype.hasOwnProperty.call(updated, 'kicker')) {
+          payload['kicker'] = updated.kicker;
+        } else if (merged.kicker !== undefined) {
+          payload['kicker'] = merged.kicker;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(updated, 'bestSeason')) {
+          payload['best_season'] = updated.bestSeason;
+        } else if (merged.bestSeason !== undefined) {
+          payload['best_season'] = merged.bestSeason;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(updated, 'itinerary')) {
+          payload['itinerary'] = updated.itinerary;
+        } else if (merged.itinerary !== undefined) {
+          payload['itinerary'] = merged.itinerary;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(updated, 'promosAndPricing')) {
+          payload['promos_and_pricing'] = updated.promosAndPricing;
+        } else if (merged.promosAndPricing !== undefined) {
+          payload['promos_and_pricing'] = merged.promosAndPricing;
+        }
         if (merged.albumPhotos) {
           payload['album_photos'] = merged.albumPhotos;
         }
@@ -453,18 +477,17 @@ export class ExperienceService {
           .select();
 
         if (error && /meeting_point_url/.test(error.message || '')) {
-          const migrationError = error;
-          // Columna aún no migrada en la base remota: reintenta sin ella, preservando el resto
+          if (updated.meetingPointUrl !== undefined && String(updated.meetingPointUrl).trim() !== '') {
+            // A non-empty value was supplied: reject the update rather than committing without it
+            throw error;
+          }
+          // Columna aún no migrada en la base remota y el valor era vacío: reintenta sin ella
           const { meeting_point_url: _omit, ...legacyPayload } = payload as any;
           ({ data, error } = (await this.supabase
             .from('experiencias')
             .update(legacyPayload as any)
             .eq('id', merged.id)
             .select()) as any);
-
-          if (!error && updated.meetingPointUrl !== undefined) {
-            error = migrationError;
-          }
         }
 
         if (error || !data || data.length === 0) {
@@ -621,13 +644,14 @@ export class ExperienceService {
           );
 
           if (missingCol) {
-            const wasSupplied = Boolean(
+            const isNonEmpty = Boolean(
               insertPayload[missingCol] && String(insertPayload[missingCol]).trim(),
             );
-            delete insertPayload[missingCol];
-            if (wasSupplied && !migrationError) {
-              migrationError = err;
+            if (isNonEmpty) {
+              error = err;
+              break;
             }
+            delete insertPayload[missingCol];
             continue;
           }
 

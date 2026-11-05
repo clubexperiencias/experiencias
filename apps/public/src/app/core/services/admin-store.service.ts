@@ -100,6 +100,32 @@ export class AdminStoreService {
   readonly isLoadingApplications = this._isLoadingApplications.asReadonly();
   readonly lastRefreshedAt = this._lastRefreshedAt.asReadonly();
 
+  readonly providerEmailsSet = computed<Set<string>>(() => {
+    const set = new Set<string>();
+    for (const p of this.providerStore.allProviders() || []) {
+      if (p.verified && p.status !== 'dado_de_baja' && p.status !== 'pendiente' && p.status !== 'rechazado') {
+        const email = p.email?.toLowerCase().trim();
+        if (email) set.add(email);
+      }
+    }
+    for (const a of this.applications() || []) {
+      if (a.type === 'prestador' && (a.status === 'aprobado' || a.status === 'pendiente')) {
+        const email = a.email?.toLowerCase().trim();
+        if (email) set.add(email);
+      }
+    }
+    for (const r of this.providerStore.experienceRequests() || []) {
+      const email = r.providerEmail?.toLowerCase().trim();
+      if (email) set.add(email);
+    }
+    return set;
+  });
+
+  isProviderEmail(email?: string | null): boolean {
+    if (!email) return false;
+    return this.providerEmailsSet().has(email.toLowerCase().trim());
+  }
+
   // Solicitudes de Nuevas Experiencias enviadas por Prestadores
   readonly experienceRequests = this.providerStore.experienceRequests;
   readonly pendingExperienceRequestsCount = computed(
@@ -434,9 +460,7 @@ export class AdminStoreService {
         );
 
         if (!rpcErr && rpcData) {
-          const providerEmails = new Set(
-            (this.providerStore.allProviders() || []).map((p: any) => p.email?.toLowerCase().trim()),
-          );
+          const providerEmails = this.providerEmailsSet();
 
           const payload = rpcData as any;
           const socios: AdminMember[] = (payload.socios || []).map((s: any) => ({
@@ -493,10 +517,7 @@ export class AdminStoreService {
           (paidRows.data || []).map((p: any) => p.email?.toLowerCase().trim()),
         );
 
-        const providerEmails = new Set(
-          (this.providerStore.providers() || []).map((p) => p.email?.toLowerCase().trim())
-        );
-        providerEmails.add('patriciofacundodiaztillar@gmail.com');
+        const providerEmails = this.providerEmailsSet();
 
         const sociosMap = new Map<string, any>();
         const sociosList: AdminMember[] = (sociosRes.data || []).map((s: any) => {

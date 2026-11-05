@@ -1,4 +1,5 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, NavigationEnd, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -1645,6 +1646,7 @@ export class AdminExperiencesComponent implements OnInit {
   private readonly storageService = inject(StorageService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly experiences = this.experienceService.experiences;
   readonly feedbackToast = signal<string | null>(null);
@@ -1671,7 +1673,10 @@ export class AdminExperiencesComponent implements OnInit {
 
   async ngOnInit(): Promise<void> {
     this.router.events
-      .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
+      .pipe(
+        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+        takeUntilDestroyed(this.destroyRef),
+      )
       .subscribe((event) => {
         this.currentUrl.set(event.urlAfterRedirects || event.url);
       });
@@ -1683,18 +1688,13 @@ export class AdminExperiencesComponent implements OnInit {
       if (slug) {
         this.isRouteEditMode.set(true);
         this.notFound.set(false);
-        let exp =
+        await this.experienceService.remoteLoadPromise;
+        if (this.route.snapshot.paramMap.get('slug') !== slug || activeSlug !== slug) {
+          return;
+        }
+        const exp =
           this.experienceService.getExperienceBySlug(slug) ||
           this.experienceService.getExperienceById(slug);
-        if (!exp) {
-          await this.experienceService.remoteLoadPromise;
-          if (this.route.snapshot.paramMap.get('slug') !== slug || activeSlug !== slug) {
-            return;
-          }
-          exp =
-            this.experienceService.getExperienceBySlug(slug) ||
-            this.experienceService.getExperienceById(slug);
-        }
         if (exp) {
           this.openEditModal(exp);
         } else {

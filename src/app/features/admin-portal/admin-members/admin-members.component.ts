@@ -1008,29 +1008,8 @@ export class AdminMembersComponent {
     }
   }
 
-  readonly providerEmailsSet = computed<Set<string>>(() => {
-    const set = new Set<string>();
-    for (const p of this.store.providerStore.allProviders()) {
-      const email = p.email?.toLowerCase().trim();
-      if (email) set.add(email);
-    }
-    for (const a of this.store.applications()) {
-      if (a.type === 'prestador') {
-        const email = a.email?.toLowerCase().trim();
-        if (email) set.add(email);
-      }
-    }
-    for (const r of this.store.providerStore.experienceRequests()) {
-      const email = r.providerEmail?.toLowerCase().trim();
-      if (email) set.add(email);
-    }
-    return set;
-  });
-
   isProvider(member: AdminMember): boolean {
     if (member.isProvider) return true;
-    const email = member.email?.toLowerCase().trim();
-    if (!email) return false;
-    return this.providerEmailsSet().has(email);
+    return this.store.isProviderEmail(member.email);
   }
 }

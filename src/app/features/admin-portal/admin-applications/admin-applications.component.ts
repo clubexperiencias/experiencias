@@ -650,6 +650,12 @@ type ApplicationFilterTab =
                     >
                   }
                 </div>
+                @if (proposalCoverLoadError()) {
+                  <div style="background: rgba(220, 38, 38, 0.2); border: 1px solid #ef4444; color: #fca5a5; padding: 0.5rem 1rem; border-radius: 4px; font-size: 0.82rem; margin-top: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <mat-icon style="font-size: 18px; width: 18px; height: 18px;">warning</mat-icon>
+                    <span>La foto original de portada no pudo cargarse en el servidor. Se usará la portada por defecto del Club al aprobar.</span>
+                  </div>
+                }
               </div>
 
               <!-- 1. Síntesis descriptiva -->
@@ -1702,7 +1708,7 @@ type ApplicationFilterTab =
         gap: 0.55rem;
         background: #80b3ff;
         border: 1px solid #80b3ff;
-        color: #ffffff;
+        color: #070d18;
         font-weight: 800;
         font-size: 0.85rem;
         padding: 0.65rem 1.35rem;
@@ -1716,9 +1722,9 @@ type ApplicationFilterTab =
 
       .btn-whatsapp:hover,
       .btn-contact-provider:hover {
-        background: #5d9eff;
-        border-color: #5d9eff;
-        color: #ffffff;
+        background: #99c2ff;
+        border-color: #99c2ff;
+        color: #070d18;
         transform: translateY(-1px);
       }
 
@@ -2305,14 +2311,18 @@ export class AdminApplicationsComponent implements OnInit {
     this.selectedApp.set(null);
   }
 
+  readonly proposalCoverLoadError = signal(false);
+
   openExperienceRequest(req: ExperienceProposalRequest): void {
     this.selectedExperienceRequest.set(req);
+    this.proposalCoverLoadError.set(false);
     const slug = slugify(req.title);
     this.expPublicUrlInput.set(`https://experiencias.club/experiencias/${slug}`);
   }
 
   closeExperienceRequest(): void {
     this.selectedExperienceRequest.set(null);
+    this.proposalCoverLoadError.set(false);
   }
 
   getProposalCover(url?: string | null): string {
@@ -2326,13 +2336,17 @@ export class AdminApplicationsComponent implements OnInit {
     const target = event.target as HTMLImageElement;
     if (target && !target.src.includes('kayak-club-de-experiencias.jpg')) {
       target.src = '/assets/images/kayak-club-de-experiencias.jpg';
+      this.proposalCoverLoadError.set(true);
     }
   }
 
   async approveExperience(id: string): Promise<void> {
+    const current = this.selectedExperienceRequest();
+    if (this.proposalCoverLoadError() && current) {
+      current.coverImage = '/assets/images/kayak-club-de-experiencias.jpg';
+    }
     const ok = await this.store.approveExperienceRequest(id, this.expPublicUrlInput());
     if (ok) {
-      const current = this.selectedExperienceRequest();
       if (current && current.id === id) {
         this.selectedExperienceRequest.set({
           ...current,
