@@ -209,6 +209,7 @@ export interface Database {
           description: string;
           region: string;
           meeting_point: string;
+          meeting_point_url: string;
           cover_image: string;
           kicker?: string;
           video_url?: string;
@@ -238,6 +239,7 @@ export interface Database {
           description?: string;
           region?: string;
           meeting_point?: string;
+          meeting_point_url?: string;
           cover_image?: string;
           kicker?: string;
           video_url?: string;
@@ -267,6 +269,7 @@ export interface Database {
           description?: string;
           region?: string;
           meeting_point?: string;
+          meeting_point_url?: string;
           cover_image?: string;
           kicker?: string;
           video_url?: string;
@@ -449,6 +452,7 @@ export interface Database {
           promos_and_pricing: string | null;
           itinerary: string;
           meeting_point: string;
+          meeting_point_url: string;
           included_services: string;
           participant_requirements: string;
           notes: string | null;
@@ -483,6 +487,7 @@ export interface Database {
           promos_and_pricing?: string | null;
           itinerary?: string;
           meeting_point?: string;
+          meeting_point_url?: string;
           included_services?: string;
           participant_requirements?: string;
           notes?: string | null;

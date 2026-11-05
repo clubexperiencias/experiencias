@@ -4,6 +4,11 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { ProviderStoreService } from '../../../core/services/provider-store.service';
 import { StorageService } from '../../../core/services/storage.service';
+import {
+  socialUrlValidator,
+  normalizeSocialUrl,
+  migrateLegacySocialHandle,
+} from '../../../shared/utils/social-url.util';
 
 @Component({
   selector: 'app-provider-profile',
@@ -18,7 +23,8 @@ import { StorageService } from '../../../core/services/storage.service';
             <h2 class="card-heading">Perfil del Prestador y Datos de Cobro</h2>
           </div>
           <p class="card-subheading">
-            Esta información se utiliza para las fichas técnicas de tus experiencias y los datos de destino donde los socios transfieren los pagos.
+            Esta información se utiliza para las fichas técnicas de tus experiencias y los datos de
+            destino donde los socios transfieren los pagos.
           </p>
         </div>
       </div>
@@ -29,13 +35,16 @@ import { StorageService } from '../../../core/services/storage.service';
             <div>
               <h3 class="section-title">Datos Bancarios para Liquidación de Pagos</h3>
               <p class="section-desc">
-                Es la cuenta bancaria o virtual donde se liquidan las recaudaciones y aranceles de tus experiencias.
+                Es la cuenta bancaria o virtual donde se liquidan las recaudaciones y aranceles de
+                tus experiencias.
               </p>
             </div>
 
             <div class="form-grid">
               <div class="form-group">
-                <label class="form-label">CBU o Alias de Destino <span class="req-star">*</span></label>
+                <label class="form-label"
+                  >CBU o Alias de Destino <span class="req-star">*</span></label
+                >
                 <input
                   type="text"
                   formControlName="cbuAlias"
@@ -47,7 +56,9 @@ import { StorageService } from '../../../core/services/storage.service';
               </div>
 
               <div class="form-group">
-                <label class="form-label">Entidad Bancaria o Billetera <span class="req-star">*</span></label>
+                <label class="form-label"
+                  >Entidad Bancaria o Billetera <span class="req-star">*</span></label
+                >
                 <input
                   type="text"
                   formControlName="bankName"
@@ -58,7 +69,9 @@ import { StorageService } from '../../../core/services/storage.service';
               </div>
 
               <div class="form-group">
-                <label class="form-label">Nombre / Titular de la Cuenta <span class="req-star">*</span></label>
+                <label class="form-label"
+                  >Nombre / Titular de la Cuenta <span class="req-star">*</span></label
+                >
                 <input
                   type="text"
                   formControlName="name"
@@ -69,7 +82,9 @@ import { StorageService } from '../../../core/services/storage.service';
               </div>
 
               <div class="form-group">
-                <label class="form-label">CUIT / CUIL del Titular <span class="req-star">*</span></label>
+                <label class="form-label"
+                  >CUIT / CUIL del Titular <span class="req-star">*</span></label
+                >
                 <input
                   type="text"
                   formControlName="cuitDni"
@@ -85,7 +100,9 @@ import { StorageService } from '../../../core/services/storage.service';
               <div class="audit-text">
                 <strong class="audit-title">Registro Seguro de Datos Bancarios</strong>
                 <p class="audit-desc">
-                  Podés actualizar tus datos de cobro cuando lo necesites. Cada modificación queda registrada con fecha y hora de auditoría para asegurar la trazabilidad y la correcta liquidación de tus servicios.
+                  Podés actualizar tus datos de cobro cuando lo necesites. Cada modificación queda
+                  registrada con fecha y hora de auditoría para asegurar la trazabilidad y la
+                  correcta liquidación de tus servicios.
                 </p>
               </div>
             </div>
@@ -97,34 +114,40 @@ import { StorageService } from '../../../core/services/storage.service';
             <div class="form-grid">
               <div class="form-group">
                 <label class="form-label">Prestador Asociado a la Cuenta</label>
-                <input
-                  type="text"
-                  [value]="store.currentProvider()?.name || 'Prestador Verificado'"
-                  class="form-input text-muted"
-                  readonly
-                  disabled
-                />
-                <span class="field-hint"
-                  >Nombre oficial registrado del titular de la cuenta</span
-                >
+                <div class="locked-input-wrapper">
+                  <input
+                    type="text"
+                    [value]="store.currentProvider()?.name || 'Prestador Verificado'"
+                    class="form-input text-muted"
+                    readonly
+                    disabled
+                  />
+                  <mat-icon class="lock-icon" aria-hidden="true">lock</mat-icon>
+                </div>
+                <span class="field-hint">Nombre oficial registrado del titular de la cuenta</span>
               </div>
 
               <div class="form-group">
                 <label class="form-label">Email Asociado a la Cuenta</label>
-                <input
-                  type="email"
-                  [value]="store.currentProvider()?.email || 'prestador@experiencias.club'"
-                  class="form-input text-muted"
-                  readonly
-                  disabled
-                />
+                <div class="locked-input-wrapper">
+                  <input
+                    type="email"
+                    [value]="store.currentProvider()?.email || 'prestador@experiencias.club'"
+                    class="form-input text-muted"
+                    readonly
+                    disabled
+                  />
+                  <mat-icon class="lock-icon" aria-hidden="true">lock</mat-icon>
+                </div>
                 <span class="field-hint"
                   >Email oficial verificado vinculado a tu cuenta de prestador</span
                 >
               </div>
 
               <div class="form-group">
-                <label class="form-label">Nombre Comercial o Agencia <span class="req-star">*</span></label>
+                <label class="form-label"
+                  >Nombre Comercial o Agencia <span class="req-star">*</span></label
+                >
                 <input
                   type="text"
                   formControlName="agency"
@@ -150,11 +173,13 @@ import { StorageService } from '../../../core/services/storage.service';
                 <input
                   type="text"
                   formControlName="slug"
-                  class="form-input text-mono"
+                  class="form-input"
                   [placeholder]="currentSlug()"
                 />
                 <span class="field-hint"
-                  >experiencias.club/prestadores/{{ form.get('slug')?.value || currentSlug() }}</span
+                  >experiencias.club/prestadores/{{
+                    form.get('slug')?.value || currentSlug()
+                  }}</span
                 >
               </div>
 
@@ -167,7 +192,8 @@ import { StorageService } from '../../../core/services/storage.service';
                   placeholder="Contá a los exploradores sobre tu trayectoria, guías certificados y qué hace únicas a tus salidas..."
                 ></textarea>
                 <span class="field-hint"
-                  >Esta descripción se presentará en tu ficha técnica y en tu perfil público oficial.</span
+                  >Esta descripción se presentará en tu ficha técnica y en tu perfil público
+                  oficial.</span
                 >
               </div>
 
@@ -186,7 +212,11 @@ import { StorageService } from '../../../core/services/storage.service';
                     class="form-input"
                     placeholder="URL de imagen o subí un archivo..."
                   />
-                  <label class="btn-file-upload" [class.is-loading]="isUploadingAvatar()" title="Elegir y subir imagen a Supabase Storage">
+                  <label
+                    class="btn-file-upload"
+                    [class.is-loading]="isUploadingAvatar()"
+                    title="Elegir y subir imagen a Supabase Storage"
+                  >
                     <input
                       type="file"
                       accept="image/png,image/jpeg,image/webp"
@@ -194,30 +224,22 @@ import { StorageService } from '../../../core/services/storage.service';
                       (change)="onFileSelected($event, 'avatar')"
                       [disabled]="isUploadingAvatar()"
                     />
-                    <mat-icon class="upload-icon">{{ isUploadingAvatar() ? 'hourglass_empty' : 'cloud_upload' }}</mat-icon>
+                    <mat-icon class="upload-icon">{{
+                      isUploadingAvatar() ? 'hourglass_empty' : 'cloud_upload'
+                    }}</mat-icon>
                     <span>{{ isUploadingAvatar() ? 'Subiendo...' : 'Subir imagen' }}</span>
                   </label>
                 </div>
-                @if (isExternalUrl(form.get('avatar')?.value)) {
-                  <button
-                    type="button"
-                    class="btn-migrate-url"
-                    (click)="uploadFromUrl('avatar')"
-                    [disabled]="isUploadingAvatar()"
-                    title="Subir esta imagen externa al bucket de Supabase Storage"
-                  >
-                    <mat-icon class="migrate-icon">cloud_sync</mat-icon>
-                    <span>Subir esta imagen a Supabase Storage</span>
-                  </button>
-                }
                 @if (uploadAvatarError()) {
                   <span class="field-error-text">{{ uploadAvatarError() }}</span>
                 }
-                <span class="field-hint">Imagen redonda o isotipo del prestador. Se guarda en Supabase Storage.</span>
+                <span class="field-hint">Imagen redonda o isotipo del prestador.</span>
               </div>
 
               <div class="form-group media-field-group">
-                <label class="form-label" for="profile-cover-input">Foto de Portada de la Agencia</label>
+                <label class="form-label" for="profile-cover-input"
+                  >Foto de Portada de la Agencia</label
+                >
                 <div class="media-input-wrapper">
                   @if (form.get('coverImage')?.value) {
                     <div class="media-thumb-preview cover-thumb" title="Vista previa de portada">
@@ -231,7 +253,11 @@ import { StorageService } from '../../../core/services/storage.service';
                     class="form-input"
                     placeholder="URL de imagen o subí un archivo..."
                   />
-                  <label class="btn-file-upload" [class.is-loading]="isUploadingCover()" title="Elegir y subir imagen a Supabase Storage">
+                  <label
+                    class="btn-file-upload"
+                    [class.is-loading]="isUploadingCover()"
+                    title="Elegir y subir imagen a Supabase Storage"
+                  >
                     <input
                       type="file"
                       accept="image/png,image/jpeg,image/webp"
@@ -239,30 +265,22 @@ import { StorageService } from '../../../core/services/storage.service';
                       (change)="onFileSelected($event, 'coverImage')"
                       [disabled]="isUploadingCover()"
                     />
-                    <mat-icon class="upload-icon">{{ isUploadingCover() ? 'hourglass_empty' : 'cloud_upload' }}</mat-icon>
+                    <mat-icon class="upload-icon">{{
+                      isUploadingCover() ? 'hourglass_empty' : 'cloud_upload'
+                    }}</mat-icon>
                     <span>{{ isUploadingCover() ? 'Subiendo...' : 'Subir imagen' }}</span>
                   </label>
                 </div>
-                @if (isExternalUrl(form.get('coverImage')?.value)) {
-                  <button
-                    type="button"
-                    class="btn-migrate-url"
-                    (click)="uploadFromUrl('coverImage')"
-                    [disabled]="isUploadingCover()"
-                    title="Subir esta imagen externa al bucket de Supabase Storage"
-                  >
-                    <mat-icon class="migrate-icon">cloud_sync</mat-icon>
-                    <span>Subir esta imagen a Supabase Storage</span>
-                  </button>
-                }
                 @if (uploadCoverError()) {
                   <span class="field-error-text">{{ uploadCoverError() }}</span>
                 }
-                <span class="field-hint">Banner panorámico superior de tu perfil público. Se guarda en Supabase Storage.</span>
+                <span class="field-hint">Banner panorámico superior de tu perfil público.</span>
               </div>
 
               <div class="form-group">
-                <label class="form-label">Teléfono / WhatsApp de Contacto <span class="req-star">*</span></label>
+                <label class="form-label"
+                  >Teléfono / WhatsApp de Contacto <span class="req-star">*</span></label
+                >
                 <input
                   type="text"
                   formControlName="phone"
@@ -283,15 +301,48 @@ import { StorageService } from '../../../core/services/storage.service';
                 <span class="field-hint">Sitio web de tu agencia o emprendimiento</span>
               </div>
 
-              <div class="form-group full-col">
+              <div class="form-group">
                 <label class="form-label">Red Social Principal</label>
                 <input
-                  type="text"
+                  type="url"
                   formControlName="socialMedia"
                   class="form-input"
-                  placeholder="Ej. instagram.com/catamarcakayak"
+                  maxlength="200"
+                  placeholder="Ej. https://instagram.com/catamarcakayak"
                 />
-                <span class="field-hint">Perfil de Instagram, Facebook u otra red de difusión</span>
+                @if (form.controls.socialMedia.invalid && form.controls.socialMedia.touched) {
+                  <span class="field-error-text"
+                    >Ingresá la URL completa del perfil (ej. https://instagram.com/usuario).</span
+                  >
+                } @else {
+                  <span class="field-hint"
+                    >URL de tu perfil de Instagram, Facebook u otra red. En tu perfil público se
+                    mostrará solo el usuario.</span
+                  >
+                }
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Red Social Secundaria</label>
+                <input
+                  type="url"
+                  formControlName="socialMediaSecondary"
+                  class="form-input"
+                  maxlength="200"
+                  placeholder="Ej. https://facebook.com/catamarcakayak"
+                />
+                @if (
+                  form.controls.socialMediaSecondary.invalid &&
+                  form.controls.socialMediaSecondary.touched
+                ) {
+                  <span class="field-error-text"
+                    >Ingresá la URL completa del perfil (ej. https://facebook.com/usuario).</span
+                  >
+                } @else {
+                  <span class="field-hint"
+                    >Opcional. Segunda red para difundir tus experiencias.</span
+                  >
+                }
               </div>
             </div>
           </div>
@@ -299,7 +350,10 @@ import { StorageService } from '../../../core/services/storage.service';
           @if (savedSuccess()) {
             <div class="alert-success" role="status">
               <mat-icon class="alert-icon">check_circle</mat-icon>
-              <span>¡Perfil y datos bancarios actualizados correctamente! El historial de cambios ha sido registrado.</span>
+              <span
+                >¡Perfil y datos bancarios actualizados correctamente! El historial de cambios ha
+                sido registrado.</span
+              >
             </div>
           }
 
@@ -312,7 +366,6 @@ import { StorageService } from '../../../core/services/storage.service';
 
           <div class="form-actions-split">
             <button type="button" class="btn-logout" (click)="onLogout()">
-              <mat-icon class="btn-icon">logout</mat-icon>
               <span>Cerrar Sesión</span>
             </button>
             <button
@@ -608,31 +661,6 @@ import { StorageService } from '../../../core/services/storage.service';
         width: 18px;
         height: 18px;
       }
-      .btn-migrate-url {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35rem;
-        padding: 0.35rem 0.65rem;
-        background: rgba(128, 179, 255, 0.08);
-        border: 1px dashed rgba(128, 179, 255, 0.5);
-        border-radius: 2px;
-        color: #80b3ff;
-        font-size: 0.76rem;
-        font-weight: 600;
-        cursor: pointer;
-        width: fit-content;
-        transition: all 0.2s ease;
-      }
-      .btn-migrate-url:hover {
-        background: rgba(128, 179, 255, 0.2);
-        border-color: #80b3ff;
-        color: #ffffff;
-      }
-      .btn-migrate-url .migrate-icon {
-        font-size: 15px;
-        width: 15px;
-        height: 15px;
-      }
       .field-error-text {
         color: #ff8080;
         font-size: 0.78rem;
@@ -686,6 +714,24 @@ import { StorageService } from '../../../core/services/storage.service';
         opacity: 0.75;
         cursor: not-allowed;
         background: rgba(7, 13, 28, 0.85);
+      }
+      .locked-input-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+      }
+      .locked-input-wrapper .form-input {
+        width: 100%;
+        padding-right: 2.6rem;
+      }
+      .lock-icon {
+        position: absolute;
+        right: 0.8rem;
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+        color: #80b3ff;
+        pointer-events: none;
       }
       .form-actions-split {
         display: flex;
@@ -791,7 +837,14 @@ export class ProviderProfileComponent {
     cuitDni: [this.store.currentProvider()?.cuitDni || '', Validators.required],
     phone: [this.store.currentProvider()?.phone || '', Validators.required],
     website: [this.store.currentProvider()?.website || ''],
-    socialMedia: [this.store.currentProvider()?.socialMedia || ''],
+    socialMedia: [
+      migrateLegacySocialHandle(this.store.currentProvider()?.socialMedia),
+      [socialUrlValidator],
+    ],
+    socialMediaSecondary: [
+      migrateLegacySocialHandle(this.store.currentProvider()?.socialMediaSecondary),
+      [socialUrlValidator],
+    ],
     cbuAlias: [this.store.currentProvider()?.cbuAlias || '', Validators.required],
     bankName: [this.store.currentProvider()?.bankName || '', Validators.required],
   });
@@ -810,7 +863,8 @@ export class ProviderProfileComponent {
           cuitDni: p.cuitDni || '',
           phone: p.phone || '',
           website: p.website || '',
-          socialMedia: p.socialMedia || '',
+          socialMedia: migrateLegacySocialHandle(p.socialMedia),
+          socialMediaSecondary: migrateLegacySocialHandle(p.socialMediaSecondary),
           cbuAlias: p.cbuAlias || '',
           bankName: p.bankName || '',
         });
@@ -819,7 +873,8 @@ export class ProviderProfileComponent {
   }
 
   async onSave(): Promise<void> {
-    if (this.form.invalid || this.isSaving() || this.isUploadingAvatar() || this.isUploadingCover()) return;
+    if (this.form.invalid || this.isSaving() || this.isUploadingAvatar() || this.isUploadingCover())
+      return;
 
     this.isSaving.set(true);
     this.errorMessage.set(null);
@@ -834,6 +889,8 @@ export class ProviderProfileComponent {
       .replace(/[^a-z0-9-]+/g, '-')
       .replace(/(^-|-$)+/g, '');
     values.slug = normalizedSlug || this.currentSlug();
+    values.socialMedia = normalizeSocialUrl(values.socialMedia);
+    values.socialMediaSecondary = normalizeSocialUrl(values.socialMediaSecondary);
 
     const result = await this.store.updateProfile(values);
 
@@ -865,12 +922,6 @@ export class ProviderProfileComponent {
     return `https://experiencias.club/prestadores/${clean}`;
   }
 
-  isExternalUrl(url?: string): boolean {
-    if (!url) return false;
-    const clean = url.trim().toLowerCase();
-    return (clean.startsWith('http://') || clean.startsWith('https://')) && !clean.includes('supabase.co');
-  }
-
   async onFileSelected(event: Event, field: 'avatar' | 'coverImage'): Promise<void> {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
@@ -878,9 +929,13 @@ export class ProviderProfileComponent {
 
     if (!file.type.startsWith('image/')) {
       if (field === 'avatar') {
-        this.uploadAvatarError.set('El archivo seleccionado debe ser una imagen válida (JPG, PNG, WEBP o SVG).');
+        this.uploadAvatarError.set(
+          'El archivo seleccionado debe ser una imagen válida (JPG, PNG, WEBP o SVG).',
+        );
       } else {
-        this.uploadCoverError.set('El archivo seleccionado debe ser una imagen válida (JPG, PNG, WEBP).');
+        this.uploadCoverError.set(
+          'El archivo seleccionado debe ser una imagen válida (JPG, PNG, WEBP).',
+        );
       }
       input.value = '';
       return;
@@ -915,41 +970,6 @@ export class ProviderProfileComponent {
     } finally {
       setLoading.set(false);
       input.value = '';
-    }
-  }
-
-  async uploadFromUrl(field: 'avatar' | 'coverImage'): Promise<void> {
-    const currentUrl = this.form.get(field)?.value?.trim();
-    if (!currentUrl) return;
-
-    const isAvatar = field === 'avatar';
-    const setLoading = isAvatar ? this.isUploadingAvatar : this.isUploadingCover;
-    const setError = isAvatar ? this.uploadAvatarError : this.uploadCoverError;
-
-    setLoading.set(true);
-    setError.set(null);
-
-    try {
-      const res = await fetch(currentUrl);
-      if (!res.ok) throw new Error('No se pudo acceder a la imagen remota.');
-      const blob = await res.blob();
-      const mime = (blob.type || '').toLowerCase();
-      const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-      if (!allowedMimes.includes(mime)) {
-        throw new Error('El archivo remoto no es una imagen válida (debe ser JPG, PNG o WebP).');
-      }
-      const ext = mime.split('/')[1] === 'jpeg' ? 'jpg' : (mime.split('/')[1] || 'jpg');
-      const file = new File([blob], `${field}-${Date.now()}.${ext}`, { type: mime });
-      const uploadRes = await this.storageService.uploadFile(file, isAvatar ? 'AVATAR' : 'PORTADA');
-      if (uploadRes?.url) {
-        this.form.patchValue({ [field]: uploadRes.url });
-        this.form.markAsDirty();
-      }
-    } catch (err: any) {
-      console.warn('[ProviderProfile] Error migrando URL externa a Supabase Storage:', err);
-      setError.set('No se pudo transferir directamente la URL externa. Por favor descargala y subila con el botón "Subir imagen".');
-    } finally {
-      setLoading.set(false);
     }
   }
 

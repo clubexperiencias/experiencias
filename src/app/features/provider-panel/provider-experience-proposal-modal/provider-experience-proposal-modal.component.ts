@@ -38,6 +38,7 @@ const DEFAULT_REQ_FORM = {
   promosAndPricing: '',
   itinerary: '',
   meetingPoint: '',
+  meetingPointUrl: '',
   includedServices: '',
   participantRequirements: '',
   notes: '',
@@ -163,12 +164,18 @@ const DEFAULT_REQ_FORM = {
 
                   <div class="form-row">
                     <div class="form-group">
-                      <label class="form-label" for="req-title"
-                        >Título Principal de la Experiencia *</label
-                      >
+                      <div class="label-with-counter">
+                        <label class="form-label" for="req-title"
+                          >Título Principal de la Experiencia *</label
+                        >
+                        <span class="char-counter">
+                          {{ (reqForm.title || '').length }}/70
+                        </span>
+                      </div>
                       <input
                         id="req-title"
                         type="text"
+                        maxlength="70"
                         class="form-input"
                         placeholder="Ej: Travesía en Kayak & Sunset..."
                         [(ngModel)]="reqForm.title"
@@ -178,12 +185,18 @@ const DEFAULT_REQ_FORM = {
                     </div>
 
                     <div class="form-group">
-                      <label class="form-label" for="req-region"
-                        >Región Turística de Catamarca *</label
-                      >
+                      <div class="label-with-counter">
+                        <label class="form-label" for="req-region"
+                          >Región Turística de Catamarca *</label
+                        >
+                        <span class="char-counter">
+                          {{ (reqForm.region || '').length }}/40
+                        </span>
+                      </div>
                       <input
                         id="req-region"
                         type="text"
+                        maxlength="40"
                         class="form-input"
                         placeholder="Ej: Valle Central, Fiambalá, etc."
                         [(ngModel)]="reqForm.region"
@@ -408,7 +421,6 @@ const DEFAULT_REQ_FORM = {
                         <option value="6 horas">6 horas</option>
                         <option value="7 horas">7 horas</option>
                         <option value="8 horas (Jornada completa)">8 horas (Jornada completa)</option>
-                        <option value="Día completo / Más de 8 horas">Día completo / Más de 8 horas</option>
                       </select>
                     </div>
 
@@ -417,6 +429,7 @@ const DEFAULT_REQ_FORM = {
                       <input
                         id="req-altitude"
                         type="text"
+                        maxlength="30"
                         class="form-input"
                         placeholder="Ej: 850 msnm"
                         [(ngModel)]="reqForm.altitude"
@@ -496,10 +509,16 @@ const DEFAULT_REQ_FORM = {
                   </div>
 
                   <div class="form-group">
-                    <label class="form-label" for="req-itinerary">Itinerario de la Jornada *</label>
+                    <div class="label-with-counter">
+                      <label class="form-label" for="req-itinerary">Itinerario de la Jornada *</label>
+                      <span class="char-counter">
+                        {{ (reqForm.itinerary || '').length }}/1500
+                      </span>
+                    </div>
                     <textarea
                       id="req-itinerary"
                       rows="4"
+                      maxlength="1500"
                       class="form-input form-textarea"
                       placeholder="Ej: 15:30 hs Recepción, 16:15 hs Zarpada, 18:15 hs Sunset..."
                       [(ngModel)]="reqForm.itinerary"
@@ -588,38 +607,71 @@ const DEFAULT_REQ_FORM = {
                     <h4 class="form-section-title">Equipamiento, Seguridad & Punto de Encuentro</h4>
                   </div>
 
-                  <div class="form-group">
-                    <label class="form-label" for="req-meeting"
-                      >Punto de Encuentro & Ubicación (Link de Google Maps) *</label
-                    >
-                    <input
-                      id="req-meeting"
-                      type="url"
-                      class="form-input"
-                      [class.input-error]="meetingPointError()"
-                      placeholder="Ej: https://maps.app.goo.gl/... o https://www.google.com/maps/..."
-                      [(ngModel)]="reqForm.meetingPoint"
-                      (ngModelChange)="onMeetingPointChange($event)"
-                      name="meetingPoint"
-                      required
-                    />
-                    @if (meetingPointError()) {
-                      <span class="field-error-text">{{ meetingPointError() }}</span>
-                    } @else {
+                  <div class="form-row">
+                    <div class="form-group">
+                      <div class="label-with-counter">
+                        <label class="form-label" for="req-meeting"
+                          >Punto de Encuentro *</label
+                        >
+                        <span class="char-counter">
+                          {{ (reqForm.meetingPoint || '').length }}/40
+                        </span>
+                      </div>
+                      <input
+                        id="req-meeting"
+                        type="text"
+                        maxlength="40"
+                        class="form-input"
+                        placeholder="Ej: Club Náutico El Jumeal"
+                        [(ngModel)]="reqForm.meetingPoint"
+                        name="meetingPoint"
+                        required
+                      />
                       <span class="field-hint">
-                        Ingresá el enlace de Google Maps para que el botón de Maps abra la ubicación exacta directamente.
+                        Nombre breve del lugar de encuentro. Se muestra en la ficha de la experiencia.
                       </span>
-                    }
+                    </div>
+
+                    <div class="form-group">
+                      <label class="form-label" for="req-meeting-url"
+                        >Ubicación (Link de Google Maps) *</label
+                      >
+                      <input
+                        id="req-meeting-url"
+                        type="url"
+                        maxlength="300"
+                        class="form-input"
+                        [class.input-error]="meetingPointError()"
+                        placeholder="Ej: https://maps.app.goo.gl/... o https://www.google.com/maps/..."
+                        [(ngModel)]="reqForm.meetingPointUrl"
+                        (ngModelChange)="onMeetingPointChange($event)"
+                        name="meetingPointUrl"
+                        required
+                      />
+                      @if (meetingPointError()) {
+                        <span class="field-error-text">{{ meetingPointError() }}</span>
+                      } @else {
+                        <span class="field-hint">
+                          Ingresá el enlace de Google Maps para que el botón de Maps abra la ubicación exacta directamente.
+                        </span>
+                      }
+                    </div>
                   </div>
 
                   <div class="form-row">
                     <div class="form-group">
-                      <label class="form-label" for="req-included"
-                        >Servicios e Indumentaria Provista *</label
-                      >
+                      <div class="label-with-counter">
+                        <label class="form-label" for="req-included"
+                          >Servicios e Indumentaria Provista *</label
+                        >
+                        <span class="char-counter">
+                          {{ (reqForm.includedServices || '').length }}/1000
+                        </span>
+                      </div>
                       <textarea
                         id="req-included"
                         rows="3"
+                        maxlength="1000"
                         class="form-input form-textarea"
                         placeholder="Ej: Kayaks de travesía, chalecos salvavidas, seguro..."
                         [(ngModel)]="reqForm.includedServices"
@@ -629,12 +681,18 @@ const DEFAULT_REQ_FORM = {
                     </div>
 
                     <div class="form-group">
-                      <label class="form-label" for="req-requirements"
-                        >Qué Debe Traer el Participante *</label
-                      >
+                      <div class="label-with-counter">
+                        <label class="form-label" for="req-requirements"
+                          >Qué Debe Traer el Participante *</label
+                        >
+                        <span class="char-counter">
+                          {{ (reqForm.participantRequirements || '').length }}/1000
+                        </span>
+                      </div>
                       <textarea
                         id="req-requirements"
                         rows="3"
+                        maxlength="1000"
                         class="form-input form-textarea"
                         placeholder="Ej: Ropa de agua, toalla personal, protección solar..."
                         [(ngModel)]="reqForm.participantRequirements"
@@ -653,9 +711,6 @@ const DEFAULT_REQ_FORM = {
                       <h4 class="form-section-title">
                         Álbum de Fotos de la Experiencia <span class="badge-optional">(Opcional)</span>
                       </h4>
-                      <p class="form-section-desc">
-                        Opcional: podés sumar hasta 2 fotos destacadas y hasta 9 de galería común para que se muestre el botón de fotos de experiencias pasadas en el catálogo (<code>/experiencias/:slug/fotos</code>). Si no cargás fotos adicionales, la experiencia se publicará sin galería de fotos pasadas.
-                      </p>
                     </div>
                   </div>
 
@@ -751,20 +806,14 @@ const DEFAULT_REQ_FORM = {
                     <div class="featured-slots-grid">
                       <!-- Destacada 1 -->
                       <div class="featured-slot-item">
-                        <div class="featured-slot-title">
-                          <span class="featured-slot-num">1</span>
-                          <span>Destacada 1</span>
-                        </div>
-
                         @if (featuredPhoto1Preview()) {
                           <div class="album-photo-card is-featured-card">
                             <div class="card-thumb-wrap">
-                              <img [src]="featuredPhoto1Preview()" alt="Destacada 1" class="card-thumb-img" />
-                              <span class="card-role-indicator">Destacada 1</span>
+                              <img [src]="featuredPhoto1Preview()" alt="Foto destacada 1" class="card-thumb-img" />
                             </div>
                             <div class="card-meta">
-                              <span class="card-file-name" [title]="featuredPhoto1File()?.name || 'Destacada 1'">
-                                {{ featuredPhoto1File()?.name || 'destacada-1.jpg' }}
+                              <span class="card-file-name" [title]="featuredPhoto1File()?.name || 'Foto destacada 1'">
+                                {{ featuredPhoto1File()?.name || 'foto-destacada-1.jpg' }}
                               </span>
                             </div>
                             <div class="card-actions">
@@ -802,7 +851,7 @@ const DEFAULT_REQ_FORM = {
                               <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                                 <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                               </svg>
-                              <span class="dropzone-text-main">Subir Destacada 1</span>
+                              <span class="dropzone-text-main">Subir foto destacada</span>
                               <span class="dropzone-text-sub">JPG, PNG, WEBP</span>
                             </div>
                           </label>
@@ -811,20 +860,14 @@ const DEFAULT_REQ_FORM = {
 
                       <!-- Destacada 2 -->
                       <div class="featured-slot-item">
-                        <div class="featured-slot-title">
-                          <span class="featured-slot-num">2</span>
-                          <span>Destacada 2</span>
-                        </div>
-
                         @if (featuredPhoto2Preview()) {
                           <div class="album-photo-card is-featured-card">
                             <div class="card-thumb-wrap">
-                              <img [src]="featuredPhoto2Preview()" alt="Destacada 2" class="card-thumb-img" />
-                              <span class="card-role-indicator">Destacada 2</span>
+                              <img [src]="featuredPhoto2Preview()" alt="Foto destacada 2" class="card-thumb-img" />
                             </div>
                             <div class="card-meta">
-                              <span class="card-file-name" [title]="featuredPhoto2File()?.name || 'Destacada 2'">
-                                {{ featuredPhoto2File()?.name || 'destacada-2.jpg' }}
+                              <span class="card-file-name" [title]="featuredPhoto2File()?.name || 'Foto destacada 2'">
+                                {{ featuredPhoto2File()?.name || 'foto-destacada-2.jpg' }}
                               </span>
                             </div>
                             <div class="card-actions">
@@ -862,7 +905,7 @@ const DEFAULT_REQ_FORM = {
                               <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                                 <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                               </svg>
-                              <span class="dropzone-text-main">Subir Destacada 2</span>
+                              <span class="dropzone-text-main">Subir foto destacada</span>
                               <span class="dropzone-text-sub">JPG, PNG, WEBP</span>
                             </div>
                           </label>
@@ -956,6 +999,7 @@ const DEFAULT_REQ_FORM = {
                       <input
                         id="req-cbu-alias"
                         type="text"
+                        maxlength="22"
                         class="form-input text-mono"
                         placeholder="Ej. EXPERIENCIAS.CLUB.MP o 22 dígitos"
                         [(ngModel)]="reqForm.cbuAlias"
@@ -972,6 +1016,7 @@ const DEFAULT_REQ_FORM = {
                       <input
                         id="req-bank-name"
                         type="text"
+                        maxlength="60"
                         class="form-input"
                         placeholder="Ej. Banco Nación / Mercado Pago"
                         [(ngModel)]="reqForm.bankName"
@@ -989,6 +1034,7 @@ const DEFAULT_REQ_FORM = {
                       <input
                         id="req-account-holder"
                         type="text"
+                        maxlength="70"
                         class="form-input"
                         placeholder="Nombre y Apellido del Titular"
                         [(ngModel)]="reqForm.accountHolder"
@@ -1004,6 +1050,7 @@ const DEFAULT_REQ_FORM = {
                       <input
                         id="req-cuit-dni"
                         type="text"
+                        maxlength="13"
                         class="form-input text-mono"
                         placeholder="Ej. 20-12345678-9"
                         [(ngModel)]="reqForm.cuitDni"
@@ -1945,26 +1992,6 @@ const DEFAULT_REQ_FORM = {
       .featured-slot-item {
         display: flex;
         flex-direction: column;
-        gap: 0.45rem;
-      }
-      .featured-slot-title {
-        display: flex;
-        align-items: center;
-        gap: 0.45rem;
-        font-size: 0.76rem;
-        font-weight: 700;
-        color: #80b3ff;
-      }
-      .featured-slot-num {
-        width: 18px;
-        height: 18px;
-        border-radius: 50%;
-        background: rgba(128, 179, 255, 0.22);
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.68rem;
-        color: #ffffff;
       }
       .album-dropzone {
         display: flex;
@@ -1984,8 +2011,10 @@ const DEFAULT_REQ_FORM = {
         background: rgba(128, 179, 255, 0.08);
       }
       .album-dropzone.dropzone-sm {
+        height: 105px;
         min-height: 105px;
         padding: 0.85rem;
+        box-sizing: border-box;
       }
       .album-dropzone.dropzone-gallery {
         min-height: 100px;
@@ -2014,6 +2043,11 @@ const DEFAULT_REQ_FORM = {
         background: rgba(10, 18, 38, 0.85);
         border: 1px solid rgba(128, 179, 255, 0.3);
         border-radius: 4px;
+      }
+      .album-photo-card.is-featured-card {
+        height: 105px;
+        min-height: 105px;
+        box-sizing: border-box;
       }
       .card-thumb-wrap {
         position: relative;
@@ -2373,7 +2407,7 @@ export class ProviderExperienceProposalModalComponent {
     if (this.reqForm.difficulty?.trim() && this.reqForm.duration?.trim()) score++;
     if (this.reqForm.priceArs && this.reqForm.priceArs > 0) score++;
     if (this.reqForm.itinerary?.trim()) score++;
-    if (this.reqForm.meetingPoint?.trim() && this.isValidGoogleMapsUrl(this.reqForm.meetingPoint)) score++;
+    if (this.reqForm.meetingPoint?.trim() && this.isValidGoogleMapsUrl(this.reqForm.meetingPointUrl)) score++;
     if (this.reqForm.cbuAlias?.trim() && this.reqForm.bankName?.trim()) score++;
 
     return Math.min(100, Math.round((score / total) * 100));
@@ -2706,6 +2740,11 @@ export class ProviderExperienceProposalModalComponent {
           ...DEFAULT_REQ_FORM,
           ...data.reqForm,
         };
+        // Borradores previos guardaban el link de Maps dentro de "meetingPoint"
+        if (!this.reqForm.meetingPointUrl && this.isValidGoogleMapsUrl(this.reqForm.meetingPoint)) {
+          this.reqForm.meetingPointUrl = this.reqForm.meetingPoint;
+          this.reqForm.meetingPoint = '';
+        }
       }
       this.syncBankingWithProvider();
       if (data.usdExchangeRate) {
@@ -2743,6 +2782,7 @@ export class ProviderExperienceProposalModalComponent {
         this.reqForm.altitude?.trim() ||
         this.reqForm.itinerary?.trim() ||
         this.reqForm.meetingPoint?.trim() ||
+        this.reqForm.meetingPointUrl?.trim() ||
         this.reqForm.promosAndPricing?.trim() ||
         this.reqForm.includedServices?.trim() ||
         this.reqForm.participantRequirements?.trim() ||
@@ -2860,7 +2900,8 @@ export class ProviderExperienceProposalModalComponent {
     const subheading = this.reqForm.subheading?.trim();
     const itinerary = this.reqForm.itinerary?.trim();
     const meetingPoint = this.reqForm.meetingPoint?.trim();
-    const isMapsValid = this.isValidGoogleMapsUrl(meetingPoint);
+    const meetingPointUrl = this.reqForm.meetingPointUrl?.trim();
+    const isMapsValid = this.isValidGoogleMapsUrl(meetingPointUrl);
     const priceArs = Number(this.reqForm.priceArs);
     const hasCoverImage = Boolean(this.coverImageFile() || this.coverImagePreview());
     const hasValidDates = this.isDateFlexible() || this.scheduledDates().length > 0;
@@ -2872,6 +2913,7 @@ export class ProviderExperienceProposalModalComponent {
       !subheading ||
       !itinerary ||
       !meetingPoint ||
+      !meetingPointUrl ||
       !isMapsValid ||
       !Number.isFinite(priceArs) ||
       priceArs < 1 ||
@@ -2883,8 +2925,8 @@ export class ProviderExperienceProposalModalComponent {
       if (!hasCoverImage) {
         this.coverImageError.set('La foto de portada es obligatoria para enviar la propuesta.');
       }
-      if (!meetingPoint) {
-        this.meetingPointError.set('Ingresá el enlace de Google Maps para el punto de encuentro.');
+      if (!meetingPointUrl) {
+        this.meetingPointError.set('Ingresá el enlace de Google Maps de la ubicación.');
       } else if (!isMapsValid) {
         this.meetingPointError.set(
           'Ingresá un enlace válido de Google Maps (maps.app.goo.gl o google.com/maps).',
@@ -2896,7 +2938,8 @@ export class ProviderExperienceProposalModalComponent {
       if (!region) missing.push('Región');
       if (!subheading) missing.push('Bajada');
       if (!itinerary) missing.push('Itinerario');
-      if (!meetingPoint || !isMapsValid) missing.push('Punto de encuentro (link válido de Google Maps)');
+      if (!meetingPoint) missing.push('Punto de encuentro');
+      if (!meetingPointUrl || !isMapsValid) missing.push('Ubicación (link válido de Google Maps)');
       if (!Number.isFinite(priceArs) || priceArs < 1) missing.push('Arancel');
       if (!hasCoverImage) missing.push('Foto de Portada');
       if (!hasValidDates) missing.push('Fechas de Salida');
@@ -3147,7 +3190,8 @@ export class ProviderExperienceProposalModalComponent {
         priceUsd,
         promosAndPricing: this.reqForm.promosAndPricing,
         itinerary: this.reqForm.itinerary,
-        meetingPoint: this.reqForm.meetingPoint,
+        meetingPoint: this.reqForm.meetingPoint?.trim(),
+        meetingPointUrl: this.reqForm.meetingPointUrl?.trim(),
         includedServices: this.reqForm.includedServices,
         participantRequirements: this.reqForm.participantRequirements,
         notes: this.reqForm.notes,

@@ -59,6 +59,7 @@ export interface ExperienceProposalRequest {
   promosAndPricing?: string;
   itinerary: string;
   meetingPoint: string;
+  meetingPointUrl?: string;
   includedServices: string;
   participantRequirements: string;
   notes?: string;
@@ -556,7 +557,7 @@ export class ProviderStoreService {
       const email = data.user.email.trim().toLowerCase();
 
       const { data: access, error } = await (this.supabase.from('provider_access') as any)
-        .select('email, name, agency, active, status, cbu_alias, cuit_dni, bank_name, account_holder, phone, website, social_media, slug, bio, avatar_url, cover_url')
+        .select('*')
         .eq('email', email)
         .maybeSingle();
 
@@ -604,6 +605,8 @@ export class ProviderStoreService {
         phone: access.phone || existing?.phone || '',
         website: access.website || existing?.website || '',
         socialMedia: access.social_media || existing?.socialMedia || '',
+        socialMediaSecondary:
+          access.social_media_secondary || existing?.socialMediaSecondary || '',
         cuitDni: access.cuit_dni === '20-33445566-7' ? '' : (access.cuit_dni || ''),
         cbuAlias: access.cbu_alias === 'EXPERIENCIAS.CLUB.MP' ? '' : (access.cbu_alias || ''),
         bankName: access.bank_name === 'Banco Nación / Mercado Pago' ? '' : (access.bank_name || ''),
@@ -623,6 +626,15 @@ export class ProviderStoreService {
       this.lastSessionRestoreTime = Date.now();
       this._currentProvider.set(provider);
       this.saveSession(provider);
+      if (!access.slug && provider.slug) {
+        // El slug derivado solo existía en el cliente: se persiste para que el perfil público resuelva.
+        void (this.supabase.from('provider_access') as any)
+          .update({ slug: provider.slug.toLowerCase() })
+          .eq('email', email)
+          .then(({ error: slugError }: { error: unknown }) => {
+            if (slugError) console.warn('[ProviderStore] No se pudo persistir el slug:', slugError);
+          });
+      }
       void this.loadProposalsFromSupabase(email);
       return true;
     } catch (err) {
@@ -857,13 +869,24 @@ export class ProviderStoreService {
         if (updates.phone !== undefined) payload['phone'] = updates.phone.trim();
         if (updates.website !== undefined) payload['website'] = updates.website.trim();
         if (updates.socialMedia !== undefined) payload['social_media'] = updates.socialMedia.trim();
+        if (updates.socialMediaSecondary !== undefined) {
+          payload['social_media_secondary'] = updates.socialMediaSecondary.trim();
+        }
         if (updates.cuitDni !== undefined) payload['cuit_dni'] = updates.cuitDni.trim();
         if (updates.cbuAlias !== undefined) payload['cbu_alias'] = updates.cbuAlias.trim();
         if (updates.bankName !== undefined) payload['bank_name'] = updates.bankName.trim();
 
-        const { error } = await (this.supabase.from('provider_access') as any)
+        let { error } = await (this.supabase.from('provider_access') as any)
           .update(payload)
           .eq('email', email);
+
+        if (error && /social_media_secondary/.test(error.message || '')) {
+          // Columna aún no migrada en la base remota: reintenta sin ella
+          const { social_media_secondary: _omit, ...legacyPayload } = payload;
+          ({ error } = await (this.supabase.from('provider_access') as any)
+            .update(legacyPayload)
+            .eq('email', email));
+        }
 
         if (error) {
           console.warn('[ProviderStore] Error actualizando provider_access:', error);
@@ -952,6 +975,7 @@ export class ProviderStoreService {
       phone: remoteData.phone || '',
       website: remoteData.website || '',
       socialMedia: remoteData.social_media || '',
+      socialMediaSecondary: remoteData.social_media_secondary || '',
       cuitDni: '',
       cbuAlias: '',
       bankName: '',
@@ -967,10 +991,9 @@ export class ProviderStoreService {
       let remoteData: any = null;
       const { data, error } = await (this.supabase as any)
         .from('public_provider_profiles')
-        .select(
-          'email, name, agency, active, status, phone, website, social_media, slug, bio, avatar_url, cover_url',
-        )
+        .select('*')
         .or(`slug.eq.${querySlug},email.eq.${queryEmail}`)
+        .limit(1)
         .maybeSingle();
 
       if (!error && data) {
@@ -983,6 +1006,7 @@ export class ProviderStoreService {
           .eq('active', true)
           .eq('status', 'aprobado')
           .or(`slug.eq.${querySlug},email.eq.${queryEmail}`)
+          .limit(1)
           .maybeSingle();
         remoteData = fallbackData;
       }
@@ -2009,6 +2033,7 @@ export class ProviderStoreService {
           promos_and_pricing: newReq.promosAndPricing || '',
           itinerary: newReq.itinerary || '',
           meeting_point: newReq.meetingPoint || '',
+          meeting_point_url: newReq.meetingPointUrl || '',
           included_services: newReq.includedServices || '',
           participant_requirements: newReq.participantRequirements || '',
           notes: newReq.notes || '',
@@ -2025,11 +2050,27 @@ export class ProviderStoreService {
           // Si columnas agregadas recientemente (album_photos o bancarias) no existieran en DB
           if (
             error.code === '42703' ||
-            /album_photos|provider_cbu_alias|provider_bank_name|provider_cuit_dni/.test(
+            /album_photos|provider_cbu_alias|provider_bank_name|provider_cuit_dni|meeting_point_url/.test(
               error.message || '',
             )
           ) {
+            // If meeting_point_url triggered the error and the user provided a value,
+            // refuse the fallback: silently dropping it would lose data the provider
+            // explicitly entered. Require the DB schema to be migrated first.
+            const urlTriggeredError =
+              /meeting_point_url/.test(error.message || '') ||
+              (error.code === '42703' && proposalPayload['meeting_point_url']);
+            if (urlTriggeredError && proposalPayload['meeting_point_url']) {
+              console.warn('[ProviderStore] meeting_point_url column missing in DB; refusing silent fallback.');
+              this._experienceRequests.update((list) => list.filter((r) => r.id !== newReq.id));
+              this.saveRequests();
+              throw new Error(
+                'No se pudo guardar la URL del punto de encuentro porque la base de datos requiere una migración. ' +
+                  'Por favor contactá al equipo técnico.',
+              );
+            }
             const fallbackPayload = { ...proposalPayload };
+            delete fallbackPayload['meeting_point_url'];
             delete fallbackPayload['album_photos'];
             delete fallbackPayload['provider_cbu_alias'];
             delete fallbackPayload['provider_bank_name'];
@@ -2097,6 +2138,7 @@ export class ProviderStoreService {
           promosAndPricing: row.promos_and_pricing || '',
           itinerary: row.itinerary || '',
           meetingPoint: row.meeting_point || '',
+          meetingPointUrl: row.meeting_point_url || '',
           includedServices: row.included_services || '',
           participantRequirements: row.participant_requirements || '',
           notes: row.notes || '',
@@ -2181,6 +2223,7 @@ export class ProviderStoreService {
       description: req.subheading,
       region: req.region,
       meetingPoint: req.meetingPoint,
+      meetingPointUrl: req.meetingPointUrl,
       difficulty:
         (req.difficulty.split('(')[0].trim() as
           | 'Baja'

@@ -106,7 +106,6 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
             class="btn-edit-banking-pill"
             [title]="isBankingComplete() ? 'Editar datos bancarios' : 'Completar datos bancarios'"
           >
-            <mat-icon>{{ isBankingComplete() ? 'edit' : 'add_circle_outline' }}</mat-icon>
             <span>{{ isBankingComplete() ? 'Editar Datos' : 'Completar Datos' }}</span>
           </a>
         </div>
@@ -341,10 +340,10 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         }
       </section>
 
-      <!-- Sección 3: Postulaciones de Experiencias Más Recientes -->
+      <!-- Sección 3: Experiencias Postuladas -->
       <section class="dash-card full-width-card">
         <div class="card-head">
-          <h2 class="card-title">Postulaciones de Experiencias Más Recientes</h2>
+          <h2 class="card-title">Experiencias Postuladas</h2>
           <a
             routerLink="../experiencias"
             [queryParams]="{ tab: 'solicitudes' }"
@@ -1035,24 +1034,19 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         align-items: center;
         gap: 0.4rem;
         padding: 0.4rem 0.85rem;
-        background: rgba(128, 179, 255, 0.12);
-        border: 1px solid rgba(128, 179, 255, 0.35);
+        background: #80b3ff;
+        border: 1px solid #80b3ff;
         border-radius: 2px;
-        color: #80b3ff;
+        color: #000000;
         font-size: 0.78rem;
         font-weight: 700;
         text-decoration: none;
         transition: all 0.2s ease;
       }
-      .btn-edit-banking-pill mat-icon {
-        font-size: 16px;
-        width: 16px;
-        height: 16px;
-      }
       .btn-edit-banking-pill:hover {
-        background: rgba(128, 179, 255, 0.25);
-        border-color: #80b3ff;
-        color: #ffffff;
+        background: #a3c9ff;
+        border-color: #a3c9ff;
+        color: #000000;
       }
       .banking-details-grid {
         display: grid;

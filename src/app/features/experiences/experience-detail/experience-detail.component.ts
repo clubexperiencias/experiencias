@@ -93,7 +93,11 @@ export class ExperienceDetailComponent {
     }
   }
 
-  getGoogleMapsUrl(meetingPoint?: string, region?: string): string {
+  getGoogleMapsUrl(meetingPoint?: string, region?: string, meetingPointUrl?: string): string {
+    const explicitUrl = meetingPointUrl?.trim();
+    if (explicitUrl && this.isValidGoogleMapsUrl(explicitUrl)) {
+      return explicitUrl;
+    }
     if (!meetingPoint) {
       return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
         region ? region + ', Catamarca' : 'Catamarca',

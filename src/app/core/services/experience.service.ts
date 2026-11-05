@@ -413,6 +413,9 @@ export class ExperienceService {
           payload['slug'] = merged.slug;
         }
 
+        if (merged.meetingPointUrl) {
+          payload['meeting_point_url'] = merged.meetingPointUrl;
+        }
         if (merged.albumPhotos) {
           payload['album_photos'] = merged.albumPhotos;
         }
@@ -437,11 +440,21 @@ export class ExperienceService {
           payload['provider_slug'] = updated.providerSlug || null;
         }
 
-        const { data, error } = await this.supabase
+        let { data, error } = await this.supabase
           .from('experiencias')
           .update(payload as any)
           .eq('id', merged.id)
           .select();
+
+        if (error && /meeting_point_url/.test(error.message || '')) {
+          // Columna aún no migrada en la base remota: reintenta sin ella, preservando el resto
+          const { meeting_point_url: _omit, ...legacyPayload } = payload as any;
+          ({ data, error } = await this.supabase
+            .from('experiencias')
+            .update(legacyPayload as any)
+            .eq('id', merged.id)
+            .select() as any);
+        }
 
         if (error || !data || data.length === 0) {
           throw error || new Error(`No se encontró la experiencia remota con id ${merged.id}`);
@@ -539,6 +552,7 @@ export class ExperienceService {
           description: experience.description,
           region: experience.region,
           meeting_point: experience.meetingPoint || '',
+          meeting_point_url: experience.meetingPointUrl || '',
           difficulty: experience.difficulty,
           duration_label: experience.durationLabel,
           price_ars: experience.priceArs,
@@ -561,7 +575,12 @@ export class ExperienceService {
           provider_slug: experience.providerSlug || null,
         };
 
-        const { error } = await this.supabase.from('experiencias').insert(payload as any);
+        let { error } = await this.supabase.from('experiencias').insert(payload as any);
+        if (error && /meeting_point_url/.test(error.message || '')) {
+          // Columna aún no migrada en la base remota: reintenta sin ella
+          const { meeting_point_url: _omit, ...legacyPayload } = payload;
+          ({ error } = await this.supabase.from('experiencias').insert(legacyPayload as any));
+        }
         if (error) {
           console.warn('[ExperienceService] Error al insertar experiencia en Supabase:', error);
           this._experiences.set(list);
@@ -753,11 +772,17 @@ export class ExperienceService {
         'not_included, status, public_url, album_photos, provider_name, provider_phone, ' +
         'provider_email, provider_slug, date_slots, created_at';
 
-      const { data, error } = await this.supabase
-        .from('experiencias')
-        .select(publicColumns)
-        .order('created_at', { ascending: true });
+      const fetchExperiences = (columns: string): Promise<{ data: any[] | null; error: any }> =>
+        this.supabase
+          .from('experiencias')
+          .select(columns)
+          .order('created_at', { ascending: true }) as any;
 
+      let { data, error } = await fetchExperiences(`${publicColumns}, meeting_point_url`);
+      if (error && /meeting_point_url/.test(error.message || '')) {
+        // Columna aún no migrada en la base remota: reintenta sin ella
+        ({ data, error } = await fetchExperiences(publicColumns));
+      }
       if (error) {
         console.warn('[ExperienceService] No se pudieron cargar las experiencias remotas:', error);
         return false;
@@ -799,6 +824,7 @@ export class ExperienceService {
             description: exp.description,
             region: exp.region,
             meetingPoint: exp.meeting_point || '',
+            meetingPointUrl: exp.meeting_point_url || '',
             difficulty: exp.difficulty || 'Baja',
             durationDays: 1,
             durationLabel: exp.duration_label || '4 horas',
