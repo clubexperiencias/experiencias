@@ -2824,6 +2824,9 @@ export class AdminDashboardComponent {
     const providerEmails = new Set<string>();
 
     for (const p of officialProviders) {
+      if (!p.verified || p.status === 'dado_de_baja' || p.status === 'pendiente') {
+        continue;
+      }
       const cleanEmail = p.email?.toLowerCase().trim() || '';
       if (cleanEmail) providerEmails.add(cleanEmail);
       list.push({
@@ -2855,7 +2858,14 @@ export class AdminDashboardComponent {
         email: app.email,
         phone: app.phone || '—',
         categoryOrBio: app.description || app.motivationLetter,
-        status: app.status === 'aprobado' ? 'aprobado' : app.status === 'rechazado' ? 'rechazado' : 'pendiente',
+        status:
+          app.status === 'aprobado'
+            ? 'aprobado'
+            : app.status === 'rechazado'
+              ? 'rechazado'
+              : app.status === 'dado_de_baja'
+                ? 'dado_de_baja'
+                : 'pendiente',
         createdAt: app.createdAt,
         rawApp: app,
       });
@@ -3039,23 +3049,30 @@ export class AdminDashboardComponent {
     }
   }
 
+  readonly providerEmailsSet = computed<Set<string>>(() => {
+    const set = new Set<string>();
+    for (const p of this.store.providerStore.allProviders()) {
+      const email = p.email?.toLowerCase().trim();
+      if (email) set.add(email);
+    }
+    for (const a of this.store.applications()) {
+      if (a.type === 'prestador') {
+        const email = a.email?.toLowerCase().trim();
+        if (email) set.add(email);
+      }
+    }
+    for (const r of this.store.providerStore.experienceRequests()) {
+      const email = r.providerEmail?.toLowerCase().trim();
+      if (email) set.add(email);
+    }
+    return set;
+  });
+
   isProvider(member: AdminMember): boolean {
     if (member.isProvider) return true;
     const email = member.email?.toLowerCase().trim();
     if (!email) return false;
-    if (email === 'patriciofacundodiaztillar@gmail.com') return true;
-    const inProviders = this.store.providerStore.allProviders().some(
-      (p: any) => p.email?.toLowerCase().trim() === email,
-    );
-    if (inProviders) return true;
-    const inApps = this.store.applications().some(
-      (a) => a.type === 'prestador' && a.email?.toLowerCase().trim() === email,
-    );
-    if (inApps) return true;
-    const inRequests = this.store.providerStore.experienceRequests().some(
-      (r) => r.providerEmail?.toLowerCase().trim() === email,
-    );
-    return inRequests;
+    return this.providerEmailsSet().has(email);
   }
 
   async approveExperience(id: string): Promise<void> {

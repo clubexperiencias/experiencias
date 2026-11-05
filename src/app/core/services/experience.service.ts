@@ -453,6 +453,7 @@ export class ExperienceService {
           .select();
 
         if (error && /meeting_point_url/.test(error.message || '')) {
+          const migrationError = error;
           // Columna aún no migrada en la base remota: reintenta sin ella, preservando el resto
           const { meeting_point_url: _omit, ...legacyPayload } = payload as any;
           ({ data, error } = (await this.supabase
@@ -460,6 +461,10 @@ export class ExperienceService {
             .update(legacyPayload as any)
             .eq('id', merged.id)
             .select()) as any);
+
+          if (!error && updated.meetingPointUrl !== undefined) {
+            error = migrationError;
+          }
         }
 
         if (error || !data || data.length === 0) {
@@ -585,23 +590,49 @@ export class ExperienceService {
           provider_slug: experience.providerSlug || null,
         };
 
-        let { error } = await this.supabase.from('experiencias').insert(payload as any);
-        if (
-          error &&
-          /column.*does not exist|meeting_point_url|itinerary|kicker|best_season|promos_and_pricing/i.test(
-            error.message || '',
-          )
-        ) {
-          // Columna aún no migrada en la base remota: reintenta omitiendo campos adicionales
-          const {
-            meeting_point_url: _omitM,
-            itinerary: _omitI,
-            kicker: _omitK,
-            best_season: _omitB,
-            promos_and_pricing: _omitP,
-            ...legacyPayload
-          } = payload;
-          ({ error } = await this.supabase.from('experiencias').insert(legacyPayload as any));
+        const optionalColumns: string[] = [
+          'meeting_point_url',
+          'itinerary',
+          'kicker',
+          'best_season',
+          'promos_and_pricing',
+        ];
+
+        let insertPayload: Record<string, any> = { ...payload };
+        let migrationError: any = null;
+        let error: any = null;
+
+        while (true) {
+          const res = await this.supabase.from('experiencias').insert(insertPayload as any);
+          const err = res.error;
+          if (!err) {
+            if (migrationError) {
+              error = migrationError;
+            } else {
+              error = null;
+            }
+            break;
+          }
+
+          const missingCol = optionalColumns.find(
+            (col) =>
+              insertPayload[col] !== undefined &&
+              new RegExp(`column.*"?${col}"?.*does not exist|${col}`, 'i').test(err.message || ''),
+          );
+
+          if (missingCol) {
+            const wasSupplied = Boolean(
+              insertPayload[missingCol] && String(insertPayload[missingCol]).trim(),
+            );
+            delete insertPayload[missingCol];
+            if (wasSupplied && !migrationError) {
+              migrationError = err;
+            }
+            continue;
+          }
+
+          error = err;
+          break;
         }
         if (error) {
           console.warn('[ExperienceService] Error al insertar experiencia en Supabase:', error);

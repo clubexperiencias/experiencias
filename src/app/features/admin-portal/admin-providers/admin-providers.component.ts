@@ -1,5 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -18,7 +18,7 @@ export interface ProviderListItem {
   phone: string;
   categoryOrBio?: string;
   slug?: string;
-  status: 'aprobado' | 'pendiente' | 'rechazado';
+  status: 'aprobado' | 'pendiente' | 'rechazado' | 'dado_de_baja';
   createdAt: string;
   experiencesCount?: number;
   rawApp?: AdminApplication;
@@ -37,7 +37,7 @@ export interface ProviderListItem {
           <span class="section-kicker">COMUNIDAD DE PRESTADORES Y GUÍAS LOCALES</span>
           <div class="title-row">
             <h1 class="card-heading">Prestadores y Nuevas Postulaciones</h1>
-            <a routerLink="/dashboard" class="btn-back-panel">Volver al Panel</a>
+            <a [routerLink]="dashboardLink()" class="btn-back-panel">Volver al Panel</a>
           </div>
           <p class="card-subheading">
             Padrón consolidado de prestadores oficiales habilitados en la plataforma y postulaciones de nuevos guías pendientes de evaluación.
@@ -207,6 +207,9 @@ export interface ProviderListItem {
                           @case ('rechazado') {
                             Rechazado
                           }
+                          @case ('dado_de_baja') {
+                            Dado de baja
+                          }
                           @default {
                             Pendiente
                           }
@@ -224,7 +227,7 @@ export interface ProviderListItem {
                       <div class="actions-row">
                         @if (item.origin === 'official' && item.slug) {
                           <a
-                            [href]="'/prestadores/' + item.slug"
+                            [href]="'https://experiencias.club/prestadores/' + item.slug"
                             target="_blank"
                             class="btn-table-action btn-view-profile"
                             title="Abrir perfil público del prestador"
@@ -244,7 +247,7 @@ export interface ProviderListItem {
                           </button>
                         }
 
-                        @if (item.phone) {
+                        @if (item.phone && item.phone !== '—') {
                           <a
                             [href]="getWhatsappLink(item.phone, item.name)"
                             target="_blank"
@@ -356,7 +359,7 @@ export interface ProviderListItem {
                   <span class="rejected-tag">Postulación Rechazada</span>
                 }
 
-                @if (app.phone) {
+                @if (app.phone && app.phone !== '—') {
                   <a
                     [href]="getWhatsappLink(app.phone, app.fullName)"
                     target="_blank"
@@ -1101,11 +1104,18 @@ export interface ProviderListItem {
 })
 export class AdminProvidersComponent {
   readonly store = inject(AdminStoreService);
+  private readonly router = inject(Router);
 
   readonly searchQuery = signal<string>('');
   readonly activeTab = signal<ProviderTab>('todos');
   readonly selectedApplication = signal<AdminApplication | null>(null);
   readonly isUpdating = signal<boolean>(false);
+
+  readonly dashboardLink = computed(() => {
+    const rawPath = this.router.url.split('?')[0].split('#')[0];
+    const segments = rawPath.split('/').filter(Boolean);
+    return segments[0] === 'admin' ? '/admin/dashboard' : '/dashboard';
+  });
 
   // Prestadores combinados: Oficiales de providerStore + Postulantes de applications
   readonly allProviders = computed<ProviderListItem[]>(() => {
@@ -1114,6 +1124,9 @@ export class AdminProvidersComponent {
     const providerEmails = new Set<string>();
 
     for (const p of officialProviders) {
+      if (!p.verified || p.status === 'dado_de_baja' || p.status === 'pendiente') {
+        continue;
+      }
       const cleanEmail = p.email?.toLowerCase().trim() || '';
       if (cleanEmail) providerEmails.add(cleanEmail);
       list.push({
@@ -1145,7 +1158,14 @@ export class AdminProvidersComponent {
         email: app.email,
         phone: app.phone || '—',
         categoryOrBio: app.description || app.motivationLetter,
-        status: app.status === 'aprobado' ? 'aprobado' : app.status === 'rechazado' ? 'rechazado' : 'pendiente',
+        status:
+          app.status === 'aprobado'
+            ? 'aprobado'
+            : app.status === 'rechazado'
+              ? 'rechazado'
+              : app.status === 'dado_de_baja'
+                ? 'dado_de_baja'
+                : 'pendiente',
         createdAt: app.createdAt,
         rawApp: app,
       });

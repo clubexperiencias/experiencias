@@ -3010,26 +3010,30 @@ export class ProviderExperienceProposalModalComponent {
       providerId = providerId || 'provider-anon';
     }
 
-    let coverImageUrl = this.coverImageDataUrl() || '/assets/images/kayak-club-de-experiencias.jpg';
+    let coverImageUrl = '/assets/images/kayak-club-de-experiencias.jpg';
     const coverFile = this.coverImageFile();
 
     if (coverFile) {
       try {
         const uploadRes = await this.storageService.uploadFile(coverFile, 'PROPOSAL');
-        if (uploadRes?.url && !uploadRes.url.startsWith('blob:')) {
+        if (uploadRes?.url) {
           coverImageUrl = uploadRes.url;
-        } else if (this.coverImageDataUrl()) {
-          coverImageUrl = this.coverImageDataUrl()!;
+        } else {
+          this.coverImageError.set('No se pudo subir la foto de portada. Por favor, reintentá el envío.');
+          this.submittingRequest.set(false);
+          return;
         }
       } catch (err) {
-        console.warn('[ProposalModal] No se pudo subir imagen a storage, usando fallback:', err);
-        if (this.coverImageDataUrl()) {
-          coverImageUrl = this.coverImageDataUrl()!;
-        }
+        console.warn('[ProposalModal] No se pudo subir imagen a storage:', err);
+        this.coverImageError.set('Error de conexión al subir la foto de portada. Por favor, reintentá.');
+        this.submittingRequest.set(false);
+        return;
       }
+    } else if (this.coverImagePreview()) {
+      coverImageUrl = this.coverImagePreview()!;
     }
 
-    this.finalSuccessCoverUrl.set(this.coverImageDataUrl() || this.coverImagePreview() || coverImageUrl);
+    this.finalSuccessCoverUrl.set(coverImageUrl || this.coverImagePreview());
 
     let coverVideoUrl: string | undefined = undefined;
     const videoFile = this.coverVideoFile();
@@ -3087,17 +3091,13 @@ export class ProviderExperienceProposalModalComponent {
     if (feat1File) {
       try {
         const res = await this.storageService.uploadFile(feat1File, 'PROPOSAL');
-        if (res?.url && !res.url.startsWith('blob:')) feat1Url = res.url;
+        if (res?.url) feat1Url = res.url;
       } catch (err) {
         console.warn('[ProposalModal] Error subiendo destacada 1:', err);
       }
-    }
-    if (!feat1Url && this.featuredPhoto1DataUrl()) {
-      feat1Url = this.featuredPhoto1DataUrl() || undefined;
     } else if (
-      !feat1Url &&
-      this.featuredPhoto1Preview()?.startsWith('http') &&
-      !this.featuredPhoto1Preview()?.startsWith('blob:')
+      this.featuredPhoto1Preview()?.startsWith('http') ||
+      this.featuredPhoto1Preview()?.startsWith('blob:')
     ) {
       feat1Url = this.featuredPhoto1Preview() || undefined;
     }
@@ -3108,17 +3108,13 @@ export class ProviderExperienceProposalModalComponent {
     if (feat2File) {
       try {
         const res = await this.storageService.uploadFile(feat2File, 'PROPOSAL');
-        if (res?.url && !res.url.startsWith('blob:')) feat2Url = res.url;
+        if (res?.url) feat2Url = res.url;
       } catch (err) {
         console.warn('[ProposalModal] Error subiendo destacada 2:', err);
       }
-    }
-    if (!feat2Url && this.featuredPhoto2DataUrl()) {
-      feat2Url = this.featuredPhoto2DataUrl() || undefined;
     } else if (
-      !feat2Url &&
-      this.featuredPhoto2Preview()?.startsWith('http') &&
-      !this.featuredPhoto2Preview()?.startsWith('blob:')
+      this.featuredPhoto2Preview()?.startsWith('http') ||
+      this.featuredPhoto2Preview()?.startsWith('blob:')
     ) {
       feat2Url = this.featuredPhoto2Preview() || undefined;
     }
@@ -3130,14 +3126,11 @@ export class ProviderExperienceProposalModalComponent {
       if (item.file) {
         try {
           const res = await this.storageService.uploadFile(item.file, 'PROPOSAL');
-          if (res?.url && !res.url.startsWith('blob:')) finalUrl = res.url;
+          if (res?.url) finalUrl = res.url;
         } catch (err) {
           console.warn('[ProposalModal] Error subiendo foto de galería:', err);
         }
-      }
-      if (!finalUrl && item.dataUrl) {
-        finalUrl = item.dataUrl;
-      } else if (!finalUrl && item.previewUrl?.startsWith('http') && !item.previewUrl?.startsWith('blob:')) {
+      } else if (item.previewUrl?.startsWith('http') || item.previewUrl?.startsWith('blob:')) {
         finalUrl = item.previewUrl;
       }
       if (finalUrl) {

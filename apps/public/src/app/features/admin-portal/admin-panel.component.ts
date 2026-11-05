@@ -31,7 +31,7 @@ const ROUTE_LABELS: Record<string, string> = {
         <!-- Barra Superior Unificada idéntica al Login -->
         <header class="portal-top-nav">
           <div class="nav-brand-col">
-            <a routerLink="/dashboard" class="brand-link" title="Panel de Administración">
+            <a [routerLink]="adminLink('/dashboard')" class="brand-link" title="Panel de Administración">
               <img
                 src="/assets/images/logo-admin-experiencias.png"
                 alt="Emblema Admin"
@@ -76,7 +76,7 @@ const ROUTE_LABELS: Record<string, string> = {
                 <!-- Navegación mínima del administrador -->
                 <div class="dropdown-nav-list">
                   <a
-                    routerLink="/dashboard"
+                    [routerLink]="adminLink('/dashboard')"
                     class="dropdown-item enlarged-item"
                     (click)="userMenuOpen.set(false)"
                   >
@@ -87,7 +87,7 @@ const ROUTE_LABELS: Record<string, string> = {
                   </a>
 
                   <a
-                    routerLink="/socios"
+                    [routerLink]="adminLink('/socios')"
                     class="dropdown-item enlarged-item"
                     (click)="userMenuOpen.set(false)"
                   >
@@ -98,7 +98,7 @@ const ROUTE_LABELS: Record<string, string> = {
                   </a>
 
                   <a
-                    routerLink="/prestadores"
+                    [routerLink]="adminLink('/prestadores')"
                     class="dropdown-item enlarged-item"
                     (click)="userMenuOpen.set(false)"
                   >
@@ -109,7 +109,7 @@ const ROUTE_LABELS: Record<string, string> = {
                   </a>
 
                   <a
-                    routerLink="/comprobantes"
+                    [routerLink]="adminLink('/comprobantes')"
                     class="dropdown-item enlarged-item"
                     (click)="userMenuOpen.set(false)"
                   >
@@ -120,7 +120,7 @@ const ROUTE_LABELS: Record<string, string> = {
                   </a>
 
                   <a
-                    routerLink="/propuestas"
+                    [routerLink]="adminLink('/propuestas')"
                     class="dropdown-item enlarged-item"
                     (click)="userMenuOpen.set(false)"
                   >
@@ -131,7 +131,7 @@ const ROUTE_LABELS: Record<string, string> = {
                   </a>
 
                   <a
-                    routerLink="/experiencias"
+                    [routerLink]="adminLink('/experiencias')"
                     class="dropdown-item enlarged-item"
                     (click)="userMenuOpen.set(false)"
                   >
@@ -167,7 +167,7 @@ const ROUTE_LABELS: Record<string, string> = {
             @if (breadcrumbs().length === 0) {
               <span class="bc-current" aria-current="page">ADMINISTRACIÓN</span>
             } @else {
-              <a routerLink="/dashboard" class="bc-link">ADMINISTRACIÓN</a>
+              <a [routerLink]="adminLink('/dashboard')" class="bc-link">ADMINISTRACIÓN</a>
               @for (item of breadcrumbs(); track item.label) {
                 <span class="bc-sep">/</span>
                 @if (item.link) {
@@ -216,13 +216,22 @@ export class AdminPanelComponent {
   readonly userMenuOpen = signal(false);
   readonly currentUrl = signal(this.router.url);
 
+  readonly basePath = computed(() => {
+    const rawPath = this.currentUrl().split('?')[0].split('#')[0];
+    const segments = rawPath.split('/').filter(Boolean);
+    return segments[0] === 'admin' ? '/admin' : '';
+  });
+
+  adminLink(path: string): string {
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    return `${this.basePath()}${cleanPath}`;
+  }
+
   readonly breadcrumbs = computed<{ label: string; link?: string }[]>(() => {
     const rawPath = this.currentUrl().split('?')[0].split('#')[0];
     const segments = rawPath.split('/').filter(Boolean);
     const cleanSegments = segments.filter((s) => s !== 'admin' && s !== 'dashboard');
-
-    const isPanel = typeof window !== 'undefined' && window.location.pathname.includes('/admin');
-    const basePath = isPanel ? '/admin' : '';
+    const basePath = this.basePath();
 
     const items: { label: string; link?: string }[] = [];
     if (cleanSegments.length === 0) {

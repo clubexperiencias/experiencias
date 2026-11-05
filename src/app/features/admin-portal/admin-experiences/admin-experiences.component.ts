@@ -1,8 +1,9 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, NavigationEnd, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
+import { filter } from 'rxjs';
 import { ExperienceService } from '../../../core/services/experience.service';
 import { StorageService } from '../../../core/services/storage.service';
 import { Experience, ExperienceAlbumPhoto } from '../../../core/models/experience.model';
@@ -1651,21 +1652,34 @@ export class AdminExperiencesComponent implements OnInit {
 
   readonly isRouteEditMode = signal(false);
   readonly notFound = signal(false);
+  readonly currentUrl = signal(this.router.url);
+
+  private readonly isAdminRoute = computed(() => {
+    const rawPath = this.currentUrl().split('?')[0].split('#')[0];
+    const segments = rawPath.split('/').filter(Boolean);
+    return segments[0] === 'admin';
+  });
 
   readonly backToListLink = computed(() => {
-    const isPanel = typeof window !== 'undefined' && window.location.pathname.includes('/admin');
-    return isPanel ? '/admin/experiencias' : '/experiencias';
+    return this.isAdminRoute() ? '/admin/experiencias' : '/experiencias';
   });
 
   getEditRoute(exp: Experience): string {
-    const isPanel = typeof window !== 'undefined' && window.location.pathname.includes('/admin');
-    const base = isPanel ? '/admin/experiencias' : '/experiencias';
+    const base = this.isAdminRoute() ? '/admin/experiencias' : '/experiencias';
     return `${base}/${exp.slug}/editar`;
   }
 
   async ngOnInit(): Promise<void> {
+    this.router.events
+      .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
+      .subscribe((event) => {
+        this.currentUrl.set(event.urlAfterRedirects || event.url);
+      });
+
+    let activeSlug: string | null = null;
     this.route.paramMap.subscribe(async (params) => {
       const slug = params.get('slug');
+      activeSlug = slug;
       if (slug) {
         this.isRouteEditMode.set(true);
         this.notFound.set(false);
@@ -1674,6 +1688,9 @@ export class AdminExperiencesComponent implements OnInit {
           this.experienceService.getExperienceById(slug);
         if (!exp) {
           await this.experienceService.remoteLoadPromise;
+          if (this.route.snapshot.paramMap.get('slug') !== slug || activeSlug !== slug) {
+            return;
+          }
           exp =
             this.experienceService.getExperienceBySlug(slug) ||
             this.experienceService.getExperienceById(slug);
@@ -1970,7 +1987,6 @@ export class AdminExperiencesComponent implements OnInit {
       slug,
       title,
       shortTitle: title,
-      kicker: '',
       tagline: this.editTagline().trim(),
       description: this.editDescription().trim(),
       region: this.editRegion().trim() || 'Catamarca',
@@ -1978,7 +1994,6 @@ export class AdminExperiencesComponent implements OnInit {
       difficulty: this.editDifficulty(),
       durationLabel: this.editDurationLabel().trim() || '4 Horas',
       altitudeMeters: Number(this.editAltitude()) || 0,
-      bestSeason: '',
       maxSpotsPerGroup: Number(this.editCapacity()) || 12,
       priceArs,
       priceUsd,
@@ -2004,6 +2019,8 @@ export class AdminExperiencesComponent implements OnInit {
       if (this.isCreating()) {
         const fullNewExp: Experience = {
           ...payload,
+          kicker: '',
+          bestSeason: '',
           durationDays: 1,
           galleryImages: [payload.coverImage!],
           isExclusiveClub: true,

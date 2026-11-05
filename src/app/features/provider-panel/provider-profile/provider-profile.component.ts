@@ -1,5 +1,5 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { ProviderStoreService } from '../../../core/services/provider-store.service';
@@ -9,7 +9,7 @@ import { socialUrlValidator, normalizeSocialUrl, migrateLegacySocialHandle } fro
 @Component({
   selector: 'app-provider-profile',
   standalone: true,
-  imports: [ReactiveFormsModule, MatIconModule, RouterLink],
+  imports: [ReactiveFormsModule, MatIconModule],
   template: `
     <div class="profile-container">
       <div class="profile-head">

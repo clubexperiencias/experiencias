@@ -435,9 +435,8 @@ export class AdminStoreService {
 
         if (!rpcErr && rpcData) {
           const providerEmails = new Set(
-            (this.providerStore.allProviders() || []).map((p: any) => p.email?.toLowerCase().trim())
+            (this.providerStore.allProviders() || []).map((p: any) => p.email?.toLowerCase().trim()),
           );
-          providerEmails.add('patriciofacundodiaztillar@gmail.com');
 
           const payload = rpcData as any;
           const socios: AdminMember[] = (payload.socios || []).map((s: any) => ({
@@ -824,7 +823,10 @@ export class AdminStoreService {
         const prestadores: AdminApplication[] = (prestadoresRes.data || []).map((p: any) => {
           const emailNorm = (p.email || '').trim().toLowerCase();
           const pa = providerAccessByEmail.get(emailNorm);
-          const rawStatus = pa?.status || p.status;
+          const rawStatus =
+            p.status === 'rechazado' && pa?.status === 'dado_de_baja'
+              ? 'rechazado'
+              : (pa?.status || p.status);
           const status =
             rawStatus === 'aprobado'
               ? 'aprobado'
