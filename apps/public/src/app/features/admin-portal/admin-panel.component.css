@@ -1073,9 +1073,14 @@
   transition: all 0.15s ease;
 }
 
-.cp-close-btn:hover {
+.cp-close-btn:hover:not(:disabled) {
   color: #ffffff;
   background: rgba(255, 255, 255, 0.1);
+}
+
+.cp-close-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 .cp-dialog-body {
@@ -1237,9 +1242,14 @@
   transition: all 0.15s ease;
 }
 
-.cp-btn-secondary:hover {
+.cp-btn-secondary:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.08);
   color: #ffffff;
+}
+
+.cp-btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .cp-btn-primary {

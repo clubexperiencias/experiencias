@@ -302,7 +302,7 @@ const ROUTE_LABELS: Record<string, string> = {
 
         <!-- Modal Editar Perfil Oficial del Club de Experiencias -->
         @if (store.isClubProfileModalOpen()) {
-          <div class="club-profile-backdrop" (click)="closeClubProfileModal()">
+          <div class="club-profile-backdrop" (click)="!isSavingClubProfile() && closeClubProfileModal()">
             <div
               class="club-profile-dialog"
               role="dialog"
@@ -322,7 +322,13 @@ const ROUTE_LABELS: Record<string, string> = {
                     </p>
                   </div>
                 </div>
-                <button type="button" class="cp-close-btn" (click)="closeClubProfileModal()" aria-label="Cerrar modal">
+                <button
+                  type="button"
+                  class="cp-close-btn"
+                  [disabled]="isSavingClubProfile()"
+                  (click)="closeClubProfileModal()"
+                  aria-label="Cerrar modal"
+                >
                   ×
                 </button>
               </div>
@@ -475,7 +481,12 @@ const ROUTE_LABELS: Record<string, string> = {
               </div>
 
               <div class="cp-dialog-footer">
-                <button type="button" class="cp-btn-secondary" (click)="closeClubProfileModal()">
+                <button
+                  type="button"
+                  class="cp-btn-secondary"
+                  [disabled]="isSavingClubProfile()"
+                  (click)="closeClubProfileModal()"
+                >
                   Cancelar
                 </button>
                 <button
@@ -643,7 +654,8 @@ export class AdminPanelComponent {
     }, 50);
   }
 
-  closeClubProfileModal(): void {
+  closeClubProfileModal(force = false): void {
+    if (this.isSavingClubProfile() && !force) return;
     this.clubProfileError.set(null);
     this.store.closeClubProfileModal();
     if (this.lastFocusedElement && typeof this.lastFocusedElement.focus === 'function') {
@@ -658,7 +670,9 @@ export class AdminPanelComponent {
 
     if (event.key === 'Escape') {
       event.preventDefault();
-      this.closeClubProfileModal();
+      if (!this.isSavingClubProfile()) {
+        this.closeClubProfileModal();
+      }
       return;
     }
 
@@ -710,7 +724,7 @@ export class AdminPanelComponent {
         this.clubProfileError.set(res.error || 'No se pudo guardar el perfil del Club.');
         return;
       }
-      this.closeClubProfileModal();
+      this.closeClubProfileModal(true);
     } catch (err: any) {
       this.clubProfileError.set(err?.message || 'Error inesperado al guardar el perfil del Club.');
     } finally {
