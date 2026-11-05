@@ -576,6 +576,179 @@
   width: 100%;
 }
 
+/* Box de Mesa de Ayuda & Asistencia Técnica en Admin Portal */
+.admin-support-box {
+  max-width: 1240px;
+  margin: 2.5rem auto 0;
+  background: rgba(18, 10, 5, 0.7);
+  border: 1px solid rgba(255, 95, 0, 0.35);
+  border-radius: 2px;
+  padding: 1.25rem 1.75rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.admin-support-box-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+@media (min-width: 992px) {
+  .admin-support-box-inner {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+  }
+}
+
+.support-text-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  flex: 1;
+}
+
+.support-kicker {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #ff8533;
+}
+
+.support-message {
+  margin: 0;
+  font-size: 0.86rem;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.5;
+}
+
+.support-email-text {
+  color: #ffffff;
+  font-family: var(--font-mono, monospace);
+  font-weight: 700;
+}
+
+.support-wa-link {
+  color: #ff8533;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.2s ease;
+}
+
+.support-wa-link:hover {
+  color: #ffa366;
+}
+
+/* Quick links row */
+.admin-quick-links-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.quick-links-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.quick-links-kicker {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.admin-quick-links-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.admin-quick-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 2px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.quick-link-icon {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+.quick-link-label {
+  letter-spacing: 0.02em;
+}
+
+.external-icon-sm {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+  opacity: 0.65;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.admin-quick-link-btn:hover .external-icon-sm {
+  opacity: 1;
+  transform: translate(1px, -1px);
+}
+
+/* Individual button styles */
+.supabase-btn {
+  background: rgba(62, 207, 142, 0.12);
+  border: 1px solid rgba(62, 207, 142, 0.4);
+  color: #3ecf8e;
+}
+
+.supabase-btn:hover {
+  background: rgba(62, 207, 142, 0.22);
+  border-color: #3ecf8e;
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(62, 207, 142, 0.3);
+}
+
+.vercel-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+.vercel-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: #ffffff;
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.2);
+}
+
+.github-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #e6edf3;
+}
+
+.github-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: #ffffff;
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.2);
+}
+
 /* Footer */
 .portal-footer {
   margin-top: auto;
@@ -727,5 +900,357 @@
   .portal-emblem-img {
     width: 30px;
     height: 30px;
+  }
+}
+
+/* ==========================================================================
+   Botón Flotante Volver Atrás (Réplica de la web principal y panel prestador)
+   ========================================================================== */
+.desktop-floating-btn {
+  position: fixed;
+  top: 125px;
+  z-index: 800;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #000000;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
+  transition:
+    background-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.15s ease,
+    opacity 0.2s ease,
+    visibility 0.2s ease;
+  user-select: none;
+  padding: 0;
+  text-decoration: none;
+}
+
+.desktop-floating-back-btn {
+  left: 1.85rem;
+}
+
+.desktop-floating-btn:hover {
+  background: #f2f2f2;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+
+.desktop-floating-btn:active {
+  transform: scale(0.96);
+}
+
+.floating-btn-icon {
+  font-size: 22px;
+  width: 22px;
+  height: 22px;
+  color: #000000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 899px) {
+  .desktop-floating-btn {
+    top: auto;
+    bottom: 1.25rem;
+    z-index: 900;
+  }
+
+  .desktop-floating-back-btn {
+    left: 1.25rem;
+    right: auto;
+  }
+}
+
+/* ==========================================================================
+   Modal Perfil Oficial del Club de Experiencias
+   ========================================================================== */
+
+.menu-item-subtitle {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.55);
+  line-height: 1.1;
+}
+
+.club-profile-item {
+  border-color: rgba(255, 149, 0, 0.3) !important;
+  background: rgba(45, 22, 10, 0.5) !important;
+}
+
+.club-profile-item:hover {
+  background: rgba(255, 95, 0, 0.25) !important;
+  border-color: #ff5f00 !important;
+}
+
+.club-profile-item .club-icon {
+  color: #ff9500 !important;
+}
+
+.club-profile-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+.club-profile-dialog {
+  background: #19120d;
+  border: 1px solid rgba(255, 95, 0, 0.35);
+  border-radius: 8px;
+  width: 100%;
+  max-width: 660px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65), 0 0 30px rgba(255, 95, 0, 0.15);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.cp-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.1rem 1.4rem;
+  background: #23160e;
+  border-bottom: 1px solid rgba(255, 95, 0, 0.25);
+}
+
+.cp-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.cp-icon-pill {
+  width: 38px;
+  height: 38px;
+  border-radius: 6px;
+  background: rgba(255, 95, 0, 0.15);
+  border: 1px solid rgba(255, 95, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ff9500;
+  flex-shrink: 0;
+}
+
+.cp-dialog-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+}
+
+.cp-dialog-sub {
+  margin: 0.15rem 0 0;
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.cp-close-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.cp-close-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.cp-dialog-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.25rem 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.cp-info-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  background: rgba(255, 95, 0, 0.08);
+  border: 1px solid rgba(255, 95, 0, 0.3);
+  border-radius: 6px;
+  padding: 0.75rem 0.9rem;
+}
+
+.cp-info-icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  color: #ff5f00;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.cp-info-banner p {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.cp-info-banner strong {
+  color: #ff9500;
+}
+
+.cp-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.9rem 1rem;
+}
+
+.cp-span-2 {
+  grid-column: span 2;
+}
+
+.cp-section-sep {
+  margin-top: 0.4rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 0.75rem;
+}
+
+.cp-sep-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #ff9500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cp-sep-badge mat-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+}
+
+.cp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.cp-field label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.cp-input,
+.cp-textarea {
+  background: rgba(10, 7, 5, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  color: #ffffff;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.85rem;
+  box-sizing: border-box;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.cp-input:focus,
+.cp-textarea:focus {
+  outline: none;
+  border-color: #ff5f00;
+  box-shadow: 0 0 0 2px rgba(255, 95, 0, 0.2);
+}
+
+.cp-input-blue {
+  color: #60a5fa !important;
+  font-weight: 600;
+}
+
+.cp-textarea {
+  resize: vertical;
+}
+
+.cp-field-hint {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.cp-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 0.9rem 1.4rem;
+  background: #23160e;
+  border-top: 1px solid rgba(255, 95, 0, 0.2);
+}
+
+.cp-btn-secondary {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.8);
+  padding: 0.55rem 1.1rem;
+  font-size: 0.85rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.cp-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.cp-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: #ff5f00;
+  border: none;
+  color: #ffffff;
+  font-weight: 700;
+  padding: 0.55rem 1.25rem;
+  font-size: 0.85rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.cp-btn-primary:hover:not(:disabled) {
+  background: #e05300;
+  box-shadow: 0 4px 12px rgba(255, 95, 0, 0.35);
+}
+
+.cp-btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+  .cp-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .cp-span-2 {
+    grid-column: span 1;
   }
 }

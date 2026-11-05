@@ -1,7 +1,9 @@
-import { Component, HostListener, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, computed, inject, signal, DestroyRef } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Title } from '@angular/platform-browser';
 import { MatIconModule } from '@angular/material/icon';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { filter } from 'rxjs';
 import { AdminStoreService } from '../../core/services/admin-store.service';
 import { AdminLoginComponent } from './admin-login/admin-login.component';
@@ -21,7 +23,7 @@ const ROUTE_LABELS: Record<string, string> = {
 @Component({
   selector: 'app-admin-panel',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, MatIconModule, AdminLoginComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, MatIconModule, FormsModule, AdminLoginComponent],
   template: `
     <div class="admin-portal-root">
       @if (!store.isAuthenticated()) {
@@ -140,6 +142,18 @@ const ROUTE_LABELS: Record<string, string> = {
                       <strong class="menu-item-title">Ver Experiencias</strong>
                     </div>
                   </a>
+
+                  <button
+                    type="button"
+                    class="dropdown-item enlarged-item club-profile-item"
+                    (click)="openClubProfileModal(); userMenuOpen.set(false)"
+                  >
+                    <mat-icon class="menu-item-icon club-icon">account_balance</mat-icon>
+                    <div class="menu-item-info">
+                      <strong class="menu-item-title">Perfil del Club</strong>
+                      <span class="menu-item-subtitle">Prestador oficial & datos de cobro</span>
+                    </div>
+                  </button>
                 </div>
 
                 <div class="dropdown-divider"></div>
@@ -180,11 +194,94 @@ const ROUTE_LABELS: Record<string, string> = {
           </div>
         </nav>
 
+        <!-- Botón Flotante Volver Atrás réplica de la web principal y portal de prestadores -->
+        @if (canShowBackButton()) {
+          <button
+            type="button"
+            class="desktop-floating-btn desktop-floating-back-btn"
+            (click)="goBack()"
+            aria-label="Volver atrás"
+            title="Volver atrás"
+          >
+            <mat-icon class="floating-btn-icon">arrow_back</mat-icon>
+          </button>
+        }
+
         <!-- Contenedor principal -->
         <main class="portal-main">
           <div class="portal-content-container">
             <router-outlet />
           </div>
+
+          <!-- Box de Mesa de Ayuda, Asistencia Técnica & Infraestructura -->
+          <section class="admin-support-box" aria-label="Mesa de Ayuda, Asistencia Técnica & Infraestructura">
+            <div class="admin-support-box-inner">
+              <div class="support-text-col">
+                <span class="support-kicker">MESA DE AYUDA & ASISTENCIA TÉCNICA</span>
+                <p class="support-message">
+                  Si tenés alguna duda o precisás asistencia técnica, mandá un mail a
+                  <span class="support-email-text">ayuda&#64;experiencias.club</span> o directamente
+                  <a
+                    [href]="supportWhatsappUrl"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="support-wa-link"
+                    >escribinos a WhatsApp haciendo click aquí</a
+                  >.
+                </p>
+              </div>
+
+              <!-- Accesos directos a Infraestructura y Repositorio -->
+              <div class="admin-quick-links-section">
+                <div class="quick-links-header">
+                  <span class="quick-links-kicker">ACCESOS DIRECTOS</span>
+                </div>
+                <div class="admin-quick-links-row">
+                  <a
+                    href="https://supabase.com/dashboard/project/pgdtjfcngadesifsqwms"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="admin-quick-link-btn supabase-btn"
+                    title="Abrir base de datos y autenticación en Supabase (nueva pestaña)"
+                  >
+                    <svg class="quick-link-icon" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M21.362 9.354H12V.396a.396.396 0 0 0-.716-.233L.103 13.914a.792.792 0 0 0 .619 1.282h9.278v8.958a.396.396 0 0 0 .716.233l11.181-13.751a.792.792 0 0 0-.619-1.282z"/>
+                    </svg>
+                    <span class="quick-link-label">Supabase</span>
+                    <mat-icon class="external-icon-sm">open_in_new</mat-icon>
+                  </a>
+
+                  <a
+                    href="https://vercel.com/dashboard"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="admin-quick-link-btn vercel-btn"
+                    title="Abrir deployments y dominios en Vercel (nueva pestaña)"
+                  >
+                    <svg class="quick-link-icon" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 1L24 22H0L12 1Z"/>
+                    </svg>
+                    <span class="quick-link-label">Vercel</span>
+                    <mat-icon class="external-icon-sm">open_in_new</mat-icon>
+                  </a>
+
+                  <a
+                    href="https://github.com/clubexperiencias/experiencias"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="admin-quick-link-btn github-btn"
+                    title="Abrir repositorio de código en GitHub (nueva pestaña)"
+                  >
+                    <svg class="quick-link-icon" viewBox="0 0 24 24" fill="currentColor">
+                      <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+                    </svg>
+                    <span class="quick-link-label">GitHub</span>
+                    <mat-icon class="external-icon-sm">open_in_new</mat-icon>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </section>
         </main>
         <!-- Footer oficial con logo banner horizontal -->
         <footer class="portal-footer">
@@ -202,6 +299,177 @@ const ROUTE_LABELS: Record<string, string> = {
             </div>
           </div>
         </footer>
+
+        <!-- Modal Editar Perfil Oficial del Club de Experiencias -->
+        @if (store.isClubProfileModalOpen()) {
+          <div class="club-profile-backdrop" (click)="closeClubProfileModal()">
+            <div class="club-profile-dialog" (click)="$event.stopPropagation()">
+              <div class="cp-dialog-header">
+                <div class="cp-title-wrap">
+                  <div class="cp-icon-pill">
+                    <mat-icon>account_balance</mat-icon>
+                  </div>
+                  <div>
+                    <h3 class="cp-dialog-title">Perfil Oficial del Club de Experiencias</h3>
+                    <p class="cp-dialog-sub">
+                      Cuenta prestadora oficial del Club gestionada centralizadamente por todos los administradores.
+                    </p>
+                  </div>
+                </div>
+                <button type="button" class="cp-close-btn" (click)="closeClubProfileModal()" aria-label="Cerrar modal">
+                  ×
+                </button>
+              </div>
+
+              <div class="cp-dialog-body">
+                <div class="cp-info-banner">
+                  <mat-icon class="cp-info-icon">verified</mat-icon>
+                  <p>
+                    Las experiencias creadas por el <strong>Club de Experiencias</strong> (como Kayak y travesías propias)
+                    utilizan automáticamente esta información de prestador y estos datos bancarios para su cobro.
+                  </p>
+                </div>
+
+                <div class="cp-form-grid">
+                  <div class="cp-field cp-span-2">
+                    <label>Nombre Institucional / Prestador Oficial:</label>
+                    <input
+                      type="text"
+                      class="cp-input"
+                      [(ngModel)]="clubFormName"
+                      placeholder="Club de Experiencias"
+                    />
+                  </div>
+
+                  <div class="cp-field">
+                    <label>Email Oficial del Club:</label>
+                    <input
+                      type="email"
+                      class="cp-input"
+                      [(ngModel)]="clubFormEmail"
+                      placeholder="admin@experiencias.club"
+                    />
+                    <span class="cp-field-hint">Email corporativo para vincular las fichas del Club.</span>
+                  </div>
+
+                  <div class="cp-field">
+                    <label>Teléfono / WhatsApp de Contacto:</label>
+                    <input
+                      type="tel"
+                      class="cp-input"
+                      [(ngModel)]="clubFormPhone"
+                      placeholder="+54 9 383 456-7890"
+                    />
+                  </div>
+
+                  <div class="cp-section-sep cp-span-2">
+                    <span class="cp-sep-badge">
+                      <mat-icon>account_balance_wallet</mat-icon>
+                      Datos de Cobro (CBU / Alias) para Experiencias del Club
+                    </span>
+                  </div>
+
+                  <div class="cp-field cp-span-2">
+                    <label>CBU / CVU o Alias Oficial:</label>
+                    <input
+                      type="text"
+                      class="cp-input cp-input-blue font-mono"
+                      [(ngModel)]="clubFormCbuAlias"
+                      placeholder="EXPERIENCIAS.CLUB.MP"
+                    />
+                    <span class="cp-field-hint">
+                      Alias o CBU que se asigna a todas las reservas de expediciones oficiales del Club.
+                    </span>
+                  </div>
+
+                  <div class="cp-field">
+                    <label>CUIT / CUIL:</label>
+                    <input
+                      type="text"
+                      class="cp-input font-mono"
+                      [(ngModel)]="clubFormCuitDni"
+                      placeholder="30-71829401-4"
+                    />
+                  </div>
+
+                  <div class="cp-field">
+                    <label>Banco / Entidad Financiera:</label>
+                    <input
+                      type="text"
+                      class="cp-input"
+                      [(ngModel)]="clubFormBankName"
+                      placeholder="Mercado Pago / Banco Nación"
+                    />
+                  </div>
+
+                  <div class="cp-field cp-span-2">
+                    <label>Titular de la Cuenta:</label>
+                    <input
+                      type="text"
+                      class="cp-input"
+                      [(ngModel)]="clubFormAccountHolder"
+                      placeholder="Club de Experiencias Catamarca"
+                    />
+                  </div>
+
+                  <div class="cp-section-sep cp-span-2">
+                    <span class="cp-sep-badge">
+                      <mat-icon>public</mat-icon>
+                      Información Institucional & Redes
+                    </span>
+                  </div>
+
+                  <div class="cp-field cp-span-2">
+                    <label>Presentación Institucional (Bio):</label>
+                    <textarea
+                      rows="2"
+                      class="cp-textarea"
+                      [(ngModel)]="clubFormBio"
+                      placeholder="Cuenta institucional oficial del Club de Experiencias..."
+                    ></textarea>
+                  </div>
+
+                  <div class="cp-field">
+                    <label>Sitio Web Oficial:</label>
+                    <input
+                      type="text"
+                      class="cp-input"
+                      [(ngModel)]="clubFormWebsite"
+                      placeholder="https://experiencias.club"
+                    />
+                  </div>
+
+                  <div class="cp-field">
+                    <label>Instagram / Red Social:</label>
+                    <input
+                      type="text"
+                      class="cp-input"
+                      [(ngModel)]="clubFormSocialMedia"
+                      placeholder="instagram.com/experiencias.club"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div class="cp-dialog-footer">
+                <button type="button" class="cp-btn-secondary" (click)="closeClubProfileModal()">
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  class="cp-btn-primary"
+                  [disabled]="isSavingClubProfile()"
+                  (click)="saveClubProfile()"
+                >
+                  @if (isSavingClubProfile()) {
+                    <mat-icon class="btn-spin">sync</mat-icon>
+                  }
+                  <span>{{ isSavingClubProfile() ? 'Guardando...' : 'Guardar Perfil del Club' }}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        }
       }
     </div>
   `,
@@ -211,10 +479,13 @@ export class AdminPanelComponent {
   readonly store = inject(AdminStoreService);
   private readonly router = inject(Router);
   private readonly pageTitle = inject(Title);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly admin = this.store.currentAdmin;
   readonly userMenuOpen = signal(false);
   readonly currentUrl = signal(this.router.url);
+  readonly supportWhatsappUrl =
+    'https://wa.me/5493515490431?text=Hola!%20Tengo%20una%20duda%20y%20necesito%20asistencia%20con%20el%20Panel%20de%20Administraci%C3%B3n%2C%20%C2%BFme%20podr%C3%ADan%20ayudar%3F';
 
   readonly basePath = computed(() => {
     const rawPath = this.currentUrl().split('?')[0].split('#')[0];
@@ -225,6 +496,28 @@ export class AdminPanelComponent {
   adminLink(path: string): string {
     const cleanPath = path.startsWith('/') ? path : `/${path}`;
     return `${this.basePath()}${cleanPath}`;
+  }
+
+  readonly canShowBackButton = computed(() => {
+    const rawPath = this.currentUrl().split('?')[0].split('#')[0];
+    const cleanSegments = rawPath
+      .split('/')
+      .filter(Boolean)
+      .filter((s) => s !== 'admin' && s !== 'dashboard');
+    return cleanSegments.length > 0;
+  });
+
+  goBack(): void {
+    const list = this.breadcrumbs();
+    if (list && list.length > 1) {
+      for (let i = list.length - 2; i >= 0; i--) {
+        if (list[i]?.link) {
+          this.router.navigateByUrl(list[i].link!);
+          return;
+        }
+      }
+    }
+    this.router.navigateByUrl(this.adminLink('/dashboard'));
   }
 
   readonly breadcrumbs = computed<{ label: string; link?: string }[]>(() => {
@@ -271,7 +564,10 @@ export class AdminPanelComponent {
     void this.store.restoreSupabaseSession();
 
     this.router.events
-      .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
+      .pipe(
+        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+        takeUntilDestroyed(this.destroyRef),
+      )
       .subscribe((event) => {
         this.currentUrl.set(event.urlAfterRedirects || event.url);
       });
@@ -279,6 +575,59 @@ export class AdminPanelComponent {
 
   toggleUserMenu(): void {
     this.userMenuOpen.update((v) => !v);
+  }
+
+  readonly clubFormName = signal('');
+  readonly clubFormEmail = signal('');
+  readonly clubFormPhone = signal('');
+  readonly clubFormCbuAlias = signal('');
+  readonly clubFormCuitDni = signal('');
+  readonly clubFormBankName = signal('');
+  readonly clubFormAccountHolder = signal('');
+  readonly clubFormBio = signal('');
+  readonly clubFormWebsite = signal('');
+  readonly clubFormSocialMedia = signal('');
+  readonly isSavingClubProfile = signal(false);
+
+  openClubProfileModal(): void {
+    const p = this.store.clubProfile();
+    this.clubFormName.set(p.name || 'Club de Experiencias');
+    this.clubFormEmail.set(p.email || 'admin@experiencias.club');
+    this.clubFormPhone.set(p.phone || '');
+    this.clubFormCbuAlias.set(p.cbuAlias || '');
+    this.clubFormCuitDni.set(p.cuitDni || '');
+    this.clubFormBankName.set(p.bankName || '');
+    this.clubFormAccountHolder.set(p.accountHolder || '');
+    this.clubFormBio.set(p.bio || '');
+    this.clubFormWebsite.set(p.website || '');
+    this.clubFormSocialMedia.set(p.socialMedia || '');
+    this.store.openClubProfileModal();
+  }
+
+  closeClubProfileModal(): void {
+    this.store.closeClubProfileModal();
+  }
+
+  async saveClubProfile(): Promise<void> {
+    this.isSavingClubProfile.set(true);
+    try {
+      await this.store.updateClubProfile({
+        name: this.clubFormName().trim() || 'Club de Experiencias',
+        agency: this.clubFormName().trim() || 'Club de Experiencias',
+        email: this.clubFormEmail().trim() || 'admin@experiencias.club',
+        phone: this.clubFormPhone().trim(),
+        cbuAlias: this.clubFormCbuAlias().trim(),
+        cuitDni: this.clubFormCuitDni().trim(),
+        bankName: this.clubFormBankName().trim(),
+        accountHolder: this.clubFormAccountHolder().trim(),
+        bio: this.clubFormBio().trim(),
+        website: this.clubFormWebsite().trim(),
+        socialMedia: this.clubFormSocialMedia().trim(),
+      });
+      this.closeClubProfileModal();
+    } finally {
+      this.isSavingClubProfile.set(false);
+    }
   }
 
   @HostListener('document:click', ['$event'])

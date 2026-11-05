@@ -5,6 +5,8 @@ import { TransferSubmission, TransferStatus } from '../models/bank-transfer.mode
 import { NewsletterService } from './newsletter.service';
 import { ProviderStoreService, ExperienceProposalRequest } from './provider-store.service';
 import { NotificationService } from './notification.service';
+import { ExperienceService } from './experience.service';
+import { ClubProfile, DEFAULT_CLUB_PROFILE } from '../models/club-profile.model';
 
 export type { ExperienceProposalRequest } from './provider-store.service';
 
@@ -80,6 +82,7 @@ export class AdminStoreService {
   private readonly newsletter = inject(NewsletterService);
   readonly providerStore = inject(ProviderStoreService);
   private readonly notificationService = inject(NotificationService);
+  private readonly experienceService = inject(ExperienceService);
 
   private readonly _currentAdmin = signal<AdminUser | null>(null);
   private readonly _members = signal<AdminMember[]>(this.loadStoredMembers());
@@ -90,6 +93,9 @@ export class AdminStoreService {
   private readonly _isLoadingApplications = signal<boolean>(false);
   private readonly _lastRefreshedAt = signal<string | null>(null);
 
+  private readonly _clubProfile = signal<ClubProfile>(this.loadStoredClubProfile());
+  private readonly _isClubProfileModalOpen = signal<boolean>(false);
+
   readonly currentAdmin = this._currentAdmin.asReadonly();
   readonly isAuthenticated = computed(() => this._currentAdmin() !== null);
   readonly members = this._members.asReadonly();
@@ -99,6 +105,16 @@ export class AdminStoreService {
   readonly isLoadingSubmissions = this._isLoadingSubmissions.asReadonly();
   readonly isLoadingApplications = this._isLoadingApplications.asReadonly();
   readonly lastRefreshedAt = this._lastRefreshedAt.asReadonly();
+  readonly clubProfile = this._clubProfile.asReadonly();
+  readonly isClubProfileModalOpen = this._isClubProfileModalOpen.asReadonly();
+
+  openClubProfileModal(): void {
+    this._isClubProfileModalOpen.set(true);
+  }
+
+  closeClubProfileModal(): void {
+    this._isClubProfileModalOpen.set(false);
+  }
 
   readonly providerEmailsSet = computed<Set<string>>(() => {
     const set = new Set<string>();
@@ -258,12 +274,127 @@ export class AdminStoreService {
 
   private async initStore(): Promise<void> {
     this.providerStore.reloadFromStorage();
+    void this.loadClubProfile();
     const isAuth = await this.restoreSupabaseSession();
     if (isAuth) {
       void this.loadAllMembers();
       void this.loadAllSubmissions();
       void this.loadAllApplications();
     }
+  }
+
+  private loadStoredClubProfile(): ClubProfile {
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('catamarca_club_official_profile_v1');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === 'object') {
+            return { ...DEFAULT_CLUB_PROFILE, ...parsed };
+          }
+        }
+      } catch {
+        // Fallback
+      }
+    }
+    return DEFAULT_CLUB_PROFILE;
+  }
+
+  async loadClubProfile(): Promise<void> {
+    if (!isSupabaseConfigured()) return;
+    try {
+      const { data, error } = await (this.supabase.from('provider_access') as any)
+        .select('*')
+        .or('email.eq.admin@experiencias.club,slug.eq.club-de-experiencias')
+        .maybeSingle();
+
+      if (!error && data) {
+        const loaded: ClubProfile = {
+          name: data.name || DEFAULT_CLUB_PROFILE.name,
+          agency: data.agency || DEFAULT_CLUB_PROFILE.agency,
+          email: data.email || DEFAULT_CLUB_PROFILE.email,
+          slug: data.slug || DEFAULT_CLUB_PROFILE.slug,
+          phone: data.phone || DEFAULT_CLUB_PROFILE.phone,
+          cbuAlias: data.cbu_alias || DEFAULT_CLUB_PROFILE.cbuAlias,
+          cuitDni: data.cuit_dni || DEFAULT_CLUB_PROFILE.cuitDni,
+          bankName: data.bank_name || DEFAULT_CLUB_PROFILE.bankName,
+          accountHolder: data.account_holder || DEFAULT_CLUB_PROFILE.accountHolder,
+          bio: data.bio || DEFAULT_CLUB_PROFILE.bio,
+          website: data.website || DEFAULT_CLUB_PROFILE.website,
+          socialMedia: data.social_media || DEFAULT_CLUB_PROFILE.socialMedia,
+          address: DEFAULT_CLUB_PROFILE.address,
+          updatedAt: data.updated_at || new Date().toISOString(),
+        };
+        this._clubProfile.set(loaded);
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem('catamarca_club_official_profile_v1', JSON.stringify(loaded));
+          } catch {
+            // Ignorar
+          }
+        }
+        this.experienceService.syncClubExperiencesWithProfile(loaded);
+        this.providerStore.syncClubProviderProfile(loaded);
+      }
+    } catch (err) {
+      console.warn('[AdminStore] Error al cargar perfil del Club:', err);
+    }
+  }
+
+  async updateClubProfile(updated: Partial<ClubProfile>): Promise<boolean> {
+    const current = this._clubProfile();
+    const merged: ClubProfile = {
+      ...current,
+      ...updated,
+      updatedAt: new Date().toISOString(),
+    };
+
+    this._clubProfile.set(merged);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('catamarca_club_official_profile_v1', JSON.stringify(merged));
+      } catch {
+        // Ignorar
+      }
+    }
+
+    // Sincronizar experiencias del Club en ExperienceService
+    this.experienceService.syncClubExperiencesWithProfile(merged);
+
+    // Sincronizar prestador prov-club en ProviderStoreService
+    this.providerStore.syncClubProviderProfile(merged);
+
+    if (isSupabaseConfigured()) {
+      try {
+        const { error } = await (this.supabase.from('provider_access') as any).upsert(
+          {
+            email: merged.email || 'admin@experiencias.club',
+            name: merged.name,
+            agency: merged.agency || merged.name,
+            slug: merged.slug || 'club-de-experiencias',
+            phone: merged.phone,
+            cbu_alias: merged.cbuAlias,
+            cuit_dni: merged.cuitDni,
+            bank_name: merged.bankName,
+            account_holder: merged.accountHolder,
+            bio: merged.bio,
+            website: merged.website,
+            social_media: merged.socialMedia,
+            active: true,
+            status: 'aprobado',
+            updated_at: merged.updatedAt,
+          },
+          { onConflict: 'email' },
+        );
+        if (error) {
+          console.warn('[AdminStore] Error al actualizar perfil del Club en Supabase:', error);
+        }
+      } catch (err) {
+        console.warn('[AdminStore] Excepción al guardar perfil del Club en Supabase:', err);
+      }
+    }
+
+    return true;
   }
 
   // ============================================================

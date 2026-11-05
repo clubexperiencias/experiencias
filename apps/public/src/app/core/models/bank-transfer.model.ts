@@ -33,6 +33,7 @@ export interface ProviderUser {
   cuitDni: string;
   cbuAlias: string;
   bankName: string;
+  accountHolder?: string;
   verified: boolean;
   active?: boolean;
   status?: 'aprobado' | 'pendiente' | 'rechazado' | 'dado_de_baja';

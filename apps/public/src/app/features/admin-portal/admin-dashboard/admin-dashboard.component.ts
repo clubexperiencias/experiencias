@@ -15,6 +15,8 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
 import { slugify } from '../../../core/services/provider-store.service';
 import { ExperienceService } from '../../../core/services/experience.service';
 import { ProviderListItem } from '../admin-providers/admin-providers.component';
+import { isClubExperience } from '../../../core/models/club-profile.model';
+import { Experience } from '../../../core/models/experience.model';
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -271,10 +273,10 @@ import { ProviderListItem } from '../admin-providers/admin-providers.component';
                           [href]="getWaLink(item.phone, item.name)"
                           target="_blank"
                           rel="noopener noreferrer"
-                          class="btn-contact-provider"
-                          title="Contactar por WhatsApp"
+                          class="contact-whatsapp"
+                          [class.is-applicant]="item.origin !== 'official'"
+                          title="Contactar vía WhatsApp"
                         >
-                          <mat-icon class="contact-icon">chat</mat-icon>
                           <span>{{ item.phone }}</span>
                         </a>
                       } @else {
@@ -359,8 +361,8 @@ import { ProviderListItem } from '../admin-providers/admin-providers.component';
           </div>
         </div>
 
-        @if (store.experienceRequests().length === 0) {
-          <p class="empty-text">No hay solicitudes de experiencias cargadas todavía.</p>
+        @if (pendingExperienceRequests().length === 0) {
+          <p class="empty-text">No hay solicitudes de experiencias pendientes de revisión.</p>
         } @else {
           <div class="table-wrap">
             <table class="dash-data-table">
@@ -375,7 +377,7 @@ import { ProviderListItem } from '../admin-providers/admin-providers.component';
                 </tr>
               </thead>
               <tbody>
-                @for (req of store.experienceRequests(); track req.id) {
+                @for (req of pendingExperienceRequests(); track req.id) {
                   <tr [class.row-pending]="req.status === 'pendiente'">
                     <td>
                       <div class="cell-stack">
@@ -452,7 +454,7 @@ import { ProviderListItem } from '../admin-providers/admin-providers.component';
                   <th>Ruta Web Oficial</th>
                   <th>Región & Dificultad</th>
                   <th>Arancel</th>
-                  <th>Cupo</th>
+                  <th>Cupo Máx.</th>
                   <th>Estado</th>
                   <th class="text-right">Acción</th>
                 </tr>
@@ -468,7 +470,15 @@ import { ProviderListItem } from '../admin-providers/admin-providers.component';
                           class="exp-cell-thumb"
                         />
                         <div class="exp-cell-text">
-                          <strong class="exp-title-cell">{{ exp.title }}</strong>
+                          <div class="exp-title-row">
+                            <strong class="exp-title-cell">{{ exp.title }}</strong>
+                            @if (isClub(exp)) {
+                              <span class="club-chip" title="Experiencia Oficial del Club de Experiencias">
+                                <mat-icon>verified</mat-icon>
+                                Club
+                              </span>
+                            }
+                          </div>
                           <span class="exp-kicker-sub font-mono">{{ exp.kicker || 'EXPEDICIÓN' }}</span>
                         </div>
                       </div>
@@ -1023,22 +1033,6 @@ import { ProviderListItem } from '../admin-providers/admin-providers.component';
                   }
                 </div>
               </div>
-
-              @if (expReq.status === 'pendiente') {
-                <div class="exp-public-url-box">
-                  <label class="url-label" for="exp-public-url-dash"
-                    >URL oficial vinculada en la web pública (experiencias.club):</label
-                  >
-                  <input
-                    id="exp-public-url-dash"
-                    type="text"
-                    class="url-input"
-                    [value]="expPublicUrlInput()"
-                    (input)="expPublicUrlInput.set($any($event.target).value)"
-                    placeholder="https://experiencias.club/experiencias/..."
-                  />
-                </div>
-              }
             </div>
 
             <!-- Acciones al Pie -->
@@ -1506,6 +1500,35 @@ import { ProviderListItem } from '../admin-providers/admin-providers.component';
         font-weight: 500;
       }
 
+      .exp-title-row {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        flex-wrap: wrap;
+      }
+
+      .club-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.2rem;
+        background: rgba(255, 95, 0, 0.2);
+        border: 1px solid rgba(255, 95, 0, 0.45);
+        color: #ff9500;
+        font-size: 0.65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        padding: 0.1rem 0.4rem;
+        border-radius: 3px;
+        line-height: 1;
+      }
+
+      .club-chip mat-icon {
+        font-size: 12px;
+        width: 12px;
+        height: 12px;
+      }
+
       .seats-badge {
         display: inline-block;
         padding: 0.15rem 0.45rem;
@@ -1874,11 +1897,30 @@ import { ProviderListItem } from '../admin-providers/admin-providers.component';
         border-radius: 2px;
       }
 
-      .contact-icon {
-        font-size: 0.85rem !important;
-        width: 0.85rem !important;
-        height: 0.85rem !important;
-        line-height: 1 !important;
+      .contact-whatsapp,
+      .contact-whatsapp:visited {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        color: rgba(255, 255, 255, 0.55);
+        text-decoration: none;
+        font-size: 0.75rem;
+        font-family: var(--font-mono, monospace);
+      }
+
+      .contact-whatsapp:hover {
+        color: rgba(255, 255, 255, 0.85);
+        text-decoration: underline;
+      }
+
+      .contact-whatsapp.is-applicant,
+      .contact-whatsapp.is-applicant:visited {
+        color: #ff5f00;
+      }
+
+      .contact-whatsapp.is-applicant:hover {
+        color: #ff8533;
+        text-decoration: underline;
       }
 
       .app-quick-modal {
@@ -2801,6 +2843,10 @@ export class AdminDashboardComponent {
   private readonly experienceService = inject(ExperienceService);
   readonly webExperiences = this.experienceService.experiences;
 
+  isClub(exp?: Partial<Experience> | null): boolean {
+    return isClubExperience(exp);
+  }
+
   readonly admin = this.store.currentAdmin;
   readonly stats = this.store.stats;
   readonly selectedSubmission = signal<TransferSubmission | null>(null);
@@ -2816,6 +2862,9 @@ export class AdminDashboardComponent {
   readonly recentMembers = computed(() => this.store.members().slice(0, 7));
   readonly recentSubmissions = computed(() => this.store.submissions().slice(0, 7));
   readonly recentApplications = computed(() => this.store.applications().slice(0, 5));
+  readonly pendingExperienceRequests = computed(() =>
+    this.store.experienceRequests().filter((r) => r.status === 'pendiente'),
+  );
 
   // Padrón consolidado de Prestadores Oficiales + Postulaciones de Nuevos Prestadores
   readonly dashboardProviders = computed<ProviderListItem[]>(() => {
@@ -2884,14 +2933,16 @@ export class AdminDashboardComponent {
   }
 
   constructor() {
-    this.store.providerStore.reloadFromStorage();
+    this.refreshAll();
   }
 
   refreshAll(): void {
     this.store.providerStore.reloadFromStorage();
+    void this.store.providerStore.loadProposalsFromSupabase();
     void this.store.loadAllMembers();
     void this.store.loadAllSubmissions();
     void this.store.loadAllApplications();
+    void this.experienceService.reloadFromSupabase();
   }
 
   async openReceipt(sub: TransferSubmission): Promise<void> {
@@ -3055,7 +3106,7 @@ export class AdminDashboardComponent {
   }
 
   async approveExperience(id: string): Promise<void> {
-    const ok = await this.store.approveExperienceRequest(id, this.expPublicUrlInput());
+    const ok = await this.store.approveExperienceRequest(id);
     if (ok) {
       const current = this.selectedExperienceRequest();
       if (current && current.id === id) {
@@ -3065,6 +3116,8 @@ export class AdminDashboardComponent {
           reviewedAt: new Date().toISOString(),
         });
       }
+      this.refreshAll();
+      this.closeExperienceRequest();
     }
   }
 
@@ -3078,6 +3131,8 @@ export class AdminDashboardComponent {
         reviewedAt: new Date().toISOString(),
       });
     }
+    this.refreshAll();
+    this.closeExperienceRequest();
   }
 
   async quickApprove(id: string): Promise<void> {

@@ -7,13 +7,15 @@ import { MatIconModule } from '@angular/material/icon';
 import { filter } from 'rxjs';
 import { ExperienceService } from '../../../core/services/experience.service';
 import { StorageService } from '../../../core/services/storage.service';
+import { AdminStoreService } from '../../../core/services/admin-store.service';
 import { Experience, ExperienceAlbumPhoto } from '../../../core/models/experience.model';
-import { ArsPipe } from '../../../shared/pipes/format.pipes';
+import { isClubExperience } from '../../../core/models/club-profile.model';
+import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
 
 @Component({
   selector: 'app-admin-experiences',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule, MatIconModule, ArsPipe],
+  imports: [CommonModule, RouterLink, FormsModule, MatIconModule, ArsPipe, FechaPipe],
   template: `
     <div class="experiences-admin-container">
       <!-- Toast Feedback -->
@@ -23,49 +25,416 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
         </div>
       }
 
-      @if (isRouteEditMode()) {
+      @if (notFound()) {
+        <!-- Modo Error: Experiencia no encontrada -->
+        <div class="empty-state-card" style="margin-top: 1.5rem; text-align: center; padding: 2.5rem 1.5rem;">
+          <h2 class="card-heading">Experiencia no encontrada</h2>
+          <p class="card-subheading">No pudimos encontrar la experiencia solicitada en el catálogo.</p>
+          <a [routerLink]="backToListLink()" class="btn-back-panel" style="margin-top: 1.25rem; display: inline-flex;">
+            Volver a Experiencias
+          </a>
+        </div>
+      } @else if (isRouteEditMode() && editingExperience(); as exp) {
         <!-- Modo Edición en Subruta: /experiencias/:slug/editar -->
-        @if (notFound()) {
-          <div class="empty-state-card" style="margin-top: 1.5rem; text-align: center; padding: 2.5rem 1.5rem;">
-            <h2 class="card-heading">Experiencia no encontrada</h2>
-            <p class="card-subheading">No pudimos encontrar la experiencia que intentás editar en el catálogo.</p>
-            <a [routerLink]="backToListLink()" class="btn-back-panel" style="margin-top: 1.25rem; display: inline-flex;">
-              Volver a Experiencias
-            </a>
-          </div>
-        } @else if (editingExperience(); as exp) {
-          <div class="edit-page-card">
-            <div class="admin-page-header">
-              <div class="header-titles">
-                <span class="section-kicker">GESTIÓN DE CATÁLOGO & RUTAS WEB</span>
-                <div class="title-row">
-                  <h1 class="card-heading">Editar Experiencia: {{ editTitle() }}</h1>
+        <div class="edit-page-card">
+          <div class="admin-page-header">
+            <div class="header-titles">
+              <span class="section-kicker">GESTIÓN DE CATÁLOGO & RUTAS WEB</span>
+              <div class="title-row">
+                <h1 class="card-heading">Editar Experiencia: {{ editTitle() }}</h1>
+                <div class="top-header-actions">
+                  <a [routerLink]="getDetailRoute(exp)" class="btn-view-fiche-top" title="Ver ficha completa">
+                    <mat-icon class="btn-icon-sm">visibility</mat-icon>
+                    <span>Ver Ficha</span>
+                  </a>
                   <a [routerLink]="backToListLink()" class="btn-back-panel">Volver a Experiencias</a>
                 </div>
-                <p class="card-subheading">
-                  Ruta web oficial: <code>/experiencias/{{ editSlug() }}</code>.
-                  Como administrador, podés actualizar el slug de publicación oficial, tarifas, cupos y contenidos de la ficha.
-                </p>
+              </div>
+              <p class="card-subheading">
+                Ruta web oficial: <code>/experiencias/{{ editSlug() }}</code>.
+                Como administrador, podés actualizar el slug de publicación oficial, tarifas, cupos y contenidos de la ficha.
+              </p>
+            </div>
+          </div>
+
+          <div class="edit-page-body">
+            <ng-container *ngTemplateOutlet="experienceFormSections" />
+          </div>
+
+          <div class="edit-page-footer">
+            <a [routerLink]="getDetailRoute(exp)" class="btn-cancel-edit">Cancelar</a>
+            <button
+              type="button"
+              class="btn-save-orange"
+              [disabled]="saving()"
+              (click)="saveExperience()"
+            >
+              {{ saving() ? 'Guardando cambios...' : 'Guardar Información de la Ruta' }}
+            </button>
+          </div>
+        </div>
+      } @else if (isRouteDetailMode() && editingExperience(); as exp) {
+        <!-- Modo Ficha de la Experiencia: /experiencias/:slug (Punto intermedio) -->
+        <div class="fiche-page-card">
+          <!-- Barra Superior de Navegación & Acciones de Admin -->
+          <div class="fiche-admin-topbar">
+            <div class="topbar-left">
+              <a [routerLink]="backToListLink()" class="btn-back-panel">
+                &larr; Volver a Experiencias
+              </a>
+              <span class="fiche-topbar-breadcrumb">
+                /experiencias / <strong>{{ exp.slug }}</strong>
+              </span>
+            </div>
+
+            <div class="topbar-actions">
+              <!-- Pausar o Activar -->
+              @if (exp.status === 'publicada') {
+                <button
+                  type="button"
+                  class="btn-pause-exp-top"
+                  (click)="toggleStatus(exp, 'oculta')"
+                  title="Pausar ruta y ocultarla de la web pública"
+                >
+                  <mat-icon class="btn-icon-sm">pause_circle</mat-icon>
+                  <span>Pausar</span>
+                </button>
+              } @else {
+                <button
+                  type="button"
+                  class="btn-activate-exp-top"
+                  (click)="toggleStatus(exp, 'publicada')"
+                  title="Activar y publicar en la web pública"
+                >
+                  <mat-icon class="btn-icon-sm">play_circle</mat-icon>
+                  <span>Activar</span>
+                </button>
+              }
+
+              <!-- Ver en la Web Pública -->
+              <a
+                [href]="getPublicExperienceUrl(exp)"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="btn-action-public-web"
+                title="Ver cómo se visualiza actualmente en experiencias.club"
+              >
+                <mat-icon class="btn-icon-sm">open_in_new</mat-icon>
+                <span>Ver en Web Pública</span>
+              </a>
+
+              <!-- Botón EDITAR EXPERIENCIA (Destacado en Naranja) -->
+              <a
+                [routerLink]="getEditRoute(exp)"
+                class="btn-action-edit-orange"
+                title="Editar los datos y contenidos de esta ficha"
+              >
+                <mat-icon class="btn-icon-sm">edit</mat-icon>
+                <span>EDITAR EXPERIENCIA</span>
+              </a>
+            </div>
+          </div>
+
+          <!-- Contenido de la Ficha (Estilo Web Pública) -->
+          <div class="fiche-body">
+            <!-- 1. HERO CARD: Título, Kicker, Bajada y Badges Oficiales -->
+            <div class="fiche-section-card hero-fiche-card">
+              <div class="fiche-hero-header">
+                <div class="hero-kicker-row">
+                  <span class="hero-kicker">{{ exp.kicker || 'EXPEDICIÓN OFICIAL DEL CLUB' }}</span>
+                  <div class="hero-badges-row">
+                    @if (isClub(exp)) {
+                      <span class="club-official-chip" title="Experiencia Oficial del Club de Experiencias">
+                        <mat-icon>verified</mat-icon>
+                        Club de Experiencias
+                      </span>
+                    }
+                    @if (exp.status === 'publicada') {
+                      <span class="status-pill is-published">Publicada</span>
+                    } @else {
+                      <span class="status-pill is-hidden">Pausada</span>
+                    }
+                  </div>
+                </div>
+
+                <h1 class="fiche-hero-title">{{ exp.title }}</h1>
+                @if (exp.tagline) {
+                  <p class="fiche-hero-sub">{{ exp.tagline }}</p>
+                }
+                @if (exp.description && exp.description !== exp.tagline) {
+                  <p class="fiche-hero-desc">{{ exp.description }}</p>
+                }
+              </div>
+
+              <!-- Specs Técnicas Rápidas -->
+              <div class="fiche-specs-grid">
+                <div class="spec-tile">
+                  <span class="spec-label">DIFICULTAD</span>
+                  <span class="spec-value">{{ exp.difficulty }}</span>
+                </div>
+                <div class="spec-tile">
+                  <span class="spec-label">DURACIÓN</span>
+                  <span class="spec-value">{{ exp.durationLabel }}</span>
+                </div>
+                <div class="spec-tile">
+                  <span class="spec-label">ALTITUD</span>
+                  <span class="spec-value">{{ exp.altitudeMeters > 0 ? (exp.altitudeMeters + ' msnm') : 'N/A' }}</span>
+                </div>
+                <div class="spec-tile">
+                  <span class="spec-label">CUPO MÁXIMO</span>
+                  <span class="spec-value">{{ exp.maxSpotsPerGroup }} personas</span>
+                </div>
+                <div class="spec-tile">
+                  <span class="spec-label">REGIÓN</span>
+                  <span class="spec-value">{{ exp.region }}</span>
+                </div>
+                <div class="spec-tile">
+                  <span class="spec-label">TEMPORADA</span>
+                  <span class="spec-value">{{ exp.bestSeason || 'Todo el año' }}</span>
+                </div>
+              </div>
+
+              <!-- Media Principal: Video o Imagen de Portada -->
+              @if (exp.videoUrl) {
+                <div class="fiche-media-player-wrap">
+                  <video
+                    [src]="exp.videoUrl"
+                    controls
+                    playsinline
+                    [poster]="exp.videoPoster || exp.coverImage"
+                    class="fiche-video-element"
+                  >
+                    Tu navegador no soporta reproducción de video.
+                  </video>
+                </div>
+              } @else if (exp.coverImage) {
+                <div class="fiche-cover-img-wrap">
+                  <img [src]="exp.coverImage" [alt]="exp.title" class="fiche-cover-img" />
+                </div>
+              }
+            </div>
+
+            <!-- 2. ARANCEL OFICIAL & SALIDAS PROGRAMADAS -->
+            <div class="fiche-section-card pricing-fiche-card">
+              <div class="pricing-card-flex">
+                <div class="price-data">
+                  <span class="price-title">ARANCEL OFICIAL DE PUBLICACIÓN</span>
+                  <div class="price-figures">
+                    <span class="ars-price">{{ exp.priceArs | ars }}</span>
+                    @if (exp.priceUsd) {
+                      <span class="usd-price">o &#36;{{ exp.priceUsd }} USD</span>
+                    }
+                  </div>
+                  <span class="price-note">
+                    {{ exp.promosAndPricing || 'Prioridad y aranceles especiales para socios de nuestro Club de Experiencias.' }}
+                  </span>
+                </div>
+
+                <div class="action-btns-group">
+                  <a [routerLink]="getEditRoute(exp)" class="btn-action-edit-orange">
+                    <mat-icon>edit</mat-icon>
+                    <span>Editar Arancel y Parámetros</span>
+                  </a>
+                </div>
+              </div>
+
+              @if (upcomingDates().length > 0) {
+                <div class="fiche-dates-section">
+                  <h4 class="fiche-subhead-title">Fechas de Salida Programadas</h4>
+                  <div class="dates-chips-grid">
+                    @for (d of upcomingDates(); track d) {
+                      <div class="date-chip-item">
+                        <mat-icon class="date-chip-icon">event</mat-icon>
+                        <span class="date-chip-text">{{ d | fecha: 'larga' }}</span>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+
+            <!-- 3. PRESTADOR ASIGNADO & DATOS DE COBRO (CBU) -->
+            <div class="fiche-section-card" [class.is-club-card]="isClub(exp)">
+              <div class="section-title-row">
+                <h3 class="fiche-card-title">Prestador Asignado & Datos de Cobro (CBU)</h3>
+                @if (isClub(exp)) {
+                  <span class="club-locked-chip">
+                    <mat-icon>verified</mat-icon>
+                    Cuenta Oficial del Club
+                  </span>
+                }
+              </div>
+
+              <div class="provider-info-grid">
+                <div class="info-item">
+                  <span class="info-label">PRESTADOR</span>
+                  <strong class="info-value">{{ isClub(exp) ? adminStore.clubProfile().name : (exp.providerName || 'No asignado') }}</strong>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">CONTACTO / TELÉFONO</span>
+                  <span class="info-value">{{ isClub(exp) ? adminStore.clubProfile().phone : (exp.providerPhone || 'N/A') }}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">CBU / CVU O ALIAS</span>
+                  <strong class="info-value text-blue">{{ isClub(exp) ? adminStore.clubProfile().cbuAlias : (exp.providerCbuAlias || 'N/A') }}</strong>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">CUIT / DNI</span>
+                  <span class="info-value">{{ isClub(exp) ? adminStore.clubProfile().cuitDni : (exp.providerCuitDni || 'N/A') }}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">BANCO / ENTIDAD</span>
+                  <span class="info-value">{{ isClub(exp) ? adminStore.clubProfile().bankName : (exp.providerBankName || 'N/A') }}</span>
+                </div>
               </div>
             </div>
 
-            <div class="edit-page-body">
-              <ng-container *ngTemplateOutlet="experienceFormSections" />
+            <!-- 4. CRONOGRAMA E ITINERARIO DE LA JORNADA -->
+            <div class="fiche-section-card">
+              <div class="section-title-row">
+                <div>
+                  <h3 class="fiche-card-title">Cronograma e Itinerario de la Jornada</h3>
+                  <p class="section-subtext">
+                    Línea de tiempo paso a paso tal como se renderiza para los exploradores en la web pública.
+                  </p>
+                </div>
+              </div>
+
+              @if (itinerarySteps().length > 0) {
+                <div class="timeline-list">
+                  @for (step of itinerarySteps(); track step.title) {
+                    <div class="timeline-step">
+                      <div class="timeline-time">{{ step.time }}</div>
+                      <div class="timeline-body">
+                        <h4>{{ step.title }}</h4>
+                        <p>{{ step.description }}</p>
+                      </div>
+                    </div>
+                  }
+                </div>
+              } @else if (exp.itinerary) {
+                <div class="raw-itinerary-box">
+                  <p style="white-space: pre-line; margin: 0; color: rgba(255, 255, 255, 0.85); font-size: 0.9rem; line-height: 1.6;">
+                    {{ exp.itinerary }}
+                  </p>
+                </div>
+              } @else {
+                <div class="album-empty-placeholder">
+                  <span>No se ha cargado un itinerario específico aún para esta experiencia.</span>
+                </div>
+              }
             </div>
 
-            <div class="edit-page-footer">
-              <a [routerLink]="backToListLink()" class="btn-cancel-edit">Cancelar</a>
-              <button
-                type="button"
-                class="btn-save-orange"
-                [disabled]="saving()"
-                (click)="saveExperience()"
-              >
-                {{ saving() ? 'Guardando cambios...' : 'Guardar Información de la Ruta' }}
-              </button>
+            <!-- 5. SERVICIOS INCLUIDOS & QUÉ LLEVAR -->
+            @if ((exp.included && exp.included.length > 0) || (exp.highlights && exp.highlights.length > 0)) {
+              <div class="fiche-section-card">
+                <h3 class="fiche-card-title">Equipamiento & Servicios</h3>
+                <div class="simple-logistics-grid">
+                  <!-- Servicios Incluidos -->
+                  @if (exp.included && exp.included.length > 0) {
+                    <div class="simple-logistics-col">
+                      <div class="simple-col-title-wrap">
+                        <h4 class="simple-col-title">Servicios e Indumentaria Provista</h4>
+                      </div>
+                      <ul class="simple-check-list">
+                        @for (inc of exp.included; track inc) {
+                          <li>{{ inc }}</li>
+                        }
+                      </ul>
+                    </div>
+                  }
+
+                  <!-- Qué Debes Traer -->
+                  @if (exp.highlights && exp.highlights.length > 0) {
+                    <div class="simple-logistics-col traer-col">
+                      <div class="simple-col-title-wrap">
+                        <h4 class="simple-col-title">Qué Debes Traer</h4>
+                      </div>
+                      <ul class="simple-check-list blue-checks">
+                        @for (item of exp.highlights; track item) {
+                          <li>{{ item }}</li>
+                        }
+                      </ul>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+
+            <!-- 6. PUNTO DE ENCUENTRO & UBICACIÓN -->
+            <div class="fiche-section-card">
+              <h3 class="fiche-card-title">Logística & Punto de Encuentro</h3>
+              <p class="meeting-point-desc">
+                {{ exp.meetingPoint || 'Lugar a coordinar con los exploradores inscriptos' }} ({{ exp.region }})
+              </p>
+
+              @if (exp.meetingPointUrl || exp.meetingPoint) {
+                <div class="location-actions-row">
+                  <a
+                    [href]="getGoogleMapsUrl(exp.meetingPoint, exp.region, exp.meetingPointUrl)"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="location-btn maps-btn"
+                  >
+                    <mat-icon>place</mat-icon>
+                    <span>Abrir en Google Maps</span>
+                  </a>
+                </div>
+              }
+            </div>
+
+            <!-- 7. ÁLBUM & GALERÍA DE FOTOS -->
+            @if (exp.albumPhotos && exp.albumPhotos.length > 0) {
+              <div class="fiche-section-card">
+                <div class="section-title-row">
+                  <div>
+                    <h3 class="fiche-card-title">Álbum & Galería Oficial</h3>
+                    <p class="section-subtext">
+                      {{ exp.albumPhotos.length }} fotos cargadas ({{ detailFeaturedPhotos().length }} destacadas, {{ detailGalleryPhotos().length }} en galería común).
+                    </p>
+                  </div>
+                  <a [routerLink]="getEditRoute(exp)" class="btn-text-edit-album">
+                    Modificar fotos en edición &rarr;
+                  </a>
+                </div>
+
+                <div class="fiche-album-grid">
+                  @for (photo of exp.albumPhotos; track photo.id) {
+                    <div class="fiche-album-card" [class.is-featured-card]="photo.isFeatured" [class.is-cover-card]="photo.isCover">
+                      <div class="thumb-wrap">
+                        <img [src]="photo.url" [alt]="photo.caption || photo.title || 'Foto de álbum'" class="fiche-album-img" />
+                        @if (photo.isCover) {
+                          <span class="photo-badge badge-cover">Portada</span>
+                        }
+                        @if (photo.isFeatured) {
+                          <span class="photo-badge badge-featured">⭐ Destacada</span>
+                        }
+                      </div>
+                      @if (photo.caption || photo.title) {
+                        <span class="fiche-album-caption">{{ photo.caption || photo.title }}</span>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+
+            <!-- 8. PIE DE ACCIONES: Volver o Editar -->
+            <div class="fiche-bottom-cta-bar">
+              <div class="cta-bar-left">
+                <span class="cta-exp-title">{{ exp.title }}</span>
+                <span class="cta-exp-route">experiencias.club/experiencias/{{ exp.slug }}</span>
+              </div>
+              <div class="cta-bar-right">
+                <a [routerLink]="backToListLink()" class="btn-cancel-edit">Volver al Catálogo</a>
+                <a [routerLink]="getEditRoute(exp)" class="btn-action-edit-orange">
+                  <mat-icon class="btn-icon-sm">edit</mat-icon>
+                  <span>Editar Esta Experiencia</span>
+                </a>
+              </div>
             </div>
           </div>
-        }
+        </div>
       } @else {
         <!-- Encabezado -->
         <div class="admin-page-header">
@@ -100,7 +469,7 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                 <th>Ruta Web Oficial</th>
                 <th>Región & Dificultad</th>
                 <th>Arancel</th>
-                <th>Cupo</th>
+                <th>Cupo Máx.</th>
                 <th>Estado</th>
                 <th class="text-right">Acciones</th>
               </tr>
@@ -110,17 +479,29 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                 <tr [class.is-paused]="exp.status === 'oculta'">
                   <!-- Columna Experiencia / Portada -->
                   <td>
-                    <div class="exp-cell-main">
+                    <a
+                      [routerLink]="getDetailRoute(exp)"
+                      class="exp-cell-main exp-cell-link"
+                      title="Ver ficha de {{ exp.title }}"
+                    >
                       <img
                         [src]="exp.coverImage || '/assets/images/kayak-club-de-experiencias.jpg'"
                         [alt]="exp.title"
                         class="exp-table-thumb"
                       />
                       <div class="exp-cell-text">
-                        <strong class="exp-table-title">{{ exp.title }}</strong>
+                        <div class="exp-title-row">
+                          <strong class="exp-table-title">{{ exp.title }}</strong>
+                          @if (isClub(exp)) {
+                            <span class="club-official-chip" title="Experiencia Oficial creada por el Club de Experiencias">
+                              <mat-icon>verified</mat-icon>
+                              Club
+                            </span>
+                          }
+                        </div>
                         <span class="exp-table-sub">{{ exp.tagline }}</span>
                       </div>
-                    </div>
+                    </a>
                   </td>
 
                   <!-- Columna Ruta -->
@@ -175,6 +556,16 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                   <!-- Columna Acciones -->
                   <td class="text-right">
                     <div class="action-buttons-cell">
+                      <!-- Ver Ficha Completa (Punto Intermedio) -->
+                      <a
+                        [routerLink]="getDetailRoute(exp)"
+                        class="btn-view-fiche"
+                        title="Ver la ficha técnica y visual de esta experiencia"
+                      >
+                        <mat-icon class="action-btn-icon">visibility</mat-icon>
+                        <span>VER FICHA</span>
+                      </a>
+
                       <!-- Editar Información Completa en Subruta -->
                       <a
                         [routerLink]="getEditRoute(exp)"
@@ -251,13 +642,41 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
       }
 
       <ng-template #experienceFormSections>
+        <!-- Banner Experiencia Oficial del Club de Experiencias -->
+        @if (isCurrentExperienceClub()) {
+          <div class="club-experience-banner">
+            <div class="club-banner-icon">
+              <mat-icon>verified</mat-icon>
+            </div>
+            <div class="club-banner-text">
+              <div class="club-banner-header">
+                <span class="club-banner-title">Experiencia Creada por el Club de Experiencias</span>
+                <span class="club-banner-badge">Prestador Oficial</span>
+              </div>
+              <p class="club-banner-desc">
+                Esta experiencia pertenece a la cuenta oficial del <strong>Club de Experiencias</strong>.
+                La asignación de prestador y los datos de cobro (CBU / Alias) están vinculados al perfil central del Club administrado conjuntamente por todos los administradores.
+              </p>
+            </div>
+            <button
+              type="button"
+              class="btn-edit-club-profile"
+              (click)="openClubProfileModal()"
+              title="Editar Perfil del Club de Experiencias"
+            >
+              <mat-icon>account_balance</mat-icon>
+              <span>Editar Perfil del Club</span>
+            </button>
+          </div>
+        }
+
         <!-- SECCIÓN 1: Identificación y Rutas -->
         <div class="form-section-card">
           <h4 class="form-section-title">1. Identificación & Ruta Pública</h4>
           <div class="form-field">
             <label>Ruta / Slug oficial (URL final en la web pública):</label>
             <div class="slug-input-wrap">
-              <span class="slug-prefix">/experiencias/</span>
+              <span class="slug-prefix">https://experiencias.club/experiencias/</span>
               <input
                 type="text"
                 class="form-input slug-field"
@@ -309,7 +728,7 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
               <!-- SECCIÓN 2: Ficha Técnica & Parámetros -->
               <div class="form-section-card">
                 <h4 class="form-section-title">2. Ficha Técnica & Parámetros de Operación</h4>
-                <div class="form-grid-3">
+                <div class="form-grid-2">
                   <div class="form-field">
                     <label>Región de Catamarca:</label>
                     <input
@@ -321,16 +740,6 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                   </div>
 
                   <div class="form-field">
-                    <label>Punto de Encuentro:</label>
-                    <input
-                      type="text"
-                      class="form-input"
-                      [(ngModel)]="editMeetingPoint"
-                      placeholder="Ej: Club Náutico Dique El Jumeal"
-                    />
-                  </div>
-
-                  <div class="form-field">
                     <label>Nivel de Dificultad:</label>
                     <select class="form-select" [(ngModel)]="editDifficulty">
                       <option value="Baja">Baja</option>
@@ -338,6 +747,42 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                       <option value="Exigente">Exigente</option>
                       <option value="Alta Montaña">Alta Montaña</option>
                     </select>
+                  </div>
+                </div>
+
+                <div class="form-grid-2">
+                  <div class="form-field">
+                    <label>Punto de Encuentro:</label>
+                    <input
+                      type="text"
+                      class="form-input"
+                      [(ngModel)]="editMeetingPoint"
+                      placeholder="Ej: Club Náutico Dique El Jumeal"
+                    />
+                    <span class="field-hint">Lugar o referencia física de encuentro para los exploradores.</span>
+                  </div>
+
+                  <div class="form-field">
+                    <div class="field-header-row">
+                      <label>Ubicación (Link de Google Maps):</label>
+                      @if (editMeetingPointUrl() && isValidGoogleMapsUrl(editMeetingPointUrl())) {
+                        <a
+                          [href]="editMeetingPointUrl()"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="link-maps-preview"
+                        >
+                          Abrir en Maps ↗
+                        </a>
+                      }
+                    </div>
+                    <input
+                      type="url"
+                      class="form-input"
+                      [(ngModel)]="editMeetingPointUrl"
+                      placeholder="Ej: https://maps.app.goo.gl/... o https://www.google.com/maps/..."
+                    />
+                    <span class="field-hint">Enlace oficial de Google Maps para el botón 'Cómo llegar' de la ficha.</span>
                   </div>
                 </div>
 
@@ -364,9 +809,31 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                 </div>
               </div>
 
-              <!-- SECCIÓN 3: Arancel Oficial & Fechas Programadas (Unificados) -->
+              <!-- SECCIÓN 3: Cronograma e Itinerario de la Jornada -->
               <div class="form-section-card">
-                <h4 class="form-section-title">3. Arancel Oficial & Fechas Programadas</h4>
+                <div class="section-title-row">
+                  <h4 class="form-section-title">3. Cronograma e Itinerario de la Jornada</h4>
+                  <span class="char-counter" [class.counter-warn]="editItinerary().length > 1400">
+                    {{ editItinerary().length }} / 1500 caracteres
+                  </span>
+                </div>
+                <p class="section-subtext">
+                  Detallá el cronograma horario o etapas de la vivencia (una por renglón). Esto se renderiza con formato de línea de tiempo interactiva en la página pública de la experiencia.
+                </p>
+                <div class="form-field">
+                  <textarea
+                    rows="5"
+                    maxlength="1500"
+                    class="form-input form-textarea"
+                    [(ngModel)]="editItinerary"
+                    placeholder="Ej:&#10;15:30 hs - Recepción de participantes y entrega de chalecos/equipamiento&#10;16:15 hs - Charla de técnica de remo y seguridad en tierra firme&#10;16:45 hs - Zarpada al espejo de agua y recorrido guiado por las bahías&#10;18:15 hs - Pausa Sunset, hidratación y merienda en la costa&#10;19:30 hs - Cierre de jornada y despedida"
+                  ></textarea>
+                </div>
+              </div>
+
+              <!-- SECCIÓN 4: Arancel Oficial & Fechas Programadas (Unificados) -->
+              <div class="form-section-card">
+                <h4 class="form-section-title">4. Arancel Oficial & Fechas Programadas</h4>
                 <div class="form-grid-2">
                   <div class="form-field">
                     <label>Arancel en Pesos Argentinos (ARS):</label>
@@ -395,14 +862,39 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
               </div>
 
               <!-- SECCIÓN: Prestador Asignado & Datos de Cobro (CBU / Liquidación) -->
-              <div class="form-section-card">
-                <h4 class="form-section-title">Prestador Asignado & Datos de Cobro (CBU)</h4>
+              <div class="form-section-card" [class.is-club-section]="isCurrentExperienceClub()">
+                <div class="section-title-row">
+                  <h4 class="form-section-title">Prestador Asignado & Datos de Cobro (CBU)</h4>
+                  @if (isCurrentExperienceClub()) {
+                    <span class="club-locked-chip">
+                      <mat-icon>lock</mat-icon>
+                      Vinculado al Perfil del Club
+                    </span>
+                  }
+                </div>
+
+                @if (isCurrentExperienceClub()) {
+                  <div class="club-locked-notice">
+                    <mat-icon class="locked-info-icon">info</mat-icon>
+                    <div class="notice-text">
+                      <span>
+                        Prestador fijado como <strong>Club de Experiencias</strong>. Los datos de contacto y cobro se sincronizan automáticamente con el Perfil del Club editable por los administradores desde el menú superior.
+                      </span>
+                      <button type="button" class="btn-text-edit-club" (click)="openClubProfileModal()">
+                        Modificar en Perfil del Club &rarr;
+                      </button>
+                    </div>
+                  </div>
+                }
+
                 <div class="form-grid-2">
                   <div class="form-field">
                     <label>Nombre / Prestador Asignado:</label>
                     <input
                       type="text"
                       class="form-input"
+                      [class.input-locked]="isCurrentExperienceClub()"
+                      [disabled]="isCurrentExperienceClub()"
                       [(ngModel)]="editProviderName"
                       placeholder="Ej: Gonzalo Gramaglia o Catamarca Kayak"
                     />
@@ -413,6 +905,8 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                     <input
                       type="tel"
                       class="form-input"
+                      [class.input-locked]="isCurrentExperienceClub()"
+                      [disabled]="isCurrentExperienceClub()"
                       [(ngModel)]="editProviderPhone"
                       placeholder="Ej: +54 9 383 4567890"
                     />
@@ -425,6 +919,8 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                     <input
                       type="text"
                       class="form-input text-blue-input"
+                      [class.input-locked]="isCurrentExperienceClub()"
+                      [disabled]="isCurrentExperienceClub()"
                       [(ngModel)]="editProviderCbuAlias"
                       placeholder="Ej: EXPERIENCIAS.CLUB.MP"
                     />
@@ -435,6 +931,8 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                     <input
                       type="text"
                       class="form-input"
+                      [class.input-locked]="isCurrentExperienceClub()"
+                      [disabled]="isCurrentExperienceClub()"
                       [(ngModel)]="editProviderCuitDni"
                       placeholder="Ej: 20-33445566-7"
                     />
@@ -445,6 +943,8 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                     <input
                       type="text"
                       class="form-input"
+                      [class.input-locked]="isCurrentExperienceClub()"
+                      [disabled]="isCurrentExperienceClub()"
                       [(ngModel)]="editProviderBankName"
                       placeholder="Ej: Banco Nación / Mercado Pago"
                     />
@@ -452,9 +952,9 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                 </div>
               </div>
 
-              <!-- SECCIÓN 4: Multimedia, Video & Portada (con subida a Supabase Storage y Álbum) -->
+              <!-- SECCIÓN 5: Multimedia, Video & Portada (con subida a Supabase Storage y Álbum) -->
               <div class="form-section-card">
-                <h4 class="form-section-title">4. Multimedia, Video & Portada</h4>
+                <h4 class="form-section-title">5. Multimedia, Video & Portada</h4>
                 <div class="form-grid-2">
                   <div class="form-field">
                     <label>Imagen de Portada Principal:</label>
@@ -509,28 +1009,68 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                 <div class="album-upload-section">
                   <div class="album-header-row">
                     <div>
-                      <label class="album-section-label">Álbum de Fotos de la Experiencia</label>
+                      <label class="album-section-label">Álbum & Galería de Fotos Oficial</label>
                       <span class="field-hint">
-                        {{ editAlbumPhotos().length }} foto(s) en la galería. Podés cargar nuevas imágenes directamente a Supabase Storage.
+                        Configurá las 2 fotos destacadas y hasta 9 fotos para la galería común (máximo 12 fotos totales).
                       </span>
+                      <div class="album-counters-bar">
+                        <span class="album-counter-pill is-featured-pill">
+                          ⭐ Destacadas: <strong>{{ featuredPhotos().length }} / 2</strong>
+                        </span>
+                        <span
+                          class="album-counter-pill is-gallery-pill"
+                          [class.is-limit-reached]="galleryPhotos().length >= 9"
+                        >
+                          🖼️ Galería común: <strong>{{ galleryPhotos().length }} / 9</strong>
+                        </span>
+                        <span class="album-counter-pill">
+                          📷 Total Álbum: <strong>{{ editAlbumPhotos().length }} / 12</strong>
+                        </span>
+                      </div>
                     </div>
 
-                    <label class="btn-upload-album-file" [class.is-uploading]="uploadingAlbum()">
+                    <label
+                      class="btn-upload-album-file"
+                      [class.is-uploading]="uploadingAlbum()"
+                      [class.is-disabled]="galleryPhotos().length >= 9"
+                      [title]="galleryPhotos().length >= 9 ? 'Límite de 9 fotos de galería común alcanzado' : 'Subir fotos al álbum'"
+                    >
                       <input
                         type="file"
                         accept="image/*"
                         multiple
+                        [disabled]="galleryPhotos().length >= 9"
                         (change)="onUploadAlbumPhotos($event)"
                         style="display: none"
                       />
-                      <span>{{ uploadingAlbum() ? 'Subiendo...' : '+ Subir Fotos al Álbum' }}</span>
+                      <span>
+                        {{
+                          uploadingAlbum()
+                            ? 'Subiendo...'
+                            : galleryPhotos().length >= 9
+                              ? 'Límite de Galería (9/9) Alcanzado'
+                              : '+ Subir Fotos al Álbum'
+                        }}
+                      </span>
                     </label>
                   </div>
 
                   @if (editAlbumPhotos().length > 0) {
                     <div class="album-photos-grid">
                       @for (photo of editAlbumPhotos(); track photo.id; let idx = $index) {
-                        <div class="album-photo-item">
+                        <div
+                          class="album-photo-item"
+                          [class.is-featured-item]="photo.isFeatured"
+                          [class.is-cover-item]="photo.isCover"
+                        >
+                          <div class="photo-badge-overlay">
+                            @if (photo.isCover) {
+                              <span class="photo-badge badge-cover">Portada</span>
+                            }
+                            @if (photo.isFeatured) {
+                              <span class="photo-badge badge-featured">⭐ Destacada</span>
+                            }
+                          </div>
                           <img [src]="photo.url" [alt]="photo.caption || 'Foto de álbum'" class="album-thumb" />
                           <div class="album-item-meta">
                             <input
@@ -538,7 +1078,7 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                               class="album-caption-input"
                               [value]="photo.caption || ''"
                               (input)="updatePhotoCaption(idx, $any($event.target).value)"
-                              placeholder="Epígrafe..."
+                              placeholder="Epígrafe o título..."
                             />
                             <button
                               type="button"
@@ -549,20 +1089,40 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                               ✕
                             </button>
                           </div>
+                          <div class="album-photo-actions">
+                            <button
+                              type="button"
+                              class="btn-photo-action"
+                              [class.is-active-featured]="photo.isFeatured"
+                              (click)="toggleFeaturedPhoto(idx)"
+                              [title]="photo.isFeatured ? 'Quitar condición de destacada' : 'Fijar como foto destacada (máx 2)'"
+                            >
+                              ⭐ {{ photo.isFeatured ? 'Destacada' : 'Destacar' }}
+                            </button>
+                            <button
+                              type="button"
+                              class="btn-photo-action"
+                              [class.is-active-cover]="photo.isCover"
+                              (click)="setCoverPhoto(idx)"
+                              title="Definir como foto de portada principal"
+                            >
+                              📸 {{ photo.isCover ? 'Portada' : 'Hacer Portada' }}
+                            </button>
+                          </div>
                         </div>
                       }
                     </div>
                   } @else {
                     <div class="album-empty-placeholder">
-                      <span>No hay fotos cargadas en el álbum. Podés subir imágenes para la galería.</span>
+                      <span>No hay fotos cargadas en el álbum. Podés subir imágenes para la galería (máximo 9 de galería común y 2 destacadas).</span>
                     </div>
                   }
                 </div>
               </div>
 
-              <!-- SECCIÓN 5: Servicios Incluidos & Qué Debes Traer (Orden invertido) -->
+              <!-- SECCIÓN 6: Servicios Incluidos & Qué Debes Traer (Orden invertido) -->
               <div class="form-section-card">
-                <h4 class="form-section-title">5. Servicios Incluidos & Qué Debes Traer</h4>
+                <h4 class="form-section-title">6. Servicios Incluidos & Qué Debes Traer</h4>
                 <div class="form-grid-2">
                   <div class="form-field">
                     <label>Servicios Incluidos (un ítem por línea):</label>
@@ -586,9 +1146,9 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                 </div>
               </div>
 
-              <!-- SECCIÓN 6: Estado de Publicación (Sin borrador) -->
+              <!-- SECCIÓN 7: Estado de Publicación (Sin borrador) -->
               <div class="form-section-card">
-                <h4 class="form-section-title">6. Estado de Publicación</h4>
+                <h4 class="form-section-title">7. Estado de Publicación</h4>
                 <div class="form-field">
                   <label>Estado en experiencias.club:</label>
                   <select class="form-select" [(ngModel)]="editStatus">
@@ -667,6 +1227,692 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
         background: rgba(18, 10, 5, 0.9);
         border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: 4px;
+      }
+
+      /* Fiche Page View (/experiencias/:slug) */
+      .fiche-page-card {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+      }
+
+      .fiche-admin-topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 1rem;
+        padding: 1rem 1.25rem;
+        background: rgba(18, 10, 5, 0.95);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 4px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+      }
+
+      .topbar-left {
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
+        flex-wrap: wrap;
+      }
+
+      .fiche-topbar-breadcrumb {
+        font-size: 0.82rem;
+        color: rgba(255, 255, 255, 0.65);
+      }
+
+      .fiche-topbar-breadcrumb strong {
+        color: #ff9955;
+      }
+
+      .topbar-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        flex-wrap: wrap;
+      }
+
+      .btn-action-edit-orange {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.55rem 1.15rem;
+        background: #ff5f00;
+        color: #ffffff;
+        border: none;
+        border-radius: 4px;
+        font-size: 0.82rem;
+        font-weight: 800;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-shadow: 0 4px 14px rgba(255, 95, 0, 0.35);
+        letter-spacing: 0.02em;
+      }
+
+      .btn-action-edit-orange:hover {
+        background: #ff7722;
+        box-shadow: 0 6px 18px rgba(255, 95, 0, 0.5);
+        transform: translateY(-1px);
+        color: #ffffff;
+      }
+
+      .btn-action-public-web {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.52rem 0.95rem;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
+        color: #ffffff;
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: all 0.2s ease;
+      }
+
+      .btn-action-public-web:hover {
+        background: rgba(255, 255, 255, 0.16);
+        border-color: rgba(255, 255, 255, 0.4);
+        color: #ffffff;
+      }
+
+      .btn-pause-exp-top {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.52rem 0.85rem;
+        background: rgba(255, 80, 80, 0.16);
+        border: 1px solid rgba(255, 80, 80, 0.4);
+        border-radius: 4px;
+        color: #ff8080;
+        font-size: 0.78rem;
+        font-weight: 800;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .btn-pause-exp-top:hover {
+        background: rgba(255, 80, 80, 0.28);
+        border-color: #ff6060;
+        color: #ffffff;
+      }
+
+      .btn-activate-exp-top {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.52rem 0.85rem;
+        background: rgba(0, 204, 136, 0.16);
+        border: 1px solid rgba(0, 204, 136, 0.4);
+        border-radius: 4px;
+        color: #33ffaa;
+        font-size: 0.78rem;
+        font-weight: 800;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .btn-activate-exp-top:hover {
+        background: rgba(0, 204, 136, 0.28);
+        border-color: #00cc88;
+        color: #ffffff;
+      }
+
+      .btn-icon-sm {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+      }
+
+      .fiche-body {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+      }
+
+      .fiche-section-card {
+        background: rgba(18, 10, 5, 0.95);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+        padding: 1.75rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      }
+
+      .fiche-section-card.is-club-card {
+        border-color: rgba(0, 204, 136, 0.35);
+        background: linear-gradient(180deg, rgba(18, 10, 5, 0.98) 0%, rgba(5, 25, 18, 0.7) 100%);
+      }
+
+      .hero-fiche-card {
+        border-left: 4px solid #ff5f00;
+      }
+
+      .hero-kicker-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-bottom: 0.65rem;
+      }
+
+      .hero-kicker {
+        font-size: 0.76rem;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #ff9955;
+      }
+
+      .hero-badges-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .fiche-hero-title {
+        font-size: 1.85rem;
+        font-weight: 800;
+        color: #ffffff;
+        margin: 0 0 0.5rem 0;
+        line-height: 1.2;
+      }
+
+      .fiche-hero-sub {
+        font-size: 1.05rem;
+        font-weight: 500;
+        color: rgba(255, 255, 255, 0.85);
+        margin: 0 0 0.5rem 0;
+        line-height: 1.4;
+      }
+
+      .fiche-hero-desc {
+        font-size: 0.92rem;
+        color: rgba(255, 255, 255, 0.7);
+        margin: 0;
+        line-height: 1.55;
+      }
+
+      .fiche-specs-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 0.75rem;
+        background: rgba(0, 0, 0, 0.35);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 4px;
+        padding: 0.85rem;
+      }
+
+      .spec-tile {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+      }
+
+      .spec-label {
+        font-size: 0.68rem;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        color: rgba(255, 255, 255, 0.5);
+        text-transform: uppercase;
+      }
+
+      .spec-value {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: #ffffff;
+      }
+
+      .fiche-cover-img-wrap {
+        width: 100%;
+        max-height: 420px;
+        border-radius: 4px;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .fiche-cover-img {
+        width: 100%;
+        height: 100%;
+        max-height: 420px;
+        object-fit: cover;
+        display: block;
+      }
+
+      .fiche-media-player-wrap {
+        width: 100%;
+        max-height: 420px;
+        border-radius: 4px;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: #000000;
+      }
+
+      .fiche-video-element {
+        width: 100%;
+        max-height: 420px;
+        display: block;
+      }
+
+      .pricing-fiche-card {
+        background: linear-gradient(135deg, rgba(20, 12, 6, 0.98) 0%, rgba(10, 30, 45, 0.8) 100%);
+        border: 1px solid rgba(0, 180, 255, 0.3);
+      }
+
+      .pricing-card-flex {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 1.25rem;
+      }
+
+      .price-data {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+      }
+
+      .price-title {
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #00cc88;
+      }
+
+      .price-figures {
+        display: flex;
+        align-items: baseline;
+        gap: 0.75rem;
+      }
+
+      .ars-price {
+        font-size: 2rem;
+        font-weight: 900;
+        color: #33ffaa;
+      }
+
+      .usd-price {
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: rgba(255, 255, 255, 0.7);
+      }
+
+      .price-note {
+        font-size: 0.82rem;
+        color: rgba(255, 255, 255, 0.65);
+      }
+
+      .fiche-dates-section {
+        padding-top: 1rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        display: flex;
+        flex-direction: column;
+        gap: 0.65rem;
+      }
+
+      .fiche-subhead-title {
+        font-size: 0.85rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.75);
+        margin: 0;
+      }
+
+      .dates-chips-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      .date-chip-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.4rem 0.75rem;
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 4px;
+        color: #ffffff;
+        font-size: 0.82rem;
+        font-weight: 600;
+      }
+
+      .date-chip-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+        color: #ff9955;
+      }
+
+      .fiche-card-title {
+        font-size: 1.1rem;
+        font-weight: 800;
+        color: #ffffff;
+        margin: 0;
+      }
+
+      .provider-info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 0.85rem;
+      }
+
+      .info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+      }
+
+      .info-label {
+        font-size: 0.68rem;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.5);
+      }
+
+      .info-value {
+        font-size: 0.88rem;
+        color: #ffffff;
+      }
+
+      .timeline-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.85rem;
+        position: relative;
+        padding-left: 0.5rem;
+      }
+
+      .timeline-step {
+        display: flex;
+        gap: 1.25rem;
+        align-items: flex-start;
+        position: relative;
+      }
+
+      .timeline-time {
+        min-width: 85px;
+        font-weight: 800;
+        font-size: 0.82rem;
+        color: #ff9955;
+        padding: 0.25rem 0.5rem;
+        background: rgba(255, 95, 0, 0.12);
+        border: 1px solid rgba(255, 95, 0, 0.35);
+        border-radius: 4px;
+        text-align: center;
+      }
+
+      .timeline-body {
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+      }
+
+      .timeline-body h4 {
+        margin: 0;
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #ffffff;
+      }
+
+      .timeline-body p {
+        margin: 0;
+        font-size: 0.85rem;
+        color: rgba(255, 255, 255, 0.7);
+        line-height: 1.45;
+      }
+
+      .simple-logistics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 1.25rem;
+      }
+
+      .simple-logistics-col {
+        background: rgba(0, 0, 0, 0.35);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 4px;
+        padding: 1.15rem;
+      }
+
+      .simple-col-title {
+        font-size: 0.9rem;
+        font-weight: 800;
+        color: #ffffff;
+        margin: 0 0 0.85rem 0;
+      }
+
+      .simple-check-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.45rem;
+      }
+
+      .simple-check-list li {
+        font-size: 0.84rem;
+        color: rgba(255, 255, 255, 0.8);
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+      }
+
+      .simple-check-list li::before {
+        content: "✓";
+        color: #00cc88;
+        font-weight: 800;
+      }
+
+      .simple-check-list.blue-checks li::before {
+        content: "•";
+        color: #00b4d8;
+        font-size: 1.1rem;
+      }
+
+      .meeting-point-desc {
+        font-size: 0.95rem;
+        color: rgba(255, 255, 255, 0.85);
+        margin: 0;
+      }
+
+      .location-actions-row {
+        display: flex;
+        gap: 0.75rem;
+      }
+
+      .location-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.55rem 1rem;
+        border-radius: 4px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: all 0.2s ease;
+      }
+
+      .location-btn.maps-btn {
+        background: rgba(0, 204, 136, 0.18);
+        border: 1px solid rgba(0, 204, 136, 0.45);
+        color: #33ffaa;
+      }
+
+      .location-btn.maps-btn:hover {
+        background: rgba(0, 204, 136, 0.3);
+        border-color: #00cc88;
+        color: #ffffff;
+      }
+
+      .fiche-album-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        gap: 0.75rem;
+      }
+
+      .fiche-album-card {
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 4px;
+        overflow: hidden;
+      }
+
+      .fiche-album-card.is-featured-card {
+        border-color: rgba(255, 170, 0, 0.6);
+        box-shadow: 0 0 8px rgba(255, 170, 0, 0.2);
+      }
+
+      .fiche-album-card.is-cover-card {
+        border-color: rgba(0, 204, 136, 0.6);
+      }
+
+      .thumb-wrap {
+        position: relative;
+        width: 100%;
+        height: 85px;
+      }
+
+      .fiche-album-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+
+      .fiche-album-caption {
+        display: block;
+        padding: 0.35rem 0.45rem;
+        font-size: 0.72rem;
+        color: rgba(255, 255, 255, 0.75);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .btn-text-edit-album {
+        font-size: 0.78rem;
+        color: #ff9955;
+        text-decoration: underline;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .btn-text-edit-album:hover {
+        color: #ffbb77;
+      }
+
+      .fiche-bottom-cta-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 1rem;
+        padding: 1.25rem 1.5rem;
+        background: rgba(18, 10, 5, 0.95);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 4px;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+      }
+
+      .cta-bar-left {
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+      }
+
+      .cta-exp-title {
+        font-size: 1.05rem;
+        font-weight: 800;
+        color: #ffffff;
+      }
+
+      .cta-exp-route {
+        font-size: 0.78rem;
+        color: rgba(255, 255, 255, 0.55);
+        font-family: var(--font-mono, monospace);
+      }
+
+      .cta-bar-right {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .btn-view-fiche {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.42rem 0.85rem;
+        background: rgba(0, 204, 136, 0.16);
+        border: 1px solid rgba(0, 204, 136, 0.45);
+        border-radius: 4px;
+        color: #33ffaa;
+        font-size: 0.76rem;
+        font-weight: 800;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .btn-view-fiche:hover {
+        background: rgba(0, 204, 136, 0.28);
+        border-color: #00cc88;
+        color: #ffffff;
+      }
+
+      .btn-view-fiche-top {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.5rem 0.9rem;
+        background: rgba(0, 204, 136, 0.16);
+        border: 1px solid rgba(0, 204, 136, 0.4);
+        border-radius: 4px;
+        color: #33ffaa;
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: all 0.2s ease;
+      }
+
+      .btn-view-fiche-top:hover {
+        background: rgba(0, 204, 136, 0.28);
+        border-color: #00cc88;
+        color: #ffffff;
+      }
+
+      .top-header-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+      }
+
+      .exp-cell-link {
+        text-decoration: none;
+        cursor: pointer;
+        transition: opacity 0.15s ease;
+      }
+
+      .exp-cell-link:hover .exp-table-title {
+        color: #ff9955;
+        text-decoration: underline;
+      }
+
+      .action-btn-icon {
+        font-size: 15px;
+        width: 15px;
+        height: 15px;
       }
 
       /* Header */
@@ -1442,9 +2688,55 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
         pointer-events: none;
       }
 
+      .btn-upload-album-file.is-disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        border-color: rgba(255, 255, 255, 0.2);
+        color: rgba(255, 255, 255, 0.5);
+        background: rgba(255, 255, 255, 0.05);
+      }
+
+      .album-counters-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+        margin-top: 0.4rem;
+      }
+
+      .album-counter-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.2rem 0.55rem;
+        border-radius: 999px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: rgba(255, 255, 255, 0.8);
+      }
+
+      .album-counter-pill.is-featured-pill {
+        background: rgba(255, 170, 0, 0.12);
+        border-color: rgba(255, 170, 0, 0.4);
+        color: #ffaa00;
+      }
+
+      .album-counter-pill.is-gallery-pill {
+        background: rgba(0, 204, 136, 0.12);
+        border-color: rgba(0, 204, 136, 0.4);
+        color: #00cc88;
+      }
+
+      .album-counter-pill.is-limit-reached {
+        background: rgba(255, 95, 95, 0.15);
+        border-color: rgba(255, 95, 95, 0.4);
+        color: #ff7b7b;
+      }
+
       .album-photos-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
         gap: 0.85rem;
       }
 
@@ -1454,11 +2746,53 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
         border: 1px solid rgba(255, 255, 255, 0.15);
         border-radius: 4px;
         overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .album-photo-item.is-featured-item {
+        border-color: rgba(255, 170, 0, 0.7);
+        box-shadow: 0 0 10px rgba(255, 170, 0, 0.2);
+      }
+
+      .album-photo-item.is-cover-item {
+        border-color: rgba(0, 204, 136, 0.7);
+        box-shadow: 0 0 10px rgba(0, 204, 136, 0.2);
+      }
+
+      .photo-badge-overlay {
+        position: absolute;
+        top: 4px;
+        left: 4px;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        z-index: 2;
+      }
+
+      .photo-badge {
+        padding: 2px 5px;
+        border-radius: 3px;
+        font-size: 0.65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+
+      .photo-badge.badge-cover {
+        background: #00cc88;
+        color: #05140d;
+      }
+
+      .photo-badge.badge-featured {
+        background: #ffaa00;
+        color: #1a1002;
       }
 
       .album-thumb {
         width: 100%;
-        height: 85px;
+        height: 90px;
         object-fit: cover;
         display: block;
       }
@@ -1480,6 +2814,49 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
         outline: none;
       }
 
+      .album-photo-actions {
+        display: flex;
+        gap: 0.25rem;
+        padding: 0.3rem 0.4rem;
+        background: rgba(18, 12, 8, 0.95);
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .btn-photo-action {
+        flex: 1;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: rgba(255, 255, 255, 0.85);
+        font-size: 0.65rem;
+        font-weight: 700;
+        padding: 0.25rem 0.2rem;
+        border-radius: 3px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.2rem;
+        white-space: nowrap;
+      }
+
+      .btn-photo-action:hover {
+        background: rgba(255, 255, 255, 0.18);
+        color: #ffffff;
+      }
+
+      .btn-photo-action.is-active-featured {
+        background: rgba(255, 170, 0, 0.25);
+        border-color: #ffaa00;
+        color: #ffaa00;
+      }
+
+      .btn-photo-action.is-active-cover {
+        background: rgba(0, 204, 136, 0.25);
+        border-color: #00cc88;
+        color: #00cc88;
+      }
+
       .album-delete-btn {
         background: none;
         border: none;
@@ -1492,6 +2869,46 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
 
       .album-delete-btn:hover {
         color: #ff2a2a;
+      }
+
+      .field-header-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 0.35rem;
+      }
+
+      .field-header-row label {
+        margin-bottom: 0 !important;
+      }
+
+      .link-maps-preview {
+        color: #00cc88;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-decoration: underline;
+        margin-left: auto;
+      }
+
+      .link-maps-preview:hover {
+        color: #33ffaa;
+      }
+
+      .char-counter {
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.55);
+        font-weight: 600;
+      }
+
+      .char-counter.counter-warn {
+        color: #ffaa00;
+      }
+
+      .section-subtext {
+        color: rgba(255, 255, 255, 0.65);
+        font-size: 0.8rem;
+        margin: 0 0 0.85rem 0;
+        line-height: 1.4;
       }
 
       .album-empty-placeholder {
@@ -1527,6 +2944,21 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
       .slug-field {
         border: none !important;
         background: transparent !important;
+      }
+
+      @media (max-width: 600px) {
+        .slug-input-wrap {
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        .slug-prefix {
+          border-right: none;
+          border-bottom: 1px solid rgba(255, 95, 0, 0.35);
+          font-size: 0.76rem;
+          padding: 0.5rem 0.65rem;
+          word-break: break-all;
+        }
       }
 
       .field-hint {
@@ -1638,21 +3070,267 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
           grid-template-columns: 1fr;
         }
       }
+
+      /* Estilos Experiencia Oficial del Club */
+      .exp-title-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+
+      .club-official-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        background: rgba(255, 95, 0, 0.18);
+        border: 1px solid rgba(255, 95, 0, 0.45);
+        color: #ff9500;
+        padding: 0.15rem 0.45rem;
+        border-radius: 4px;
+        line-height: 1;
+      }
+
+      .club-official-chip mat-icon {
+        font-size: 13px;
+        width: 13px;
+        height: 13px;
+      }
+
+      .club-experience-banner {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        background: linear-gradient(135deg, rgba(35, 20, 12, 0.95), rgba(22, 12, 7, 0.95));
+        border: 1px solid rgba(255, 149, 0, 0.45);
+        border-radius: 8px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.25rem;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+      }
+
+      .club-banner-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 8px;
+        background: rgba(255, 95, 0, 0.18);
+        border: 1px solid rgba(255, 95, 0, 0.45);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #ff9500;
+        flex-shrink: 0;
+      }
+
+      .club-banner-icon mat-icon {
+        font-size: 26px;
+        width: 26px;
+        height: 26px;
+      }
+
+      .club-banner-text {
+        flex: 1;
+      }
+
+      .club-banner-header {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        margin-bottom: 0.25rem;
+        flex-wrap: wrap;
+      }
+
+      .club-banner-title {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #ffffff;
+      }
+
+      .club-banner-badge {
+        font-size: 0.65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        background: #ff5f00;
+        color: #ffffff;
+        padding: 0.15rem 0.5rem;
+        border-radius: 3px;
+      }
+
+      .club-banner-desc {
+        margin: 0;
+        font-size: 0.78rem;
+        line-height: 1.4;
+        color: rgba(255, 255, 255, 0.75);
+      }
+
+      .club-banner-desc strong {
+        color: #ff9500;
+      }
+
+      .btn-edit-club-profile {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        background: rgba(255, 95, 0, 0.15);
+        border: 1px solid rgba(255, 95, 0, 0.45);
+        color: #ffffff;
+        font-size: 0.8rem;
+        font-weight: 600;
+        padding: 0.55rem 0.95rem;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+
+      .btn-edit-club-profile:hover {
+        background: #ff5f00;
+        color: #ffffff;
+        box-shadow: 0 4px 14px rgba(255, 95, 0, 0.35);
+      }
+
+      .btn-edit-club-profile mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+      }
+
+      .section-title-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 0.75rem;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+      }
+
+      .section-title-row .form-section-title {
+        margin-bottom: 0;
+      }
+
+      .club-locked-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: #ff9500;
+        background: rgba(255, 95, 0, 0.12);
+        border: 1px solid rgba(255, 95, 0, 0.35);
+        padding: 0.2rem 0.55rem;
+        border-radius: 4px;
+      }
+
+      .club-locked-chip mat-icon {
+        font-size: 14px;
+        width: 14px;
+        height: 14px;
+      }
+
+      .club-locked-notice {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.65rem;
+        background: rgba(255, 149, 0, 0.08);
+        border: 1px solid rgba(255, 149, 0, 0.25);
+        border-radius: 5px;
+        padding: 0.65rem 0.85rem;
+        margin-bottom: 1rem;
+      }
+
+      .locked-info-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+        color: #ff9500;
+        flex-shrink: 0;
+        margin-top: 0.1rem;
+      }
+
+      .notice-text {
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+        font-size: 0.78rem;
+        color: rgba(255, 255, 255, 0.8);
+        line-height: 1.4;
+      }
+
+      .notice-text strong {
+        color: #ffffff;
+      }
+
+      .btn-text-edit-club {
+        align-self: flex-start;
+        background: none;
+        border: none;
+        padding: 0;
+        color: #ff9500;
+        font-size: 0.76rem;
+        font-weight: 700;
+        cursor: pointer;
+        text-decoration: underline;
+        transition: color 0.15s ease;
+      }
+
+      .btn-text-edit-club:hover {
+        color: #ffa726;
+      }
+
+      .input-locked,
+      .input-locked:disabled {
+        opacity: 0.75 !important;
+        cursor: not-allowed !important;
+        background: rgba(20, 12, 8, 0.7) !important;
+        border-color: rgba(255, 149, 0, 0.25) !important;
+        color: rgba(255, 255, 255, 0.85) !important;
+      }
+
+      @media (max-width: 640px) {
+        .club-experience-banner {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+        .btn-edit-club-profile {
+          width: 100%;
+          justify-content: center;
+        }
+      }
     `,
   ],
 })
 export class AdminExperiencesComponent implements OnInit {
   private readonly experienceService = inject(ExperienceService);
   private readonly storageService = inject(StorageService);
+  readonly adminStore = inject(AdminStoreService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+
+  isClub(exp?: Partial<Experience> | null): boolean {
+    return isClubExperience(exp);
+  }
+
+  readonly isCurrentExperienceClub = computed(() => {
+    return isClubExperience(this.editingExperience());
+  });
+
+  openClubProfileModal(): void {
+    this.adminStore.openClubProfileModal();
+  }
 
   readonly experiences = this.experienceService.experiences;
   readonly feedbackToast = signal<string | null>(null);
   readonly saving = signal(false);
 
   readonly isRouteEditMode = signal(false);
+  readonly isRouteDetailMode = signal(false);
   readonly notFound = signal(false);
   readonly currentUrl = signal(this.router.url);
 
@@ -1666,10 +3344,142 @@ export class AdminExperiencesComponent implements OnInit {
     return this.isAdminRoute() ? '/admin/experiencias' : '/experiencias';
   });
 
-  getEditRoute(exp: Experience): string {
+  getDetailRoute(exp: Experience | { slug?: string }): string {
     const base = this.isAdminRoute() ? '/admin/experiencias' : '/experiencias';
-    return `${base}/${exp.slug}/editar`;
+    return `${base}/${exp.slug || ''}`;
   }
+
+  getEditRoute(exp: Experience | { slug?: string }): string {
+    const base = this.isAdminRoute() ? '/admin/experiencias' : '/experiencias';
+    return `${base}/${exp.slug || ''}/editar`;
+  }
+
+  getGoogleMapsUrl(meetingPoint?: string, region?: string, customUrl?: string): string {
+    if (customUrl && customUrl.trim()) {
+      return customUrl.trim();
+    }
+    if (meetingPoint && (meetingPoint.startsWith('http://') || meetingPoint.startsWith('https://'))) {
+      return meetingPoint;
+    }
+    const query = encodeURIComponent(`${meetingPoint || ''} ${region || 'Catamarca'}`.trim());
+    return `https://www.google.com/maps/search/?api=1&query=${query}`;
+  }
+
+  readonly upcomingDates = computed<string[]>(() => {
+    const e = this.editingExperience();
+    if (!e || !e.dates) return [];
+    return e.dates;
+  });
+
+  readonly detailFeaturedPhotos = computed(() => {
+    const e = this.editingExperience();
+    if (!e?.albumPhotos) return [];
+    return e.albumPhotos.filter((p) => p.isFeatured);
+  });
+
+  readonly detailGalleryPhotos = computed(() => {
+    const e = this.editingExperience();
+    if (!e?.albumPhotos) return [];
+    return e.albumPhotos.filter((p) => !p.isFeatured && !p.isCover);
+  });
+
+  readonly itinerarySteps = computed<{ time: string; title: string; description: string }[]>(() => {
+    const e = this.editingExperience();
+    if (!e) return [];
+
+    if (e.slug === 'campo-de-piedra-pomez') {
+      return [
+        {
+          time: '08:30 hs',
+          title: 'Punto de Encuentro & Partida 4x4',
+          description:
+            'Recepción en la Plaza Principal de El Peñón. Chequeo de equipamiento, hidratación y partida en vehículos 4x4 hacia la alta cordillera.',
+        },
+        {
+          time: '10:30 hs',
+          title: 'Laguna Blanca & Reserva de Biosfera',
+          description:
+            'Travesía por la estepa altoandina con avistaje de vicuñas silvestres y parada técnica de aclimatación a más de 3.000 msnm.',
+        },
+        {
+          time: '13:00 hs',
+          title: 'Ingreso al Campo de Piedra Pómez',
+          description:
+            'Caminata guiada e interpretación geomorfológica entre las gigantescas formaciones esculpidas de piedra pómez y médanos blancos.',
+        },
+        {
+          time: '16:30 hs',
+          title: 'Merienda de Altura & Regreso',
+          description:
+            'Pausa con productos regionales catamarqueños y regreso panorámico hacia el punto de partida en El Peñón.',
+        },
+      ];
+    }
+
+    if (e.slug === 'kayak') {
+      return [
+        {
+          time: '15:30 hs',
+          title: 'Recepción & Charla de Seguridad Lacustre',
+          description:
+            'Punto de encuentro en el Club Náutico Dique El Jumeal. Asignación de chalecos salvavidas, ajuste de remos ergonómicos y briefing de técnica básica de remada en aguas mansas.',
+        },
+        {
+          time: '16:15 hs',
+          title: 'Zarpada & Exploración de Bahías',
+          description:
+            'Navegación guiada ingresando por ensenadas y paredones de roca rojiza inaccesibles por tierra. Avistaje de fauna acuática y vegetación de yungas andinas.',
+        },
+        {
+          time: '18:15 hs',
+          title: 'Pausa Sunset en Bahía Tranquila',
+          description:
+            'Agrupamiento de embarcaciones en aguas calmas para contemplar la caída del sol reflejada en el dique y las Sierras de Ambato.',
+        },
+        {
+          time: '19:00 hs',
+          title: 'Desembarco & Brindis con Sabores Catamarqueños',
+          description:
+            'Regreso al club náutico, entrega de equipos y cierre gastronómico con degustación de productos artesanales locales.',
+        },
+      ];
+    }
+
+    if (e.itinerary && e.itinerary.trim()) {
+      const lines = e.itinerary
+        .split('\n')
+        .map((l) => l.trim())
+        .filter(Boolean);
+      if (lines.length > 0) {
+        return lines.map((line, idx) => {
+          const matchTime = line.match(/^(\d{1,2}:\d{2}(?:\s*hs)?)(?:\s*[-–:]\s*|\s+)(.*)$/i);
+          if (matchTime) {
+            const time = matchTime[1];
+            const rest = matchTime[2];
+            const parts = rest.split(/\s+[-–]\s+|\s*:\s+/);
+            const title = parts[0] || `Etapa ${idx + 1}`;
+            const description = parts.slice(1).join(' - ') || parts[0];
+            return { time, title, description };
+          }
+          const parts = line.split(/\s+[-–]\s+|\s*:\s+/);
+          if (parts.length > 1) {
+            return {
+              time: `Etapa ${idx + 1}`,
+              title: parts[0],
+              description: parts.slice(1).join(' - '),
+            };
+          }
+          return {
+            time: `Etapa ${idx + 1}`,
+            title: line,
+            description: line,
+          };
+        });
+      }
+    }
+
+    return [];
+  });
 
   async ngOnInit(): Promise<void> {
     this.router.events
@@ -1678,36 +3488,57 @@ export class AdminExperiencesComponent implements OnInit {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((event) => {
-        this.currentUrl.set(event.urlAfterRedirects || event.url);
+        const url = event.urlAfterRedirects || event.url;
+        this.currentUrl.set(url);
+        void this.syncRouteState(url);
       });
 
-    let activeSlug: string | null = null;
-    this.route.paramMap.subscribe(async (params) => {
-      const slug = params.get('slug');
-      activeSlug = slug;
-      if (slug) {
-        this.isRouteEditMode.set(true);
-        this.notFound.set(false);
-        await this.experienceService.remoteLoadPromise;
-        if (this.route.snapshot.paramMap.get('slug') !== slug || activeSlug !== slug) {
-          return;
-        }
-        const exp =
-          this.experienceService.getExperienceBySlug(slug) ||
-          this.experienceService.getExperienceById(slug);
-        if (exp) {
-          this.openEditModal(exp);
+    this.route.paramMap
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(async (params) => {
+        await this.syncRouteState(this.router.url, params.get('slug'));
+      });
+  }
+
+  private async syncRouteState(url: string, slugParam?: string | null): Promise<void> {
+    const rawPath = url.split('?')[0].split('#')[0];
+    const isEdit = rawPath.endsWith('/editar');
+    const slug = slugParam !== undefined ? slugParam : this.route.snapshot.paramMap.get('slug');
+
+    if (slug) {
+      this.notFound.set(false);
+      await this.experienceService.remoteLoadPromise;
+      const currentSlug = this.route.snapshot.paramMap.get('slug');
+      if (currentSlug && currentSlug !== slug) {
+        return;
+      }
+      const exp =
+        this.experienceService.getExperienceBySlug(slug) ||
+        this.experienceService.getExperienceById(slug);
+
+      if (exp) {
+        this.editingExperience.set(exp);
+        this.openEditModal(exp);
+        if (isEdit) {
+          this.isRouteEditMode.set(true);
+          this.isRouteDetailMode.set(false);
         } else {
-          this.notFound.set(true);
+          this.isRouteEditMode.set(false);
+          this.isRouteDetailMode.set(true);
         }
       } else {
+        this.notFound.set(true);
         this.isRouteEditMode.set(false);
-        this.notFound.set(false);
-        if (!this.isCreating()) {
-          this.editingExperience.set(null);
-        }
+        this.isRouteDetailMode.set(false);
       }
-    });
+    } else {
+      this.isRouteEditMode.set(false);
+      this.isRouteDetailMode.set(false);
+      this.notFound.set(false);
+      if (!this.isCreating()) {
+        this.editingExperience.set(null);
+      }
+    }
   }
 
   readonly activeCount = computed(
@@ -1738,6 +3569,28 @@ export class AdminExperiencesComponent implements OnInit {
   readonly uploadingAlbum = signal(false);
   readonly editAlbumPhotos = signal<ExperienceAlbumPhoto[]>([]);
 
+  readonly featuredPhotos = computed(() => this.editAlbumPhotos().filter((p) => p.isFeatured));
+  readonly galleryPhotos = computed(() =>
+    this.editAlbumPhotos().filter((p) => !p.isFeatured && !p.isCover),
+  );
+  readonly coverPhoto = computed(() => this.editAlbumPhotos().find((p) => p.isCover));
+
+  isValidGoogleMapsUrl(url?: string): boolean {
+    if (!url) return false;
+    const trimmed = url.trim().toLowerCase();
+    return (
+      trimmed.startsWith('https://maps.app.goo.gl/') ||
+      trimmed.startsWith('http://maps.app.goo.gl/') ||
+      trimmed.startsWith('https://goo.gl/maps/') ||
+      trimmed.startsWith('http://goo.gl/maps/') ||
+      trimmed.startsWith('https://www.google.com/maps') ||
+      trimmed.startsWith('https://google.com/maps') ||
+      trimmed.startsWith('http://www.google.com/maps') ||
+      trimmed.startsWith('http://google.com/maps') ||
+      trimmed.includes('maps.google.')
+    );
+  }
+
   // Form Fields
   readonly editId = signal('');
   readonly editSlug = signal('');
@@ -1746,6 +3599,8 @@ export class AdminExperiencesComponent implements OnInit {
   readonly editDescription = signal('');
   readonly editRegion = signal('');
   readonly editMeetingPoint = signal('');
+  readonly editMeetingPointUrl = signal('');
+  readonly editItinerary = signal('');
   readonly editDifficulty = signal<'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña'>('Baja');
   readonly editDurationLabel = signal('');
   readonly editAltitude = signal(850);
@@ -1776,6 +3631,8 @@ export class AdminExperiencesComponent implements OnInit {
     this.editDescription.set(exp.description || '');
     this.editRegion.set(exp.region || 'Valle Central y Ambato');
     this.editMeetingPoint.set(exp.meetingPoint || '');
+    this.editMeetingPointUrl.set(exp.meetingPointUrl || '');
+    this.editItinerary.set(exp.itinerary || '');
     this.editDifficulty.set(exp.difficulty || 'Baja');
     this.editDurationLabel.set(exp.durationLabel || '4 Horas');
     this.editAltitude.set(exp.altitudeMeters || 850);
@@ -1789,11 +3646,21 @@ export class AdminExperiencesComponent implements OnInit {
     this.editIncludedRaw.set((exp.included || []).join('\n'));
     this.editAlbumPhotos.set([...(exp.albumPhotos || [])]);
     this.editStatus.set(exp.status === 'oculta' ? 'oculta' : 'publicada');
-    this.editProviderName.set(exp.providerName || '');
-    this.editProviderPhone.set(exp.providerPhone || '');
-    this.editProviderCbuAlias.set(exp.providerCbuAlias || '');
-    this.editProviderCuitDni.set(exp.providerCuitDni || '');
-    this.editProviderBankName.set(exp.providerBankName || '');
+
+    if (this.isClub(exp)) {
+      const club = this.adminStore.clubProfile();
+      this.editProviderName.set(club.name || 'Club de Experiencias');
+      this.editProviderPhone.set(club.phone || '');
+      this.editProviderCbuAlias.set(club.cbuAlias || '');
+      this.editProviderCuitDni.set(club.cuitDni || '');
+      this.editProviderBankName.set(club.bankName || '');
+    } else {
+      this.editProviderName.set(exp.providerName || '');
+      this.editProviderPhone.set(exp.providerPhone || '');
+      this.editProviderCbuAlias.set(exp.providerCbuAlias || '');
+      this.editProviderCuitDni.set(exp.providerCuitDni || '');
+      this.editProviderBankName.set(exp.providerBankName || '');
+    }
   }
 
   openCreateModal(): void {
@@ -1837,6 +3704,8 @@ export class AdminExperiencesComponent implements OnInit {
     this.editDescription.set('');
     this.editRegion.set('Catamarca');
     this.editMeetingPoint.set('');
+    this.editMeetingPointUrl.set('');
+    this.editItinerary.set('');
     this.editDifficulty.set('Baja');
     this.editDurationLabel.set('Media Jornada');
     this.editAltitude.set(1000);
@@ -1858,10 +3727,15 @@ export class AdminExperiencesComponent implements OnInit {
   }
 
   closeEditModal(): void {
+    const currentExp = this.editingExperience();
     this.editingExperience.set(null);
     this.isCreating.set(false);
     if (this.isRouteEditMode()) {
-      this.router.navigateByUrl(this.backToListLink());
+      if (currentExp?.slug) {
+        this.router.navigateByUrl(this.getDetailRoute(currentExp));
+      } else {
+        this.router.navigateByUrl(this.backToListLink());
+      }
     }
   }
 
@@ -1910,11 +3784,28 @@ export class AdminExperiencesComponent implements OnInit {
     const files = Array.from(input.files || []);
     if (!files.length) return;
 
+    const currentGalleryCount = this.galleryPhotos().length;
+    const remainingGallerySlots = 9 - currentGalleryCount;
+
+    if (remainingGallerySlots <= 0) {
+      this.showToast('⚠️ La galería común ya alcanzó el límite máximo de 9 fotos.');
+      input.value = '';
+      return;
+    }
+
+    let filesToUpload = files;
+    if (files.length > remainingGallerySlots) {
+      filesToUpload = files.slice(0, remainingGallerySlots);
+      this.showToast(
+        `ℹ️ Se seleccionaron ${files.length} fotos. Solo se subirán las primeras ${remainingGallerySlots} para respetar el límite de 9 de galería.`,
+      );
+    }
+
     this.uploadingAlbum.set(true);
     try {
       const slug = this.editSlug() || 'exp';
       const newPhotos: ExperienceAlbumPhoto[] = [];
-      for (const file of files) {
+      for (const file of filesToUpload) {
         const res = await this.storageService.uploadFile(file, `ALBUM-${slug}`);
         newPhotos.push({
           id: `photo-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
@@ -1922,10 +3813,11 @@ export class AdminExperiencesComponent implements OnInit {
           caption: '',
           isCover: false,
           isFeatured: false,
+          order: this.editAlbumPhotos().length + newPhotos.length + 1,
         });
       }
       this.editAlbumPhotos.update((current) => [...current, ...newPhotos]);
-      this.showToast(`✅ ${newPhotos.length} foto(s) agregada(s) al álbum`);
+      this.showToast(`✅ ${newPhotos.length} foto(s) agregada(s) a la galería`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error al subir fotos';
       this.showToast(`❌ ${msg}`);
@@ -1933,6 +3825,50 @@ export class AdminExperiencesComponent implements OnInit {
       this.uploadingAlbum.set(false);
       input.value = '';
     }
+  }
+
+  toggleFeaturedPhoto(index: number): void {
+    const photo = this.editAlbumPhotos()[index];
+    if (!photo) return;
+
+    if (photo.isFeatured) {
+      this.editAlbumPhotos.update((photos) =>
+        photos.map((p, i) => (i === index ? { ...p, isFeatured: false } : p)),
+      );
+      this.showToast('ℹ️ Foto desmarcada como destacada.');
+      return;
+    }
+
+    if (photo.isCover) {
+      this.showToast('⚠️ La foto de portada no puede ser destacada simultáneamente.');
+      return;
+    }
+
+    if (this.featuredPhotos().length >= 2) {
+      this.showToast('⚠️ Ya tenés 2 fotos seleccionadas como destacadas. Desmarcá una primero.');
+      return;
+    }
+
+    this.editAlbumPhotos.update((photos) =>
+      photos.map((p, i) => (i === index ? { ...p, isFeatured: true } : p)),
+    );
+    this.showToast('⭐ Foto marcada como destacada (máx 2).');
+  }
+
+  setCoverPhoto(index: number): void {
+    const photo = this.editAlbumPhotos()[index];
+    if (!photo) return;
+
+    this.editAlbumPhotos.update((photos) =>
+      photos.map((p, i) => {
+        if (i === index) {
+          return { ...p, isCover: true, isFeatured: false };
+        }
+        return { ...p, isCover: false };
+      }),
+    );
+    this.editCoverImage.set(photo.url);
+    this.showToast('📸 Foto fijada como Portada Principal.');
   }
 
   updatePhotoCaption(index: number, caption: string): void {
@@ -1946,7 +3882,17 @@ export class AdminExperiencesComponent implements OnInit {
   }
 
   removeAlbumPhoto(index: number): void {
+    const photo = this.editAlbumPhotos()[index];
     this.editAlbumPhotos.update((photos) => photos.filter((_, i) => i !== index));
+    if (photo?.isCover) {
+      const remaining = this.editAlbumPhotos();
+      if (remaining.length > 0) {
+        this.setCoverPhoto(0);
+      } else {
+        this.editCoverImage.set('');
+      }
+    }
+    this.showToast('🗑️ Foto eliminada del álbum.');
   }
 
   async saveExperience(): Promise<void> {
@@ -1982,6 +3928,16 @@ export class AdminExperiencesComponent implements OnInit {
     const priceArs = Number(this.editPriceArs()) || 0;
     const priceUsd = Math.round(priceArs / 1600);
 
+    const isClub = this.isCurrentExperienceClub();
+    const club = this.adminStore.clubProfile();
+    const resolvedProviderName = isClub ? (club.name || 'Club de Experiencias') : this.editProviderName().trim();
+    const resolvedProviderPhone = isClub ? (club.phone || '') : this.editProviderPhone().trim();
+    const resolvedProviderCbu = isClub ? (club.cbuAlias || '') : this.editProviderCbuAlias().trim();
+    const resolvedProviderCuit = isClub ? (club.cuitDni || '') : this.editProviderCuitDni().trim();
+    const resolvedProviderBank = isClub ? (club.bankName || '') : this.editProviderBankName().trim();
+    const resolvedProviderSlug = isClub ? 'club-de-experiencias' : (this.editingExperience()?.providerSlug || undefined);
+    const resolvedProviderEmail = isClub ? (club.email || 'admin@experiencias.club') : (this.editingExperience()?.providerEmail || undefined);
+
     const payload: Partial<Experience> & { id: string } = {
       id: this.editId(),
       slug,
@@ -1991,6 +3947,8 @@ export class AdminExperiencesComponent implements OnInit {
       description: this.editDescription().trim(),
       region: this.editRegion().trim() || 'Catamarca',
       meetingPoint: this.editMeetingPoint().trim(),
+      meetingPointUrl: this.editMeetingPointUrl().trim() || undefined,
+      itinerary: this.editItinerary().trim() || undefined,
       difficulty: this.editDifficulty(),
       durationLabel: this.editDurationLabel().trim() || '4 Horas',
       altitudeMeters: Number(this.editAltitude()) || 0,
@@ -1999,11 +3957,22 @@ export class AdminExperiencesComponent implements OnInit {
       priceUsd,
       coverImage: this.editCoverImage().trim() || '/assets/images/kayak-club-de-experiencias.jpg',
       albumPhotos: this.editAlbumPhotos(),
-      providerName: this.editProviderName().trim(),
-      providerPhone: this.editProviderPhone().trim(),
-      providerCbuAlias: this.editProviderCbuAlias().trim(),
-      providerCuitDni: this.editProviderCuitDni().trim(),
-      providerBankName: this.editProviderBankName().trim(),
+      galleryImages:
+        this.editAlbumPhotos().length > 0
+          ? this.editAlbumPhotos().map((p) => p.url)
+          : [this.editCoverImage().trim() || '/assets/images/kayak-club-de-experiencias.jpg'],
+      providerName: resolvedProviderName,
+      providerPhone: resolvedProviderPhone,
+      providerCbuAlias: resolvedProviderCbu,
+      providerCuitDni: resolvedProviderCuit,
+      providerBankName: resolvedProviderBank,
+      ...(isClub
+        ? {
+            providerSlug: resolvedProviderSlug,
+            providerEmail: resolvedProviderEmail,
+            isClubExperience: true,
+          }
+        : {}),
       videoUrl: this.editVideoUrl().trim(),
       videoPoster: this.editVideoPoster().trim(),
       dates,
@@ -2034,7 +4003,11 @@ export class AdminExperiencesComponent implements OnInit {
         await this.experienceService.updateExperience(payload);
         this.showToast(`✅ Información de la ruta /experiencias/${slug} actualizada con éxito.`);
       }
-      this.closeEditModal();
+      if (this.isRouteEditMode()) {
+        this.router.navigateByUrl(this.getDetailRoute({ slug } as Experience));
+      } else {
+        this.closeEditModal();
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error al guardar experiencia';
       this.showToast(`⚠️ ${msg}`);

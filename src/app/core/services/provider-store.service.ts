@@ -19,6 +19,7 @@ import { Experience } from '../models/experience.model';
 import { TransactionalEmailService } from './transactional-email.service';
 import { NewsletterService } from './newsletter.service';
 import { ActivityHistoryService } from './activity-history.service';
+import { ClubProfile } from '../models/club-profile.model';
 import {
   ExperienceService,
   KAYAK_ALBUM_PHOTOS,
@@ -197,7 +198,30 @@ export function mapLiveExperienceToProvider(live: Experience): ProviderExperienc
   } as ProviderExperience;
 }
 
+export const CLUB_OFFICIAL_PROVIDER: ProviderUser = {
+  id: 'prov-club',
+  email: 'admin@experiencias.club',
+  name: 'Club de Experiencias',
+  agency: 'Club de Experiencias',
+  slug: 'club-de-experiencias',
+  bio: 'Cuenta institucional oficial del Club de Experiencias. Administrada conjuntamente por el equipo de administradores.',
+  phone: '+54 9 383 456-7890',
+  website: 'https://experiencias.club',
+  socialMedia: 'instagram.com/experiencias.club',
+  cuitDni: '30-71829401-4',
+  cbuAlias: 'EXPERIENCIAS.CLUB.MP',
+  bankName: 'Mercado Pago / Banco Nación',
+  accountHolder: 'Club de Experiencias Catamarca',
+  verified: true,
+  status: 'aprobado',
+  role: 'prestador',
+  avatar: '/assets/images/kayak-video.png',
+  coverImage: '/assets/images/kayak-club-de-experiencias.jpg',
+  joinedAt: '2024-01-01T00:00:00Z',
+};
+
 export const SEED_PROVIDERS: ProviderUser[] = [
+  CLUB_OFFICIAL_PROVIDER,
   {
     id: 'prov-patricio',
     email: 'patriciofacundodiaztillar@gmail.com',
@@ -281,8 +305,8 @@ const SEED_EXPERIENCES: ProviderExperience[] = [
     dates: [upcomingDate(9), upcomingDate(16), upcomingDate(23)],
     status: 'publicada',
     publicUrl: 'https://experiencias.club/experiencias/kayak',
-    providerId: 'prov-patricio',
-    providerName: 'Catamarca Kayak & Aventura Náutica',
+    providerId: 'prov-club',
+    providerName: 'Club de Experiencias',
     coverImage: '/assets/images/kayak-club-de-experiencias.jpg',
     albumPhotos: KAYAK_ALBUM_PHOTOS,
     createdAt: hoursAgo(24 * 30),
@@ -960,6 +984,61 @@ export class ProviderStoreService {
     }
 
     return { success: true };
+  }
+
+  syncClubProviderProfile(profile: ClubProfile): void {
+    this._providers.update((list) => {
+      const idx = list.findIndex(
+        (p) =>
+          p.id === 'prov-club' ||
+          (p.email || '').toLowerCase() === profile.email.toLowerCase() ||
+          p.slug === 'club-de-experiencias',
+      );
+      if (idx !== -1) {
+        const current = list[idx];
+        const updated: ProviderUser = {
+          ...current,
+          name: profile.name,
+          agency: profile.agency,
+          slug: profile.slug,
+          phone: profile.phone,
+          cbuAlias: profile.cbuAlias,
+          cuitDni: profile.cuitDni,
+          bankName: profile.bankName,
+          accountHolder: profile.accountHolder,
+          bio: profile.bio,
+          website: profile.website,
+          socialMedia: profile.socialMedia,
+        };
+        const next = [...list];
+        next[idx] = updated;
+        return next;
+      } else {
+        const newProv: ProviderUser = {
+          id: 'prov-club',
+          email: profile.email,
+          name: profile.name,
+          agency: profile.agency,
+          slug: profile.slug,
+          phone: profile.phone,
+          cbuAlias: profile.cbuAlias,
+          cuitDni: profile.cuitDni,
+          bankName: profile.bankName,
+          accountHolder: profile.accountHolder,
+          bio: profile.bio,
+          website: profile.website,
+          socialMedia: profile.socialMedia,
+          verified: true,
+          status: 'aprobado',
+          role: 'prestador',
+          avatar: '/assets/images/kayak-video.png',
+          coverImage: '/assets/images/kayak-club-de-experiencias.jpg',
+          joinedAt: '2024-01-01T00:00:00Z',
+        };
+        return [newProv, ...list];
+      }
+    });
+    this.saveProviders();
   }
 
   // ==========================================
