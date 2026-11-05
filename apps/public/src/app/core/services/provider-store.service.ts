@@ -1,3 +1,4 @@
+export type { ProviderUser };
 import { Injectable, computed, inject, signal } from '@angular/core';
 import {
   ExperienceAlbumPhoto,
@@ -448,6 +449,7 @@ export class ProviderStoreService {
     return prov.verified === true && prov.status !== 'dado_de_baja' && prov.status !== 'pendiente';
   });
   readonly allProviders = this._providers.asReadonly();
+  readonly providers = this._providers.asReadonly();
   readonly experiences = this._experiences.asReadonly();
   readonly experienceRequests = computed(() =>
     [...this._experienceRequests()].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
@@ -2174,7 +2176,9 @@ export class ProviderStoreService {
           includedServices: row.included_services || '',
           participantRequirements: row.participant_requirements || '',
           notes: row.notes || '',
-          coverImage: row.cover_image || '',
+          coverImage: (!row.cover_image || row.cover_image.startsWith('blob:'))
+            ? '/assets/images/kayak-club-de-experiencias.jpg'
+            : row.cover_image,
           coverImageName: row.cover_image_name || '',
           coverVideoUrl: row.cover_video_url || '',
           coverVideoName: row.cover_video_name || '',
@@ -2251,6 +2255,7 @@ export class ProviderStoreService {
       slug: generatedSlug,
       title: req.title,
       shortTitle: req.title.split('&')[0].trim(),
+      kicker: req.kicker || 'EXPERIENCIA',
       tagline: req.subheading.length > 90 ? req.subheading.slice(0, 90) + '...' : req.subheading,
       description: req.subheading,
       region: req.region,
@@ -2265,6 +2270,7 @@ export class ProviderStoreService {
       bestSeason: req.season || 'Todo el año',
       priceArs: req.priceArs,
       priceUsd: req.priceUsd ?? 70,
+      promosAndPricing: req.promosAndPricing || undefined,
       maxSpotsPerGroup: req.capacity,
       dates: publishedDates,
       status: 'publicada',
@@ -2423,7 +2429,13 @@ export class ProviderStoreService {
     if (typeof window === 'undefined') return SEED_EXPERIENCE_REQUESTS;
     try {
       const raw = localStorage.getItem(STORAGE_KEYS.experienceRequests);
-      return raw ? JSON.parse(raw) : SEED_EXPERIENCE_REQUESTS;
+      const parsed: ExperienceProposalRequest[] = raw ? JSON.parse(raw) : SEED_EXPERIENCE_REQUESTS;
+      return parsed.map((r) => ({
+        ...r,
+        coverImage: (!r.coverImage || r.coverImage.startsWith('blob:'))
+          ? '/assets/images/kayak-club-de-experiencias.jpg'
+          : r.coverImage,
+      }));
     } catch {
       return SEED_EXPERIENCE_REQUESTS;
     }

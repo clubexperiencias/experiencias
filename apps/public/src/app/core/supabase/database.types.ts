@@ -218,6 +218,8 @@ export interface Database {
           duration_label: string;
           altitude_meters?: number;
           best_season?: string;
+          itinerary?: string;
+          promos_and_pricing?: string;
           price_ars: number;
           price_usd?: number;
           capacity_per_date: number;
@@ -248,6 +250,8 @@ export interface Database {
           duration_label?: string;
           altitude_meters?: number;
           best_season?: string;
+          itinerary?: string;
+          promos_and_pricing?: string;
           price_ars?: number;
           price_usd?: number;
           capacity_per_date?: number;
@@ -278,6 +282,8 @@ export interface Database {
           duration_label?: string;
           altitude_meters?: number;
           best_season?: string;
+          itinerary?: string;
+          promos_and_pricing?: string;
           price_ars?: number;
           price_usd?: number;
           capacity_per_date?: number;

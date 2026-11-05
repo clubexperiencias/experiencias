@@ -28,6 +28,7 @@ export interface AdminMember {
   membershipTier: 'emergente' | 'activo' | 'fundador' | 'waitlist';
   googleLinked: boolean;
   converted: boolean;
+  isProvider?: boolean;
   experiencesWishlist: string[];
   experiencesOther?: string;
   createdAt: string;
@@ -99,6 +100,32 @@ export class AdminStoreService {
   readonly isLoadingApplications = this._isLoadingApplications.asReadonly();
   readonly lastRefreshedAt = this._lastRefreshedAt.asReadonly();
 
+  readonly providerEmailsSet = computed<Set<string>>(() => {
+    const set = new Set<string>();
+    for (const p of this.providerStore.allProviders() || []) {
+      if (p.verified && p.status !== 'dado_de_baja' && p.status !== 'pendiente' && p.status !== 'rechazado') {
+        const email = p.email?.toLowerCase().trim();
+        if (email) set.add(email);
+      }
+    }
+    for (const a of this.applications() || []) {
+      if (a.type === 'prestador' && (a.status === 'aprobado' || a.status === 'pendiente')) {
+        const email = a.email?.toLowerCase().trim();
+        if (email) set.add(email);
+      }
+    }
+    for (const r of this.providerStore.experienceRequests() || []) {
+      const email = r.providerEmail?.toLowerCase().trim();
+      if (email) set.add(email);
+    }
+    return set;
+  });
+
+  isProviderEmail(email?: string | null): boolean {
+    if (!email) return false;
+    return this.providerEmailsSet().has(email.toLowerCase().trim());
+  }
+
   // Solicitudes de Nuevas Experiencias enviadas por Prestadores
   readonly experienceRequests = this.providerStore.experienceRequests;
   readonly pendingExperienceRequestsCount = computed(
@@ -145,8 +172,8 @@ export class AdminStoreService {
     const subs = this._submissions();
 
     const officialSocios = list.filter((m) => m.type === 'socio');
-    const waitlistOnly = list.filter((m) => m.type === 'waitlist');
-    const googleLinked = list.filter((m) => m.googleLinked);
+    const waitlistOnly = list.filter((m) => m.type === 'waitlist' && !m.googleLinked);
+    const googleLinked = list.filter((m) => Boolean(m.googleLinked));
     const converted = list.filter((m) => m.converted);
 
     const approvedSubs = subs.filter((s) => s.status === 'aprobado');
@@ -185,9 +212,10 @@ export class AdminStoreService {
       return !isNaN(t) && t >= monthBoundary;
     };
 
-    const membersToday = list.filter((m) => isToday(m.createdAt)).length;
-    const membersThisWeek = list.filter((m) => isThisWeek(m.createdAt)).length;
-    const membersThisMonth = list.filter((m) => isThisMonth(m.createdAt)).length;
+    const sociosList = list.filter((m) => Boolean(m.googleLinked));
+    const membersToday = sociosList.filter((m) => isToday(m.createdAt)).length;
+    const membersThisWeek = sociosList.filter((m) => isThisWeek(m.createdAt)).length;
+    const membersThisMonth = sociosList.filter((m) => isThisMonth(m.createdAt)).length;
 
     const revenueToday = approvedSubs
       .filter((s) => isToday(s.submittedAt || s.date))
@@ -432,6 +460,8 @@ export class AdminStoreService {
         );
 
         if (!rpcErr && rpcData) {
+          const providerEmails = this.providerEmailsSet();
+
           const payload = rpcData as any;
           const socios: AdminMember[] = (payload.socios || []).map((s: any) => ({
             id: s.id,
@@ -445,6 +475,7 @@ export class AdminStoreService {
             googleLinked: Boolean(s.googleLinked || s.google_linked),
             // Convertido = pagó al menos una experiencia / envió comprobante
             converted: Boolean(s.converted || s.paymentsCount > 0),
+            isProvider: providerEmails.has(s.email?.toLowerCase().trim()) || Boolean(s.isProvider || s.is_provider),
             experiencesWishlist: Array.isArray(s.experiencesWishlist) ? s.experiencesWishlist : [],
             experiencesOther: s.experiencesOther || s.experiences_other,
             createdAt: s.createdAt || s.created_at || new Date().toISOString(),
@@ -462,6 +493,7 @@ export class AdminStoreService {
             googleLinked: Boolean(w.googleLinked || w.google_linked),
             // Convertido = pagó al menos una experiencia / envió comprobante
             converted: Boolean(w.converted || w.paymentsCount > 0),
+            isProvider: providerEmails.has(w.email?.toLowerCase().trim()) || Boolean(w.isProvider || w.is_provider),
             experiencesWishlist: [],
             createdAt: w.createdAt || w.created_at || new Date().toISOString(),
           }));
@@ -485,6 +517,8 @@ export class AdminStoreService {
           (paidRows.data || []).map((p: any) => p.email?.toLowerCase().trim()),
         );
 
+        const providerEmails = this.providerEmailsSet();
+
         const sociosMap = new Map<string, any>();
         const sociosList: AdminMember[] = (sociosRes.data || []).map((s: any) => {
           const cleanEmail = s.email?.toLowerCase().trim();
@@ -501,6 +535,7 @@ export class AdminStoreService {
             membershipTier: s.membership_tier || 'emergente',
             googleLinked: Boolean(s.google_linked || s.auth_user_id),
             converted: hasPayment,
+            isProvider: providerEmails.has(cleanEmail) || Boolean(s.is_provider),
             experiencesWishlist: Array.isArray(s.experiences_wishlist)
               ? s.experiences_wishlist
               : [],
@@ -526,6 +561,7 @@ export class AdminStoreService {
               membershipTier: 'waitlist' as const,
               googleLinked: isGoogle,
               converted: hasPayment,
+              isProvider: providerEmails.has(cleanEmail) || Boolean(w.is_provider),
               experiencesWishlist: [],
               createdAt: w.created_at,
             };
@@ -808,7 +844,10 @@ export class AdminStoreService {
         const prestadores: AdminApplication[] = (prestadoresRes.data || []).map((p: any) => {
           const emailNorm = (p.email || '').trim().toLowerCase();
           const pa = providerAccessByEmail.get(emailNorm);
-          const rawStatus = pa?.status || p.status;
+          const rawStatus =
+            p.status === 'rechazado' && pa?.status === 'dado_de_baja'
+              ? 'rechazado'
+              : (pa?.status || p.status);
           const status =
             rawStatus === 'aprobado'
               ? 'aprobado'
@@ -1213,6 +1252,21 @@ export class AdminStoreService {
         converted: true,
         experiencesWishlist: ['pomez', 'campo_galan'],
         createdAt: new Date(Date.now() - 3 * 86400000).toISOString(),
+      },
+      {
+        id: 'soc-103',
+        type: 'socio',
+        email: 'patriciofacundodiaztillar@gmail.com',
+        fullName: 'Patricio Facundo Diaz Tillar',
+        dni: '33445566',
+        phone: '+54 383 455 8812',
+        position: 103,
+        membershipTier: 'fundador',
+        googleLinked: true,
+        converted: true,
+        isProvider: true,
+        experiencesWishlist: ['kayak'],
+        createdAt: new Date(Date.now() - 4 * 86400000).toISOString(),
       },
       {
         id: 'wl-201',

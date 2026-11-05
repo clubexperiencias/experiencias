@@ -297,6 +297,10 @@ ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS provider_phone TEXT;
 ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS provider_cbu_alias TEXT;
 ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS provider_cuit_dni TEXT;
 ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS provider_bank_name TEXT;
+ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS kicker TEXT DEFAULT '';
+ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS itinerary TEXT DEFAULT '';
+ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS best_season TEXT DEFAULT '';
+ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS promos_and_pricing TEXT DEFAULT '';
 
 DO $$
 BEGIN

@@ -387,7 +387,7 @@ const DEFAULT_REQ_FORM = {
                     <h4 class="form-section-title">Especificaciones Técnicas</h4>
                   </div>
 
-                  <div class="form-grid-3">
+                  <div class="form-row">
                     <div class="form-group">
                       <label class="form-label" for="req-difficulty">Dificultad Técnica *</label>
                       <select
@@ -423,7 +423,9 @@ const DEFAULT_REQ_FORM = {
                         <option value="8 horas (Jornada completa)">8 horas (Jornada completa)</option>
                       </select>
                     </div>
+                  </div>
 
+                  <div class="form-row">
                     <div class="form-group">
                       <label class="form-label" for="req-altitude">Altitud</label>
                       <input
@@ -435,6 +437,22 @@ const DEFAULT_REQ_FORM = {
                         [(ngModel)]="reqForm.altitude"
                         name="altitude"
                       />
+                    </div>
+
+                    <div class="form-group">
+                      <label class="form-label" for="req-capacity">Cupo Máximo por Salida *</label>
+                      <input
+                        id="req-capacity"
+                        type="number"
+                        min="1"
+                        max="200"
+                        class="form-input"
+                        placeholder="Ej: 12"
+                        [(ngModel)]="reqForm.capacity"
+                        name="capacity"
+                        required
+                      />
+                      <span class="field-hint">Cantidad máxima de participantes por fecha o grupo.</span>
                     </div>
                   </div>
                 </div>
@@ -935,13 +953,6 @@ const DEFAULT_REQ_FORM = {
                           (change)="onGalleryPhotosSelected($event)"
                         />
                         <div class="dropzone-body">
-                          <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                            <rect x="2" y="2" width="20" height="20" rx="3" ry="3" />
-                            <circle cx="8.5" cy="8.5" r="1.5" />
-                            <polyline points="21 15 16 10 5 21" />
-                            <line x1="12" y1="8" x2="12" y2="16" />
-                            <line x1="8" y1="12" x2="16" y2="12" />
-                          </svg>
                           <span class="dropzone-text-main">Agregar Fotos a la Galería ({{ galleryPhotos().length }} / 9)</span>
                           <span class="dropzone-text-sub">
                             Podés seleccionar o arrastrar múltiples fotos a la vez
@@ -1752,7 +1763,7 @@ const DEFAULT_REQ_FORM = {
       }
       .modal-form-actions {
         display: flex;
-        justify-content: flex-end;
+        justify-content: space-between;
         align-items: center;
         gap: 0.85rem;
         padding-top: 0.5rem;
@@ -2540,10 +2551,12 @@ export class ProviderExperienceProposalModalComponent {
       if (this.featuredPhoto1Preview()) URL.revokeObjectURL(this.featuredPhoto1Preview()!);
       this.featuredPhoto1File.set(file);
       this.featuredPhoto1Preview.set(objectUrl);
+      this.featuredPhoto1DataUrl.set(null);
     } else {
       if (this.featuredPhoto2Preview()) URL.revokeObjectURL(this.featuredPhoto2Preview()!);
       this.featuredPhoto2File.set(file);
       this.featuredPhoto2Preview.set(objectUrl);
+      this.featuredPhoto2DataUrl.set(null);
     }
 
     if (typeof FileReader !== 'undefined') {
@@ -2551,11 +2564,16 @@ export class ProviderExperienceProposalModalComponent {
       reader.onload = () => {
         if (typeof reader.result === 'string') {
           if (slot === 1) {
-            this.featuredPhoto1DataUrl.set(reader.result);
+            if (this.featuredPhoto1File() === file) {
+              this.featuredPhoto1DataUrl.set(reader.result);
+              this.saveDraft();
+            }
           } else {
-            this.featuredPhoto2DataUrl.set(reader.result);
+            if (this.featuredPhoto2File() === file) {
+              this.featuredPhoto2DataUrl.set(reader.result);
+              this.saveDraft();
+            }
           }
-          this.saveDraft();
         }
       };
       reader.readAsDataURL(file);
@@ -2999,7 +3017,7 @@ export class ProviderExperienceProposalModalComponent {
       providerId = providerId || 'provider-anon';
     }
 
-    let coverImageUrl = this.coverImageDataUrl() || this.coverImagePreview() || '/assets/images/kayak-club-de-experiencias.jpg';
+    let coverImageUrl = '/assets/images/kayak-club-de-experiencias.jpg';
     const coverFile = this.coverImageFile();
 
     if (coverFile) {
@@ -3007,13 +3025,26 @@ export class ProviderExperienceProposalModalComponent {
         const uploadRes = await this.storageService.uploadFile(coverFile, 'PROPOSAL');
         if (uploadRes?.url) {
           coverImageUrl = uploadRes.url;
+        } else {
+          const msg = 'No se pudo subir la foto de portada. Por favor, reintentá el envío.';
+          this.coverImageError.set(msg);
+          this.formValidationError.set(msg);
+          this.submittingRequest.set(false);
+          return;
         }
       } catch (err) {
-        console.warn('[ProposalModal] No se pudo subir imagen a storage, usando fallback:', err);
+        console.warn('[ProposalModal] No se pudo subir imagen a storage:', err);
+        const msg = 'Error de conexión al subir la foto de portada. Por favor, reintentá.';
+        this.coverImageError.set(msg);
+        this.formValidationError.set(msg);
+        this.submittingRequest.set(false);
+        return;
       }
+    } else if (this.coverImagePreview()) {
+      coverImageUrl = this.coverImagePreview()!;
     }
 
-    this.finalSuccessCoverUrl.set(this.coverImageDataUrl() || this.coverImagePreview() || coverImageUrl);
+    this.finalSuccessCoverUrl.set(coverImageUrl || this.coverImagePreview());
 
     let coverVideoUrl: string | undefined = undefined;
     const videoFile = this.coverVideoFile();
@@ -3071,13 +3102,24 @@ export class ProviderExperienceProposalModalComponent {
     if (feat1File) {
       try {
         const res = await this.storageService.uploadFile(feat1File, 'PROPOSAL');
-        if (res?.url) feat1Url = res.url;
+        if (res?.url) {
+          feat1Url = res.url;
+        } else {
+          const msg = 'No se pudo subir la foto destacada 1. Por favor, reintentá.';
+          this.formValidationError.set(msg);
+          this.submittingRequest.set(false);
+          return;
+        }
       } catch (err) {
         console.warn('[ProposalModal] Error subiendo destacada 1:', err);
+        const msg = 'Error de conexión al subir la foto destacada 1. Por favor, reintentá.';
+        this.formValidationError.set(msg);
+        this.submittingRequest.set(false);
+        return;
       }
     } else if (
-      this.featuredPhoto1Preview()?.startsWith('http') &&
-      !this.featuredPhoto1Preview()?.startsWith('blob:')
+      this.featuredPhoto1Preview()?.startsWith('http') ||
+      this.featuredPhoto1Preview()?.startsWith('blob:')
     ) {
       feat1Url = this.featuredPhoto1Preview() || undefined;
     }
@@ -3088,13 +3130,24 @@ export class ProviderExperienceProposalModalComponent {
     if (feat2File) {
       try {
         const res = await this.storageService.uploadFile(feat2File, 'PROPOSAL');
-        if (res?.url) feat2Url = res.url;
+        if (res?.url) {
+          feat2Url = res.url;
+        } else {
+          const msg = 'No se pudo subir la foto destacada 2. Por favor, reintentá.';
+          this.formValidationError.set(msg);
+          this.submittingRequest.set(false);
+          return;
+        }
       } catch (err) {
         console.warn('[ProposalModal] Error subiendo destacada 2:', err);
+        const msg = 'Error de conexión al subir la foto destacada 2. Por favor, reintentá.';
+        this.formValidationError.set(msg);
+        this.submittingRequest.set(false);
+        return;
       }
     } else if (
-      this.featuredPhoto2Preview()?.startsWith('http') &&
-      !this.featuredPhoto2Preview()?.startsWith('blob:')
+      this.featuredPhoto2Preview()?.startsWith('http') ||
+      this.featuredPhoto2Preview()?.startsWith('blob:')
     ) {
       feat2Url = this.featuredPhoto2Preview() || undefined;
     }
@@ -3106,11 +3159,24 @@ export class ProviderExperienceProposalModalComponent {
       if (item.file) {
         try {
           const res = await this.storageService.uploadFile(item.file, 'PROPOSAL');
-          if (res?.url) finalUrl = res.url;
+          if (res?.url) {
+            finalUrl = res.url;
+          } else {
+            const msg = `No se pudo subir la foto de galería "${item.name}". Por favor, reintentá.`;
+            this.galleryPhotoError.set(msg);
+            this.formValidationError.set(msg);
+            this.submittingRequest.set(false);
+            return;
+          }
         } catch (err) {
           console.warn('[ProposalModal] Error subiendo foto de galería:', err);
+          const msg = `Error al subir la foto de galería "${item.name}". Por favor, reintentá.`;
+          this.galleryPhotoError.set(msg);
+          this.formValidationError.set(msg);
+          this.submittingRequest.set(false);
+          return;
         }
-      } else if (item.previewUrl?.startsWith('http') && !item.previewUrl?.startsWith('blob:')) {
+      } else if (item.previewUrl?.startsWith('http') || item.previewUrl?.startsWith('blob:')) {
         finalUrl = item.previewUrl;
       }
       if (finalUrl) {

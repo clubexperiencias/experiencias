@@ -1,7 +1,10 @@
-import { Component, computed, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { CommonModule } from '@angular/common';
+import { ActivatedRoute, NavigationEnd, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
+import { filter } from 'rxjs';
 import { ExperienceService } from '../../../core/services/experience.service';
 import { StorageService } from '../../../core/services/storage.service';
 import { Experience, ExperienceAlbumPhoto } from '../../../core/models/experience.model';
@@ -10,33 +13,77 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
 @Component({
   selector: 'app-admin-experiences',
   standalone: true,
-  imports: [RouterLink, FormsModule, MatIconModule, ArsPipe],
+  imports: [CommonModule, RouterLink, FormsModule, MatIconModule, ArsPipe],
   template: `
     <div class="experiences-admin-container">
-      <!-- Encabezado -->
-      <div class="admin-page-header">
-        <div class="header-titles">
-          <span class="section-kicker">GESTIÓN DE CATÁLOGO & RUTAS WEB</span>
-          <div class="title-row">
-            <h1 class="card-heading">Experiencias de la Web</h1>
-            <a routerLink="/dashboard" class="btn-back-panel">Volver al Panel</a>
-            <button type="button" class="btn-create-exp-yellow" (click)="openCreateModal()">
-              <span>Crear Nueva Experiencia</span>
-            </button>
-          </div>
-          <p class="card-subheading">
-            Administrá y editá toda la información de las rutas públicas de experiencias.club en
-            tiempo real: textos, aranceles, cupos, multimedia, itinerarios y estado de publicación.
-          </p>
-        </div>
-      </div>
-
       <!-- Toast Feedback -->
       @if (feedbackToast()) {
         <div class="toast-banner">
           <span>{{ feedbackToast() }}</span>
         </div>
       }
+
+      @if (isRouteEditMode()) {
+        <!-- Modo Edición en Subruta: /experiencias/:slug/editar -->
+        @if (notFound()) {
+          <div class="empty-state-card" style="margin-top: 1.5rem; text-align: center; padding: 2.5rem 1.5rem;">
+            <h2 class="card-heading">Experiencia no encontrada</h2>
+            <p class="card-subheading">No pudimos encontrar la experiencia que intentás editar en el catálogo.</p>
+            <a [routerLink]="backToListLink()" class="btn-back-panel" style="margin-top: 1.25rem; display: inline-flex;">
+              Volver a Experiencias
+            </a>
+          </div>
+        } @else if (editingExperience(); as exp) {
+          <div class="edit-page-card">
+            <div class="admin-page-header">
+              <div class="header-titles">
+                <span class="section-kicker">GESTIÓN DE CATÁLOGO & RUTAS WEB</span>
+                <div class="title-row">
+                  <h1 class="card-heading">Editar Experiencia: {{ editTitle() }}</h1>
+                  <a [routerLink]="backToListLink()" class="btn-back-panel">Volver a Experiencias</a>
+                </div>
+                <p class="card-subheading">
+                  Ruta web oficial: <code>/experiencias/{{ editSlug() }}</code>.
+                  Como administrador, podés actualizar el slug de publicación oficial, tarifas, cupos y contenidos de la ficha.
+                </p>
+              </div>
+            </div>
+
+            <div class="edit-page-body">
+              <ng-container *ngTemplateOutlet="experienceFormSections" />
+            </div>
+
+            <div class="edit-page-footer">
+              <a [routerLink]="backToListLink()" class="btn-cancel-edit">Cancelar</a>
+              <button
+                type="button"
+                class="btn-save-orange"
+                [disabled]="saving()"
+                (click)="saveExperience()"
+              >
+                {{ saving() ? 'Guardando cambios...' : 'Guardar Información de la Ruta' }}
+              </button>
+            </div>
+          </div>
+        }
+      } @else {
+        <!-- Encabezado -->
+        <div class="admin-page-header">
+          <div class="header-titles">
+            <span class="section-kicker">GESTIÓN DE CATÁLOGO & RUTAS WEB</span>
+            <div class="title-row">
+              <h1 class="card-heading">Experiencias de la Web</h1>
+              <a routerLink="/dashboard" class="btn-back-panel">Volver al Panel</a>
+              <button type="button" class="btn-create-exp-yellow" (click)="openCreateModal()">
+                <span>Crear Nueva Experiencia</span>
+              </button>
+            </div>
+            <p class="card-subheading">
+              Administrá y editá toda la información de las rutas públicas de experiencias.club en
+              tiempo real: textos, aranceles, cupos, multimedia, itinerarios y estado de publicación.
+            </p>
+          </div>
+        </div>
 
       <!-- Tabla / Lista de Experiencias -->
       <div class="experiences-table-card">
@@ -128,15 +175,14 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                   <!-- Columna Acciones -->
                   <td class="text-right">
                     <div class="action-buttons-cell">
-                      <!-- Editar Información Completa -->
-                      <button
-                        type="button"
+                      <!-- Editar Información Completa en Subruta -->
+                      <a
+                        [routerLink]="getEditRoute(exp)"
                         class="btn-edit-exp"
-                        (click)="openEditModal(exp)"
                         title="Editar toda la información de esta experiencia"
                       >
                         <span>EDITAR</span>
-                      </button>
+                      </a>
 
                       <!-- Pausar o Activar -->
                       @if (exp.status === 'publicada') {
@@ -167,43 +213,62 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
         </div>
       </div>
 
-      <!-- MODAL: Editor Completo de Experiencia -->
-      @if (editingExperience(); as exp) {
-        <div class="modal-backdrop" (click)="closeEditModal()">
-          <div class="modal-container-large" (click)="$event.stopPropagation()">
-            <div class="modal-header">
-              <div>
-                <span class="modal-kicker">EDICIÓN DE RUTA PÚBLICA</span>
-                <h2 class="modal-title">
-                  {{ isCreating() ? 'Nueva Experiencia' : 'Editar: ' + editTitle() }}
-                </h2>
-                <p class="modal-sub">
-                  Ruta oficial: <code>/experiencias/{{ editSlug() }}</code>
-                </p>
-              </div>
-              <button type="button" class="modal-close-icon-btn" (click)="closeEditModal()">
-                ×
-              </button>
-            </div>
-
-            <div class="modal-body-scrollable">
-              <!-- SECCIÓN 1: Identificación y Rutas -->
-              <div class="form-section-card">
-                <h4 class="form-section-title">1. Identificación & Ruta Pública</h4>
-                <div class="form-field">
-                  <label>Ruta / Slug (URL final):</label>
-                  <div class="slug-input-wrap">
-                    <span class="slug-prefix">/experiencias/</span>
-                    <input
-                      type="text"
-                      class="form-input slug-field"
-                      [(ngModel)]="editSlug"
-                      [disabled]="editingExperience()?.slug === 'kayak'"
-                      placeholder="ej: kayak, piedra-pomez, etc."
-                    />
-                  </div>
-                  <span class="field-hint">Determina la URL pública de acceso a la ficha.</span>
+        <!-- MODAL: Solo para Crear Nueva Experiencia cuando no estamos en subruta -->
+        @if (editingExperience() && isCreating()) {
+          <div class="modal-backdrop" (click)="closeEditModal()">
+            <div class="modal-container-large" (click)="$event.stopPropagation()">
+              <div class="modal-header">
+                <div>
+                  <span class="modal-kicker">EDICIÓN DE RUTA PÚBLICA</span>
+                  <h2 class="modal-title">Nueva Experiencia</h2>
+                  <p class="modal-sub">
+                    Ruta oficial: <code>/experiencias/{{ editSlug() }}</code>
+                  </p>
                 </div>
+                <button type="button" class="modal-close-icon-btn" (click)="closeEditModal()">
+                  ×
+                </button>
+              </div>
+
+              <div class="modal-body-scrollable">
+                <ng-container *ngTemplateOutlet="experienceFormSections" />
+              </div>
+
+              <div class="modal-footer">
+                <button type="button" class="btn-cancel" (click)="closeEditModal()">Cancelar</button>
+                <button
+                  type="button"
+                  class="btn-save-orange"
+                  [disabled]="saving()"
+                  (click)="saveExperience()"
+                >
+                  {{ saving() ? 'Guardando cambios...' : 'Crear Experiencia' }}
+                </button>
+              </div>
+            </div>
+          </div>
+        }
+      }
+
+      <ng-template #experienceFormSections>
+        <!-- SECCIÓN 1: Identificación y Rutas -->
+        <div class="form-section-card">
+          <h4 class="form-section-title">1. Identificación & Ruta Pública</h4>
+          <div class="form-field">
+            <label>Ruta / Slug oficial (URL final en la web pública):</label>
+            <div class="slug-input-wrap">
+              <span class="slug-prefix">/experiencias/</span>
+              <input
+                type="text"
+                class="form-input slug-field"
+                [(ngModel)]="editSlug"
+                placeholder="ej: kayak, trekking-el-jumeal"
+              />
+            </div>
+            <span class="field-hint">
+              Control exclusivo del administrador para actualizar la ruta web pública oficial de la experiencia.
+            </span>
+          </div>
 
                 <div class="form-field">
                   <label>Título principal de la Experiencia:</label>
@@ -532,23 +597,7 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                   </select>
                 </div>
               </div>
-            </div>
-
-            <!-- Footer del Modal -->
-            <div class="modal-footer">
-              <button type="button" class="btn-cancel" (click)="closeEditModal()">Cancelar</button>
-              <button
-                type="button"
-                class="btn-save-orange"
-                [disabled]="saving()"
-                (click)="saveExperience()"
-              >
-                {{ saving() ? 'Guardando cambios...' : 'Guardar Información de la Ruta' }}
-              </button>
-            </div>
-          </div>
-        </div>
-      }
+      </ng-template>
     </div>
   `,
   styles: [
@@ -563,6 +612,61 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
         gap: 1.25rem;
         margin-top: 0;
         padding-top: 0;
+      }
+
+      /* Edit Page View (Subruta) */
+      .edit-page-card {
+        background: rgba(18, 10, 5, 0.95);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+        padding: 1.75rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+      }
+
+      .edit-page-body {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+      }
+
+      .edit-page-footer {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 1rem;
+        padding-top: 1.25rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        margin-top: 0.5rem;
+      }
+
+      .btn-cancel-edit {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.65rem 1.35rem;
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        color: #ffffff;
+        border-radius: 3px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all 0.2s ease;
+      }
+
+      .btn-cancel-edit:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.5);
+      }
+
+      .empty-state-card {
+        background: rgba(18, 10, 5, 0.9);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
       }
 
       /* Header */
@@ -1537,13 +1641,74 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
     `,
   ],
 })
-export class AdminExperiencesComponent {
+export class AdminExperiencesComponent implements OnInit {
   private readonly experienceService = inject(ExperienceService);
   private readonly storageService = inject(StorageService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly experiences = this.experienceService.experiences;
   readonly feedbackToast = signal<string | null>(null);
   readonly saving = signal(false);
+
+  readonly isRouteEditMode = signal(false);
+  readonly notFound = signal(false);
+  readonly currentUrl = signal(this.router.url);
+
+  private readonly isAdminRoute = computed(() => {
+    const rawPath = this.currentUrl().split('?')[0].split('#')[0];
+    const segments = rawPath.split('/').filter(Boolean);
+    return segments[0] === 'admin';
+  });
+
+  readonly backToListLink = computed(() => {
+    return this.isAdminRoute() ? '/admin/experiencias' : '/experiencias';
+  });
+
+  getEditRoute(exp: Experience): string {
+    const base = this.isAdminRoute() ? '/admin/experiencias' : '/experiencias';
+    return `${base}/${exp.slug}/editar`;
+  }
+
+  async ngOnInit(): Promise<void> {
+    this.router.events
+      .pipe(
+        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((event) => {
+        this.currentUrl.set(event.urlAfterRedirects || event.url);
+      });
+
+    let activeSlug: string | null = null;
+    this.route.paramMap.subscribe(async (params) => {
+      const slug = params.get('slug');
+      activeSlug = slug;
+      if (slug) {
+        this.isRouteEditMode.set(true);
+        this.notFound.set(false);
+        await this.experienceService.remoteLoadPromise;
+        if (this.route.snapshot.paramMap.get('slug') !== slug || activeSlug !== slug) {
+          return;
+        }
+        const exp =
+          this.experienceService.getExperienceBySlug(slug) ||
+          this.experienceService.getExperienceById(slug);
+        if (exp) {
+          this.openEditModal(exp);
+        } else {
+          this.notFound.set(true);
+        }
+      } else {
+        this.isRouteEditMode.set(false);
+        this.notFound.set(false);
+        if (!this.isCreating()) {
+          this.editingExperience.set(null);
+        }
+      }
+    });
+  }
 
   readonly activeCount = computed(
     () => this.experiences().filter((e) => e.status === 'publicada').length,
@@ -1695,6 +1860,9 @@ export class AdminExperiencesComponent {
   closeEditModal(): void {
     this.editingExperience.set(null);
     this.isCreating.set(false);
+    if (this.isRouteEditMode()) {
+      this.router.navigateByUrl(this.backToListLink());
+    }
   }
 
   async onUploadCoverImage(event: Event): Promise<void> {
@@ -1788,8 +1956,7 @@ export class AdminExperiencesComponent {
       return;
     }
 
-    const isKayak = this.editingExperience()?.slug === 'kayak';
-    const rawSlug = isKayak ? 'kayak' : this.editSlug().trim() || title;
+    const rawSlug = this.editSlug().trim() || title;
     const slug = rawSlug
       .toLowerCase()
       .normalize('NFD')
@@ -1820,7 +1987,6 @@ export class AdminExperiencesComponent {
       slug,
       title,
       shortTitle: title,
-      kicker: '',
       tagline: this.editTagline().trim(),
       description: this.editDescription().trim(),
       region: this.editRegion().trim() || 'Catamarca',
@@ -1828,7 +1994,6 @@ export class AdminExperiencesComponent {
       difficulty: this.editDifficulty(),
       durationLabel: this.editDurationLabel().trim() || '4 Horas',
       altitudeMeters: Number(this.editAltitude()) || 0,
-      bestSeason: '',
       maxSpotsPerGroup: Number(this.editCapacity()) || 12,
       priceArs,
       priceUsd,
@@ -1854,6 +2019,8 @@ export class AdminExperiencesComponent {
       if (this.isCreating()) {
         const fullNewExp: Experience = {
           ...payload,
+          kicker: '',
+          bestSeason: '',
           durationDays: 1,
           galleryImages: [payload.coverImage!],
           isExclusiveClub: true,

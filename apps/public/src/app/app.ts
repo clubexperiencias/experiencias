@@ -7,7 +7,7 @@ const DEFAULT_PAGE_METADATA = {
   section: 'Expediciones privadas en Catamarca',
   description:
     'Expediciones andinas y travesías náuticas en Catamarca. Descubrí experiencias privadas y sumate.',
-  image: '/assets/images/catamarca_hero.jpg',
+  image: '/assets/images/catamarca-style.png',
   imageAlt: 'Experiencias y expediciones en Catamarca',
 };
 
@@ -201,7 +201,7 @@ export class App {
       return {
         section: 'Socio Emergente',
         description: 'Activá tu membresía emergente en el Club de Experiencias.',
-        image: '/assets/images/catamarca_hero.jpg',
+        image: '/assets/images/catamarca-style.png',
         imageAlt: 'Socio Emergente',
       };
     }
@@ -226,7 +226,7 @@ export class App {
       return {
         section: 'Socios del Club',
         description: 'Conocé los niveles de socio y accedé a experiencias privadas en Catamarca.',
-        image: '/assets/images/catamarca_hero.jpg',
+        image: '/assets/images/catamarca-style.png',
         imageAlt: 'Socios del Club de Experiencias',
       };
     }

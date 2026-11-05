@@ -419,7 +419,32 @@ export class ExperienceService {
         }
 
         if (Object.prototype.hasOwnProperty.call(updated, 'meetingPointUrl')) {
-          payload['meeting_point_url'] = updated.meetingPointUrl || '';
+          // Preserve explicit empty string; omit only when the field is absent
+          payload['meeting_point_url'] = updated.meetingPointUrl;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(updated, 'kicker')) {
+          payload['kicker'] = updated.kicker;
+        } else if (merged.kicker !== undefined) {
+          payload['kicker'] = merged.kicker;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(updated, 'bestSeason')) {
+          payload['best_season'] = updated.bestSeason;
+        } else if (merged.bestSeason !== undefined) {
+          payload['best_season'] = merged.bestSeason;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(updated, 'itinerary')) {
+          payload['itinerary'] = updated.itinerary;
+        } else if (merged.itinerary !== undefined) {
+          payload['itinerary'] = merged.itinerary;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(updated, 'promosAndPricing')) {
+          payload['promos_and_pricing'] = updated.promosAndPricing;
+        } else if (merged.promosAndPricing !== undefined) {
+          payload['promos_and_pricing'] = merged.promosAndPricing;
         }
         if (merged.albumPhotos) {
           payload['album_photos'] = merged.albumPhotos;
@@ -452,18 +477,17 @@ export class ExperienceService {
           .select();
 
         if (error && /meeting_point_url/.test(error.message || '')) {
-          // Columna aún no migrada en la base remota: reintenta sin ella, preservando el resto
+          if (updated.meetingPointUrl !== undefined && String(updated.meetingPointUrl).trim() !== '') {
+            // A non-empty value was supplied: reject the update rather than committing without it
+            throw error;
+          }
+          // Columna aún no migrada en la base remota y el valor era vacío: reintenta sin ella
           const { meeting_point_url: _omit, ...legacyPayload } = payload as any;
           ({ data, error } = (await this.supabase
             .from('experiencias')
             .update(legacyPayload as any)
             .eq('id', merged.id)
             .select()) as any);
-          if (!error && Object.prototype.hasOwnProperty.call(updated, 'meetingPointUrl')) {
-            throw new Error(
-              'No se pudo guardar la URL del punto de encuentro porque la base de datos requiere una migración.',
-            );
-          }
         }
 
         if (error || !data || data.length === 0) {
@@ -558,6 +582,7 @@ export class ExperienceService {
           id: experience.id,
           slug: experience.slug,
           title: experience.title,
+          kicker: experience.kicker || '',
           tagline: experience.tagline,
           description: experience.description,
           region: experience.region,
@@ -572,6 +597,9 @@ export class ExperienceService {
           video_url: experience.videoUrl || '',
           video_poster: experience.videoPoster || '',
           altitude_meters: experience.altitudeMeters || 0,
+          best_season: experience.bestSeason || '',
+          itinerary: experience.itinerary || '',
+          promos_and_pricing: experience.promosAndPricing || '',
           dates: experience.dates || [],
           highlights: experience.highlights || [],
           included: experience.included || [],
@@ -585,11 +613,50 @@ export class ExperienceService {
           provider_slug: experience.providerSlug || null,
         };
 
-        let { error } = await this.supabase.from('experiencias').insert(payload as any);
-        if (error && /meeting_point_url/.test(error.message || '')) {
-          // Columna aún no migrada en la base remota: reintenta sin ella
-          const { meeting_point_url: _omit, ...legacyPayload } = payload;
-          ({ error } = await this.supabase.from('experiencias').insert(legacyPayload as any));
+        const optionalColumns: string[] = [
+          'meeting_point_url',
+          'itinerary',
+          'kicker',
+          'best_season',
+          'promos_and_pricing',
+        ];
+
+        let insertPayload: Record<string, any> = { ...payload };
+        let migrationError: any = null;
+        let error: any = null;
+
+        while (true) {
+          const res = await this.supabase.from('experiencias').insert(insertPayload as any);
+          const err = res.error;
+          if (!err) {
+            if (migrationError) {
+              error = migrationError;
+            } else {
+              error = null;
+            }
+            break;
+          }
+
+          const missingCol = optionalColumns.find(
+            (col) =>
+              insertPayload[col] !== undefined &&
+              new RegExp(`column.*"?${col}"?.*does not exist|${col}`, 'i').test(err.message || ''),
+          );
+
+          if (missingCol) {
+            const isNonEmpty = Boolean(
+              insertPayload[missingCol] && String(insertPayload[missingCol]).trim(),
+            );
+            if (isNonEmpty) {
+              error = err;
+              break;
+            }
+            delete insertPayload[missingCol];
+            continue;
+          }
+
+          error = err;
+          break;
         }
         if (error) {
           console.warn('[ExperienceService] Error al insertar experiencia en Supabase:', error);
@@ -783,10 +850,15 @@ export class ExperienceService {
           .select(columns)
           .order('created_at', { ascending: true }) as any;
 
-      let { data, error } = await fetchExperiences(`${publicColumns}, meeting_point_url`);
-      if (error && /meeting_point_url/.test(error.message || '')) {
-        // Columna aún no migrada en la base remota: reintenta sin ella
-        ({ data, error } = await fetchExperiences(publicColumns));
+      let { data, error } = await fetchExperiences(
+        `${publicColumns}, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing`,
+      );
+      if (error) {
+        // Reintento con fallback progresivo si alguna columna nueva no existe aún
+        ({ data, error } = await fetchExperiences(`${publicColumns}, meeting_point_url`));
+        if (error && /meeting_point_url/.test(error.message || '')) {
+          ({ data, error } = await fetchExperiences(publicColumns));
+        }
       }
       if (error) {
         console.warn('[ExperienceService] No se pudieron cargar las experiencias remotas:', error);
@@ -825,7 +897,7 @@ export class ExperienceService {
             slug: exp.slug,
             title: exp.title,
             shortTitle: exp.title,
-            kicker: '',
+            kicker: exp.kicker || '',
             tagline: exp.tagline,
             description: exp.description,
             region: exp.region,
@@ -835,7 +907,9 @@ export class ExperienceService {
             durationDays: 1,
             durationLabel: exp.duration_label || '4 horas',
             altitudeMeters: exp.altitude_meters ?? 0,
-            bestSeason: '',
+            bestSeason: exp.best_season || '',
+            itinerary: exp.itinerary || undefined,
+            promosAndPricing: exp.promos_and_pricing || undefined,
             priceArs: exp.price_ars,
             priceUsd: exp.price_usd ?? 70,
             maxSpotsPerGroup: exp.capacity_per_date || 12,

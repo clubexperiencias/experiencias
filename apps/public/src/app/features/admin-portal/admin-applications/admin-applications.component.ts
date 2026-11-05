@@ -205,9 +205,12 @@ type ApplicationFilterTab =
                     <!-- Experiencia Propuesta -->
                     <td>
                       <div class="exp-cell-wrap">
-                        @if (req.coverImage) {
-                          <img [src]="req.coverImage" alt="Portada" class="exp-cell-thumb" />
-                        }
+                        <img
+                          [src]="getProposalCover(req.coverImage)"
+                          (error)="onImgError($event)"
+                          alt="Portada"
+                          class="exp-cell-thumb"
+                        />
                         <div class="exp-cell-text">
                           <strong class="exp-title-cell">{{ req.title }}</strong>
                           <span class="exp-kicker-sub font-mono">{{ req.kicker }}</span>
@@ -629,13 +632,12 @@ type ApplicationFilterTab =
             <div class="modal-body">
               <!-- Media Banner -->
               <div class="exp-req-media-banner">
-                @if (expReq.coverImage) {
-                  <img
-                    [src]="expReq.coverImage"
-                    alt="Portada de la propuesta"
-                    class="exp-req-cover-img"
-                  />
-                }
+                <img
+                  [src]="getProposalCover(expReq.coverImage)"
+                  (error)="onImgError($event)"
+                  alt="Portada de la propuesta"
+                  class="exp-req-cover-img"
+                />
                 <div class="exp-req-media-tags">
                   @if (expReq.coverImageName) {
                     <span class="exp-media-tag"
@@ -648,6 +650,12 @@ type ApplicationFilterTab =
                     >
                   }
                 </div>
+                @if (proposalCoverLoadError()) {
+                  <div style="background: rgba(220, 38, 38, 0.2); border: 1px solid #ef4444; color: #fca5a5; padding: 0.5rem 1rem; border-radius: 4px; font-size: 0.82rem; margin-top: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <mat-icon style="font-size: 18px; width: 18px; height: 18px;">warning</mat-icon>
+                    <span>La foto original de portada no pudo cargarse en el servidor. Se usará la portada por defecto del Club al aprobar.</span>
+                  </div>
+                }
               </div>
 
               <!-- 1. Síntesis descriptiva -->
@@ -767,6 +775,64 @@ type ApplicationFilterTab =
                 </div>
               </dl>
 
+              @if (expReq.albumPhotos && expReq.albumPhotos.length > 0) {
+                <div class="exp-album-review-box">
+                  <span class="desc-heading">Álbum de fotos de la experiencia ({{ expReq.albumPhotos.length }})</span>
+                  <div class="exp-album-thumbnails-grid">
+                    @for (photo of expReq.albumPhotos; track $index) {
+                      <div class="album-thumb-card">
+                        <img [src]="photo.url" (error)="onImgError($event)" [alt]="photo.caption || 'Foto de propuesta'" class="album-thumb-img" />
+                        @if (photo.caption) {
+                          <span class="album-thumb-caption">{{ photo.caption }}</span>
+                        }
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+
+              <div class="exp-provider-banking-card">
+                <span class="desc-heading">Información del Prestador y Datos Bancarios</span>
+                <div class="provider-banking-grid">
+                  <div class="banking-cell">
+                    <span class="banking-lbl">Prestador</span>
+                    <strong>{{ expReq.providerName }}</strong>
+                  </div>
+                  <div class="banking-cell">
+                    <span class="banking-lbl">Emprendimiento / Agencia</span>
+                    <strong>{{ expReq.providerAgency || 'Particular' }}</strong>
+                  </div>
+                  <div class="banking-cell">
+                    <span class="banking-lbl">Email</span>
+                    <strong>{{ expReq.providerEmail }}</strong>
+                  </div>
+                  @if (expReq.providerPhone) {
+                    <div class="banking-cell">
+                      <span class="banking-lbl">Teléfono / WhatsApp</span>
+                      <strong>{{ expReq.providerPhone }}</strong>
+                    </div>
+                  }
+                  @if (expReq.providerCuitDni) {
+                    <div class="banking-cell">
+                      <span class="banking-lbl">CUIT / DNI</span>
+                      <strong>{{ expReq.providerCuitDni }}</strong>
+                    </div>
+                  }
+                  @if (expReq.providerCbuAlias) {
+                    <div class="banking-cell">
+                      <span class="banking-lbl">CBU / Alias</span>
+                      <strong>{{ expReq.providerCbuAlias }}</strong>
+                    </div>
+                  }
+                  @if (expReq.providerBankName) {
+                    <div class="banking-cell">
+                      <span class="banking-lbl">Banco / Entidad</span>
+                      <strong>{{ expReq.providerBankName }}</strong>
+                    </div>
+                  }
+                </div>
+              </div>
+
               @if (expReq.status === 'pendiente') {
                 <div class="exp-public-url-box">
                   <label class="url-label" for="exp-public-url"
@@ -793,7 +859,7 @@ type ApplicationFilterTab =
                     class="btn-state btn-approve"
                     (click)="approveExperience(expReq.id)"
                   >
-                    Aprobar y Publicar
+                    Aprobar y publicar
                   </button>
                   <button
                     type="button"
@@ -820,9 +886,9 @@ type ApplicationFilterTab =
                     [href]="getWhatsappLink(expReq.providerPhone, expReq.providerName)"
                     target="_blank"
                     rel="noopener noreferrer"
-                    class="btn-state btn-whatsapp"
+                    class="btn-state btn-whatsapp btn-contact-provider"
                   >
-                    <span>Contactar prestador por Whatsapp</span>
+                    <span>Contactar prestador</span>
                   </a>
                 }
               </div>
@@ -1635,13 +1701,14 @@ type ApplicationFilterTab =
         border: 1px dashed rgba(255, 95, 0, 0.45);
       }
 
-      .btn-whatsapp {
+      .btn-whatsapp,
+      .btn-contact-provider {
         display: inline-flex;
         align-items: center;
         gap: 0.55rem;
-        background: #25d366;
-        border: 1px solid #25d366;
-        color: #0b0704;
+        background: #80b3ff;
+        border: 1px solid #80b3ff;
+        color: #070d18;
         font-weight: 800;
         font-size: 0.85rem;
         padding: 0.65rem 1.35rem;
@@ -1653,9 +1720,11 @@ type ApplicationFilterTab =
           transform 0.15s ease;
       }
 
-      .btn-whatsapp:hover {
-        background: #1eb956;
-        border-color: #1eb956;
+      .btn-whatsapp:hover,
+      .btn-contact-provider:hover {
+        background: #99c2ff;
+        border-color: #99c2ff;
+        color: #070d18;
         transform: translateY(-1px);
       }
 
@@ -1872,14 +1941,92 @@ type ApplicationFilterTab =
       }
 
       .btn-reject {
-        background: rgba(239, 68, 68, 0.2);
-        border: 1px solid rgba(239, 68, 68, 0.6);
-        color: #fca5a5;
+        background: rgba(239, 68, 68, 0.35);
+        border: 1px solid rgba(239, 68, 68, 0.7);
+        color: #ffffff !important;
       }
 
       .btn-reject:hover:not(:disabled) {
         background: #ef4444;
+        color: #ffffff !important;
+      }
+
+      .exp-album-review-box {
+        padding: 0.85rem 1rem;
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 2px;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      .exp-album-thumbnails-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+        gap: 0.75rem;
+      }
+
+      .album-thumb-card {
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+        background: rgba(255, 255, 255, 0.04);
+        padding: 0.35rem;
+        border-radius: 2px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .album-thumb-img {
+        width: 100%;
+        height: 75px;
+        object-fit: cover;
+        border-radius: 2px;
+      }
+
+      .album-thumb-caption {
+        font-size: 0.7rem;
+        color: rgba(255, 255, 255, 0.7);
+        line-height: 1.2;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .exp-provider-banking-card {
+        padding: 0.85rem 1rem;
+        background: rgba(22, 33, 85, 0.3);
+        border: 1px solid rgba(128, 179, 255, 0.2);
+        border-radius: 2px;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      .provider-banking-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 0.75rem;
+      }
+
+      .banking-cell {
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+      }
+
+      .banking-lbl {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #80b3ff;
+      }
+
+      .banking-cell strong {
+        font-size: 0.85rem;
         color: #ffffff;
+        word-break: break-all;
       }
 
       .exp-public-url-box {
@@ -2164,20 +2311,42 @@ export class AdminApplicationsComponent implements OnInit {
     this.selectedApp.set(null);
   }
 
+  readonly proposalCoverLoadError = signal(false);
+
   openExperienceRequest(req: ExperienceProposalRequest): void {
     this.selectedExperienceRequest.set(req);
+    this.proposalCoverLoadError.set(false);
     const slug = slugify(req.title);
     this.expPublicUrlInput.set(`https://experiencias.club/experiencias/${slug}`);
   }
 
   closeExperienceRequest(): void {
     this.selectedExperienceRequest.set(null);
+    this.proposalCoverLoadError.set(false);
+  }
+
+  getProposalCover(url?: string | null): string {
+    if (!url || typeof url !== 'string' || url.startsWith('blob:')) {
+      return '/assets/images/kayak-club-de-experiencias.jpg';
+    }
+    return url;
+  }
+
+  onImgError(event: Event): void {
+    const target = event.target as HTMLImageElement;
+    if (target && !target.src.includes('kayak-club-de-experiencias.jpg')) {
+      target.src = '/assets/images/kayak-club-de-experiencias.jpg';
+      this.proposalCoverLoadError.set(true);
+    }
   }
 
   async approveExperience(id: string): Promise<void> {
+    const current = this.selectedExperienceRequest();
+    if (this.proposalCoverLoadError() && current) {
+      current.coverImage = '/assets/images/kayak-club-de-experiencias.jpg';
+    }
     const ok = await this.store.approveExperienceRequest(id, this.expPublicUrlInput());
     if (ok) {
-      const current = this.selectedExperienceRequest();
       if (current && current.id === id) {
         this.selectedExperienceRequest.set({
           ...current,

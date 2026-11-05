@@ -14,6 +14,7 @@ import { TransferSubmission } from '../../../core/models/bank-transfer.model';
 import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
 import { slugify } from '../../../core/services/provider-store.service';
 import { ExperienceService } from '../../../core/services/experience.service';
+import { ProviderListItem } from '../admin-providers/admin-providers.component';
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -113,6 +114,13 @@ import { ExperienceService } from '../../../core/services/experience.service';
                     <td>
                       @if (m.type === 'socio') {
                         <span class="badge-socio-num">#{{ m.position }}</span>
+                      } @else if (m.googleLinked) {
+                        <span
+                          class="pill-google"
+                          [class.is-provider-google]="isProvider(m)"
+                          title="Google Vinculado"
+                          >GOOGLE</span
+                        >
                       } @else {
                         <span class="badge-waitlist">Waitlist</span>
                       }
@@ -131,7 +139,12 @@ import { ExperienceService } from '../../../core/services/experience.service';
                     <td>
                       <div class="tags-row">
                         @if (m.googleLinked) {
-                          <span class="pill-google" title="Google Vinculado">GOOGLE</span>
+                          <span
+                            class="pill-google"
+                            [class.is-provider-google]="isProvider(m)"
+                            title="Google Vinculado"
+                            >GOOGLE</span
+                          >
                         }
                         @if (m.converted) {
                           <span class="pill-converted" title="Pagó al menos una experiencia"
@@ -215,66 +228,74 @@ import { ExperienceService } from '../../../core/services/experience.service';
         }
       </section>
 
-      <!-- Sección 3: Postulaciones Recientes (Prestadores & Socios Fundadores) -->
+      <!-- Sección 3: Prestadores Oficiales y Nuevas Postulaciones -->
       <section class="dash-card">
         <div class="card-head">
-          <h2 class="card-title">Últimas Propuestas y Postulaciones</h2>
-          <a routerLink="/propuestas" class="view-all-link">
-            <span>Ver todas las propuestas ({{ store.applicationStats().total }})</span>
+          <h2 class="card-title">Prestadores y Nuevas Postulaciones</h2>
+          <a routerLink="/prestadores" class="view-all-link">
+            <span>Ver todos los prestadores ({{ totalDashboardProvidersCount() }})</span>
           </a>
         </div>
 
-        @if (recentApplications().length === 0) {
-          <p class="empty-text">No hay postulaciones registradas todavía.</p>
+        @if (recentDashboardProviders().length === 0) {
+          <p class="empty-text">No hay prestadores ni postulaciones registradas todavía.</p>
         } @else {
           <div class="table-wrap">
             <table class="dash-data-table">
               <thead>
                 <tr>
-                  <th>Tipo</th>
-                  <th>Postulante</th>
-                  <th>Detalles</th>
+                  <th>Prestador / Guía</th>
+                  <th>Agencia / Emprendimiento</th>
+                  <th>Contacto</th>
+                  <th>Padrón</th>
                   <th>Estado</th>
                   <th>Fecha</th>
                   <th class="text-right">Acción</th>
                 </tr>
               </thead>
               <tbody>
-                @for (app of recentApplications(); track app.id) {
+                @for (item of recentDashboardProviders(); track item.id) {
                   <tr>
                     <td>
-                      @if (app.type === 'prestador') {
-                        <span class="badge-post-prestador">PRESTADOR</span>
-                      } @else {
-                        <span class="badge-post-fundador">SOCIO FUNDADOR</span>
-                      }
-                    </td>
-                    <td>
                       <div class="cell-stack">
-                        <strong class="row-name">{{ app.fullName }}</strong>
-                        <span class="row-email font-mono">{{ app.email }}</span>
+                        <strong class="row-name">{{ item.name }}</strong>
+                        <span class="row-email font-mono">{{ item.email }}</span>
                       </div>
                     </td>
                     <td>
-                      <span class="exp-title-cell">
-                        {{
-                          app.type === 'prestador'
-                            ? formatCategory(app.category)
-                            : 'Cuadro Fundacional'
-                        }}
-                      </span>
+                      <span class="exp-title-cell">{{ item.agency }}</span>
                     </td>
                     <td>
-                      <span class="status-badge" [attr.data-status]="app.status">
-                        @switch (app.status) {
+                      @if (item.phone && item.phone !== '—') {
+                        <a
+                          [href]="getWaLink(item.phone, item.name)"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="btn-contact-provider"
+                          title="Contactar por WhatsApp"
+                        >
+                          <mat-icon class="contact-icon">chat</mat-icon>
+                          <span>{{ item.phone }}</span>
+                        </a>
+                      } @else {
+                        <span class="row-sub">—</span>
+                      }
+                    </td>
+                    <td>
+                      @if (item.origin === 'official') {
+                        <span class="badge-prov-official">OFICIAL</span>
+                      } @else {
+                        <span class="badge-prov-applicant">POSTULANTE</span>
+                      }
+                    </td>
+                    <td>
+                      <span class="status-badge" [attr.data-status]="item.status">
+                        @switch (item.status) {
                           @case ('aprobado') {
                             Aprobado
                           }
                           @case ('rechazado') {
                             Rechazado
-                          }
-                          @case ('dado_de_baja') {
-                            Dado de baja
                           }
                           @default {
                             Pendiente
@@ -283,12 +304,30 @@ import { ExperienceService } from '../../../core/services/experience.service';
                       </span>
                     </td>
                     <td>
-                      <span class="row-date">{{ app.createdAt | fecha: 'corta' }}</span>
+                      <span class="row-date">{{ item.createdAt | fecha: 'corta' }}</span>
                     </td>
                     <td class="text-right">
-                      <button type="button" class="btn-review" (click)="openApplication(app)">
-                        Revisar
-                      </button>
+                      @if (item.origin === 'official') {
+                        @if (item.slug) {
+                          <a
+                            [routerLink]="['/prestadores', item.slug]"
+                            target="_blank"
+                            class="btn-review"
+                            style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.25rem;"
+                          >
+                            <span>Ver Perfil</span>
+                            <mat-icon style="font-size: 0.9rem; width: 0.9rem; height: 0.9rem;">open_in_new</mat-icon>
+                          </a>
+                        } @else {
+                          <a routerLink="/prestadores" class="btn-review" style="text-decoration: none;">
+                            Ver Ficha
+                          </a>
+                        }
+                      } @else if (item.rawApp) {
+                        <button type="button" class="btn-review" (click)="openApplication(item.rawApp)">
+                          Revisar
+                        </button>
+                      }
                     </td>
                   </tr>
                 }
@@ -346,9 +385,12 @@ import { ExperienceService } from '../../../core/services/experience.service';
                     </td>
                     <td>
                       <div class="exp-cell-wrap">
-                        @if (req.coverImage) {
-                          <img [src]="req.coverImage" alt="Portada" class="exp-cell-thumb" />
-                        }
+                        <img
+                          [src]="getProposalCover(req.coverImage)"
+                          (error)="onImgError($event)"
+                          alt="Portada"
+                          class="exp-cell-thumb"
+                        />
                         <div class="exp-cell-text">
                           <strong class="exp-title-cell">{{ req.title }}</strong>
                           <span class="exp-kicker-sub font-mono">{{ req.kicker }}</span>
@@ -394,7 +436,7 @@ import { ExperienceService } from '../../../core/services/experience.service';
           <div class="head-actions">
             <span class="pending-pill">{{ webExperiences().length }} publicadas</span>
             <a routerLink="/experiencias" class="view-all-link">
-              <span>Ver catálogo completo</span>
+              <span>Ver catálogo completo ({{ webExperiences().length }})</span>
             </a>
           </div>
         </div>
@@ -786,13 +828,12 @@ import { ExperienceService } from '../../../core/services/experience.service';
               <!-- Banner Multimedia -->
               @if (expReq.coverImage || expReq.coverImageName || expReq.coverVideoName) {
                 <div class="exp-req-media-banner">
-                  @if (expReq.coverImage) {
-                    <img
-                      [src]="expReq.coverImage"
-                      alt="Portada de la propuesta"
-                      class="exp-req-cover-img"
-                    />
-                  }
+                  <img
+                    [src]="getProposalCover(expReq.coverImage)"
+                    (error)="onImgError($event)"
+                    alt="Portada de la propuesta"
+                    class="exp-req-cover-img"
+                  />
                   <div class="exp-req-media-tags">
                     @if (expReq.coverImageName) {
                       <span class="exp-media-tag"
@@ -925,6 +966,64 @@ import { ExperienceService } from '../../../core/services/experience.service';
                 </div>
               </dl>
 
+              @if (expReq.albumPhotos && expReq.albumPhotos.length > 0) {
+                <div class="exp-album-review-box">
+                  <span class="desc-heading">Álbum de fotos de la experiencia ({{ expReq.albumPhotos.length }})</span>
+                  <div class="exp-album-thumbnails-grid">
+                    @for (photo of expReq.albumPhotos; track $index) {
+                      <div class="album-thumb-card">
+                        <img [src]="photo.url" (error)="onImgError($event)" [alt]="photo.caption || 'Foto de propuesta'" class="album-thumb-img" />
+                        @if (photo.caption) {
+                          <span class="album-thumb-caption">{{ photo.caption }}</span>
+                        }
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+
+              <div class="exp-provider-banking-card">
+                <span class="desc-heading">Información del Prestador y Datos Bancarios</span>
+                <div class="provider-banking-grid">
+                  <div class="banking-cell">
+                    <span class="banking-lbl">Prestador</span>
+                    <strong>{{ expReq.providerName }}</strong>
+                  </div>
+                  <div class="banking-cell">
+                    <span class="banking-lbl">Emprendimiento / Agencia</span>
+                    <strong>{{ expReq.providerAgency || 'Particular' }}</strong>
+                  </div>
+                  <div class="banking-cell">
+                    <span class="banking-lbl">Email</span>
+                    <strong>{{ expReq.providerEmail }}</strong>
+                  </div>
+                  @if (expReq.providerPhone) {
+                    <div class="banking-cell">
+                      <span class="banking-lbl">Teléfono / WhatsApp</span>
+                      <strong>{{ expReq.providerPhone }}</strong>
+                    </div>
+                  }
+                  @if (expReq.providerCuitDni) {
+                    <div class="banking-cell">
+                      <span class="banking-lbl">CUIT / DNI</span>
+                      <strong>{{ expReq.providerCuitDni }}</strong>
+                    </div>
+                  }
+                  @if (expReq.providerCbuAlias) {
+                    <div class="banking-cell">
+                      <span class="banking-lbl">CBU / Alias</span>
+                      <strong>{{ expReq.providerCbuAlias }}</strong>
+                    </div>
+                  }
+                  @if (expReq.providerBankName) {
+                    <div class="banking-cell">
+                      <span class="banking-lbl">Banco / Entidad</span>
+                      <strong>{{ expReq.providerBankName }}</strong>
+                    </div>
+                  }
+                </div>
+              </div>
+
               @if (expReq.status === 'pendiente') {
                 <div class="exp-public-url-box">
                   <label class="url-label" for="exp-public-url-dash"
@@ -951,7 +1050,7 @@ import { ExperienceService } from '../../../core/services/experience.service';
                     class="btn-state btn-approve"
                     (click)="approveExperience(expReq.id)"
                   >
-                    Aprobar y Publicar
+                    Aprobar y publicar
                   </button>
                   <button
                     type="button"
@@ -978,9 +1077,9 @@ import { ExperienceService } from '../../../core/services/experience.service';
                     [href]="getWhatsappLink(expReq.providerPhone, expReq.providerName)"
                     target="_blank"
                     rel="noopener noreferrer"
-                    class="btn-state btn-whatsapp"
+                    class="btn-state btn-whatsapp btn-contact-provider"
                   >
-                    <span>Contactar prestador por Whatsapp</span>
+                    <span>Contactar prestador</span>
                   </a>
                 }
               </div>
@@ -1469,6 +1568,14 @@ import { ExperienceService } from '../../../core/services/experience.service';
         white-space: nowrap;
       }
 
+      .pill-google.is-provider-google {
+        background: #80b3ff;
+        border-color: #80b3ff;
+        color: #ffffff;
+        font-weight: 800;
+        box-shadow: 0 0 10px rgba(128, 179, 255, 0.45);
+      }
+
       .pill-converted {
         display: inline-flex;
         align-items: center;
@@ -1741,6 +1848,37 @@ import { ExperienceService } from '../../../core/services/experience.service';
         font-size: 0.65rem;
         font-weight: 800;
         border-radius: 2px;
+      }
+
+      .badge-prov-official {
+        display: inline-block;
+        padding: 0.18rem 0.5rem;
+        background: rgba(128, 179, 255, 0.15);
+        border: 1px solid rgba(128, 179, 255, 0.4);
+        color: #80b3ff;
+        font-size: 0.65rem;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        border-radius: 2px;
+      }
+
+      .badge-prov-applicant {
+        display: inline-block;
+        padding: 0.18rem 0.5rem;
+        background: rgba(255, 95, 0, 0.15);
+        border: 1px solid rgba(255, 95, 0, 0.4);
+        color: #ff5f00;
+        font-size: 0.65rem;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        border-radius: 2px;
+      }
+
+      .contact-icon {
+        font-size: 0.85rem !important;
+        width: 0.85rem !important;
+        height: 0.85rem !important;
+        line-height: 1 !important;
       }
 
       .app-quick-modal {
@@ -2053,31 +2191,112 @@ import { ExperienceService } from '../../../core/services/experience.service';
         transition: all 0.2s ease;
       }
 
-      .btn-whatsapp {
+      .btn-whatsapp,
+      .btn-contact-provider {
         display: inline-flex;
         align-items: center;
         gap: 0.4rem;
-        background: #25d366;
-        border: 1px solid #25d366;
-        color: #0b0704;
+        background: #80b3ff;
+        border: 1px solid #80b3ff;
+        color: #ffffff;
         font-weight: 800;
         text-decoration: none;
       }
 
-      .btn-whatsapp:hover {
-        background: #1eb956;
-        border-color: #1eb956;
+      .btn-whatsapp:hover,
+      .btn-contact-provider:hover {
+        background: #5d9eff;
+        border-color: #5d9eff;
+        color: #ffffff;
       }
 
       .btn-reject {
-        background: rgba(239, 68, 68, 0.2);
-        border: 1px solid rgba(239, 68, 68, 0.6);
-        color: #fca5a5;
+        background: rgba(239, 68, 68, 0.35);
+        border: 1px solid rgba(239, 68, 68, 0.7);
+        color: #ffffff !important;
       }
 
       .btn-reject:hover:not(:disabled) {
         background: #ef4444;
+        color: #ffffff !important;
+      }
+
+      .exp-album-review-box {
+        padding: 0.85rem 1rem;
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 2px;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      .exp-album-thumbnails-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+        gap: 0.75rem;
+      }
+
+      .album-thumb-card {
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+        background: rgba(255, 255, 255, 0.04);
+        padding: 0.35rem;
+        border-radius: 2px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .album-thumb-img {
+        width: 100%;
+        height: 75px;
+        object-fit: cover;
+        border-radius: 2px;
+      }
+
+      .album-thumb-caption {
+        font-size: 0.7rem;
+        color: rgba(255, 255, 255, 0.7);
+        line-height: 1.2;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .exp-provider-banking-card {
+        padding: 0.85rem 1rem;
+        background: rgba(22, 33, 85, 0.3);
+        border: 1px solid rgba(128, 179, 255, 0.2);
+        border-radius: 2px;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      .provider-banking-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 0.75rem;
+      }
+
+      .banking-cell {
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+      }
+
+      .banking-lbl {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #80b3ff;
+      }
+
+      .banking-cell strong {
+        font-size: 0.85rem;
         color: #ffffff;
+        word-break: break-all;
       }
 
       .btn-approve {
@@ -2598,6 +2817,72 @@ export class AdminDashboardComponent {
   readonly recentSubmissions = computed(() => this.store.submissions().slice(0, 7));
   readonly recentApplications = computed(() => this.store.applications().slice(0, 5));
 
+  // Padrón consolidado de Prestadores Oficiales + Postulaciones de Nuevos Prestadores
+  readonly dashboardProviders = computed<ProviderListItem[]>(() => {
+    const list: ProviderListItem[] = [];
+    const officialProviders = this.store.providerStore.providers();
+    const providerEmails = new Set<string>();
+
+    for (const p of officialProviders) {
+      if (!p.verified || p.status === 'dado_de_baja' || p.status === 'pendiente') {
+        continue;
+      }
+      const cleanEmail = p.email?.toLowerCase().trim() || '';
+      if (cleanEmail) providerEmails.add(cleanEmail);
+      list.push({
+        id: p.id || `prov-${cleanEmail}`,
+        origin: 'official',
+        name: p.name || 'Prestador Oficial',
+        agency: p.agency || 'Prestador Independiente',
+        email: p.email,
+        phone: p.phone || '—',
+        categoryOrBio: p.bio,
+        slug: p.slug,
+        status: 'aprobado',
+        createdAt: p.joinedAt || '2024-01-01T00:00:00Z',
+        rawProvider: p,
+      });
+    }
+
+    const applications = this.store.applications().filter((a) => a.type === 'prestador');
+    for (const app of applications) {
+      const cleanEmail = app.email?.toLowerCase().trim() || '';
+      if (cleanEmail && providerEmails.has(cleanEmail)) {
+        continue; // Ya figura como prestador oficial aprobado
+      }
+      list.push({
+        id: app.id,
+        origin: 'application',
+        name: app.fullName || 'Postulante',
+        agency: app.category ? this.formatCategory(app.category) : 'Postulación de Prestador',
+        email: app.email,
+        phone: app.phone || '—',
+        categoryOrBio: app.description || app.motivationLetter,
+        status:
+          app.status === 'aprobado'
+            ? 'aprobado'
+            : app.status === 'rechazado'
+              ? 'rechazado'
+              : app.status === 'dado_de_baja'
+                ? 'dado_de_baja'
+                : 'pendiente',
+        createdAt: app.createdAt,
+        rawApp: app,
+      });
+    }
+
+    return list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  });
+
+  readonly totalDashboardProvidersCount = computed(() => this.dashboardProviders().length);
+  readonly recentDashboardProviders = computed(() => this.dashboardProviders().slice(0, 5));
+
+  getWaLink(phone: string, name: string): string {
+    const clean = (phone || '').replace(/\D/g, '');
+    const num = clean.startsWith('54') ? clean : '54' + clean;
+    return `https://wa.me/${num}?text=${encodeURIComponent(`Hola ${name}, te contacto desde el equipo de Club de Experiencias.`)}`;
+  }
+
   constructor() {
     this.store.providerStore.reloadFromStorage();
   }
@@ -2748,6 +3033,25 @@ export class AdminDashboardComponent {
 
   closeExperienceRequest(): void {
     this.selectedExperienceRequest.set(null);
+  }
+
+  getProposalCover(url?: string | null): string {
+    if (!url || typeof url !== 'string' || url.startsWith('blob:')) {
+      return '/assets/images/kayak-club-de-experiencias.jpg';
+    }
+    return url;
+  }
+
+  onImgError(event: Event): void {
+    const target = event.target as HTMLImageElement;
+    if (target && !target.src.includes('kayak-club-de-experiencias.jpg')) {
+      target.src = '/assets/images/kayak-club-de-experiencias.jpg';
+    }
+  }
+
+  isProvider(member: AdminMember): boolean {
+    if (member.isProvider) return true;
+    return this.store.isProviderEmail(member.email);
   }
 
   async approveExperience(id: string): Promise<void> {
