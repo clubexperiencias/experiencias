@@ -4,7 +4,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { ProviderStoreService } from '../../../core/services/provider-store.service';
 import { StorageService } from '../../../core/services/storage.service';
-import { socialUrlValidator, normalizeSocialUrl } from '../../../shared/utils/social-url.util';
+import { socialUrlValidator, normalizeSocialUrl, migrateLegacySocialHandle } from '../../../shared/utils/social-url.util';
 
 @Component({
   selector: 'app-provider-profile',
@@ -787,9 +787,9 @@ export class ProviderProfileComponent {
     cuitDni: [this.store.currentProvider()?.cuitDni || '', Validators.required],
     phone: [this.store.currentProvider()?.phone || '', Validators.required],
     website: [this.store.currentProvider()?.website || ''],
-    socialMedia: [this.store.currentProvider()?.socialMedia || '', [socialUrlValidator]],
+    socialMedia: [migrateLegacySocialHandle(this.store.currentProvider()?.socialMedia), [socialUrlValidator]],
     socialMediaSecondary: [
-      this.store.currentProvider()?.socialMediaSecondary || '',
+      migrateLegacySocialHandle(this.store.currentProvider()?.socialMediaSecondary),
       [socialUrlValidator],
     ],
     cbuAlias: [this.store.currentProvider()?.cbuAlias || '', Validators.required],
@@ -810,8 +810,8 @@ export class ProviderProfileComponent {
           cuitDni: p.cuitDni || '',
           phone: p.phone || '',
           website: p.website || '',
-          socialMedia: p.socialMedia || '',
-          socialMediaSecondary: p.socialMediaSecondary || '',
+          socialMedia: migrateLegacySocialHandle(p.socialMedia),
+          socialMediaSecondary: migrateLegacySocialHandle(p.socialMediaSecondary),
           cbuAlias: p.cbuAlias || '',
           bankName: p.bankName || '',
         });

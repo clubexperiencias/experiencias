@@ -46,3 +46,21 @@ export function getSocialHandle(raw: string | undefined | null): string {
   return url.hostname.replace(/^www\./i, '');
 }
 
+/**
+ * Convierte un valor legacy (@usuario o usuario sin dominio) a una URL de
+ * perfil de Instagram para que pase la socialUrlValidator. Si el valor ya es
+ * una URL válida o está vacío, lo devuelve sin cambios.
+ */
+export function migrateLegacySocialHandle(raw: string | undefined | null): string {
+  const value = (raw || '').trim();
+  if (!value) return '';
+  // Ya es una URL válida → sin cambios
+  if (parseSocialUrl(value)) return value;
+  // Elimina @ inicial si lo tiene
+  const handle = value.replace(/^@/, '').trim();
+  // Si tiene punto → puede ser dominio sin protocolo → dejar que normalizeSocialUrl lo intente
+  if (handle.includes('.')) return normalizeSocialUrl(handle);
+  // Sin punto → handle puro (ej. "@usuario" o "usuario") → convertir a Instagram
+  return `https://www.instagram.com/${encodeURIComponent(handle)}`;
+}
+

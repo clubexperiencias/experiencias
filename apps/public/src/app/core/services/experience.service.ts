@@ -297,7 +297,12 @@ export class ExperienceService {
   getExperiencesByProvider(
     providerIdentity:
       | string
-      | { slug?: string | null; email?: string | null; agency?: string | null; name?: string | null },
+      | {
+          slug?: string | null;
+          email?: string | null;
+          agency?: string | null;
+          name?: string | null;
+        },
   ): Experience[] {
     const normalizeAgency = (val: string) =>
       val
@@ -413,8 +418,8 @@ export class ExperienceService {
           payload['slug'] = merged.slug;
         }
 
-        if (merged.meetingPointUrl) {
-          payload['meeting_point_url'] = merged.meetingPointUrl;
+        if (Object.prototype.hasOwnProperty.call(updated, 'meetingPointUrl')) {
+          payload['meeting_point_url'] = updated.meetingPointUrl || '';
         }
         if (merged.albumPhotos) {
           payload['album_photos'] = merged.albumPhotos;
@@ -440,11 +445,26 @@ export class ExperienceService {
           payload['provider_slug'] = updated.providerSlug || null;
         }
 
-        const { data, error } = await this.supabase
+        let { data, error } = await this.supabase
           .from('experiencias')
           .update(payload as any)
           .eq('id', merged.id)
           .select();
+
+        if (error && /meeting_point_url/.test(error.message || '')) {
+          // Columna aún no migrada en la base remota: reintenta sin ella, preservando el resto
+          const { meeting_point_url: _omit, ...legacyPayload } = payload as any;
+          ({ data, error } = (await this.supabase
+            .from('experiencias')
+            .update(legacyPayload as any)
+            .eq('id', merged.id)
+            .select()) as any);
+          if (!error && Object.prototype.hasOwnProperty.call(updated, 'meetingPointUrl')) {
+            throw new Error(
+              'No se pudo guardar la URL del punto de encuentro porque la base de datos requiere una migración.',
+            );
+          }
+        }
 
         if (error || !data || data.length === 0) {
           throw error || new Error(`No se encontró la experiencia remota con id ${merged.id}`);
@@ -708,19 +728,14 @@ export class ExperienceService {
             const missingDefaults = DEFAULT_EXPERIENCES.filter(
               (d) => !existingSlugs.has(d.slug) && !deletedIds.has(d.id) && !deletedIds.has(d.slug),
             );
-            return [
-              ...activeList,
-              ...missingDefaults,
-            ];
+            return [...activeList, ...missingDefaults];
           }
         }
       } catch {
         // Fallback
       }
     }
-    return DEFAULT_EXPERIENCES.filter(
-      (d) => !deletedIds.has(d.id) && !deletedIds.has(d.slug),
-    );
+    return DEFAULT_EXPERIENCES.filter((d) => !deletedIds.has(d.id) && !deletedIds.has(d.slug));
   }
 
   private persistToLocalStorage(list: Experience[]): void {
@@ -786,8 +801,9 @@ export class ExperienceService {
         try {
           const { data: sessionData } = await this.supabase.auth.getSession();
           if (sessionData?.session?.user) {
-            const { data: accessRows } = await (this.supabase.from('provider_access') as any)
-              .select('email, cbu_alias, cuit_dni, bank_name');
+            const { data: accessRows } = await (
+              this.supabase.from('provider_access') as any
+            ).select('email, cbu_alias, cuit_dni, bank_name');
             if (Array.isArray(accessRows)) {
               for (const row of accessRows) {
                 if (row?.email) {
@@ -832,26 +848,17 @@ export class ExperienceService {
             videoUrl: exp.video_url || undefined,
             videoPoster: exp.video_poster || undefined,
             highlights:
-              Array.isArray(exp.highlights) && exp.highlights.length > 0
-                ? exp.highlights
-                : [],
-            included:
-              Array.isArray(exp.included) && exp.included.length > 0
-                ? exp.included
-                : [],
+              Array.isArray(exp.highlights) && exp.highlights.length > 0 ? exp.highlights : [],
+            included: Array.isArray(exp.included) && exp.included.length > 0 ? exp.included : [],
             notIncluded:
               Array.isArray(exp.not_included) && exp.not_included.length > 0
                 ? exp.not_included
                 : [],
-            dates:
-              Array.isArray(exp.dates) && exp.dates.length > 0
-                ? exp.dates
-                : [],
+            dates: Array.isArray(exp.dates) && exp.dates.length > 0 ? exp.dates : [],
             dateSlots: Array.isArray(exp.date_slots) ? exp.date_slots : undefined,
             providerEmail: exp.provider_email || undefined,
             providerSlug:
-              exp.provider_slug ||
-              (exp.slug === 'kayak' ? 'catamarca-kayak' : undefined),
+              exp.provider_slug || (exp.slug === 'kayak' ? 'catamarca-kayak' : undefined),
             providerName:
               exp.provider_name ||
               (exp.slug === 'kayak' ? 'Catamarca Kayak & Aventura Náutica' : undefined),

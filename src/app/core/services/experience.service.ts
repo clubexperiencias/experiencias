@@ -440,11 +440,21 @@ export class ExperienceService {
           payload['provider_slug'] = updated.providerSlug || null;
         }
 
-        const { data, error } = await this.supabase
+        let { data, error } = await this.supabase
           .from('experiencias')
           .update(payload as any)
           .eq('id', merged.id)
           .select();
+
+        if (error && /meeting_point_url/.test(error.message || '')) {
+          // Columna aún no migrada en la base remota: reintenta sin ella, preservando el resto
+          const { meeting_point_url: _omit, ...legacyPayload } = payload as any;
+          ({ data, error } = await this.supabase
+            .from('experiencias')
+            .update(legacyPayload as any)
+            .eq('id', merged.id)
+            .select() as any);
+        }
 
         if (error || !data || data.length === 0) {
           throw error || new Error(`No se encontró la experiencia remota con id ${merged.id}`);

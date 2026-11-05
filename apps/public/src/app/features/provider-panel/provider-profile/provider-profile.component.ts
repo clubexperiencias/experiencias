@@ -4,7 +4,11 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { ProviderStoreService } from '../../../core/services/provider-store.service';
 import { StorageService } from '../../../core/services/storage.service';
-import { socialUrlValidator, normalizeSocialUrl } from '../../../shared/utils/social-url.util';
+import {
+  socialUrlValidator,
+  normalizeSocialUrl,
+  migrateLegacySocialHandle,
+} from '../../../shared/utils/social-url.util';
 
 @Component({
   selector: 'app-provider-profile',
@@ -19,7 +23,8 @@ import { socialUrlValidator, normalizeSocialUrl } from '../../../shared/utils/so
             <h2 class="card-heading">Perfil del Prestador y Datos de Cobro</h2>
           </div>
           <p class="card-subheading">
-            Esta información se utiliza para las fichas técnicas de tus experiencias y los datos de destino donde los socios transfieren los pagos.
+            Esta información se utiliza para las fichas técnicas de tus experiencias y los datos de
+            destino donde los socios transfieren los pagos.
           </p>
         </div>
       </div>
@@ -30,13 +35,16 @@ import { socialUrlValidator, normalizeSocialUrl } from '../../../shared/utils/so
             <div>
               <h3 class="section-title">Datos Bancarios para Liquidación de Pagos</h3>
               <p class="section-desc">
-                Es la cuenta bancaria o virtual donde se liquidan las recaudaciones y aranceles de tus experiencias.
+                Es la cuenta bancaria o virtual donde se liquidan las recaudaciones y aranceles de
+                tus experiencias.
               </p>
             </div>
 
             <div class="form-grid">
               <div class="form-group">
-                <label class="form-label">CBU o Alias de Destino <span class="req-star">*</span></label>
+                <label class="form-label"
+                  >CBU o Alias de Destino <span class="req-star">*</span></label
+                >
                 <input
                   type="text"
                   formControlName="cbuAlias"
@@ -48,7 +56,9 @@ import { socialUrlValidator, normalizeSocialUrl } from '../../../shared/utils/so
               </div>
 
               <div class="form-group">
-                <label class="form-label">Entidad Bancaria o Billetera <span class="req-star">*</span></label>
+                <label class="form-label"
+                  >Entidad Bancaria o Billetera <span class="req-star">*</span></label
+                >
                 <input
                   type="text"
                   formControlName="bankName"
@@ -59,7 +69,9 @@ import { socialUrlValidator, normalizeSocialUrl } from '../../../shared/utils/so
               </div>
 
               <div class="form-group">
-                <label class="form-label">Nombre / Titular de la Cuenta <span class="req-star">*</span></label>
+                <label class="form-label"
+                  >Nombre / Titular de la Cuenta <span class="req-star">*</span></label
+                >
                 <input
                   type="text"
                   formControlName="name"
@@ -70,7 +82,9 @@ import { socialUrlValidator, normalizeSocialUrl } from '../../../shared/utils/so
               </div>
 
               <div class="form-group">
-                <label class="form-label">CUIT / CUIL del Titular <span class="req-star">*</span></label>
+                <label class="form-label"
+                  >CUIT / CUIL del Titular <span class="req-star">*</span></label
+                >
                 <input
                   type="text"
                   formControlName="cuitDni"
@@ -86,7 +100,9 @@ import { socialUrlValidator, normalizeSocialUrl } from '../../../shared/utils/so
               <div class="audit-text">
                 <strong class="audit-title">Registro Seguro de Datos Bancarios</strong>
                 <p class="audit-desc">
-                  Podés actualizar tus datos de cobro cuando lo necesites. Cada modificación queda registrada con fecha y hora de auditoría para asegurar la trazabilidad y la correcta liquidación de tus servicios.
+                  Podés actualizar tus datos de cobro cuando lo necesites. Cada modificación queda
+                  registrada con fecha y hora de auditoría para asegurar la trazabilidad y la
+                  correcta liquidación de tus servicios.
                 </p>
               </div>
             </div>
@@ -108,9 +124,7 @@ import { socialUrlValidator, normalizeSocialUrl } from '../../../shared/utils/so
                   />
                   <mat-icon class="lock-icon" aria-hidden="true">lock</mat-icon>
                 </div>
-                <span class="field-hint"
-                  >Nombre oficial registrado del titular de la cuenta</span
-                >
+                <span class="field-hint">Nombre oficial registrado del titular de la cuenta</span>
               </div>
 
               <div class="form-group">
@@ -131,7 +145,9 @@ import { socialUrlValidator, normalizeSocialUrl } from '../../../shared/utils/so
               </div>
 
               <div class="form-group">
-                <label class="form-label">Nombre Comercial o Agencia <span class="req-star">*</span></label>
+                <label class="form-label"
+                  >Nombre Comercial o Agencia <span class="req-star">*</span></label
+                >
                 <input
                   type="text"
                   formControlName="agency"
@@ -161,7 +177,9 @@ import { socialUrlValidator, normalizeSocialUrl } from '../../../shared/utils/so
                   [placeholder]="currentSlug()"
                 />
                 <span class="field-hint"
-                  >experiencias.club/prestadores/{{ form.get('slug')?.value || currentSlug() }}</span
+                  >experiencias.club/prestadores/{{
+                    form.get('slug')?.value || currentSlug()
+                  }}</span
                 >
               </div>
 
@@ -174,7 +192,8 @@ import { socialUrlValidator, normalizeSocialUrl } from '../../../shared/utils/so
                   placeholder="Contá a los exploradores sobre tu trayectoria, guías certificados y qué hace únicas a tus salidas..."
                 ></textarea>
                 <span class="field-hint"
-                  >Esta descripción se presentará en tu ficha técnica y en tu perfil público oficial.</span
+                  >Esta descripción se presentará en tu ficha técnica y en tu perfil público
+                  oficial.</span
                 >
               </div>
 
@@ -193,7 +212,11 @@ import { socialUrlValidator, normalizeSocialUrl } from '../../../shared/utils/so
                     class="form-input"
                     placeholder="URL de imagen o subí un archivo..."
                   />
-                  <label class="btn-file-upload" [class.is-loading]="isUploadingAvatar()" title="Elegir y subir imagen a Supabase Storage">
+                  <label
+                    class="btn-file-upload"
+                    [class.is-loading]="isUploadingAvatar()"
+                    title="Elegir y subir imagen a Supabase Storage"
+                  >
                     <input
                       type="file"
                       accept="image/png,image/jpeg,image/webp"
@@ -201,7 +224,9 @@ import { socialUrlValidator, normalizeSocialUrl } from '../../../shared/utils/so
                       (change)="onFileSelected($event, 'avatar')"
                       [disabled]="isUploadingAvatar()"
                     />
-                    <mat-icon class="upload-icon">{{ isUploadingAvatar() ? 'hourglass_empty' : 'cloud_upload' }}</mat-icon>
+                    <mat-icon class="upload-icon">{{
+                      isUploadingAvatar() ? 'hourglass_empty' : 'cloud_upload'
+                    }}</mat-icon>
                     <span>{{ isUploadingAvatar() ? 'Subiendo...' : 'Subir imagen' }}</span>
                   </label>
                 </div>
@@ -212,7 +237,9 @@ import { socialUrlValidator, normalizeSocialUrl } from '../../../shared/utils/so
               </div>
 
               <div class="form-group media-field-group">
-                <label class="form-label" for="profile-cover-input">Foto de Portada de la Agencia</label>
+                <label class="form-label" for="profile-cover-input"
+                  >Foto de Portada de la Agencia</label
+                >
                 <div class="media-input-wrapper">
                   @if (form.get('coverImage')?.value) {
                     <div class="media-thumb-preview cover-thumb" title="Vista previa de portada">
@@ -226,7 +253,11 @@ import { socialUrlValidator, normalizeSocialUrl } from '../../../shared/utils/so
                     class="form-input"
                     placeholder="URL de imagen o subí un archivo..."
                   />
-                  <label class="btn-file-upload" [class.is-loading]="isUploadingCover()" title="Elegir y subir imagen a Supabase Storage">
+                  <label
+                    class="btn-file-upload"
+                    [class.is-loading]="isUploadingCover()"
+                    title="Elegir y subir imagen a Supabase Storage"
+                  >
                     <input
                       type="file"
                       accept="image/png,image/jpeg,image/webp"
@@ -234,7 +265,9 @@ import { socialUrlValidator, normalizeSocialUrl } from '../../../shared/utils/so
                       (change)="onFileSelected($event, 'coverImage')"
                       [disabled]="isUploadingCover()"
                     />
-                    <mat-icon class="upload-icon">{{ isUploadingCover() ? 'hourglass_empty' : 'cloud_upload' }}</mat-icon>
+                    <mat-icon class="upload-icon">{{
+                      isUploadingCover() ? 'hourglass_empty' : 'cloud_upload'
+                    }}</mat-icon>
                     <span>{{ isUploadingCover() ? 'Subiendo...' : 'Subir imagen' }}</span>
                   </label>
                 </div>
@@ -245,7 +278,9 @@ import { socialUrlValidator, normalizeSocialUrl } from '../../../shared/utils/so
               </div>
 
               <div class="form-group">
-                <label class="form-label">Teléfono / WhatsApp de Contacto <span class="req-star">*</span></label>
+                <label class="form-label"
+                  >Teléfono / WhatsApp de Contacto <span class="req-star">*</span></label
+                >
                 <input
                   type="text"
                   formControlName="phone"
@@ -276,9 +311,14 @@ import { socialUrlValidator, normalizeSocialUrl } from '../../../shared/utils/so
                   placeholder="Ej. https://instagram.com/catamarcakayak"
                 />
                 @if (form.controls.socialMedia.invalid && form.controls.socialMedia.touched) {
-                  <span class="field-error-text">Ingresá la URL completa del perfil (ej. https://instagram.com/usuario).</span>
+                  <span class="field-error-text"
+                    >Ingresá la URL completa del perfil (ej. https://instagram.com/usuario).</span
+                  >
                 } @else {
-                  <span class="field-hint">URL de tu perfil de Instagram, Facebook u otra red. En tu perfil público se mostrará solo el usuario.</span>
+                  <span class="field-hint"
+                    >URL de tu perfil de Instagram, Facebook u otra red. En tu perfil público se
+                    mostrará solo el usuario.</span
+                  >
                 }
               </div>
 
@@ -291,10 +331,17 @@ import { socialUrlValidator, normalizeSocialUrl } from '../../../shared/utils/so
                   maxlength="200"
                   placeholder="Ej. https://facebook.com/catamarcakayak"
                 />
-                @if (form.controls.socialMediaSecondary.invalid && form.controls.socialMediaSecondary.touched) {
-                  <span class="field-error-text">Ingresá la URL completa del perfil (ej. https://facebook.com/usuario).</span>
+                @if (
+                  form.controls.socialMediaSecondary.invalid &&
+                  form.controls.socialMediaSecondary.touched
+                ) {
+                  <span class="field-error-text"
+                    >Ingresá la URL completa del perfil (ej. https://facebook.com/usuario).</span
+                  >
                 } @else {
-                  <span class="field-hint">Opcional. Segunda red para difundir tus experiencias.</span>
+                  <span class="field-hint"
+                    >Opcional. Segunda red para difundir tus experiencias.</span
+                  >
                 }
               </div>
             </div>
@@ -303,7 +350,10 @@ import { socialUrlValidator, normalizeSocialUrl } from '../../../shared/utils/so
           @if (savedSuccess()) {
             <div class="alert-success" role="status">
               <mat-icon class="alert-icon">check_circle</mat-icon>
-              <span>¡Perfil y datos bancarios actualizados correctamente! El historial de cambios ha sido registrado.</span>
+              <span
+                >¡Perfil y datos bancarios actualizados correctamente! El historial de cambios ha
+                sido registrado.</span
+              >
             </div>
           }
 
@@ -787,9 +837,12 @@ export class ProviderProfileComponent {
     cuitDni: [this.store.currentProvider()?.cuitDni || '', Validators.required],
     phone: [this.store.currentProvider()?.phone || '', Validators.required],
     website: [this.store.currentProvider()?.website || ''],
-    socialMedia: [this.store.currentProvider()?.socialMedia || '', [socialUrlValidator]],
+    socialMedia: [
+      migrateLegacySocialHandle(this.store.currentProvider()?.socialMedia),
+      [socialUrlValidator],
+    ],
     socialMediaSecondary: [
-      this.store.currentProvider()?.socialMediaSecondary || '',
+      migrateLegacySocialHandle(this.store.currentProvider()?.socialMediaSecondary),
       [socialUrlValidator],
     ],
     cbuAlias: [this.store.currentProvider()?.cbuAlias || '', Validators.required],
@@ -810,8 +863,8 @@ export class ProviderProfileComponent {
           cuitDni: p.cuitDni || '',
           phone: p.phone || '',
           website: p.website || '',
-          socialMedia: p.socialMedia || '',
-          socialMediaSecondary: p.socialMediaSecondary || '',
+          socialMedia: migrateLegacySocialHandle(p.socialMedia),
+          socialMediaSecondary: migrateLegacySocialHandle(p.socialMediaSecondary),
           cbuAlias: p.cbuAlias || '',
           bankName: p.bankName || '',
         });
@@ -820,7 +873,8 @@ export class ProviderProfileComponent {
   }
 
   async onSave(): Promise<void> {
-    if (this.form.invalid || this.isSaving() || this.isUploadingAvatar() || this.isUploadingCover()) return;
+    if (this.form.invalid || this.isSaving() || this.isUploadingAvatar() || this.isUploadingCover())
+      return;
 
     this.isSaving.set(true);
     this.errorMessage.set(null);
@@ -875,9 +929,13 @@ export class ProviderProfileComponent {
 
     if (!file.type.startsWith('image/')) {
       if (field === 'avatar') {
-        this.uploadAvatarError.set('El archivo seleccionado debe ser una imagen válida (JPG, PNG, WEBP o SVG).');
+        this.uploadAvatarError.set(
+          'El archivo seleccionado debe ser una imagen válida (JPG, PNG, WEBP o SVG).',
+        );
       } else {
-        this.uploadCoverError.set('El archivo seleccionado debe ser una imagen válida (JPG, PNG, WEBP).');
+        this.uploadCoverError.set(
+          'El archivo seleccionado debe ser una imagen válida (JPG, PNG, WEBP).',
+        );
       }
       input.value = '';
       return;

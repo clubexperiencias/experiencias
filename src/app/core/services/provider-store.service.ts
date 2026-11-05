@@ -2054,6 +2054,21 @@ export class ProviderStoreService {
               error.message || '',
             )
           ) {
+            // If meeting_point_url triggered the error and the user provided a value,
+            // refuse the fallback: silently dropping it would lose data the provider
+            // explicitly entered. Require the DB schema to be migrated first.
+            const urlTriggeredError =
+              /meeting_point_url/.test(error.message || '') ||
+              (error.code === '42703' && proposalPayload['meeting_point_url']);
+            if (urlTriggeredError && proposalPayload['meeting_point_url']) {
+              console.warn('[ProviderStore] meeting_point_url column missing in DB; refusing silent fallback.');
+              this._experienceRequests.update((list) => list.filter((r) => r.id !== newReq.id));
+              this.saveRequests();
+              throw new Error(
+                'No se pudo guardar la URL del punto de encuentro porque la base de datos requiere una migración. ' +
+                  'Por favor contactá al equipo técnico.',
+              );
+            }
             const fallbackPayload = { ...proposalPayload };
             delete fallbackPayload['meeting_point_url'];
             delete fallbackPayload['album_photos'];
