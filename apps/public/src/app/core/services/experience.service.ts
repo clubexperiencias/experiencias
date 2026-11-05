@@ -419,7 +419,8 @@ export class ExperienceService {
         }
 
         if (Object.prototype.hasOwnProperty.call(updated, 'meetingPointUrl')) {
-          payload['meeting_point_url'] = updated.meetingPointUrl || '';
+          // Preserve explicit empty string; omit only when the field is absent
+          payload['meeting_point_url'] = updated.meetingPointUrl;
         }
         if (merged.albumPhotos) {
           payload['album_photos'] = merged.albumPhotos;
@@ -459,11 +460,6 @@ export class ExperienceService {
             .update(legacyPayload as any)
             .eq('id', merged.id)
             .select()) as any);
-          if (!error && Object.prototype.hasOwnProperty.call(updated, 'meetingPointUrl')) {
-            throw new Error(
-              'No se pudo guardar la URL del punto de encuentro porque la base de datos requiere una migración.',
-            );
-          }
         }
 
         if (error || !data || data.length === 0) {
@@ -558,6 +554,7 @@ export class ExperienceService {
           id: experience.id,
           slug: experience.slug,
           title: experience.title,
+          kicker: experience.kicker || '',
           tagline: experience.tagline,
           description: experience.description,
           region: experience.region,
@@ -572,6 +569,9 @@ export class ExperienceService {
           video_url: experience.videoUrl || '',
           video_poster: experience.videoPoster || '',
           altitude_meters: experience.altitudeMeters || 0,
+          best_season: experience.bestSeason || '',
+          itinerary: experience.itinerary || '',
+          promos_and_pricing: experience.promosAndPricing || '',
           dates: experience.dates || [],
           highlights: experience.highlights || [],
           included: experience.included || [],
@@ -586,9 +586,21 @@ export class ExperienceService {
         };
 
         let { error } = await this.supabase.from('experiencias').insert(payload as any);
-        if (error && /meeting_point_url/.test(error.message || '')) {
-          // Columna aún no migrada en la base remota: reintenta sin ella
-          const { meeting_point_url: _omit, ...legacyPayload } = payload;
+        if (
+          error &&
+          /column.*does not exist|meeting_point_url|itinerary|kicker|best_season|promos_and_pricing/i.test(
+            error.message || '',
+          )
+        ) {
+          // Columna aún no migrada en la base remota: reintenta omitiendo campos adicionales
+          const {
+            meeting_point_url: _omitM,
+            itinerary: _omitI,
+            kicker: _omitK,
+            best_season: _omitB,
+            promos_and_pricing: _omitP,
+            ...legacyPayload
+          } = payload;
           ({ error } = await this.supabase.from('experiencias').insert(legacyPayload as any));
         }
         if (error) {
@@ -783,10 +795,15 @@ export class ExperienceService {
           .select(columns)
           .order('created_at', { ascending: true }) as any;
 
-      let { data, error } = await fetchExperiences(`${publicColumns}, meeting_point_url`);
-      if (error && /meeting_point_url/.test(error.message || '')) {
-        // Columna aún no migrada en la base remota: reintenta sin ella
-        ({ data, error } = await fetchExperiences(publicColumns));
+      let { data, error } = await fetchExperiences(
+        `${publicColumns}, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing`,
+      );
+      if (error) {
+        // Reintento con fallback progresivo si alguna columna nueva no existe aún
+        ({ data, error } = await fetchExperiences(`${publicColumns}, meeting_point_url`));
+        if (error && /meeting_point_url/.test(error.message || '')) {
+          ({ data, error } = await fetchExperiences(publicColumns));
+        }
       }
       if (error) {
         console.warn('[ExperienceService] No se pudieron cargar las experiencias remotas:', error);
@@ -825,7 +842,7 @@ export class ExperienceService {
             slug: exp.slug,
             title: exp.title,
             shortTitle: exp.title,
-            kicker: '',
+            kicker: exp.kicker || '',
             tagline: exp.tagline,
             description: exp.description,
             region: exp.region,
@@ -835,7 +852,9 @@ export class ExperienceService {
             durationDays: 1,
             durationLabel: exp.duration_label || '4 horas',
             altitudeMeters: exp.altitude_meters ?? 0,
-            bestSeason: '',
+            bestSeason: exp.best_season || '',
+            itinerary: exp.itinerary || undefined,
+            promosAndPricing: exp.promos_and_pricing || undefined,
             priceArs: exp.price_ars,
             priceUsd: exp.price_usd ?? 70,
             maxSpotsPerGroup: exp.capacity_per_date || 12,

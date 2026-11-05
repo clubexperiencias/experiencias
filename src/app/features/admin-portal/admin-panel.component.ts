@@ -8,6 +8,7 @@ import { AdminLoginComponent } from './admin-login/admin-login.component';
 
 const ROUTE_LABELS: Record<string, string> = {
   socios: 'SOCIOS',
+  prestadores: 'PRESTADORES',
   comprobantes: 'COMPROBANTES',
   propuestas: 'PROPUESTAS',
   postulaciones: 'PROPUESTAS',
@@ -93,6 +94,17 @@ const ROUTE_LABELS: Record<string, string> = {
                     <mat-icon class="menu-item-icon">group</mat-icon>
                     <div class="menu-item-info">
                       <strong class="menu-item-title">Ver Socios</strong>
+                    </div>
+                  </a>
+
+                  <a
+                    routerLink="/prestadores"
+                    class="dropdown-item enlarged-item"
+                    (click)="userMenuOpen.set(false)"
+                  >
+                    <mat-icon class="menu-item-icon">badge</mat-icon>
+                    <div class="menu-item-info">
+                      <strong class="menu-item-title">Ver Prestadores</strong>
                     </div>
                   </a>
 
@@ -209,12 +221,28 @@ export class AdminPanelComponent {
     const segments = rawPath.split('/').filter(Boolean);
     const cleanSegments = segments.filter((s) => s !== 'admin' && s !== 'dashboard');
 
+    const isPanel = typeof window !== 'undefined' && window.location.pathname.includes('/admin');
+    const basePath = isPanel ? '/admin' : '';
+
     const items: { label: string; link?: string }[] = [];
     if (cleanSegments.length === 0) {
       return items;
     }
 
-    let accumulated = '';
+    if (cleanSegments[0] === 'experiencias') {
+      if (cleanSegments.length === 1) {
+        items.push({ label: 'EXPERIENCIAS' });
+      } else if (cleanSegments.includes('editar')) {
+        items.push({ label: 'EXPERIENCIAS', link: `${basePath}/experiencias` });
+        items.push({ label: 'EDITAR' });
+      } else {
+        items.push({ label: 'EXPERIENCIAS', link: `${basePath}/experiencias` });
+        items.push({ label: cleanSegments[cleanSegments.length - 1].toUpperCase() });
+      }
+      return items;
+    }
+
+    let accumulated = basePath;
     for (let i = 0; i < cleanSegments.length; i++) {
       const seg = cleanSegments[i];
       accumulated += `/${seg}`;

@@ -230,16 +230,6 @@
                           <span class="pay-label">Monto a pagar</span>
                           <p class="pay-amount">{{ total() | ars }}</p>
                         </div>
-                        <button
-                          type="button"
-                          class="pay-copy-btn"
-                          (click)="copy(total().toString(), 'monto')"
-                        >
-                          <mat-icon aria-hidden="true">{{
-                            copied() === 'monto' ? 'check' : 'content_copy'
-                          }}</mat-icon>
-                          {{ copied() === 'monto' ? 'Copiado' : 'Copiar' }}
-                        </button>
                       </div>
 
                       <div class="pay-discount pay-discount-block">
@@ -288,20 +278,25 @@
                       </div>
 
                       <div class="pay-transfer-row pay-cbu-row">
-                        <div>
-                          <span class="pay-label">CBU / CVU o Alias a transferir</span>
+                        <span class="pay-label">CBU / CVU o Alias a transferir</span>
+                        <div class="pay-cbu-inline-wrap">
                           <p class="pay-cbu pay-mono" [attr.aria-label]="'CBU o Alias ' + cbu">
                             @for (group of cbuGroups; track $index) {
                               <span>{{ group }}</span>
                             }
                           </p>
+                          <button
+                            type="button"
+                            class="pay-cbu-icon-btn"
+                            (click)="copy(cbu, 'cbu')"
+                            [attr.aria-label]="copied() === 'cbu' ? 'CBU o Alias copiado' : 'Copiar CBU o Alias'"
+                            [title]="copied() === 'cbu' ? '¡Copiado!' : 'Copiar CBU o Alias'"
+                          >
+                            <mat-icon aria-hidden="true">{{
+                              copied() === 'cbu' ? 'check' : 'content_copy'
+                            }}</mat-icon>
+                          </button>
                         </div>
-                        <button type="button" class="pay-copy-btn" (click)="copy(cbu, 'cbu')">
-                          <mat-icon aria-hidden="true">{{
-                            copied() === 'cbu' ? 'check' : 'content_copy'
-                          }}</mat-icon>
-                          {{ copied() === 'cbu' ? 'Copiado' : 'Copiar' }}
-                        </button>
                       </div>
                       <div class="pay-transfer-row pay-transfer-detail">
                         <span class="pay-label">Nombre / Titular</span>

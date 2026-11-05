@@ -348,12 +348,19 @@
 }
 
 .tier-card.featured-tier .tier-price {
+  font-family: var(--font-sans);
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
   color: #ffffff;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
 }
 
 .tier-card.featured-tier .tier-period {
-  color: rgba(255, 255, 255, 0.92);
+  font-family: var(--font-sans);
+  font-size: 0.76rem;
+  color: rgba(255, 255, 255, 0.88);
+  white-space: nowrap;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
 }
 
@@ -465,7 +472,10 @@
 }
 
 .tier-card.founder-tier .tier-period {
+  font-family: var(--font-sans);
+  font-size: 0.76rem;
   color: rgba(255, 255, 255, 0.88);
+  white-space: nowrap;
 }
 
 .tier-card.founder-tier .jump-tag {

@@ -28,30 +28,27 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
         </div>
       </div>
 
-      <!-- Métricas Rápidas de Nómina: Día, Semana, Mes y Total -->
+      <!-- Métricas Rápidas de Nómina: Lista de Espera, Semana, Mes y Socios Totales -->
       <div class="summary-strip">
         <div class="summary-item">
-          <span class="sum-label">Socios del Día</span>
-          <strong class="sum-value">{{ store.stats().membersToday }}</strong>
-          <span class="sum-sub">Registrados hoy</span>
+          <span class="sum-label">Lista de Espera</span>
+          <strong class="sum-value">{{ store.stats().totalWaitlist }}</strong>
+          <span class="sum-sub">Prospectos registrados</span>
         </div>
         <div class="summary-item">
-          <span class="sum-label">Socios de la Semana</span>
+          <span class="sum-label">Socios a la Semana</span>
           <strong class="sum-value">{{ store.stats().membersThisWeek }}</strong>
           <span class="sum-sub">Últimos 7 días</span>
         </div>
         <div class="summary-item">
-          <span class="sum-label">Socios del Mes</span>
+          <span class="sum-label">Socios al Mes</span>
           <strong class="sum-value">{{ store.stats().membersThisMonth }}</strong>
           <span class="sum-sub">Mes en curso</span>
         </div>
         <div class="summary-item">
-          <span class="sum-label">Total Socios</span>
-          <strong class="sum-value">{{ store.stats().totalRecords }}</strong>
-          <span class="sum-sub"
-            >{{ store.stats().totalSocios }} confirmados + {{ store.stats().totalWaitlist }} en
-            espera</span
-          >
+          <span class="sum-label">Socios Totales</span>
+          <strong class="sum-value">{{ store.stats().totalGoogleLinked }}</strong>
+          <span class="sum-sub">Con cuenta vinculada a Google</span>
         </div>
       </div>
 
@@ -142,7 +139,7 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
             </thead>
             <tbody>
               @for (m of filteredMembers(); track m.id) {
-                <tr [class.is-waitlist]="m.type === 'waitlist'" [class.is-google]="m.googleLinked">
+                <tr [class.is-waitlist]="m.type === 'waitlist' && !m.googleLinked" [class.is-google]="m.googleLinked">
                   <!-- # Socio / Posición -->
                   <td>
                     @if (m.type === 'socio') {
@@ -150,6 +147,8 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
                         <span class="socio-hash">#</span>
                         <strong>{{ m.position }}</strong>
                       </div>
+                    } @else if (m.googleLinked) {
+                      <span class="google-linked-pill" [class.is-provider-google]="isProvider(m)">GOOGLE</span>
                     } @else {
                       <span class="waitlist-pill">Waitlist</span>
                     }
@@ -159,8 +158,10 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
                   <td>
                     <div class="member-identity">
                       <strong class="member-name">{{ m.fullName || '—' }}</strong>
-                      @if (m.type === 'waitlist') {
+                      @if (m.type === 'waitlist' && !m.googleLinked) {
                         <span class="member-sub-hint">Pendiente de completar formulario</span>
+                      } @else if (m.type === 'waitlist' && m.googleLinked) {
+                        <span class="member-sub-hint">Cuenta Google vinculada</span>
                       } @else if (m.experiencesWishlist && m.experiencesWishlist.length > 0) {
                         <span class="member-sub-hint"
                           >Deseos: {{ m.experiencesWishlist.join(', ') }}</span
@@ -205,7 +206,10 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
                   <td>
                     <div class="status-tags-row">
                       @if (m.googleLinked) {
-                        <span class="google-linked-pill" title="Cuenta vinculada vía Google OAuth"
+                        <span
+                          class="google-linked-pill"
+                          [class.is-provider-google]="isProvider(m)"
+                          [title]="isProvider(m) ? 'Prestador con cuenta vinculada vía Google OAuth' : 'Cuenta vinculada vía Google OAuth'"
                           >GOOGLE</span
                         >
                       }
@@ -830,6 +834,14 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
         white-space: nowrap;
       }
 
+      .google-linked-pill.is-provider-google {
+        background: #80b3ff;
+        border-color: #80b3ff;
+        color: #ffffff;
+        font-weight: 800;
+        box-shadow: 0 0 10px rgba(128, 179, 255, 0.45);
+      }
+
       .converted-pill {
         display: inline-flex;
         align-items: center;
@@ -904,9 +916,9 @@ export class AdminMembersComponent {
     if (tab === 'socios') {
       list = list.filter((m) => m.type === 'socio');
     } else if (tab === 'waitlist') {
-      list = list.filter((m) => m.type === 'waitlist');
+      list = list.filter((m) => m.type === 'waitlist' && !m.googleLinked);
     } else if (tab === 'google') {
-      list = list.filter((m) => m.googleLinked);
+      list = list.filter((m) => Boolean(m.googleLinked));
     } else if (tab === 'convertidos') {
       list = list.filter((m) => m.converted);
     }
@@ -994,5 +1006,24 @@ export class AdminMembersComponent {
       default:
         return 'Lista de Espera';
     }
+  }
+
+  isProvider(member: AdminMember): boolean {
+    if (member.isProvider) return true;
+    const email = member.email?.toLowerCase().trim();
+    if (!email) return false;
+    if (email === 'patriciofacundodiaztillar@gmail.com') return true;
+    const inProviders = this.store.providerStore.allProviders().some(
+      (p: any) => p.email?.toLowerCase().trim() === email,
+    );
+    if (inProviders) return true;
+    const inApps = this.store.applications().some(
+      (a) => a.type === 'prestador' && a.email?.toLowerCase().trim() === email,
+    );
+    if (inApps) return true;
+    const inRequests = this.store.providerStore.experienceRequests().some(
+      (r) => r.providerEmail?.toLowerCase().trim() === email,
+    );
+    return inRequests;
   }
 }

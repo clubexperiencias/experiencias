@@ -54,7 +54,6 @@
 
               <div class="badges-row">
                 <span class="verified-badge">
-                  <mat-icon class="badge-icon">verified</mat-icon>
                   Prestador Oficial Verificado
                 </span>
                 @if (p.role === 'prestador') {
@@ -68,7 +67,6 @@
               <h1 class="provider-agency-title">{{ p.agency || p.name }}</h1>
               @if (p.agency && p.name && p.agency !== p.name) {
                 <p class="operator-subtitle">
-                  <mat-icon class="sub-icon">person</mat-icon>
                   Titular responsable: <strong>{{ p.name }}</strong>
                 </p>
               }
@@ -92,7 +90,6 @@
                   class="action-pill action-pill-wa"
                   title="Contactar al prestador por WhatsApp"
                 >
-                  <mat-icon class="pill-icon">chat</mat-icon>
                   <span>Contactar por WhatsApp</span>
                 </a>
               }
@@ -105,7 +102,6 @@
                   class="action-pill"
                   title="Visitar sitio web oficial"
                 >
-                  <mat-icon class="pill-icon">language</mat-icon>
                   <span>Sitio Web Oficial</span>
                 </a>
               }
@@ -119,7 +115,6 @@
                     class="action-pill"
                     [title]="'Abrir perfil ' + socialHandle(social) + ' en otra pestaña'"
                   >
-                    <mat-icon class="pill-icon">share</mat-icon>
                     <span>{{ socialHandle(social) }}</span>
                   </a>
                 }
@@ -133,9 +128,6 @@
           <div class="section-title-wrap">
             <span class="section-kicker">CATÁLOGO EXCLUSIVO</span>
             <h2 class="card-heading">Experiencias Operadas por {{ p.agency || p.name }}</h2>
-            <p class="card-subheading">
-              Salidas confirmadas y actividades con cupos exclusivos para socios del Club.
-            </p>
           </div>
 
           @if (providerExperiences().length > 0) {
@@ -152,9 +144,9 @@
                     <p class="exp-card-tagline">{{ exp.tagline }}</p>
 
                     <div class="exp-specs-line">
-                      <span><mat-icon class="spec-mini-icon">schedule</mat-icon> {{ exp.durationLabel }}</span>
-                      <span><mat-icon class="spec-mini-icon">terrain</mat-icon> {{ exp.difficulty }}</span>
-                      <span><mat-icon class="spec-mini-icon">group</mat-icon> Hasta {{ exp.maxSpotsPerGroup }} socios</span>
+                      <span>{{ exp.durationLabel }}</span>
+                      <span>{{ exp.difficulty }}</span>
+                      <span>Hasta {{ exp.maxSpotsPerGroup }} socios</span>
                     </div>
 
                     <div class="exp-card-footer">
@@ -170,7 +162,6 @@
                         class="btn-exp-cta"
                       >
                         <span>Ver Experiencia</span>
-                        <mat-icon class="arrow-icon">arrow_forward</mat-icon>
                       </a>
                     </div>
                   </div>
@@ -179,7 +170,6 @@
             </div>
           } @else {
             <div class="empty-exp-box">
-              <mat-icon class="empty-icon">explore</mat-icon>
               <h3>Próximamente más experiencias</h3>
               <p>Este prestador está preparando nuevas fechas y salidas para la temporada.</p>
               <a routerLink="/experiencias" class="btn-primary" style="margin-top: 1rem; display: inline-flex;">

@@ -119,6 +119,7 @@
                   <p class="details-description">{{ exp.description }}</p>
 
                   <div class="details-columns-grid">
+                    @if (exp.highlights && exp.highlights.length > 0) {
                     <div class="details-col">
                       <span class="col-kicker">PUNTOS DESTACADOS</span>
                       <ul class="highlights-list">
@@ -127,6 +128,7 @@
                         }
                       </ul>
                     </div>
+                    }
 
                     <div class="details-col">
                       <span class="col-kicker">SERVICIOS INCLUIDOS</span>
@@ -241,6 +243,7 @@
                   <p class="details-description">{{ exp.description }}</p>
 
                   <div class="details-columns-grid">
+                    @if (exp.highlights && exp.highlights.length > 0) {
                     <div class="details-col">
                       <span class="col-kicker">PUNTOS DESTACADOS</span>
                       <ul class="highlights-list">
@@ -249,6 +252,7 @@
                         }
                       </ul>
                     </div>
+                    }
 
                     <div class="details-col">
                       <span class="col-kicker">SERVICIOS INCLUIDOS</span>

@@ -387,7 +387,7 @@ const DEFAULT_REQ_FORM = {
                     <h4 class="form-section-title">Especificaciones Técnicas</h4>
                   </div>
 
-                  <div class="form-grid-3">
+                  <div class="form-row">
                     <div class="form-group">
                       <label class="form-label" for="req-difficulty">Dificultad Técnica *</label>
                       <select
@@ -423,7 +423,9 @@ const DEFAULT_REQ_FORM = {
                         <option value="8 horas (Jornada completa)">8 horas (Jornada completa)</option>
                       </select>
                     </div>
+                  </div>
 
+                  <div class="form-row">
                     <div class="form-group">
                       <label class="form-label" for="req-altitude">Altitud</label>
                       <input
@@ -435,6 +437,22 @@ const DEFAULT_REQ_FORM = {
                         [(ngModel)]="reqForm.altitude"
                         name="altitude"
                       />
+                    </div>
+
+                    <div class="form-group">
+                      <label class="form-label" for="req-capacity">Cupo Máximo por Salida *</label>
+                      <input
+                        id="req-capacity"
+                        type="number"
+                        min="1"
+                        max="200"
+                        class="form-input"
+                        placeholder="Ej: 12"
+                        [(ngModel)]="reqForm.capacity"
+                        name="capacity"
+                        required
+                      />
+                      <span class="field-hint">Cantidad máxima de participantes por fecha o grupo.</span>
                     </div>
                   </div>
                 </div>
@@ -935,13 +953,6 @@ const DEFAULT_REQ_FORM = {
                           (change)="onGalleryPhotosSelected($event)"
                         />
                         <div class="dropzone-body">
-                          <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                            <rect x="2" y="2" width="20" height="20" rx="3" ry="3" />
-                            <circle cx="8.5" cy="8.5" r="1.5" />
-                            <polyline points="21 15 16 10 5 21" />
-                            <line x1="12" y1="8" x2="12" y2="16" />
-                            <line x1="8" y1="12" x2="16" y2="12" />
-                          </svg>
                           <span class="dropzone-text-main">Agregar Fotos a la Galería ({{ galleryPhotos().length }} / 9)</span>
                           <span class="dropzone-text-sub">
                             Podés seleccionar o arrastrar múltiples fotos a la vez
@@ -1752,7 +1763,7 @@ const DEFAULT_REQ_FORM = {
       }
       .modal-form-actions {
         display: flex;
-        justify-content: flex-end;
+        justify-content: space-between;
         align-items: center;
         gap: 0.85rem;
         padding-top: 0.5rem;
@@ -2999,17 +3010,22 @@ export class ProviderExperienceProposalModalComponent {
       providerId = providerId || 'provider-anon';
     }
 
-    let coverImageUrl = this.coverImageDataUrl() || this.coverImagePreview() || '/assets/images/kayak-club-de-experiencias.jpg';
+    let coverImageUrl = this.coverImageDataUrl() || '/assets/images/kayak-club-de-experiencias.jpg';
     const coverFile = this.coverImageFile();
 
     if (coverFile) {
       try {
         const uploadRes = await this.storageService.uploadFile(coverFile, 'PROPOSAL');
-        if (uploadRes?.url) {
+        if (uploadRes?.url && !uploadRes.url.startsWith('blob:')) {
           coverImageUrl = uploadRes.url;
+        } else if (this.coverImageDataUrl()) {
+          coverImageUrl = this.coverImageDataUrl()!;
         }
       } catch (err) {
         console.warn('[ProposalModal] No se pudo subir imagen a storage, usando fallback:', err);
+        if (this.coverImageDataUrl()) {
+          coverImageUrl = this.coverImageDataUrl()!;
+        }
       }
     }
 
@@ -3071,11 +3087,15 @@ export class ProviderExperienceProposalModalComponent {
     if (feat1File) {
       try {
         const res = await this.storageService.uploadFile(feat1File, 'PROPOSAL');
-        if (res?.url) feat1Url = res.url;
+        if (res?.url && !res.url.startsWith('blob:')) feat1Url = res.url;
       } catch (err) {
         console.warn('[ProposalModal] Error subiendo destacada 1:', err);
       }
+    }
+    if (!feat1Url && this.featuredPhoto1DataUrl()) {
+      feat1Url = this.featuredPhoto1DataUrl() || undefined;
     } else if (
+      !feat1Url &&
       this.featuredPhoto1Preview()?.startsWith('http') &&
       !this.featuredPhoto1Preview()?.startsWith('blob:')
     ) {
@@ -3088,11 +3108,15 @@ export class ProviderExperienceProposalModalComponent {
     if (feat2File) {
       try {
         const res = await this.storageService.uploadFile(feat2File, 'PROPOSAL');
-        if (res?.url) feat2Url = res.url;
+        if (res?.url && !res.url.startsWith('blob:')) feat2Url = res.url;
       } catch (err) {
         console.warn('[ProposalModal] Error subiendo destacada 2:', err);
       }
+    }
+    if (!feat2Url && this.featuredPhoto2DataUrl()) {
+      feat2Url = this.featuredPhoto2DataUrl() || undefined;
     } else if (
+      !feat2Url &&
       this.featuredPhoto2Preview()?.startsWith('http') &&
       !this.featuredPhoto2Preview()?.startsWith('blob:')
     ) {
@@ -3106,11 +3130,14 @@ export class ProviderExperienceProposalModalComponent {
       if (item.file) {
         try {
           const res = await this.storageService.uploadFile(item.file, 'PROPOSAL');
-          if (res?.url) finalUrl = res.url;
+          if (res?.url && !res.url.startsWith('blob:')) finalUrl = res.url;
         } catch (err) {
           console.warn('[ProposalModal] Error subiendo foto de galería:', err);
         }
-      } else if (item.previewUrl?.startsWith('http') && !item.previewUrl?.startsWith('blob:')) {
+      }
+      if (!finalUrl && item.dataUrl) {
+        finalUrl = item.dataUrl;
+      } else if (!finalUrl && item.previewUrl?.startsWith('http') && !item.previewUrl?.startsWith('blob:')) {
         finalUrl = item.previewUrl;
       }
       if (finalUrl) {

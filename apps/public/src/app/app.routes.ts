@@ -75,6 +75,14 @@ const adminRoutes: Routes = [
           ),
       },
       {
+        path: 'prestadores',
+        title: 'Prestadores y Postulaciones - Portal de Admin',
+        loadComponent: () =>
+          import('./features/admin-portal/admin-providers/admin-providers.component').then(
+            (m) => m.AdminProvidersComponent,
+          ),
+      },
+      {
         path: 'propuestas',
         title: 'Portal de Admin del Club de Experiencias',
         loadComponent: () =>
@@ -94,6 +102,18 @@ const adminRoutes: Routes = [
           import('./features/admin-portal/admin-experiences/admin-experiences.component').then(
             (m) => m.AdminExperiencesComponent,
           ),
+      },
+      {
+        path: 'experiencias/:slug/editar',
+        title: 'Editar Experiencia - Portal de Admin',
+        loadComponent: () =>
+          import('./features/admin-portal/admin-experiences/admin-experiences.component').then(
+            (m) => m.AdminExperiencesComponent,
+          ),
+      },
+      {
+        path: 'experiencias/:slug',
+        redirectTo: 'experiencias/:slug/editar',
       },
       { path: '**', redirectTo: 'dashboard' },
     ],
@@ -418,6 +438,14 @@ const publicRoutes: Routes = [
           ),
       },
       {
+        path: 'prestadores',
+        title: 'Prestadores y Postulaciones - Portal de Admin',
+        loadComponent: () =>
+          import('./features/admin-portal/admin-providers/admin-providers.component').then(
+            (m) => m.AdminProvidersComponent,
+          ),
+      },
+      {
         path: 'propuestas',
         title: 'Portal de Admin del Club de Experiencias',
         loadComponent: () =>
@@ -437,6 +465,18 @@ const publicRoutes: Routes = [
           import('./features/admin-portal/admin-experiences/admin-experiences.component').then(
             (m) => m.AdminExperiencesComponent,
           ),
+      },
+      {
+        path: 'experiencias/:slug/editar',
+        title: 'Editar Experiencia - Portal de Admin',
+        loadComponent: () =>
+          import('./features/admin-portal/admin-experiences/admin-experiences.component').then(
+            (m) => m.AdminExperiencesComponent,
+          ),
+      },
+      {
+        path: 'experiencias/:slug',
+        redirectTo: 'experiencias/:slug/editar',
       },
       { path: '**', redirectTo: 'dashboard' },
     ],

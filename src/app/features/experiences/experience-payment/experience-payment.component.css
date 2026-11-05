@@ -348,11 +348,17 @@
   border-top: 1px solid var(--glass-border);
 }
 
-.pay-transfer-row.pay-amount-row,
-.pay-transfer-row.pay-cbu-row {
+.pay-transfer-row.pay-amount-row {
   flex-direction: column;
   align-items: stretch;
   gap: 0.75rem;
+  padding: 1.1rem 1.2rem;
+}
+
+.pay-transfer-row.pay-cbu-row {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
   padding: 1.1rem 1.2rem;
 }
 
@@ -364,35 +370,43 @@
   font-size: 1.85rem;
 }
 
-.pay-amount-row .pay-copy-btn,
-.pay-cbu-row .pay-copy-btn {
-  width: 100%;
-  height: 44px;
-  font-size: 0.88rem;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  background: rgba(255, 212, 42, 0.08);
-  border: 1px solid rgba(255, 212, 42, 0.45);
-  color: var(--color-gold);
-  border-radius: 4px;
-  margin: 0;
+.pay-cbu-inline-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.pay-cbu-icon-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.35rem;
+  background: transparent;
+  border: none;
+  padding: 0.2rem;
+  color: var(--color-gold, #ffd42a);
   cursor: pointer;
+  border-radius: 4px;
+  line-height: 1;
   transition:
-    background var(--transition-fast),
-    border-color var(--transition-fast),
-    color var(--transition-fast);
+    transform var(--transition-fast),
+    opacity var(--transition-fast);
 }
 
-.pay-amount-row .pay-copy-btn:hover,
-.pay-cbu-row .pay-copy-btn:hover,
-.pay-amount-row .pay-copy-btn:active,
-.pay-cbu-row .pay-copy-btn:active {
-  background: rgba(255, 212, 42, 0.18);
-  border-color: var(--color-gold);
+.pay-cbu-icon-btn:hover {
+  transform: scale(1.18);
+  opacity: 0.85;
+}
+
+.pay-cbu-icon-btn:active {
+  transform: scale(0.95);
+}
+
+.pay-cbu-icon-btn mat-icon {
+  font-size: 1.35rem;
+  width: 1.35rem;
+  height: 1.35rem;
+  color: var(--color-gold, #ffd42a);
 }
 
 .pay-transfer-box .pay-discount-block {
@@ -424,7 +438,7 @@
   font-size: 1.25rem;
   letter-spacing: 0.04em;
   color: var(--color-text-white);
-  margin-top: 0.3rem;
+  margin: 0;
 }
 
 .pay-amount {
