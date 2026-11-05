@@ -3106,18 +3106,22 @@ export class AdminDashboardComponent {
   }
 
   async approveExperience(id: string): Promise<void> {
-    const ok = await this.store.approveExperienceRequest(id);
-    if (ok) {
-      const current = this.selectedExperienceRequest();
-      if (current && current.id === id) {
-        this.selectedExperienceRequest.set({
-          ...current,
-          status: 'aprobada',
-          reviewedAt: new Date().toISOString(),
-        });
+    try {
+      const ok = await this.store.approveExperienceRequest(id);
+      if (ok) {
+        const current = this.selectedExperienceRequest();
+        if (current && current.id === id) {
+          this.selectedExperienceRequest.set({
+            ...current,
+            status: 'aprobada',
+            reviewedAt: new Date().toISOString(),
+          });
+        }
+        this.refreshAll();
+        this.closeExperienceRequest();
       }
-      this.refreshAll();
-      this.closeExperienceRequest();
+    } catch (err) {
+      console.error('[AdminDashboard] Error al aprobar propuesta de experiencia:', err);
     }
   }
 

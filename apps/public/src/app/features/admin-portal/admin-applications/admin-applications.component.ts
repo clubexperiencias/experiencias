@@ -2281,6 +2281,7 @@ export class AdminApplicationsComponent implements OnInit {
 
   refresh(): void {
     this.store.providerStore.reloadFromStorage();
+    void this.store.providerStore.loadProposalsFromSupabase();
     void this.store.loadAllApplications();
   }
 
@@ -2326,23 +2327,27 @@ export class AdminApplicationsComponent implements OnInit {
   }
 
   async approveExperience(id: string): Promise<void> {
-    const current = this.selectedExperienceRequest();
-    if (this.proposalCoverLoadError() && current) {
-      current.coverImage = '/assets/images/kayak-club-de-experiencias.jpg';
-    }
-    const ok = await this.store.approveExperienceRequest(id);
-    if (ok) {
-      if (current && current.id === id) {
-        this.selectedExperienceRequest.set({
-          ...current,
-          status: 'aprobada',
-          reviewedAt: new Date().toISOString(),
-        });
+    try {
+      const current = this.selectedExperienceRequest();
+      if (this.proposalCoverLoadError() && current) {
+        current.coverImage = '/assets/images/kayak-club-de-experiencias.jpg';
       }
-      this.store.providerStore.reloadFromStorage();
-      void this.store.providerStore.loadProposalsFromSupabase();
-      void this.store.loadAllApplications();
-      this.closeExperienceRequest();
+      const ok = await this.store.approveExperienceRequest(id);
+      if (ok) {
+        if (current && current.id === id) {
+          this.selectedExperienceRequest.set({
+            ...current,
+            status: 'aprobada',
+            reviewedAt: new Date().toISOString(),
+          });
+        }
+        this.store.providerStore.reloadFromStorage();
+        void this.store.providerStore.loadProposalsFromSupabase();
+        void this.store.loadAllApplications();
+        this.closeExperienceRequest();
+      }
+    } catch (err) {
+      console.error('[AdminApplications] Error al aprobar propuesta de experiencia:', err);
     }
   }
 

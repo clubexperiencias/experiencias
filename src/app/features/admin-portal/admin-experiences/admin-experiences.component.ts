@@ -302,7 +302,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
 
               @if (itinerarySteps().length > 0) {
                 <div class="timeline-list">
-                  @for (step of itinerarySteps(); track step.title) {
+                  @for (step of itinerarySteps(); track $index) {
                     <div class="timeline-step">
                       <div class="timeline-time">{{ step.time }}</div>
                       <div class="timeline-body">
@@ -3832,6 +3832,10 @@ export class AdminExperiencesComponent implements OnInit {
     if (!photo) return;
 
     if (photo.isFeatured) {
+      if (this.galleryPhotos().length >= 9) {
+        this.showToast('⚠️ No se puede desmarcar: la galería común ya tiene el límite máximo de 9 fotos.');
+        return;
+      }
       this.editAlbumPhotos.update((photos) =>
         photos.map((p, i) => (i === index ? { ...p, isFeatured: false } : p)),
       );
@@ -3858,6 +3862,13 @@ export class AdminExperiencesComponent implements OnInit {
   setCoverPhoto(index: number): void {
     const photo = this.editAlbumPhotos()[index];
     if (!photo) return;
+
+    const prevCover = this.coverPhoto();
+    const wouldIncreaseGallery = Boolean(prevCover && prevCover !== photo && photo.isFeatured);
+    if (wouldIncreaseGallery && this.galleryPhotos().length >= 9) {
+      this.showToast('⚠️ No se puede asignar como portada: la foto anterior pasaría a la galería y se superaría el límite de 9 fotos.');
+      return;
+    }
 
     this.editAlbumPhotos.update((photos) =>
       photos.map((p, i) => {
@@ -3991,7 +4002,7 @@ export class AdminExperiencesComponent implements OnInit {
           kicker: '',
           bestSeason: '',
           durationDays: 1,
-          galleryImages: [payload.coverImage!],
+          galleryImages: payload.galleryImages || [payload.coverImage!],
           isExclusiveClub: true,
           isLocked: false,
         } as Experience;
@@ -4019,6 +4030,10 @@ export class AdminExperiencesComponent implements OnInit {
   async toggleStatus(exp: Experience, newStatus: 'publicada' | 'oculta'): Promise<void> {
     try {
       await this.experienceService.toggleExperienceStatus(exp.id, newStatus);
+      const updated = this.experienceService.getExperienceById(exp.id);
+      if (updated && this.editingExperience()?.id === exp.id) {
+        this.editingExperience.set(updated);
+      }
       if (newStatus === 'oculta') {
         this.showToast(`🔴 La ruta /experiencias/${exp.slug} fue dada de baja y pausada.`);
       } else {

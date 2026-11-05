@@ -303,14 +303,20 @@ const ROUTE_LABELS: Record<string, string> = {
         <!-- Modal Editar Perfil Oficial del Club de Experiencias -->
         @if (store.isClubProfileModalOpen()) {
           <div class="club-profile-backdrop" (click)="closeClubProfileModal()">
-            <div class="club-profile-dialog" (click)="$event.stopPropagation()">
+            <div
+              class="club-profile-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="cp-dialog-title"
+              (click)="$event.stopPropagation()"
+            >
               <div class="cp-dialog-header">
                 <div class="cp-title-wrap">
                   <div class="cp-icon-pill">
                     <mat-icon>account_balance</mat-icon>
                   </div>
                   <div>
-                    <h3 class="cp-dialog-title">Perfil Oficial del Club de Experiencias</h3>
+                    <h3 class="cp-dialog-title" id="cp-dialog-title">Perfil Oficial del Club de Experiencias</h3>
                     <p class="cp-dialog-sub">
                       Cuenta prestadora oficial del Club gestionada centralizadamente por todos los administradores.
                     </p>
@@ -322,6 +328,13 @@ const ROUTE_LABELS: Record<string, string> = {
               </div>
 
               <div class="cp-dialog-body">
+                @if (clubProfileError()) {
+                  <div class="cp-error-banner" role="alert">
+                    <mat-icon class="cp-error-icon">error_outline</mat-icon>
+                    <span>{{ clubProfileError() }}</span>
+                  </div>
+                }
+
                 <div class="cp-info-banner">
                   <mat-icon class="cp-info-icon">verified</mat-icon>
                   <p>
@@ -332,8 +345,9 @@ const ROUTE_LABELS: Record<string, string> = {
 
                 <div class="cp-form-grid">
                   <div class="cp-field cp-span-2">
-                    <label>Nombre Institucional / Prestador Oficial:</label>
+                    <label for="cp-field-name">Nombre Institucional / Prestador Oficial:</label>
                     <input
+                      id="cp-field-name"
                       type="text"
                       class="cp-input"
                       [(ngModel)]="clubFormName"
@@ -342,8 +356,9 @@ const ROUTE_LABELS: Record<string, string> = {
                   </div>
 
                   <div class="cp-field">
-                    <label>Email Oficial del Club:</label>
+                    <label for="cp-field-email">Email Oficial del Club:</label>
                     <input
+                      id="cp-field-email"
                       type="email"
                       class="cp-input"
                       [(ngModel)]="clubFormEmail"
@@ -353,8 +368,9 @@ const ROUTE_LABELS: Record<string, string> = {
                   </div>
 
                   <div class="cp-field">
-                    <label>Teléfono / WhatsApp de Contacto:</label>
+                    <label for="cp-field-phone">Teléfono / WhatsApp de Contacto:</label>
                     <input
+                      id="cp-field-phone"
                       type="tel"
                       class="cp-input"
                       [(ngModel)]="clubFormPhone"
@@ -370,8 +386,9 @@ const ROUTE_LABELS: Record<string, string> = {
                   </div>
 
                   <div class="cp-field cp-span-2">
-                    <label>CBU / CVU o Alias Oficial:</label>
+                    <label for="cp-field-cbu-alias">CBU / CVU o Alias Oficial:</label>
                     <input
+                      id="cp-field-cbu-alias"
                       type="text"
                       class="cp-input cp-input-blue font-mono"
                       [(ngModel)]="clubFormCbuAlias"
@@ -383,8 +400,9 @@ const ROUTE_LABELS: Record<string, string> = {
                   </div>
 
                   <div class="cp-field">
-                    <label>CUIT / CUIL:</label>
+                    <label for="cp-field-cuit-dni">CUIT / CUIL:</label>
                     <input
+                      id="cp-field-cuit-dni"
                       type="text"
                       class="cp-input font-mono"
                       [(ngModel)]="clubFormCuitDni"
@@ -393,8 +411,9 @@ const ROUTE_LABELS: Record<string, string> = {
                   </div>
 
                   <div class="cp-field">
-                    <label>Banco / Entidad Financiera:</label>
+                    <label for="cp-field-bank-name">Banco / Entidad Financiera:</label>
                     <input
+                      id="cp-field-bank-name"
                       type="text"
                       class="cp-input"
                       [(ngModel)]="clubFormBankName"
@@ -403,8 +422,9 @@ const ROUTE_LABELS: Record<string, string> = {
                   </div>
 
                   <div class="cp-field cp-span-2">
-                    <label>Titular de la Cuenta:</label>
+                    <label for="cp-field-account-holder">Titular de la Cuenta:</label>
                     <input
+                      id="cp-field-account-holder"
                       type="text"
                       class="cp-input"
                       [(ngModel)]="clubFormAccountHolder"
@@ -420,8 +440,9 @@ const ROUTE_LABELS: Record<string, string> = {
                   </div>
 
                   <div class="cp-field cp-span-2">
-                    <label>Presentación Institucional (Bio):</label>
+                    <label for="cp-field-bio">Presentación Institucional (Bio):</label>
                     <textarea
+                      id="cp-field-bio"
                       rows="2"
                       class="cp-textarea"
                       [(ngModel)]="clubFormBio"
@@ -430,8 +451,9 @@ const ROUTE_LABELS: Record<string, string> = {
                   </div>
 
                   <div class="cp-field">
-                    <label>Sitio Web Oficial:</label>
+                    <label for="cp-field-website">Sitio Web Oficial:</label>
                     <input
+                      id="cp-field-website"
                       type="text"
                       class="cp-input"
                       [(ngModel)]="clubFormWebsite"
@@ -440,8 +462,9 @@ const ROUTE_LABELS: Record<string, string> = {
                   </div>
 
                   <div class="cp-field">
-                    <label>Instagram / Red Social:</label>
+                    <label for="cp-field-social-media">Instagram / Red Social:</label>
                     <input
+                      id="cp-field-social-media"
                       type="text"
                       class="cp-input"
                       [(ngModel)]="clubFormSocialMedia"
@@ -588,8 +611,14 @@ export class AdminPanelComponent {
   readonly clubFormWebsite = signal('');
   readonly clubFormSocialMedia = signal('');
   readonly isSavingClubProfile = signal(false);
+  readonly clubProfileError = signal<string | null>(null);
+  private lastFocusedElement: HTMLElement | null = null;
 
   openClubProfileModal(): void {
+    if (typeof document !== 'undefined') {
+      this.lastFocusedElement = document.activeElement as HTMLElement | null;
+    }
+    this.clubProfileError.set(null);
     const p = this.store.clubProfile();
     this.clubFormName.set(p.name || 'Club de Experiencias');
     this.clubFormEmail.set(p.email || 'admin@experiencias.club');
@@ -602,16 +631,68 @@ export class AdminPanelComponent {
     this.clubFormWebsite.set(p.website || '');
     this.clubFormSocialMedia.set(p.socialMedia || '');
     this.store.openClubProfileModal();
+
+    setTimeout(() => {
+      const firstInput = document.getElementById('cp-field-name');
+      if (firstInput) {
+        firstInput.focus();
+      } else {
+        const dialog = document.querySelector<HTMLElement>('.club-profile-dialog');
+        dialog?.focus();
+      }
+    }, 50);
   }
 
   closeClubProfileModal(): void {
+    this.clubProfileError.set(null);
     this.store.closeClubProfileModal();
+    if (this.lastFocusedElement && typeof this.lastFocusedElement.focus === 'function') {
+      this.lastFocusedElement.focus();
+    }
+    this.lastFocusedElement = null;
+  }
+
+  @HostListener('keydown', ['$event'])
+  handleModalKeydown(event: KeyboardEvent): void {
+    if (!this.store.isClubProfileModalOpen()) return;
+
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.closeClubProfileModal();
+      return;
+    }
+
+    if (event.key === 'Tab') {
+      const dialog = document.querySelector('.club-profile-dialog');
+      if (!dialog) return;
+
+      const focusables = dialog.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+      if (focusables.length === 0) return;
+
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+
+      if (event.shiftKey) {
+        if (document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
+    }
   }
 
   async saveClubProfile(): Promise<void> {
     this.isSavingClubProfile.set(true);
+    this.clubProfileError.set(null);
     try {
-      await this.store.updateClubProfile({
+      const res = await this.store.updateClubProfile({
         name: this.clubFormName().trim() || 'Club de Experiencias',
         agency: this.clubFormName().trim() || 'Club de Experiencias',
         email: this.clubFormEmail().trim() || 'admin@experiencias.club',
@@ -624,7 +705,14 @@ export class AdminPanelComponent {
         website: this.clubFormWebsite().trim(),
         socialMedia: this.clubFormSocialMedia().trim(),
       });
+
+      if (!res.success) {
+        this.clubProfileError.set(res.error || 'No se pudo guardar el perfil del Club.');
+        return;
+      }
       this.closeClubProfileModal();
+    } catch (err: any) {
+      this.clubProfileError.set(err?.message || 'Error inesperado al guardar el perfil del Club.');
     } finally {
       this.isSavingClubProfile.set(false);
     }

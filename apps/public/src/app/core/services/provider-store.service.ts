@@ -19,7 +19,7 @@ import { Experience } from '../models/experience.model';
 import { TransactionalEmailService } from './transactional-email.service';
 import { NewsletterService } from './newsletter.service';
 import { ActivityHistoryService } from './activity-history.service';
-import { ClubProfile } from '../models/club-profile.model';
+import { ClubProfile, isClubProvider } from '../models/club-profile.model';
 import {
   ExperienceService,
   KAYAK_ALBUM_PHOTOS,
@@ -610,6 +610,24 @@ export class ProviderStoreService {
         (data.user as any)?.identities?.[0]?.identity_data?.['avatar_url'] ||
         (data.user as any)?.identities?.[0]?.identity_data?.['picture'] ||
         '';
+      const resolvedSlug =
+        access.slug ||
+        existing?.slug ||
+        (access.agency
+          ? access.agency
+              .toLowerCase()
+              .normalize('NFD')
+              .replace(/[\u0300-\u036f]/g, '')
+              .replace(/[^a-z0-9]+/g, '-')
+              .replace(/(^-|-$)+/g, '')
+          : `prov-${email.split('@')[0]}`);
+
+      const isClub = isClubProvider({
+        id: existing?.id,
+        email,
+        slug: resolvedSlug,
+      });
+
       const provider: ProviderUser = {
         id: existing?.id ?? `provider-${email.replace(/[^a-z0-9]+/g, '-')}`,
         email,
@@ -621,25 +639,15 @@ export class ProviderStoreService {
           existing?.name ||
           email,
         agency: access.agency || existing?.agency || 'Prestador EXPERIENCIAS.CLUB',
-        slug:
-          access.slug ||
-          existing?.slug ||
-          (access.agency
-            ? access.agency
-                .toLowerCase()
-                .normalize('NFD')
-                .replace(/[\u0300-\u036f]/g, '')
-                .replace(/[^a-z0-9]+/g, '-')
-                .replace(/(^-|-$)+/g, '')
-            : `prov-${email.split('@')[0]}`),
+        slug: resolvedSlug,
         bio: access.bio || existing?.bio || '',
         phone: access.phone || existing?.phone || '',
         website: access.website || existing?.website || '',
         socialMedia: access.social_media || existing?.socialMedia || '',
         socialMediaSecondary: access.social_media_secondary || existing?.socialMediaSecondary || '',
-        cuitDni: access.cuit_dni === '20-33445566-7' ? '' : access.cuit_dni || '',
-        cbuAlias: access.cbu_alias === 'EXPERIENCIAS.CLUB.MP' ? '' : access.cbu_alias || '',
-        bankName: access.bank_name === 'Banco Nación / Mercado Pago' ? '' : access.bank_name || '',
+        cuitDni: (!isClub && access.cuit_dni === '20-33445566-7') ? '' : access.cuit_dni || '',
+        cbuAlias: (!isClub && access.cbu_alias === 'EXPERIENCIAS.CLUB.MP') ? '' : access.cbu_alias || '',
+        bankName: (!isClub && access.bank_name === 'Banco Nación / Mercado Pago') ? '' : access.bank_name || '',
         verified: true,
         status: 'aprobado',
         role: 'prestador',
@@ -2001,6 +2009,9 @@ export class ProviderStoreService {
   // Persistence Helpers
   // ==========================================
   private sanitizeProvider(p: ProviderUser): ProviderUser {
+    if (isClubProvider(p)) {
+      return p;
+    }
     if (p.cbuAlias === 'EXPERIENCIAS.CLUB.MP' || p.cuitDni === '20-33445566-7') {
       return {
         ...p,
@@ -2391,7 +2402,8 @@ export class ProviderStoreService {
     try {
       await this.expService.createExperience(experienceForCatalog);
     } catch (err) {
-      console.warn('[ProviderStore] Error creando experiencia en ExperienceService:', err);
+      console.error('[ProviderStore] Error creando experiencia en ExperienceService:', err);
+      throw err;
     }
 
     this._experienceRequests.update((list) =>

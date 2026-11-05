@@ -300,16 +300,51 @@ export class AdminStoreService {
     return DEFAULT_CLUB_PROFILE;
   }
 
+  /**
+   * Carga el perfil oficial del Club de Experiencias desde Supabase (tabla `provider_access`),
+   * consultando por ID único, slug oficial o email institucional. Sincroniza el resultado
+   * con el almacenamiento local y los servicios de experiencias y prestadores.
+   */
   async loadClubProfile(): Promise<void> {
     if (!isSupabaseConfigured()) return;
     try {
-      const { data, error } = await (this.supabase.from('provider_access') as any)
-        .select('*')
-        .or('email.eq.admin@experiencias.club,slug.eq.club-de-experiencias')
-        .maybeSingle();
+      const current = this._clubProfile();
+      let data: any = null;
+      let error: any = null;
+
+      // 1. Intentar buscar por id si ya lo tenemos registrado
+      if (current.id) {
+        const res = await (this.supabase.from('provider_access') as any)
+          .select('*')
+          .eq('id', current.id)
+          .maybeSingle();
+        data = res.data;
+        error = res.error;
+      }
+
+      // 2. Si no se encontró por id, buscar por slug oficial del club
+      if (!data) {
+        const res = await (this.supabase.from('provider_access') as any)
+          .select('*')
+          .eq('slug', current.slug || DEFAULT_CLUB_PROFILE.slug)
+          .maybeSingle();
+        data = res.data;
+        error = res.error;
+      }
+
+      // 3. Fallback por email original
+      if (!data) {
+        const res = await (this.supabase.from('provider_access') as any)
+          .select('*')
+          .eq('email', DEFAULT_CLUB_PROFILE.email)
+          .maybeSingle();
+        data = res.data;
+        error = res.error;
+      }
 
       if (!error && data) {
         const loaded: ClubProfile = {
+          id: data.id,
           name: data.name || DEFAULT_CLUB_PROFILE.name,
           agency: data.agency || DEFAULT_CLUB_PROFILE.agency,
           email: data.email || DEFAULT_CLUB_PROFILE.email,
@@ -341,13 +376,83 @@ export class AdminStoreService {
     }
   }
 
-  async updateClubProfile(updated: Partial<ClubProfile>): Promise<boolean> {
+  /**
+   * Actualiza el perfil oficial del Club de Experiencias en Supabase sobre la fila de `provider_access`
+   * correspondiente utilizando su ID estable o slug, evitando colisiones de upsert. En caso de éxito,
+   * propaga la información a las experiencias del Club y al prestador oficial.
+   *
+   * @param updated Propiedades modificadas del perfil del Club.
+   * @returns Objeto con resultado de la operación `{ success: boolean, error?: string }`.
+   */
+  async updateClubProfile(updated: Partial<ClubProfile>): Promise<{ success: boolean; error?: string }> {
     const current = this._clubProfile();
+    const targetId = current.id;
+    const targetSlug = current.slug || DEFAULT_CLUB_PROFILE.slug;
+
     const merged: ClubProfile = {
       ...current,
       ...updated,
+      slug: targetSlug,
       updatedAt: new Date().toISOString(),
     };
+
+    if (isSupabaseConfigured()) {
+      try {
+        const payload = {
+          email: merged.email || DEFAULT_CLUB_PROFILE.email,
+          name: merged.name,
+          agency: merged.agency || merged.name,
+          slug: targetSlug,
+          phone: merged.phone,
+          cbu_alias: merged.cbuAlias,
+          cuit_dni: merged.cuitDni,
+          bank_name: merged.bankName,
+          account_holder: merged.accountHolder,
+          bio: merged.bio,
+          website: merged.website,
+          social_media: merged.socialMedia,
+          active: true,
+          status: 'aprobado',
+          updated_at: merged.updatedAt,
+        };
+
+        let updateQuery = (this.supabase.from('provider_access') as any).update(payload);
+
+        if (targetId) {
+          updateQuery = updateQuery.eq('id', targetId);
+        } else {
+          updateQuery = updateQuery.eq('slug', targetSlug);
+        }
+
+        const { data, error } = await updateQuery.select();
+
+        if (error) {
+          console.error('[AdminStore] Error al actualizar perfil del Club en Supabase:', error);
+          return { success: false, error: error.message || 'Error al actualizar perfil en la base de datos' };
+        }
+
+        if (!data || data.length === 0) {
+          // Si aún no existía la fila por id o slug, insertar una nueva
+          const { data: inserted, error: insertError } = await (this.supabase.from('provider_access') as any)
+            .insert(payload)
+            .select()
+            .single();
+
+          if (insertError) {
+            console.error('[AdminStore] Error al insertar perfil del Club en Supabase:', insertError);
+            return { success: false, error: insertError.message || 'Error al crear perfil en la base de datos' };
+          }
+          if (inserted?.id) {
+            merged.id = inserted.id;
+          }
+        } else if (data[0]?.id) {
+          merged.id = data[0].id;
+        }
+      } catch (err: any) {
+        console.error('[AdminStore] Excepción al guardar perfil del Club en Supabase:', err);
+        return { success: false, error: err?.message || 'Error inesperado al conectar con la base de datos' };
+      }
+    }
 
     this._clubProfile.set(merged);
     if (typeof window !== 'undefined') {
@@ -364,37 +469,7 @@ export class AdminStoreService {
     // Sincronizar prestador prov-club en ProviderStoreService
     this.providerStore.syncClubProviderProfile(merged);
 
-    if (isSupabaseConfigured()) {
-      try {
-        const { error } = await (this.supabase.from('provider_access') as any).upsert(
-          {
-            email: merged.email || 'admin@experiencias.club',
-            name: merged.name,
-            agency: merged.agency || merged.name,
-            slug: merged.slug || 'club-de-experiencias',
-            phone: merged.phone,
-            cbu_alias: merged.cbuAlias,
-            cuit_dni: merged.cuitDni,
-            bank_name: merged.bankName,
-            account_holder: merged.accountHolder,
-            bio: merged.bio,
-            website: merged.website,
-            social_media: merged.socialMedia,
-            active: true,
-            status: 'aprobado',
-            updated_at: merged.updatedAt,
-          },
-          { onConflict: 'email' },
-        );
-        if (error) {
-          console.warn('[AdminStore] Error al actualizar perfil del Club en Supabase:', error);
-        }
-      } catch (err) {
-        console.warn('[AdminStore] Excepción al guardar perfil del Club en Supabase:', err);
-      }
-    }
-
-    return true;
+    return { success: true };
   }
 
   // ============================================================

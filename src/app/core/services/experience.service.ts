@@ -579,6 +579,7 @@ export class ExperienceService {
       status: newExp.status || 'publicada',
       isExclusiveClub: true,
       isLocked: false,
+      pendingRemoteSync: true,
     };
 
     const nextList = [experience, ...list];
@@ -647,15 +648,6 @@ export class ExperienceService {
             break;
           }
 
-          if (
-            err &&
-            (err.code === '23503' || /provider_email|foreign key/i.test(err.message || '')) &&
-            insertPayload['provider_email'] !== null
-          ) {
-            insertPayload['provider_email'] = null;
-            continue;
-          }
-
           const missingCol = optionalColumns.find(
             (col) =>
               insertPayload[col] !== undefined &&
@@ -678,8 +670,18 @@ export class ExperienceService {
           break;
         }
         if (error) {
-          console.warn('[ExperienceService] Error al insertar experiencia en Supabase:', error);
+          throw error;
         }
+
+        // Marcar la experiencia como sincronizada remotamente y actualizar localStorage
+        this._experiences.update((cur) =>
+          cur.map((e) =>
+            e.id === experience.id || e.slug === experience.slug
+              ? { ...e, pendingRemoteSync: false }
+              : e,
+          ),
+        );
+        this.persistToLocalStorage(this._experiences());
 
         const targetProviderEmail = (experience.providerEmail || '').trim().toLowerCase();
         if (
@@ -710,7 +712,10 @@ export class ExperienceService {
           }
         }
       } catch (err) {
-        console.warn('[ExperienceService] Fallo al crear remoto:', err);
+        console.error('[ExperienceService] Fallo al crear experiencia remota en Supabase:', err);
+        this._experiences.set(list);
+        this.persistToLocalStorage(list);
+        throw err;
       }
     }
   }
@@ -810,6 +815,13 @@ export class ExperienceService {
     return DEFAULT_CLUB_PROFILE;
   }
 
+  /**
+   * Sincroniza todas las experiencias pertenecientes al Club con la información
+   * actualizada del Perfil Oficial del Club (nombre, teléfono, CBU/Alias bancario, etc.)
+   * tanto en el estado reactivo local como remotamente en la base de datos de Supabase.
+   *
+   * @param profile Perfil oficial institucional del Club de Experiencias.
+   */
   syncClubExperiencesWithProfile(profile: ClubProfile): void {
     const list = this._experiences().map((exp) => {
       if (isClubExperience(exp)) {
@@ -831,14 +843,34 @@ export class ExperienceService {
     this.persistToLocalStorage(list);
 
     if (isSupabaseConfigured()) {
-      void (this.supabase.from('experiencias') as any)
+      const escapedEmail = (profile.email || '').trim().replace(/["\\]/g, '\\$&');
+      const emailFilter = escapedEmail ? `,provider_email.eq."${escapedEmail}"` : '';
+      const orFilter = `slug.eq.kayak,slug.eq.exp-kayak,provider_slug.eq.club-de-experiencias${emailFilter}`;
+
+      (this.supabase.from('experiencias') as any)
         .update({
           provider_name: profile.name,
           provider_slug: profile.slug,
           provider_email: profile.email,
           provider_phone: profile.phone,
         })
-        .or(`slug.eq.kayak,provider_slug.eq.club-de-experiencias,provider_email.eq.${profile.email}`);
+        .or(orFilter)
+        .then(
+          ({ error }: { error: any }) => {
+            if (error) {
+              console.warn(
+                '[ExperienceService] Error al sincronizar experiencias del Club en Supabase:',
+                error,
+              );
+            }
+          },
+          (err: any) => {
+            console.warn(
+              '[ExperienceService] Excepción al sincronizar experiencias del Club en Supabase:',
+              err,
+            );
+          },
+        );
     }
   }
 
@@ -1220,9 +1252,10 @@ export class ExperienceService {
         const remoteSlugs = new Set(remoteExperiences.map((e) => e.slug.toLowerCase()));
         const deletedIds = this.getDeletedIds();
 
-        // Preservar experiencias locales aprobadas/creadas que aún no figuren en la base de datos remota
+        // Preservar solo experiencias locales marcadas explícitamente como pendientes de sincronización remota
         const localOnly = currentLocal.filter(
           (e) =>
+            Boolean(e.pendingRemoteSync) &&
             !remoteIds.has(e.id.toLowerCase()) &&
             !remoteSlugs.has(e.slug.toLowerCase()) &&
             !deletedIds.has(e.id) &&

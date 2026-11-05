@@ -59,4 +59,5 @@ export interface Experience {
   providerCuitDni?: string;
   providerBankName?: string;
   isClubExperience?: boolean;
+  pendingRemoteSync?: boolean;
 }
