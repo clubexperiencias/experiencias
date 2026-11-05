@@ -18,6 +18,7 @@ export interface Experience {
   description: string;
   region: string;
   meetingPoint?: string;
+  meetingPointUrl?: string;
   difficulty: 'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña';
   durationDays: number;
   durationLabel: string;

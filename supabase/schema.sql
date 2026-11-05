@@ -154,6 +154,7 @@ CREATE TABLE IF NOT EXISTS public.provider_access (
   phone          TEXT NOT NULL DEFAULT '',
   website        TEXT NOT NULL DEFAULT '',
   social_media   TEXT NOT NULL DEFAULT '',
+  social_media_secondary TEXT NOT NULL DEFAULT '',
   slug           TEXT NOT NULL DEFAULT '',
   bio            TEXT NOT NULL DEFAULT '',
   avatar_url     TEXT NOT NULL DEFAULT '',
@@ -173,6 +174,7 @@ ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS account_holder TEXT 
 ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS phone TEXT NOT NULL DEFAULT '';
 ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS website TEXT NOT NULL DEFAULT '';
 ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS social_media TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS social_media_secondary TEXT NOT NULL DEFAULT '';
 ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS slug TEXT NOT NULL DEFAULT '';
 ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS bio TEXT NOT NULL DEFAULT '';
 ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS avatar_url TEXT NOT NULL DEFAULT '';
@@ -255,6 +257,7 @@ CREATE TABLE IF NOT EXISTS public.experiencias (
   description          TEXT NOT NULL DEFAULT '',
   region               TEXT NOT NULL DEFAULT 'Valle Central y Ambato',
   meeting_point        TEXT NOT NULL DEFAULT '',
+  meeting_point_url    TEXT NOT NULL DEFAULT '',
   difficulty           TEXT NOT NULL DEFAULT 'Baja'
                        CHECK (difficulty IN ('Baja', 'Moderada', 'Exigente', 'Alta Montaña')),
   duration_label       TEXT NOT NULL DEFAULT '4 horas',
@@ -334,6 +337,7 @@ CREATE TABLE IF NOT EXISTS public.propuestas_experiencias (
   promos_and_pricing       TEXT,
   itinerary                TEXT NOT NULL DEFAULT '',
   meeting_point            TEXT NOT NULL DEFAULT '',
+  meeting_point_url        TEXT NOT NULL DEFAULT '',
   included_services        TEXT NOT NULL DEFAULT '',
   participant_requirements TEXT NOT NULL DEFAULT '',
   notes                    TEXT,
@@ -358,6 +362,8 @@ ALTER TABLE public.propuestas_experiencias ADD COLUMN IF NOT EXISTS album_photos
 ALTER TABLE public.propuestas_experiencias ADD COLUMN IF NOT EXISTS provider_cbu_alias TEXT;
 ALTER TABLE public.propuestas_experiencias ADD COLUMN IF NOT EXISTS provider_bank_name TEXT;
 ALTER TABLE public.propuestas_experiencias ADD COLUMN IF NOT EXISTS provider_cuit_dni TEXT;
+ALTER TABLE public.propuestas_experiencias ADD COLUMN IF NOT EXISTS meeting_point_url TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS meeting_point_url TEXT NOT NULL DEFAULT '';
 
 -- 2.9 pagos_transferencias (Registro de Comprobantes de Pago)
 CREATE TABLE IF NOT EXISTS public.pagos_transferencias (
@@ -484,7 +490,7 @@ SELECT
   phone,
   website,
   social_media,
-  avatar_url,
+  social_media_secondary,  avatar_url,
   cover_url,
   active,
   status

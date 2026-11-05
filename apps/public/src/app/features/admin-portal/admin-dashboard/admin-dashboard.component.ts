@@ -883,6 +883,16 @@ import { ExperienceService } from '../../../core/services/experience.service';
                   <dt>Punto de Encuentro:</dt>
                   <dd>{{ expReq.meetingPoint }}</dd>
                 </div>
+                @if (expReq.meetingPointUrl) {
+                  <div>
+                    <dt>Ubicación (Google Maps):</dt>
+                    <dd>
+                      <a [href]="expReq.meetingPointUrl" target="_blank" rel="noopener noreferrer">{{
+                        expReq.meetingPointUrl
+                      }}</a>
+                    </dd>
+                  </div>
+                }
                 <div>
                   <dt>Fechas / Frecuencia:</dt>
                   <dd>{{ expReq.dates }}</dd>

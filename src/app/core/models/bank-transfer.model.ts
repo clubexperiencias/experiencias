@@ -29,6 +29,7 @@ export interface ProviderUser {
   phone: string;
   website?: string;
   socialMedia?: string;
+  socialMediaSecondary?: string;
   cuitDni: string;
   cbuAlias: string;
   bankName: string;

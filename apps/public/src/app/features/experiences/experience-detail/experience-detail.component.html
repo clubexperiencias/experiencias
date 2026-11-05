@@ -41,10 +41,6 @@
                 }}</span>
             </div>
             <div class="spec-tile">
-              <span class="spec-label">CUPO MÁXIMO</span>
-              <span class="spec-value">{{ item.maxSpotsPerGroup }} Socios</span>
-            </div>
-            <div class="spec-tile">
               <span class="spec-label">PUNTO DE ENCUENTRO</span>
               <span class="spec-value">{{ isUrl(item.meetingPoint) ? (item.region || 'Ver ubicación en Maps') : (item.meetingPoint || item.region) }}</span>
             </div>
@@ -215,7 +211,7 @@
           </div>
 
           <div class="location-actions-row">
-            <a [href]="getGoogleMapsUrl(item.meetingPoint, item.region)" target="_blank" rel="noopener noreferrer" class="location-btn maps-btn">
+            <a [href]="getGoogleMapsUrl(item.meetingPoint, item.region, item.meetingPointUrl)" target="_blank" rel="noopener noreferrer" class="location-btn maps-btn">
               <span>Abrir en Google Maps</span>
             </a>
 

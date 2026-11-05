@@ -96,6 +96,7 @@ describe('ProviderExperienceProposalModalComponent Draft Persistence', () => {
     component.reqForm.subheading = 'Sunset en kayak en el dique';
     component.reqForm.itinerary = '16:00 Recepción, 17:00 Salida, 19:00 Regreso';
     component.reqForm.meetingPoint = 'Club Náutico';
+    component.reqForm.meetingPointUrl = 'https://maps.app.goo.gl/abc123';
     component.reqForm.priceArs = 55000;
     component.coverImageDataUrl.set('data:image/jpeg;base64,mock');
     component.coverImagePreview.set('data:image/jpeg;base64,mock');

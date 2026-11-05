@@ -15,13 +15,12 @@
           <!-- ═══════════════ HEADER CARD: TÍTULO Y DESCRIPCIÓN ═══════════════ -->
           <div class="kayak-section-card hero-gallery-card">
             <div class="card-inner-header">
-              <span class="section-kicker"
-                >ÁLBUM OFICIAL DE FOTOS · {{ experience.region | uppercase }}</span
-              >
+              <span class="section-kicker">ÁLBUM OFICIAL DE FOTOS</span>
               <h1 class="card-heading">Galería de {{ experience.title }}</h1>
               <p class="card-subheading">
                 {{
-                  experience.tagline ||
+                  experience.description ||
+                    experience.tagline ||
                     'Postales y capturas fotográficas oficiales de salidas realizadas junto a los socios del Club.'
                 }}
               </p>

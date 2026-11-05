@@ -13,6 +13,7 @@ import {
   BreadcrumbItem,
 } from '../../../shared/components/breadcrumb/breadcrumb.component';
 import { ArsPipe } from '../../../shared/pipes/format.pipes';
+import { getSocialHandle } from '../../../shared/utils/social-url.util';
 
 @Component({
   selector: 'app-provider-public-profile',
@@ -85,6 +86,10 @@ export class ProviderPublicProfileComponent implements OnInit {
     if (s.includes('instagram.com/')) return `https://${s}`;
     if (s.startsWith('@')) return `https://instagram.com/${s.slice(1)}`;
     return `https://${s}`;
+  }
+
+  socialHandle(social: string | undefined): string {
+    return getSocialHandle(this.formatSocialUrl(social));
   }
 
   formatWebsiteUrl(url: string | undefined): string {

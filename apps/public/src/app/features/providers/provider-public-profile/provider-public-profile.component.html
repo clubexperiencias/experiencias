@@ -18,8 +18,8 @@
             El perfil que buscás no existe o ha sido modificado.
           </p>
           <div class="actions-row">
+            <a routerLink="/prestadores" class="btn-primary">Convertirme en Prestador</a>
             <a routerLink="/experiencias" class="btn-primary">Explorar Catálogo de Experiencias</a>
-            <a routerLink="/prestadores" class="btn-secondary">Comunidad de Prestadores</a>
           </div>
         </div>
       } @else {
@@ -110,17 +110,19 @@
                 </a>
               }
 
-              @if (p.socialMedia) {
-                <a
-                  [href]="formatSocialUrl(p.socialMedia)"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="action-pill"
-                  title="Ver perfil en redes sociales"
-                >
-                  <mat-icon class="pill-icon">share</mat-icon>
-                  <span>Red Social</span>
-                </a>
+              @for (social of [p.socialMedia, p.socialMediaSecondary]; track $index) {
+                @if (social) {
+                  <a
+                    [href]="formatSocialUrl(social)"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="action-pill"
+                    [title]="'Abrir perfil ' + socialHandle(social) + ' en otra pestaña'"
+                  >
+                    <mat-icon class="pill-icon">share</mat-icon>
+                    <span>{{ socialHandle(social) }}</span>
+                  </a>
+                }
               }
             </div>
           </div>

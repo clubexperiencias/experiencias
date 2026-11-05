@@ -170,6 +170,33 @@ const ROUTE_LABELS: Record<string, string> = {
           </button>
         }
 
+        <!-- Botón Flotante WhatsApp Asistencia Técnica (réplica de la web principal) -->
+        <a
+          [href]="supportWhatsappUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="desktop-floating-btn desktop-floating-support-btn"
+          aria-label="Consultas y soporte por WhatsApp"
+          title="Consultas y Soporte (+54 9 3515 49-0431)"
+        >
+          <svg
+            class="floating-btn-icon-svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path
+              d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"
+            />
+            <circle cx="8.5" cy="11.5" r="1.15" fill="currentColor" stroke="none" />
+            <circle cx="12" cy="11.5" r="1.15" fill="currentColor" stroke="none" />
+            <circle cx="15.5" cy="11.5" r="1.15" fill="currentColor" stroke="none" />
+          </svg>
+        </a>
+
         <!-- Contenedor principal con fondo relieve similar a /perfil -->
         <main class="portal-main">
           <div class="portal-content-container">
