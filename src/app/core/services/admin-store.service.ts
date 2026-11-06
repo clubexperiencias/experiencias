@@ -691,7 +691,10 @@ export class AdminStoreService {
             id: w.id,
             type: 'waitlist' as const,
             email: w.email,
-            fullName: 'Lista de Espera (Email)',
+            fullName:
+              w.fullName && w.fullName !== 'Lista de Espera (Email)'
+                ? w.fullName
+                : w.full_name || '',
             dni: '—',
             phone: '—',
             position: undefined,
@@ -760,7 +763,10 @@ export class AdminStoreService {
               id: w.id,
               type: 'waitlist' as const,
               email: w.email,
-              fullName: 'Lista de Espera (Email)',
+              fullName:
+                w.fullName && w.fullName !== 'Lista de Espera (Email)'
+                  ? w.fullName
+                  : w.full_name || '',
               dni: '—',
               phone: '—',
               position: undefined,
@@ -1478,7 +1484,7 @@ export class AdminStoreService {
         id: 'wl-201',
         type: 'waitlist',
         email: 'sofia.valle@gmail.com',
-        fullName: 'Lista de Espera (Email)',
+        fullName: 'Sofía Valle',
         membershipTier: 'waitlist',
         googleLinked: true,
         converted: false, // Vinculó Google pero aún no pagó experiencia
@@ -1489,7 +1495,7 @@ export class AdminStoreService {
         id: 'wl-202',
         type: 'waitlist',
         email: 'marcelo.alvarez@outlook.com',
-        fullName: 'Lista de Espera (Email)',
+        fullName: '',
         membershipTier: 'waitlist',
         googleLinked: false,
         converted: false,
@@ -1500,7 +1506,7 @@ export class AdminStoreService {
         id: 'wl-203',
         type: 'waitlist',
         email: 'carolina.perez@gmail.com',
-        fullName: 'Lista de Espera (Email)',
+        fullName: 'Carolina Pérez',
         membershipTier: 'waitlist',
         googleLinked: true,
         converted: false,

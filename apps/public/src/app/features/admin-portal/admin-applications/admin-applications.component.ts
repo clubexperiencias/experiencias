@@ -500,30 +500,19 @@ type ApplicationFilterTab =
                     </div>
                   }
 
-                  <div class="detail-item full-span">
-                    <span class="dt-label">Descripción de Servicios y Logística</span>
-                    <p class="dt-text-box">
-                      {{ selectedApp()!.description || 'Sin descripción adicional.' }}
-                    </p>
-                  </div>
-
-                  <!-- Datos Bancarios para Liquidación de Pagos (Provistos por el prestador) -->
-                  <div class="provider-banking-box full-span">
-                    <div class="banking-box-header">
-                      <mat-icon class="banking-icon">account_balance</mat-icon>
-                      <div>
-                        <h4 class="banking-box-title">Datos Bancarios para Liquidación de Pagos</h4>
-                        <p class="banking-box-sub">
-                          @if (selectedApp()!.cbuAlias || selectedApp()!.cuitDni) {
-                            Información provista por el prestador desde su panel operativo.
-                          } @else {
-                            El prestador cargará sus datos de cobro (CBU/Alias, CUIT y Banco) directamente desde su panel.
-                          }
-                        </p>
-                      </div>
+                  @if (selectedApp()!.description && selectedApp()!.description!.trim()) {
+                    <div class="detail-item full-span">
+                      <span class="dt-label">Descripción de Servicios y Logística</span>
+                      <p class="dt-text-box">
+                        {{ selectedApp()!.description }}
+                      </p>
                     </div>
+                  }
 
-                    @if (selectedApp()!.cbuAlias || selectedApp()!.cuitDni) {
+                  <!-- Datos Bancarios para Liquidación de Pagos (Solo si el prestador ya los tiene cargados) -->
+                  @if (selectedApp()!.cbuAlias || selectedApp()!.cuitDni) {
+                    <div class="provider-banking-card full-span">
+                      <h4 class="banking-card-title">Datos Bancarios para Liquidación de Pagos</h4>
                       <div class="banking-display-grid">
                         <div class="banking-display-item">
                           <span class="banking-item-lbl">Titular</span>
@@ -535,20 +524,15 @@ type ApplicationFilterTab =
                         </div>
                         <div class="banking-display-item">
                           <span class="banking-item-lbl">CBU / CVU o Alias</span>
-                          <strong class="banking-item-val text-blue">{{ selectedApp()!.cbuAlias || '—' }}</strong>
+                          <strong class="banking-item-val">{{ selectedApp()!.cbuAlias || '—' }}</strong>
                         </div>
                         <div class="banking-display-item">
                           <span class="banking-item-lbl">Entidad</span>
                           <strong class="banking-item-val">{{ selectedApp()!.bankName || '—' }}</strong>
                         </div>
                       </div>
-                    } @else {
-                      <div class="banking-pending-notice">
-                        <mat-icon>info</mat-icon>
-                        <span>Pendiente de carga por parte del prestador en su perfil.</span>
-                      </div>
-                    }
-                  </div>
+                    </div>
+                  }
                 } @else {
                   <div class="detail-item full-span">
                     <span class="dt-label">Carta de Motivación para ser Socio Fundador</span>
@@ -1870,9 +1854,9 @@ type ApplicationFilterTab =
       }
 
       .dt-text-box {
-        background: rgba(8, 4, 2, 0.7);
-        border: 1px solid rgba(255, 95, 0, 0.25);
-        border-radius: 2px;
+        background: rgba(18, 10, 5, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 4px;
         padding: 0.85rem 1rem;
         color: rgba(255, 255, 255, 0.85);
         font-size: 0.84rem;
@@ -1901,38 +1885,44 @@ type ApplicationFilterTab =
       }
 
       .btn-state {
-        padding: 0.5rem 0.85rem;
-        font-size: 0.78rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 34px;
+        padding: 0 1rem;
+        font-size: 0.76rem;
         font-weight: 700;
-        border-radius: 2px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        border-radius: 3px;
         cursor: pointer;
         transition: all 0.2s ease;
+        white-space: nowrap;
       }
 
       .btn-approve {
-        background: #10b981 !important;
-        border: 1px solid #10b981 !important;
-        color: #ffffff !important;
-        font-weight: 800 !important;
-        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35) !important;
+        background: rgba(0, 204, 136, 0.16) !important;
+        border: 1px solid rgba(0, 204, 136, 0.45) !important;
+        color: #33ffaa !important;
+        font-weight: 700 !important;
       }
 
       .btn-approve:hover:not(:disabled) {
-        background: #059669 !important;
-        border-color: #059669 !important;
-        color: #ffffff !important;
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.45) !important;
+        background: #00cc88 !important;
+        border-color: #00cc88 !important;
+        color: #0b0704 !important;
       }
 
       .btn-reject {
-        background: rgba(239, 68, 68, 0.35);
-        border: 1px solid rgba(239, 68, 68, 0.7);
-        color: #ffffff !important;
+        background: rgba(255, 80, 80, 0.12) !important;
+        border: 1px solid rgba(255, 80, 80, 0.38) !important;
+        color: #ff8080 !important;
+        font-weight: 700 !important;
       }
 
       .btn-reject:hover:not(:disabled) {
-        background: #ef4444;
+        background: rgba(255, 80, 80, 0.25) !important;
+        border-color: #ff8080 !important;
         color: #ffffff !important;
       }
 
@@ -2086,41 +2076,23 @@ type ApplicationFilterTab =
         color: #070d18;
       }
 
-      .provider-banking-box {
+      .provider-banking-card {
         display: flex;
         flex-direction: column;
-        gap: 0.85rem;
-        padding: 1.15rem;
-        background: rgba(18, 28, 60, 0.4);
-        border: 1px solid rgba(128, 179, 255, 0.25);
+        gap: 0.75rem;
+        padding: 1rem 1.15rem;
+        background: rgba(18, 10, 5, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.12);
         border-radius: 4px;
         margin-top: 0.5rem;
       }
 
-      .banking-box-header {
-        display: flex;
-        align-items: flex-start;
-        gap: 0.65rem;
-      }
-
-      .banking-icon {
-        color: #80b3ff;
-        font-size: 22px;
-        width: 22px;
-        height: 22px;
-        margin-top: 2px;
-      }
-
-      .banking-box-title {
-        font-size: 0.88rem;
-        font-weight: 700;
-        color: #ffffff;
-        margin: 0 0 0.2rem 0;
-      }
-
-      .banking-box-sub {
+      .banking-card-title {
         font-size: 0.78rem;
-        color: rgba(255, 255, 255, 0.65);
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #ff9955;
         margin: 0;
       }
 
@@ -2158,24 +2130,7 @@ type ApplicationFilterTab =
         word-break: break-all;
       }
 
-      .banking-pending-notice {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.65rem 0.85rem;
-        background: rgba(128, 179, 255, 0.08);
-        border: 1px dashed rgba(128, 179, 255, 0.3);
-        border-radius: 3px;
-        color: rgba(255, 255, 255, 0.75);
-        font-size: 0.8rem;
-      }
 
-      .banking-pending-notice mat-icon {
-        font-size: 18px;
-        width: 18px;
-        height: 18px;
-        color: #80b3ff;
-      }
 
       .btn-close {
         flex: 0 0 auto !important;

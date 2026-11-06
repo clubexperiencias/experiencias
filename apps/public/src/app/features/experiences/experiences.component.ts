@@ -53,6 +53,12 @@ export class ExperiencesComponent implements AfterViewInit, OnDestroy {
   readonly router = inject(Router);
   readonly isClubExperience = isClubExperience;
 
+  getProviderSlug(exp: Experience): string | null {
+    if (exp.providerSlug) return exp.providerSlug;
+    if (this.isClubExperience(exp)) return 'club-de-experiencias';
+    return null;
+  }
+
   readonly bg = signal('/assets/images/laguna_blanca.jpg');
 
   readonly breadcrumbs: BreadcrumbItem[] = [

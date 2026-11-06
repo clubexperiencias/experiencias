@@ -8,6 +8,7 @@ import { ProviderUser } from '../../../core/models/bank-transfer.model';
 import { Experience } from '../../../core/models/experience.model';
 import { HeaderComponent } from '../../../shared/components/header/header.component';
 import { FooterComponent } from '../../../shared/components/footer/footer.component';
+import { FounderAdComponent } from '../../../shared/components/founder-ad/founder-ad.component';
 import {
   BreadcrumbComponent,
   BreadcrumbItem,
@@ -24,6 +25,7 @@ import { getSocialHandle } from '../../../shared/utils/social-url.util';
     MatIconModule,
     HeaderComponent,
     FooterComponent,
+    FounderAdComponent,
     BreadcrumbComponent,
     ArsPipe,
   ],

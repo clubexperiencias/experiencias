@@ -34,6 +34,20 @@ export class ExperienceDetailComponent {
   private readonly route = inject(ActivatedRoute);
   readonly experienceService = inject(ExperienceService);
   readonly isClubExperience = isClubExperience;
+  readonly isLoading = signal(true);
+
+  constructor() {
+    this.experienceService.remoteLoadPromise.finally(() => {
+      this.isLoading.set(false);
+    });
+  }
+
+  getProviderSlug(item?: any): string | null {
+    if (!item) return null;
+    if (item.providerSlug) return item.providerSlug;
+    if (this.isClubExperience(item)) return 'club-de-experiencias';
+    return null;
+  }
 
   readonly mobileMenuOpen = signal(false);
 

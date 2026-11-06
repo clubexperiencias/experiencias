@@ -384,46 +384,6 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
-.exp-provider-badge {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  font-family: var(--font-sans);
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  padding: 0.28rem 0.6rem;
-  border-radius: 2px;
-  line-height: 1.2;
-  backdrop-filter: blur(6px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-  max-width: calc(100% - 130px);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  z-index: 2;
-}
-
-.exp-provider-badge mat-icon {
-  font-size: 13px;
-  width: 13px;
-  height: 13px;
-}
-
-.exp-provider-badge.is-club {
-  background: rgba(255, 95, 0, 0.9);
-  color: #ffffff;
-  border: 1px solid rgba(255, 149, 0, 0.8);
-}
-
-.exp-provider-badge.is-provider {
-  background: rgba(14, 165, 233, 0.9);
-  color: #ffffff;
-  border: 1px solid rgba(56, 189, 248, 0.8);
-}
 
 .exp-altitude {
   position: absolute;
@@ -473,6 +433,23 @@
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 2px;
+}
+
+.provider-stat-link {
+  color: inherit;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition: text-decoration 0.15s ease, opacity 0.15s ease;
+}
+
+.provider-stat-link:hover {
+  text-decoration: underline;
+  opacity: 0.95;
+}
+
+.provider-stat-name {
+  font-weight: 700;
 }
 
 .exp-price-action-row {
@@ -608,8 +585,16 @@
   font-size: 0.84rem;
   font-weight: 700;
   border-radius: 2px;
-  cursor: not-allowed;
+  cursor: pointer;
+  text-decoration: none;
   font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+.exp-locked-btn:hover {
+  background: #f0b81c;
+  border-color: #f0b81c;
+  color: #000000;
 }
 
 .exp-locked-btn .btn-lock-icon {

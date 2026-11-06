@@ -116,19 +116,16 @@ import { Experience } from '../../../core/models/experience.model';
                     <td>
                       @if (m.type === 'socio') {
                         <span class="badge-socio-num">#{{ m.position }}</span>
-                      } @else if (m.googleLinked) {
-                        <span
-                          class="pill-google"
-                          [class.is-provider-google]="isProvider(m)"
-                          title="Google Vinculado"
-                          >GOOGLE</span
-                        >
                       } @else {
                         <span class="badge-waitlist">Waitlist</span>
                       }
                     </td>
                     <td>
-                      <strong class="row-name">{{ m.fullName || '—' }}</strong>
+                      <strong class="row-name">{{
+                        m.fullName && m.fullName !== 'Lista de Espera (Email)'
+                          ? m.fullName
+                          : '—'
+                      }}</strong>
                     </td>
                     <td>
                       <span class="email-link">{{ m.email }}</span>
@@ -307,13 +304,13 @@ import { Experience } from '../../../core/models/experience.model';
                             [routerLink]="['/prestadores', item.slug]"
                             target="_blank"
                             class="btn-review"
-                            style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.25rem;"
+                            style="gap: 0.25rem;"
                           >
                             <span>Ver Perfil</span>
                             <mat-icon style="font-size: 0.9rem; width: 0.9rem; height: 0.9rem;">open_in_new</mat-icon>
                           </a>
                         } @else {
-                          <a routerLink="/prestadores" class="btn-review" style="text-decoration: none;">
+                          <a routerLink="/prestadores" class="btn-review">
                             Ver Ficha
                           </a>
                         }
@@ -439,7 +436,7 @@ import { Experience } from '../../../core/models/experience.model';
           <p class="empty-text">No hay experiencias cargadas en el catálogo.</p>
         } @else {
           <div class="table-wrap">
-            <table class="dash-data-table">
+            <table class="dash-data-table exp-web-table">
               <thead>
                 <tr>
                   <th>Experiencia</th>
@@ -466,12 +463,10 @@ import { Experience } from '../../../core/models/experience.model';
                             <strong class="exp-title-cell">{{ exp.title }}</strong>
                             @if (isClub(exp)) {
                               <span class="club-chip" title="Experiencia Oficial del Club de Experiencias">
-                                <mat-icon>verified</mat-icon>
                                 Club
                               </span>
                             } @else if (exp.providerName) {
                               <span class="provider-chip" title="Prestador oficial de la experiencia">
-                                <mat-icon>badge</mat-icon>
                                 {{ exp.providerName }}
                               </span>
                             }
@@ -515,14 +510,30 @@ import { Experience } from '../../../core/models/experience.model';
                       </span>
                     </td>
                     <td class="text-right">
-                      <a [routerLink]="getExperienceFicheRoute(exp.slug)" class="btn-review-fiche">
-                        VER FICHA
+                      <a [routerLink]="getExperienceFicheRoute(exp.slug)" class="btn-review">
+                        Ver Ficha
                       </a>
                     </td>
                   </tr>
                 }
               </tbody>
             </table>
+          </div>
+
+          <!-- Acciones al pie de la tabla -->
+          <div class="table-footer-actions">
+            <button
+              type="button"
+              class="btn-footer-action"
+              (click)="refreshExperiences()"
+              [disabled]="isRefreshingExperiences()"
+            >
+              {{ isRefreshingExperiences() ? 'Actualizando...' : 'Refrescar Datos' }}
+            </button>
+
+            <button type="button" class="btn-footer-action" (click)="downloadExperiencesCsv()">
+              Descargar Planilla
+            </button>
           </div>
         }
       </section>
@@ -694,62 +705,40 @@ import { Experience } from '../../../core/models/experience.model';
                 </div>
               </dl>
 
-              <div class="app-desc-box">
-                <span class="desc-heading">{{
-                  app.type === 'prestador'
-                    ? 'Descripción de servicios y equipamiento:'
-                    : 'Carta de motivación:'
-                }}</span>
-                <p class="desc-content">
-                  {{
+              @if ((app.type === 'prestador' && app.description?.trim()) || (app.type !== 'prestador' && app.motivationLetter?.trim())) {
+                <div class="app-desc-box">
+                  <span class="desc-heading">{{
                     app.type === 'prestador'
-                      ? app.description || 'Sin descripción adicional.'
-                      : app.motivationLetter || 'Sin carta de motivación.'
-                  }}
-                </p>
-              </div>
+                      ? 'Descripción de servicios y equipamiento:'
+                      : 'Carta de motivación:'
+                  }}</span>
+                  <p class="desc-content">
+                    {{ app.type === 'prestador' ? app.description : app.motivationLetter }}
+                  </p>
+                </div>
+              }
 
-              @if (app.type === 'prestador') {
-                <div class="provider-banking-box">
-                  <div class="banking-box-header">
-                    <mat-icon class="banking-icon">account_balance</mat-icon>
-                    <div>
-                      <h4 class="banking-box-title">Datos Bancarios para Liquidación de Pagos</h4>
-                      <p class="banking-box-sub">
-                        @if (app.cbuAlias || app.cuitDni) {
-                          Información provista por el prestador desde su panel operativo.
-                        } @else {
-                          El prestador cargará sus datos de cobro (CBU/Alias, CUIT y Banco) directamente desde su panel.
-                        }
-                      </p>
+              @if (app.type === 'prestador' && (app.cbuAlias || app.cuitDni)) {
+                <div class="provider-banking-card">
+                  <h4 class="banking-card-title">Datos Bancarios para Liquidación de Pagos</h4>
+                  <div class="banking-display-grid">
+                    <div class="banking-display-item">
+                      <span class="banking-item-lbl">Titular</span>
+                      <strong class="banking-item-val">{{ app.accountHolder || app.fullName }}</strong>
+                    </div>
+                    <div class="banking-display-item">
+                      <span class="banking-item-lbl">CUIT / CUIL</span>
+                      <strong class="banking-item-val">{{ app.cuitDni || '—' }}</strong>
+                    </div>
+                    <div class="banking-display-item">
+                      <span class="banking-item-lbl">CBU / CVU o Alias</span>
+                      <strong class="banking-item-val">{{ app.cbuAlias || '—' }}</strong>
+                    </div>
+                    <div class="banking-display-item">
+                      <span class="banking-item-lbl">Entidad</span>
+                      <strong class="banking-item-val">{{ app.bankName || '—' }}</strong>
                     </div>
                   </div>
-
-                  @if (app.cbuAlias || app.cuitDni) {
-                    <div class="banking-display-grid">
-                      <div class="banking-display-item">
-                        <span class="banking-item-lbl">Titular</span>
-                        <strong class="banking-item-val">{{ app.accountHolder || app.fullName }}</strong>
-                      </div>
-                      <div class="banking-display-item">
-                        <span class="banking-item-lbl">CUIT / CUIL</span>
-                        <strong class="banking-item-val">{{ app.cuitDni || '—' }}</strong>
-                      </div>
-                      <div class="banking-display-item">
-                        <span class="banking-item-lbl">CBU / CVU o Alias</span>
-                        <strong class="banking-item-val text-blue">{{ app.cbuAlias || '—' }}</strong>
-                      </div>
-                      <div class="banking-display-item">
-                        <span class="banking-item-lbl">Entidad</span>
-                        <strong class="banking-item-val">{{ app.bankName || '—' }}</strong>
-                      </div>
-                    </div>
-                  } @else {
-                    <div class="banking-pending-notice">
-                      <mat-icon>info</mat-icon>
-                      <span>Pendiente de carga por parte del prestador en su perfil.</span>
-                    </div>
-                  }
                 </div>
               }
 
@@ -1399,12 +1388,34 @@ import { Experience } from '../../../core/models/experience.model';
         max-width: 100%;
       }
 
+      .table-wrap::-webkit-scrollbar {
+        height: 6px;
+      }
+
+      .table-wrap::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.25);
+        border-radius: 3px;
+      }
+
+      .table-wrap::-webkit-scrollbar-thumb {
+        background: rgba(255, 95, 0, 0.4);
+        border-radius: 3px;
+      }
+
+      .table-wrap::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 95, 0, 0.7);
+      }
+
       .dash-data-table {
         width: 100%;
         min-width: 720px;
         border-collapse: collapse;
         font-size: 0.82rem;
         text-align: left;
+      }
+
+      .dash-data-table.exp-web-table {
+        min-width: 1080px;
       }
 
       .dash-data-table th {
@@ -1675,6 +1686,9 @@ import { Experience } from '../../../core/models/experience.model';
       }
 
       .btn-review {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         padding: 0.35rem 0.75rem;
         background: rgba(255, 95, 0, 0.18);
         border: 1px solid #ff5f00;
@@ -1684,6 +1698,8 @@ import { Experience } from '../../../core/models/experience.model';
         border-radius: 2px;
         cursor: pointer;
         white-space: nowrap;
+        text-decoration: none;
+        transition: all 0.2s ease;
       }
 
       .btn-review:hover {
@@ -1699,6 +1715,56 @@ import { Experience } from '../../../core/models/experience.model';
 
       .text-right {
         text-align: right;
+      }
+
+      .table-footer-actions {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        margin-top: 1rem;
+        box-sizing: border-box;
+      }
+
+      .btn-footer-action {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.6rem 1.15rem;
+        border-radius: 2px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition:
+          background 0.2s ease,
+          border-color 0.2s ease,
+          filter 0.2s ease;
+        background: rgba(30, 15, 8, 0.75);
+        border: 1px solid rgba(255, 95, 0, 0.35);
+        color: #ffffff;
+      }
+
+      .btn-footer-action:hover:not(:disabled) {
+        background: rgba(45, 22, 12, 0.85);
+        border-color: rgba(255, 95, 0, 0.5);
+        filter: brightness(1.15);
+      }
+
+      .btn-footer-action:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      @media (max-width: 768px) {
+        .table-footer-actions {
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+
+        .table-footer-actions .btn-footer-action {
+          width: 100%;
+          justify-content: center;
+        }
       }
 
       /* Modal Rápido */
@@ -2244,41 +2310,58 @@ import { Experience } from '../../../core/models/experience.model';
       }
 
       .btn-state {
-        padding: 0.6rem 1.15rem;
-        font-size: 0.8rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 34px;
+        padding: 0 1rem;
+        font-size: 0.76rem;
         font-weight: 700;
-        border-radius: 2px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        border-radius: 3px;
         cursor: pointer;
         transition: all 0.2s ease;
+        white-space: nowrap;
       }
 
       .btn-whatsapp,
       .btn-contact-provider {
         display: inline-flex;
         align-items: center;
+        justify-content: center;
         gap: 0.4rem;
-        background: #80b3ff;
-        border: 1px solid #80b3ff;
-        color: #ffffff;
-        font-weight: 800;
+        height: 34px;
+        padding: 0 1rem;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        color: rgba(255, 255, 255, 0.85);
+        font-size: 0.76rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        border-radius: 3px;
         text-decoration: none;
+        transition: all 0.2s ease;
       }
 
       .btn-whatsapp:hover,
       .btn-contact-provider:hover {
-        background: #5d9eff;
-        border-color: #5d9eff;
+        background: rgba(255, 255, 255, 0.16);
+        border-color: rgba(255, 255, 255, 0.45);
         color: #ffffff;
       }
 
       .btn-reject {
-        background: rgba(239, 68, 68, 0.35);
-        border: 1px solid rgba(239, 68, 68, 0.7);
-        color: #ffffff !important;
+        background: rgba(255, 80, 80, 0.12) !important;
+        border: 1px solid rgba(255, 80, 80, 0.38) !important;
+        color: #ff8080 !important;
+        font-weight: 700 !important;
       }
 
       .btn-reject:hover:not(:disabled) {
-        background: #ef4444;
+        background: rgba(255, 80, 80, 0.25) !important;
+        border-color: #ff8080 !important;
         color: #ffffff !important;
       }
 
@@ -2361,110 +2444,36 @@ import { Experience } from '../../../core/models/experience.model';
       }
 
       .btn-approve {
-        background: #10b981 !important;
-        border: 1px solid #10b981 !important;
-        color: #ffffff !important;
-        font-weight: 800 !important;
-        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35) !important;
+        background: rgba(0, 204, 136, 0.16) !important;
+        border: 1px solid rgba(0, 204, 136, 0.45) !important;
+        color: #33ffaa !important;
+        font-weight: 700 !important;
       }
 
       .btn-approve:hover:not(:disabled) {
-        background: #059669 !important;
-        border-color: #059669 !important;
-        color: #ffffff !important;
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.45) !important;
+        background: #00cc88 !important;
+        border-color: #00cc88 !important;
+        color: #0b0704 !important;
       }
 
-      .provider-banking-box {
+      .provider-banking-card {
         display: flex;
         flex-direction: column;
-        gap: 0.85rem;
-        padding: 1.15rem;
-        background: rgba(18, 28, 60, 0.45);
-        border: 1px solid rgba(128, 179, 255, 0.25);
+        gap: 0.75rem;
+        padding: 1rem 1.15rem;
+        background: rgba(18, 10, 5, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.12);
         border-radius: 4px;
         margin-top: 0.5rem;
       }
 
-      .banking-box-header {
-        display: flex;
-        align-items: flex-start;
-        gap: 0.65rem;
-      }
-
-      .banking-icon {
-        color: #80b3ff;
-        font-size: 22px;
-        width: 22px;
-        height: 22px;
-        margin-top: 2px;
-      }
-
-      .banking-box-title {
-        font-size: 0.88rem;
-        font-weight: 700;
-        color: #ffffff;
-        margin: 0 0 0.2rem 0;
-      }
-
-      .banking-box-sub {
+      .banking-card-title {
         font-size: 0.78rem;
-        color: rgba(255, 255, 255, 0.65);
-        margin: 0;
-      }
-
-      .banking-display-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 0.85rem;
-        margin-top: 0.35rem;
-      }
-
-      @media (max-width: 600px) {
-        .banking-display-grid {
-          grid-template-columns: 1fr;
-        }
-      }
-
-      .banking-display-item {
-        display: flex;
-        flex-direction: column;
-        gap: 0.2rem;
-      }
-
-      .banking-item-lbl {
-        font-size: 0.68rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
         text-transform: uppercase;
-        letter-spacing: 0.06em;
-        color: rgba(255, 255, 255, 0.55);
-        font-weight: 700;
-      }
-
-      .banking-item-val {
-        font-size: 0.88rem;
-        color: #ffffff;
-        font-weight: 600;
-        word-break: break-all;
-      }
-
-      .banking-pending-notice {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.65rem 0.85rem;
-        background: rgba(128, 179, 255, 0.08);
-        border: 1px dashed rgba(128, 179, 255, 0.3);
-        border-radius: 3px;
-        color: rgba(255, 255, 255, 0.75);
-        font-size: 0.8rem;
-      }
-
-      .banking-pending-notice mat-icon {
-        font-size: 18px;
-        width: 18px;
-        height: 18px;
-        color: #80b3ff;
+        color: #ff9955;
+        margin: 0;
       }
 
       .exp-public-url-box {
@@ -3184,11 +3193,92 @@ export class AdminDashboardComponent {
     this.closeReceipt();
   }
 
-  getPublicExperienceUrl(exp: { publicUrl?: string; slug?: string; detailRoute?: string }): string {
-    if (exp.publicUrl && exp.publicUrl.trim().length > 0) {
-      return exp.publicUrl.trim();
+  readonly isRefreshingExperiences = signal(false);
+
+  async refreshExperiences(): Promise<void> {
+    this.isRefreshingExperiences.set(true);
+    try {
+      await this.experienceService.reloadFromSupabase();
+    } finally {
+      this.isRefreshingExperiences.set(false);
     }
-    const route = exp.detailRoute || `/experiencias/${exp.slug || ''}`;
+  }
+
+  downloadExperiencesCsv(): void {
+    const list = this.webExperiences();
+    const headers = [
+      'ID',
+      'Slug',
+      'Título',
+      'Kicker',
+      'Prestador',
+      'Contacto Prestador',
+      'Región',
+      'Dificultad',
+      'Duración',
+      'Altitud (msnm)',
+      'Arancel ARS',
+      'Arancel USD',
+      'Cupo Máx.',
+      'Estado',
+      'Ruta Web Oficial',
+      'Fechas Programadas',
+    ];
+    const escapeCsv = (val: any) => {
+      let str = val != null ? String(val) : '';
+      if (/^[=+\-@\t\r]/.test(str)) {
+        str = "'" + str;
+      }
+      return `"${str.replace(/"/g, '""')}"`;
+    };
+    const rows = [
+      headers.map(escapeCsv).join(','),
+      ...list.map((exp) => {
+        const provider = this.isClub(exp) ? 'Club de Experiencias' : (exp.providerName || 'N/A');
+        const contact = this.isClub(exp)
+          ? this.store.clubProfile().email || 'admin@experiencias.club'
+          : (exp.providerEmail || exp.providerPhone || 'N/A');
+        const datesCount = Array.isArray(exp.dates) ? exp.dates.length : 0;
+        const publicUrl = this.getPublicExperienceUrl(exp);
+
+        return [
+          escapeCsv(exp.id),
+          escapeCsv(exp.slug),
+          escapeCsv(exp.title),
+          escapeCsv(exp.kicker || ''),
+          escapeCsv(provider),
+          escapeCsv(contact),
+          escapeCsv(exp.region),
+          escapeCsv(exp.difficulty),
+          escapeCsv(exp.durationLabel || ''),
+          escapeCsv(exp.altitudeMeters ?? 0),
+          escapeCsv(exp.priceArs),
+          escapeCsv(exp.priceUsd ?? ''),
+          escapeCsv(exp.maxSpotsPerGroup),
+          escapeCsv(exp.status === 'publicada' ? 'Publicada' : exp.status === 'oculta' ? 'Pausada' : 'Borrador'),
+          escapeCsv(publicUrl),
+          escapeCsv(datesCount > 0 ? `${datesCount} fecha(s)` : 'A coordinar'),
+        ].join(',');
+      }),
+    ];
+    const blob = new Blob(['\uFEFF' + rows.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `experiencias_web_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  getPublicExperienceUrl(exp: { publicUrl?: string; slug?: string; detailRoute?: string }): string {
+    const slug = exp.slug || '';
+    if (typeof window !== 'undefined' && window.location) {
+      const origin = window.location.origin;
+      if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+        return `${origin}/experiencias/${slug}`;
+      }
+    }
+    const route = exp.detailRoute || `/experiencias/${slug}`;
     return `https://experiencias.club${route.startsWith('/') ? '' : '/'}${route}`;
   }
 }

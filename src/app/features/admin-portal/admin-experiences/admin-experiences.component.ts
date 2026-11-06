@@ -74,65 +74,6 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
       } @else if (isRouteDetailMode() && editingExperience(); as exp) {
         <!-- Modo Ficha de la Experiencia: /experiencias/:slug (Punto intermedio) -->
         <div class="fiche-page-card">
-          <!-- Barra Superior de Navegación & Acciones de Admin -->
-          <div class="fiche-admin-topbar">
-            <div class="topbar-left">
-              <a [routerLink]="backToListLink()" class="btn-back-panel">
-                &larr; Volver a Experiencias
-              </a>
-              <span class="fiche-topbar-breadcrumb">
-                /experiencias / <strong>{{ exp.slug }}</strong>
-              </span>
-            </div>
-
-            <div class="topbar-actions">
-              <!-- Pausar o Activar -->
-              @if (exp.status === 'publicada') {
-                <button
-                  type="button"
-                  class="btn-pause-exp-top"
-                  (click)="toggleStatus(exp, 'oculta')"
-                  title="Pausar ruta y ocultarla de la web pública"
-                >
-                  <mat-icon class="btn-icon-sm">pause_circle</mat-icon>
-                  <span>Pausar</span>
-                </button>
-              } @else {
-                <button
-                  type="button"
-                  class="btn-activate-exp-top"
-                  (click)="toggleStatus(exp, 'publicada')"
-                  title="Activar y publicar en la web pública"
-                >
-                  <mat-icon class="btn-icon-sm">play_circle</mat-icon>
-                  <span>Activar</span>
-                </button>
-              }
-
-              <!-- Ver en la Web Pública -->
-              <a
-                [href]="getPublicExperienceUrl(exp)"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="btn-action-public-web"
-                title="Ver cómo se visualiza actualmente en experiencias.club"
-              >
-                <mat-icon class="btn-icon-sm">open_in_new</mat-icon>
-                <span>Ver en Web Pública</span>
-              </a>
-
-              <!-- Botón EDITAR EXPERIENCIA (Destacado en Naranja) -->
-              <a
-                [routerLink]="getEditRoute(exp)"
-                class="btn-action-edit-orange"
-                title="Editar los datos y contenidos de esta ficha"
-              >
-                <mat-icon class="btn-icon-sm">edit</mat-icon>
-                <span>EDITAR EXPERIENCIA</span>
-              </a>
-            </div>
-          </div>
-
           <!-- Contenido de la Ficha (Estilo Web Pública) -->
           <div class="fiche-body">
             <!-- 1. HERO CARD: Título, Kicker, Bajada y Badges Oficiales -->
@@ -141,21 +82,42 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                 <div class="hero-kicker-row">
                   <span class="hero-kicker">{{ exp.kicker || 'EXPEDICIÓN OFICIAL DEL CLUB' }}</span>
                   <div class="hero-badges-row">
-                    @if (isClub(exp)) {
-                      <span class="club-official-chip" title="Experiencia Oficial del Club de Experiencias">
-                        <mat-icon>verified</mat-icon>
-                        Club de Experiencias
-                      </span>
-                    } @else if (exp.providerName) {
-                      <span class="provider-chip" title="Prestador oficial de la experiencia">
-                        <mat-icon>badge</mat-icon>
-                        {{ exp.providerName }}
-                      </span>
-                    }
+                    <a
+                      [href]="getPublicExperienceUrl(exp)"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="btn-hero-public-web"
+                      title="Ver cómo se visualiza actualmente en la web pública"
+                    >
+                      <mat-icon class="btn-icon-sm">open_in_new</mat-icon>
+                      <span>Ver en la Web</span>
+                    </a>
+                    <a
+                      [routerLink]="getEditRoute(exp)"
+                      class="btn-hero-edit"
+                      title="Editar los datos y contenidos de esta ficha"
+                    >
+                      <mat-icon class="btn-icon-sm">edit</mat-icon>
+                      <span>Editar</span>
+                    </a>
                     @if (exp.status === 'publicada') {
-                      <span class="status-pill is-published">Publicada</span>
+                      <button
+                        type="button"
+                        class="status-pill is-published is-clickable"
+                        (click)="toggleStatus(exp, 'oculta')"
+                        title="Click para pausar esta experiencia"
+                      >
+                        Publicada
+                      </button>
                     } @else {
-                      <span class="status-pill is-hidden">Pausada</span>
+                      <button
+                        type="button"
+                        class="status-pill is-hidden is-clickable"
+                        (click)="toggleStatus(exp, 'publicada')"
+                        title="Click para activar y publicar esta experiencia"
+                      >
+                        Pausada
+                      </button>
                     }
                   </div>
                 </div>
@@ -225,19 +187,12 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                   <div class="price-figures">
                     <span class="ars-price">{{ exp.priceArs | ars }}</span>
                     @if (exp.priceUsd) {
-                      <span class="usd-price">o &#36;{{ exp.priceUsd }} USD</span>
+                      <span class="usd-price">USD {{ exp.priceUsd }}</span>
                     }
                   </div>
                   <span class="price-note">
                     {{ exp.promosAndPricing || 'Prioridad y aranceles especiales para socios de nuestro Club de Experiencias.' }}
                   </span>
-                </div>
-
-                <div class="action-btns-group">
-                  <a [routerLink]="getEditRoute(exp)" class="btn-action-edit-orange">
-                    <mat-icon>edit</mat-icon>
-                    <span>Editar Arancel y Parámetros</span>
-                  </a>
                 </div>
               </div>
 
@@ -379,7 +334,6 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                     rel="noopener noreferrer"
                     class="location-btn maps-btn"
                   >
-                    <mat-icon>place</mat-icon>
                     <span>Abrir en Google Maps</span>
                   </a>
                 </div>
@@ -422,7 +376,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
               </div>
             }
 
-            <!-- 8. PIE DE ACCIONES: Volver o Editar -->
+            <!-- 8. PIE DE ACCIONES: Volver, Pausar/Activar, Editar -->
             <div class="fiche-bottom-cta-bar">
               <div class="cta-bar-left">
                 <span class="cta-exp-title">{{ exp.title }}</span>
@@ -430,9 +384,29 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
               </div>
               <div class="cta-bar-right">
                 <a [routerLink]="backToListLink()" class="btn-cancel-edit">Volver al Catálogo</a>
+                @if (exp.status === 'publicada') {
+                  <button
+                    type="button"
+                    class="btn-pause-exp-bottom"
+                    (click)="toggleStatus(exp, 'oculta')"
+                    title="Pausar ruta y ocultarla de la web pública"
+                  >
+                    <mat-icon class="btn-icon-sm">pause_circle</mat-icon>
+                    <span>Pausar</span>
+                  </button>
+                } @else {
+                  <button
+                    type="button"
+                    class="btn-activate-exp-bottom"
+                    (click)="toggleStatus(exp, 'publicada')"
+                    title="Activar y publicar en la web pública"
+                  >
+                    <mat-icon class="btn-icon-sm">play_circle</mat-icon>
+                    <span>Activar</span>
+                  </button>
+                }
                 <a [routerLink]="getEditRoute(exp)" class="btn-action-edit-orange">
-                  <mat-icon class="btn-icon-sm">edit</mat-icon>
-                  <span>Editar Esta Experiencia</span>
+                  <span>Editar Experiencia</span>
                 </a>
               </div>
             </div>
@@ -496,12 +470,10 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                           <strong class="exp-table-title">{{ exp.title }}</strong>
                           @if (isClub(exp)) {
                             <span class="club-official-chip" title="Experiencia Oficial creada por el Club de Experiencias">
-                              <mat-icon>verified</mat-icon>
                               Club
                             </span>
                           } @else if (exp.providerName) {
                             <span class="provider-chip" title="Prestador oficial de la experiencia">
-                              <mat-icon>badge</mat-icon>
                               {{ exp.providerName }}
                             </span>
                           }
@@ -607,6 +579,22 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
               }
             </tbody>
           </table>
+        </div>
+
+        <!-- Acciones al pie de la tabla -->
+        <div class="table-footer-actions">
+          <button
+            type="button"
+            class="btn-footer-action"
+            (click)="refresh()"
+            [disabled]="isRefreshing()"
+          >
+            {{ isRefreshing() ? 'Actualizando...' : 'Refrescar Datos' }}
+          </button>
+
+          <button type="button" class="btn-footer-action" (click)="downloadExperiencesCsv()">
+            Descargar Planilla
+          </button>
         </div>
       </div>
 
@@ -1419,6 +1407,53 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         display: flex;
         align-items: center;
         gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+
+      .btn-hero-public-web {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.32rem 0.75rem;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        border-radius: 4px;
+        color: #ffffff;
+        font-size: 0.75rem;
+        font-weight: 800;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        text-decoration: none;
+        transition: all 0.2s ease;
+      }
+
+      .btn-hero-public-web:hover {
+        background: rgba(255, 255, 255, 0.16);
+        border-color: rgba(255, 255, 255, 0.45);
+        color: #ffffff;
+      }
+
+      .btn-hero-edit {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.32rem 0.75rem;
+        background: #ff5f00;
+        border: 1px solid #ff5f00;
+        border-radius: 4px;
+        color: #ffffff;
+        font-size: 0.75rem;
+        font-weight: 800;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        text-decoration: none;
+        transition: all 0.2s ease;
+      }
+
+      .btn-hero-edit:hover {
+        background: #ff7722;
+        border-color: #ff7722;
+        color: #ffffff;
       }
 
       .fiche-hero-title {
@@ -1506,13 +1541,15 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
       }
 
       .pricing-fiche-card {
-        background: linear-gradient(135deg, rgba(20, 12, 6, 0.98) 0%, rgba(10, 30, 45, 0.8) 100%);
-        border: 1px solid rgba(0, 180, 255, 0.3);
+        background: linear-gradient(135deg, rgba(28, 16, 8, 0.98) 0%, rgba(18, 10, 5, 0.98) 100%);
+        border: 1px solid rgba(255, 95, 0, 0.28);
+        border-left: 4px solid #ff5f00;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
       }
 
       .pricing-card-flex {
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         justify-content: space-between;
         flex-wrap: wrap;
         gap: 1.25rem;
@@ -1521,38 +1558,51 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
       .price-data {
         display: flex;
         flex-direction: column;
-        gap: 0.35rem;
+        gap: 0.5rem;
       }
 
       .price-title {
-        font-size: 0.72rem;
+        font-size: 0.74rem;
         font-weight: 800;
-        letter-spacing: 0.08em;
+        letter-spacing: 0.12em;
         text-transform: uppercase;
-        color: #00cc88;
+        color: #ff9955;
       }
 
       .price-figures {
         display: flex;
-        align-items: baseline;
-        gap: 0.75rem;
+        align-items: center;
+        gap: 0.85rem;
+        flex-wrap: wrap;
       }
 
       .ars-price {
-        font-size: 2rem;
+        font-size: 2.25rem;
         font-weight: 900;
-        color: #33ffaa;
+        color: #ffffff;
+        letter-spacing: -0.02em;
+        line-height: 1.1;
       }
 
       .usd-price {
-        font-size: 1.15rem;
-        font-weight: 700;
-        color: rgba(255, 255, 255, 0.7);
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.65rem;
+        background: rgba(255, 170, 85, 0.12);
+        border: 1px solid rgba(255, 170, 85, 0.3);
+        border-radius: 4px;
+        font-size: 0.88rem;
+        font-weight: 800;
+        color: #ffbb77;
+        letter-spacing: 0.02em;
       }
 
       .price-note {
-        font-size: 0.82rem;
-        color: rgba(255, 255, 255, 0.65);
+        font-size: 0.86rem;
+        color: rgba(255, 255, 255, 0.72);
+        line-height: 1.5;
+        max-width: 720px;
+        margin-top: 0.15rem;
       }
 
       .fiche-dates-section {
@@ -1853,28 +1903,80 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         display: flex;
         align-items: center;
         gap: 0.75rem;
+        flex-wrap: wrap;
+      }
+
+      .cta-bar-right .btn-cancel-edit,
+      .cta-bar-right .btn-action-edit-orange,
+      .cta-bar-right .btn-pause-exp-bottom,
+      .cta-bar-right .btn-activate-exp-bottom {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 42px;
+        min-height: 42px;
+        padding: 0 1.35rem;
+        font-size: 0.85rem;
+        font-weight: 800;
+        border-radius: 4px;
+        box-sizing: border-box;
+        line-height: 1;
+        transition: all 0.2s ease;
+      }
+
+      .btn-pause-exp-bottom {
+        background: rgba(255, 80, 80, 0.16);
+        border: 1px solid rgba(255, 80, 80, 0.4);
+        color: #ff8080;
+        cursor: pointer;
+        gap: 0.35rem;
+      }
+
+      .btn-pause-exp-bottom:hover {
+        background: rgba(255, 80, 80, 0.28);
+        border-color: #ff6060;
+        color: #ffffff;
+      }
+
+      .btn-activate-exp-bottom {
+        background: rgba(0, 204, 136, 0.16);
+        border: 1px solid rgba(0, 204, 136, 0.4);
+        color: #33ffaa;
+        cursor: pointer;
+        gap: 0.35rem;
+      }
+
+      .btn-activate-exp-bottom:hover {
+        background: rgba(0, 204, 136, 0.28);
+        border-color: #00cc88;
+        color: #ffffff;
       }
 
       .btn-view-fiche {
         display: inline-flex;
         align-items: center;
-        gap: 0.35rem;
-        padding: 0.42rem 0.85rem;
+        justify-content: center;
+        padding: 0 0.75rem;
+        height: 32px;
+        min-height: 32px;
+        box-sizing: border-box;
         background: rgba(255, 95, 0, 0.18);
-        border: 1px solid rgba(255, 95, 0, 0.45);
-        border-radius: 4px;
-        color: #ff7722;
-        font-size: 0.8rem;
+        border: 1px solid #ff5f00;
+        border-radius: 3px;
+        color: #ffffff;
+        font-size: 0.75rem;
         font-weight: 700;
         text-decoration: none;
         cursor: pointer;
+        white-space: nowrap !important;
+        letter-spacing: 0.04em;
         transition: all 0.2s ease;
       }
 
       .btn-view-fiche:hover {
         background: #ff5f00;
         border-color: #ff5f00;
-        color: #070d18;
+        color: #0b0704;
       }
 
       .btn-view-fiche-top {
@@ -2121,11 +2223,32 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
       }
 
       .table-responsive {
+        width: 100%;
         overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .table-responsive::-webkit-scrollbar {
+        height: 6px;
+      }
+
+      .table-responsive::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.25);
+        border-radius: 3px;
+      }
+
+      .table-responsive::-webkit-scrollbar-thumb {
+        background: rgba(255, 95, 0, 0.4);
+        border-radius: 3px;
+      }
+
+      .table-responsive::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 95, 0, 0.7);
       }
 
       .admin-exp-table {
         width: 100%;
+        min-width: 1180px;
         border-collapse: collapse;
         font-size: 0.85rem;
       }
@@ -2140,6 +2263,13 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         text-transform: uppercase;
         letter-spacing: 0.06em;
         border-bottom: 1px solid rgba(255, 95, 0, 0.2);
+      }
+
+      .admin-exp-table th.text-right,
+      .admin-exp-table td.text-right {
+        text-align: right;
+        white-space: nowrap;
+        min-width: 250px;
       }
 
       .admin-exp-table td {
@@ -2301,6 +2431,18 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         color: #ffaa00;
       }
 
+      .status-pill.is-clickable {
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border-style: solid;
+        font-family: inherit;
+      }
+
+      .status-pill.is-clickable:hover {
+        filter: brightness(1.25);
+        transform: translateY(-1px);
+      }
+
       .text-right {
         text-align: right;
       }
@@ -2310,67 +2452,93 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         align-items: center;
         justify-content: flex-end;
         gap: 0.45rem;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
+        white-space: nowrap;
       }
 
       .btn-edit-exp {
         display: inline-flex;
         align-items: center;
-        gap: 0.35rem;
-        padding: 0.42rem 0.85rem;
-        background: rgba(255, 95, 0, 0.18);
-        border: 1px solid rgba(255, 95, 0, 0.45);
-        border-radius: 4px;
-        color: #ff7722;
-        font-size: 0.8rem;
+        justify-content: center;
+        padding: 0 0.75rem;
+        height: 32px;
+        min-height: 32px;
+        box-sizing: border-box;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        border-radius: 3px;
+        color: rgba(255, 255, 255, 0.85);
+        font-size: 0.75rem;
         font-weight: 700;
         cursor: pointer;
+        white-space: nowrap !important;
+        text-decoration: none;
+        letter-spacing: 0.04em;
         transition: all 0.2s ease;
       }
 
       .btn-edit-exp:hover {
-        background: #ff5f00;
-        color: #070d18;
+        background: rgba(255, 255, 255, 0.16);
+        border-color: rgba(255, 255, 255, 0.45);
+        color: #ffffff;
       }
 
       .btn-edit-exp mat-icon {
-        font-size: 16px;
-        width: 16px;
-        height: 16px;
+        font-size: 15px;
+        width: 15px;
+        height: 15px;
       }
 
       .btn-pause-exp {
-        padding: 0.42rem 0.85rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 0.75rem;
+        height: 32px;
+        min-height: 32px;
+        box-sizing: border-box;
         background: rgba(255, 80, 80, 0.12);
         border: 1px solid rgba(255, 80, 80, 0.38);
-        border-radius: 4px;
+        border-radius: 3px;
         color: #ff8080;
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         font-weight: 700;
         cursor: pointer;
+        white-space: nowrap !important;
+        letter-spacing: 0.04em;
         transition: all 0.2s ease;
       }
 
       .btn-pause-exp:hover {
         background: rgba(255, 80, 80, 0.25);
         border-color: #ff8080;
+        color: #ffffff;
       }
 
       .btn-activate-exp {
-        padding: 0.42rem 0.85rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 0.75rem;
+        height: 32px;
+        min-height: 32px;
+        box-sizing: border-box;
         background: rgba(0, 204, 136, 0.12);
         border: 1px solid rgba(0, 204, 136, 0.38);
-        border-radius: 4px;
+        border-radius: 3px;
         color: #33ffaa;
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         font-weight: 700;
         cursor: pointer;
+        white-space: nowrap !important;
+        letter-spacing: 0.04em;
         transition: all 0.2s ease;
       }
 
       .btn-activate-exp:hover {
         background: rgba(0, 204, 136, 0.25);
-        border-color: #33ffaa;
+        border-color: #00cc88;
+        color: #ffffff;
       }
 
       .btn-view-web {
@@ -2389,6 +2557,44 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
       .btn-view-web:hover {
         background: rgba(255, 255, 255, 0.18);
         color: #ffffff;
+      }
+
+      .table-footer-actions {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        margin-top: 1rem;
+        box-sizing: border-box;
+      }
+
+      .btn-footer-action {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.6rem 1.15rem;
+        border-radius: 2px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition:
+          background 0.2s ease,
+          border-color 0.2s ease,
+          filter 0.2s ease;
+        background: rgba(30, 15, 8, 0.75);
+        border: 1px solid rgba(255, 95, 0, 0.35);
+        color: #ffffff;
+      }
+
+      .btn-footer-action:hover:not(:disabled) {
+        background: rgba(45, 22, 12, 0.85);
+        border-color: rgba(255, 95, 0, 0.5);
+        filter: brightness(1.15);
+      }
+
+      .btn-footer-action:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
       }
 
       .btn-view-web mat-icon {
@@ -3320,6 +3526,18 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         color: rgba(255, 255, 255, 0.85) !important;
       }
 
+      @media (max-width: 768px) {
+        .table-footer-actions {
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+
+        .table-footer-actions .btn-footer-action {
+          width: 100%;
+          justify-content: center;
+        }
+      }
+
       @media (max-width: 640px) {
         .club-experience-banner {
           flex-direction: column;
@@ -4078,11 +4296,95 @@ export class AdminExperiencesComponent implements OnInit {
     setTimeout(() => this.feedbackToast.set(null), 4500);
   }
 
-  getPublicExperienceUrl(exp: { publicUrl?: string; slug?: string; detailRoute?: string }): string {
-    if (exp.publicUrl && exp.publicUrl.trim().length > 0) {
-      return exp.publicUrl.trim();
+  readonly isRefreshing = signal(false);
+
+  async refresh(): Promise<void> {
+    this.isRefreshing.set(true);
+    try {
+      await this.experienceService.reloadFromSupabase();
+      this.showToast('Catálogo de experiencias actualizado con éxito.');
+    } catch {
+      this.showToast('No se pudieron refrescar las experiencias en este momento.');
+    } finally {
+      this.isRefreshing.set(false);
     }
-    const route = exp.detailRoute || `/experiencias/${exp.slug || ''}`;
+  }
+
+  downloadExperiencesCsv(): void {
+    const list = this.experiences();
+    const headers = [
+      'ID',
+      'Slug',
+      'Título',
+      'Kicker',
+      'Prestador',
+      'Contacto Prestador',
+      'Región',
+      'Dificultad',
+      'Duración',
+      'Altitud (msnm)',
+      'Arancel ARS',
+      'Arancel USD',
+      'Cupo Máx.',
+      'Estado',
+      'Ruta Web Oficial',
+      'Fechas Programadas',
+    ];
+    const escapeCsv = (val: any) => {
+      let str = val != null ? String(val) : '';
+      if (/^[=+\-@\t\r]/.test(str)) {
+        str = "'" + str;
+      }
+      return `"${str.replace(/"/g, '""')}"`;
+    };
+    const rows = [
+      headers.map(escapeCsv).join(','),
+      ...list.map((exp) => {
+        const provider = this.isClub(exp) ? 'Club de Experiencias' : (exp.providerName || 'N/A');
+        const contact = this.isClub(exp)
+          ? this.adminStore.clubProfile().email || 'admin@experiencias.club'
+          : (exp.providerEmail || exp.providerPhone || 'N/A');
+        const datesCount = Array.isArray(exp.dates) ? exp.dates.length : 0;
+        const publicUrl = this.getPublicExperienceUrl(exp);
+
+        return [
+          escapeCsv(exp.id),
+          escapeCsv(exp.slug),
+          escapeCsv(exp.title),
+          escapeCsv(exp.kicker || ''),
+          escapeCsv(provider),
+          escapeCsv(contact),
+          escapeCsv(exp.region),
+          escapeCsv(exp.difficulty),
+          escapeCsv(exp.durationLabel || ''),
+          escapeCsv(exp.altitudeMeters ?? 0),
+          escapeCsv(exp.priceArs),
+          escapeCsv(exp.priceUsd ?? ''),
+          escapeCsv(exp.maxSpotsPerGroup),
+          escapeCsv(exp.status === 'publicada' ? 'Publicada' : exp.status === 'oculta' ? 'Pausada' : 'Borrador'),
+          escapeCsv(publicUrl),
+          escapeCsv(datesCount > 0 ? `${datesCount} fecha(s)` : 'A coordinar'),
+        ].join(',');
+      }),
+    ];
+    const blob = new Blob(['\uFEFF' + rows.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `experiencias_web_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  getPublicExperienceUrl(exp: { publicUrl?: string; slug?: string; detailRoute?: string }): string {
+    const slug = exp.slug || '';
+    if (typeof window !== 'undefined' && window.location) {
+      const origin = window.location.origin;
+      if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+        return `${origin}/experiencias/${slug}`;
+      }
+    }
+    const route = exp.detailRoute || `/experiencias/${slug}`;
     return `https://experiencias.club${route.startsWith('/') ? '' : '/'}${route}`;
   }
 }

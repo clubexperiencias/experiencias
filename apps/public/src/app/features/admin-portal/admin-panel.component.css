@@ -33,8 +33,9 @@
 
 /* Top Nav Unificado (Idéntico a Login) */
 .portal-top-nav {
-  position: relative;
-  z-index: 100;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
   height: 70px;
   background: rgba(9, 4, 2, 0.95);
   border-bottom: 1px solid rgba(255, 95, 0, 0.28);
@@ -169,8 +170,9 @@
   border-bottom: 1px solid rgba(0, 0, 0, 0.2);
   padding: 0.55rem 2rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-  position: relative;
-  z-index: 90;
+  position: sticky;
+  top: 70px;
+  z-index: 990;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
@@ -803,6 +805,7 @@
 
   .portal-breadcrumb-bar {
     padding: 0.5rem 1rem;
+    top: 60px;
   }
 
   .portal-emblem-img {

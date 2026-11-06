@@ -1398,6 +1398,52 @@ export class ExperienceService {
                 remoteExperiences.push(expFromProposal);
                 knownSlugs.add(pSlug.toLowerCase());
                 knownIds.add(pId.toLowerCase());
+
+                // Auto-sincronizar propuesta aprobada en la tabla pública de experiencias
+                this.supabase
+                  .from('experiencias')
+                  .upsert({
+                    id: expFromProposal.id,
+                    slug: expFromProposal.slug,
+                    title: expFromProposal.title,
+                    kicker: expFromProposal.kicker || '',
+                    tagline: expFromProposal.tagline,
+                    description: expFromProposal.description,
+                    region: expFromProposal.region,
+                    meeting_point: expFromProposal.meetingPoint || '',
+                    meeting_point_url: expFromProposal.meetingPointUrl || '',
+                    difficulty: expFromProposal.difficulty,
+                    duration_label: expFromProposal.durationLabel,
+                    price_ars: expFromProposal.priceArs,
+                    price_usd: expFromProposal.priceUsd,
+                    capacity_per_date: expFromProposal.maxSpotsPerGroup,
+                    cover_image: expFromProposal.coverImage,
+                    video_url: expFromProposal.videoUrl || '',
+                    video_poster: expFromProposal.videoPoster || '',
+                    altitude_meters: expFromProposal.altitudeMeters || 0,
+                    best_season: expFromProposal.bestSeason || '',
+                    itinerary: expFromProposal.itinerary || '',
+                    promos_and_pricing: expFromProposal.promosAndPricing || '',
+                    dates: expFromProposal.dates || [],
+                    highlights: expFromProposal.highlights || [],
+                    included: expFromProposal.included || [],
+                    not_included: expFromProposal.notIncluded || [],
+                    status: 'publicada',
+                    public_url: expFromProposal.publicUrl,
+                    album_photos: expFromProposal.albumPhotos || [],
+                    provider_name: expFromProposal.providerName || null,
+                    provider_phone: expFromProposal.providerPhone || null,
+                    provider_email: expFromProposal.providerEmail || null,
+                    provider_slug: expFromProposal.providerSlug || null,
+                  } as any)
+                  .then(({ error: upsertErr }) => {
+                    if (upsertErr) {
+                      console.warn(
+                        '[ExperienceService] Error auto-sincronizando propuesta aprobada en tabla experiencias:',
+                        upsertErr,
+                      );
+                    }
+                  });
               }
             }
           }

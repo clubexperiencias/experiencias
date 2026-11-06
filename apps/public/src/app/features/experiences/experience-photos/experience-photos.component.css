@@ -112,9 +112,10 @@
   margin-bottom: 0;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 820px) {
   .detail-specs-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
   }
 }
 
@@ -137,6 +138,17 @@
   font-size: 0.85rem;
   font-weight: 600;
   color: #ffffff;
+}
+
+.spec-tile-clickable {
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.spec-value-link {
+  color: #80b3ff !important;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 /* Nav Actions */

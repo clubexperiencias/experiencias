@@ -198,20 +198,17 @@ import {
               </div>
 
               <div class="form-group media-field-group">
-                <label class="form-label" for="profile-avatar-input">Foto de Perfil / Logo</label>
+                <label class="form-label">Foto de Perfil / Logo</label>
                 <div class="media-input-wrapper">
                   @if (form.get('avatar')?.value) {
                     <div class="media-thumb-preview avatar-thumb" title="Vista previa de avatar">
                       <img [src]="form.get('avatar')?.value" alt="Preview Avatar" />
                     </div>
+                  } @else {
+                    <div class="media-thumb-preview avatar-thumb is-empty">
+                      <mat-icon>person</mat-icon>
+                    </div>
                   }
-                  <input
-                    id="profile-avatar-input"
-                    type="text"
-                    formControlName="avatar"
-                    class="form-input"
-                    placeholder="URL de imagen o subí un archivo..."
-                  />
                   <label
                     class="btn-file-upload"
                     [class.is-loading]="isUploadingAvatar()"
@@ -227,8 +224,19 @@ import {
                     <mat-icon class="upload-icon">{{
                       isUploadingAvatar() ? 'hourglass_empty' : 'cloud_upload'
                     }}</mat-icon>
-                    <span>{{ isUploadingAvatar() ? 'Subiendo...' : 'Subir imagen' }}</span>
+                    <span>{{ isUploadingAvatar() ? 'Subiendo...' : (form.get('avatar')?.value ? 'Cambiar foto' : 'Subir foto') }}</span>
                   </label>
+                  @if (form.get('avatar')?.value) {
+                    <button
+                      type="button"
+                      class="btn-remove-media"
+                      (click)="clearMedia('avatar')"
+                      title="Quitar foto de perfil"
+                    >
+                      <mat-icon>delete_outline</mat-icon>
+                      <span>Quitar</span>
+                    </button>
+                  }
                 </div>
                 @if (uploadAvatarError()) {
                   <span class="field-error-text">{{ uploadAvatarError() }}</span>
@@ -237,22 +245,17 @@ import {
               </div>
 
               <div class="form-group media-field-group">
-                <label class="form-label" for="profile-cover-input"
-                  >Foto de Portada de la Agencia</label
-                >
+                <label class="form-label">Foto de Portada de la Agencia</label>
                 <div class="media-input-wrapper">
                   @if (form.get('coverImage')?.value) {
                     <div class="media-thumb-preview cover-thumb" title="Vista previa de portada">
                       <img [src]="form.get('coverImage')?.value" alt="Preview Portada" />
                     </div>
+                  } @else {
+                    <div class="media-thumb-preview cover-thumb is-empty">
+                      <mat-icon>image</mat-icon>
+                    </div>
                   }
-                  <input
-                    id="profile-cover-input"
-                    type="text"
-                    formControlName="coverImage"
-                    class="form-input"
-                    placeholder="URL de imagen o subí un archivo..."
-                  />
                   <label
                     class="btn-file-upload"
                     [class.is-loading]="isUploadingCover()"
@@ -268,8 +271,19 @@ import {
                     <mat-icon class="upload-icon">{{
                       isUploadingCover() ? 'hourglass_empty' : 'cloud_upload'
                     }}</mat-icon>
-                    <span>{{ isUploadingCover() ? 'Subiendo...' : 'Subir imagen' }}</span>
+                    <span>{{ isUploadingCover() ? 'Subiendo...' : (form.get('coverImage')?.value ? 'Cambiar portada' : 'Subir portada') }}</span>
                   </label>
+                  @if (form.get('coverImage')?.value) {
+                    <button
+                      type="button"
+                      class="btn-remove-media"
+                      (click)="clearMedia('coverImage')"
+                      title="Quitar foto de portada"
+                    >
+                      <mat-icon>delete_outline</mat-icon>
+                      <span>Quitar</span>
+                    </button>
+                  }
                 </div>
                 @if (uploadCoverError()) {
                   <span class="field-error-text">{{ uploadCoverError() }}</span>
@@ -316,9 +330,8 @@ import {
                   >
                 } @else {
                   <span class="field-hint"
-                    >URL de tu perfil de Instagram, Facebook u otra red. En tu perfil público se
-                    mostrará solo el usuario.</span
-                  >
+                    >URL de tu perfil de Instagram, Facebook u otra red social.
+                  </span>
                 }
               </div>
 
@@ -600,15 +613,12 @@ import {
       .media-input-wrapper {
         display: flex;
         align-items: center;
-        gap: 0.5rem;
-      }
-      .media-input-wrapper .form-input {
-        flex: 1;
-        min-width: 0;
+        gap: 0.75rem;
+        flex-wrap: wrap;
       }
       .media-thumb-preview {
-        width: 38px;
-        height: 38px;
+        width: 46px;
+        height: 46px;
         flex-shrink: 0;
         border: 1px solid rgba(128, 179, 255, 0.4);
         background: #070d18;
@@ -621,12 +631,50 @@ import {
         border-radius: 50%;
       }
       .media-thumb-preview.cover-thumb {
+        width: 76px;
+        height: 46px;
         border-radius: 2px;
+      }
+      .media-thumb-preview.is-empty {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px dashed rgba(255, 255, 255, 0.2);
+        color: rgba(255, 255, 255, 0.4);
+      }
+      .media-thumb-preview.is-empty mat-icon {
+        font-size: 22px;
+        width: 22px;
+        height: 22px;
       }
       .media-thumb-preview img {
         width: 100%;
         height: 100%;
         object-fit: cover;
+      }
+      .btn-remove-media {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.35rem;
+        height: 40px;
+        padding: 0 0.8rem;
+        background: rgba(239, 68, 68, 0.12);
+        border: 1px solid rgba(239, 68, 68, 0.35);
+        border-radius: 2px;
+        color: #f87171;
+        font-size: 0.8rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .btn-remove-media:hover {
+        background: rgba(239, 68, 68, 0.24);
+        border-color: #ef4444;
+        color: #ffffff;
+      }
+      .btn-remove-media mat-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
       }
       .btn-file-upload {
         display: inline-flex;
@@ -971,6 +1019,11 @@ export class ProviderProfileComponent {
       setLoading.set(false);
       input.value = '';
     }
+  }
+
+  clearMedia(field: 'avatar' | 'coverImage'): void {
+    this.form.patchValue({ [field]: '' });
+    this.form.markAsDirty();
   }
 
   onLogout(): void {

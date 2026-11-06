@@ -1774,12 +1774,16 @@ BEGIN
         'id', w.id,
         'type', 'waitlist',
         'email', w.email,
-        'fullName', NULL,
+        'fullName', COALESCE(
+          NULLIF(TRIM(u.raw_user_meta_data ->> 'full_name'), ''),
+          NULLIF(TRIM(u.raw_user_meta_data ->> 'name'), ''),
+          NULL
+        ),
         'dni', NULL,
         'phone', NULL,
         'position', NULL,
         'membershipTier', 'waitlist',
-        'googleLinked', COALESCE(w.google_linked, false),
+        'googleLinked', COALESCE(w.google_linked, u.id IS NOT NULL, false),
         'converted', (
           COALESCE(w.converted, false) OR EXISTS (
             SELECT 1 FROM public.pagos_transferencias p
@@ -1799,6 +1803,7 @@ BEGIN
     '[]'::jsonb
   ) INTO v_waitlist
   FROM public.waitlist w
+  LEFT JOIN auth.users u ON LOWER(TRIM(u.email)) = LOWER(TRIM(w.email))
   WHERE NOT EXISTS (
     SELECT 1 FROM public.socios s WHERE LOWER(TRIM(s.email)) = LOWER(TRIM(w.email))
   );

@@ -6,6 +6,7 @@ import { map } from 'rxjs';
 import { MatIconModule } from '@angular/material/icon';
 import { ExperienceService, KAYAK_ALBUM_PHOTOS } from '../../../core/services/experience.service';
 import { ExperienceAlbumPhoto } from '../../../core/models/experience.model';
+import { isClubExperience } from '../../../core/models/club-profile.model';
 import { HeaderComponent } from '../../../shared/components/header/header.component';
 import { FooterComponent } from '../../../shared/components/footer/footer.component';
 import {
@@ -35,9 +36,22 @@ export class ExperiencePhotosComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   readonly expService = inject(ExperienceService);
+  readonly isClubExperience = isClubExperience;
 
   readonly mobileMenuOpen = signal(false);
   readonly activePhotoIndex = signal<number | null>(null);
+
+  isUrl(value?: string): boolean {
+    if (!value) return false;
+    return value.startsWith('http://') || value.startsWith('https://');
+  }
+
+  getProviderSlug(item?: any): string | null {
+    if (!item) return null;
+    if (item.providerSlug) return item.providerSlug;
+    if (this.isClubExperience(item)) return 'club-de-experiencias';
+    return null;
+  }
 
   // Slug extraído de los parámetros de ruta o del route data
   private readonly slug = toSignal(
