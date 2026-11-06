@@ -6,6 +6,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { filter } from 'rxjs';
 import { AdminStoreService } from '../../core/services/admin-store.service';
+import { ExperienceService } from '../../core/services/experience.service';
+import { ProviderStoreService } from '../../core/services/provider-store.service';
 import { AdminLoginComponent } from './admin-login/admin-login.component';
 
 const ROUTE_LABELS: Record<string, string> = {
@@ -18,6 +20,8 @@ const ROUTE_LABELS: Record<string, string> = {
   nueva: 'NUEVA',
   editar: 'EDITAR',
   perfil: 'PERFIL',
+  logs: 'REGISTRO DE ACTIVIDAD',
+  admins: 'ADMINS',
 };
 
 @Component({
@@ -140,6 +144,18 @@ const ROUTE_LABELS: Record<string, string> = {
                     <mat-icon class="menu-item-icon">travel_explore</mat-icon>
                     <div class="menu-item-info">
                       <strong class="menu-item-title">Ver Experiencias</strong>
+                    </div>
+                  </a>
+
+                  <a
+                    [routerLink]="adminLink('/logs')"
+                    class="dropdown-item enlarged-item"
+                    (click)="userMenuOpen.set(false)"
+                  >
+                    <mat-icon class="menu-item-icon">history</mat-icon>
+                    <div class="menu-item-info">
+                      <strong class="menu-item-title">Registro de Actividad</strong>
+                      <span class="menu-item-subtitle">Logs de admins y prestadores</span>
                     </div>
                   </a>
 
@@ -511,6 +527,8 @@ const ROUTE_LABELS: Record<string, string> = {
 })
 export class AdminPanelComponent {
   readonly store = inject(AdminStoreService);
+  private readonly experienceService = inject(ExperienceService);
+  private readonly providerStore = inject(ProviderStoreService);
   private readonly router = inject(Router);
   private readonly pageTitle = inject(Title);
   private readonly destroyRef = inject(DestroyRef);
@@ -568,12 +586,55 @@ export class AdminPanelComponent {
     if (cleanSegments[0] === 'experiencias') {
       if (cleanSegments.length === 1) {
         items.push({ label: 'EXPERIENCIAS' });
-      } else if (cleanSegments.includes('editar')) {
-        items.push({ label: 'EXPERIENCIAS', link: `${basePath}/experiencias` });
-        items.push({ label: 'EDITAR' });
       } else {
-        items.push({ label: 'EXPERIENCIAS', link: `${basePath}/experiencias` });
-        items.push({ label: cleanSegments[cleanSegments.length - 1].toUpperCase() });
+        const slug = cleanSegments[1];
+        const exp = this.experienceService.getExperienceBySlug(slug);
+        const expTitle = exp ? (exp.shortTitle || exp.title).toUpperCase() : slug.toUpperCase();
+
+        if (cleanSegments.includes('editar')) {
+          items.push({ label: 'EXPERIENCIAS', link: `${basePath}/experiencias` });
+          items.push({ label: expTitle, link: `${basePath}/experiencias/${slug}` });
+          items.push({ label: 'EDITAR' });
+        } else {
+          items.push({ label: 'EXPERIENCIAS', link: `${basePath}/experiencias` });
+          items.push({ label: expTitle });
+        }
+      }
+      return items;
+    }
+
+    if (cleanSegments[0] === 'prestadores') {
+      if (cleanSegments.length === 1) {
+        items.push({ label: 'PRESTADORES' });
+      } else {
+        const slug = cleanSegments[1];
+        const prov = this.providerStore.getProviderBySlug(slug);
+        const provTitle = prov ? (prov.agency || prov.name).toUpperCase() : slug.toUpperCase();
+
+        if (cleanSegments.includes('editar')) {
+          items.push({ label: 'PRESTADORES', link: `${basePath}/prestadores` });
+          items.push({ label: provTitle, link: `${basePath}/prestadores/${slug}` });
+          items.push({ label: 'EDITAR' });
+        } else {
+          items.push({ label: 'PRESTADORES', link: `${basePath}/prestadores` });
+          items.push({ label: provTitle });
+        }
+      }
+      return items;
+    }
+
+    if (cleanSegments[0] === 'logs') {
+      if (cleanSegments.length === 1) {
+        items.push({ label: 'REGISTRO DE ACTIVIDAD' });
+      } else if (cleanSegments[1] === 'admins') {
+        items.push({ label: 'REGISTRO DE ACTIVIDAD', link: `${basePath}/logs` });
+        items.push({ label: 'ADMINISTRADORES' });
+      } else if (cleanSegments[1] === 'prestadores') {
+        items.push({ label: 'REGISTRO DE ACTIVIDAD', link: `${basePath}/logs` });
+        items.push({ label: 'PRESTADORES' });
+      } else {
+        items.push({ label: 'REGISTRO DE ACTIVIDAD', link: `${basePath}/logs` });
+        items.push({ label: cleanSegments[1].toUpperCase() });
       }
       return items;
     }
@@ -627,7 +688,13 @@ export class AdminPanelComponent {
 
   openClubProfileModal(): void {
     if (typeof document !== 'undefined') {
-      this.lastFocusedElement = document.activeElement as HTMLElement | null;
+      const active = document.activeElement as HTMLElement | null;
+      const userPill = document.querySelector<HTMLElement>('.user-pill');
+      if (active && active.closest('.dropdown-menu')) {
+        this.lastFocusedElement = userPill;
+      } else {
+        this.lastFocusedElement = active || userPill;
+      }
     }
     this.clubProfileError.set(null);
     const p = this.store.clubProfile();
@@ -658,8 +725,17 @@ export class AdminPanelComponent {
     if (this.isSavingClubProfile() && !force) return;
     this.clubProfileError.set(null);
     this.store.closeClubProfileModal();
-    if (this.lastFocusedElement && typeof this.lastFocusedElement.focus === 'function') {
-      this.lastFocusedElement.focus();
+    if (typeof document !== 'undefined') {
+      if (
+        this.lastFocusedElement &&
+        this.lastFocusedElement.isConnected &&
+        typeof this.lastFocusedElement.focus === 'function'
+      ) {
+        this.lastFocusedElement.focus();
+      } else {
+        const fallback = document.querySelector<HTMLElement>('.user-pill');
+        fallback?.focus();
+      }
     }
     this.lastFocusedElement = null;
   }

@@ -160,8 +160,8 @@ export class AdminStoreService {
     this.providerStore.updateExperiencePublicUrl(expId, publicUrl);
   }
 
-  rejectExperienceRequest(id: string): void {
-    this.providerStore.rejectExperienceRequest(id);
+  rejectExperienceRequest(id: string): Promise<boolean> {
+    return this.providerStore.rejectExperienceRequest(id);
   }
 
   // Estadísticas de Postulaciones (Prestadores y Fundadores)

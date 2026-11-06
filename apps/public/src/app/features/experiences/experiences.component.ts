@@ -15,6 +15,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { NewsletterService } from '../../core/services/newsletter.service';
 import { ExperienceService } from '../../core/services/experience.service';
 import { Experience } from '../../core/models/experience.model';
+import { isClubExperience } from '../../core/models/club-profile.model';
 import { FooterComponent } from '../../shared/components/footer/footer.component';
 import { HeaderComponent } from '../../shared/components/header/header.component';
 import {
@@ -50,6 +51,7 @@ export class ExperiencesComponent implements AfterViewInit, OnDestroy {
   readonly newsletter = inject(NewsletterService);
   readonly experienceService = inject(ExperienceService);
   readonly router = inject(Router);
+  readonly isClubExperience = isClubExperience;
 
   readonly bg = signal('/assets/images/laguna_blanca.jpg');
 

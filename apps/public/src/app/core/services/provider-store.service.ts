@@ -1006,6 +1006,7 @@ export class ProviderStoreService {
         const current = list[idx];
         const updated: ProviderUser = {
           ...current,
+          email: profile.email,
           name: profile.name,
           agency: profile.agency,
           slug: profile.slug,
@@ -1058,6 +1059,149 @@ export class ProviderStoreService {
 
   getProviderByEmail(email: string): ProviderUser | undefined {
     return this._providers().find((p) => p.email.toLowerCase() === email.trim().toLowerCase());
+  }
+
+  getProviderBySlug(slug: string): ProviderUser | undefined {
+    const clean = (slug || '').trim().toLowerCase();
+    if (!clean) return undefined;
+    return this._providers().find(
+      (p) =>
+        (p.slug || '').toLowerCase() === clean ||
+        p.id.toLowerCase() === clean ||
+        (p.agency || '')
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/(^-|-$)+/g, '') === clean,
+    );
+  }
+
+  async adminUpdateProvider(
+    providerIdOrEmail: string,
+    updates: Partial<ProviderUser>,
+  ): Promise<{ success: boolean; message?: string }> {
+    const cleanKey = providerIdOrEmail.trim().toLowerCase();
+    const current = this._providers().find(
+      (p) =>
+        p.id.toLowerCase() === cleanKey ||
+        (p.email || '').toLowerCase() === cleanKey ||
+        (p.slug || '').toLowerCase() === cleanKey,
+    );
+
+    if (!current) {
+      return { success: false, message: 'Prestador no encontrado en el padrón local.' };
+    }
+
+    const email = current.email.trim().toLowerCase();
+    if (updates.email && updates.email.trim().toLowerCase() !== email) {
+      return {
+        success: false,
+        message: 'No se permite modificar el correo del prestador directamente porque afectaría el inicio de sesión y la autenticación.',
+      };
+    }
+
+    const updated: ProviderUser = {
+      ...current,
+      ...updates,
+    };
+
+    if (isSupabaseConfigured()) {
+      try {
+        const payload: Record<string, any> = {
+          updated_at: new Date().toISOString(),
+        };
+        if (updates.name !== undefined) {
+          payload['name'] = updates.name.trim();
+          payload['account_holder'] = updates.accountHolder ? updates.accountHolder.trim() : updates.name.trim();
+        }
+        if (updates.agency !== undefined) payload['agency'] = updates.agency.trim();
+        if (updates.slug !== undefined) payload['slug'] = updates.slug.trim().toLowerCase();
+        if (updates.bio !== undefined) payload['bio'] = updates.bio.trim();
+        if (updates.phone !== undefined) payload['phone'] = updates.phone.trim();
+        if (updates.website !== undefined) payload['website'] = updates.website.trim();
+        if (updates.socialMedia !== undefined) payload['social_media'] = updates.socialMedia.trim();
+        if (updates.cuitDni !== undefined) payload['cuit_dni'] = updates.cuitDni.trim();
+        if (updates.cbuAlias !== undefined) payload['cbu_alias'] = updates.cbuAlias.trim();
+        if (updates.bankName !== undefined) payload['bank_name'] = updates.bankName.trim();
+        if (updates.accountHolder !== undefined) payload['account_holder'] = updates.accountHolder.trim();
+        if (updates.status !== undefined) {
+          payload['status'] = updates.status;
+          payload['active'] = updates.status === 'aprobado';
+        }
+
+        const { data: updatedRows, error } = await (this.supabase.from('provider_access') as any)
+          .update(payload)
+          .eq('email', email)
+          .select('id');
+
+        if (error) {
+          console.warn('[ProviderStore] Error actualizando provider_access como admin:', error);
+          return {
+            success: false,
+            message: 'No se pudieron guardar los cambios en la base de datos remota.',
+          };
+        }
+
+        if (!updatedRows || updatedRows.length === 0) {
+          return {
+            success: false,
+            message: 'No se encontró el registro del prestador en la base de datos remota.',
+          };
+        }
+
+        // Si cambió la agencia o el slug, sincronizamos las experiencias en la base remota
+        const expUpdate: Record<string, any> = {};
+        if (updates.agency !== undefined && updates.agency.trim()) {
+          expUpdate['provider_name'] = updates.agency.trim();
+        }
+        if (updates.slug !== undefined && updates.slug.trim()) {
+          expUpdate['provider_slug'] = updates.slug.trim().toLowerCase();
+        }
+        if (Object.keys(expUpdate).length > 0) {
+          await (this.supabase.from('experiencias') as any)
+            .update(expUpdate)
+            .eq('provider_email', email);
+        }
+      } catch (err: any) {
+        console.warn('[ProviderStore] Excepción al actualizar prestador:', err);
+        return { success: false, message: 'Error de conexión con el servidor.' };
+      }
+    }
+
+    this._providers.update((list) =>
+      list.map((p) => (p.id === current.id || p.email.toLowerCase() === email ? updated : p)),
+    );
+    this.saveProviders();
+
+    if (this._currentProvider()?.email.toLowerCase() === email) {
+      this._currentProvider.set(updated);
+      this.saveSession(updated);
+    }
+
+    // Actualizar experiencias locales asociadas si cambiaron datos relevantes
+    if (
+      (updates.agency !== undefined && updates.agency.trim()) ||
+      (updates.slug !== undefined && updates.slug.trim())
+    ) {
+      const newAgency = updates.agency !== undefined ? updates.agency.trim() : undefined;
+      const newSlug = updates.slug !== undefined ? updates.slug.trim().toLowerCase() : undefined;
+      this._experiences.update((list) =>
+        list.map((e) => {
+          if (e.providerId === current.id || (e.providerEmail || '').toLowerCase() === email) {
+            return {
+              ...e,
+              ...(newAgency ? { providerName: newAgency } : {}),
+              ...(newSlug ? { providerSlug: newSlug } : {}),
+            };
+          }
+          return e;
+        }),
+      );
+      this.saveExperiences();
+    }
+
+    return { success: true };
   }
 
   async getPublicProvider(slugOrId: string): Promise<ProviderUser | null> {
@@ -2484,7 +2628,12 @@ export class ProviderStoreService {
     this.saveExperiences();
   }
 
-  rejectExperienceRequest(requestId: string): void {
+  async rejectExperienceRequest(requestId: string): Promise<boolean> {
+    const previous = this._experienceRequests().find((r) => r.id === requestId);
+    if (!previous) return false;
+    const prevStatus = previous.status;
+    const prevReviewedAt = previous.reviewedAt;
+
     this._experienceRequests.update((list) =>
       list.map((r) =>
         r.id === requestId
@@ -2495,25 +2644,39 @@ export class ProviderStoreService {
     this.saveRequests();
 
     if (isSupabaseConfigured()) {
-      (this.supabase.from('propuestas_experiencias') as any)
-        .update({
-          status: 'rechazada',
-          reviewed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', requestId)
-        .then(({ error }: any) => {
-          if (error) {
-            console.warn(
-              '[ProviderStore] Error actualizando estado de propuesta en Supabase:',
-              error,
-            );
-          }
-        })
-        .catch((err: any) => {
-          console.warn('[ProviderStore] Excepción al rechazar propuesta en Supabase:', err);
-        });
+      try {
+        const { error } = await (this.supabase.from('propuestas_experiencias') as any)
+          .update({
+            status: 'rechazada',
+            reviewed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', requestId);
+        if (error) {
+          console.warn(
+            '[ProviderStore] Error actualizando estado de propuesta en Supabase:',
+            error,
+          );
+          this._experienceRequests.update((list) =>
+            list.map((r) =>
+              r.id === requestId ? { ...r, status: prevStatus, reviewedAt: prevReviewedAt } : r,
+            ),
+          );
+          this.saveRequests();
+          return false;
+        }
+      } catch (err: any) {
+        console.warn('[ProviderStore] Excepción al rechazar propuesta en Supabase:', err);
+        this._experienceRequests.update((list) =>
+          list.map((r) =>
+            r.id === requestId ? { ...r, status: prevStatus, reviewedAt: prevReviewedAt } : r,
+          ),
+        );
+        this.saveRequests();
+        return false;
+      }
     }
+    return true;
   }
 
   private loadStoredRequests(): ExperienceProposalRequest[] {

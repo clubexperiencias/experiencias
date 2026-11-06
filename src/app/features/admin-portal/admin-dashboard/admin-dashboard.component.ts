@@ -1,7 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import {
   AdminStoreService,
@@ -249,7 +249,6 @@ import { Experience } from '../../../core/models/experience.model';
                   <th>Prestador / Guía</th>
                   <th>Agencia / Emprendimiento</th>
                   <th>Contacto</th>
-                  <th>Padrón</th>
                   <th>Estado</th>
                   <th>Fecha</th>
                   <th class="text-right">Acción</th>
@@ -281,13 +280,6 @@ import { Experience } from '../../../core/models/experience.model';
                         </a>
                       } @else {
                         <span class="row-sub">—</span>
-                      }
-                    </td>
-                    <td>
-                      @if (item.origin === 'official') {
-                        <span class="badge-prov-official">OFICIAL</span>
-                      } @else {
-                        <span class="badge-prov-applicant">POSTULANTE</span>
                       }
                     </td>
                     <td>
@@ -477,6 +469,11 @@ import { Experience } from '../../../core/models/experience.model';
                                 <mat-icon>verified</mat-icon>
                                 Club
                               </span>
+                            } @else if (exp.providerName) {
+                              <span class="provider-chip" title="Prestador oficial de la experiencia">
+                                <mat-icon>badge</mat-icon>
+                                {{ exp.providerName }}
+                              </span>
                             }
                           </div>
                           <span class="exp-kicker-sub font-mono">{{ exp.kicker || 'EXPEDICIÓN' }}</span>
@@ -518,8 +515,8 @@ import { Experience } from '../../../core/models/experience.model';
                       </span>
                     </td>
                     <td class="text-right">
-                      <a routerLink="/experiencias" class="btn-review">
-                        Editar
+                      <a [routerLink]="getExperienceFicheRoute(exp.slug)" class="btn-review-fiche">
+                        VER FICHA
                       </a>
                     </td>
                   </tr>
@@ -1524,6 +1521,28 @@ import { Experience } from '../../../core/models/experience.model';
       }
 
       .club-chip mat-icon {
+        font-size: 12px;
+        width: 12px;
+        height: 12px;
+      }
+
+      .provider-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.2rem;
+        background: rgba(14, 165, 233, 0.16);
+        border: 1px solid rgba(56, 189, 248, 0.45);
+        color: #38bdf8;
+        font-size: 0.65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        padding: 0.1rem 0.4rem;
+        border-radius: 3px;
+        line-height: 1;
+      }
+
+      .provider-chip mat-icon {
         font-size: 12px;
         width: 12px;
         height: 12px;
@@ -2841,6 +2860,7 @@ import { Experience } from '../../../core/models/experience.model';
 export class AdminDashboardComponent {
   readonly store = inject(AdminStoreService);
   private readonly experienceService = inject(ExperienceService);
+  private readonly router = inject(Router);
   readonly webExperiences = this.experienceService.experiences;
 
   isClub(exp?: Partial<Experience> | null): boolean {
@@ -3125,8 +3145,19 @@ export class AdminDashboardComponent {
     }
   }
 
-  rejectExperience(id: string): void {
-    this.store.rejectExperienceRequest(id);
+  getExperienceFicheRoute(slug?: string): string {
+    const rawPath = this.router.url.split('?')[0].split('#')[0];
+    const segments = rawPath.split('/').filter(Boolean);
+    const base = segments[0] === 'admin' ? '/admin/experiencias' : '/experiencias';
+    return `${base}/${slug || ''}`;
+  }
+
+  async rejectExperience(id: string): Promise<void> {
+    const success = await this.store.rejectExperienceRequest(id);
+    if (!success) {
+      alert('No se pudo rechazar la propuesta en el servidor. Por favor, reintentá.');
+      return;
+    }
     const current = this.selectedExperienceRequest();
     if (current && current.id === id) {
       this.selectedExperienceRequest.set({

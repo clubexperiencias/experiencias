@@ -12,6 +12,7 @@ import {
 } from '../../../core/services/admin-store.service';
 import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
 import { slugify } from '../../../core/services/provider-store.service';
+import { ExperienceService } from '../../../core/services/experience.service';
 
 type ApplicationFilterTab =
   'todas' | 'prestadores' | 'fundadores' | 'experiencias' | 'pendientes' | 'aprobadas' | 'bajas';
@@ -2205,6 +2206,7 @@ type ApplicationFilterTab =
 })
 export class AdminApplicationsComponent implements OnInit {
   readonly store = inject(AdminStoreService);
+  readonly experienceService = inject(ExperienceService);
   private readonly route = inject(ActivatedRoute);
 
   readonly searchQuery = signal<string>('');
@@ -2342,8 +2344,9 @@ export class AdminApplicationsComponent implements OnInit {
           });
         }
         this.store.providerStore.reloadFromStorage();
-        void this.store.providerStore.loadProposalsFromSupabase();
-        void this.store.loadAllApplications();
+        await this.store.providerStore.loadProposalsFromSupabase();
+        await this.store.loadAllApplications();
+        await this.experienceService.reloadFromSupabase();
         this.closeExperienceRequest();
       }
     } catch (err) {
@@ -2351,8 +2354,12 @@ export class AdminApplicationsComponent implements OnInit {
     }
   }
 
-  rejectExperience(id: string): void {
-    this.store.rejectExperienceRequest(id);
+  async rejectExperience(id: string): Promise<void> {
+    const success = await this.store.rejectExperienceRequest(id);
+    if (!success) {
+      alert('No se pudo rechazar la propuesta en el servidor. Por favor, reintentá.');
+      return;
+    }
     const current = this.selectedExperienceRequest();
     if (current && current.id === id) {
       this.selectedExperienceRequest.set({
@@ -2362,8 +2369,8 @@ export class AdminApplicationsComponent implements OnInit {
       });
     }
     this.store.providerStore.reloadFromStorage();
-    void this.store.providerStore.loadProposalsFromSupabase();
-    void this.store.loadAllApplications();
+    await this.store.providerStore.loadProposalsFromSupabase();
+    await this.store.loadAllApplications();
     this.closeExperienceRequest();
   }
 

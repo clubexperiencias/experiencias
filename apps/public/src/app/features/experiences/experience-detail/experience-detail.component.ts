@@ -5,6 +5,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
 import { MatIconModule } from '@angular/material/icon';
 import { ExperienceService } from '../../../core/services/experience.service';
+import { isClubExperience } from '../../../core/models/club-profile.model';
 import { HeaderComponent } from '../../../shared/components/header/header.component';
 import { FooterComponent } from '../../../shared/components/footer/footer.component';
 import {
@@ -32,6 +33,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
 export class ExperienceDetailComponent {
   private readonly route = inject(ActivatedRoute);
   readonly experienceService = inject(ExperienceService);
+  readonly isClubExperience = isClubExperience;
 
   readonly mobileMenuOpen = signal(false);
 

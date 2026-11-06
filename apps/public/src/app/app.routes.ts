@@ -83,6 +83,22 @@ const adminRoutes: Routes = [
           ),
       },
       {
+        path: 'prestadores/:slug/editar',
+        title: 'Editar Prestador - Portal de Admin',
+        loadComponent: () =>
+          import('./features/admin-portal/admin-providers/admin-providers.component').then(
+            (m) => m.AdminProvidersComponent,
+          ),
+      },
+      {
+        path: 'prestadores/:slug',
+        title: 'Ficha del Prestador - Portal de Admin',
+        loadComponent: () =>
+          import('./features/admin-portal/admin-providers/admin-providers.component').then(
+            (m) => m.AdminProvidersComponent,
+          ),
+      },
+      {
         path: 'propuestas',
         title: 'Portal de Admin del Club de Experiencias',
         loadComponent: () =>
@@ -117,6 +133,30 @@ const adminRoutes: Routes = [
         loadComponent: () =>
           import('./features/admin-portal/admin-experiences/admin-experiences.component').then(
             (m) => m.AdminExperiencesComponent,
+          ),
+      },
+      {
+        path: 'logs',
+        title: 'Registro de Actividad - Portal de Admin',
+        loadComponent: () =>
+          import('./features/admin-portal/admin-logs/admin-logs.component').then(
+            (m) => m.AdminLogsComponent,
+          ),
+      },
+      {
+        path: 'logs/admins',
+        title: 'Logs de Administradores - Portal de Admin',
+        loadComponent: () =>
+          import('./features/admin-portal/admin-logs/admin-logs.component').then(
+            (m) => m.AdminLogsComponent,
+          ),
+      },
+      {
+        path: 'logs/prestadores',
+        title: 'Logs de Prestadores - Portal de Admin',
+        loadComponent: () =>
+          import('./features/admin-portal/admin-logs/admin-logs.component').then(
+            (m) => m.AdminLogsComponent,
           ),
       },
       { path: '**', redirectTo: 'dashboard' },
@@ -450,6 +490,22 @@ const publicRoutes: Routes = [
           ),
       },
       {
+        path: 'prestadores/:slug/editar',
+        title: 'Editar Prestador - Portal de Admin',
+        loadComponent: () =>
+          import('./features/admin-portal/admin-providers/admin-providers.component').then(
+            (m) => m.AdminProvidersComponent,
+          ),
+      },
+      {
+        path: 'prestadores/:slug',
+        title: 'Ficha del Prestador - Portal de Admin',
+        loadComponent: () =>
+          import('./features/admin-portal/admin-providers/admin-providers.component').then(
+            (m) => m.AdminProvidersComponent,
+          ),
+      },
+      {
         path: 'propuestas',
         title: 'Portal de Admin del Club de Experiencias',
         loadComponent: () =>
@@ -484,6 +540,30 @@ const publicRoutes: Routes = [
         loadComponent: () =>
           import('./features/admin-portal/admin-experiences/admin-experiences.component').then(
             (m) => m.AdminExperiencesComponent,
+          ),
+      },
+      {
+        path: 'logs',
+        title: 'Registro de Actividad - Portal de Admin',
+        loadComponent: () =>
+          import('./features/admin-portal/admin-logs/admin-logs.component').then(
+            (m) => m.AdminLogsComponent,
+          ),
+      },
+      {
+        path: 'logs/admins',
+        title: 'Logs de Administradores - Portal de Admin',
+        loadComponent: () =>
+          import('./features/admin-portal/admin-logs/admin-logs.component').then(
+            (m) => m.AdminLogsComponent,
+          ),
+      },
+      {
+        path: 'logs/prestadores',
+        title: 'Logs de Prestadores - Portal de Admin',
+        loadComponent: () =>
+          import('./features/admin-portal/admin-logs/admin-logs.component').then(
+            (m) => m.AdminLogsComponent,
           ),
       },
       { path: '**', redirectTo: 'dashboard' },
