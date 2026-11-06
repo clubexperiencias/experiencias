@@ -1,6 +1,11 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Experience, ExperienceAlbumPhoto } from '../models/experience.model';
 import { SUPABASE_CLIENT, isSupabaseConfigured } from '../supabase/supabase.client';
+import {
+  ClubProfile,
+  DEFAULT_CLUB_PROFILE,
+  isClubExperience,
+} from '../models/club-profile.model';
 
 const KAYAK_IMAGE = '/assets/images/kayak-club-de-experiencias.jpg';
 const STORAGE_KEY = 'club_experiencias_catalog_v1';
@@ -107,9 +112,14 @@ export const KAYAK_DEFAULT_EXPERIENCE: Experience = {
   isExclusiveClub: true,
   isLocked: false,
   detailRoute: '/experiencias/kayak',
-  providerEmail: 'patriciofacundodiaztillar@gmail.com',
-  providerName: 'Catamarca Kayak & Aventura Náutica',
-  providerSlug: 'catamarca-kayak',
+  providerEmail: 'admin@experiencias.club',
+  providerName: 'Club de Experiencias',
+  providerSlug: 'club-de-experiencias',
+  providerPhone: '+54 9 383 456-7890',
+  providerCbuAlias: 'EXPERIENCIAS.CLUB.MP',
+  providerCuitDni: '30-71829401-4',
+  providerBankName: 'Mercado Pago / Banco Nación',
+  isClubExperience: true,
 };
 
 export const POMEZ_ALBUM_PHOTOS: ExperienceAlbumPhoto[] = [
@@ -569,6 +579,7 @@ export class ExperienceService {
       status: newExp.status || 'publicada',
       isExclusiveClub: true,
       isLocked: false,
+      pendingRemoteSync: true,
     };
 
     const nextList = [experience, ...list];
@@ -659,11 +670,18 @@ export class ExperienceService {
           break;
         }
         if (error) {
-          console.warn('[ExperienceService] Error al insertar experiencia en Supabase:', error);
-          this._experiences.set(list);
-          this.persistToLocalStorage(list);
           throw error;
         }
+
+        // Marcar la experiencia como sincronizada remotamente y actualizar localStorage
+        this._experiences.update((cur) =>
+          cur.map((e) =>
+            e.id === experience.id || e.slug === experience.slug
+              ? { ...e, pendingRemoteSync: false }
+              : e,
+          ),
+        );
+        this.persistToLocalStorage(this._experiences());
 
         const targetProviderEmail = (experience.providerEmail || '').trim().toLowerCase();
         if (
@@ -694,7 +712,7 @@ export class ExperienceService {
           }
         }
       } catch (err) {
-        console.warn('[ExperienceService] Fallo al crear remoto:', err);
+        console.error('[ExperienceService] Fallo al crear experiencia remota en Supabase:', err);
         this._experiences.set(list);
         this.persistToLocalStorage(list);
         throw err;
@@ -780,29 +798,296 @@ export class ExperienceService {
     }
   }
 
-  private loadInitialExperiences(): Experience[] {
-    const deletedIds = this.getDeletedIds();
+  getClubProfile(): ClubProfile {
     if (typeof window !== 'undefined') {
       try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-          const parsed = JSON.parse(stored) as Experience[];
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            const activeList = parsed.filter(
-              (e) => !deletedIds.has(e.id) && !deletedIds.has(e.slug),
-            );
-            const existingSlugs = new Set(activeList.map((e) => e.slug));
-            const missingDefaults = DEFAULT_EXPERIENCES.filter(
-              (d) => !existingSlugs.has(d.slug) && !deletedIds.has(d.id) && !deletedIds.has(d.slug),
-            );
-            return [...activeList, ...missingDefaults];
+        const raw = localStorage.getItem('catamarca_club_official_profile_v1');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === 'object') {
+            return { ...DEFAULT_CLUB_PROFILE, ...parsed };
           }
         }
       } catch {
         // Fallback
       }
     }
-    return DEFAULT_EXPERIENCES.filter((d) => !deletedIds.has(d.id) && !deletedIds.has(d.slug));
+    return DEFAULT_CLUB_PROFILE;
+  }
+
+  /**
+   * Sincroniza todas las experiencias pertenecientes al Club con la información
+   * actualizada del Perfil Oficial del Club (nombre, teléfono, CBU/Alias bancario, etc.)
+   * tanto en el estado reactivo local como remotamente en la base de datos de Supabase.
+   *
+   * @param profile Perfil oficial institucional del Club de Experiencias.
+   */
+  syncClubExperiencesWithProfile(profile: ClubProfile): void {
+    const list = this._experiences().map((exp) => {
+      if (isClubExperience(exp)) {
+        return {
+          ...exp,
+          isClubExperience: true,
+          providerName: profile.name,
+          providerSlug: profile.slug,
+          providerEmail: profile.email,
+          providerPhone: profile.phone,
+          providerCbuAlias: profile.cbuAlias,
+          providerCuitDni: profile.cuitDni,
+          providerBankName: profile.bankName,
+        };
+      }
+      return exp;
+    });
+    this._experiences.set(list);
+    this.persistToLocalStorage(list);
+
+    if (isSupabaseConfigured()) {
+      const escapedEmail = (profile.email || '').trim().replace(/["\\]/g, '\\$&');
+      const emailFilter = escapedEmail ? `,provider_email.eq."${escapedEmail}"` : '';
+      const orFilter = `slug.eq.kayak,slug.eq.exp-kayak,provider_slug.eq.club-de-experiencias${emailFilter}`;
+
+      (this.supabase.from('experiencias') as any)
+        .update({
+          provider_name: profile.name,
+          provider_slug: profile.slug,
+          provider_email: profile.email,
+          provider_phone: profile.phone,
+        })
+        .or(orFilter)
+        .then(
+          ({ error }: { error: any }) => {
+            if (error) {
+              console.warn(
+                '[ExperienceService] Error al sincronizar experiencias del Club en Supabase:',
+                error,
+              );
+            }
+          },
+          (err: any) => {
+            console.warn(
+              '[ExperienceService] Excepción al sincronizar experiencias del Club en Supabase:',
+              err,
+            );
+          },
+        );
+    }
+  }
+
+  private loadInitialExperiences(): Experience[] {
+    const deletedIds = this.getDeletedIds();
+    let localExperiences: Experience[] = [];
+
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored) as Experience[];
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            localExperiences = parsed.filter(
+              (e) => !deletedIds.has(e.id) && !deletedIds.has(e.slug),
+            );
+          }
+        }
+      } catch {
+        // Fallback
+      }
+
+      // Recuperar experiencias de prestador publicadas de catamarca_provider_experiences_v5
+      try {
+        const provExpsRaw = localStorage.getItem('catamarca_provider_experiences_v5');
+        if (provExpsRaw) {
+          const provExps = JSON.parse(provExpsRaw);
+          if (Array.isArray(provExps)) {
+            const existingSlugs = new Set(localExperiences.map((e) => e.slug.toLowerCase()));
+            const existingIds = new Set(localExperiences.map((e) => e.id.toLowerCase()));
+            for (const p of provExps) {
+              if (
+                p &&
+                p.slug &&
+                p.status === 'publicada' &&
+                !deletedIds.has(p.id) &&
+                !deletedIds.has(p.slug) &&
+                !existingSlugs.has(p.slug.toLowerCase()) &&
+                !existingIds.has((p.id || '').toLowerCase())
+              ) {
+                localExperiences.push({
+                  id: p.id || `exp-${p.slug}`,
+                  slug: p.slug,
+                  title: p.title,
+                  shortTitle: p.shortTitle || p.title,
+                  kicker: p.kicker || 'EXPERIENCIA',
+                  tagline: p.tagline || p.title,
+                  description: p.description || p.tagline || '',
+                  region: p.region || 'Catamarca',
+                  meetingPoint: p.meetingPoint || '',
+                  meetingPointUrl: p.meetingPointUrl || '',
+                  difficulty: p.difficulty || 'Moderada',
+                  durationDays: 1,
+                  durationLabel: p.durationLabel || 'Medio día',
+                  altitudeMeters: p.altitudeMeters || 850,
+                  bestSeason: p.bestSeason || 'Todo el año',
+                  priceArs: p.priceArs || 0,
+                  priceUsd: p.priceUsd || 70,
+                  maxSpotsPerGroup: p.capacityPerDate || 12,
+                  dates: Array.isArray(p.dates) ? p.dates : [],
+                  status: 'publicada',
+                  publicUrl: p.publicUrl || `https://experiencias.club/experiencias/${p.slug}`,
+                  detailRoute: `/experiencias/${p.slug}`,
+                  coverImage: p.coverImage || KAYAK_IMAGE,
+                  galleryImages: p.coverImage ? [p.coverImage] : [KAYAK_IMAGE],
+                  isExclusiveClub: true,
+                  isLocked: false,
+                  providerId: p.providerId,
+                  providerEmail: p.providerEmail,
+                  providerSlug: p.providerSlug,
+                  providerName: p.providerName,
+                  providerPhone: p.providerPhone,
+                  providerCbuAlias: p.providerCbuAlias,
+                  providerCuitDni: p.providerCuitDni,
+                  providerBankName: p.providerBankName,
+                  albumPhotos: p.albumPhotos || [],
+                  highlights: p.highlights || [],
+                  included: p.included || [],
+                  notIncluded: p.notIncluded || [],
+                });
+                existingSlugs.add(p.slug.toLowerCase());
+                if (p.id) existingIds.add(p.id.toLowerCase());
+              }
+            }
+          }
+        }
+      } catch {
+        // Fallback
+      }
+
+      // Recuperar propuestas aprobadas de catamarca_experience_requests_v1
+      try {
+        const reqsRaw = localStorage.getItem('catamarca_experience_requests_v1');
+        if (reqsRaw) {
+          const reqs = JSON.parse(reqsRaw);
+          if (Array.isArray(reqs)) {
+            const existingSlugs = new Set(localExperiences.map((e) => e.slug.toLowerCase()));
+            const existingIds = new Set(localExperiences.map((e) => e.id.toLowerCase()));
+            for (const r of reqs) {
+              if (r && r.status === 'aprobada' && r.title) {
+                const slug =
+                  r.experienceSlug ||
+                  r.title
+                    .toLowerCase()
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/(^-|-$)/g, '');
+                const id = 'exp-' + slug;
+                if (
+                  slug &&
+                  !deletedIds.has(id) &&
+                  !deletedIds.has(slug) &&
+                  !existingSlugs.has(slug.toLowerCase()) &&
+                  !existingIds.has(id.toLowerCase())
+                ) {
+                  localExperiences.push({
+                    id,
+                    slug,
+                    title: r.title,
+                    shortTitle: r.title.split('&')[0].trim(),
+                    kicker: r.kicker || 'EXPERIENCIA',
+                    tagline:
+                      r.subheading && r.subheading.length > 90
+                        ? r.subheading.slice(0, 90) + '...'
+                        : r.subheading || r.title,
+                    description: r.subheading || '',
+                    region: r.region || 'Catamarca',
+                    meetingPoint: r.meetingPoint || '',
+                    meetingPointUrl: r.meetingPointUrl || '',
+                    difficulty:
+                      (r.difficulty?.split('(')[0]?.trim() as any) || 'Moderada',
+                    durationDays: 1,
+                    durationLabel: r.duration || 'Medio día',
+                    altitudeMeters: Number(r.altitude?.replace(/\D/g, '')) || 850,
+                    bestSeason: r.season || 'Todo el año',
+                    priceArs: r.priceArs || 0,
+                    priceUsd: r.priceUsd || 70,
+                    promosAndPricing: r.promosAndPricing || undefined,
+                    maxSpotsPerGroup: r.capacity || 12,
+                    dates: Array.isArray(r.dates) ? r.dates : [],
+                    status: 'publicada',
+                    publicUrl: r.experienceUrl || `https://experiencias.club/experiencias/${slug}`,
+                    detailRoute: `/experiencias/${slug}`,
+                    coverImage: r.coverImage || KAYAK_IMAGE,
+                    galleryImages:
+                      r.albumPhotos && r.albumPhotos.length > 0
+                        ? r.albumPhotos.map((p: any) => p.url)
+                        : [r.coverImage || KAYAK_IMAGE],
+                    videoUrl: r.coverVideoUrl || '',
+                    isExclusiveClub: true,
+                    isLocked: false,
+                    albumPhotos: r.albumPhotos || [],
+                    itinerary: r.itinerary,
+                    highlights: [],
+                    included: r.includedServices
+                      ? r.includedServices
+                          .split('\n')
+                          .map((s: string) => s.trim())
+                          .filter(Boolean)
+                      : [],
+                    notIncluded: r.participantRequirements
+                      ? r.participantRequirements
+                          .split('\n')
+                          .map((s: string) => s.trim())
+                          .filter(Boolean)
+                      : [],
+                    providerId: r.providerId,
+                    providerEmail: r.providerEmail,
+                    providerSlug: r.providerSlug,
+                    providerName: r.providerAgency || r.providerName,
+                    providerPhone: r.providerPhone,
+                    providerCbuAlias: r.providerCbuAlias,
+                    providerCuitDni: r.providerCuitDni,
+                    providerBankName: r.providerBankName,
+                  });
+                  existingSlugs.add(slug.toLowerCase());
+                  existingIds.add(id.toLowerCase());
+                }
+              }
+            }
+          }
+        }
+      } catch {
+        // Fallback
+      }
+    }
+
+    const existingSlugs = new Set(localExperiences.map((e) => e.slug));
+    const missingDefaults = DEFAULT_EXPERIENCES.filter(
+      (d) => !existingSlugs.has(d.slug) && !deletedIds.has(d.id) && !deletedIds.has(d.slug),
+    );
+    const clubProfile = this.getClubProfile();
+    const result = [...localExperiences, ...missingDefaults].map((exp) => {
+      if (isClubExperience(exp)) {
+        return {
+          ...exp,
+          isClubExperience: true,
+          providerName: clubProfile.name,
+          providerSlug: clubProfile.slug,
+          providerEmail: clubProfile.email,
+          providerPhone: clubProfile.phone,
+          providerCbuAlias: clubProfile.cbuAlias,
+          providerCuitDni: clubProfile.cuitDni,
+          providerBankName: clubProfile.bankName,
+        };
+      }
+      return exp;
+    });
+    if (typeof window !== 'undefined' && localExperiences.length > 0) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(result));
+      } catch {
+        // Ignorar quota errors
+      }
+    }
+    return result;
   }
 
   private persistToLocalStorage(list: Experience[]): void {
@@ -888,10 +1173,26 @@ export class ExperienceService {
           // Si no está autenticado o el acceso está restringido por RLS, se mantienen vacíos los datos bancarios
         }
 
+        const clubProfile = this.getClubProfile();
         const remoteExperiences: Experience[] = data.map((exp: any) => {
           const image = exp.cover_image || KAYAK_IMAGE;
           const email = (exp.provider_email || '').trim().toLowerCase();
           const banking = providerBankingMap.get(email);
+          const isClub = isClubExperience({
+            slug: exp.slug,
+            providerSlug: exp.provider_slug,
+            providerEmail: exp.provider_email,
+            providerName: exp.provider_name,
+          });
+
+          const resolvedProviderSlug = isClub ? 'club-de-experiencias' : (exp.provider_slug || undefined);
+          const resolvedProviderName = isClub ? (clubProfile.name || 'Club de Experiencias') : (exp.provider_name || undefined);
+          const resolvedProviderEmail = isClub ? (clubProfile.email || 'admin@experiencias.club') : (exp.provider_email || undefined);
+          const resolvedProviderPhone = isClub ? (clubProfile.phone || '+54 9 383 456-7890') : (exp.provider_phone || undefined);
+          const resolvedCbuAlias = isClub ? (clubProfile.cbuAlias || 'EXPERIENCIAS.CLUB.MP') : (banking?.cbu_alias || undefined);
+          const resolvedCuitDni = isClub ? (clubProfile.cuitDni || '30-71829401-4') : (banking?.cuit_dni || undefined);
+          const resolvedBankName = isClub ? (clubProfile.bankName || 'Mercado Pago / Banco Nación') : (banking?.bank_name || undefined);
+
           return {
             id: exp.id,
             slug: exp.slug,
@@ -930,16 +1231,14 @@ export class ExperienceService {
                 : [],
             dates: Array.isArray(exp.dates) && exp.dates.length > 0 ? exp.dates : [],
             dateSlots: Array.isArray(exp.date_slots) ? exp.date_slots : undefined,
-            providerEmail: exp.provider_email || undefined,
-            providerSlug:
-              exp.provider_slug || (exp.slug === 'kayak' ? 'catamarca-kayak' : undefined),
-            providerName:
-              exp.provider_name ||
-              (exp.slug === 'kayak' ? 'Catamarca Kayak & Aventura Náutica' : undefined),
-            providerPhone: exp.provider_phone || undefined,
-            providerCbuAlias: banking?.cbu_alias || undefined,
-            providerCuitDni: banking?.cuit_dni || undefined,
-            providerBankName: banking?.bank_name || undefined,
+            providerEmail: resolvedProviderEmail,
+            providerSlug: resolvedProviderSlug,
+            providerName: resolvedProviderName,
+            providerPhone: resolvedProviderPhone,
+            providerCbuAlias: resolvedCbuAlias,
+            providerCuitDni: resolvedCuitDni,
+            providerBankName: resolvedBankName,
+            isClubExperience: isClub,
             status: exp.status || 'publicada',
             publicUrl: exp.public_url || `https://experiencias.club/experiencias/${exp.slug}`,
             isExclusiveClub: true,
@@ -948,9 +1247,25 @@ export class ExperienceService {
           };
         });
 
+        const currentLocal = this._experiences();
+        const remoteIds = new Set(remoteExperiences.map((e) => e.id.toLowerCase()));
+        const remoteSlugs = new Set(remoteExperiences.map((e) => e.slug.toLowerCase()));
+        const deletedIds = this.getDeletedIds();
+
+        // Preservar solo experiencias locales marcadas explícitamente como pendientes de sincronización remota
+        const localOnly = currentLocal.filter(
+          (e) =>
+            Boolean(e.pendingRemoteSync) &&
+            !remoteIds.has(e.id.toLowerCase()) &&
+            !remoteSlugs.has(e.slug.toLowerCase()) &&
+            !deletedIds.has(e.id) &&
+            !deletedIds.has(e.slug),
+        );
+
+        const mergedExperiences = [...remoteExperiences, ...localOnly];
         this._hasRemoteExperiences.set(true);
-        this._experiences.set(remoteExperiences);
-        this.persistToLocalStorage(remoteExperiences);
+        this._experiences.set(mergedExperiences);
+        this.persistToLocalStorage(mergedExperiences);
       }
       return true;
     } catch (err) {

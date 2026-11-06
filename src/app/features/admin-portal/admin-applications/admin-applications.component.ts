@@ -832,22 +832,6 @@ type ApplicationFilterTab =
                   }
                 </div>
               </div>
-
-              @if (expReq.status === 'pendiente') {
-                <div class="exp-public-url-box">
-                  <label class="url-label" for="exp-public-url"
-                    >URL oficial vinculada en la web pública (experiencias.club):</label
-                  >
-                  <input
-                    id="exp-public-url"
-                    type="text"
-                    class="url-input"
-                    [value]="expPublicUrlInput()"
-                    (input)="expPublicUrlInput.set($any($event.target).value)"
-                    placeholder="https://experiencias.club/experiencias/..."
-                  />
-                </div>
-              }
             </div>
 
             <!-- Acciones al Pie -->
@@ -2236,6 +2220,7 @@ export class AdminApplicationsComponent implements OnInit {
 
   ngOnInit(): void {
     this.store.providerStore.reloadFromStorage();
+    void this.store.providerStore.loadProposalsFromSupabase();
     this.route.queryParams.subscribe((params) => {
       if (params['tab'] === 'experiencias') {
         this.activeTab.set('experiencias');
@@ -2296,6 +2281,7 @@ export class AdminApplicationsComponent implements OnInit {
 
   refresh(): void {
     this.store.providerStore.reloadFromStorage();
+    void this.store.providerStore.loadProposalsFromSupabase();
     void this.store.loadAllApplications();
   }
 
@@ -2341,19 +2327,27 @@ export class AdminApplicationsComponent implements OnInit {
   }
 
   async approveExperience(id: string): Promise<void> {
-    const current = this.selectedExperienceRequest();
-    if (this.proposalCoverLoadError() && current) {
-      current.coverImage = '/assets/images/kayak-club-de-experiencias.jpg';
-    }
-    const ok = await this.store.approveExperienceRequest(id, this.expPublicUrlInput());
-    if (ok) {
-      if (current && current.id === id) {
-        this.selectedExperienceRequest.set({
-          ...current,
-          status: 'aprobada',
-          reviewedAt: new Date().toISOString(),
-        });
+    try {
+      const current = this.selectedExperienceRequest();
+      if (this.proposalCoverLoadError() && current) {
+        current.coverImage = '/assets/images/kayak-club-de-experiencias.jpg';
       }
+      const ok = await this.store.approveExperienceRequest(id);
+      if (ok) {
+        if (current && current.id === id) {
+          this.selectedExperienceRequest.set({
+            ...current,
+            status: 'aprobada',
+            reviewedAt: new Date().toISOString(),
+          });
+        }
+        this.store.providerStore.reloadFromStorage();
+        void this.store.providerStore.loadProposalsFromSupabase();
+        void this.store.loadAllApplications();
+        this.closeExperienceRequest();
+      }
+    } catch (err) {
+      console.error('[AdminApplications] Error al aprobar propuesta de experiencia:', err);
     }
   }
 
@@ -2367,6 +2361,10 @@ export class AdminApplicationsComponent implements OnInit {
         reviewedAt: new Date().toISOString(),
       });
     }
+    this.store.providerStore.reloadFromStorage();
+    void this.store.providerStore.loadProposalsFromSupabase();
+    void this.store.loadAllApplications();
+    this.closeExperienceRequest();
   }
 
   async approveProvider(): Promise<void> {

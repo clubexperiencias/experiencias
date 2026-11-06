@@ -113,7 +113,11 @@ const adminRoutes: Routes = [
       },
       {
         path: 'experiencias/:slug',
-        redirectTo: 'experiencias/:slug/editar',
+        title: 'Ficha de la Experiencia - Portal de Admin',
+        loadComponent: () =>
+          import('./features/admin-portal/admin-experiences/admin-experiences.component').then(
+            (m) => m.AdminExperiencesComponent,
+          ),
       },
       { path: '**', redirectTo: 'dashboard' },
     ],
@@ -476,7 +480,11 @@ const publicRoutes: Routes = [
       },
       {
         path: 'experiencias/:slug',
-        redirectTo: 'experiencias/:slug/editar',
+        title: 'Ficha de la Experiencia - Portal de Admin',
+        loadComponent: () =>
+          import('./features/admin-portal/admin-experiences/admin-experiences.component').then(
+            (m) => m.AdminExperiencesComponent,
+          ),
       },
       { path: '**', redirectTo: 'dashboard' },
     ],

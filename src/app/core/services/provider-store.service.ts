@@ -19,6 +19,7 @@ import { Experience } from '../models/experience.model';
 import { TransactionalEmailService } from './transactional-email.service';
 import { NewsletterService } from './newsletter.service';
 import { ActivityHistoryService } from './activity-history.service';
+import { ClubProfile, isClubProvider } from '../models/club-profile.model';
 import {
   ExperienceService,
   KAYAK_ALBUM_PHOTOS,
@@ -197,7 +198,30 @@ export function mapLiveExperienceToProvider(live: Experience): ProviderExperienc
   } as ProviderExperience;
 }
 
+export const CLUB_OFFICIAL_PROVIDER: ProviderUser = {
+  id: 'prov-club',
+  email: 'admin@experiencias.club',
+  name: 'Club de Experiencias',
+  agency: 'Club de Experiencias',
+  slug: 'club-de-experiencias',
+  bio: 'Cuenta institucional oficial del Club de Experiencias. Administrada conjuntamente por el equipo de administradores.',
+  phone: '+54 9 383 456-7890',
+  website: 'https://experiencias.club',
+  socialMedia: 'instagram.com/experiencias.club',
+  cuitDni: '30-71829401-4',
+  cbuAlias: 'EXPERIENCIAS.CLUB.MP',
+  bankName: 'Mercado Pago / Banco Nación',
+  accountHolder: 'Club de Experiencias Catamarca',
+  verified: true,
+  status: 'aprobado',
+  role: 'prestador',
+  avatar: '/assets/images/kayak-video.png',
+  coverImage: '/assets/images/kayak-club-de-experiencias.jpg',
+  joinedAt: '2024-01-01T00:00:00Z',
+};
+
 export const SEED_PROVIDERS: ProviderUser[] = [
+  CLUB_OFFICIAL_PROVIDER,
   {
     id: 'prov-patricio',
     email: 'patriciofacundodiaztillar@gmail.com',
@@ -281,8 +305,8 @@ const SEED_EXPERIENCES: ProviderExperience[] = [
     dates: [upcomingDate(9), upcomingDate(16), upcomingDate(23)],
     status: 'publicada',
     publicUrl: 'https://experiencias.club/experiencias/kayak',
-    providerId: 'prov-patricio',
-    providerName: 'Catamarca Kayak & Aventura Náutica',
+    providerId: 'prov-club',
+    providerName: 'Club de Experiencias',
     coverImage: '/assets/images/kayak-club-de-experiencias.jpg',
     albumPhotos: KAYAK_ALBUM_PHOTOS,
     createdAt: hoursAgo(24 * 30),
@@ -586,6 +610,24 @@ export class ProviderStoreService {
         (data.user as any)?.identities?.[0]?.identity_data?.['avatar_url'] ||
         (data.user as any)?.identities?.[0]?.identity_data?.['picture'] ||
         '';
+      const resolvedSlug =
+        access.slug ||
+        existing?.slug ||
+        (access.agency
+          ? access.agency
+              .toLowerCase()
+              .normalize('NFD')
+              .replace(/[\u0300-\u036f]/g, '')
+              .replace(/[^a-z0-9]+/g, '-')
+              .replace(/(^-|-$)+/g, '')
+          : `prov-${email.split('@')[0]}`);
+
+      const isClub = isClubProvider({
+        id: existing?.id,
+        email,
+        slug: resolvedSlug,
+      });
+
       const provider: ProviderUser = {
         id: existing?.id ?? `provider-${email.replace(/[^a-z0-9]+/g, '-')}`,
         email,
@@ -597,25 +639,15 @@ export class ProviderStoreService {
           existing?.name ||
           email,
         agency: access.agency || existing?.agency || 'Prestador EXPERIENCIAS.CLUB',
-        slug:
-          access.slug ||
-          existing?.slug ||
-          (access.agency
-            ? access.agency
-                .toLowerCase()
-                .normalize('NFD')
-                .replace(/[\u0300-\u036f]/g, '')
-                .replace(/[^a-z0-9]+/g, '-')
-                .replace(/(^-|-$)+/g, '')
-            : `prov-${email.split('@')[0]}`),
+        slug: resolvedSlug,
         bio: access.bio || existing?.bio || '',
         phone: access.phone || existing?.phone || '',
         website: access.website || existing?.website || '',
         socialMedia: access.social_media || existing?.socialMedia || '',
         socialMediaSecondary: access.social_media_secondary || existing?.socialMediaSecondary || '',
-        cuitDni: access.cuit_dni === '20-33445566-7' ? '' : access.cuit_dni || '',
-        cbuAlias: access.cbu_alias === 'EXPERIENCIAS.CLUB.MP' ? '' : access.cbu_alias || '',
-        bankName: access.bank_name === 'Banco Nación / Mercado Pago' ? '' : access.bank_name || '',
+        cuitDni: (!isClub && access.cuit_dni === '20-33445566-7') ? '' : access.cuit_dni || '',
+        cbuAlias: (!isClub && access.cbu_alias === 'EXPERIENCIAS.CLUB.MP') ? '' : access.cbu_alias || '',
+        bankName: (!isClub && access.bank_name === 'Banco Nación / Mercado Pago') ? '' : access.bank_name || '',
         verified: true,
         status: 'aprobado',
         role: 'prestador',
@@ -960,6 +992,61 @@ export class ProviderStoreService {
     }
 
     return { success: true };
+  }
+
+  syncClubProviderProfile(profile: ClubProfile): void {
+    this._providers.update((list) => {
+      const idx = list.findIndex(
+        (p) =>
+          p.id === 'prov-club' ||
+          (p.email || '').toLowerCase() === profile.email.toLowerCase() ||
+          p.slug === 'club-de-experiencias',
+      );
+      if (idx !== -1) {
+        const current = list[idx];
+        const updated: ProviderUser = {
+          ...current,
+          name: profile.name,
+          agency: profile.agency,
+          slug: profile.slug,
+          phone: profile.phone,
+          cbuAlias: profile.cbuAlias,
+          cuitDni: profile.cuitDni,
+          bankName: profile.bankName,
+          accountHolder: profile.accountHolder,
+          bio: profile.bio,
+          website: profile.website,
+          socialMedia: profile.socialMedia,
+        };
+        const next = [...list];
+        next[idx] = updated;
+        return next;
+      } else {
+        const newProv: ProviderUser = {
+          id: 'prov-club',
+          email: profile.email,
+          name: profile.name,
+          agency: profile.agency,
+          slug: profile.slug,
+          phone: profile.phone,
+          cbuAlias: profile.cbuAlias,
+          cuitDni: profile.cuitDni,
+          bankName: profile.bankName,
+          accountHolder: profile.accountHolder,
+          bio: profile.bio,
+          website: profile.website,
+          socialMedia: profile.socialMedia,
+          verified: true,
+          status: 'aprobado',
+          role: 'prestador',
+          avatar: '/assets/images/kayak-video.png',
+          coverImage: '/assets/images/kayak-club-de-experiencias.jpg',
+          joinedAt: '2024-01-01T00:00:00Z',
+        };
+        return [newProv, ...list];
+      }
+    });
+    this.saveProviders();
   }
 
   // ==========================================
@@ -1922,6 +2009,9 @@ export class ProviderStoreService {
   // Persistence Helpers
   // ==========================================
   private sanitizeProvider(p: ProviderUser): ProviderUser {
+    if (isClubProvider(p)) {
+      return p;
+    }
     if (p.cbuAlias === 'EXPERIENCIAS.CLUB.MP' || p.cuitDni === '20-33445566-7') {
       return {
         ...p,
@@ -2312,7 +2402,8 @@ export class ProviderStoreService {
     try {
       await this.expService.createExperience(experienceForCatalog);
     } catch (err) {
-      console.warn('[ProviderStore] Error creando experiencia en ExperienceService:', err);
+      console.error('[ProviderStore] Error creando experiencia en ExperienceService:', err);
+      throw err;
     }
 
     this._experienceRequests.update((list) =>

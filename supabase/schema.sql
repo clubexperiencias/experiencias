@@ -204,6 +204,30 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_provider_access_nonempty_slug
   ON public.provider_access(slug)
   WHERE slug IS NOT NULL AND slug <> '';
 
+-- Cuenta Oficial del Club de Experiencias como Prestador Institucional
+INSERT INTO public.provider_access (
+  email, name, agency, slug, phone, cbu_alias, cuit_dni, bank_name, account_holder, bio, website, active, status
+) VALUES (
+  'admin@experiencias.club',
+  'Club de Experiencias',
+  'Club de Experiencias',
+  'club-de-experiencias',
+  '+54 9 383 456-7890',
+  'EXPERIENCIAS.CLUB.MP',
+  '30-71829401-4',
+  'Mercado Pago / Banco Nación',
+  'Club de Experiencias Catamarca',
+  'Cuenta institucional oficial del Club de Experiencias. Administrada conjuntamente por el equipo de administradores.',
+  'https://experiencias.club',
+  true,
+  'aprobado'
+) ON CONFLICT (email) DO UPDATE SET
+  agency = EXCLUDED.agency,
+  name = EXCLUDED.name,
+  slug = EXCLUDED.slug,
+  active = true,
+  status = 'aprobado';
+
 -- 2.7 provider_banking_history (Auditoría de Modificaciones Bancarias)
 CREATE TABLE IF NOT EXISTS public.provider_banking_history (
   id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -317,6 +341,15 @@ EXCEPTION
   WHEN OTHERS THEN
     NULL;
 END $$;
+
+-- Actualizar experiencias oficiales del Club de Experiencias (ej. Kayak)
+UPDATE public.experiencias
+SET
+  provider_name = 'Club de Experiencias',
+  provider_slug = 'club-de-experiencias',
+  provider_email = 'admin@experiencias.club',
+  provider_phone = '+54 9 383 456-7890'
+WHERE slug = 'kayak' OR slug = 'exp-kayak';
 
 -- 2.8.1 propuestas_experiencias (Solicitudes y Propuestas de Prestadores para el Catálogo)
 CREATE TABLE IF NOT EXISTS public.propuestas_experiencias (
@@ -2133,10 +2166,19 @@ CREATE POLICY "Admins pueden actualizar propuestas"
 
 -- 6.9 Políticas en experiencias
 DROP POLICY IF EXISTS "Lectura publica de experiencias publicadas" ON public.experiencias;
-CREATE POLICY "Lectura publica de experiencias publicadas"
+DROP POLICY IF EXISTS "Lectura publica de experiencias publicadas anon" ON public.experiencias;
+DROP POLICY IF EXISTS "Lectura de experiencias para usuarios autenticados" ON public.experiencias;
+
+CREATE POLICY "Lectura publica de experiencias publicadas anon"
   ON public.experiencias
   FOR SELECT
-  TO anon, authenticated
+  TO anon
+  USING (status = 'publicada');
+
+CREATE POLICY "Lectura de experiencias para usuarios autenticados"
+  ON public.experiencias
+  FOR SELECT
+  TO authenticated
   USING (
     status = 'publicada'
     OR EXISTS (

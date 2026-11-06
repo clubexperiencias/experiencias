@@ -58,4 +58,6 @@ export interface Experience {
   providerCbuAlias?: string;
   providerCuitDni?: string;
   providerBankName?: string;
+  isClubExperience?: boolean;
+  pendingRemoteSync?: boolean;
 }
