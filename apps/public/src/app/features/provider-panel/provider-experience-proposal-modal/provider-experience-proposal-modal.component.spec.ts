@@ -20,7 +20,7 @@ describe('ProviderExperienceProposalModalComponent Draft Persistence', () => {
         {
           provide: StorageService,
           useValue: {
-            uploadFile: jasmine.createSpy('uploadFile').and.resolveTo({ url: 'https://test.storage/img.jpg' }),
+            uploadFile: () => Promise.resolve({ url: 'https://test.storage/img.jpg' }),
           },
         },
       ],
@@ -38,7 +38,7 @@ describe('ProviderExperienceProposalModalComponent Draft Persistence', () => {
 
   it('should create the proposal modal component', () => {
     expect(component).toBeTruthy();
-    expect(component.hasDraft()).toBeFalse();
+    expect(component.hasDraft()).toBe(false);
   });
 
   it('should save proposal draft into localStorage when content is typed', () => {
@@ -46,7 +46,7 @@ describe('ProviderExperienceProposalModalComponent Draft Persistence', () => {
     component.reqForm.region = 'Fiambalá';
     component.saveDraft();
 
-    expect(component.hasDraft()).toBeTrue();
+    expect(component.hasDraft()).toBe(true);
     const stored = localStorage.getItem(ProviderExperienceProposalModalComponent.DRAFT_STORAGE_KEY);
     expect(stored).toBeTruthy();
     const parsed = JSON.parse(stored!);
@@ -71,7 +71,7 @@ describe('ProviderExperienceProposalModalComponent Draft Persistence', () => {
 
     component.loadDraft();
 
-    expect(component.hasDraft()).toBeTrue();
+    expect(component.hasDraft()).toBe(true);
     expect(component.reqForm.title).toBe('Expedición Volcanes');
     expect(component.reqForm.subheading).toBe('Recorrido de altura');
     expect(component.reqForm.region).toBe('Antofagasta');
@@ -81,11 +81,11 @@ describe('ProviderExperienceProposalModalComponent Draft Persistence', () => {
   it('should clear draft and reset form when discardDraft is called', () => {
     component.reqForm.title = 'Cabalgata Ambato';
     component.saveDraft();
-    expect(component.hasDraft()).toBeTrue();
+    expect(component.hasDraft()).toBe(true);
 
     component.discardDraft();
 
-    expect(component.hasDraft()).toBeFalse();
+    expect(component.hasDraft()).toBe(false);
     expect(localStorage.getItem(ProviderExperienceProposalModalComponent.DRAFT_STORAGE_KEY)).toBeNull();
     expect(component.reqForm.title).toBe('');
   });
@@ -106,7 +106,7 @@ describe('ProviderExperienceProposalModalComponent Draft Persistence', () => {
     await component.submitRequestForm();
 
     expect(localStorage.getItem(ProviderExperienceProposalModalComponent.DRAFT_STORAGE_KEY)).toBeNull();
-    expect(component.hasDraft()).toBeFalse();
+    expect(component.hasDraft()).toBe(false);
   });
 
   it('should preserve draft in localStorage if user closes modal without submitting', () => {

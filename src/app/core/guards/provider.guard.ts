@@ -10,7 +10,7 @@ export const providerGuard: CanActivateFn = async (_route, state) => {
   const providerStore = inject(ProviderStoreService);
   const router = inject(Router);
 
-  // 1. Restaurar y revalidar sesión activa de Supabase (Google OAuth y provider_access)
+  // 1. Restaurar y revalidar sesión activa de Supabase (Google OAuth y prestadores)
   await providerStore.restoreSupabaseSession();
   if (providerStore.isAuthenticated() && providerStore.isProviderApproved()) {
     return true;

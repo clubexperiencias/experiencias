@@ -6,7 +6,7 @@ import { map } from 'rxjs';
 import { MatIconModule } from '@angular/material/icon';
 import { ExperienceService, KAYAK_ALBUM_PHOTOS } from '../../../core/services/experience.service';
 import { ExperienceAlbumPhoto } from '../../../core/models/experience.model';
-import { isClubExperience } from '../../../core/models/club-profile.model';
+import { DEFAULT_CLUB_PROFILE, isClubExperience } from '../../../core/models/club-profile.model';
 import { HeaderComponent } from '../../../shared/components/header/header.component';
 import { FooterComponent } from '../../../shared/components/footer/footer.component';
 import {
@@ -43,13 +43,17 @@ export class ExperiencePhotosComponent {
 
   isUrl(value?: string): boolean {
     if (!value) return false;
-    return value.startsWith('http://') || value.startsWith('https://');
+    return /^https?:\/\//i.test(value.trim());
   }
 
   getProviderSlug(item?: any): string | null {
     if (!item) return null;
-    if (item.providerSlug) return item.providerSlug;
-    if (this.isClubExperience(item)) return 'club-de-experiencias';
+    if (item.providerSlug) {
+      return item.providerSlug.toLowerCase().trim() === 'club'
+        ? DEFAULT_CLUB_PROFILE.slug
+        : item.providerSlug;
+    }
+    if (this.isClubExperience(item)) return DEFAULT_CLUB_PROFILE.slug;
     return null;
   }
 

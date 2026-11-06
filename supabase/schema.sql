@@ -18,52 +18,49 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 CREATE SEQUENCE IF NOT EXISTS public.socios_position_seq START WITH 100;
 
 -- ==============================================================================
--- 2. TABLAS E ÍNDICES
+-- 2. TABLAS E ÍNDICES (ESQUEMA CANÓNICO UNIFICADO)
 -- ==============================================================================
 
--- 2.1 waitlist (Prospectos y suscriptores de la landing)
-CREATE TABLE IF NOT EXISTS public.waitlist (
-  id                   UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  email                TEXT NOT NULL UNIQUE,
-  converted            BOOLEAN NOT NULL DEFAULT false,
-  google_linked        BOOLEAN NOT NULL DEFAULT false,
-  created_at           TIMESTAMPTZ NOT NULL DEFAULT now()
-);
+-- Limpieza de tablas y vistas obsoletas consolidadas
+DROP VIEW IF EXISTS public.provider_access CASCADE;
+DROP VIEW IF EXISTS public.admin_access CASCADE;
+DROP VIEW IF EXISTS public.provider_banking_history CASCADE;
+DROP VIEW IF EXISTS public.historia_bancaria CASCADE;
+DROP VIEW IF EXISTS public.public_provider_profiles CASCADE;
+DROP VIEW IF EXISTS public.waitlist_stats CASCADE;
+DROP TABLE IF EXISTS public.waitlist CASCADE;
+DROP TABLE IF EXISTS public.postulaciones_prestadores CASCADE;
+DROP TABLE IF EXISTS public.propuestas_experiencias CASCADE;
 
-CREATE INDEX IF NOT EXISTS idx_waitlist_email ON public.waitlist(email);
-ALTER TABLE public.waitlist ADD COLUMN IF NOT EXISTS converted BOOLEAN NOT NULL DEFAULT false;
-ALTER TABLE public.waitlist ADD COLUMN IF NOT EXISTS google_linked BOOLEAN NOT NULL DEFAULT false;
-
--- 2.2 socios (Socios Emergentes, Activos y Fundadores)
+-- 2.1 socios (Prospectos Waitlist, Socios Emergentes, Activos y Fundadores)
 CREATE TABLE IF NOT EXISTS public.socios (
   id                          UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   email                       TEXT NOT NULL UNIQUE,
-  full_name                   TEXT NOT NULL,
-  dni                         TEXT NOT NULL,
-  phone                       TEXT NOT NULL,
+  full_name                   TEXT DEFAULT '',
+  dni                         TEXT DEFAULT '',
+  phone                       TEXT DEFAULT '',
   experiences_wishlist        JSONB DEFAULT '[]'::jsonb,
   experiences_other           TEXT,
-  position                    INTEGER DEFAULT nextval('public.socios_position_seq') UNIQUE,
+  position                    INTEGER UNIQUE,
   membership_tier             TEXT NOT NULL DEFAULT 'emergente'
-                              CHECK (membership_tier IN ('emergente', 'activo', 'fundador')),
+                              CHECK (membership_tier IN ('waitlist', 'emergente', 'activo', 'fundador')),
   auth_user_id                UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-  google_linked               BOOLEAN NOT NULL DEFAULT false,
   registration_token          UUID NOT NULL DEFAULT gen_random_uuid(),
-  founder_motivation_letter   TEXT,
-  founder_agreed_to_protocol  BOOLEAN NOT NULL DEFAULT false,
-  founder_application_status  TEXT CHECK (founder_application_status IN ('pendiente', 'aprobado', 'rechazado')),
   created_at                  TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at                  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Limpieza de columnas obsoletas y redundantes en public.socios
+ALTER TABLE public.socios DROP COLUMN IF EXISTS converted CASCADE;
+ALTER TABLE public.socios DROP COLUMN IF EXISTS google_linked CASCADE;
+ALTER TABLE public.socios DROP COLUMN IF EXISTS founder_motivation_letter CASCADE;
+ALTER TABLE public.socios DROP COLUMN IF EXISTS founder_agreed_to_protocol CASCADE;
+ALTER TABLE public.socios DROP COLUMN IF EXISTS founder_application_status CASCADE;
+
 CREATE INDEX IF NOT EXISTS idx_socios_email    ON public.socios(email);
 CREATE INDEX IF NOT EXISTS idx_socios_position ON public.socios(position);
 ALTER TABLE public.socios ADD COLUMN IF NOT EXISTS auth_user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL;
-ALTER TABLE public.socios ADD COLUMN IF NOT EXISTS google_linked BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE public.socios ADD COLUMN IF NOT EXISTS registration_token UUID NOT NULL DEFAULT gen_random_uuid();
-ALTER TABLE public.socios ADD COLUMN IF NOT EXISTS founder_motivation_letter TEXT;
-ALTER TABLE public.socios ADD COLUMN IF NOT EXISTS founder_agreed_to_protocol BOOLEAN NOT NULL DEFAULT false;
-ALTER TABLE public.socios ADD COLUMN IF NOT EXISTS founder_application_status TEXT;
 
 DO $$
 BEGIN
@@ -76,8 +73,8 @@ EXCEPTION
 END;
 $$;
 
--- 2.3 admin_access (Nómina de Administradores con Rol)
-CREATE TABLE IF NOT EXISTS public.admin_access (
+-- 2.3 administradores (Nómina de Administradores con Rol)
+CREATE TABLE IF NOT EXISTS public.administradores (
   id                   UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   email                TEXT NOT NULL UNIQUE,
   name                 TEXT NOT NULL,
@@ -88,10 +85,10 @@ CREATE TABLE IF NOT EXISTS public.admin_access (
   updated_at           TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_admin_access_email ON public.admin_access(email);
+CREATE INDEX IF NOT EXISTS idx_administradores_email ON public.administradores(email);
 
 -- Administradores autorizados por defecto
-INSERT INTO public.admin_access (email, name, role, active)
+INSERT INTO public.administradores (email, name, role, active)
 VALUES
   ('gonzagramaglia@gmail.com', 'Gonzalo Gramaglia', 'superadmin', true),
   ('vegvarel@gmail.com', 'Pablo Vegvarel', 'superadmin', true),
@@ -117,36 +114,14 @@ CREATE TABLE IF NOT EXISTS public.postulaciones_fundadores (
 CREATE INDEX IF NOT EXISTS idx_postulaciones_fundadores_email ON public.postulaciones_fundadores(email);
 ALTER TABLE public.postulaciones_fundadores ADD COLUMN IF NOT EXISTS notes TEXT;
 
--- 2.5 postulaciones_prestadores (Postulaciones de Guías y Operadores)
-CREATE TABLE IF NOT EXISTS public.postulaciones_prestadores (
-  id                   UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  full_name            TEXT NOT NULL,
-  category             TEXT NOT NULL,
-  region               TEXT NOT NULL,
-  email                TEXT NOT NULL,
-  phone                TEXT NOT NULL,
-  website              TEXT,
-  description          TEXT,
-  status               TEXT NOT NULL DEFAULT 'pendiente'
-                       CHECK (status IN ('pendiente', 'aprobado', 'rechazado', 'dado_de_baja')),
-  notes                TEXT,
-  created_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at           TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS idx_postulaciones_prestadores_email ON public.postulaciones_prestadores(email);
-ALTER TABLE public.postulaciones_prestadores ADD COLUMN IF NOT EXISTS website TEXT;
-ALTER TABLE public.postulaciones_prestadores ADD COLUMN IF NOT EXISTS description TEXT;
-ALTER TABLE public.postulaciones_prestadores ADD COLUMN IF NOT EXISTS notes TEXT;
-
--- 2.6 provider_access (Accesos y Datos Bancarios de Prestadores)
-CREATE TABLE IF NOT EXISTS public.provider_access (
+-- 2.5 prestadores (Accesos, Postulaciones y Datos Bancarios de Prestadores)
+CREATE TABLE IF NOT EXISTS public.prestadores (
   id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email          TEXT NOT NULL UNIQUE,
   name           TEXT NOT NULL DEFAULT '',
   agency         TEXT NOT NULL DEFAULT '',
   active         BOOLEAN NOT NULL DEFAULT true,
-  status         TEXT NOT NULL DEFAULT 'aprobado' CHECK (status IN ('aprobado', 'pendiente', 'dado_de_baja')),
+  status         TEXT NOT NULL DEFAULT 'aprobado' CHECK (status IN ('aprobado', 'pendiente', 'rechazado', 'dado_de_baja')),
   cbu_alias      TEXT NOT NULL DEFAULT '',
   cuit_dni       TEXT NOT NULL DEFAULT '',
   bank_name      TEXT NOT NULL DEFAULT '',
@@ -159,53 +134,62 @@ CREATE TABLE IF NOT EXISTS public.provider_access (
   bio            TEXT NOT NULL DEFAULT '',
   avatar_url     TEXT NOT NULL DEFAULT '',
   cover_url      TEXT NOT NULL DEFAULT '',
+  category       TEXT NOT NULL DEFAULT '',
+  region         TEXT NOT NULL DEFAULT 'Catamarca',
+  description    TEXT NOT NULL DEFAULT '',
+  notes          TEXT,
   created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_provider_access_email ON public.provider_access(email);
-ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS agency TEXT NOT NULL DEFAULT '';
-ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT true;
-ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'aprobado';
-ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS cbu_alias TEXT NOT NULL DEFAULT '';
-ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS cuit_dni TEXT NOT NULL DEFAULT '';
-ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS bank_name TEXT NOT NULL DEFAULT '';
-ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS account_holder TEXT NOT NULL DEFAULT '';
-ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS phone TEXT NOT NULL DEFAULT '';
-ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS website TEXT NOT NULL DEFAULT '';
-ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS social_media TEXT NOT NULL DEFAULT '';
-ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS social_media_secondary TEXT NOT NULL DEFAULT '';
-ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS slug TEXT NOT NULL DEFAULT '';
-ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS bio TEXT NOT NULL DEFAULT '';
-ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS avatar_url TEXT NOT NULL DEFAULT '';
-ALTER TABLE public.provider_access ADD COLUMN IF NOT EXISTS cover_url TEXT NOT NULL DEFAULT '';
+CREATE INDEX IF NOT EXISTS idx_prestadores_email ON public.prestadores(email);
+ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS agency TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'aprobado';
+ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS cbu_alias TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS cuit_dni TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS bank_name TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS account_holder TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS phone TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS website TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS social_media TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS social_media_secondary TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS slug TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS bio TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS avatar_url TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS cover_url TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS region TEXT NOT NULL DEFAULT 'Catamarca';
+ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS notes TEXT;
+
 -- Normalizar posibles slugs duplicados no vacíos antes de crear el índice único
 DO $$
 BEGIN
   IF EXISTS (
     SELECT 1 FROM information_schema.tables 
-    WHERE table_schema = 'public' AND table_name = 'provider_access'
+    WHERE table_schema = 'public' AND table_name = 'prestadores'
   ) THEN
     WITH duplicates AS (
       SELECT id, slug,
              ROW_NUMBER() OVER (PARTITION BY slug ORDER BY id) AS rn
-      FROM public.provider_access
+      FROM public.prestadores
       WHERE slug IS NOT NULL AND slug <> ''
     )
-    UPDATE public.provider_access pa
+    UPDATE public.prestadores pa
     SET slug = pa.slug || '-' || SUBSTRING(pa.id::text, 1, 6)
     FROM duplicates d
     WHERE pa.id = d.id AND d.rn > 1;
   END IF;
 END $$;
 
-DROP INDEX IF EXISTS public.idx_provider_access_slug;
-CREATE UNIQUE INDEX IF NOT EXISTS uq_provider_access_nonempty_slug
-  ON public.provider_access(slug)
+DROP INDEX IF EXISTS public.idx_prestadores_slug;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_prestadores_nonempty_slug
+  ON public.prestadores(slug)
   WHERE slug IS NOT NULL AND slug <> '';
 
 -- Cuenta Oficial del Club de Experiencias como Prestador Institucional
-INSERT INTO public.provider_access (
+INSERT INTO public.prestadores (
   email, name, agency, slug, phone, cbu_alias, cuit_dni, bank_name, account_holder, bio, website, active, status
 ) VALUES (
   'admin@experiencias.club',
@@ -228,49 +212,29 @@ INSERT INTO public.provider_access (
   active = true,
   status = 'aprobado';
 
--- 2.7 provider_banking_history (Auditoría de Modificaciones Bancarias)
-CREATE TABLE IF NOT EXISTS public.provider_banking_history (
+-- 2.7 historial_bancario (Auditoría de Modificaciones Bancarias)
+CREATE TABLE IF NOT EXISTS public.historial_bancario (
   id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   provider_email TEXT NOT NULL,
   cbu_alias      TEXT,
   cuit_dni       TEXT,
   bank_name      TEXT,
   account_holder TEXT,
+  old_cbu_alias  TEXT,
+  new_cbu_alias  TEXT DEFAULT '',
+  old_name       TEXT,
+  new_name       TEXT DEFAULT '',
+  old_cuit_dni   TEXT,
+  new_cuit_dni   TEXT DEFAULT '',
+  old_bank_name  TEXT,
+  new_bank_name  TEXT DEFAULT '',
+  old_account_holder TEXT,
+  new_account_holder TEXT DEFAULT '',
   changed_by     TEXT NOT NULL,
   changed_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_provider_banking_history_email ON public.provider_banking_history(provider_email);
-ALTER TABLE public.provider_banking_history ADD COLUMN IF NOT EXISTS cbu_alias TEXT;
-ALTER TABLE public.provider_banking_history ADD COLUMN IF NOT EXISTS cuit_dni TEXT;
-ALTER TABLE public.provider_banking_history ADD COLUMN IF NOT EXISTS bank_name TEXT;
-ALTER TABLE public.provider_banking_history ADD COLUMN IF NOT EXISTS account_holder TEXT;
-ALTER TABLE public.provider_banking_history ADD COLUMN IF NOT EXISTS old_cbu_alias TEXT;
-ALTER TABLE public.provider_banking_history ADD COLUMN IF NOT EXISTS new_cbu_alias TEXT DEFAULT '';
-ALTER TABLE public.provider_banking_history ADD COLUMN IF NOT EXISTS old_name TEXT;
-ALTER TABLE public.provider_banking_history ADD COLUMN IF NOT EXISTS new_name TEXT DEFAULT '';
-ALTER TABLE public.provider_banking_history ADD COLUMN IF NOT EXISTS old_cuit_dni TEXT;
-ALTER TABLE public.provider_banking_history ADD COLUMN IF NOT EXISTS new_cuit_dni TEXT DEFAULT '';
-ALTER TABLE public.provider_banking_history ADD COLUMN IF NOT EXISTS old_bank_name TEXT;
-ALTER TABLE public.provider_banking_history ADD COLUMN IF NOT EXISTS new_bank_name TEXT DEFAULT '';
-ALTER TABLE public.provider_banking_history ADD COLUMN IF NOT EXISTS old_account_holder TEXT;
-ALTER TABLE public.provider_banking_history ADD COLUMN IF NOT EXISTS new_account_holder TEXT DEFAULT '';
-
-DO $$
-DECLARE
-  v_col RECORD;
-BEGIN
-  FOR v_col IN
-    SELECT column_name
-    FROM information_schema.columns
-    WHERE table_schema = 'public'
-      AND table_name = 'provider_banking_history'
-      AND column_name LIKE 'new_%'
-      AND is_nullable = 'NO'
-  LOOP
-    EXECUTE format('ALTER TABLE public.provider_banking_history ALTER COLUMN %I DROP NOT NULL', v_col.column_name);
-  END LOOP;
-END $$;
+CREATE INDEX IF NOT EXISTS idx_historial_bancario_email ON public.historial_bancario(provider_email);
 
 -- 2.8 experiencias (Catálogo Oficial de Rutas y Salidas)
 CREATE TABLE IF NOT EXISTS public.experiencias (
@@ -283,7 +247,13 @@ CREATE TABLE IF NOT EXISTS public.experiencias (
   meeting_point        TEXT NOT NULL DEFAULT '',
   meeting_point_url    TEXT NOT NULL DEFAULT '',
   difficulty           TEXT NOT NULL DEFAULT 'Baja'
-                       CHECK (difficulty IN ('Baja', 'Moderada', 'Exigente', 'Alta Montaña')),
+                       CHECK (
+                         difficulty IN ('Baja', 'Moderada', 'Exigente', 'Alta Montaña')
+                         OR difficulty ILIKE 'baja%'
+                         OR difficulty ILIKE 'moderada%'
+                         OR difficulty ILIKE 'exigente%'
+                         OR difficulty ILIKE 'alta%'
+                       ),
   duration_label       TEXT NOT NULL DEFAULT '4 horas',
   price_ars            INTEGER NOT NULL DEFAULT 65000 CHECK (price_ars >= 0),
   price_usd            INTEGER DEFAULT 70,
@@ -291,9 +261,11 @@ CREATE TABLE IF NOT EXISTS public.experiencias (
   dates                JSONB NOT NULL DEFAULT '[]'::jsonb,
   date_slots           JSONB NOT NULL DEFAULT '[]'::jsonb,
   status               TEXT NOT NULL DEFAULT 'publicada'
-                       CHECK (status IN ('borrador', 'publicada', 'oculta')),
+                       CHECK (status IN ('borrador', 'pendiente', 'publicada', 'oculta', 'rechazada')),
   public_url           TEXT DEFAULT '',
   cover_image          TEXT DEFAULT '/assets/images/kayak-club-de-experiencias.jpg',
+  cover_image_name     TEXT,
+  cover_video_name     TEXT,
   album_photos         JSONB DEFAULT '[]'::jsonb,
   video_url            TEXT DEFAULT '/assets/videos/kayak.mp4',
   video_poster         TEXT DEFAULT '/assets/images/kayak-video.png',
@@ -301,6 +273,10 @@ CREATE TABLE IF NOT EXISTS public.experiencias (
   highlights           JSONB DEFAULT '[]'::jsonb,
   included             JSONB DEFAULT '[]'::jsonb,
   not_included         JSONB DEFAULT '[]'::jsonb,
+  participant_requirements TEXT NOT NULL DEFAULT '',
+  notes                TEXT,
+  reviewed_at          TIMESTAMPTZ,
+  provider_agency      TEXT NOT NULL DEFAULT '',
   provider_email       TEXT DEFAULT 'patriciofacundodiaztillar@gmail.com',
   provider_name        TEXT,
   provider_phone       TEXT,
@@ -325,6 +301,12 @@ ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS kicker TEXT DEFAULT '';
 ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS itinerary TEXT DEFAULT '';
 ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS best_season TEXT DEFAULT '';
 ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS promos_and_pricing TEXT DEFAULT '';
+ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS provider_agency TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS cover_image_name TEXT;
+ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS cover_video_name TEXT;
+ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS participant_requirements TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
 
 DO $$
 BEGIN
@@ -334,7 +316,7 @@ BEGIN
   ) THEN
     ALTER TABLE public.experiencias
       ADD CONSTRAINT fk_experiencias_provider_email
-      FOREIGN KEY (provider_email) REFERENCES public.provider_access(email)
+      FOREIGN KEY (provider_email) REFERENCES public.prestadores(email)
       ON UPDATE CASCADE ON DELETE SET NULL;
   END IF;
 EXCEPTION
@@ -351,55 +333,6 @@ SET
   provider_phone = '+54 9 383 456-7890'
 WHERE slug = 'kayak' OR slug = 'exp-kayak';
 
--- 2.8.1 propuestas_experiencias (Solicitudes y Propuestas de Prestadores para el Catálogo)
-CREATE TABLE IF NOT EXISTS public.propuestas_experiencias (
-  id                       TEXT PRIMARY KEY,
-  provider_id              TEXT NOT NULL,
-  provider_name            TEXT NOT NULL,
-  provider_agency          TEXT NOT NULL DEFAULT '',
-  provider_email           TEXT NOT NULL,
-  provider_phone           TEXT,
-  title                    TEXT NOT NULL,
-  kicker                   TEXT NOT NULL DEFAULT 'EXPERIENCIA',
-  subheading               TEXT NOT NULL DEFAULT '',
-  region                   TEXT NOT NULL DEFAULT '',
-  difficulty               TEXT NOT NULL DEFAULT 'Moderada',
-  duration                 TEXT NOT NULL DEFAULT '4 horas',
-  altitude                 TEXT,
-  capacity                 INTEGER NOT NULL DEFAULT 12,
-  season                   TEXT NOT NULL DEFAULT 'Todo el año',
-  dates                    TEXT NOT NULL DEFAULT 'A coordinar',
-  price_ars                INTEGER NOT NULL DEFAULT 0,
-  price_usd                INTEGER,
-  promos_and_pricing       TEXT,
-  itinerary                TEXT NOT NULL DEFAULT '',
-  meeting_point            TEXT NOT NULL DEFAULT '',
-  meeting_point_url        TEXT NOT NULL DEFAULT '',
-  included_services        TEXT NOT NULL DEFAULT '',
-  participant_requirements TEXT NOT NULL DEFAULT '',
-  notes                    TEXT,
-  cover_image              TEXT,
-  cover_image_name         TEXT,
-  cover_video_url          TEXT,
-  cover_video_name         TEXT,
-  album_photos             JSONB DEFAULT '[]'::jsonb,
-  provider_cbu_alias       TEXT,
-  provider_bank_name       TEXT,
-  provider_cuit_dni        TEXT,
-  status                   TEXT NOT NULL DEFAULT 'pendiente'
-                           CHECK (status IN ('pendiente', 'aprobada', 'rechazada')),
-  created_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
-  reviewed_at              TIMESTAMPTZ,
-  updated_at               TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS idx_propuestas_experiencias_email ON public.propuestas_experiencias(provider_email);
-CREATE INDEX IF NOT EXISTS idx_propuestas_experiencias_status ON public.propuestas_experiencias(status);
-ALTER TABLE public.propuestas_experiencias ADD COLUMN IF NOT EXISTS album_photos JSONB DEFAULT '[]'::jsonb;
-ALTER TABLE public.propuestas_experiencias ADD COLUMN IF NOT EXISTS provider_cbu_alias TEXT;
-ALTER TABLE public.propuestas_experiencias ADD COLUMN IF NOT EXISTS provider_bank_name TEXT;
-ALTER TABLE public.propuestas_experiencias ADD COLUMN IF NOT EXISTS provider_cuit_dni TEXT;
-ALTER TABLE public.propuestas_experiencias ADD COLUMN IF NOT EXISTS meeting_point_url TEXT NOT NULL DEFAULT '';
 ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS meeting_point_url TEXT NOT NULL DEFAULT '';
 
 -- 2.9 pagos_transferencias (Registro de Comprobantes de Pago)
@@ -500,24 +433,27 @@ END $$;
 -- 3. VISTAS
 -- ==============================================================================
 
+-- 3.1 estadisticas_socios (Métricas y conteos de la comunidad de socios)
 DROP VIEW IF EXISTS public.waitlist_stats CASCADE;
-CREATE VIEW public.waitlist_stats AS
+DROP VIEW IF EXISTS public.estadisticas_socios CASCADE;
+CREATE VIEW public.estadisticas_socios AS
 SELECT
   COUNT(*)                                                               AS total_members,
   COALESCE(MAX(position), 100)                                           AS max_position,
-  (SELECT COUNT(*) FROM public.socios)                                   AS total_socios,
-  (SELECT COUNT(*) FROM public.waitlist)                                 AS total_waitlist,
+  (SELECT COUNT(*) FROM public.socios WHERE membership_tier <> 'waitlist') AS total_socios,
+  (SELECT COUNT(*) FROM public.socios WHERE membership_tier = 'waitlist')  AS total_waitlist,
   (SELECT COUNT(*) FROM public.socios WHERE membership_tier = 'fundador') AS total_fundadores,
   (SELECT COUNT(*) FROM public.socios WHERE membership_tier = 'activo')   AS total_activos,
   (SELECT COUNT(*) FROM public.socios WHERE membership_tier = 'emergente')AS total_emergentes,
   (SELECT COALESCE(MAX(position), 99) FROM public.socios)                AS last_position
 FROM public.socios;
 
-GRANT SELECT ON public.waitlist_stats TO anon, authenticated;
+GRANT SELECT ON public.estadisticas_socios TO anon, authenticated;
 
--- 3.2 Vista pública segura de prestadores aprobados (sin información bancaria o fiscal)
+-- 3.2 perfiles_publicos (Vista pública segura de prestadores aprobados, sin datos bancarios o fiscales)
 DROP VIEW IF EXISTS public.public_provider_profiles CASCADE;
-CREATE VIEW public.public_provider_profiles AS
+DROP VIEW IF EXISTS public.perfiles_publicos CASCADE;
+CREATE VIEW public.perfiles_publicos AS
 SELECT
   email,
   name,
@@ -527,14 +463,15 @@ SELECT
   phone,
   website,
   social_media,
-  social_media_secondary,  avatar_url,
+  social_media_secondary,
+  avatar_url,
   cover_url,
   active,
   status
-FROM public.provider_access
+FROM public.prestadores
 WHERE active = true AND status = 'aprobado';
 
-GRANT SELECT ON public.public_provider_profiles TO anon, authenticated;
+GRANT SELECT ON public.perfiles_publicos TO anon, authenticated;
 
 -- ==============================================================================
 -- 4. TRIGGERS Y FUNCIONES DE NORMALIZACIÓN
@@ -554,9 +491,9 @@ CREATE TRIGGER socios_updated_at
   BEFORE UPDATE ON public.socios
   FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
-DROP TRIGGER IF EXISTS admin_access_updated_at ON public.admin_access;
-CREATE TRIGGER admin_access_updated_at
-  BEFORE UPDATE ON public.admin_access
+DROP TRIGGER IF EXISTS administradores_updated_at ON public.administradores;
+CREATE TRIGGER administradores_updated_at
+  BEFORE UPDATE ON public.administradores
   FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
 DROP TRIGGER IF EXISTS postulaciones_fundadores_updated_at ON public.postulaciones_fundadores;
@@ -564,14 +501,9 @@ CREATE TRIGGER postulaciones_fundadores_updated_at
   BEFORE UPDATE ON public.postulaciones_fundadores
   FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
-DROP TRIGGER IF EXISTS postulaciones_prestadores_updated_at ON public.postulaciones_prestadores;
-CREATE TRIGGER postulaciones_prestadores_updated_at
-  BEFORE UPDATE ON public.postulaciones_prestadores
-  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
-
-DROP TRIGGER IF EXISTS provider_access_updated_at ON public.provider_access;
-CREATE TRIGGER provider_access_updated_at
-  BEFORE UPDATE ON public.provider_access
+DROP TRIGGER IF EXISTS prestadores_updated_at ON public.prestadores;
+CREATE TRIGGER prestadores_updated_at
+  BEFORE UPDATE ON public.prestadores
   FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
 DROP TRIGGER IF EXISTS experiencias_updated_at ON public.experiencias;
@@ -584,21 +516,7 @@ CREATE TRIGGER pagos_transferencias_updated_at
   BEFORE UPDATE ON public.pagos_transferencias
   FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
--- 4.2 Normalización de waitlist
-CREATE OR REPLACE FUNCTION public.normalize_waitlist_row()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.email = LOWER(TRIM(NEW.email));
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS waitlist_normalize_before_write ON public.waitlist;
-CREATE TRIGGER waitlist_normalize_before_write
-  BEFORE INSERT OR UPDATE ON public.waitlist
-  FOR EACH ROW EXECUTE FUNCTION public.normalize_waitlist_row();
-
--- 4.3 Normalización de socios
+-- 4.2 Normalización de socios
 CREATE OR REPLACE FUNCTION public.normalize_socio_row()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -658,14 +576,9 @@ RETURNS TRIGGER AS $$
 BEGIN
   UPDATE public.socios
   SET auth_user_id = NEW.id,
-      google_linked = true,
       updated_at = now()
   WHERE LOWER(email) = LOWER(NEW.email)
     AND (auth_user_id IS NULL OR auth_user_id <> NEW.id);
-
-  UPDATE public.waitlist
-  SET google_linked = true
-  WHERE LOWER(email) = LOWER(NEW.email);
 
   RETURN NEW;
 END;
@@ -689,7 +602,6 @@ BEGIN
 
     IF v_auth_id IS NOT NULL THEN
       NEW.auth_user_id = v_auth_id;
-      NEW.google_linked = true;
     END IF;
   END IF;
   RETURN NEW;
@@ -727,7 +639,7 @@ BEGIN
   v_current_email := LOWER(COALESCE(auth.jwt() ->> 'email', ''));
 
   SELECT EXISTS (
-    SELECT 1 FROM public.admin_access
+    SELECT 1 FROM public.administradores
     WHERE LOWER(email) = v_current_email AND active = true
   ) INTO v_is_admin;
 
@@ -776,7 +688,7 @@ BEGIN
   v_current_email := LOWER(COALESCE(auth.jwt() ->> 'email', ''));
 
   SELECT EXISTS (
-    SELECT 1 FROM public.admin_access
+    SELECT 1 FROM public.administradores
     WHERE LOWER(email) = v_current_email AND active = true
   ) INTO v_is_admin;
 
@@ -790,9 +702,9 @@ BEGIN
 END;
 $$;
 
-DROP TRIGGER IF EXISTS trg_check_provider_access_update ON public.provider_access;
+DROP TRIGGER IF EXISTS trg_check_provider_access_update ON public.prestadores;
 CREATE TRIGGER trg_check_provider_access_update
-  BEFORE UPDATE ON public.provider_access
+  BEFORE UPDATE ON public.prestadores
   FOR EACH ROW
   EXECUTE FUNCTION public.check_provider_access_update();
 
@@ -811,7 +723,7 @@ BEGIN
 
     v_changed_by := COALESCE(auth.jwt() ->> 'email', 'sistema');
 
-    INSERT INTO public.provider_banking_history (
+    INSERT INTO public.historial_bancario (
       provider_email,
       cbu_alias,
       cuit_dni,
@@ -831,9 +743,9 @@ BEGIN
 END;
 $$;
 
-DROP TRIGGER IF EXISTS trg_provider_banking_history ON public.provider_access;
+DROP TRIGGER IF EXISTS trg_provider_banking_history ON public.prestadores;
 CREATE TRIGGER trg_provider_banking_history
-  AFTER UPDATE ON public.provider_access
+  AFTER UPDATE ON public.prestadores
   FOR EACH ROW
   EXECUTE FUNCTION public.handle_provider_banking_history();
 
@@ -887,15 +799,34 @@ SET search_path = public
 AS $$
 DECLARE
   v_email TEXT := LOWER(TRIM(COALESCE(p_email, '')));
+  v_auth_uid UUID;
 BEGIN
   IF v_email = '' OR position('@' IN v_email) = 0 THEN
     RETURN jsonb_build_object('success', false, 'error', 'invalid_email');
   END IF;
 
-  INSERT INTO public.waitlist (email, converted, google_linked)
-  VALUES (v_email, false, COALESCE(p_google_linked, false))
+  SELECT id INTO v_auth_uid FROM auth.users WHERE LOWER(email) = v_email LIMIT 1;
+
+  INSERT INTO public.socios (
+    email,
+    membership_tier,
+    auth_user_id,
+    full_name,
+    dni,
+    phone,
+    position
+  )
+  VALUES (
+    v_email,
+    'waitlist',
+    v_auth_uid,
+    '',
+    '',
+    '',
+    NULL
+  )
   ON CONFLICT (email) DO UPDATE
-  SET google_linked = public.waitlist.google_linked OR EXCLUDED.google_linked;
+  SET auth_user_id = COALESCE(public.socios.auth_user_id, EXCLUDED.auth_user_id);
 
   RETURN jsonb_build_object('success', true, 'email', v_email);
 END;
@@ -911,8 +842,7 @@ SET search_path = public
 AS $$
 DECLARE
   v_email TEXT := LOWER(TRIM(COALESCE(p_email, '')));
-  v_in_socios BOOLEAN := false;
-  v_in_waitlist BOOLEAN := false;
+  v_tier TEXT;
   v_google_linked BOOLEAN := false;
 BEGIN
   IF v_email = '' THEN
@@ -923,30 +853,24 @@ BEGIN
     );
   END IF;
 
-  SELECT true, COALESCE(s.google_linked, s.auth_user_id IS NOT NULL, false)
-  INTO v_in_socios, v_google_linked
+  SELECT membership_tier, (s.auth_user_id IS NOT NULL)
+  INTO v_tier, v_google_linked
   FROM public.socios s
   WHERE s.email = v_email
   LIMIT 1;
 
-  IF NOT FOUND THEN
-    v_in_socios := false;
-  END IF;
-
-  SELECT true, COALESCE(v_google_linked, false) OR COALESCE(w.google_linked, false)
-  INTO v_in_waitlist, v_google_linked
-  FROM public.waitlist w
-  WHERE w.email = v_email
-  LIMIT 1;
-
-  IF NOT FOUND THEN
-    v_in_waitlist := false;
+  IF FOUND THEN
+    RETURN jsonb_build_object(
+      'in_socios', (v_tier <> 'waitlist'),
+      'in_waitlist', (v_tier = 'waitlist'),
+      'google_linked', COALESCE(v_google_linked, false)
+    );
   END IF;
 
   RETURN jsonb_build_object(
-    'in_socios', COALESCE(v_in_socios, false),
-    'in_waitlist', COALESCE(v_in_waitlist, false),
-    'google_linked', COALESCE(v_google_linked, false)
+    'in_socios', false,
+    'in_waitlist', false,
+    'google_linked', false
   );
 END;
 $$;
@@ -963,44 +887,24 @@ DECLARE
   v_email TEXT := LOWER(TRIM(COALESCE(p_email, '')));
   v_access_status TEXT;
   v_access_active BOOLEAN;
-  v_app_status TEXT;
 BEGIN
   IF v_email = '' THEN
     RETURN jsonb_build_object('status', 'unregistered');
   END IF;
 
-  -- 1. Revisar provider_access
   SELECT status, active
   INTO v_access_status, v_access_active
-  FROM public.provider_access
+  FROM public.prestadores
   WHERE LOWER(email) = v_email
   LIMIT 1;
 
   IF FOUND THEN
-    IF v_access_status = 'dado_de_baja' OR v_access_active = false THEN
-      RETURN jsonb_build_object('status', 'inactive');
+    IF v_access_status = 'pendiente' THEN
+      RETURN jsonb_build_object('status', 'pending');
     ELSIF v_access_status = 'aprobado' AND v_access_active = true THEN
       RETURN jsonb_build_object('status', 'approved');
     ELSE
-      RETURN jsonb_build_object('status', 'pending');
-    END IF;
-  END IF;
-
-  -- 2. Revisar postulaciones_prestadores
-  SELECT status
-  INTO v_app_status
-  FROM public.postulaciones_prestadores
-  WHERE LOWER(email) = v_email
-  ORDER BY created_at DESC
-  LIMIT 1;
-
-  IF FOUND THEN
-    IF LOWER(v_app_status) IN ('rechazado', 'rechazada', 'dado_de_baja') THEN
       RETURN jsonb_build_object('status', 'inactive');
-    ELSIF LOWER(v_app_status) IN ('aprobado', 'aprobada') THEN
-      RETURN jsonb_build_object('status', 'approved');
-    ELSE
-      RETURN jsonb_build_object('status', 'pending');
     END IF;
   END IF;
 
@@ -1035,17 +939,16 @@ BEGIN
   END IF;
 
   IF v_auth_uid IS NOT NULL AND (v_socio.auth_user_id = v_auth_uid OR v_jwt_email = v_email) THEN
-    IF v_socio.auth_user_id IS NULL OR v_socio.google_linked = false THEN
+    IF v_socio.auth_user_id IS NULL THEN
       UPDATE public.socios
-      SET auth_user_id = v_auth_uid,
-          google_linked = true
+      SET auth_user_id = v_auth_uid
       WHERE id = v_socio.id
       RETURNING * INTO v_socio;
     END IF;
     RETURN jsonb_build_object('status', 'ok', 'socio', to_jsonb(v_socio));
   END IF;
 
-  IF v_socio.google_linked = false
+  IF v_socio.auth_user_id IS NULL
      AND p_registration_token IS NOT NULL
      AND v_socio.registration_token = p_registration_token THEN
     RETURN jsonb_build_object('status', 'ok', 'socio', to_jsonb(v_socio));
@@ -1088,7 +991,7 @@ BEGIN
 
   IF v_auth_uid IS NOT NULL AND (v_socio.auth_user_id = v_auth_uid OR v_jwt_email = v_email) THEN
     v_is_authorized := true;
-  ELSIF v_socio.google_linked = false
+  ELSIF v_socio.auth_user_id IS NULL
         AND p_registration_token IS NOT NULL
         AND v_socio.registration_token = p_registration_token THEN
     v_is_authorized := true;
@@ -1112,7 +1015,6 @@ BEGIN
       experiences_wishlist = COALESCE(p_experiences_wishlist, experiences_wishlist),
       experiences_other = p_experiences_other,
       auth_user_id = COALESCE(auth_user_id, CASE WHEN v_auth_uid IS NOT NULL AND v_jwt_email = v_email THEN v_auth_uid ELSE NULL END),
-      google_linked = google_linked OR (v_auth_uid IS NOT NULL AND v_jwt_email = v_email),
       updated_at = now()
   WHERE id = v_socio.id
   RETURNING * INTO v_socio;
@@ -1160,7 +1062,6 @@ BEGIN
           experiences_wishlist = CASE WHEN p_experiences_wishlist IS NOT NULL THEN p_experiences_wishlist ELSE experiences_wishlist END,
           experiences_other = CASE WHEN p_experiences_other IS NOT NULL AND TRIM(p_experiences_other) <> '' THEN TRIM(p_experiences_other) ELSE experiences_other END,
           auth_user_id = v_auth_uid,
-          google_linked = true,
           updated_at = now()
       WHERE email = v_email
       RETURNING * INTO v_inserted;
@@ -1186,8 +1087,7 @@ BEGIN
     experiences_wishlist,
     experiences_other,
     membership_tier,
-    auth_user_id,
-    google_linked
+    auth_user_id
   )
   VALUES (
     v_email,
@@ -1197,20 +1097,9 @@ BEGIN
     COALESCE(p_experiences_wishlist, '[]'::jsonb),
     NULLIF(TRIM(COALESCE(p_experiences_other, '')), ''),
     'emergente',
-    CASE WHEN v_auth_uid IS NOT NULL AND v_jwt_email = v_email THEN v_auth_uid ELSE NULL END,
-    CASE WHEN v_auth_uid IS NOT NULL AND v_jwt_email = v_email THEN true ELSE false END
+    CASE WHEN v_auth_uid IS NOT NULL AND v_jwt_email = v_email THEN v_auth_uid ELSE NULL END
   )
   RETURNING * INTO v_inserted;
-
-  INSERT INTO public.waitlist (email, converted, google_linked)
-  VALUES (
-    v_email,
-    EXISTS (SELECT 1 FROM public.pagos_transferencias WHERE LOWER(TRIM(email)) = v_email),
-    v_inserted.google_linked
-  )
-  ON CONFLICT (email) DO UPDATE
-  SET converted = public.waitlist.converted OR EXISTS (SELECT 1 FROM public.pagos_transferencias WHERE LOWER(TRIM(email)) = v_email),
-      google_linked = public.waitlist.google_linked OR EXCLUDED.google_linked;
 
   RETURN jsonb_build_object(
     'status', 'created',
@@ -1258,7 +1147,6 @@ BEGIN
           experiences_wishlist = CASE WHEN p_experiences_wishlist IS NOT NULL THEN p_experiences_wishlist ELSE experiences_wishlist END,
           experiences_other = CASE WHEN p_experiences_other IS NOT NULL AND TRIM(p_experiences_other) <> '' THEN TRIM(p_experiences_other) ELSE experiences_other END,
           auth_user_id = v_auth_uid,
-          google_linked = true,
           updated_at = now()
       WHERE email = v_email
       RETURNING * INTO v_inserted;
@@ -1284,8 +1172,7 @@ BEGIN
     experiences_wishlist,
     experiences_other,
     membership_tier,
-    auth_user_id,
-    google_linked
+    auth_user_id
   )
   VALUES (
     v_email,
@@ -1295,20 +1182,9 @@ BEGIN
     COALESCE(p_experiences_wishlist, '[]'::jsonb),
     NULLIF(TRIM(COALESCE(p_experiences_other, '')), ''),
     'emergente',
-    CASE WHEN v_auth_uid IS NOT NULL AND v_jwt_email = v_email THEN v_auth_uid ELSE NULL END,
-    CASE WHEN v_auth_uid IS NOT NULL AND v_jwt_email = v_email THEN true ELSE false END
+    CASE WHEN v_auth_uid IS NOT NULL AND v_jwt_email = v_email THEN v_auth_uid ELSE NULL END
   )
   RETURNING * INTO v_inserted;
-
-  INSERT INTO public.waitlist (email, converted, google_linked)
-  VALUES (
-    v_email,
-    EXISTS (SELECT 1 FROM public.pagos_transferencias WHERE LOWER(TRIM(email)) = v_email),
-    v_inserted.google_linked
-  )
-  ON CONFLICT (email) DO UPDATE
-  SET converted = public.waitlist.converted OR EXISTS (SELECT 1 FROM public.pagos_transferencias WHERE LOWER(TRIM(email)) = v_email),
-      google_linked = public.waitlist.google_linked OR EXCLUDED.google_linked;
 
   RETURN jsonb_build_object(
     'status', 'created',
@@ -1577,7 +1453,7 @@ BEGIN
     IF FOUND THEN
       IF v_auth_uid IS NOT NULL AND v_socio.auth_user_id = v_auth_uid THEN
         v_authorized := true;
-      ELSIF v_socio.google_linked = false
+      ELSIF v_socio.auth_user_id IS NULL
             AND p_registration_token IS NOT NULL
             AND v_socio.registration_token = p_registration_token THEN
         v_authorized := true;
@@ -1611,12 +1487,12 @@ DECLARE
   v_items JSONB;
 BEGIN
   SELECT EXISTS (
-    SELECT 1 FROM public.admin_access
+    SELECT 1 FROM public.administradores
     WHERE LOWER(email) = v_caller_email AND active = true
   ) INTO v_is_admin;
 
   SELECT EXISTS (
-    SELECT 1 FROM public.provider_access
+    SELECT 1 FROM public.prestadores
     WHERE LOWER(email) = v_caller_email AND active = true
   ) INTO v_is_provider;
 
@@ -1660,12 +1536,12 @@ DECLARE
   v_updated public.pagos_transferencias%ROWTYPE;
 BEGIN
   SELECT EXISTS (
-    SELECT 1 FROM public.admin_access
+    SELECT 1 FROM public.administradores
     WHERE LOWER(email) = v_caller_email AND active = true
   ) INTO v_is_admin;
 
   SELECT EXISTS (
-    SELECT 1 FROM public.provider_access
+    SELECT 1 FROM public.prestadores
     WHERE LOWER(email) = v_caller_email AND active = true
   ) INTO v_is_provider;
 
@@ -1729,7 +1605,7 @@ DECLARE
 BEGIN
   -- Caller authorization: Only active admins
   IF NOT EXISTS (
-    SELECT 1 FROM public.admin_access
+    SELECT 1 FROM public.administradores
     WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
       AND active = true
   ) THEN
@@ -1748,10 +1624,12 @@ BEGIN
         'phone', s.phone,
         'position', s.position,
         'membershipTier', s.membership_tier,
-        'googleLinked', COALESCE(s.google_linked, s.auth_user_id IS NOT NULL, false),
-        'converted', EXISTS (
-          SELECT 1 FROM public.pagos_transferencias p
-          WHERE LOWER(TRIM(p.email)) = LOWER(TRIM(s.email))
+        'googleLinked', (s.auth_user_id IS NOT NULL),
+        'converted', (
+          (s.membership_tier <> 'waitlist') OR EXISTS (
+            SELECT 1 FROM public.pagos_transferencias p
+            WHERE LOWER(TRIM(p.email)) = LOWER(TRIM(s.email))
+          )
         ),
         'paymentsCount', (
           SELECT COUNT(*)::INTEGER FROM public.pagos_transferencias p
@@ -1765,48 +1643,46 @@ BEGIN
     ),
     '[]'::jsonb
   ) INTO v_socios
-  FROM public.socios s;
+  FROM public.socios s
+  WHERE s.membership_tier <> 'waitlist';
 
-  -- Prospectos de lista de espera:
+  -- Prospectos de lista de espera (directamente desde socios):
   SELECT COALESCE(
     jsonb_agg(
       jsonb_build_object(
-        'id', w.id,
+        'id', s.id,
         'type', 'waitlist',
-        'email', w.email,
+        'email', s.email,
         'fullName', COALESCE(
+          NULLIF(TRIM(s.full_name), ''),
           NULLIF(TRIM(u.raw_user_meta_data ->> 'full_name'), ''),
           NULLIF(TRIM(u.raw_user_meta_data ->> 'name'), ''),
           NULL
         ),
-        'dni', NULL,
-        'phone', NULL,
+        'dni', NULLIF(TRIM(s.dni), ''),
+        'phone', NULLIF(TRIM(s.phone), ''),
         'position', NULL,
         'membershipTier', 'waitlist',
-        'googleLinked', COALESCE(w.google_linked, u.id IS NOT NULL, false),
-        'converted', (
-          COALESCE(w.converted, false) OR EXISTS (
-            SELECT 1 FROM public.pagos_transferencias p
-            WHERE LOWER(TRIM(p.email)) = LOWER(TRIM(w.email))
-          )
+        'googleLinked', (u.id IS NOT NULL OR s.auth_user_id IS NOT NULL),
+        'converted', EXISTS (
+          SELECT 1 FROM public.pagos_transferencias p
+          WHERE LOWER(TRIM(p.email)) = LOWER(TRIM(s.email))
         ),
         'paymentsCount', (
           SELECT COUNT(*)::INTEGER FROM public.pagos_transferencias p
-          WHERE LOWER(TRIM(p.email)) = LOWER(TRIM(w.email))
+          WHERE LOWER(TRIM(p.email)) = LOWER(TRIM(s.email))
         ),
-        'experiencesWishlist', '[]'::jsonb,
-        'experiencesOther', NULL,
-        'createdAt', w.created_at
+        'experiencesWishlist', COALESCE(s.experiences_wishlist, '[]'::jsonb),
+        'experiencesOther', s.experiences_other,
+        'createdAt', s.created_at
       )
-      ORDER BY w.created_at DESC
+      ORDER BY s.created_at DESC
     ),
     '[]'::jsonb
   ) INTO v_waitlist
-  FROM public.waitlist w
-  LEFT JOIN auth.users u ON LOWER(TRIM(u.email)) = LOWER(TRIM(w.email))
-  WHERE NOT EXISTS (
-    SELECT 1 FROM public.socios s WHERE LOWER(TRIM(s.email)) = LOWER(TRIM(w.email))
-  );
+  FROM public.socios s
+  LEFT JOIN auth.users u ON LOWER(TRIM(u.email)) = LOWER(TRIM(s.email))
+  WHERE s.membership_tier = 'waitlist';
 
   RETURN jsonb_build_object(
     'socios', v_socios,
@@ -1828,7 +1704,7 @@ DECLARE
 BEGIN
   -- Caller authorization: Only active admins
   IF NOT EXISTS (
-    SELECT 1 FROM public.admin_access
+    SELECT 1 FROM public.administradores
     WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
       AND active = true
   ) THEN
@@ -1895,36 +1771,13 @@ GRANT EXECUTE ON FUNCTION public.get_admin_all_submissions TO authenticated;
 -- ==============================================================================
 
 -- 6.1 Habilitación de RLS en todas las tablas
-ALTER TABLE public.waitlist ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.socios ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.admin_access ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.administradores ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.postulaciones_fundadores ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.postulaciones_prestadores ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.provider_access ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.provider_banking_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.prestadores ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.historial_bancario ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.experiencias ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pagos_transferencias ENABLE ROW LEVEL SECURITY;
-
--- 6.2 Políticas en waitlist
-DROP POLICY IF EXISTS "Permitir insercion anonima en waitlist" ON public.waitlist;
-CREATE POLICY "Permitir insercion anonima en waitlist"
-  ON public.waitlist
-  FOR INSERT
-  TO anon, authenticated
-  WITH CHECK (true);
-
-DROP POLICY IF EXISTS "Admins can view waitlist" ON public.waitlist;
-CREATE POLICY "Admins can view waitlist"
-  ON public.waitlist
-  FOR SELECT
-  TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.admin_access
-      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
-        AND active = true
-    )
-  );
 
 -- 6.3 Políticas en socios
 DROP POLICY IF EXISTS "Socios can read own profile by auth_user_id" ON public.socios;
@@ -1936,7 +1789,7 @@ CREATE POLICY "Socios can read own profile by auth_user_id"
     auth_user_id = auth.uid()
     OR LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
     OR EXISTS (
-      SELECT 1 FROM public.admin_access
+      SELECT 1 FROM public.administradores
       WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
         AND active = true
     )
@@ -1951,7 +1804,7 @@ CREATE POLICY "Socios can update own profile"
     auth_user_id = auth.uid()
     OR LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
     OR EXISTS (
-      SELECT 1 FROM public.admin_access
+      SELECT 1 FROM public.administradores
       WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
         AND active = true
     )
@@ -1960,7 +1813,7 @@ CREATE POLICY "Socios can update own profile"
     auth_user_id = auth.uid()
     OR LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
     OR EXISTS (
-      SELECT 1 FROM public.admin_access
+      SELECT 1 FROM public.administradores
       WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
         AND active = true
     )
@@ -1974,21 +1827,27 @@ CREATE POLICY "Admins can insert socios"
   TO authenticated
   WITH CHECK (
     EXISTS (
-      SELECT 1 FROM public.admin_access
+      SELECT 1 FROM public.administradores
       WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
         AND active = true
     )
   );
 
--- 6.4 Políticas en admin_access
-DROP POLICY IF EXISTS "Admins can view admin_access" ON public.admin_access;
-DROP POLICY IF EXISTS "Users can view own admin_access" ON public.admin_access;
-CREATE POLICY "Users can view own admin_access"
-  ON public.admin_access
+-- 6.4 Políticas en administradores
+DROP POLICY IF EXISTS "Admins can view admin_access" ON public.administradores;
+DROP POLICY IF EXISTS "Users can view own admin_access" ON public.administradores;
+DROP POLICY IF EXISTS "Users can view own administradores" ON public.administradores;
+CREATE POLICY "Users can view own administradores"
+  ON public.administradores
   FOR SELECT
   TO authenticated
   USING (
     LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+    OR EXISTS (
+      SELECT 1 FROM public.administradores
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+        AND active = true
+    )
   );
 
 -- 6.5 Políticas en postulaciones_fundadores
@@ -2006,7 +1865,7 @@ CREATE POLICY "Admins can view postulaciones_fundadores"
   TO authenticated
   USING (
     EXISTS (
-      SELECT 1 FROM public.admin_access
+      SELECT 1 FROM public.administradores
       WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
         AND active = true
     )
@@ -2019,73 +1878,43 @@ CREATE POLICY "Admins can update postulaciones_fundadores"
   TO authenticated
   USING (
     EXISTS (
-      SELECT 1 FROM public.admin_access
+      SELECT 1 FROM public.administradores
       WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
         AND active = true
     )
   );
 
--- 6.6 Políticas en postulaciones_prestadores
-DROP POLICY IF EXISTS "Permitir postularse como prestador" ON public.postulaciones_prestadores;
+-- 6.6 Política para permitir nuevas postulaciones en prestadores
+DROP POLICY IF EXISTS "Permitir postularse como prestador" ON public.prestadores;
 CREATE POLICY "Permitir postularse como prestador"
-  ON public.postulaciones_prestadores
+  ON public.prestadores
   FOR INSERT
   TO anon, authenticated
-  WITH CHECK (true);
-
-DROP POLICY IF EXISTS "Admins can view postulaciones_prestadores" ON public.postulaciones_prestadores;
-CREATE POLICY "Admins can view postulaciones_prestadores"
-  ON public.postulaciones_prestadores
-  FOR SELECT
-  TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.admin_access
-      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
-        AND active = true
-    )
+  WITH CHECK (
+    status = 'pendiente'
+    AND active = false
   );
 
-DROP POLICY IF EXISTS "Users can read own postulaciones_prestadores" ON public.postulaciones_prestadores;
-CREATE POLICY "Users can read own postulaciones_prestadores"
-  ON public.postulaciones_prestadores
+-- 6.7 Políticas en prestadores
+DROP POLICY IF EXISTS "Providers can read their own access" ON public.prestadores;
+DROP POLICY IF EXISTS "Prestadores can read own profile" ON public.prestadores;
+CREATE POLICY "Prestadores can read own profile"
+  ON public.prestadores
   FOR SELECT
   TO authenticated
   USING (
     LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
     OR EXISTS (
-      SELECT 1 FROM public.admin_access
+      SELECT 1 FROM public.administradores
       WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
         AND active = true
     )
   );
 
-DROP POLICY IF EXISTS "Admins can update postulaciones_prestadores" ON public.postulaciones_prestadores;
-CREATE POLICY "Admins can update postulaciones_prestadores"
-  ON public.postulaciones_prestadores
-  FOR UPDATE
-  TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.admin_access
-      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
-        AND active = true
-    )
-  );
-
--- 6.7 Políticas en provider_access
-DROP POLICY IF EXISTS "Providers can read their own access" ON public.provider_access;
-CREATE POLICY "Providers can read their own access"
-  ON public.provider_access
-  FOR SELECT
-  TO authenticated
-  USING (
-    LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
-  );
-
-DROP POLICY IF EXISTS "Providers can update their own profile" ON public.provider_access;
-CREATE POLICY "Providers can update their own profile"
-  ON public.provider_access
+DROP POLICY IF EXISTS "Providers can update their own profile" ON public.prestadores;
+DROP POLICY IF EXISTS "Prestadores can update own profile" ON public.prestadores;
+CREATE POLICY "Prestadores can update own profile"
+  ON public.prestadores
   FOR UPDATE
   TO authenticated
   USING (
@@ -2097,73 +1926,37 @@ CREATE POLICY "Providers can update their own profile"
     AND active = true
   );
 
-DROP POLICY IF EXISTS "Admins can manage provider_access" ON public.provider_access;
-CREATE POLICY "Admins can manage provider_access"
-  ON public.provider_access
+DROP POLICY IF EXISTS "Admins can manage provider_access" ON public.prestadores;
+DROP POLICY IF EXISTS "Admins can manage prestadores" ON public.prestadores;
+CREATE POLICY "Admins can manage prestadores"
+  ON public.prestadores
   FOR ALL
   TO authenticated
   USING (
     EXISTS (
-      SELECT 1 FROM public.admin_access
+      SELECT 1 FROM public.administradores
       WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
         AND active = true
     )
   )
   WITH CHECK (
     EXISTS (
-      SELECT 1 FROM public.admin_access
+      SELECT 1 FROM public.administradores
       WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
         AND active = true
     )
   );
 
--- 6.8 Políticas en provider_banking_history
-DROP POLICY IF EXISTS "Admins and providers can view banking history" ON public.provider_banking_history;
+-- 6.8 Políticas en historial_bancario
+DROP POLICY IF EXISTS "Admins and providers can view banking history" ON public.historial_bancario;
 CREATE POLICY "Admins and providers can view banking history"
-  ON public.provider_banking_history
+  ON public.historial_bancario
   FOR SELECT
   TO authenticated
   USING (
     LOWER(provider_email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
     OR EXISTS (
-      SELECT 1 FROM public.admin_access
-      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
-        AND active = true
-    )
-  );
-
--- 6.8.1 Políticas en propuestas_experiencias
-ALTER TABLE public.propuestas_experiencias ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Prestadores pueden insertar propuestas" ON public.propuestas_experiencias;
-CREATE POLICY "Prestadores pueden insertar propuestas"
-  ON public.propuestas_experiencias
-  FOR INSERT
-  TO anon, authenticated
-  WITH CHECK (true);
-
-DROP POLICY IF EXISTS "Lectura de propuestas para prestadores y administradores" ON public.propuestas_experiencias;
-CREATE POLICY "Lectura de propuestas para prestadores y administradores"
-  ON public.propuestas_experiencias
-  FOR SELECT
-  TO authenticated
-  USING (
-    LOWER(provider_email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
-    OR EXISTS (
-      SELECT 1 FROM public.admin_access
-      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
-        AND active = true
-    )
-  );
-
-DROP POLICY IF EXISTS "Admins pueden actualizar propuestas" ON public.propuestas_experiencias;
-CREATE POLICY "Admins pueden actualizar propuestas"
-  ON public.propuestas_experiencias
-  FOR UPDATE
-  TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.admin_access
+      SELECT 1 FROM public.administradores
       WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
         AND active = true
     )
@@ -2187,7 +1980,7 @@ CREATE POLICY "Lectura de experiencias para usuarios autenticados"
   USING (
     status = 'publicada'
     OR EXISTS (
-      SELECT 1 FROM public.admin_access
+      SELECT 1 FROM public.administradores
       WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
         AND active = true
     )
@@ -2204,14 +1997,14 @@ CREATE POLICY "Gestion total de experiencias para administradores"
   TO authenticated
   USING (
     EXISTS (
-      SELECT 1 FROM public.admin_access
+      SELECT 1 FROM public.administradores
       WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
         AND active = true
     )
   )
   WITH CHECK (
     EXISTS (
-      SELECT 1 FROM public.admin_access
+      SELECT 1 FROM public.administradores
       WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
         AND active = true
     )
@@ -2224,7 +2017,7 @@ CREATE POLICY "Prestadores pueden proponer experiencias"
   TO authenticated
   WITH CHECK (
     EXISTS (
-      SELECT 1 FROM public.provider_access
+      SELECT 1 FROM public.prestadores
       WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
         AND active = true
     )
@@ -2238,7 +2031,7 @@ CREATE POLICY "Prestadores pueden actualizar sus experiencias"
   TO authenticated
   USING (
     EXISTS (
-      SELECT 1 FROM public.provider_access
+      SELECT 1 FROM public.prestadores
       WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
         AND active = true
     )
@@ -2246,7 +2039,7 @@ CREATE POLICY "Prestadores pueden actualizar sus experiencias"
   )
   WITH CHECK (
     EXISTS (
-      SELECT 1 FROM public.provider_access
+      SELECT 1 FROM public.prestadores
       WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
         AND active = true
     )
@@ -2269,7 +2062,7 @@ CREATE POLICY "Usuarios leen sus propios pagos o reservas"
   USING (
     LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
     OR EXISTS (
-      SELECT 1 FROM public.admin_access
+      SELECT 1 FROM public.administradores
       WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
         AND active = true
     )
@@ -2287,13 +2080,13 @@ CREATE POLICY "Gestion de comprobantes para admins y prestadores"
   TO authenticated
   USING (
     EXISTS (
-      SELECT 1 FROM public.admin_access
+      SELECT 1 FROM public.administradores
       WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
         AND active = true
     )
     OR EXISTS (
       SELECT 1 FROM public.experiencias e
-      JOIN public.provider_access pa ON LOWER(pa.email) = LOWER(e.provider_email)
+      JOIN public.prestadores pa ON LOWER(pa.email) = LOWER(e.provider_email)
       WHERE e.id = experience_id
         AND LOWER(pa.email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
         AND pa.active = true
@@ -2301,13 +2094,13 @@ CREATE POLICY "Gestion de comprobantes para admins y prestadores"
   )
   WITH CHECK (
     EXISTS (
-      SELECT 1 FROM public.admin_access
+      SELECT 1 FROM public.administradores
       WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
         AND active = true
     )
     OR EXISTS (
       SELECT 1 FROM public.experiencias e
-      JOIN public.provider_access pa ON LOWER(pa.email) = LOWER(e.provider_email)
+      JOIN public.prestadores pa ON LOWER(pa.email) = LOWER(e.provider_email)
       WHERE e.id = experience_id
         AND LOWER(pa.email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
         AND pa.active = true
@@ -2368,11 +2161,11 @@ BEGIN
         bucket_id = 'comprobantes'
         AND (
           EXISTS (
-            SELECT 1 FROM public.admin_access
+            SELECT 1 FROM public.administradores
             WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email') AND active = true
           )
           OR EXISTS (
-            SELECT 1 FROM public.provider_access
+            SELECT 1 FROM public.prestadores
             WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email') AND active = true
           )
         )
@@ -2434,11 +2227,11 @@ BEGIN
         bucket_id = 'experiencias'
         AND (
           EXISTS (
-            SELECT 1 FROM public.admin_access
+            SELECT 1 FROM public.administradores
             WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email') AND active = true
           )
           OR EXISTS (
-            SELECT 1 FROM public.provider_access
+            SELECT 1 FROM public.prestadores
             WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email') AND active = true
           )
         )
@@ -2453,13 +2246,13 @@ BEGIN
         bucket_id = 'experiencias'
         AND (
           EXISTS (
-            SELECT 1 FROM public.admin_access
+            SELECT 1 FROM public.administradores
             WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email') AND active = true
           )
           OR (
             (auth.uid()::text = owner::text)
             AND EXISTS (
-              SELECT 1 FROM public.provider_access
+              SELECT 1 FROM public.prestadores
               WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email') AND active = true
             )
           )
@@ -2475,13 +2268,13 @@ BEGIN
         bucket_id = 'experiencias'
         AND (
           EXISTS (
-            SELECT 1 FROM public.admin_access
+            SELECT 1 FROM public.administradores
             WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email') AND active = true
           )
           OR (
             (auth.uid()::text = owner::text)
             AND EXISTS (
-              SELECT 1 FROM public.provider_access
+              SELECT 1 FROM public.prestadores
               WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email') AND active = true
             )
           )

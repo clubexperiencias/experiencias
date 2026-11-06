@@ -231,6 +231,7 @@ import {
                       type="button"
                       class="btn-remove-media"
                       (click)="clearMedia('avatar')"
+                      [disabled]="isUploadingAvatar()"
                       title="Quitar foto de perfil"
                     >
                       <mat-icon>delete_outline</mat-icon>
@@ -278,6 +279,7 @@ import {
                       type="button"
                       class="btn-remove-media"
                       (click)="clearMedia('coverImage')"
+                      [disabled]="isUploadingCover()"
                       title="Quitar foto de portada"
                     >
                       <mat-icon>delete_outline</mat-icon>
@@ -666,10 +668,15 @@ import {
         cursor: pointer;
         transition: all 0.2s ease;
       }
-      .btn-remove-media:hover {
+      .btn-remove-media:hover:not(:disabled) {
         background: rgba(239, 68, 68, 0.24);
         border-color: #ef4444;
         color: #ffffff;
+      }
+      .btn-remove-media:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+        pointer-events: none;
       }
       .btn-remove-media mat-icon {
         font-size: 16px;
@@ -860,6 +867,10 @@ export class ProviderProfileComponent {
   readonly isUploadingCover = signal(false);
   readonly uploadAvatarError = signal<string | null>(null);
   readonly uploadCoverError = signal<string | null>(null);
+  private uploadTokens = {
+    avatar: 0,
+    coverImage: 0,
+  };
 
   readonly currentSlug = computed(() => {
     const p = this.store.currentProvider();
@@ -1003,25 +1014,38 @@ export class ProviderProfileComponent {
     const setLoading = isAvatar ? this.isUploadingAvatar : this.isUploadingCover;
     const setError = isAvatar ? this.uploadAvatarError : this.uploadCoverError;
 
+    const token = ++this.uploadTokens[field];
     setLoading.set(true);
     setError.set(null);
 
     try {
       const res = await this.storageService.uploadFile(file, isAvatar ? 'AVATAR' : 'PORTADA');
-      if (res?.url) {
+      if (this.uploadTokens[field] === token && res?.url) {
         this.form.patchValue({ [field]: res.url });
         this.form.markAsDirty();
       }
     } catch (err: any) {
-      console.warn('[ProviderProfile] Error subiendo imagen a Supabase Storage:', err);
-      setError.set(err?.message || 'Error al subir la imagen a Supabase Storage. Reintentá.');
+      if (this.uploadTokens[field] === token) {
+        console.warn('[ProviderProfile] Error subiendo imagen a Supabase Storage:', err);
+        setError.set(err?.message || 'Error al subir la imagen a Supabase Storage. Reintentá.');
+      }
     } finally {
-      setLoading.set(false);
+      if (this.uploadTokens[field] === token) {
+        setLoading.set(false);
+      }
       input.value = '';
     }
   }
 
   clearMedia(field: 'avatar' | 'coverImage'): void {
+    this.uploadTokens[field]++;
+    if (field === 'avatar') {
+      this.isUploadingAvatar.set(false);
+      this.uploadAvatarError.set(null);
+    } else {
+      this.isUploadingCover.set(false);
+      this.uploadCoverError.set(null);
+    }
     this.form.patchValue({ [field]: '' });
     this.form.markAsDirty();
   }

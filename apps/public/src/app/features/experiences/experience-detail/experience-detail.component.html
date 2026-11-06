@@ -46,10 +46,23 @@
               <span class="spec-value">{{ item.region }}</span>
             </div>
             }
+            @if (isUrl(item.meetingPoint)) {
+            <a
+              [href]="item.meetingPoint"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="spec-tile spec-tile-clickable"
+              title="Abrir ubicación en Google Maps"
+            >
+              <span class="spec-label">PUNTO DE ENCUENTRO</span>
+              <span class="spec-value spec-value-link">Ver ubicación en Maps</span>
+            </a>
+            } @else {
             <div class="spec-tile">
               <span class="spec-label">PUNTO DE ENCUENTRO</span>
-              <span class="spec-value">{{ isUrl(item.meetingPoint) ? (item.region || 'Ver ubicación en Maps') : (item.meetingPoint || item.region) }}</span>
+              <span class="spec-value">{{ item.meetingPoint || item.region }}</span>
             </div>
+            }
             @if (item.maxSpotsPerGroup) {
             <div class="spec-tile">
               <span class="spec-label">CUPO MÁXIMO</span>

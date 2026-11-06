@@ -17,6 +17,10 @@ import { ExperienceService } from '../../../core/services/experience.service';
 import { ProviderListItem } from '../admin-providers/admin-providers.component';
 import { isClubExperience } from '../../../core/models/club-profile.model';
 import { Experience } from '../../../core/models/experience.model';
+import {
+  exportExperiencesToCsv,
+  getPublicExperienceUrl,
+} from '../../../shared/utils/csv.util';
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -505,8 +509,21 @@ import { Experience } from '../../../core/models/experience.model';
                       <span class="cupo-tag">{{ exp.maxSpotsPerGroup }} pers.</span>
                     </td>
                     <td>
-                      <span class="badge-status-pill is-active">
-                        {{ exp.status === 'publicada' ? 'Publicada' : 'Pausada' }}
+                      <span
+                        class="status-badge"
+                        [attr.data-status]="exp.status === 'publicada' ? 'aprobado' : exp.status === 'oculta' ? 'dado_de_baja' : exp.status === 'rechazada' ? 'rechazado' : 'pendiente'"
+                      >
+                        {{
+                          exp.status === 'publicada'
+                            ? 'Publicada'
+                            : exp.status === 'pendiente'
+                              ? 'Postulación'
+                              : exp.status === 'oculta'
+                                ? 'Pausada'
+                                : exp.status === 'rechazada'
+                                  ? 'Rechazada'
+                                  : 'Borrador'
+                        }}
                       </span>
                     </td>
                     <td class="text-right">
@@ -3205,80 +3222,14 @@ export class AdminDashboardComponent {
   }
 
   downloadExperiencesCsv(): void {
-    const list = this.webExperiences();
-    const headers = [
-      'ID',
-      'Slug',
-      'Título',
-      'Kicker',
-      'Prestador',
-      'Contacto Prestador',
-      'Región',
-      'Dificultad',
-      'Duración',
-      'Altitud (msnm)',
-      'Arancel ARS',
-      'Arancel USD',
-      'Cupo Máx.',
-      'Estado',
-      'Ruta Web Oficial',
-      'Fechas Programadas',
-    ];
-    const escapeCsv = (val: any) => {
-      let str = val != null ? String(val) : '';
-      if (/^[=+\-@\t\r]/.test(str)) {
-        str = "'" + str;
-      }
-      return `"${str.replace(/"/g, '""')}"`;
-    };
-    const rows = [
-      headers.map(escapeCsv).join(','),
-      ...list.map((exp) => {
-        const provider = this.isClub(exp) ? 'Club de Experiencias' : (exp.providerName || 'N/A');
-        const contact = this.isClub(exp)
-          ? this.store.clubProfile().email || 'admin@experiencias.club'
-          : (exp.providerEmail || exp.providerPhone || 'N/A');
-        const datesCount = Array.isArray(exp.dates) ? exp.dates.length : 0;
-        const publicUrl = this.getPublicExperienceUrl(exp);
-
-        return [
-          escapeCsv(exp.id),
-          escapeCsv(exp.slug),
-          escapeCsv(exp.title),
-          escapeCsv(exp.kicker || ''),
-          escapeCsv(provider),
-          escapeCsv(contact),
-          escapeCsv(exp.region),
-          escapeCsv(exp.difficulty),
-          escapeCsv(exp.durationLabel || ''),
-          escapeCsv(exp.altitudeMeters ?? 0),
-          escapeCsv(exp.priceArs),
-          escapeCsv(exp.priceUsd ?? ''),
-          escapeCsv(exp.maxSpotsPerGroup),
-          escapeCsv(exp.status === 'publicada' ? 'Publicada' : exp.status === 'oculta' ? 'Pausada' : 'Borrador'),
-          escapeCsv(publicUrl),
-          escapeCsv(datesCount > 0 ? `${datesCount} fecha(s)` : 'A coordinar'),
-        ].join(',');
-      }),
-    ];
-    const blob = new Blob(['\uFEFF' + rows.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `experiencias_web_${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+    exportExperiencesToCsv(
+      this.webExperiences(),
+      (exp) => this.isClub(exp),
+      this.store.clubProfile().email || 'admin@experiencias.club',
+    );
   }
 
   getPublicExperienceUrl(exp: { publicUrl?: string; slug?: string; detailRoute?: string }): string {
-    const slug = exp.slug || '';
-    if (typeof window !== 'undefined' && window.location) {
-      const origin = window.location.origin;
-      if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
-        return `${origin}/experiencias/${slug}`;
-      }
-    }
-    const route = exp.detailRoute || `/experiencias/${slug}`;
-    return `https://experiencias.club${route.startsWith('/') ? '' : '/'}${route}`;
+    return getPublicExperienceUrl(exp);
   }
 }

@@ -11,6 +11,12 @@ import { AdminStoreService } from '../../../core/services/admin-store.service';
 import { Experience, ExperienceAlbumPhoto } from '../../../core/models/experience.model';
 import { isClubExperience } from '../../../core/models/club-profile.model';
 import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
+import {
+  exportExperiencesToCsv,
+  getPublicExperienceUrl,
+} from '../../../shared/utils/csv.util';
+
+export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' | 'borradores';
 
 @Component({
   selector: 'app-admin-experiences',
@@ -434,9 +440,85 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
       <div class="experiences-table-card">
         <div class="card-table-head">
           <h3>Rutas de Experiencias Publicadas en el Sitio</h3>
-          <span class="table-count">{{ experiences().length }} registradas</span>
+          <span class="table-count">{{ filteredExperiences().length }} de {{ allCount() }} registradas</span>
         </div>
 
+        <!-- Barra de herramientas: Búsqueda y Pestañas -->
+        <div class="table-toolbar">
+          <div class="search-box">
+            <mat-icon class="search-icon">search</mat-icon>
+            <input
+              type="text"
+              [ngModel]="searchQuery()"
+              (ngModelChange)="searchQuery.set($event)"
+              placeholder="Buscar por título, región, prestador o slug..."
+              class="search-input"
+            />
+            @if (searchQuery()) {
+              <button
+                type="button"
+                class="clear-search-btn"
+                (click)="searchQuery.set('')"
+                aria-label="Limpiar búsqueda"
+              >
+                ×
+              </button>
+            }
+          </div>
+
+          <div class="tabs-group">
+            <button
+              type="button"
+              class="filter-tab"
+              [class.is-active]="activeTab() === 'all'"
+              (click)="activeTab.set('all')"
+            >
+              Todas ({{ allCount() }})
+            </button>
+            <button
+              type="button"
+              class="filter-tab"
+              [class.is-active]="activeTab() === 'publicadas'"
+              (click)="activeTab.set('publicadas')"
+            >
+              Publicadas ({{ publishedCount() }})
+            </button>
+            <button
+              type="button"
+              class="filter-tab"
+              [class.is-active]="activeTab() === 'postulaciones'"
+              (click)="activeTab.set('postulaciones')"
+            >
+              Postulaciones ({{ pendingCount() }})
+            </button>
+            <button
+              type="button"
+              class="filter-tab"
+              [class.is-active]="activeTab() === 'ocultas'"
+              (click)="activeTab.set('ocultas')"
+            >
+              Pausadas ({{ pausedCount() }})
+            </button>
+            <button
+              type="button"
+              class="filter-tab"
+              [class.is-active]="activeTab() === 'borradores'"
+              (click)="activeTab.set('borradores')"
+            >
+              Borradores ({{ draftCount() }})
+            </button>
+          </div>
+        </div>
+
+        @if (filteredExperiences().length === 0) {
+          <div class="empty-box" style="margin: 1.5rem; padding: 2.5rem 1.5rem; text-align: center;">
+            <mat-icon style="font-size: 2.5rem; width: 2.5rem; height: 2.5rem; color: rgba(255, 95, 0, 0.7); margin-bottom: 0.75rem;">explore_off</mat-icon>
+            <h3 style="color: #ffffff; font-size: 1.1rem; margin-bottom: 0.5rem;">No se encontraron experiencias</h3>
+            <p style="color: rgba(255, 255, 255, 0.6); font-size: 0.85rem; max-width: 480px; margin: 0 auto;">
+              No hay experiencias que coincidan con la pestaña seleccionada o el término de búsqueda ingresado.
+            </p>
+          </div>
+        } @else {
         <div class="table-responsive">
           <table class="admin-exp-table">
             <thead>
@@ -451,7 +533,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
               </tr>
             </thead>
             <tbody>
-              @for (exp of experiences(); track exp.id) {
+              @for (exp of filteredExperiences(); track exp.id) {
                 <tr [class.is-paused]="exp.status === 'oculta'">
                   <!-- Columna Experiencia / Portada -->
                   <td>
@@ -525,8 +607,12 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                   <td>
                     @if (exp.status === 'publicada') {
                       <span class="status-pill is-published">Publicada</span>
+                    } @else if (exp.status === 'pendiente') {
+                      <span class="status-pill is-pending">Postulación</span>
                     } @else if (exp.status === 'oculta') {
                       <span class="status-pill is-hidden">Pausada</span>
+                    } @else if (exp.status === 'rechazada') {
+                      <span class="status-pill is-rejected">Rechazada</span>
                     } @else {
                       <span class="status-pill is-draft">Borrador</span>
                     }
@@ -553,8 +639,25 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                         <span>EDITAR</span>
                       </a>
 
-                      <!-- Pausar o Activar -->
-                      @if (exp.status === 'publicada') {
+                      <!-- Acciones según estado -->
+                      @if (exp.status === 'pendiente') {
+                        <button
+                          type="button"
+                          class="btn-activate-exp"
+                          (click)="toggleStatus(exp, 'publicada')"
+                          title="Aprobar y publicar experiencia en la web"
+                        >
+                          APROBAR
+                        </button>
+                        <button
+                          type="button"
+                          class="btn-pause-exp"
+                          (click)="toggleStatus(exp, 'rechazada')"
+                          title="Rechazar propuesta"
+                        >
+                          RECHAZAR
+                        </button>
+                      } @else if (exp.status === 'publicada') {
                         <button
                           type="button"
                           class="btn-pause-exp"
@@ -563,7 +666,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                         >
                           PAUSAR
                         </button>
-                      } @else {
+                      } @else if (exp.status === 'oculta') {
                         <button
                           type="button"
                           class="btn-activate-exp"
@@ -571,6 +674,15 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                           title="Volver a publicar ruta en la web pública"
                         >
                           ACTIVAR
+                        </button>
+                      } @else {
+                        <button
+                          type="button"
+                          class="btn-activate-exp"
+                          (click)="toggleStatus(exp, 'publicada')"
+                          title="Publicar experiencia en la web pública"
+                        >
+                          PUBLICAR
                         </button>
                       }
                     </div>
@@ -580,6 +692,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
             </tbody>
           </table>
         </div>
+        }
 
         <!-- Acciones al pie de la tabla -->
         <div class="table-footer-actions">
@@ -2431,6 +2544,109 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         color: #ffaa00;
       }
 
+      .status-pill.is-pending {
+        background: rgba(255, 170, 0, 0.22);
+        border: 1px solid rgba(255, 170, 0, 0.6);
+        color: #ffaa00;
+      }
+
+      .status-pill.is-rejected {
+        background: rgba(255, 80, 80, 0.18);
+        border: 1px solid rgba(255, 80, 80, 0.45);
+        color: #ff8080;
+      }
+
+      .table-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        flex-wrap: wrap;
+        padding: 0.85rem 1.25rem;
+        background: rgba(255, 255, 255, 0.02);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      }
+
+      .search-box {
+        position: relative;
+        flex: 1;
+        min-width: 260px;
+        max-width: 420px;
+      }
+
+      .search-icon {
+        position: absolute;
+        left: 0.75rem;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 1.15rem;
+        width: 1.15rem;
+        height: 1.15rem;
+        color: rgba(255, 255, 255, 0.4);
+        pointer-events: none;
+      }
+
+      .search-input {
+        width: 100%;
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 2px;
+        padding: 0.55rem 2rem 0.55rem 2.35rem;
+        color: #ffffff;
+        font-size: 0.82rem;
+        font-family: inherit;
+        outline: none;
+        transition: border-color 0.2s ease;
+      }
+
+      .search-input:focus {
+        border-color: #ff5f00;
+      }
+
+      .clear-search-btn {
+        position: absolute;
+        right: 0.5rem;
+        top: 50%;
+        transform: translateY(-50%);
+        background: transparent;
+        border: none;
+        color: rgba(255, 255, 255, 0.5);
+        font-size: 1.15rem;
+        cursor: pointer;
+        line-height: 1;
+        padding: 0.2rem 0.4rem;
+      }
+
+      .tabs-group {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 2px;
+        padding: 0.2rem;
+        flex-wrap: wrap;
+      }
+
+      .filter-tab {
+        background: transparent;
+        border: none;
+        color: rgba(255, 255, 255, 0.65);
+        padding: 0.45rem 0.85rem;
+        font-size: 0.75rem;
+        font-weight: 700;
+        cursor: pointer;
+        border-radius: 2px;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+      }
+      .filter-tab:hover {
+        color: #ffffff;
+      }
+      .filter-tab.is-active {
+        background: #ff5f00;
+        color: #ffffff;
+      }
+
       .status-pill.is-clickable {
         cursor: pointer;
         transition: all 0.2s ease;
@@ -3572,6 +3788,55 @@ export class AdminExperiencesComponent implements OnInit {
   }
 
   readonly experiences = this.experienceService.experiences;
+  readonly activeTab = signal<ExperienceTab>('all');
+  readonly searchQuery = signal<string>('');
+
+  readonly allCount = computed(() => this.experienceService.experiences().length);
+  readonly publishedCount = computed(
+    () => this.experienceService.experiences().filter((e) => e.status === 'publicada').length,
+  );
+  readonly pendingCount = computed(
+    () => this.experienceService.experiences().filter((e) => e.status === 'pendiente').length,
+  );
+  readonly pausedCount = computed(
+    () => this.experienceService.experiences().filter((e) => e.status === 'oculta').length,
+  );
+  readonly draftCount = computed(
+    () =>
+      this.experienceService
+        .experiences()
+        .filter((e) => !e.status || e.status === 'borrador' || e.status === 'rechazada').length,
+  );
+
+  readonly filteredExperiences = computed(() => {
+    const tab = this.activeTab();
+    const q = this.searchQuery().trim().toLowerCase();
+    let list = this.experienceService.experiences();
+
+    if (tab === 'publicadas') {
+      list = list.filter((e) => e.status === 'publicada');
+    } else if (tab === 'postulaciones') {
+      list = list.filter((e) => e.status === 'pendiente');
+    } else if (tab === 'ocultas') {
+      list = list.filter((e) => e.status === 'oculta');
+    } else if (tab === 'borradores') {
+      list = list.filter((e) => !e.status || e.status === 'borrador' || e.status === 'rechazada');
+    }
+
+    if (q) {
+      list = list.filter(
+        (e) =>
+          (e.title && e.title.toLowerCase().includes(q)) ||
+          (e.slug && e.slug.toLowerCase().includes(q)) ||
+          (e.region && e.region.toLowerCase().includes(q)) ||
+          (e.providerName && e.providerName.toLowerCase().includes(q)) ||
+          (e.providerEmail && e.providerEmail.toLowerCase().includes(q)),
+      );
+    }
+
+    return list;
+  });
+
   readonly feedbackToast = signal<string | null>(null);
   readonly saving = signal(false);
 
@@ -4273,7 +4538,10 @@ export class AdminExperiencesComponent implements OnInit {
     }
   }
 
-  async toggleStatus(exp: Experience, newStatus: 'publicada' | 'oculta'): Promise<void> {
+  async toggleStatus(
+    exp: Experience,
+    newStatus: 'publicada' | 'oculta' | 'rechazada' | 'borrador' | 'pendiente',
+  ): Promise<void> {
     try {
       await this.experienceService.toggleExperienceStatus(exp.id, newStatus);
       const updated = this.experienceService.getExperienceById(exp.id);
@@ -4282,8 +4550,12 @@ export class AdminExperiencesComponent implements OnInit {
       }
       if (newStatus === 'oculta') {
         this.showToast(`🔴 La ruta /experiencias/${exp.slug} fue dada de baja y pausada.`);
-      } else {
+      } else if (newStatus === 'publicada') {
         this.showToast(`🟢 La ruta /experiencias/${exp.slug} fue activada y publicada.`);
+      } else if (newStatus === 'rechazada') {
+        this.showToast(`⚠️ La propuesta /experiencias/${exp.slug} fue rechazada.`);
+      } else if (newStatus === 'pendiente') {
+        this.showToast(`🟡 La ruta /experiencias/${exp.slug} volvió a estado de revisión.`);
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error al cambiar estado';
@@ -4311,80 +4583,14 @@ export class AdminExperiencesComponent implements OnInit {
   }
 
   downloadExperiencesCsv(): void {
-    const list = this.experiences();
-    const headers = [
-      'ID',
-      'Slug',
-      'Título',
-      'Kicker',
-      'Prestador',
-      'Contacto Prestador',
-      'Región',
-      'Dificultad',
-      'Duración',
-      'Altitud (msnm)',
-      'Arancel ARS',
-      'Arancel USD',
-      'Cupo Máx.',
-      'Estado',
-      'Ruta Web Oficial',
-      'Fechas Programadas',
-    ];
-    const escapeCsv = (val: any) => {
-      let str = val != null ? String(val) : '';
-      if (/^[=+\-@\t\r]/.test(str)) {
-        str = "'" + str;
-      }
-      return `"${str.replace(/"/g, '""')}"`;
-    };
-    const rows = [
-      headers.map(escapeCsv).join(','),
-      ...list.map((exp) => {
-        const provider = this.isClub(exp) ? 'Club de Experiencias' : (exp.providerName || 'N/A');
-        const contact = this.isClub(exp)
-          ? this.adminStore.clubProfile().email || 'admin@experiencias.club'
-          : (exp.providerEmail || exp.providerPhone || 'N/A');
-        const datesCount = Array.isArray(exp.dates) ? exp.dates.length : 0;
-        const publicUrl = this.getPublicExperienceUrl(exp);
-
-        return [
-          escapeCsv(exp.id),
-          escapeCsv(exp.slug),
-          escapeCsv(exp.title),
-          escapeCsv(exp.kicker || ''),
-          escapeCsv(provider),
-          escapeCsv(contact),
-          escapeCsv(exp.region),
-          escapeCsv(exp.difficulty),
-          escapeCsv(exp.durationLabel || ''),
-          escapeCsv(exp.altitudeMeters ?? 0),
-          escapeCsv(exp.priceArs),
-          escapeCsv(exp.priceUsd ?? ''),
-          escapeCsv(exp.maxSpotsPerGroup),
-          escapeCsv(exp.status === 'publicada' ? 'Publicada' : exp.status === 'oculta' ? 'Pausada' : 'Borrador'),
-          escapeCsv(publicUrl),
-          escapeCsv(datesCount > 0 ? `${datesCount} fecha(s)` : 'A coordinar'),
-        ].join(',');
-      }),
-    ];
-    const blob = new Blob(['\uFEFF' + rows.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `experiencias_web_${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+    exportExperiencesToCsv(
+      this.experiences(),
+      (exp) => this.isClub(exp),
+      this.adminStore.clubProfile().email || 'admin@experiencias.club',
+    );
   }
 
   getPublicExperienceUrl(exp: { publicUrl?: string; slug?: string; detailRoute?: string }): string {
-    const slug = exp.slug || '';
-    if (typeof window !== 'undefined' && window.location) {
-      const origin = window.location.origin;
-      if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
-        return `${origin}/experiencias/${slug}`;
-      }
-    }
-    const route = exp.detailRoute || `/experiencias/${slug}`;
-    return `https://experiencias.club${route.startsWith('/') ? '' : '/'}${route}`;
+    return getPublicExperienceUrl(exp);
   }
 }

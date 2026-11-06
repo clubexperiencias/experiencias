@@ -26,6 +26,10 @@ export interface ProviderListItem {
   rawProvider?: ProviderUser;
 }
 
+const CLUB_PROVIDER_SLUGS = new Set(['club-de-experiencias', 'club']);
+const CLUB_PROVIDER_EMAIL = 'admin@experiencias.club';
+const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
+
 @Component({
   selector: 'app-admin-providers',
   standalone: true,
@@ -312,7 +316,7 @@ export interface ProviderListItem {
                   <div class="hero-badges-row">
                     @if (prov.slug) {
                       <a
-                        [href]="'https://experiencias.club/prestadores/' + prov.slug"
+                        [href]="getPublicProviderUrl(prov.slug)"
                         target="_blank"
                         rel="noopener noreferrer"
                         class="btn-hero-public-web"
@@ -502,7 +506,7 @@ export interface ProviderListItem {
               </a>
               @if (prov.slug) {
                 <a
-                  [href]="'https://experiencias.club/prestadores/' + prov.slug"
+                  [href]="getPublicProviderUrl(prov.slug)"
                   target="_blank"
                   rel="noopener noreferrer"
                   class="btn-hero-public-web"
@@ -2558,6 +2562,30 @@ export class AdminProvidersComponent implements OnInit {
     this.selectedApplication.set(null);
   }
 
+  private readonly providerCoverByExperienceMap = computed(() => {
+    const map = new Map<string, string>();
+    const exps = this.store.providerStore.experiences();
+    for (const exp of exps) {
+      if (!exp.coverImage) continue;
+      if (exp.providerId && !map.has(exp.providerId)) {
+        map.set(exp.providerId, exp.coverImage);
+      }
+      if (exp.providerEmail) {
+        const normEmail = exp.providerEmail.toLowerCase().trim();
+        if (normEmail && !map.has(normEmail)) {
+          map.set(normEmail, exp.coverImage);
+        }
+      }
+      if (exp.providerSlug) {
+        const normSlug = exp.providerSlug.toLowerCase().trim();
+        if (normSlug && !map.has(normSlug)) {
+          map.set(normSlug, exp.coverImage);
+        }
+      }
+    }
+    return map;
+  });
+
   getProviderAvatar(prov?: ProviderUser | ProviderListItem | null): string | null {
     if (!prov) return null;
     const user: ProviderUser | undefined =
@@ -2568,23 +2596,34 @@ export class AdminProvidersComponent implements OnInit {
     }
     const slug = (user.slug || '').toLowerCase().trim();
     const email = (user.email || '').toLowerCase().trim();
-    if (slug === 'club-de-experiencias' || slug === 'club' || email === 'admin@experiencias.club') {
-      return '/assets/images/kayak-video.png';
+    if (CLUB_PROVIDER_SLUGS.has(slug) || email === CLUB_PROVIDER_EMAIL) {
+      return CLUB_AVATAR_FALLBACK;
     }
     if (user.coverImage && user.coverImage.trim()) {
       return user.coverImage.trim();
     }
-    const exps = this.store.providerStore.experiences();
-    const exp = exps.find(
-      (e) =>
-        e.providerId === user.id ||
-        (e.providerEmail && e.providerEmail.toLowerCase().trim() === email) ||
-        (e.providerSlug && e.providerSlug.toLowerCase().trim() === slug),
-    );
-    if (exp?.coverImage) {
-      return exp.coverImage;
+    const coverMap = this.providerCoverByExperienceMap();
+    if (user.id && coverMap.has(user.id)) {
+      return coverMap.get(user.id)!;
+    }
+    if (email && coverMap.has(email)) {
+      return coverMap.get(email)!;
+    }
+    if (slug && coverMap.has(slug)) {
+      return coverMap.get(slug)!;
     }
     return null;
+  }
+
+  getPublicProviderUrl(slug?: string | null): string {
+    const cleanSlug = encodeURIComponent((slug || '').trim());
+    if (typeof window !== 'undefined' && window.location) {
+      const origin = window.location.origin;
+      if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+        return `${origin}/prestadores/${cleanSlug}`;
+      }
+    }
+    return `https://experiencias.club/prestadores/${cleanSlug}`;
   }
 
   async approve(app: AdminApplication): Promise<void> {

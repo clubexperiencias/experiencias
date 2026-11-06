@@ -5,7 +5,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
 import { MatIconModule } from '@angular/material/icon';
 import { ExperienceService } from '../../../core/services/experience.service';
-import { isClubExperience } from '../../../core/models/club-profile.model';
+import { DEFAULT_CLUB_PROFILE, isClubExperience } from '../../../core/models/club-profile.model';
 import { HeaderComponent } from '../../../shared/components/header/header.component';
 import { FooterComponent } from '../../../shared/components/footer/footer.component';
 import {
@@ -34,18 +34,26 @@ export class ExperienceDetailComponent {
   private readonly route = inject(ActivatedRoute);
   readonly experienceService = inject(ExperienceService);
   readonly isClubExperience = isClubExperience;
-  readonly isLoading = signal(true);
+  readonly isLoading = signal(!this.experienceService.hasRemoteExperiences());
 
   constructor() {
-    this.experienceService.remoteLoadPromise.finally(() => {
-      this.isLoading.set(false);
-    });
+    this.experienceService.remoteLoadPromise
+      .finally(() => {
+        this.isLoading.set(false);
+      })
+      .catch((err) => {
+        console.warn('[ExperienceDetail] Error cargando experiencias remotas:', err);
+      });
   }
 
   getProviderSlug(item?: any): string | null {
     if (!item) return null;
-    if (item.providerSlug) return item.providerSlug;
-    if (this.isClubExperience(item)) return 'club-de-experiencias';
+    if (item.providerSlug) {
+      return item.providerSlug.toLowerCase().trim() === 'club'
+        ? DEFAULT_CLUB_PROFILE.slug
+        : item.providerSlug;
+    }
+    if (this.isClubExperience(item)) return DEFAULT_CLUB_PROFILE.slug;
     return null;
   }
 

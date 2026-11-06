@@ -15,7 +15,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { NewsletterService } from '../../core/services/newsletter.service';
 import { ExperienceService } from '../../core/services/experience.service';
 import { Experience } from '../../core/models/experience.model';
-import { isClubExperience } from '../../core/models/club-profile.model';
+import { DEFAULT_CLUB_PROFILE, isClubExperience } from '../../core/models/club-profile.model';
 import { FooterComponent } from '../../shared/components/footer/footer.component';
 import { HeaderComponent } from '../../shared/components/header/header.component';
 import {
@@ -54,8 +54,12 @@ export class ExperiencesComponent implements AfterViewInit, OnDestroy {
   readonly isClubExperience = isClubExperience;
 
   getProviderSlug(exp: Experience): string | null {
-    if (exp.providerSlug) return exp.providerSlug;
-    if (this.isClubExperience(exp)) return 'club-de-experiencias';
+    if (exp.providerSlug) {
+      return exp.providerSlug.toLowerCase().trim() === 'club'
+        ? DEFAULT_CLUB_PROFILE.slug
+        : exp.providerSlug;
+    }
+    if (this.isClubExperience(exp)) return DEFAULT_CLUB_PROFILE.slug;
     return null;
   }
 

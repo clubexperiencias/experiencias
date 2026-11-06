@@ -531,11 +531,11 @@ export class ExperienceService {
           }
 
           if (Object.keys(providerBankingUpdate).length > 0) {
-            const { error: pbErr } = await (this.supabase.from('provider_access') as any)
+            const { error: pbErr } = await (this.supabase.from('prestadores') as any)
               .update(providerBankingUpdate)
               .eq('email', targetProviderEmail);
             if (pbErr) {
-              console.warn('[ExperienceService] Error al actualizar provider_access:', pbErr);
+              console.warn('[ExperienceService] Error al actualizar prestadores:', pbErr);
             }
           }
         }
@@ -624,17 +624,17 @@ export class ExperienceService {
           provider_slug: experience.providerSlug || null,
         };
 
-        // Asegurar que el prestador exista en provider_access para evitar fallos de clave foránea
+        // Asegurar que el prestador exista en prestadores para evitar fallos de clave foránea
         const targetEmail = (experience.providerEmail || '').trim().toLowerCase();
         if (targetEmail) {
           try {
-            const { data: existingPA } = await (this.supabase.from('provider_access') as any)
+            const { data: existingPA } = await (this.supabase.from('prestadores') as any)
               .select('id, email')
               .eq('email', targetEmail)
               .maybeSingle();
 
             if (!existingPA) {
-              await (this.supabase.from('provider_access') as any).insert({
+              await (this.supabase.from('prestadores') as any).insert({
                 email: targetEmail,
                 name: experience.providerName || targetEmail.split('@')[0],
                 agency: experience.providerName || '',
@@ -648,7 +648,7 @@ export class ExperienceService {
               });
             }
           } catch (paErr) {
-            console.warn('[ExperienceService] Error asegurando provider_access:', paErr);
+            console.warn('[ExperienceService] Error asegurando prestadores:', paErr);
           }
         }
 
@@ -741,12 +741,12 @@ export class ExperienceService {
           }
 
           if (Object.keys(providerBankingUpdate).length > 0) {
-            const { error: pbErr } = await (this.supabase.from('provider_access') as any)
+            const { error: pbErr } = await (this.supabase.from('prestadores') as any)
               .update(providerBankingUpdate)
               .eq('email', targetProviderEmail);
             if (pbErr) {
               console.warn(
-                '[ExperienceService] Error al actualizar provider_access en createExperience:',
+                '[ExperienceService] Error al actualizar prestadores en createExperience:',
                 pbErr,
               );
             }
@@ -761,7 +761,10 @@ export class ExperienceService {
     }
   }
 
-  async toggleExperienceStatus(id: string, newStatus: 'publicada' | 'oculta'): Promise<void> {
+  async toggleExperienceStatus(
+    id: string,
+    newStatus: 'publicada' | 'oculta' | 'rechazada' | 'borrador' | 'pendiente',
+  ): Promise<void> {
     await this.updateExperience({ id, status: newStatus });
   }
 
@@ -1164,7 +1167,7 @@ export class ExperienceService {
   ): Promise<{ cbuAlias?: string; cuitDni?: string; bankName?: string } | null> {
     if (!isSupabaseConfigured() || !providerEmail) return null;
     try {
-      const { data, error } = await (this.supabase.from('provider_access') as any)
+      const { data, error } = await (this.supabase.from('prestadores') as any)
         .select('cbu_alias, cuit_dni, bank_name')
         .eq('email', providerEmail.trim().toLowerCase())
         .maybeSingle();
@@ -1195,8 +1198,13 @@ export class ExperienceService {
           .order('created_at', { ascending: true }) as any;
 
       let { data, error } = await fetchExperiences(
-        `${publicColumns}, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing`,
+        `${publicColumns}, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing, provider_agency, participant_requirements, notes, reviewed_at`,
       );
+      if (error) {
+        ({ data, error } = await fetchExperiences(
+          `${publicColumns}, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing`,
+        ));
+      }
       if (error) {
         // Reintento con fallback progresivo si alguna columna nueva no existe aún
         ({ data, error } = await fetchExperiences(`${publicColumns}, meeting_point_url`));
@@ -1218,7 +1226,7 @@ export class ExperienceService {
           const { data: sessionData } = await this.supabase.auth.getSession();
           if (sessionData?.session?.user) {
             const { data: accessRows } = await (
-              this.supabase.from('provider_access') as any
+              this.supabase.from('prestadores') as any
             ).select('email, cbu_alias, cuit_dni, bank_name');
             if (Array.isArray(accessRows)) {
               for (const row of accessRows) {
@@ -1298,6 +1306,10 @@ export class ExperienceService {
             providerCuitDni: resolvedCuitDni,
             providerBankName: resolvedBankName,
             isClubExperience: isClub,
+            providerAgency: exp.provider_agency || undefined,
+            participantRequirements: exp.participant_requirements || undefined,
+            notes: exp.notes || undefined,
+            reviewedAt: exp.reviewed_at || undefined,
             status: exp.status || 'publicada',
             publicUrl: exp.public_url || `https://experiencias.club/experiencias/${exp.slug}`,
             isExclusiveClub: true,
@@ -1306,150 +1318,7 @@ export class ExperienceService {
           };
         });
 
-        // Auto-recuperar propuestas aprobadas en Supabase que no estén aún en la tabla de experiencias
-        try {
-          const { data: approvedProposals } = await (
-            this.supabase.from('propuestas_experiencias') as any
-          )
-            .select('*')
-            .eq('status', 'aprobada');
-
-          if (Array.isArray(approvedProposals) && approvedProposals.length > 0) {
-            const knownSlugs = new Set(remoteExperiences.map((e) => e.slug.toLowerCase()));
-            const knownIds = new Set(remoteExperiences.map((e) => e.id.toLowerCase()));
-            const deletedIds = this.getDeletedIds();
-
-            for (const p of approvedProposals) {
-              const pSlug = (p.experience_slug || p.title || 'experiencia')
-                .toLowerCase()
-                .normalize('NFD')
-                .replace(/[\u0300-\u036f]/g, '')
-                .replace(/[^a-z0-9]+/g, '-')
-                .replace(/(^-|-$)/g, '');
-              const pId = 'exp-' + pSlug;
-
-              if (
-                !knownSlugs.has(pSlug.toLowerCase()) &&
-                !knownIds.has(pId.toLowerCase()) &&
-                !deletedIds.has(pId) &&
-                !deletedIds.has(pSlug)
-              ) {
-                const expFromProposal: Experience = {
-                  id: pId,
-                  slug: pSlug,
-                  title: p.title,
-                  shortTitle: p.title ? p.title.split('&')[0].trim() : '',
-                  kicker: p.kicker || 'EXPERIENCIA',
-                  tagline: p.subheading
-                    ? p.subheading.length > 90
-                      ? p.subheading.slice(0, 90) + '...'
-                      : p.subheading
-                    : p.title,
-                  description: p.subheading || '',
-                  region: p.region || 'Catamarca',
-                  meetingPoint: p.meeting_point || '',
-                  meetingPointUrl: p.meeting_point_url || '',
-                  difficulty:
-                    (p.difficulty?.split('(')[0]?.trim() as any) || 'Moderada',
-                  durationDays: 1,
-                  durationLabel: p.duration || 'Medio día',
-                  altitudeMeters: Number(p.altitude?.replace(/\D/g, '')) || 850,
-                  bestSeason: p.season || 'Todo el año',
-                  priceArs: p.price_ars || 0,
-                  priceUsd: p.price_usd || 70,
-                  promosAndPricing: p.promos_and_pricing || undefined,
-                  maxSpotsPerGroup: p.capacity || 12,
-                  dates: Array.isArray(p.dates) ? p.dates : [],
-                  status: 'publicada',
-                  publicUrl: `https://experiencias.club/experiencias/${pSlug}`,
-                  detailRoute: `/experiencias/${pSlug}`,
-                  coverImage: p.cover_image || KAYAK_IMAGE,
-                  galleryImages:
-                    Array.isArray(p.album_photos) && p.album_photos.length > 0
-                      ? p.album_photos.map((ph: any) => ph.url)
-                      : [p.cover_image || KAYAK_IMAGE],
-                  videoUrl: p.cover_video_url || '',
-                  isExclusiveClub: true,
-                  isLocked: false,
-                  albumPhotos: p.album_photos || [],
-                  itinerary: p.itinerary || undefined,
-                  highlights: [],
-                  included: p.included_services
-                    ? p.included_services
-                        .split('\n')
-                        .map((s: string) => s.trim())
-                        .filter(Boolean)
-                    : [],
-                  notIncluded: p.participant_requirements
-                    ? p.participant_requirements
-                        .split('\n')
-                        .map((s: string) => s.trim())
-                        .filter(Boolean)
-                    : [],
-                  providerId: p.provider_id,
-                  providerEmail: p.provider_email,
-                  providerSlug: p.provider_slug,
-                  providerName: p.provider_agency || p.provider_name,
-                  providerPhone: p.provider_phone,
-                  providerCbuAlias: p.provider_cbu_alias,
-                  providerCuitDni: p.provider_cuit_dni,
-                  providerBankName: p.provider_bank_name,
-                };
-                remoteExperiences.push(expFromProposal);
-                knownSlugs.add(pSlug.toLowerCase());
-                knownIds.add(pId.toLowerCase());
-
-                // Auto-sincronizar propuesta aprobada en la tabla pública de experiencias
-                this.supabase
-                  .from('experiencias')
-                  .upsert({
-                    id: expFromProposal.id,
-                    slug: expFromProposal.slug,
-                    title: expFromProposal.title,
-                    kicker: expFromProposal.kicker || '',
-                    tagline: expFromProposal.tagline,
-                    description: expFromProposal.description,
-                    region: expFromProposal.region,
-                    meeting_point: expFromProposal.meetingPoint || '',
-                    meeting_point_url: expFromProposal.meetingPointUrl || '',
-                    difficulty: expFromProposal.difficulty,
-                    duration_label: expFromProposal.durationLabel,
-                    price_ars: expFromProposal.priceArs,
-                    price_usd: expFromProposal.priceUsd,
-                    capacity_per_date: expFromProposal.maxSpotsPerGroup,
-                    cover_image: expFromProposal.coverImage,
-                    video_url: expFromProposal.videoUrl || '',
-                    video_poster: expFromProposal.videoPoster || '',
-                    altitude_meters: expFromProposal.altitudeMeters || 0,
-                    best_season: expFromProposal.bestSeason || '',
-                    itinerary: expFromProposal.itinerary || '',
-                    promos_and_pricing: expFromProposal.promosAndPricing || '',
-                    dates: expFromProposal.dates || [],
-                    highlights: expFromProposal.highlights || [],
-                    included: expFromProposal.included || [],
-                    not_included: expFromProposal.notIncluded || [],
-                    status: 'publicada',
-                    public_url: expFromProposal.publicUrl,
-                    album_photos: expFromProposal.albumPhotos || [],
-                    provider_name: expFromProposal.providerName || null,
-                    provider_phone: expFromProposal.providerPhone || null,
-                    provider_email: expFromProposal.providerEmail || null,
-                    provider_slug: expFromProposal.providerSlug || null,
-                  } as any)
-                  .then(({ error: upsertErr }) => {
-                    if (upsertErr) {
-                      console.warn(
-                        '[ExperienceService] Error auto-sincronizando propuesta aprobada en tabla experiencias:',
-                        upsertErr,
-                      );
-                    }
-                  });
-              }
-            }
-          }
-        } catch (propErr) {
-          console.warn('[ExperienceService] Error consultando propuestas aprobadas:', propErr);
-        }
+        // Fin procesamiento de experiencias remotas
 
         const currentLocal = this._experiences();
         const remoteIds = new Set(remoteExperiences.map((e) => e.id.toLowerCase()));

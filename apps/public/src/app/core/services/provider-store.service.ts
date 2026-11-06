@@ -586,13 +586,13 @@ export class ProviderStoreService {
 
       const email = data.user.email.trim().toLowerCase();
 
-      const { data: access, error } = await (this.supabase.from('provider_access') as any)
+      const { data: access, error } = await (this.supabase.from('prestadores') as any)
         .select('*')
         .eq('email', email)
         .maybeSingle();
 
       if (error) {
-        console.warn('[ProviderStore] Error consultando provider_access:', error);
+        console.warn('[ProviderStore] Error consultando prestadores:', error);
       }
 
       if (error || !access || access.active !== true || access.status !== 'aprobado') {
@@ -670,7 +670,7 @@ export class ProviderStoreService {
       this.saveSession(provider);
       if (!access.slug && provider.slug) {
         // El slug derivado solo existía en el cliente: se persiste para que el perfil público resuelva.
-        void (this.supabase.from('provider_access') as any)
+        void (this.supabase.from('prestadores') as any)
           .update({ slug: provider.slug.toLowerCase() })
           .eq('email', email)
           .then(({ error: slugError }: { error: unknown }) => {
@@ -920,20 +920,20 @@ export class ProviderStoreService {
         if (updates.cbuAlias !== undefined) payload['cbu_alias'] = updates.cbuAlias.trim();
         if (updates.bankName !== undefined) payload['bank_name'] = updates.bankName.trim();
 
-        let { error } = await (this.supabase.from('provider_access') as any)
+        let { error } = await (this.supabase.from('prestadores') as any)
           .update(payload)
           .eq('email', email);
 
         if (error && /social_media_secondary/.test(error.message || '')) {
           // Columna aún no migrada en la base remota: reintenta sin ella
           const { social_media_secondary: _omit, ...legacyPayload } = payload;
-          ({ error } = await (this.supabase.from('provider_access') as any)
+          ({ error } = await (this.supabase.from('prestadores') as any)
             .update(legacyPayload)
             .eq('email', email));
         }
 
         if (error) {
-          console.warn('[ProviderStore] Error actualizando provider_access:', error);
+          console.warn('[ProviderStore] Error actualizando prestadores:', error);
           return {
             success: false,
             message: 'No se pudieron guardar los cambios en la base de datos.',
@@ -1130,13 +1130,13 @@ export class ProviderStoreService {
           payload['active'] = updates.status === 'aprobado';
         }
 
-        const { data: updatedRows, error } = await (this.supabase.from('provider_access') as any)
+        const { data: updatedRows, error } = await (this.supabase.from('prestadores') as any)
           .update(payload)
           .eq('email', email)
           .select('id');
 
         if (error) {
-          console.warn('[ProviderStore] Error actualizando provider_access como admin:', error);
+          console.warn('[ProviderStore] Error actualizando prestadores como admin:', error);
           return {
             success: false,
             message: 'No se pudieron guardar los cambios en la base de datos remota.',
@@ -1233,7 +1233,7 @@ export class ProviderStoreService {
     const queryRemotePublicProfile = async (querySlug: string, queryEmail: string) => {
       let remoteData: any = null;
       const { data, error } = await (this.supabase as any)
-        .from('public_provider_profiles')
+        .from('perfiles_publicos')
         .select('*')
         .or(`slug.eq.${querySlug},email.eq.${queryEmail}`)
         .limit(1)
@@ -1242,7 +1242,7 @@ export class ProviderStoreService {
       if (!error && data) {
         remoteData = data;
       } else if (error) {
-        const { data: fallbackData } = await (this.supabase.from('provider_access') as any)
+        const { data: fallbackData } = await (this.supabase.from('prestadores') as any)
           .select(
             'email, name, agency, active, status, phone, website, social_media, social_media_secondary, slug, bio, avatar_url, cover_url',
           )
@@ -2264,98 +2264,60 @@ export class ProviderStoreService {
     this._experienceRequests.update((list) => [newReq, ...list]);
     this.saveRequests();
 
-    // Persistir en Supabase en tabla propuestas_experiencias
+    // Persistir en Supabase en tabla unificada experiencias (status: 'pendiente')
     if (isSupabaseConfigured()) {
       try {
-        const proposalPayload: Record<string, any> = {
+        const generatedSlug = (newReq.title || 'experiencia')
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/(^-|-$)/g, '');
+
+        const unifiedExpPayload: Record<string, any> = {
           id: newReq.id,
-          provider_id: newReq.providerId,
-          provider_name: newReq.providerName,
-          provider_agency: newReq.providerAgency || '',
-          provider_email: newReq.providerEmail.trim().toLowerCase(),
-          provider_phone: newReq.providerPhone || '',
-          provider_cbu_alias: newReq.providerCbuAlias || '',
-          provider_bank_name: newReq.providerBankName || '',
-          provider_cuit_dni: newReq.providerCuitDni || '',
+          slug: generatedSlug,
           title: newReq.title,
           kicker: newReq.kicker || 'EXPERIENCIA',
-          subheading: newReq.subheading || '',
-          region: newReq.region || '',
-          difficulty: newReq.difficulty || 'Moderada',
-          duration: newReq.duration || '4 horas',
-          altitude: newReq.altitude || '',
-          capacity: newReq.capacity || 12,
-          season: newReq.season || 'Todo el año',
-          dates: newReq.dates || 'A coordinar',
-          price_ars: newReq.priceArs,
-          price_usd: newReq.priceUsd || null,
-          promos_and_pricing: newReq.promosAndPricing || '',
-          itinerary: newReq.itinerary || '',
+          tagline: newReq.subheading || '',
+          description: newReq.subheading || '',
+          region: newReq.region || 'Valle Central y Ambato',
           meeting_point: newReq.meetingPoint || '',
           meeting_point_url: newReq.meetingPointUrl || '',
-          included_services: newReq.includedServices || '',
+          difficulty: (newReq.difficulty || 'Moderada').split('(')[0].trim() || 'Moderada',
+          duration_label: newReq.duration || '4 horas',
+          price_ars: newReq.priceArs,
+          price_usd: newReq.priceUsd || null,
+          capacity_per_date: newReq.capacity || 12,
+          best_season: newReq.season || 'Todo el año',
+          dates: newReq.dates ? [newReq.dates] : [],
+          itinerary: newReq.itinerary || '',
+          cover_image: newReq.coverImage || '/assets/images/kayak-club-de-experiencias.jpg',
+          cover_image_name: newReq.coverImageName || '',
+          video_url: newReq.coverVideoUrl || '',
+          album_photos: newReq.albumPhotos || [],
+          provider_name: newReq.providerName,
+          provider_agency: newReq.providerAgency || '',
+          provider_email: (newReq.providerEmail || '').toLowerCase(),
+          provider_phone: newReq.providerPhone || '',
+          provider_cbu_alias: newReq.providerCbuAlias || '',
+          provider_cuit_dni: newReq.providerCuitDni || '',
+          provider_bank_name: newReq.providerBankName || '',
           participant_requirements: newReq.participantRequirements || '',
           notes: newReq.notes || '',
-          cover_image: newReq.coverImage || '',
-          cover_image_name: newReq.coverImageName || '',
-          cover_video_url: newReq.coverVideoUrl || '',
-          cover_video_name: newReq.coverVideoName || '',
-          album_photos: newReq.albumPhotos || [],
           status: 'pendiente',
         };
 
-        const { error } = await (this.supabase.from('propuestas_experiencias') as any).insert(
-          proposalPayload,
+        const { error: insErr } = await (this.supabase.from('experiencias') as any).upsert(
+          unifiedExpPayload,
+          { onConflict: 'id' },
         );
-        if (error) {
-          // Si columnas agregadas recientemente (album_photos o bancarias) no existieran en DB
-          if (
-            error.code === '42703' ||
-            /album_photos|provider_cbu_alias|provider_bank_name|provider_cuit_dni|meeting_point_url/.test(
-              error.message || '',
-            )
-          ) {
-            // If meeting_point_url triggered the error and the user provided a value,
-            // refuse the fallback: silently dropping it would lose data the provider
-            // explicitly entered. Require the DB schema to be migrated first.
-            const urlTriggeredError =
-              /meeting_point_url/.test(error.message || '') ||
-              (error.code === '42703' && proposalPayload['meeting_point_url']);
-            if (urlTriggeredError && proposalPayload['meeting_point_url']) {
-              console.warn(
-                '[ProviderStore] meeting_point_url column missing in DB; refusing silent fallback.',
-              );
-              this._experienceRequests.update((list) => list.filter((r) => r.id !== newReq.id));
-              this.saveRequests();
-              throw new Error(
-                'No se pudo guardar la URL del punto de encuentro porque la base de datos requiere una migración. ' +
-                  'Por favor contactá al equipo técnico.',
-              );
-            }
-            const fallbackPayload = { ...proposalPayload };
-            delete fallbackPayload['meeting_point_url'];
-            delete fallbackPayload['album_photos'];
-            delete fallbackPayload['provider_cbu_alias'];
-            delete fallbackPayload['provider_bank_name'];
-            delete fallbackPayload['provider_cuit_dni'];
-            const retryRes = await (this.supabase.from('propuestas_experiencias') as any).insert(
-              fallbackPayload,
-            );
-            if (retryRes.error) {
-              console.warn(
-                '[ProviderStore] Error insertando propuesta en Supabase (fallback):',
-                retryRes.error,
-              );
-              this._experienceRequests.update((list) => list.filter((r) => r.id !== newReq.id));
-              this.saveRequests();
-              throw retryRes.error;
-            }
-          } else {
-            console.warn('[ProviderStore] Error insertando propuesta en Supabase:', error);
-            this._experienceRequests.update((list) => list.filter((r) => r.id !== newReq.id));
-            this.saveRequests();
-            throw error;
-          }
+
+        if (insErr) {
+          console.warn('[ProviderStore] Error guardando propuesta en experiencias:', insErr);
+          this._experienceRequests.update((list) => list.filter((r) => r.id !== newReq.id));
+          this.saveRequests();
+          throw insErr;
         }
       } catch (dbErr) {
         console.warn('[ProviderStore] Error al guardar propuesta en base de datos:', dbErr);
@@ -2371,50 +2333,54 @@ export class ProviderStoreService {
   async loadProposalsFromSupabase(providerEmail?: string): Promise<void> {
     if (!isSupabaseConfigured()) return;
     try {
-      let query = (this.supabase.from('propuestas_experiencias') as any).select('*');
+      let expQuery = (this.supabase.from('experiencias') as any)
+        .select('*')
+        .in('status', ['pendiente', 'rechazada']);
       if (providerEmail) {
-        query = query.ilike('provider_email', providerEmail.trim().toLowerCase());
+        expQuery = expQuery.ilike('provider_email', providerEmail.trim().toLowerCase());
       }
-      const { data, error } = await query.order('created_at', { ascending: false });
-      if (error) {
-        console.warn('[ProviderStore] Error consultando propuestas en Supabase:', error);
+      const { data: expData, error: expError } = await expQuery.order('created_at', {
+        ascending: false,
+      });
+
+      if (expError) {
+        console.warn('[ProviderStore] Error consultando propuestas en Supabase:', expError);
         return;
       }
-      if (data && Array.isArray(data)) {
-        const mapped: ExperienceProposalRequest[] = data.map((row: any) => ({
+
+      if (expData && Array.isArray(expData)) {
+        const mapped: ExperienceProposalRequest[] = expData.map((row: any) => ({
           id: row.id,
-          providerId: row.provider_id,
-          providerName: row.provider_name,
+          providerId: row.provider_id || '',
+          providerName: row.provider_name || '',
           providerAgency: row.provider_agency || '',
-          providerEmail: row.provider_email,
+          providerEmail: row.provider_email || '',
           providerPhone: row.provider_phone || '',
           providerCbuAlias: row.provider_cbu_alias || undefined,
           providerBankName: row.provider_bank_name || undefined,
           providerCuitDni: row.provider_cuit_dni || undefined,
           title: row.title,
           kicker: row.kicker || 'EXPERIENCIA',
-          subheading: row.subheading || '',
+          subheading: row.tagline || row.description || '',
           region: row.region || '',
           difficulty: row.difficulty || 'Moderada',
-          duration: row.duration || '4 horas',
-          altitude: row.altitude || '',
-          capacity: row.capacity || 12,
-          season: row.season || 'Todo el año',
-          dates: row.dates || 'A coordinar',
+          duration: row.duration_label || '4 horas',
+          altitude: row.altitude_meters ? `${row.altitude_meters} msnm` : '',
+          capacity: row.capacity_per_date || 12,
+          season: row.best_season || 'Todo el año',
+          dates: Array.isArray(row.dates) && row.dates.length > 0 ? row.dates[0] : 'A coordinar',
           priceArs: row.price_ars,
           priceUsd: row.price_usd,
           promosAndPricing: row.promos_and_pricing || '',
           itinerary: row.itinerary || '',
           meetingPoint: row.meeting_point || '',
           meetingPointUrl: row.meeting_point_url || '',
-          includedServices: row.included_services || '',
+          includedServices: Array.isArray(row.included) ? row.included.join('\n') : '',
           participantRequirements: row.participant_requirements || '',
           notes: row.notes || '',
-          coverImage: (!row.cover_image || row.cover_image.startsWith('blob:'))
-            ? '/assets/images/kayak-club-de-experiencias.jpg'
-            : row.cover_image,
+          coverImage: row.cover_image || '/assets/images/kayak-club-de-experiencias.jpg',
           coverImageName: row.cover_image_name || '',
-          coverVideoUrl: row.cover_video_url || '',
+          coverVideoUrl: row.video_url || '',
           coverVideoName: row.cover_video_name || '',
           albumPhotos: row.album_photos || [],
           status: row.status as 'pendiente' | 'aprobada' | 'rechazada',
@@ -2561,16 +2527,17 @@ export class ProviderStoreService {
 
     if (isSupabaseConfigured()) {
       try {
-        const { error } = await (this.supabase.from('propuestas_experiencias') as any)
+        const { error } = await (this.supabase.from('experiencias') as any)
           .update({
-            status: 'aprobada',
+            status: 'publicada',
             reviewed_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           })
           .eq('id', requestId);
+
         if (error) {
           console.warn(
-            '[ProviderStore] Error actualizando estado de propuesta en Supabase:',
+            '[ProviderStore] Error actualizando estado de experiencia en Supabase:',
             error,
           );
         }
@@ -2645,16 +2612,17 @@ export class ProviderStoreService {
 
     if (isSupabaseConfigured()) {
       try {
-        const { error } = await (this.supabase.from('propuestas_experiencias') as any)
+        const { error } = await (this.supabase.from('experiencias') as any)
           .update({
             status: 'rechazada',
             reviewed_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           })
           .eq('id', requestId);
+
         if (error) {
           console.warn(
-            '[ProviderStore] Error actualizando estado de propuesta en Supabase:',
+            '[ProviderStore] Error actualizando estado de experiencia en Supabase:',
             error,
           );
           this._experienceRequests.update((list) =>
@@ -2666,7 +2634,7 @@ export class ProviderStoreService {
           return false;
         }
       } catch (err: any) {
-        console.warn('[ProviderStore] Excepción al rechazar propuesta en Supabase:', err);
+        console.warn('[ProviderStore] Excepción al rechazar experiencia en Supabase:', err);
         this._experienceRequests.update((list) =>
           list.map((r) =>
             r.id === requestId ? { ...r, status: prevStatus, reviewedAt: prevReviewedAt } : r,

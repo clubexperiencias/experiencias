@@ -88,4 +88,13 @@ describe('ExperiencePhotosComponent (/experiencias/:slug/fotos)', () => {
     fixture.detectChanges();
     expect(component.activePhotoIndex()).toBeNull();
   });
+
+  it('should correctly detect HTTP and HTTPS URLs with isUrl', () => {
+    expect(component.isUrl('https://maps.google.com/?q=Catamarca')).toBe(true);
+    expect(component.isUrl('http://maps.google.com/?q=Catamarca')).toBe(true);
+    expect(component.isUrl('   https://maps.google.com/?q=Catamarca   ')).toBe(true);
+    expect(component.isUrl('Dique El Jumeal')).toBe(false);
+    expect(component.isUrl('')).toBe(false);
+    expect(component.isUrl(undefined)).toBe(false);
+  });
 });

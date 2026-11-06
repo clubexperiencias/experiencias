@@ -27,16 +27,15 @@ function mapDbRowToEntry(row: any): WaitlistEntry {
     source: 'web_minimal_landing',
     membershipTier: row.membership_tier || 'emergente',
     authUserId: row.auth_user_id || undefined,
-    googleLinked: Boolean(row.google_linked || row.auth_user_id),
+    googleLinked: Boolean(row.auth_user_id),
     registrationToken: row.registration_token || undefined,
   };
 }
 
 /**
- * NewsletterService — Conexión a Supabase (separación de waitlist y socios)
+ * NewsletterService — Conexión a Supabase (esquema canónico unificado en tabla socios)
  *
- * 1. waitlist: Tabla sencilla de prospectos desde la landing page (/)
- * 2. socios: Tabla oficial de miembros (arranca en 100) con DNI, Celular y experiencias
+ * Registros de prospectos de waitlist y socios oficiales gestionados sobre public.socios
  */
 @Injectable({
   providedIn: 'root',
@@ -68,7 +67,7 @@ export class NewsletterService {
 
     try {
       const { data: statsData } = await this.supabase
-        .from('waitlist_stats')
+        .from('estadisticas_socios')
         .select('*')
         .maybeSingle();
 
@@ -117,15 +116,16 @@ export class NewsletterService {
           const authId = session.user.id;
 
           try {
-            // 1. Asegurar registro en waitlist con google_linked = true
+            // 1. Asegurar registro en socios con tier waitlist y auth_user_id
             const { error: wlRpcErr } = await this.supabase.rpc('record_waitlist_email', {
               p_email: authEmail,
               p_google_linked: true,
             });
             if (wlRpcErr) {
-              await this.supabase
-                .from('waitlist')
-                .upsert({ email: authEmail, google_linked: true }, { onConflict: 'email' });
+              await (this.supabase.from('socios') as any).upsert(
+                { email: authEmail, auth_user_id: authId, membership_tier: 'waitlist' },
+                { onConflict: 'email' },
+              );
             }
 
             // 2. Obtener y vincular socio existente mediante RPC segura
@@ -149,7 +149,7 @@ export class NewsletterService {
             // Fallback directo si la RPC aún no existe
             await this.supabase
               .from('socios')
-              .update({ auth_user_id: authId, google_linked: true })
+              .update({ auth_user_id: authId })
               .eq('email', authEmail);
 
             const { data: remoteSocio } = await this.supabase
@@ -203,15 +203,16 @@ export class NewsletterService {
         if (data?.session?.user?.email) {
           const authEmail = data.session.user.email.toLowerCase();
 
-          // Registrar en waitlist con google_linked = true
+          // Registrar en socios con tier waitlist
           const { error: wlRpcErr } = await this.supabase.rpc('record_waitlist_email', {
             p_email: authEmail,
             p_google_linked: true,
           });
           if (wlRpcErr) {
-            await this.supabase
-              .from('waitlist')
-              .upsert({ email: authEmail, google_linked: true }, { onConflict: 'email' });
+            await (this.supabase.from('socios') as any).upsert(
+              { email: authEmail, membership_tier: 'waitlist' },
+              { onConflict: 'email' },
+            );
           }
 
           // Consultar socio mediante RPC segura
@@ -322,7 +323,7 @@ export class NewsletterService {
   }
 
   /**
-   * 1. Paso Landing (/): Guarda correo ágilmente en la tabla waitlist
+   * 1. Paso Landing (/): Guarda correo ágilmente en la tabla socios (tier waitlist)
    */
   async recordWaitlistProspect(
     email: string,
@@ -349,12 +350,14 @@ export class NewsletterService {
         });
 
         if (rpcErr) {
-          const { error } = await this.supabase
-            .from('waitlist')
-            .upsert({ email: cleanEmail }, { onConflict: 'email', ignoreDuplicates: true });
+          // Guardar en socios con tier waitlist directamente
+          const { error: socioErr } = await (this.supabase.from('socios') as any).upsert(
+            { email: cleanEmail, membership_tier: 'waitlist' },
+            { onConflict: 'email', ignoreDuplicates: true },
+          );
 
-          if (error) {
-            console.warn('[Supabase] Advertencia guardando en waitlist:', error.message);
+          if (socioErr) {
+            console.warn('[Supabase] Advertencia guardando en socios (waitlist):', socioErr.message);
           }
         }
       } catch (err) {
@@ -595,24 +598,6 @@ export class NewsletterService {
           this.persistEntries(updatedEntries);
           this.persistCurrentMember(entry);
 
-          // Marcar en waitlist como convertido (y google_linked si corresponde)
-          const isGoogleLinked = Boolean(entry.googleLinked || entry.authUserId);
-          const { error: wlErr } = await this.supabase.from('waitlist').upsert(
-            {
-              email: cleanEmail,
-              converted: true,
-              ...(isGoogleLinked ? { google_linked: true } : {}),
-            },
-            { onConflict: 'email' },
-          );
-
-          if (wlErr) {
-            await this.supabase
-              .from('waitlist')
-              .update({ converted: true })
-              .eq('email', cleanEmail);
-          }
-
           this._isLoading.set(false);
           this.setLoginSuccessFlag();
           this.notificationService
@@ -815,17 +800,27 @@ export class NewsletterService {
           };
         }
 
-        // Fallback si la RPC aún no fue ejecutada en Supabase
-        const [socioRes, waitlistRes] = await Promise.all([
-          this.supabase.from('socios').select('*').eq('email', cleanEmail).maybeSingle(),
-          this.supabase
-            .from('waitlist')
-            .select('id, email, converted')
-            .eq('email', cleanEmail)
-            .maybeSingle(),
-        ]);
+        // Fallback de consulta directa a la tabla unificada socios
+        const { data: socioData, error: socioErr } = await this.supabase
+          .from('socios')
+          .select('*')
+          .eq('email', cleanEmail)
+          .maybeSingle();
 
-        if (!socioRes.error && socioRes.data) {
+        if (!socioErr && socioData) {
+          if (socioData.membership_tier === 'waitlist') {
+            this._isLoading.set(false);
+            this.lastProspectEmail.set(cleanEmail);
+            this.persistProspectEmail(cleanEmail);
+            return {
+              success: false,
+              notFound: true,
+              alreadyInWaitlist: true,
+              isWaitlistOnly: true,
+              message:
+                'Tu correo ya está en la lista de espera. Redirigiendo para completar tu perfil de Socio Emergente...',
+            };
+          }
           this._isLoading.set(false);
           return {
             success: false,
@@ -833,20 +828,6 @@ export class NewsletterService {
             alreadyInWaitlist: false,
             message:
               'Este correo pertenece a un socio del Club. Por seguridad, iniciá sesión con Google para acceder a tu perfil.',
-          };
-        }
-
-        if (!waitlistRes.error && waitlistRes.data) {
-          this._isLoading.set(false);
-          this.lastProspectEmail.set(cleanEmail);
-          this.persistProspectEmail(cleanEmail);
-          return {
-            success: false,
-            notFound: true,
-            alreadyInWaitlist: true,
-            isWaitlistOnly: true,
-            message:
-              'Tu correo ya está en la lista de espera. Redirigiendo para completar tu perfil de Socio Emergente...',
           };
         }
 
@@ -1382,17 +1363,26 @@ export class NewsletterService {
   }): Promise<{ success: boolean }> {
     if (this.isSupabaseConnected()) {
       try {
-        const { error } = await this.supabase.from('postulaciones_prestadores').insert({
-          full_name: data.fullName.trim(),
+        // Enfoque unificado: guardar directamente en prestadores con status 'pendiente'
+        const accessPayload = {
+          email: data.email.trim().toLowerCase(),
+          name: data.fullName.trim(),
+          phone: data.phone.trim(),
           category: data.category.trim() || 'guia_montaña',
           region: data.region.trim() || 'Puna & Fiambalá',
-          email: data.email.trim().toLowerCase(),
-          phone: data.phone.trim(),
           website: data.website.trim(),
           description: data.description.trim(),
-        });
-        if (error) {
-          console.warn('[Supabase] Error guardando postulación de prestador:', error);
+          status: 'pendiente',
+          active: false,
+        };
+
+        const { error: paError } = await (this.supabase.from('prestadores') as any).upsert(
+          accessPayload,
+          { onConflict: 'email' },
+        );
+
+        if (paError) {
+          console.warn('[Supabase] Error guardando postulación de prestador en prestadores:', paError);
           return { success: false };
         }
       } catch (err) {
