@@ -1006,6 +1006,7 @@ export class ProviderStoreService {
         const current = list[idx];
         const updated: ProviderUser = {
           ...current,
+          email: profile.email,
           name: profile.name,
           agency: profile.agency,
           slug: profile.slug,
@@ -2484,7 +2485,7 @@ export class ProviderStoreService {
     this.saveExperiences();
   }
 
-  rejectExperienceRequest(requestId: string): void {
+  async rejectExperienceRequest(requestId: string): Promise<boolean> {
     this._experienceRequests.update((list) =>
       list.map((r) =>
         r.id === requestId
@@ -2495,25 +2496,27 @@ export class ProviderStoreService {
     this.saveRequests();
 
     if (isSupabaseConfigured()) {
-      (this.supabase.from('propuestas_experiencias') as any)
-        .update({
-          status: 'rechazada',
-          reviewed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', requestId)
-        .then(({ error }: any) => {
-          if (error) {
-            console.warn(
-              '[ProviderStore] Error actualizando estado de propuesta en Supabase:',
-              error,
-            );
-          }
-        })
-        .catch((err: any) => {
-          console.warn('[ProviderStore] Excepción al rechazar propuesta en Supabase:', err);
-        });
+      try {
+        const { error } = await (this.supabase.from('propuestas_experiencias') as any)
+          .update({
+            status: 'rechazada',
+            reviewed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', requestId);
+        if (error) {
+          console.warn(
+            '[ProviderStore] Error actualizando estado de propuesta en Supabase:',
+            error,
+          );
+          return false;
+        }
+      } catch (err: any) {
+        console.warn('[ProviderStore] Excepción al rechazar propuesta en Supabase:', err);
+        return false;
+      }
     }
+    return true;
   }
 
   private loadStoredRequests(): ExperienceProposalRequest[] {

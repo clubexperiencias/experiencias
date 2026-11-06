@@ -3125,8 +3125,8 @@ export class AdminDashboardComponent {
     }
   }
 
-  rejectExperience(id: string): void {
-    this.store.rejectExperienceRequest(id);
+  async rejectExperience(id: string): Promise<void> {
+    await this.store.rejectExperienceRequest(id);
     const current = this.selectedExperienceRequest();
     if (current && current.id === id) {
       this.selectedExperienceRequest.set({

@@ -627,7 +627,13 @@ export class AdminPanelComponent {
 
   openClubProfileModal(): void {
     if (typeof document !== 'undefined') {
-      this.lastFocusedElement = document.activeElement as HTMLElement | null;
+      const active = document.activeElement as HTMLElement | null;
+      const userPill = document.querySelector<HTMLElement>('.user-pill');
+      if (active && active.closest('.dropdown-menu')) {
+        this.lastFocusedElement = userPill;
+      } else {
+        this.lastFocusedElement = active || userPill;
+      }
     }
     this.clubProfileError.set(null);
     const p = this.store.clubProfile();
@@ -658,8 +664,17 @@ export class AdminPanelComponent {
     if (this.isSavingClubProfile() && !force) return;
     this.clubProfileError.set(null);
     this.store.closeClubProfileModal();
-    if (this.lastFocusedElement && typeof this.lastFocusedElement.focus === 'function') {
-      this.lastFocusedElement.focus();
+    if (typeof document !== 'undefined') {
+      if (
+        this.lastFocusedElement &&
+        this.lastFocusedElement.isConnected &&
+        typeof this.lastFocusedElement.focus === 'function'
+      ) {
+        this.lastFocusedElement.focus();
+      } else {
+        const fallback = document.querySelector<HTMLElement>('.user-pill');
+        fallback?.focus();
+      }
     }
     this.lastFocusedElement = null;
   }

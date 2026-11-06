@@ -893,14 +893,24 @@ export class ExperienceService {
         // Fallback
       }
 
+      const activeDefaults = DEFAULT_EXPERIENCES.filter(
+        (d) => !deletedIds.has(d.id) && !deletedIds.has(d.slug),
+      );
+
       // Recuperar experiencias de prestador publicadas de catamarca_provider_experiences_v5
       try {
         const provExpsRaw = localStorage.getItem('catamarca_provider_experiences_v5');
         if (provExpsRaw) {
           const provExps = JSON.parse(provExpsRaw);
           if (Array.isArray(provExps)) {
-            const existingSlugs = new Set(localExperiences.map((e) => e.slug.toLowerCase()));
-            const existingIds = new Set(localExperiences.map((e) => e.id.toLowerCase()));
+            const existingSlugs = new Set([
+              ...localExperiences.map((e) => e.slug.toLowerCase()),
+              ...activeDefaults.map((d) => d.slug.toLowerCase()),
+            ]);
+            const existingIds = new Set([
+              ...localExperiences.map((e) => e.id.toLowerCase()),
+              ...activeDefaults.map((d) => d.id.toLowerCase()),
+            ]);
             for (const p of provExps) {
               if (
                 p &&
@@ -967,8 +977,14 @@ export class ExperienceService {
         if (reqsRaw) {
           const reqs = JSON.parse(reqsRaw);
           if (Array.isArray(reqs)) {
-            const existingSlugs = new Set(localExperiences.map((e) => e.slug.toLowerCase()));
-            const existingIds = new Set(localExperiences.map((e) => e.id.toLowerCase()));
+            const existingSlugs = new Set([
+              ...localExperiences.map((e) => e.slug.toLowerCase()),
+              ...activeDefaults.map((d) => d.slug.toLowerCase()),
+            ]);
+            const existingIds = new Set([
+              ...localExperiences.map((e) => e.id.toLowerCase()),
+              ...activeDefaults.map((d) => d.id.toLowerCase()),
+            ]);
             for (const r of reqs) {
               if (r && r.status === 'aprobada' && r.title) {
                 const slug =

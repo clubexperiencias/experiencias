@@ -2351,8 +2351,8 @@ export class AdminApplicationsComponent implements OnInit {
     }
   }
 
-  rejectExperience(id: string): void {
-    this.store.rejectExperienceRequest(id);
+  async rejectExperience(id: string): Promise<void> {
+    await this.store.rejectExperienceRequest(id);
     const current = this.selectedExperienceRequest();
     if (current && current.id === id) {
       this.selectedExperienceRequest.set({
@@ -2362,8 +2362,8 @@ export class AdminApplicationsComponent implements OnInit {
       });
     }
     this.store.providerStore.reloadFromStorage();
-    void this.store.providerStore.loadProposalsFromSupabase();
-    void this.store.loadAllApplications();
+    await this.store.providerStore.loadProposalsFromSupabase();
+    await this.store.loadAllApplications();
     this.closeExperienceRequest();
   }
 
