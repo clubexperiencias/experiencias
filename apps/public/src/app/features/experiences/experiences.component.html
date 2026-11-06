@@ -58,6 +58,19 @@
                   <div class="exp-card-media">
                     <img [src]="exp.coverImage" [alt]="exp.title" class="exp-card-img" />
                     <span class="exp-region-tag" [class.is-enabled-tag]="!exp.isLocked">{{ exp.region }}</span>
+                    @if (!exp.isLocked) {
+                      @if (isClubExperience(exp)) {
+                        <span class="exp-provider-badge is-club" title="Experiencia Oficial del Club">
+                          <mat-icon>verified</mat-icon>
+                          <span>Club</span>
+                        </span>
+                      } @else if (exp.providerName) {
+                        <span class="exp-provider-badge is-provider" title="Prestador oficial">
+                          <mat-icon>badge</mat-icon>
+                          <span>{{ exp.providerName }}</span>
+                        </span>
+                      }
+                    }
                   </div>
 
                   <div class="exp-card-content">
@@ -182,6 +195,19 @@
                   <div class="exp-card-media horizontal-media">
                     <img [src]="exp.coverImage" [alt]="exp.title" class="exp-card-img" />
                     <span class="exp-region-tag" [class.is-enabled-tag]="!exp.isLocked">{{ exp.region }}</span>
+                    @if (!exp.isLocked) {
+                      @if (isClubExperience(exp)) {
+                        <span class="exp-provider-badge is-club" title="Experiencia Oficial del Club">
+                          <mat-icon>verified</mat-icon>
+                          <span>Club</span>
+                        </span>
+                      } @else if (exp.providerName) {
+                        <span class="exp-provider-badge is-provider" title="Prestador oficial">
+                          <mat-icon>badge</mat-icon>
+                          <span>{{ exp.providerName }}</span>
+                        </span>
+                      }
+                    }
                   </div>
 
                   <div class="exp-card-content horizontal-content">

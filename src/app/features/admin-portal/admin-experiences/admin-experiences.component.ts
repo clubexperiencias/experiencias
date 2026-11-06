@@ -44,7 +44,6 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                 <h1 class="card-heading">Editar Experiencia: {{ editTitle() }}</h1>
                 <div class="top-header-actions">
                   <a [routerLink]="getDetailRoute(exp)" class="btn-view-fiche-top" title="Ver ficha completa">
-                    <mat-icon class="btn-icon-sm">visibility</mat-icon>
                     <span>Ver Ficha</span>
                   </a>
                   <a [routerLink]="backToListLink()" class="btn-back-panel">Volver a Experiencias</a>
@@ -147,6 +146,11 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                       <span class="club-official-chip" title="Experiencia Oficial del Club de Experiencias">
                         <mat-icon>verified</mat-icon>
                         Club de Experiencias
+                      </span>
+                    } @else if (exp.providerName) {
+                      <span class="provider-chip" title="Prestador oficial de la experiencia">
+                        <mat-icon>badge</mat-icon>
+                        {{ exp.providerName }}
                       </span>
                     }
                     @if (exp.status === 'publicada') {
@@ -497,6 +501,11 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                               <mat-icon>verified</mat-icon>
                               Club
                             </span>
+                          } @else if (exp.providerName) {
+                            <span class="provider-chip" title="Prestador oficial de la experiencia">
+                              <mat-icon>badge</mat-icon>
+                              {{ exp.providerName }}
+                            </span>
                           }
                         </div>
                         <span class="exp-table-sub">{{ exp.tagline }}</span>
@@ -562,7 +571,6 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                         class="btn-view-fiche"
                         title="Ver la ficha técnica y visual de esta experiencia"
                       >
-                        <mat-icon class="action-btn-icon">visibility</mat-icon>
                         <span>VER FICHA</span>
                       </a>
 
@@ -1854,21 +1862,21 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         align-items: center;
         gap: 0.35rem;
         padding: 0.42rem 0.85rem;
-        background: rgba(0, 204, 136, 0.16);
-        border: 1px solid rgba(0, 204, 136, 0.45);
+        background: rgba(255, 95, 0, 0.18);
+        border: 1px solid rgba(255, 95, 0, 0.45);
         border-radius: 4px;
-        color: #33ffaa;
-        font-size: 0.76rem;
-        font-weight: 800;
+        color: #ff7722;
+        font-size: 0.8rem;
+        font-weight: 700;
         text-decoration: none;
         cursor: pointer;
         transition: all 0.2s ease;
       }
 
       .btn-view-fiche:hover {
-        background: rgba(0, 204, 136, 0.28);
-        border-color: #00cc88;
-        color: #ffffff;
+        background: #ff5f00;
+        border-color: #ff5f00;
+        color: #070d18;
       }
 
       .btn-view-fiche-top {
@@ -1876,10 +1884,10 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         align-items: center;
         gap: 0.35rem;
         padding: 0.5rem 0.9rem;
-        background: rgba(0, 204, 136, 0.16);
-        border: 1px solid rgba(0, 204, 136, 0.4);
+        background: rgba(255, 95, 0, 0.18);
+        border: 1px solid rgba(255, 95, 0, 0.45);
         border-radius: 4px;
-        color: #33ffaa;
+        color: #ff7722;
         font-size: 0.8rem;
         font-weight: 700;
         text-decoration: none;
@@ -1887,9 +1895,9 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
       }
 
       .btn-view-fiche-top:hover {
-        background: rgba(0, 204, 136, 0.28);
-        border-color: #00cc88;
-        color: #ffffff;
+        background: #ff5f00;
+        border-color: #ff5f00;
+        color: #070d18;
       }
 
       .top-header-actions {
@@ -3096,6 +3104,28 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
       }
 
       .club-official-chip mat-icon {
+        font-size: 13px;
+        width: 13px;
+        height: 13px;
+      }
+
+      .provider-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        background: rgba(14, 165, 233, 0.16);
+        border: 1px solid rgba(56, 189, 248, 0.45);
+        color: #38bdf8;
+        padding: 0.15rem 0.45rem;
+        border-radius: 4px;
+        line-height: 1;
+      }
+
+      .provider-chip mat-icon {
         font-size: 13px;
         width: 13px;
         height: 13px;

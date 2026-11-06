@@ -249,7 +249,6 @@ import { Experience } from '../../../core/models/experience.model';
                   <th>Prestador / Guía</th>
                   <th>Agencia / Emprendimiento</th>
                   <th>Contacto</th>
-                  <th>Padrón</th>
                   <th>Estado</th>
                   <th>Fecha</th>
                   <th class="text-right">Acción</th>
@@ -281,13 +280,6 @@ import { Experience } from '../../../core/models/experience.model';
                         </a>
                       } @else {
                         <span class="row-sub">—</span>
-                      }
-                    </td>
-                    <td>
-                      @if (item.origin === 'official') {
-                        <span class="badge-prov-official">OFICIAL</span>
-                      } @else {
-                        <span class="badge-prov-applicant">POSTULANTE</span>
                       }
                     </td>
                     <td>
@@ -477,6 +469,11 @@ import { Experience } from '../../../core/models/experience.model';
                                 <mat-icon>verified</mat-icon>
                                 Club
                               </span>
+                            } @else if (exp.providerName) {
+                              <span class="provider-chip" title="Prestador oficial de la experiencia">
+                                <mat-icon>badge</mat-icon>
+                                {{ exp.providerName }}
+                              </span>
                             }
                           </div>
                           <span class="exp-kicker-sub font-mono">{{ exp.kicker || 'EXPEDICIÓN' }}</span>
@@ -518,8 +515,8 @@ import { Experience } from '../../../core/models/experience.model';
                       </span>
                     </td>
                     <td class="text-right">
-                      <a routerLink="/experiencias" class="btn-review">
-                        Editar
+                      <a [routerLink]="['/experiencias', exp.slug]" class="btn-review-fiche">
+                        VER FICHA
                       </a>
                     </td>
                   </tr>
@@ -1524,6 +1521,28 @@ import { Experience } from '../../../core/models/experience.model';
       }
 
       .club-chip mat-icon {
+        font-size: 12px;
+        width: 12px;
+        height: 12px;
+      }
+
+      .provider-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.2rem;
+        background: rgba(14, 165, 233, 0.16);
+        border: 1px solid rgba(56, 189, 248, 0.45);
+        color: #38bdf8;
+        font-size: 0.65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        padding: 0.1rem 0.4rem;
+        border-radius: 3px;
+        line-height: 1;
+      }
+
+      .provider-chip mat-icon {
         font-size: 12px;
         width: 12px;
         height: 12px;

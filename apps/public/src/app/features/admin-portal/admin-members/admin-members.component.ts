@@ -2,7 +2,6 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
-import { RouterLink } from '@angular/router';
 import { AdminStoreService, AdminMember } from '../../../core/services/admin-store.service';
 import { FechaPipe } from '../../../shared/pipes/format.pipes';
 
@@ -11,7 +10,7 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
 @Component({
   selector: 'app-admin-members',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, FechaPipe, RouterLink],
+  imports: [CommonModule, FormsModule, MatIconModule, FechaPipe],
   template: `
     <div class="members-container">
       <div class="members-header">
@@ -19,7 +18,6 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
           <span class="section-kicker">NÓMINA GENERAL DEL CLUB</span>
           <div class="title-row">
             <h1 class="card-heading">Lista Completa de Socios</h1>
-            <a routerLink="/dashboard" class="btn-back-panel">Volver al Panel</a>
           </div>
           <p class="card-subheading">
             Padrón consolidado de socios emergentes, plenos, fundadores y prospectos de la lista de

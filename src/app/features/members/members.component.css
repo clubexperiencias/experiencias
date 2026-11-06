@@ -353,7 +353,7 @@
   font-weight: 700;
   letter-spacing: -0.015em;
   color: #ffffff;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
+  text-shadow: none;
 }
 
 .tier-card.featured-tier .tier-period {
@@ -361,7 +361,7 @@
   font-size: 0.76rem;
   color: rgba(255, 255, 255, 0.88);
   white-space: nowrap;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+  text-shadow: none;
 }
 
 .tier-card.featured-tier .tier-jump-card {

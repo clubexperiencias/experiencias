@@ -15,7 +15,20 @@
         <!-- ═══════════════ HERO CARD: CABECERA Y RESUMEN TÉCNICO ═══════════════ -->
         <div class="exp-detail-section-card hero-detail-card">
           <div class="card-inner-header">
-            <span class="section-kicker">{{ item.kicker || 'EXPEDICIÓN OFICIAL DEL CLUB' }}</span>
+            <div class="hero-kicker-row">
+              <span class="section-kicker">{{ item.kicker || 'EXPEDICIÓN OFICIAL DEL CLUB' }}</span>
+              @if (isClubExperience(item)) {
+                <span class="club-official-chip" title="Experiencia Oficial del Club de Experiencias">
+                  <mat-icon>verified</mat-icon>
+                  Club de Experiencias
+                </span>
+              } @else if (item.providerName) {
+                <span class="provider-chip" title="Prestador oficial de la experiencia">
+                  <mat-icon>badge</mat-icon>
+                  {{ item.providerName }}
+                </span>
+              }
+            </div>
             <h1 class="card-heading">{{ item.title }}</h1>
             @if (item.description || item.tagline) {
             <p class="card-subheading">
