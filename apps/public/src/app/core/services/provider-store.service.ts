@@ -885,6 +885,15 @@ export class ProviderStoreService {
     this.lastSessionRestoreTime = 0;
     this._currentProvider.set(null);
     this.saveSession(null);
+    this._experienceRequests.set(SEED_EXPERIENCE_REQUESTS);
+    try {
+      localStorage.removeItem(STORAGE_KEYS.experienceRequests);
+      localStorage.removeItem(STORAGE_KEYS.experiences);
+      localStorage.removeItem(STORAGE_KEYS.submissions);
+    } catch {
+      // ignore
+    }
+    this.expService.clearPrivilegedCache();
   }
 
   async updateProfile(
@@ -2426,12 +2435,22 @@ export class ProviderStoreService {
     let generatedSlug = baseSlug;
     let suffix = 2;
     const existingSlugs = new Set([
-      ...this.expService.experiences().map((e) => e.slug.toLowerCase()),
-      ...this._experiences().map((e) => e.slug.toLowerCase()),
+      ...this.expService
+        .experiences()
+        .filter((e) => e.id !== requestId)
+        .map((e) => e.slug.toLowerCase()),
+      ...this._experiences()
+        .filter((e) => e.id !== requestId)
+        .map((e) => e.slug.toLowerCase()),
     ]);
     const existingIds = new Set([
-      ...this.expService.experiences().map((e) => e.id.toLowerCase()),
-      ...this._experiences().map((e) => e.id.toLowerCase()),
+      ...this.expService
+        .experiences()
+        .filter((e) => e.id !== requestId)
+        .map((e) => e.id.toLowerCase()),
+      ...this._experiences()
+        .filter((e) => e.id !== requestId)
+        .map((e) => e.id.toLowerCase()),
     ]);
     while (
       existingSlugs.has(generatedSlug.toLowerCase()) ||
@@ -2449,71 +2468,81 @@ export class ProviderStoreService {
         ? confirmedDates
         : parseConfirmedProposalDates(req.dates);
 
-    // 1. Crear en el catálogo oficial de ExperienceService antes de reportar aprobación
-    const experienceForCatalog: Experience = {
-      id: finalId,
-      slug: generatedSlug,
-      title: req.title,
-      shortTitle: req.title.split('&')[0].trim(),
-      kicker: req.kicker || 'EXPERIENCIA',
-      tagline: req.subheading.length > 90 ? req.subheading.slice(0, 90) + '...' : req.subheading,
-      description: req.subheading,
-      region: req.region,
-      meetingPoint: req.meetingPoint,
-      meetingPointUrl: req.meetingPointUrl,
-      difficulty:
-        (req.difficulty.split('(')[0].trim() as
-          'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña') || 'Moderada',
-      durationDays: 1,
-      durationLabel: req.duration,
-      altitudeMeters: Number(req.altitude?.replace(/\D/g, '')) || 850,
-      bestSeason: req.season || 'Todo el año',
-      priceArs: req.priceArs,
-      priceUsd: req.priceUsd ?? 70,
-      promosAndPricing: req.promosAndPricing || undefined,
-      maxSpotsPerGroup: req.capacity,
-      dates: publishedDates,
-      status: 'publicada',
-      publicUrl: resolvedUrl,
-      detailRoute: `/experiencias/${generatedSlug}`,
-      coverImage: req.coverImage || '/assets/images/kayak-club-de-experiencias.jpg',
-      galleryImages:
-        req.albumPhotos && req.albumPhotos.length > 0
-          ? req.albumPhotos.map((p) => p.url)
-          : [req.coverImage || '/assets/images/kayak-club-de-experiencias.jpg'],
-      videoUrl: req.coverVideoUrl || '',
-      isExclusiveClub: true,
-      isLocked: false,
-      albumPhotos: req.albumPhotos && req.albumPhotos.length > 0 ? req.albumPhotos : [],
-      itinerary: req.itinerary,
-      highlights: [],
-      included: req.includedServices
-        ? req.includedServices
-            .split('\n')
-            .map((s) => s.trim())
-            .filter(Boolean)
-        : [],
-      notIncluded: req.participantRequirements
-        ? req.participantRequirements
-            .split('\n')
-            .map((s) => s.trim())
-            .filter(Boolean)
-        : [],
-      providerId: req.providerId,
-      providerEmail: normalizedEmail || undefined,
-      providerSlug: resolvedProviderSlug,
-      providerName: resolvedProviderName || undefined,
-      providerPhone: resolvedProviderPhone,
-      providerCbuAlias: req.providerCbuAlias || existingProvider?.cbuAlias,
-      providerCuitDni: req.providerCuitDni || existingProvider?.cuitDni,
-      providerBankName: req.providerBankName || existingProvider?.bankName,
-    };
+    // 1. Preservar o crear en el catálogo oficial de ExperienceService antes de reportar aprobación
+    const existingInService = this.expService.experiences().find((e) => e.id === requestId);
+    if (existingInService) {
+      await this.expService.updateExperience({
+        id: requestId,
+        status: 'publicada',
+        dates: publishedDates,
+        publicUrl: resolvedUrl,
+      });
+    } else {
+      const experienceForCatalog: Experience = {
+        id: finalId,
+        slug: generatedSlug,
+        title: req.title,
+        shortTitle: req.title.split('&')[0].trim(),
+        kicker: req.kicker || 'EXPERIENCIA',
+        tagline: req.subheading.length > 90 ? req.subheading.slice(0, 90) + '...' : req.subheading,
+        description: req.subheading,
+        region: req.region,
+        meetingPoint: req.meetingPoint,
+        meetingPointUrl: req.meetingPointUrl,
+        difficulty:
+          (req.difficulty.split('(')[0].trim() as
+            'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña') || 'Moderada',
+        durationDays: 1,
+        durationLabel: req.duration,
+        altitudeMeters: Number(req.altitude?.replace(/\D/g, '')) || 850,
+        bestSeason: req.season || 'Todo el año',
+        priceArs: req.priceArs,
+        priceUsd: req.priceUsd ?? 70,
+        promosAndPricing: req.promosAndPricing || undefined,
+        maxSpotsPerGroup: req.capacity,
+        dates: publishedDates,
+        status: 'publicada',
+        publicUrl: resolvedUrl,
+        detailRoute: `/experiencias/${generatedSlug}`,
+        coverImage: req.coverImage || '/assets/images/kayak-club-de-experiencias.jpg',
+        galleryImages:
+          req.albumPhotos && req.albumPhotos.length > 0
+            ? req.albumPhotos.map((p) => p.url)
+            : [req.coverImage || '/assets/images/kayak-club-de-experiencias.jpg'],
+        videoUrl: req.coverVideoUrl || '',
+        isExclusiveClub: true,
+        isLocked: false,
+        albumPhotos: req.albumPhotos && req.albumPhotos.length > 0 ? req.albumPhotos : [],
+        itinerary: req.itinerary,
+        highlights: [],
+        included: req.includedServices
+          ? req.includedServices
+              .split('\n')
+              .map((s) => s.trim())
+              .filter(Boolean)
+          : [],
+        notIncluded: req.participantRequirements
+          ? req.participantRequirements
+              .split('\n')
+              .map((s) => s.trim())
+              .filter(Boolean)
+          : [],
+        providerId: req.providerId,
+        providerEmail: normalizedEmail || undefined,
+        providerSlug: resolvedProviderSlug,
+        providerName: resolvedProviderName || undefined,
+        providerPhone: resolvedProviderPhone,
+        providerCbuAlias: req.providerCbuAlias || existingProvider?.cbuAlias,
+        providerCuitDni: req.providerCuitDni || existingProvider?.cuitDni,
+        providerBankName: req.providerBankName || existingProvider?.bankName,
+      };
 
-    try {
-      await this.expService.createExperience(experienceForCatalog);
-    } catch (err) {
-      console.error('[ProviderStore] Error creando experiencia en ExperienceService:', err);
-      throw err;
+      try {
+        await this.expService.createExperience(experienceForCatalog);
+      } catch (err) {
+        console.error('[ProviderStore] Error creando experiencia en ExperienceService:', err);
+        throw err;
+      }
     }
 
     this._experienceRequests.update((list) =>
@@ -2530,6 +2559,7 @@ export class ProviderStoreService {
         const { error } = await (this.supabase.from('experiencias') as any)
           .update({
             status: 'publicada',
+            dates: publishedDates,
             reviewed_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           })
@@ -2609,6 +2639,11 @@ export class ProviderStoreService {
       ),
     );
     this.saveRequests();
+
+    const inService = this.expService.experiences().find((e) => e.id === requestId);
+    if (inService) {
+      await this.expService.updateExperience({ id: requestId, status: 'rechazada' });
+    }
 
     if (isSupabaseConfigured()) {
       try {

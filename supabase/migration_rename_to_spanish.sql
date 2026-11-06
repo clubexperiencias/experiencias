@@ -61,20 +61,34 @@ ALTER TABLE public.administradores ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.historial_bancario ENABLE ROW LEVEL SECURITY;
 
 -- 6. Políticas de seguridad en administradores
+-- Función auxiliar para verificar administradores activos sin recursión RLS
+CREATE OR REPLACE FUNCTION public.is_active_admin()
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.administradores
+    WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+      AND active = true
+  );
+$$;
+
+GRANT EXECUTE ON FUNCTION public.is_active_admin() TO anon, authenticated;
+
 DROP POLICY IF EXISTS "Admins can view admins" ON public.administradores;
 DROP POLICY IF EXISTS "Admins can view admin_access" ON public.administradores;
 DROP POLICY IF EXISTS "Users can view own admin_access" ON public.administradores;
+DROP POLICY IF EXISTS "Users can view own administradores" ON public.administradores;
 CREATE POLICY "Users can view own administradores"
   ON public.administradores
   FOR SELECT
   TO authenticated
   USING (
     LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
-    OR EXISTS (
-      SELECT 1 FROM public.administradores
-      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
-        AND active = true
-    )
+    OR public.is_active_admin()
   );
 
 -- 7. Políticas de seguridad en prestadores
@@ -178,6 +192,156 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.check_provider_status(TEXT) TO anon, authenticated, service_role;
+
+-- 8.2 Actualizar record_waitlist_email según el esquema canónico (sin columnas obsoletas)
+CREATE OR REPLACE FUNCTION public.record_waitlist_email(
+  p_email TEXT,
+  p_google_linked BOOLEAN DEFAULT false
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_email TEXT := LOWER(TRIM(COALESCE(p_email, '')));
+  v_auth_uid UUID;
+BEGIN
+  IF v_email = '' OR position('@' IN v_email) = 0 THEN
+    RETURN jsonb_build_object('success', false, 'error', 'invalid_email');
+  END IF;
+
+  SELECT id INTO v_auth_uid FROM auth.users WHERE LOWER(email) = v_email LIMIT 1;
+
+  INSERT INTO public.socios (
+    email,
+    membership_tier,
+    auth_user_id,
+    full_name,
+    dni,
+    phone,
+    position
+  )
+  VALUES (
+    v_email,
+    'waitlist',
+    v_auth_uid,
+    '',
+    '',
+    '',
+    NULL
+  )
+  ON CONFLICT (email) DO UPDATE
+  SET auth_user_id = COALESCE(public.socios.auth_user_id, EXCLUDED.auth_user_id);
+
+  RETURN jsonb_build_object('success', true, 'email', v_email);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.record_waitlist_email TO anon, authenticated;
+
+-- 8.3 Actualizar get_admin_socios_roster según el esquema canónico (usando administradores y sin columnas eliminadas)
+CREATE OR REPLACE FUNCTION public.get_admin_socios_roster()
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_socios JSONB;
+  v_waitlist JSONB;
+BEGIN
+  -- Caller authorization: Solo administradores activos
+  IF NOT EXISTS (
+    SELECT 1 FROM public.administradores
+    WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+      AND active = true
+  ) THEN
+    RAISE EXCEPTION 'Acceso denegado: solo administradores activos pueden acceder a la nómina';
+  END IF;
+
+  -- Socios oficiales:
+  SELECT COALESCE(
+    jsonb_agg(
+      jsonb_build_object(
+        'id', s.id,
+        'type', 'socio',
+        'email', s.email,
+        'fullName', s.full_name,
+        'dni', s.dni,
+        'phone', s.phone,
+        'position', s.position,
+        'membershipTier', s.membership_tier,
+        'googleLinked', (s.auth_user_id IS NOT NULL),
+        'converted', (
+          (s.membership_tier <> 'waitlist') OR EXISTS (
+            SELECT 1 FROM public.pagos_transferencias p
+            WHERE LOWER(TRIM(p.email)) = LOWER(TRIM(s.email))
+          )
+        ),
+        'paymentsCount', (
+          SELECT COUNT(*)::INTEGER FROM public.pagos_transferencias p
+          WHERE LOWER(TRIM(p.email)) = LOWER(TRIM(s.email))
+        ),
+        'experiencesWishlist', COALESCE(s.experiences_wishlist, '[]'::jsonb),
+        'experiencesOther', s.experiences_other,
+        'createdAt', s.created_at
+      )
+      ORDER BY s.position ASC NULLS LAST, s.created_at DESC
+    ),
+    '[]'::jsonb
+  ) INTO v_socios
+  FROM public.socios s
+  WHERE s.membership_tier <> 'waitlist';
+
+  -- Prospectos de lista de espera (directamente desde socios):
+  SELECT COALESCE(
+    jsonb_agg(
+      jsonb_build_object(
+        'id', s.id,
+        'type', 'waitlist',
+        'email', s.email,
+        'fullName', COALESCE(
+          NULLIF(TRIM(s.full_name), ''),
+          NULLIF(TRIM(u.raw_user_meta_data ->> 'full_name'), ''),
+          NULLIF(TRIM(u.raw_user_meta_data ->> 'name'), ''),
+          NULL
+        ),
+        'dni', NULLIF(TRIM(s.dni), ''),
+        'phone', NULLIF(TRIM(s.phone), ''),
+        'position', NULL,
+        'membershipTier', 'waitlist',
+        'googleLinked', (u.id IS NOT NULL OR s.auth_user_id IS NOT NULL),
+        'converted', EXISTS (
+          SELECT 1 FROM public.pagos_transferencias p
+          WHERE LOWER(TRIM(p.email)) = LOWER(TRIM(s.email))
+        ),
+        'paymentsCount', (
+          SELECT COUNT(*)::INTEGER FROM public.pagos_transferencias p
+          WHERE LOWER(TRIM(p.email)) = LOWER(TRIM(s.email))
+        ),
+        'experiencesWishlist', COALESCE(s.experiences_wishlist, '[]'::jsonb),
+        'experiencesOther', s.experiences_other,
+        'createdAt', s.created_at
+      )
+      ORDER BY s.created_at DESC
+    ),
+    '[]'::jsonb
+  ) INTO v_waitlist
+  FROM public.socios s
+  LEFT JOIN auth.users u ON LOWER(TRIM(u.email)) = LOWER(TRIM(s.email))
+  WHERE s.membership_tier = 'waitlist';
+
+  RETURN jsonb_build_object(
+    'socios', v_socios,
+    'waitlist', v_waitlist,
+    'total_socios', jsonb_array_length(v_socios),
+    'total_waitlist', jsonb_array_length(v_waitlist)
+  );
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.get_admin_socios_roster TO authenticated;
 
 -- 9. Actualizar vistas canónicas en español
 -- 9.1 perfiles_publicos (Vista pública segura de prestadores aprobados)

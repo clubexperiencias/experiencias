@@ -8,6 +8,7 @@ import { filter } from 'rxjs';
 import { ExperienceService } from '../../../core/services/experience.service';
 import { StorageService } from '../../../core/services/storage.service';
 import { AdminStoreService } from '../../../core/services/admin-store.service';
+import { parseConfirmedProposalDates } from '../../../core/services/provider-store.service';
 import { Experience, ExperienceAlbumPhoto } from '../../../core/models/experience.model';
 import { isClubExperience } from '../../../core/models/club-profile.model';
 import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
@@ -644,7 +645,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                         <button
                           type="button"
                           class="btn-activate-exp"
-                          (click)="toggleStatus(exp, 'publicada')"
+                          (click)="approveProposal(exp)"
                           title="Aprobar y publicar experiencia en la web"
                         >
                           APROBAR
@@ -652,7 +653,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                         <button
                           type="button"
                           class="btn-pause-exp"
-                          (click)="toggleStatus(exp, 'rechazada')"
+                          (click)="rejectProposal(exp)"
                           title="Rechazar propuesta"
                         >
                           RECHAZAR
@@ -1253,7 +1254,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                 </div>
               </div>
 
-              <!-- SECCIÓN 7: Estado de Publicación (Sin borrador) -->
+              <!-- SECCIÓN 7: Estado de Publicación -->
               <div class="form-section-card">
                 <h4 class="form-section-title">7. Estado de Publicación</h4>
                 <div class="form-field">
@@ -1261,6 +1262,9 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                   <select class="form-select" [(ngModel)]="editStatus">
                     <option value="publicada">Publicada (Visible a todos los exploradores)</option>
                     <option value="oculta">Oculta / Pausada (Dada de baja temporalmente)</option>
+                    <option value="borrador">Borrador (En edición interna)</option>
+                    <option value="pendiente">Pendiente (Propuesta / Postulación a evaluar)</option>
+                    <option value="rechazada">Rechazada (No aprobada)</option>
                   </select>
                 </div>
               </div>
@@ -3993,6 +3997,8 @@ export class AdminExperiencesComponent implements OnInit {
   });
 
   async ngOnInit(): Promise<void> {
+    void this.adminStore.providerStore.loadProposalsFromSupabase();
+
     this.router.events
       .pipe(
         filter((event): event is NavigationEnd => event instanceof NavigationEnd),
@@ -4124,7 +4130,7 @@ export class AdminExperiencesComponent implements OnInit {
   readonly editDatesRaw = signal('');
   readonly editHighlightsRaw = signal('');
   readonly editIncludedRaw = signal('');
-  readonly editStatus = signal<'publicada' | 'oculta'>('publicada');
+  readonly editStatus = signal<'publicada' | 'oculta' | 'borrador' | 'pendiente' | 'rechazada'>('publicada');
   readonly editProviderName = signal('');
   readonly editProviderPhone = signal('');
   readonly editProviderCbuAlias = signal('');
@@ -4156,7 +4162,7 @@ export class AdminExperiencesComponent implements OnInit {
     this.editHighlightsRaw.set((exp.highlights || []).join('\n'));
     this.editIncludedRaw.set((exp.included || []).join('\n'));
     this.editAlbumPhotos.set([...(exp.albumPhotos || [])]);
-    this.editStatus.set(exp.status === 'oculta' ? 'oculta' : 'publicada');
+    this.editStatus.set(exp.status || 'publicada');
 
     if (this.isClub(exp)) {
       const club = this.adminStore.clubProfile();
@@ -4538,10 +4544,111 @@ export class AdminExperiencesComponent implements OnInit {
     }
   }
 
+  async approveProposal(exp: Experience): Promise<void> {
+    try {
+      let req = this.adminStore.providerStore
+        .experienceRequests()
+        .find((r) => r.id === exp.id || r.title.toLowerCase() === exp.title.toLowerCase());
+
+      if (!req) {
+        await this.adminStore.providerStore.loadProposalsFromSupabase();
+        req = this.adminStore.providerStore
+          .experienceRequests()
+          .find((r) => r.id === exp.id || r.title.toLowerCase() === exp.title.toLowerCase());
+      }
+
+      const datesRaw = Array.isArray(exp.dates)
+        ? exp.dates.join(', ')
+        : typeof exp.dates === 'string'
+          ? exp.dates
+          : req?.dates || '';
+      const confirmedDates = parseConfirmedProposalDates(datesRaw);
+
+      let ok = false;
+      if (req) {
+        ok = await this.adminStore.approveExperienceRequest(
+          req.id,
+          exp.publicUrl,
+          confirmedDates.length > 0 ? confirmedDates : undefined,
+        );
+      }
+
+      if (!ok) {
+        await this.experienceService.updateExperience({
+          id: exp.id,
+          status: 'publicada',
+          dates: confirmedDates.length > 0 ? confirmedDates : (Array.isArray(exp.dates) ? exp.dates : []),
+        });
+        ok = true;
+      }
+
+      this.adminStore.providerStore.reloadFromStorage();
+      await this.adminStore.providerStore.loadProposalsFromSupabase();
+      await this.experienceService.reloadFromSupabase();
+
+      const updated = this.experienceService.getExperienceById(exp.id);
+      if (updated && this.editingExperience()?.id === exp.id) {
+        this.editingExperience.set(updated);
+      }
+
+      this.showToast(`🟢 La propuesta "${exp.title}" fue aprobada y publicada.`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error al aprobar propuesta';
+      this.showToast(`⚠️ ${msg}`);
+    }
+  }
+
+  async rejectProposal(exp: Experience): Promise<void> {
+    try {
+      let req = this.adminStore.providerStore
+        .experienceRequests()
+        .find((r) => r.id === exp.id || r.title.toLowerCase() === exp.title.toLowerCase());
+
+      if (!req) {
+        await this.adminStore.providerStore.loadProposalsFromSupabase();
+        req = this.adminStore.providerStore
+          .experienceRequests()
+          .find((r) => r.id === exp.id || r.title.toLowerCase() === exp.title.toLowerCase());
+      }
+
+      let ok = false;
+      if (req) {
+        ok = await this.adminStore.rejectExperienceRequest(req.id);
+      }
+
+      if (!ok) {
+        await this.experienceService.toggleExperienceStatus(exp.id, 'rechazada');
+        ok = true;
+      }
+
+      this.adminStore.providerStore.reloadFromStorage();
+      await this.adminStore.providerStore.loadProposalsFromSupabase();
+      await this.experienceService.reloadFromSupabase();
+
+      const updated = this.experienceService.getExperienceById(exp.id);
+      if (updated && this.editingExperience()?.id === exp.id) {
+        this.editingExperience.set(updated);
+      }
+
+      this.showToast(`⚠️ La propuesta "${exp.title}" fue rechazada.`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error al rechazar propuesta';
+      this.showToast(`⚠️ ${msg}`);
+    }
+  }
+
   async toggleStatus(
     exp: Experience,
     newStatus: 'publicada' | 'oculta' | 'rechazada' | 'borrador' | 'pendiente',
   ): Promise<void> {
+    if (exp.status === 'pendiente' && newStatus === 'publicada') {
+      await this.approveProposal(exp);
+      return;
+    }
+    if (exp.status === 'pendiente' && newStatus === 'rechazada') {
+      await this.rejectProposal(exp);
+      return;
+    }
     try {
       await this.experienceService.toggleExperienceStatus(exp.id, newStatus);
       const updated = this.experienceService.getExperienceById(exp.id);

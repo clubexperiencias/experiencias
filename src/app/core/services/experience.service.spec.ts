@@ -1,5 +1,10 @@
 import { TestBed } from '@angular/core/testing';
-import { ExperienceService, RESERVED_EXPERIENCE_SLUGS } from './experience.service';
+import {
+  ExperienceService,
+  RESERVED_EXPERIENCE_SLUGS,
+  STORAGE_KEY,
+  PRIVILEGED_STORAGE_KEY,
+} from './experience.service';
 import { SUPABASE_CLIENT } from '../supabase/supabase.client';
 import { Experience } from '../models/experience.model';
 
@@ -76,19 +81,19 @@ describe('ExperienceService', () => {
       ).rejects.toThrow('El slug de la experiencia no puede estar vacío.');
     });
 
-    it('should reject reserved slugs', async () => {
+    it('should sanitize reserved slugs with -exp suffix', async () => {
       for (const reserved of Array.from(RESERVED_EXPERIENCE_SLUGS)) {
-        await expect(
-          service.createExperience({ ...baseExp, slug: reserved }),
-        ).rejects.toThrow(`El slug "${reserved}" está reservado por el sistema y no puede ser utilizado.`);
+        await service.createExperience({ ...baseExp, id: `test-${reserved}`, slug: reserved });
+        const created = service.experiences().find((e) => e.id === `test-${reserved}`);
+        expect(created?.slug).toBe(`${reserved}-exp`);
       }
     });
 
-    it('should reject slugs already in use', async () => {
+    it('should auto-deduplicate slugs already in use with suffix', async () => {
       const existingSlug = service.experiences()[0].slug;
-      await expect(
-        service.createExperience({ ...baseExp, slug: existingSlug }),
-      ).rejects.toThrow(`Ya existe una experiencia con el slug "${existingSlug}".`);
+      await service.createExperience({ ...baseExp, id: 'test-dup-1', slug: existingSlug });
+      const created = service.experiences().find((e) => e.id === 'test-dup-1');
+      expect(created?.slug).toBe(`${existingSlug}-2`);
     });
 
     it('should successfully create experience with a valid slug', async () => {
@@ -144,6 +149,105 @@ describe('ExperienceService', () => {
 
       // Verify rollback
       expect(service.experiences().some((e) => e.id === targetExp.id)).toBe(true);
+    });
+  });
+
+  describe('public catalog cache and privileged proposal separation', () => {
+    it('should never persist pending/rejected proposals, notes, or banking details to shared catalog cache', () => {
+      // simulate privileged session
+      localStorage.setItem('catamarca_admin_session_v1', JSON.stringify({ email: 'admin@experiencias.club' }));
+
+      const mixed: Experience[] = [
+        {
+          id: 'exp-pub',
+          slug: 'exp-publicada',
+          title: 'Exp Publicada',
+          tagline: 'Tagline',
+          description: 'Desc',
+          region: 'Valle Central',
+          difficulty: 'Baja',
+          durationDays: 1,
+          durationLabel: '2 Horas',
+          altitudeMeters: 500,
+          priceArs: 1000,
+          priceUsd: 10,
+          maxSpotsPerGroup: 10,
+          coverImage: '/img.jpg',
+          galleryImages: [],
+          highlights: [],
+          included: [],
+          status: 'publicada',
+          isExclusiveClub: false,
+          isLocked: false,
+          notes: 'Nota secreta interna',
+          providerCbuAlias: 'PROVIDER.ALIAS.MP',
+          providerCuitDni: '20-12345678-9',
+          providerBankName: 'Banco Privado',
+          detailRoute: '/experiencias/exp-publicada',
+          publicUrl: 'https://experiencias.club/experiencias/exp-publicada',
+        },
+        {
+          id: 'exp-pend',
+          slug: 'exp-pendiente',
+          title: 'Exp Pendiente',
+          tagline: 'Tagline',
+          description: 'Desc',
+          region: 'Puna',
+          difficulty: 'Exigente',
+          durationDays: 1,
+          durationLabel: '5 Horas',
+          altitudeMeters: 3000,
+          priceArs: 2000,
+          priceUsd: 20,
+          maxSpotsPerGroup: 5,
+          coverImage: '/img.jpg',
+          galleryImages: [],
+          highlights: [],
+          included: [],
+          status: 'pendiente',
+          isExclusiveClub: false,
+          isLocked: false,
+          notes: 'Revisión pendiente por admin',
+          detailRoute: '/experiencias/exp-pendiente',
+          publicUrl: 'https://experiencias.club/experiencias/exp-pendiente',
+        },
+      ];
+
+      (service as any).persistToLocalStorage(mixed);
+
+      const catalogRaw = localStorage.getItem(STORAGE_KEY);
+      expect(catalogRaw).toBeTruthy();
+      const catalogParsed: Experience[] = JSON.parse(catalogRaw!);
+
+      // Only published experiences
+      expect(catalogParsed.some((e) => e.status === 'pendiente')).toBe(false);
+      expect(catalogParsed.some((e) => e.id === 'exp-pend')).toBe(false);
+      const pubSaved = catalogParsed.find((e) => e.id === 'exp-pub');
+      expect(pubSaved).toBeDefined();
+      expect(pubSaved?.notes).toBeUndefined();
+      expect(pubSaved?.providerCbuAlias).toBeUndefined();
+      expect(pubSaved?.providerCuitDni).toBeUndefined();
+      expect(pubSaved?.providerBankName).toBeUndefined();
+
+      // Privileged items are in PRIVILEGED_STORAGE_KEY
+      const privRaw = localStorage.getItem(PRIVILEGED_STORAGE_KEY);
+      expect(privRaw).toBeTruthy();
+      const privParsed: Experience[] = JSON.parse(privRaw!);
+      expect(privParsed.some((e) => e.id === 'exp-pend')).toBe(true);
+    });
+
+    it('should clear privileged proposal copies and reset state on clearPrivilegedCache', () => {
+      localStorage.setItem('catamarca_admin_session_v1', JSON.stringify({ email: 'admin@experiencias.club' }));
+      localStorage.setItem('catamarca_experience_requests_v1', JSON.stringify([{ id: 'req-1', status: 'pendiente' }]));
+      localStorage.setItem('catamarca_provider_experiences_v5', JSON.stringify([{ id: 'prov-1', status: 'borrador' }]));
+      localStorage.setItem(PRIVILEGED_STORAGE_KEY, JSON.stringify([{ id: 'exp-pend', status: 'pendiente' }]));
+
+      service.clearPrivilegedCache();
+
+      expect(localStorage.getItem(PRIVILEGED_STORAGE_KEY)).toBeNull();
+      expect(localStorage.getItem('catamarca_experience_requests_v1')).toBeNull();
+      expect(localStorage.getItem('catamarca_provider_experiences_v5')).toBeNull();
+      expect(service.experiences().some((e) => e.status === 'pendiente')).toBe(false);
     });
   });
 });

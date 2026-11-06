@@ -671,6 +671,16 @@ export interface Database {
         };
         Returns: Json;
       };
+      get_admin_socios_roster: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
+      is_active_admin: {
+        Args: {
+          p_email?: string;
+        };
+        Returns: boolean;
+      };
     };
     Enums: {
       membership_tier: MembershipTier;

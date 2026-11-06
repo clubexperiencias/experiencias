@@ -143,7 +143,8 @@ export class ProvidersComponent {
       this.providerSuccess.set(true);
     } else {
       this.submitError.set(
-        'No se pudo registrar la postulación. Por favor verificá tu conexión e intentalo nuevamente.',
+        result.message ||
+          'No se pudo registrar la postulación. Por favor verificá tu conexión e intentalo nuevamente.',
       );
     }
   }

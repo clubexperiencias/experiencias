@@ -620,6 +620,7 @@ export class AdminStoreService {
     } catch {
       // ignore
     }
+    this.experienceService.clearPrivilegedCache();
     if (isSupabaseConfigured()) {
       void this.supabase.auth.signOut();
     }

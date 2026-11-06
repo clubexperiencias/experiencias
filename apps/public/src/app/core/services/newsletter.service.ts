@@ -339,9 +339,6 @@ export class NewsletterService {
       return { success: false, email: cleanEmail, message: msg };
     }
 
-    this.lastProspectEmail.set(cleanEmail);
-    this.persistProspectEmail(cleanEmail);
-
     if (this.isSupabaseConnected()) {
       try {
         const { error: rpcErr } = await this.supabase.rpc('record_waitlist_email', {
@@ -358,12 +355,31 @@ export class NewsletterService {
 
           if (socioErr) {
             console.warn('[Supabase] Advertencia guardando en socios (waitlist):', socioErr.message);
+            this._isLoading.set(false);
+            const msg = this.translateSupabaseError(socioErr.message);
+            this._errorMessage.set(msg);
+            return {
+              success: false,
+              email: cleanEmail,
+              message: msg,
+            };
           }
         }
-      } catch (err) {
+      } catch (err: any) {
         console.warn('[Supabase] Error registrando prospecto en waitlist:', err);
+        this._isLoading.set(false);
+        const msg = this.translateSupabaseError(err?.message);
+        this._errorMessage.set(msg);
+        return {
+          success: false,
+          email: cleanEmail,
+          message: msg,
+        };
       }
     }
+
+    this.lastProspectEmail.set(cleanEmail);
+    this.persistProspectEmail(cleanEmail);
 
     this._isLoading.set(false);
     return {
@@ -520,16 +536,23 @@ export class NewsletterService {
             };
           }
 
+          const isWaitlist = existing.membership_tier === 'waitlist';
+          const updatePayload: Record<string, any> = {
+            full_name: cleanName || existing.full_name,
+            dni: cleanDni || existing.dni,
+            phone: cleanPhone || existing.phone,
+            experiences_wishlist: dto.experiencesWishlist || existing.experiences_wishlist,
+            experiences_other: dto.experiencesOther || existing.experiences_other,
+            updated_at: new Date().toISOString(),
+          };
+
+          if (isWaitlist) {
+            updatePayload['membership_tier'] = 'emergente';
+          }
+
           const { data: updatedSocio } = await this.supabase
             .from('socios')
-            .update({
-              full_name: cleanName || existing.full_name,
-              dni: cleanDni || existing.dni,
-              phone: cleanPhone || existing.phone,
-              experiences_wishlist: dto.experiencesWishlist || existing.experiences_wishlist,
-              experiences_other: dto.experiencesOther || existing.experiences_other,
-              updated_at: new Date().toISOString(),
-            })
+            .update(updatePayload as any)
             .eq('id', existing.id)
             .select('*')
             .maybeSingle();
@@ -1360,12 +1383,52 @@ export class NewsletterService {
     phone: string;
     website: string;
     description: string;
-  }): Promise<{ success: boolean }> {
+  }): Promise<{ success: boolean; alreadyRegistered?: boolean; message?: string }> {
+    const cleanEmail = data.email.trim().toLowerCase();
+
     if (this.isSupabaseConnected()) {
       try {
-        // Enfoque unificado: guardar directamente en prestadores con status 'pendiente'
+        // 1. Manejo seguro de correos existentes vía RPC (Security Definer), sin depender de SELECT anónimo
+        try {
+          const { data: statusRes, error: rpcErr } = await (this.supabase as any).rpc(
+            'check_provider_status',
+            { p_email: cleanEmail },
+          );
+
+          if (!rpcErr && statusRes && typeof (statusRes as any).status === 'string') {
+            const st = (statusRes as any).status;
+            if (st === 'pending') {
+              return {
+                success: false,
+                alreadyRegistered: true,
+                message:
+                  'Ya recibimos una postulación con este correo electrónico y se encuentra en revisión.',
+              };
+            }
+            if (st === 'approved') {
+              return {
+                success: false,
+                alreadyRegistered: true,
+                message:
+                  'Este correo electrónico ya pertenece a un prestador registrado en la plataforma.',
+              };
+            }
+            if (st === 'inactive') {
+              return {
+                success: false,
+                alreadyRegistered: true,
+                message:
+                  'La cuenta asociada a este correo electrónico se encuentra inactiva.',
+              };
+            }
+          }
+        } catch (rpcEx) {
+          console.warn('[NewsletterService] Fallback verificación de estado de prestador:', rpcEx);
+        }
+
+        // 2. Ruta insert-only para nuevas postulaciones (evita upsert que requiere SELECT/UPDATE)
         const accessPayload = {
-          email: data.email.trim().toLowerCase(),
+          email: cleanEmail,
           name: data.fullName.trim(),
           phone: data.phone.trim(),
           category: data.category.trim() || 'guia_montaña',
@@ -1376,18 +1439,33 @@ export class NewsletterService {
           active: false,
         };
 
-        const { error: paError } = await (this.supabase.from('prestadores') as any).upsert(
+        const { error: paError } = await (this.supabase.from('prestadores') as any).insert(
           accessPayload,
-          { onConflict: 'email' },
         );
 
         if (paError) {
+          const isDuplicate =
+            paError.code === '23505' ||
+            /duplicate|unique|already exists|prestadores_email_key/i.test(paError.message || '');
+          if (isDuplicate) {
+            return {
+              success: false,
+              alreadyRegistered: true,
+              message: 'Ya existe una postulación o registro con este correo electrónico.',
+            };
+          }
           console.warn('[Supabase] Error guardando postulación de prestador en prestadores:', paError);
-          return { success: false };
+          return {
+            success: false,
+            message: 'No se pudo guardar la postulación. Por favor, intentá nuevamente.',
+          };
         }
       } catch (err) {
         console.warn('[Supabase] Error guardando postulación de prestador:', err);
-        return { success: false };
+        return {
+          success: false,
+          message: 'Error al registrar la postulación. Por favor, intentá nuevamente.',
+        };
       }
     }
 
@@ -1396,7 +1474,7 @@ export class NewsletterService {
         fullName: data.fullName.trim(),
         category: data.category.trim(),
         region: data.region.trim(),
-        email: data.email.trim().toLowerCase(),
+        email: cleanEmail,
         phone: data.phone.trim(),
         website: data.website.trim(),
         description: data.description.trim(),

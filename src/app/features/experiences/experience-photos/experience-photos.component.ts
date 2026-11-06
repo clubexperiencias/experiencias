@@ -46,6 +46,30 @@ export class ExperiencePhotosComponent {
     return /^https?:\/\//i.test(value.trim());
   }
 
+  isValidGoogleMapsUrl(value?: string): boolean {
+    if (!value) return false;
+    const trimmed = value.trim();
+    if (!/^https?:\/\//i.test(trimmed)) return false;
+    try {
+      const parsed = new URL(trimmed);
+      const host = parsed.hostname.toLowerCase();
+      const pathname = parsed.pathname.toLowerCase();
+      if (host === 'maps.app.goo.gl') return true;
+      if (host === 'goo.gl' && pathname.startsWith('/maps')) return true;
+      const isGoogleDomain = /(^|\.)google\.(com|com\.[a-z]{2}|[a-z]{2})$/i.test(host);
+      if (isGoogleDomain && (pathname.startsWith('/maps') || /(^|\.)maps\.google\./i.test(host))) {
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
+  getTrimmedUrl(value?: string): string {
+    return value ? value.trim() : '';
+  }
+
   getProviderSlug(item?: any): string | null {
     if (!item) return null;
     if (item.providerSlug) {

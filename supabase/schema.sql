@@ -21,16 +21,445 @@ CREATE SEQUENCE IF NOT EXISTS public.socios_position_seq START WITH 100;
 -- 2. TABLAS E ÍNDICES (ESQUEMA CANÓNICO UNIFICADO)
 -- ==============================================================================
 
--- Limpieza de tablas y vistas obsoletas consolidadas
+-- Limpieza de vistas obsoletas de compatibilidad
 DROP VIEW IF EXISTS public.provider_access CASCADE;
 DROP VIEW IF EXISTS public.admin_access CASCADE;
 DROP VIEW IF EXISTS public.provider_banking_history CASCADE;
 DROP VIEW IF EXISTS public.historia_bancaria CASCADE;
 DROP VIEW IF EXISTS public.public_provider_profiles CASCADE;
 DROP VIEW IF EXISTS public.waitlist_stats CASCADE;
-DROP TABLE IF EXISTS public.waitlist CASCADE;
-DROP TABLE IF EXISTS public.postulaciones_prestadores CASCADE;
-DROP TABLE IF EXISTS public.propuestas_experiencias CASCADE;
+
+-- Migración segura y consolidación de tablas heredadas hacia el esquema canónico
+-- La migración valida las filas copiadas y solo permite eliminar las tablas heredadas si la migración tiene éxito
+DO $$
+DECLARE
+  v_missing_waitlist INTEGER := 0;
+  v_missing_postulaciones INTEGER := 0;
+  v_missing_propuestas INTEGER := 0;
+BEGIN
+  -- 1. Migración y validación de public.waitlist -> public.socios
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'waitlist'
+  ) THEN
+    -- Asegurar que public.socios exista en el esquema actual y admita prospectos de waitlist
+    CREATE TABLE IF NOT EXISTS public.socios (
+      id                          UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+      email                       TEXT NOT NULL UNIQUE,
+      full_name                   TEXT DEFAULT '',
+      dni                         TEXT DEFAULT '',
+      phone                       TEXT DEFAULT '',
+      experiences_wishlist        JSONB DEFAULT '[]'::jsonb,
+      experiences_other           TEXT,
+      position                    INTEGER UNIQUE,
+      membership_tier             TEXT NOT NULL DEFAULT 'emergente'
+                                  CHECK (membership_tier IN ('waitlist', 'emergente', 'activo', 'fundador')),
+      auth_user_id                UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+      registration_token          UUID NOT NULL DEFAULT gen_random_uuid(),
+      created_at                  TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at                  TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    ALTER TABLE public.socios ALTER COLUMN full_name DROP NOT NULL;
+    ALTER TABLE public.socios ALTER COLUMN full_name SET DEFAULT '';
+    ALTER TABLE public.socios ALTER COLUMN dni DROP NOT NULL;
+    ALTER TABLE public.socios ALTER COLUMN dni SET DEFAULT '';
+    ALTER TABLE public.socios ALTER COLUMN phone DROP NOT NULL;
+    ALTER TABLE public.socios ALTER COLUMN phone SET DEFAULT '';
+    ALTER TABLE public.socios ALTER COLUMN position DROP NOT NULL;
+    ALTER TABLE public.socios DROP CONSTRAINT IF EXISTS socios_membership_tier_check;
+    ALTER TABLE public.socios ADD CONSTRAINT socios_membership_tier_check
+      CHECK (membership_tier IN ('waitlist', 'emergente', 'activo', 'fundador'));
+
+    -- Migrar prospectos de waitlist a socios
+    INSERT INTO public.socios (
+      email,
+      membership_tier,
+      full_name,
+      dni,
+      phone,
+      position,
+      created_at,
+      updated_at
+    )
+    SELECT
+      LOWER(TRIM(w.email)),
+      'waitlist',
+      '',
+      '',
+      '',
+      NULL,
+      w.created_at,
+      w.created_at
+    FROM public.waitlist w
+    ON CONFLICT (email) DO NOTHING;
+
+    -- Validar que todos los registros de waitlist existan en socios
+    SELECT COUNT(*) INTO v_missing_waitlist
+    FROM public.waitlist w
+    WHERE NOT EXISTS (
+      SELECT 1 FROM public.socios s
+      WHERE LOWER(TRIM(s.email)) = LOWER(TRIM(w.email))
+    );
+
+    IF v_missing_waitlist > 0 THEN
+      RAISE EXCEPTION 'Fallo de validación en migración: % registros de public.waitlist no fueron transferidos a public.socios', v_missing_waitlist;
+    END IF;
+
+    -- Solo permitir eliminar la tabla una vez validada exitosamente la migración
+    DROP TABLE public.waitlist CASCADE;
+  END IF;
+
+  -- 2. Migración y validación de public.postulaciones_prestadores -> public.prestadores
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'postulaciones_prestadores'
+  ) THEN
+    -- Si existe provider_access como tabla base y no prestadores, renombrarla primero
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.tables
+      WHERE table_schema = 'public' AND table_name = 'prestadores' AND table_type = 'BASE TABLE'
+    ) AND EXISTS (
+      SELECT 1 FROM information_schema.tables
+      WHERE table_schema = 'public' AND table_name = 'provider_access' AND table_type = 'BASE TABLE'
+    ) THEN
+      ALTER TABLE public.provider_access RENAME TO prestadores;
+    END IF;
+
+    -- Asegurar tabla canónica prestadores
+    CREATE TABLE IF NOT EXISTS public.prestadores (
+      id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      email          TEXT NOT NULL UNIQUE,
+      name           TEXT NOT NULL DEFAULT '',
+      agency         TEXT NOT NULL DEFAULT '',
+      active         BOOLEAN NOT NULL DEFAULT true,
+      status         TEXT NOT NULL DEFAULT 'aprobado' CHECK (status IN ('aprobado', 'pendiente', 'rechazado', 'dado_de_baja')),
+      cbu_alias      TEXT NOT NULL DEFAULT '',
+      cuit_dni       TEXT NOT NULL DEFAULT '',
+      bank_name      TEXT NOT NULL DEFAULT '',
+      account_holder TEXT NOT NULL DEFAULT '',
+      phone          TEXT NOT NULL DEFAULT '',
+      website        TEXT NOT NULL DEFAULT '',
+      social_media   TEXT NOT NULL DEFAULT '',
+      social_media_secondary TEXT NOT NULL DEFAULT '',
+      slug           TEXT NOT NULL DEFAULT '',
+      bio            TEXT NOT NULL DEFAULT '',
+      avatar_url     TEXT NOT NULL DEFAULT '',
+      cover_url      TEXT NOT NULL DEFAULT '',
+      category       TEXT NOT NULL DEFAULT '',
+      region         TEXT NOT NULL DEFAULT 'Catamarca',
+      description    TEXT NOT NULL DEFAULT '',
+      notes          TEXT,
+      created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT '';
+    ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS region TEXT NOT NULL DEFAULT 'Catamarca';
+    ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT '';
+    ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS notes TEXT;
+
+    -- Migrar postulaciones_prestadores hacia el esquema canónico de prestadores
+    INSERT INTO public.prestadores (
+      email,
+      name,
+      phone,
+      category,
+      region,
+      website,
+      description,
+      notes,
+      status,
+      active,
+      created_at,
+      updated_at
+    )
+    SELECT
+      LOWER(TRIM(p.email)),
+      COALESCE(p.full_name, ''),
+      COALESCE(p.phone, ''),
+      COALESCE(p.category, ''),
+      COALESCE(p.region, 'Catamarca'),
+      COALESCE(p.website, ''),
+      COALESCE(p.description, ''),
+      p.notes,
+      COALESCE(p.status, 'pendiente'),
+      (COALESCE(p.status, 'pendiente') = 'aprobado'),
+      p.created_at,
+      COALESCE(p.updated_at, p.created_at)
+    FROM public.postulaciones_prestadores p
+    ON CONFLICT (email) DO UPDATE
+    SET
+      category = COALESCE(NULLIF(public.prestadores.category, ''), EXCLUDED.category),
+      region = COALESCE(NULLIF(public.prestadores.region, ''), EXCLUDED.region),
+      description = COALESCE(NULLIF(public.prestadores.description, ''), EXCLUDED.description),
+      notes = COALESCE(public.prestadores.notes, EXCLUDED.notes);
+
+    -- Validar que todas las postulaciones se encuentren registradas en prestadores
+    SELECT COUNT(*) INTO v_missing_postulaciones
+    FROM public.postulaciones_prestadores p
+    WHERE NOT EXISTS (
+      SELECT 1 FROM public.prestadores pr
+      WHERE LOWER(TRIM(pr.email)) = LOWER(TRIM(p.email))
+    );
+
+    IF v_missing_postulaciones > 0 THEN
+      RAISE EXCEPTION 'Fallo de validación en migración: % registros de public.postulaciones_prestadores no se encuentran en public.prestadores', v_missing_postulaciones;
+    END IF;
+
+    -- Solo permitir eliminar la tabla una vez validada exitosamente la migración
+    DROP TABLE public.postulaciones_prestadores CASCADE;
+  END IF;
+
+  -- 3. Migración y validación de public.propuestas_experiencias -> public.experiencias
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'propuestas_experiencias'
+  ) THEN
+    -- Asegurar tabla canónica experiencias
+    CREATE TABLE IF NOT EXISTS public.experiencias (
+      id                   TEXT PRIMARY KEY,
+      slug                 TEXT NOT NULL UNIQUE,
+      title                TEXT NOT NULL,
+      tagline              TEXT NOT NULL DEFAULT '',
+      description          TEXT NOT NULL DEFAULT '',
+      region               TEXT NOT NULL DEFAULT 'Valle Central y Ambato',
+      meeting_point        TEXT NOT NULL DEFAULT '',
+      meeting_point_url    TEXT NOT NULL DEFAULT '',
+      difficulty           TEXT NOT NULL DEFAULT 'Baja',
+      duration_label       TEXT NOT NULL DEFAULT '4 horas',
+      price_ars            INTEGER NOT NULL DEFAULT 65000 CHECK (price_ars >= 0),
+      price_usd            INTEGER DEFAULT 70,
+      capacity_per_date    INTEGER NOT NULL DEFAULT 12 CHECK (capacity_per_date >= 1),
+      dates                JSONB NOT NULL DEFAULT '[]'::jsonb,
+      date_slots           JSONB NOT NULL DEFAULT '[]'::jsonb,
+      status               TEXT NOT NULL DEFAULT 'publicada'
+                           CHECK (status IN ('borrador', 'pendiente', 'publicada', 'oculta', 'rechazada')),
+      public_url           TEXT DEFAULT '',
+      cover_image          TEXT DEFAULT '/assets/images/kayak-club-de-experiencias.jpg',
+      cover_image_name     TEXT,
+      cover_video_name     TEXT,
+      album_photos         JSONB DEFAULT '[]'::jsonb,
+      video_url            TEXT DEFAULT '/assets/videos/kayak.mp4',
+      video_poster         TEXT DEFAULT '/assets/images/kayak-video.png',
+      altitude_meters      INTEGER DEFAULT 850,
+      highlights           JSONB DEFAULT '[]'::jsonb,
+      included             JSONB DEFAULT '[]'::jsonb,
+      not_included         JSONB DEFAULT '[]'::jsonb,
+      participant_requirements TEXT NOT NULL DEFAULT '',
+      notes                TEXT,
+      reviewed_at          TIMESTAMPTZ,
+      provider_agency      TEXT NOT NULL DEFAULT '',
+      provider_email       TEXT DEFAULT 'patriciofacundodiaztillar@gmail.com',
+      provider_name        TEXT,
+      provider_phone       TEXT,
+      provider_cbu_alias   TEXT,
+      provider_cuit_dni    TEXT,
+      provider_bank_name   TEXT,
+      created_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at           TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS notes TEXT;
+    ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
+    ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS provider_agency TEXT NOT NULL DEFAULT '';
+    ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS participant_requirements TEXT NOT NULL DEFAULT '';
+
+    -- Asegurar que provider_email exista en prestadores para mantener integridad referencial
+    IF EXISTS (
+      SELECT 1 FROM information_schema.tables
+      WHERE table_schema = 'public' AND table_name = 'prestadores'
+    ) THEN
+      INSERT INTO public.prestadores (
+        email,
+        name,
+        agency,
+        phone,
+        cbu_alias,
+        cuit_dni,
+        bank_name,
+        active,
+        status
+      )
+      SELECT DISTINCT ON (LOWER(TRIM(p.provider_email)))
+        LOWER(TRIM(p.provider_email)),
+        COALESCE(NULLIF(TRIM(p.provider_name), ''), 'Prestador'),
+        COALESCE(TRIM(p.provider_agency), ''),
+        COALESCE(TRIM(p.provider_phone), ''),
+        COALESCE(TRIM(p.provider_cbu_alias), ''),
+        COALESCE(TRIM(p.provider_cuit_dni), ''),
+        COALESCE(TRIM(p.provider_bank_name), ''),
+        false,
+        'pendiente'
+      FROM public.propuestas_experiencias p
+      WHERE p.provider_email IS NOT NULL AND TRIM(p.provider_email) <> ''
+      ON CONFLICT (email) DO UPDATE
+      SET
+        name = CASE WHEN public.prestadores.name = '' OR public.prestadores.name = 'Prestador' THEN EXCLUDED.name ELSE public.prestadores.name END,
+        agency = CASE WHEN public.prestadores.agency = '' THEN EXCLUDED.agency ELSE public.prestadores.agency END,
+        phone = CASE WHEN public.prestadores.phone = '' THEN EXCLUDED.phone ELSE public.prestadores.phone END;
+    END IF;
+
+    -- Reconciliar propuestas aprobadas con experiencias existentes en el catálogo
+    UPDATE public.experiencias e
+    SET
+      provider_agency = COALESCE(NULLIF(e.provider_agency, ''), p.provider_agency, ''),
+      participant_requirements = COALESCE(NULLIF(e.participant_requirements, ''), p.participant_requirements, ''),
+      notes = COALESCE(e.notes, p.notes),
+      reviewed_at = COALESCE(e.reviewed_at, p.reviewed_at, now()),
+      cover_image_name = COALESCE(e.cover_image_name, p.cover_image_name),
+      cover_video_name = COALESCE(e.cover_video_name, p.cover_video_url),
+      status = 'publicada',
+      updated_at = GREATEST(e.updated_at, COALESCE(p.updated_at, p.created_at, e.updated_at))
+    FROM public.propuestas_experiencias p
+    WHERE p.status = 'aprobada'
+      AND (
+        e.id = p.id::TEXT
+        OR e.id = 'exp-' || LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(p.title, '[^a-zA-Z0-9]+', '-', 'g')))
+        OR e.slug = LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(p.title, '[^a-zA-Z0-9]+', '-', 'g')))
+      );
+
+    -- Migrar propuestas restantes generando slugs únicos y normalizando defaults
+    WITH proposals_to_insert AS (
+      SELECT
+        p.*,
+        COALESCE(
+          NULLIF(LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(p.title, '[^a-zA-Z0-9]+', '-', 'g'))), ''),
+          'exp-' || SUBSTRING(REPLACE(p.id::TEXT, '-', '') FROM 1 FOR 8)
+        ) AS base_slug,
+        ROW_NUMBER() OVER (
+          PARTITION BY COALESCE(
+            NULLIF(LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(p.title, '[^a-zA-Z0-9]+', '-', 'g'))), ''),
+            'exp-' || SUBSTRING(REPLACE(p.id::TEXT, '-', '') FROM 1 FOR 8)
+          )
+          ORDER BY p.created_at, p.id
+        ) AS batch_row_num
+      FROM public.propuestas_experiencias p
+      WHERE NOT EXISTS (
+        SELECT 1 FROM public.experiencias e
+        WHERE e.id = p.id::TEXT
+           OR (
+             p.status = 'aprobada'
+             AND (
+               e.id = 'exp-' || LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(p.title, '[^a-zA-Z0-9]+', '-', 'g')))
+               OR e.slug = LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(p.title, '[^a-zA-Z0-9]+', '-', 'g')))
+             )
+           )
+      )
+    )
+    INSERT INTO public.experiencias (
+      id,
+      slug,
+      title,
+      kicker,
+      tagline,
+      region,
+      difficulty,
+      duration_label,
+      altitude_meters,
+      price_ars,
+      price_usd,
+      capacity_per_date,
+      best_season,
+      itinerary,
+      meeting_point,
+      meeting_point_url,
+      cover_image,
+      cover_image_name,
+      cover_video_name,
+      album_photos,
+      provider_name,
+      provider_email,
+      provider_phone,
+      provider_cbu_alias,
+      provider_cuit_dni,
+      provider_bank_name,
+      provider_agency,
+      participant_requirements,
+      notes,
+      status,
+      reviewed_at,
+      created_at,
+      updated_at
+    )
+    SELECT
+      sp.id::TEXT,
+      CASE
+        WHEN sp.batch_row_num = 1 AND NOT EXISTS (
+          SELECT 1 FROM public.experiencias e
+          WHERE e.id <> sp.id::TEXT AND e.slug = sp.base_slug
+        ) THEN sp.base_slug
+        ELSE sp.base_slug || '-' || SUBSTRING(REPLACE(sp.id::TEXT, '-', '') FROM 1 FOR 8)
+      END,
+      sp.title,
+      COALESCE(sp.kicker, 'EXPERIENCIA'),
+      COALESCE(sp.subheading, ''),
+      COALESCE(sp.region, 'Valle Central y Ambato'),
+      CASE
+        WHEN sp.difficulty ILIKE 'alta%' THEN 'Alta Montaña'
+        WHEN sp.difficulty ILIKE 'exigente%' THEN 'Exigente'
+        WHEN sp.difficulty ILIKE 'baja%' THEN 'Baja'
+        ELSE 'Moderada'
+      END,
+      COALESCE(sp.duration, '4 horas'),
+      COALESCE(NULLIF(REGEXP_REPLACE(sp.altitude, '[^0-9]', '', 'g'), '')::INTEGER, 850),
+      GREATEST(0, COALESCE(sp.price_ars, 0)),
+      sp.price_usd,
+      GREATEST(1, COALESCE(NULLIF(sp.capacity, 0), 12)),
+      COALESCE(sp.season, 'Todo el año'),
+      COALESCE(sp.itinerary, ''),
+      COALESCE(sp.meeting_point, ''),
+      COALESCE(sp.meeting_point_url, ''),
+      COALESCE(sp.cover_image, '/assets/images/kayak-club-de-experiencias.jpg'),
+      sp.cover_image_name,
+      sp.cover_video_url,
+      COALESCE(sp.album_photos, '[]'::jsonb),
+      COALESCE(sp.provider_name, ''),
+      CASE
+        WHEN sp.provider_email IS NOT NULL AND TRIM(sp.provider_email) <> '' THEN LOWER(TRIM(sp.provider_email))
+        ELSE NULL
+      END,
+      COALESCE(sp.provider_phone, ''),
+      COALESCE(sp.provider_cbu_alias, ''),
+      COALESCE(sp.provider_cuit_dni, ''),
+      COALESCE(sp.provider_bank_name, ''),
+      COALESCE(sp.provider_agency, ''),
+      COALESCE(sp.participant_requirements, ''),
+      sp.notes,
+      CASE
+        WHEN sp.status = 'aprobada' THEN 'publicada'
+        WHEN sp.status = 'rechazada' THEN 'rechazada'
+        ELSE 'pendiente'
+      END,
+      sp.reviewed_at,
+      sp.created_at,
+      COALESCE(sp.updated_at, sp.created_at)
+    FROM proposals_to_insert sp
+    ON CONFLICT (id) DO NOTHING;
+
+    -- Validar que todas las propuestas estén preservadas en experiencias
+    SELECT COUNT(*) INTO v_missing_propuestas
+    FROM public.propuestas_experiencias p
+    WHERE NOT EXISTS (
+      SELECT 1 FROM public.experiencias e
+      WHERE e.id = p.id::TEXT
+         OR (
+           p.status = 'aprobada'
+           AND (
+             e.id = 'exp-' || LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(p.title, '[^a-zA-Z0-9]+', '-', 'g')))
+             OR e.slug = LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(p.title, '[^a-zA-Z0-9]+', '-', 'g')))
+           )
+         )
+    );
+
+    IF v_missing_propuestas > 0 THEN
+      RAISE EXCEPTION 'Fallo de validación en migración: % registros de public.propuestas_experiencias no fueron transferidos o reconciliados en public.experiencias', v_missing_propuestas;
+    END IF;
+
+    -- Solo permitir eliminar la tabla una vez validada exitosamente la migración
+    DROP TABLE public.propuestas_experiencias CASCADE;
+  END IF;
+END $$;
 
 -- 2.1 socios (Prospectos Waitlist, Socios Emergentes, Activos y Fundadores)
 CREATE TABLE IF NOT EXISTS public.socios (
@@ -613,6 +1042,23 @@ CREATE TRIGGER socios_before_insert_link_auth
   BEFORE INSERT ON public.socios
   FOR EACH ROW EXECUTE FUNCTION public.link_socio_to_existing_auth_user();
 
+-- 4.5 Asignación automática de posición para nuevos socios que no sean waitlist
+CREATE OR REPLACE FUNCTION public.assign_socio_position()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.membership_tier <> 'waitlist' AND NEW.position IS NULL THEN
+    NEW.position := nextval('public.socios_position_seq');
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS socios_before_insert_assign_position ON public.socios;
+CREATE TRIGGER socios_before_insert_assign_position
+  BEFORE INSERT ON public.socios
+  FOR EACH ROW
+  EXECUTE FUNCTION public.assign_socio_position();
+
 -- 4.5.1 Restricción de modificación de columnas en socios para usuarios no-administradores
 CREATE OR REPLACE FUNCTION public.check_socio_update_permissions()
 RETURNS TRIGGER
@@ -624,6 +1070,13 @@ DECLARE
   v_current_email TEXT;
   v_is_admin BOOLEAN := false;
 BEGIN
+  -- Si es una promoción válida de waitlist a emergente, asignar posición si es nula
+  IF OLD.membership_tier = 'waitlist' AND NEW.membership_tier = 'emergente' THEN
+    IF NEW.position IS NULL AND OLD.position IS NULL THEN
+      NEW.position := nextval('public.socios_position_seq');
+    END IF;
+  END IF;
+
   -- Si es ejecución interna/sistema sin contexto JWT, permitir
   IF auth.jwt() IS NULL THEN
     RETURN NEW;
@@ -644,9 +1097,15 @@ BEGIN
   ) INTO v_is_admin;
 
   IF NOT v_is_admin THEN
-    IF NEW.position IS DISTINCT FROM OLD.position OR
-       NEW.membership_tier IS DISTINCT FROM OLD.membership_tier OR
-       NEW.email IS DISTINCT FROM OLD.email OR
+    -- Permitir únicamente la promoción de 'waitlist' a 'emergente' asignando posición inicial
+    IF OLD.membership_tier = 'waitlist' AND NEW.membership_tier = 'emergente' AND OLD.position IS NULL THEN
+      NULL;
+    ELSIF NEW.position IS DISTINCT FROM OLD.position OR
+          NEW.membership_tier IS DISTINCT FROM OLD.membership_tier THEN
+      RAISE EXCEPTION 'Acceso denegado: solo administradores pueden modificar la categoría o posición del socio.';
+    END IF;
+
+    IF NEW.email IS DISTINCT FROM OLD.email OR
        NEW.created_at IS DISTINCT FROM OLD.created_at OR
        NEW.registration_token IS DISTINCT FROM OLD.registration_token THEN
       RAISE EXCEPTION 'Acceso denegado: solo administradores pueden modificar la categoría, posición o credenciales del socio.';
@@ -1061,6 +1520,8 @@ BEGIN
           phone = CASE WHEN v_phone <> '' THEN v_phone ELSE phone END,
           experiences_wishlist = CASE WHEN p_experiences_wishlist IS NOT NULL THEN p_experiences_wishlist ELSE experiences_wishlist END,
           experiences_other = CASE WHEN p_experiences_other IS NOT NULL AND TRIM(p_experiences_other) <> '' THEN TRIM(p_experiences_other) ELSE experiences_other END,
+          membership_tier = CASE WHEN membership_tier = 'waitlist' THEN 'emergente' ELSE membership_tier END,
+          position = CASE WHEN membership_tier = 'waitlist' AND position IS NULL THEN nextval('public.socios_position_seq') ELSE position END,
           auth_user_id = v_auth_uid,
           updated_at = now()
       WHERE email = v_email
@@ -1087,6 +1548,7 @@ BEGIN
     experiences_wishlist,
     experiences_other,
     membership_tier,
+    position,
     auth_user_id
   )
   VALUES (
@@ -1097,6 +1559,7 @@ BEGIN
     COALESCE(p_experiences_wishlist, '[]'::jsonb),
     NULLIF(TRIM(COALESCE(p_experiences_other, '')), ''),
     'emergente',
+    nextval('public.socios_position_seq'),
     CASE WHEN v_auth_uid IS NOT NULL AND v_jwt_email = v_email THEN v_auth_uid ELSE NULL END
   )
   RETURNING * INTO v_inserted;
@@ -1146,6 +1609,8 @@ BEGIN
           phone = CASE WHEN v_phone <> '' THEN v_phone ELSE phone END,
           experiences_wishlist = CASE WHEN p_experiences_wishlist IS NOT NULL THEN p_experiences_wishlist ELSE experiences_wishlist END,
           experiences_other = CASE WHEN p_experiences_other IS NOT NULL AND TRIM(p_experiences_other) <> '' THEN TRIM(p_experiences_other) ELSE experiences_other END,
+          membership_tier = CASE WHEN membership_tier = 'waitlist' THEN 'emergente' ELSE membership_tier END,
+          position = CASE WHEN membership_tier = 'waitlist' AND position IS NULL THEN nextval('public.socios_position_seq') ELSE position END,
           auth_user_id = v_auth_uid,
           updated_at = now()
       WHERE email = v_email
@@ -1172,6 +1637,7 @@ BEGIN
     experiences_wishlist,
     experiences_other,
     membership_tier,
+    position,
     auth_user_id
   )
   VALUES (
@@ -1182,6 +1648,7 @@ BEGIN
     COALESCE(p_experiences_wishlist, '[]'::jsonb),
     NULLIF(TRIM(COALESCE(p_experiences_other, '')), ''),
     'emergente',
+    nextval('public.socios_position_seq'),
     CASE WHEN v_auth_uid IS NOT NULL AND v_jwt_email = v_email THEN v_auth_uid ELSE NULL END
   )
   RETURNING * INTO v_inserted;
@@ -1751,8 +2218,110 @@ BEGIN
 END;
 $$;
 
+-- 4.14 RPC get_admin_socios_roster (compatibilidad con esquema canónico)
+CREATE OR REPLACE FUNCTION public.get_admin_socios_roster()
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_socios JSONB;
+  v_waitlist JSONB;
+BEGIN
+  -- Caller authorization: Solo administradores activos
+  IF NOT EXISTS (
+    SELECT 1 FROM public.administradores
+    WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+      AND active = true
+  ) THEN
+    RAISE EXCEPTION 'Acceso denegado: solo administradores activos pueden acceder a la nómina';
+  END IF;
+
+  -- Socios oficiales:
+  SELECT COALESCE(
+    jsonb_agg(
+      jsonb_build_object(
+        'id', s.id,
+        'type', 'socio',
+        'email', s.email,
+        'fullName', s.full_name,
+        'dni', s.dni,
+        'phone', s.phone,
+        'position', s.position,
+        'membershipTier', s.membership_tier,
+        'googleLinked', (s.auth_user_id IS NOT NULL),
+        'converted', (
+          (s.membership_tier <> 'waitlist') OR EXISTS (
+            SELECT 1 FROM public.pagos_transferencias p
+            WHERE LOWER(TRIM(p.email)) = LOWER(TRIM(s.email))
+          )
+        ),
+        'paymentsCount', (
+          SELECT COUNT(*)::INTEGER FROM public.pagos_transferencias p
+          WHERE LOWER(TRIM(p.email)) = LOWER(TRIM(s.email))
+        ),
+        'experiencesWishlist', COALESCE(s.experiences_wishlist, '[]'::jsonb),
+        'experiencesOther', s.experiences_other,
+        'createdAt', s.created_at
+      )
+      ORDER BY s.position ASC NULLS LAST, s.created_at DESC
+    ),
+    '[]'::jsonb
+  ) INTO v_socios
+  FROM public.socios s
+  WHERE s.membership_tier <> 'waitlist';
+
+  -- Prospectos de lista de espera (directamente desde socios):
+  SELECT COALESCE(
+    jsonb_agg(
+      jsonb_build_object(
+        'id', s.id,
+        'type', 'waitlist',
+        'email', s.email,
+        'fullName', COALESCE(
+          NULLIF(TRIM(s.full_name), ''),
+          NULLIF(TRIM(u.raw_user_meta_data ->> 'full_name'), ''),
+          NULLIF(TRIM(u.raw_user_meta_data ->> 'name'), ''),
+          NULL
+        ),
+        'dni', NULLIF(TRIM(s.dni), ''),
+        'phone', NULLIF(TRIM(s.phone), ''),
+        'position', NULL,
+        'membershipTier', 'waitlist',
+        'googleLinked', (u.id IS NOT NULL OR s.auth_user_id IS NOT NULL),
+        'converted', EXISTS (
+          SELECT 1 FROM public.pagos_transferencias p
+          WHERE LOWER(TRIM(p.email)) = LOWER(TRIM(s.email))
+        ),
+        'paymentsCount', (
+          SELECT COUNT(*)::INTEGER FROM public.pagos_transferencias p
+          WHERE LOWER(TRIM(p.email)) = LOWER(TRIM(s.email))
+        ),
+        'experiencesWishlist', COALESCE(s.experiences_wishlist, '[]'::jsonb),
+        'experiencesOther', s.experiences_other,
+        'createdAt', s.created_at
+      )
+      ORDER BY s.created_at DESC
+    ),
+    '[]'::jsonb
+  ) INTO v_waitlist
+  FROM public.socios s
+  LEFT JOIN auth.users u ON LOWER(TRIM(u.email)) = LOWER(TRIM(s.email))
+  WHERE s.membership_tier = 'waitlist';
+
+  RETURN jsonb_build_object(
+    'socios', v_socios,
+    'waitlist', v_waitlist,
+    'total_socios', jsonb_array_length(v_socios),
+    'total_waitlist', jsonb_array_length(v_waitlist)
+  );
+END;
+$$;
+
 -- Permisos de ejecución de RPCs
 GRANT EXECUTE ON FUNCTION public.record_waitlist_email TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.get_admin_socios_roster TO authenticated;
 GRANT EXECUTE ON FUNCTION public.check_email_registration_status TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_socio_by_session_or_token TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.update_socio_profile_secure TO anon, authenticated;
@@ -1834,6 +2403,23 @@ CREATE POLICY "Admins can insert socios"
   );
 
 -- 6.4 Políticas en administradores
+-- Función auxiliar para verificar administradores activos sin recursión RLS
+CREATE OR REPLACE FUNCTION public.is_active_admin()
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.administradores
+    WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+      AND active = true
+  );
+$$;
+
+GRANT EXECUTE ON FUNCTION public.is_active_admin() TO anon, authenticated;
+
 DROP POLICY IF EXISTS "Admins can view admin_access" ON public.administradores;
 DROP POLICY IF EXISTS "Users can view own admin_access" ON public.administradores;
 DROP POLICY IF EXISTS "Users can view own administradores" ON public.administradores;
@@ -1843,11 +2429,7 @@ CREATE POLICY "Users can view own administradores"
   TO authenticated
   USING (
     LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
-    OR EXISTS (
-      SELECT 1 FROM public.administradores
-      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
-        AND active = true
-    )
+    OR public.is_active_admin()
   );
 
 -- 6.5 Políticas en postulaciones_fundadores

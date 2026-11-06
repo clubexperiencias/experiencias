@@ -8,8 +8,9 @@ import {
 } from '../models/club-profile.model';
 
 const KAYAK_IMAGE = '/assets/images/kayak-club-de-experiencias.jpg';
-const STORAGE_KEY = 'club_experiencias_catalog_v1';
-const DELETED_STORAGE_KEY = 'club_experiencias_deleted_ids_v1';
+export const STORAGE_KEY = 'club_experiencias_catalog_v1';
+export const PRIVILEGED_STORAGE_KEY = 'club_experiencias_privileged_v1';
+export const DELETED_STORAGE_KEY = 'club_experiencias_deleted_ids_v1';
 export const RESERVED_EXPERIENCE_SLUGS = new Set([
   'fotos',
   'prestadores',
@@ -360,7 +361,19 @@ export class ExperienceService {
     ? this.loadFromSupabase()
     : Promise.resolve(true);
 
-  constructor() {}
+  constructor() {
+    if (isSupabaseConfigured()) {
+      try {
+        this.supabase.auth?.onAuthStateChange?.((event: string) => {
+          if (event === 'SIGNED_OUT') {
+            this.clearPrivilegedCache();
+          }
+        });
+      } catch {
+        // ignore
+      }
+    }
+  }
 
   async reloadFromSupabase(): Promise<boolean> {
     return this.loadFromSupabase();
@@ -928,13 +941,47 @@ export class ExperienceService {
         if (stored) {
           const parsed = JSON.parse(stored) as Experience[];
           if (Array.isArray(parsed) && parsed.length > 0) {
-            localExperiences = parsed.filter(
-              (e) => !deletedIds.has(e.id) && !deletedIds.has(e.slug),
+            localExperiences = this.sanitizeForPublicCatalog(
+              parsed.filter((e) => !deletedIds.has(e.id) && !deletedIds.has(e.slug)),
             );
           }
         }
       } catch {
         // Fallback
+      }
+
+      if (this.hasPrivilegedSession()) {
+        try {
+          const privRaw = localStorage.getItem(PRIVILEGED_STORAGE_KEY);
+          if (privRaw) {
+            const privParsed = JSON.parse(privRaw) as Experience[];
+            if (Array.isArray(privParsed) && privParsed.length > 0) {
+              const existingIds = new Set(localExperiences.map((e) => e.id.toLowerCase()));
+              const existingSlugs = new Set(localExperiences.map((e) => e.slug.toLowerCase()));
+              for (const p of privParsed) {
+                if (
+                  p &&
+                  !deletedIds.has(p.id) &&
+                  !deletedIds.has(p.slug) &&
+                  !existingIds.has((p.id || '').toLowerCase()) &&
+                  !existingSlugs.has((p.slug || '').toLowerCase())
+                ) {
+                  localExperiences.push(p);
+                  if (p.id) existingIds.add(p.id.toLowerCase());
+                  if (p.slug) existingSlugs.add(p.slug.toLowerCase());
+                }
+              }
+            }
+          }
+        } catch {
+          // Fallback
+        }
+      } else {
+        try {
+          localStorage.removeItem(PRIVILEGED_STORAGE_KEY);
+        } catch {
+          // ignore
+        }
       }
 
       const activeDefaults = DEFAULT_EXPERIENCES.filter(
@@ -1144,7 +1191,7 @@ export class ExperienceService {
     });
     if (typeof window !== 'undefined' && localExperiences.length > 0) {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(result));
+        this.persistToLocalStorage(result);
       } catch {
         // Ignorar quota errors
       }
@@ -1152,14 +1199,116 @@ export class ExperienceService {
     return result;
   }
 
+  private sanitizeForPublicCatalog(list: Experience[]): Experience[] {
+    return list
+      .filter((exp) => (exp.status || 'publicada') === 'publicada')
+      .map((exp) => {
+        const copy: Experience = { ...exp };
+        delete copy.notes;
+        delete copy.pendingRemoteSync;
+        if (!exp.isClubExperience) {
+          delete copy.providerCbuAlias;
+          delete copy.providerCuitDni;
+          delete copy.providerBankName;
+        }
+        return copy;
+      });
+  }
+
+  private hasPrivilegedSession(): boolean {
+    if (typeof window === 'undefined') return false;
+    try {
+      const hasProviderSession = Boolean(localStorage.getItem('catamarca_provider_session_v5'));
+      const hasAdminSession = Boolean(localStorage.getItem('catamarca_admin_session_v1'));
+      const hasSbAuth = Object.keys(localStorage).some(
+        (k) => k.startsWith('sb-') && k.endsWith('-auth-token') && Boolean(localStorage.getItem(k)),
+      );
+      return hasProviderSession || hasAdminSession || hasSbAuth;
+    } catch {
+      return false;
+    }
+  }
+
+  private persistPrivilegedToLocalStorage(list: Experience[]): void {
+    if (typeof window === 'undefined') return;
+    try {
+      if (!this.hasPrivilegedSession()) {
+        localStorage.removeItem(PRIVILEGED_STORAGE_KEY);
+        return;
+      }
+      const privilegedItems = list.filter(
+        (exp) =>
+          exp.status !== 'publicada' ||
+          Boolean(exp.pendingRemoteSync) ||
+          Boolean(exp.notes) ||
+          (!exp.isClubExperience &&
+            (Boolean(exp.providerCbuAlias) ||
+              Boolean(exp.providerCuitDni) ||
+              Boolean(exp.providerBankName))),
+      );
+      if (privilegedItems.length > 0) {
+        localStorage.setItem(PRIVILEGED_STORAGE_KEY, JSON.stringify(privilegedItems));
+      } else {
+        localStorage.removeItem(PRIVILEGED_STORAGE_KEY);
+      }
+    } catch {
+      // Ignorar quota errors
+    }
+  }
+
   private persistToLocalStorage(list: Experience[]): void {
     if (typeof window !== 'undefined') {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+        const publicOnly = this.sanitizeForPublicCatalog(list);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(publicOnly));
       } catch {
         // Ignorar quota errors
       }
+      this.persistPrivilegedToLocalStorage(list);
     }
+  }
+
+  clearPrivilegedCache(): void {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem(PRIVILEGED_STORAGE_KEY);
+      } catch {
+        // ignore
+      }
+      try {
+        localStorage.removeItem('catamarca_experience_requests_v1');
+        localStorage.removeItem('catamarca_provider_experiences_v5');
+      } catch {
+        // ignore
+      }
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            const sanitized = this.sanitizeForPublicCatalog(parsed);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    const current = this._experiences();
+    const publicOnly = current.filter((exp) => (exp.status || 'publicada') === 'publicada');
+    const sanitizedMemory = publicOnly.map((exp) => {
+      const copy = { ...exp };
+      delete copy.notes;
+      delete copy.pendingRemoteSync;
+      if (!exp.isClubExperience) {
+        delete copy.providerCbuAlias;
+        delete copy.providerCuitDni;
+        delete copy.providerBankName;
+      }
+      return copy;
+    });
+    this._experiences.set(sanitizedMemory);
   }
 
   async loadProviderBanking(

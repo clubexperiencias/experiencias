@@ -4,6 +4,17 @@
 --   1. waitlist -> public.socios (membership_tier = 'waitlist')
 --   2. postulaciones_prestadores -> public.provider_access (status = 'pendiente')
 --   3. propuestas_experiencias -> public.experiencias (status = 'pendiente')
+--
+-- ORDEN OBLIGATORIO DE ACTUALIZACIÓN EN BASES DE DATOS EXISTENTES:
+-- 1. migration_unify_tables.sql (ESTE SCRIPT):
+--    DEBE ejecutarse PRIMERO mientras las tablas heredadas (waitlist,
+--    postulaciones_prestadores, propuestas_experiencias) y las columnas legacy
+--    (google_linked, converted en socios) existen con sus datos intactos.
+-- 2. schema.sql:
+--    Aplica el esquema canónico e índices completos.
+-- 3. migration_rename_to_spanish.sql:
+--    Renombra tablas y columnas a español y realiza la limpieza final de columnas
+--    obsoletas.
 -- ==============================================================================
 
 BEGIN;
@@ -26,38 +37,59 @@ ALTER TABLE public.socios DROP CONSTRAINT IF EXISTS socios_membership_tier_check
 ALTER TABLE public.socios ADD CONSTRAINT socios_membership_tier_check
   CHECK (membership_tier IN ('waitlist', 'emergente', 'activo', 'fundador'));
 
--- 1.3 Agregar flag de conversión en socios
+-- 1.3 Asegurar columnas legacy en socios para recibir datos de waitlist
 ALTER TABLE public.socios ADD COLUMN IF NOT EXISTS converted BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE public.socios ADD COLUMN IF NOT EXISTS google_linked BOOLEAN NOT NULL DEFAULT false;
 
--- 1.4 Migrar registros de waitlist a socios
-INSERT INTO public.socios (
-  email,
-  membership_tier,
-  converted,
-  google_linked,
-  full_name,
-  dni,
-  phone,
-  position,
-  created_at,
-  updated_at
-)
-SELECT
-  LOWER(TRIM(w.email)),
-  'waitlist',
-  COALESCE(w.converted, false),
-  COALESCE(w.google_linked, false),
-  '',
-  '',
-  '',
-  NULL,
-  w.created_at,
-  w.created_at
-FROM public.waitlist w
-ON CONFLICT (email) DO UPDATE
-SET
-  converted = public.socios.converted OR EXCLUDED.converted,
-  google_linked = public.socios.google_linked OR EXCLUDED.google_linked;
+-- 1.4 Validar existencia de public.waitlist, forzar el orden de migración e insertar
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'waitlist'
+  ) THEN
+    IF EXISTS (
+      SELECT 1 FROM information_schema.tables
+      WHERE table_schema = 'public' AND table_name = 'socios'
+    ) AND EXISTS (
+      SELECT 1 FROM public.socios WHERE membership_tier = 'waitlist'
+    ) THEN
+      RAISE NOTICE 'Aviso: public.waitlist no existe pero public.socios ya cuenta con registros de waitlist migrados.';
+    ELSE
+      RAISE EXCEPTION 'ERROR DE ORDEN DE ACTUALIZACIÓN: public.waitlist no existe y no hay registros en public.socios. migration_unify_tables.sql DEBE ejecutarse ANTES de schema.sql o migration_rename_to_spanish.sql para no perder datos históricos.';
+    END IF;
+  ELSE
+    -- Migrar registros de waitlist a socios mientras ambas tablas y google_linked existen
+    INSERT INTO public.socios (
+      email,
+      membership_tier,
+      converted,
+      google_linked,
+      full_name,
+      dni,
+      phone,
+      position,
+      created_at,
+      updated_at
+    )
+    SELECT
+      LOWER(TRIM(w.email)),
+      'waitlist',
+      COALESCE(w.converted, false),
+      COALESCE(w.google_linked, false),
+      '',
+      '',
+      '',
+      NULL,
+      w.created_at,
+      w.created_at
+    FROM public.waitlist w
+    ON CONFLICT (email) DO UPDATE
+    SET
+      converted = public.socios.converted OR EXCLUDED.converted,
+      google_linked = public.socios.google_linked OR EXCLUDED.google_linked;
+  END IF;
+END $$;
 
 -- ==============================================================================
 -- 2. UNIFICACIÓN DE PRESTADORES & POSTULACIONES
@@ -138,7 +170,111 @@ ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS participant_requirement
 ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS notes TEXT;
 ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
 
--- 3.4 Migrar registros de propuestas_experiencias a experiencias
+-- 3.4 Asegurar que todo provider_email referencie una fila existente en prestadores/provider_access
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'prestadores'
+  ) THEN
+    INSERT INTO public.prestadores (
+      email,
+      name,
+      agency,
+      phone,
+      cbu_alias,
+      cuit_dni,
+      bank_name,
+      active,
+      status
+    )
+    SELECT DISTINCT ON (LOWER(TRIM(p.provider_email)))
+      LOWER(TRIM(p.provider_email)),
+      COALESCE(NULLIF(TRIM(p.provider_name), ''), 'Prestador'),
+      COALESCE(TRIM(p.provider_agency), ''),
+      COALESCE(TRIM(p.provider_phone), ''),
+      COALESCE(TRIM(p.provider_cbu_alias), ''),
+      COALESCE(TRIM(p.provider_cuit_dni), ''),
+      COALESCE(TRIM(p.provider_bank_name), ''),
+      false,
+      'pendiente'
+    FROM public.propuestas_experiencias p
+    WHERE p.provider_email IS NOT NULL AND TRIM(p.provider_email) <> ''
+    ON CONFLICT (email) DO UPDATE
+    SET
+      name = CASE WHEN public.prestadores.name = '' OR public.prestadores.name = 'Prestador' THEN EXCLUDED.name ELSE public.prestadores.name END,
+      agency = CASE WHEN public.prestadores.agency = '' THEN EXCLUDED.agency ELSE public.prestadores.agency END,
+      phone = CASE WHEN public.prestadores.phone = '' THEN EXCLUDED.phone ELSE public.prestadores.phone END;
+  ELSIF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'provider_access'
+  ) THEN
+    INSERT INTO public.provider_access (
+      email,
+      name,
+      phone,
+      active,
+      status
+    )
+    SELECT DISTINCT ON (LOWER(TRIM(p.provider_email)))
+      LOWER(TRIM(p.provider_email)),
+      COALESCE(NULLIF(TRIM(p.provider_name), ''), 'Prestador'),
+      COALESCE(TRIM(p.provider_phone), ''),
+      false,
+      'pendiente'
+    FROM public.propuestas_experiencias p
+    WHERE p.provider_email IS NOT NULL AND TRIM(p.provider_email) <> ''
+    ON CONFLICT (email) DO NOTHING;
+  END IF;
+END $$;
+
+-- 3.5 Reconciliar propuestas aprobadas con experiencias existentes en el catálogo oficial (exp-<generatedSlug>)
+UPDATE public.experiencias e
+SET
+  provider_agency = COALESCE(NULLIF(e.provider_agency, ''), p.provider_agency, ''),
+  participant_requirements = COALESCE(NULLIF(e.participant_requirements, ''), p.participant_requirements, ''),
+  notes = COALESCE(e.notes, p.notes),
+  reviewed_at = COALESCE(e.reviewed_at, p.reviewed_at, now()),
+  cover_image_name = COALESCE(e.cover_image_name, p.cover_image_name),
+  cover_video_name = COALESCE(e.cover_video_name, p.cover_video_url),
+  status = 'publicada',
+  updated_at = GREATEST(e.updated_at, COALESCE(p.updated_at, p.created_at, e.updated_at))
+FROM public.propuestas_experiencias p
+WHERE p.status = 'aprobada'
+  AND (
+    e.id = p.id::TEXT
+    OR e.id = 'exp-' || LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(p.title, '[^a-zA-Z0-9]+', '-', 'g')))
+    OR e.slug = LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(p.title, '[^a-zA-Z0-9]+', '-', 'g')))
+  );
+
+-- 3.6 Migrar registros restantes de propuestas_experiencias a experiencias con slugs únicos
+WITH proposals_to_insert AS (
+  SELECT
+    p.*,
+    COALESCE(
+      NULLIF(LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(p.title, '[^a-zA-Z0-9]+', '-', 'g'))), ''),
+      'exp-' || SUBSTRING(REPLACE(p.id::TEXT, '-', '') FROM 1 FOR 8)
+    ) AS base_slug,
+    ROW_NUMBER() OVER (
+      PARTITION BY COALESCE(
+        NULLIF(LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(p.title, '[^a-zA-Z0-9]+', '-', 'g'))), ''),
+        'exp-' || SUBSTRING(REPLACE(p.id::TEXT, '-', '') FROM 1 FOR 8)
+      )
+      ORDER BY p.created_at, p.id
+    ) AS batch_row_num
+  FROM public.propuestas_experiencias p
+  WHERE NOT EXISTS (
+    SELECT 1 FROM public.experiencias e
+    WHERE e.id = p.id::TEXT
+       OR (
+         p.status = 'aprobada'
+         AND (
+           e.id = 'exp-' || LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(p.title, '[^a-zA-Z0-9]+', '-', 'g')))
+           OR e.slug = LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(p.title, '[^a-zA-Z0-9]+', '-', 'g')))
+         )
+       )
+  )
+)
 INSERT INTO public.experiencias (
   id,
   slug,
@@ -175,63 +311,65 @@ INSERT INTO public.experiencias (
   updated_at
 )
 SELECT
-  p.id,
-  COALESCE(
-    NULLIF(LOWER(REGEXP_REPLACE(p.title, '[^a-zA-Z0-9]+', '-', 'g')), ''),
-    'exp-' || p.id
-  ) || CASE
-    WHEN EXISTS (
-      SELECT 1 FROM public.experiencias e
-      WHERE e.id <> p.id
-        AND e.slug = COALESCE(NULLIF(LOWER(REGEXP_REPLACE(p.title, '[^a-zA-Z0-9]+', '-', 'g')), ''), 'exp-' || p.id)
-    ) THEN '-' || SUBSTRING(p.id::TEXT FROM 1 FOR 8)
-    ELSE ''
-  END,
-  p.title,
-  COALESCE(p.kicker, 'EXPERIENCIA'),
-  COALESCE(p.subheading, ''),
-  COALESCE(p.region, 'Valle Central y Ambato'),
+  sp.id::TEXT,
   CASE
-    WHEN p.difficulty ILIKE 'alta%' THEN 'Alta Montaña'
-    WHEN p.difficulty ILIKE 'exigente%' THEN 'Exigente'
-    WHEN p.difficulty ILIKE 'baja%' THEN 'Baja'
+    WHEN sp.batch_row_num = 1 AND NOT EXISTS (
+      SELECT 1 FROM public.experiencias e
+      WHERE e.id <> sp.id::TEXT AND e.slug = sp.base_slug
+    ) THEN sp.base_slug
+    ELSE sp.base_slug || '-' || SUBSTRING(REPLACE(sp.id::TEXT, '-', '') FROM 1 FOR 8)
+  END,
+  sp.title,
+  COALESCE(sp.kicker, 'EXPERIENCIA'),
+  COALESCE(sp.subheading, ''),
+  COALESCE(sp.region, 'Valle Central y Ambato'),
+  CASE
+    WHEN sp.difficulty ILIKE 'alta%' THEN 'Alta Montaña'
+    WHEN sp.difficulty ILIKE 'exigente%' THEN 'Exigente'
+    WHEN sp.difficulty ILIKE 'baja%' THEN 'Baja'
     ELSE 'Moderada'
   END,
-  COALESCE(p.duration, '4 horas'),
-  COALESCE(NULLIF(REGEXP_REPLACE(p.altitude, '[^0-9]', '', 'g'), '')::INTEGER, 850),
-  GREATEST(0, COALESCE(p.price_ars, 0)),
-  p.price_usd,
-  GREATEST(1, COALESCE(NULLIF(p.capacity, 0), 12)),
-  COALESCE(p.season, 'Todo el año'),
-  COALESCE(p.itinerary, ''),
-  COALESCE(p.meeting_point, ''),
-  COALESCE(p.meeting_point_url, ''),
-  COALESCE(p.cover_image, '/assets/images/kayak-club-de-experiencias.jpg'),
-  p.cover_image_name,
-  p.cover_video_url,
-  COALESCE(p.album_photos, '[]'::jsonb),
-  p.provider_name,
-  p.provider_email,
-  p.provider_phone,
-  p.provider_cbu_alias,
-  p.provider_cuit_dni,
-  p.provider_bank_name,
-  p.provider_agency,
-  p.participant_requirements,
-  p.notes,
+  COALESCE(sp.duration, '4 horas'),
+  COALESCE(NULLIF(REGEXP_REPLACE(sp.altitude, '[^0-9]', '', 'g'), '')::INTEGER, 850),
+  GREATEST(0, COALESCE(sp.price_ars, 0)),
+  sp.price_usd,
+  GREATEST(1, COALESCE(NULLIF(sp.capacity, 0), 12)),
+  COALESCE(sp.season, 'Todo el año'),
+  COALESCE(sp.itinerary, ''),
+  COALESCE(sp.meeting_point, ''),
+  COALESCE(sp.meeting_point_url, ''),
+  COALESCE(sp.cover_image, '/assets/images/kayak-club-de-experiencias.jpg'),
+  sp.cover_image_name,
+  sp.cover_video_url,
+  COALESCE(sp.album_photos, '[]'::jsonb),
+  COALESCE(sp.provider_name, ''),
   CASE
-    WHEN p.status = 'aprobada' THEN 'publicada'
-    WHEN p.status = 'rechazada' THEN 'rechazada'
+    WHEN sp.provider_email IS NOT NULL AND TRIM(sp.provider_email) <> '' THEN LOWER(TRIM(sp.provider_email))
+    ELSE NULL
+  END,
+  COALESCE(sp.provider_phone, ''),
+  COALESCE(sp.provider_cbu_alias, ''),
+  COALESCE(sp.provider_cuit_dni, ''),
+  COALESCE(sp.provider_bank_name, ''),
+  COALESCE(sp.provider_agency, ''),
+  COALESCE(sp.participant_requirements, ''),
+  sp.notes,
+  CASE
+    WHEN sp.status = 'aprobada' THEN 'publicada'
+    WHEN sp.status = 'rechazada' THEN 'rechazada'
     ELSE 'pendiente'
   END,
-  p.reviewed_at,
-  p.created_at,
-  p.updated_at
-FROM public.propuestas_experiencias p
+  sp.reviewed_at,
+  COALESCE(sp.created_at, now()),
+  COALESCE(sp.updated_at, sp.created_at, now())
+FROM proposals_to_insert sp
 ON CONFLICT (id) DO UPDATE
 SET
-  reviewed_at = EXCLUDED.reviewed_at,
-  provider_agency = EXCLUDED.provider_agency;
+  reviewed_at = COALESCE(EXCLUDED.reviewed_at, public.experiencias.reviewed_at),
+  provider_agency = COALESCE(NULLIF(EXCLUDED.provider_agency, ''), public.experiencias.provider_agency),
+  participant_requirements = COALESCE(NULLIF(EXCLUDED.participant_requirements, ''), public.experiencias.participant_requirements),
+  notes = COALESCE(EXCLUDED.notes, public.experiencias.notes),
+  updated_at = EXCLUDED.updated_at;
 
 -- ==============================================================================
 -- 4. ACTUALIZACIÓN DE VISTAS Y RPCS

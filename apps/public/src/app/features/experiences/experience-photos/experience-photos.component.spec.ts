@@ -97,4 +97,18 @@ describe('ExperiencePhotosComponent (/experiencias/:slug/fotos)', () => {
     expect(component.isUrl('')).toBe(false);
     expect(component.isUrl(undefined)).toBe(false);
   });
+
+  it('should validate Google Maps URLs with isValidGoogleMapsUrl and trim URLs with getTrimmedUrl', () => {
+    expect(component.isValidGoogleMapsUrl('https://maps.google.com/?q=Catamarca')).toBe(true);
+    expect(component.isValidGoogleMapsUrl('https://maps.app.goo.gl/xyz123')).toBe(true);
+    expect(component.isValidGoogleMapsUrl('https://goo.gl/maps/abc789')).toBe(true);
+    expect(component.isValidGoogleMapsUrl('   https://maps.google.com.ar/maps?q=test   ')).toBe(true);
+    expect(component.isValidGoogleMapsUrl('https://example.com/not-maps')).toBe(false);
+    expect(component.isValidGoogleMapsUrl('Dique El Jumeal')).toBe(false);
+    expect(component.isValidGoogleMapsUrl('')).toBe(false);
+    expect(component.isValidGoogleMapsUrl(undefined)).toBe(false);
+
+    expect(component.getTrimmedUrl('   https://maps.google.com   ')).toBe('https://maps.google.com');
+    expect(component.getTrimmedUrl(undefined)).toBe('');
+  });
 });
