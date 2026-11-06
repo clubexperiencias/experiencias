@@ -2355,7 +2355,11 @@ export class AdminApplicationsComponent implements OnInit {
   }
 
   async rejectExperience(id: string): Promise<void> {
-    await this.store.rejectExperienceRequest(id);
+    const success = await this.store.rejectExperienceRequest(id);
+    if (!success) {
+      alert('No se pudo rechazar la propuesta en el servidor. Por favor, reintentá.');
+      return;
+    }
     const current = this.selectedExperienceRequest();
     if (current && current.id === id) {
       this.selectedExperienceRequest.set({

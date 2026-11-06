@@ -630,7 +630,7 @@ export class ExperienceService {
           try {
             const { data: existingPA } = await (this.supabase.from('provider_access') as any)
               .select('id, email')
-              .ilike('email', targetEmail)
+              .eq('email', targetEmail)
               .maybeSingle();
 
             if (!existingPA) {
@@ -643,8 +643,8 @@ export class ExperienceService {
                 cbu_alias: experience.providerCbuAlias || '',
                 cuit_dni: experience.providerCuitDni || '',
                 bank_name: experience.providerBankName || '',
-                status: 'aprobado',
-                active: true,
+                status: 'pendiente',
+                active: false,
               });
             }
           } catch (paErr) {
@@ -1398,13 +1398,6 @@ export class ExperienceService {
                 remoteExperiences.push(expFromProposal);
                 knownSlugs.add(pSlug.toLowerCase());
                 knownIds.add(pId.toLowerCase());
-
-                void this.createExperience(expFromProposal).catch((e) =>
-                  console.warn(
-                    '[ExperienceService] Auto-sync de propuesta aprobada hacia experiencias:',
-                    e,
-                  ),
-                );
               }
             }
           }

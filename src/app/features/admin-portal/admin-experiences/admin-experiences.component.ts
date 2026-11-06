@@ -46,7 +46,6 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                   <a [routerLink]="getDetailRoute(exp)" class="btn-view-fiche-top" title="Ver ficha completa">
                     <span>Ver Ficha</span>
                   </a>
-                  <a [routerLink]="backToListLink()" class="btn-back-panel">Volver a Experiencias</a>
                 </div>
               </div>
               <p class="card-subheading">
@@ -446,7 +445,6 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
             <span class="section-kicker">GESTIÓN DE CATÁLOGO & RUTAS WEB</span>
             <div class="title-row">
               <h1 class="card-heading">Experiencias de la Web</h1>
-              <a routerLink="/dashboard" class="btn-back-panel">Volver al Panel</a>
               <button type="button" class="btn-create-exp-yellow" (click)="openCreateModal()">
                 <span>Crear Nueva Experiencia</span>
               </button>

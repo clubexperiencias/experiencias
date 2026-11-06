@@ -11,7 +11,7 @@ export type LogFilterTab = 'todos' | 'admins' | 'prestadores';
 
 export interface AdminAuditLog {
   id: string;
-  actorType: 'admin' | 'prestador';
+  actorType: 'admin' | 'prestador' | 'socio';
   actorName: string;
   actorEmail?: string;
   actionTitle: string;
@@ -76,7 +76,7 @@ export interface AdminAuditLog {
           <input
             type="text"
             class="search-input"
-            placeholder="Buscar por usuario, acción, experiencia o fecha..."
+            placeholder="Buscar por usuario, acción, detalle o experiencia..."
             [ngModel]="searchQuery()"
             (ngModelChange)="searchQuery.set($event)"
           />
@@ -139,8 +139,7 @@ export interface AdminAuditLog {
                   <tr>
                     <!-- Fecha y Hora -->
                     <td class="font-mono time-cell">
-                      <span class="log-date">{{ log.timestamp | fecha: 'corta' }}</span>
-                      <span class="log-hour">{{ formatHour(log.timestamp) }}</span>
+                      <span class="log-date">{{ (log.timestamp | fecha: 'hora') || '—' }}</span>
                     </td>
 
                     <!-- Operador / Rol -->
@@ -150,8 +149,9 @@ export interface AdminAuditLog {
                           class="actor-badge"
                           [class.is-admin]="log.actorType === 'admin'"
                           [class.is-provider]="log.actorType === 'prestador'"
+                          [class.is-member]="log.actorType === 'socio'"
                         >
-                          {{ log.actorType === 'admin' ? 'ADMIN' : 'PRESTADOR' }}
+                          {{ log.actorType === 'admin' ? 'ADMIN' : log.actorType === 'prestador' ? 'PRESTADOR' : 'SOCIO' }}
                         </span>
                         <div class="actor-info">
                           <strong class="actor-name">{{ log.actorName }}</strong>
@@ -485,6 +485,12 @@ export interface AdminAuditLog {
         border: 1px solid rgba(56, 189, 248, 0.35);
       }
 
+      .actor-badge.is-member {
+        background: rgba(148, 163, 184, 0.15);
+        color: #cbd5e1;
+        border: 1px solid rgba(148, 163, 184, 0.35);
+      }
+
       .actor-info {
         display: flex;
         flex-direction: column;
@@ -701,11 +707,11 @@ export class AdminLogsComponent {
         targetLabel: r.title,
         targetLink: '/propuestas',
         badgeType: 'pendiente',
-        timestamp: r.createdAt || new Date().toISOString(),
+        timestamp: r.createdAt || '',
       });
 
       // Evento de moderación por parte de admin
-      if (r.status === 'aprobada') {
+      if (r.status === 'aprobada' && r.reviewedAt) {
         logs.push({
           id: `prop-approved-${r.id}`,
           actorType: 'admin',
@@ -716,9 +722,9 @@ export class AdminLogsComponent {
           targetLabel: r.title,
           targetLink: '/experiencias',
           badgeType: 'aprobado',
-          timestamp: r.reviewedAt || r.createdAt || new Date().toISOString(),
+          timestamp: r.reviewedAt,
         });
-      } else if (r.status === 'rechazada') {
+      } else if (r.status === 'rechazada' && r.reviewedAt) {
         logs.push({
           id: `prop-rejected-${r.id}`,
           actorType: 'admin',
@@ -729,53 +735,59 @@ export class AdminLogsComponent {
           targetLabel: r.title,
           targetLink: '/propuestas',
           badgeType: 'rechazado',
-          timestamp: r.reviewedAt || r.createdAt || new Date().toISOString(),
+          timestamp: r.reviewedAt,
         });
       }
     }
 
-    // 2. Postulaciones de prestadores
+    // 2. Postulaciones de prestadores y socios fundadores
     const apps = this.adminStore.applications();
     for (const a of apps) {
+      const isProviderApp = a.type === 'prestador';
       logs.push({
         id: `app-submitted-${a.id}`,
-        actorType: 'prestador',
-        actorName: a.fullName || 'Postulante',
+        actorType: isProviderApp ? 'prestador' : 'socio',
+        actorName: a.fullName || (isProviderApp ? 'Postulante a Prestador' : 'Aspirante a Fundador'),
         actorEmail: a.email,
-        actionTitle: 'Postulación a Prestador Oficial',
-        actionDescription: `Solicitud de ingreso enviada en categoría ${a.category || 'Guía'}.`,
-        targetType: 'postulacion',
+        actionTitle: isProviderApp ? 'Postulación a Prestador Oficial' : 'Postulación a Socio Fundador',
+        actionDescription: isProviderApp
+          ? `Solicitud de ingreso enviada en categoría ${a.category || 'Guía'}.`
+          : 'Solicitud de membresía vitalicia enviada para evaluación.',
+        targetType: isProviderApp ? 'prestador' : 'postulacion',
         targetLabel: a.fullName,
-        targetLink: '/prestadores',
+        targetLink: isProviderApp ? '/prestadores' : '/socios',
         badgeType: 'pendiente',
-        timestamp: a.createdAt,
+        timestamp: a.createdAt || '',
       });
 
-      if (a.status === 'aprobado') {
+      const appReviewedAt = (a as any).reviewedAt;
+      if (a.status === 'aprobado' && appReviewedAt) {
         logs.push({
           id: `app-approved-${a.id}`,
           actorType: 'admin',
           actorName: 'Administración Club',
-          actionTitle: 'Prestador Oficial Aprobado',
-          actionDescription: `Se habilitó a ${a.fullName} como prestador oficial en la plataforma.`,
-          targetType: 'prestador',
+          actionTitle: isProviderApp ? 'Prestador Oficial Aprobado' : 'Socio Fundador Aprobado',
+          actionDescription: isProviderApp
+            ? `Se habilitó a ${a.fullName} como prestador oficial en la plataforma.`
+            : `Se aprobó la membresía fundadora de ${a.fullName}.`,
+          targetType: isProviderApp ? 'prestador' : 'postulacion',
           targetLabel: a.fullName,
-          targetLink: '/prestadores',
+          targetLink: isProviderApp ? '/prestadores' : '/socios',
           badgeType: 'aprobado',
-          timestamp: (a as any).reviewedAt || a.createdAt,
+          timestamp: appReviewedAt,
         });
-      } else if (a.status === 'rechazado') {
+      } else if (a.status === 'rechazado' && appReviewedAt) {
         logs.push({
           id: `app-rejected-${a.id}`,
           actorType: 'admin',
           actorName: 'Administración Club',
-          actionTitle: 'Postulación de Prestador Rechazada',
+          actionTitle: isProviderApp ? 'Postulación de Prestador Rechazada' : 'Postulación Fundadora Rechazada',
           actionDescription: `Se desestimó la postulación de ${a.fullName}.`,
-          targetType: 'prestador',
+          targetType: isProviderApp ? 'prestador' : 'postulacion',
           targetLabel: a.fullName,
-          targetLink: '/prestadores',
+          targetLink: isProviderApp ? '/prestadores' : '/socios',
           badgeType: 'rechazado',
-          timestamp: (a as any).reviewedAt || a.createdAt,
+          timestamp: appReviewedAt,
         });
       }
     }
@@ -785,7 +797,7 @@ export class AdminLogsComponent {
     for (const s of submissions) {
       logs.push({
         id: `sub-sent-${s.id}`,
-        actorType: 'prestador',
+        actorType: 'socio',
         actorName: s.fullName || 'Comprador/Socio',
         actorEmail: s.email,
         actionTitle: 'Comprobante de Pago Subido',
@@ -794,10 +806,10 @@ export class AdminLogsComponent {
         targetLabel: s.reference || s.id,
         targetLink: '/comprobantes',
         badgeType: 'pendiente',
-        timestamp: s.submittedAt,
+        timestamp: s.submittedAt || '',
       });
 
-      if (s.status === 'aprobado') {
+      if (s.status === 'aprobado' && s.reviewedAt) {
         logs.push({
           id: `sub-approved-${s.id}`,
           actorType: 'admin',
@@ -808,9 +820,9 @@ export class AdminLogsComponent {
           targetLabel: s.reference || s.id,
           targetLink: '/comprobantes',
           badgeType: 'aprobado',
-          timestamp: s.reviewedAt || s.submittedAt,
+          timestamp: s.reviewedAt,
         });
-      } else if (s.status === 'rechazado') {
+      } else if (s.status === 'rechazado' && s.reviewedAt) {
         logs.push({
           id: `sub-rejected-${s.id}`,
           actorType: 'admin',
@@ -821,7 +833,7 @@ export class AdminLogsComponent {
           targetLabel: s.reference || s.id,
           targetLink: '/comprobantes',
           badgeType: 'rechazado',
-          timestamp: s.reviewedAt || s.submittedAt,
+          timestamp: s.reviewedAt,
         });
       }
     }
@@ -830,6 +842,7 @@ export class AdminLogsComponent {
     const exps = this.experienceService.experiences();
     for (const e of exps) {
       if (e.status === 'publicada') {
+        const time = (e as any).updatedAt || (e as any).createdAt || '';
         logs.push({
           id: `exp-pub-${e.id}`,
           actorType: 'admin',
@@ -840,13 +853,19 @@ export class AdminLogsComponent {
           targetLabel: e.slug,
           targetLink: `/experiencias/${e.slug}`,
           badgeType: 'aprobado',
-          timestamp: (e as any).updatedAt || (e as any).createdAt || new Date().toISOString(),
+          timestamp: time,
         });
       }
     }
 
-    // Ordenar de más reciente a más antiguo
-    return logs.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+    // Ordenar de más reciente a más antiguo evaluando marcas de tiempo parsed
+    return logs.sort((a, b) => {
+      const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+      const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+      const validA = isNaN(timeA) ? 0 : timeA;
+      const validB = isNaN(timeB) ? 0 : timeB;
+      return validB - validA;
+    });
   });
 
   readonly adminLogsCount = computed(() => this.allLogs().filter((l) => l.actorType === 'admin').length);
@@ -881,12 +900,13 @@ export class AdminLogsComponent {
   });
 
   formatHour(isoString: string): string {
-    if (!isoString) return '';
+    if (!isoString) return '—';
     try {
       const d = new Date(isoString);
+      if (isNaN(d.getTime())) return '—';
       return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} hs`;
     } catch {
-      return '';
+      return '—';
     }
   }
 

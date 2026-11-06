@@ -1,7 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import {
   AdminStoreService,
@@ -515,7 +515,7 @@ import { Experience } from '../../../core/models/experience.model';
                       </span>
                     </td>
                     <td class="text-right">
-                      <a [routerLink]="['/experiencias', exp.slug]" class="btn-review-fiche">
+                      <a [routerLink]="getExperienceFicheRoute(exp.slug)" class="btn-review-fiche">
                         VER FICHA
                       </a>
                     </td>
@@ -2860,6 +2860,7 @@ import { Experience } from '../../../core/models/experience.model';
 export class AdminDashboardComponent {
   readonly store = inject(AdminStoreService);
   private readonly experienceService = inject(ExperienceService);
+  private readonly router = inject(Router);
   readonly webExperiences = this.experienceService.experiences;
 
   isClub(exp?: Partial<Experience> | null): boolean {
@@ -3144,8 +3145,19 @@ export class AdminDashboardComponent {
     }
   }
 
+  getExperienceFicheRoute(slug?: string): string {
+    const rawPath = this.router.url.split('?')[0].split('#')[0];
+    const segments = rawPath.split('/').filter(Boolean);
+    const base = segments[0] === 'admin' ? '/admin/experiencias' : '/experiencias';
+    return `${base}/${slug || ''}`;
+  }
+
   async rejectExperience(id: string): Promise<void> {
-    await this.store.rejectExperienceRequest(id);
+    const success = await this.store.rejectExperienceRequest(id);
+    if (!success) {
+      alert('No se pudo rechazar la propuesta en el servidor. Por favor, reintentá.');
+      return;
+    }
     const current = this.selectedExperienceRequest();
     if (current && current.id === id) {
       this.selectedExperienceRequest.set({

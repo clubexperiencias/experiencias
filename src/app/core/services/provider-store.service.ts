@@ -1094,6 +1094,13 @@ export class ProviderStoreService {
     }
 
     const email = current.email.trim().toLowerCase();
+    if (updates.email && updates.email.trim().toLowerCase() !== email) {
+      return {
+        success: false,
+        message: 'No se permite modificar el correo del prestador directamente porque afectaría el inicio de sesión y la autenticación.',
+      };
+    }
+
     const updated: ProviderUser = {
       ...current,
       ...updates,
@@ -1123,15 +1130,23 @@ export class ProviderStoreService {
           payload['active'] = updates.status === 'aprobado';
         }
 
-        const { error } = await (this.supabase.from('provider_access') as any)
+        const { data: updatedRows, error } = await (this.supabase.from('provider_access') as any)
           .update(payload)
-          .eq('email', email);
+          .eq('email', email)
+          .select('id');
 
         if (error) {
           console.warn('[ProviderStore] Error actualizando provider_access como admin:', error);
           return {
             success: false,
             message: 'No se pudieron guardar los cambios en la base de datos remota.',
+          };
+        }
+
+        if (!updatedRows || updatedRows.length === 0) {
+          return {
+            success: false,
+            message: 'No se encontró el registro del prestador en la base de datos remota.',
           };
         }
 
@@ -2614,6 +2629,11 @@ export class ProviderStoreService {
   }
 
   async rejectExperienceRequest(requestId: string): Promise<boolean> {
+    const previous = this._experienceRequests().find((r) => r.id === requestId);
+    if (!previous) return false;
+    const prevStatus = previous.status;
+    const prevReviewedAt = previous.reviewedAt;
+
     this._experienceRequests.update((list) =>
       list.map((r) =>
         r.id === requestId
@@ -2637,10 +2657,22 @@ export class ProviderStoreService {
             '[ProviderStore] Error actualizando estado de propuesta en Supabase:',
             error,
           );
+          this._experienceRequests.update((list) =>
+            list.map((r) =>
+              r.id === requestId ? { ...r, status: prevStatus, reviewedAt: prevReviewedAt } : r,
+            ),
+          );
+          this.saveRequests();
           return false;
         }
       } catch (err: any) {
         console.warn('[ProviderStore] Excepción al rechazar propuesta en Supabase:', err);
+        this._experienceRequests.update((list) =>
+          list.map((r) =>
+            r.id === requestId ? { ...r, status: prevStatus, reviewedAt: prevReviewedAt } : r,
+          ),
+        );
+        this.saveRequests();
         return false;
       }
     }
