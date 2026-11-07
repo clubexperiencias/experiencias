@@ -26,13 +26,13 @@ export interface AdminMember {
   fullName?: string;
   dni?: string;
   phone?: string;
-  position?: number;
+  position?: number | null;
   membershipTier: 'emergente' | 'activo' | 'fundador' | 'waitlist';
   googleLinked: boolean;
   converted: boolean;
   isProvider?: boolean;
   experiencesWishlist: string[];
-  experiencesOther?: string;
+  experiencesOther?: string | null;
   createdAt: string;
 }
 
@@ -845,12 +845,40 @@ export class AdminStoreService {
       return { success: false, error: 'Socio no encontrado' };
     }
 
+    const previousMembers = this._members();
+    const rollback = () => {
+      this._members.set(previousMembers);
+      this.persistMembers(previousMembers);
+    };
+
+    const resolvedTier =
+      updates.membershipTier ??
+      (updates.type === 'waitlist'
+        ? 'waitlist'
+        : updates.type === 'socio' && existing.membershipTier === 'waitlist'
+          ? 'emergente'
+          : existing.membershipTier);
+    const resolvedType: 'socio' | 'waitlist' = resolvedTier === 'waitlist' ? 'waitlist' : 'socio';
+
     const merged: AdminMember = {
       ...existing,
       ...updates,
+      membershipTier: resolvedTier,
+      type: resolvedType,
+      position:
+        resolvedTier === 'waitlist'
+          ? undefined
+          : updates.position !== undefined
+            ? (updates.position && Number(updates.position) > 0 ? Number(updates.position) : undefined)
+            : existing.position,
+      experiencesOther:
+        updates.experiencesOther !== undefined
+          ? (updates.experiencesOther && updates.experiencesOther.trim() ? updates.experiencesOther.trim() : undefined)
+          : existing.experiencesOther,
+      converted: existing.converted, // La conversión deriva estrictamente de pagos reales, no es editable
     };
 
-    // Actualizar estado local inmediatamente
+    // Actualizar estado local optimistamente
     this._members.update((list) =>
       list.map((m) => (m.id === existing.id || m.email === existing.email ? merged : m)),
     );
@@ -865,34 +893,99 @@ export class AdminStoreService {
         if (updates.email !== undefined) payload['email'] = updates.email;
         if (updates.dni !== undefined) payload['dni'] = updates.dni;
         if (updates.phone !== undefined) payload['phone'] = updates.phone;
-        if (updates.position !== undefined) {
-          payload['position'] = updates.position && updates.position > 0 ? updates.position : null;
+        if (resolvedTier === 'waitlist') {
+          payload['position'] = null;
+        } else if (updates.position !== undefined) {
+          payload['position'] =
+            updates.position && Number(updates.position) > 0 ? Number(updates.position) : null;
         }
-        if (updates.membershipTier !== undefined) payload['membership_tier'] = updates.membershipTier;
-        if (updates.experiencesOther !== undefined) payload['experiences_other'] = updates.experiencesOther;
+        if (updates.membershipTier !== undefined || updates.type !== undefined) {
+          payload['membership_tier'] = resolvedTier;
+        }
+        if (updates.experiencesOther !== undefined) {
+          payload['experiences_other'] =
+            updates.experiencesOther && updates.experiencesOther.trim()
+              ? updates.experiencesOther.trim()
+              : null;
+        }
         if (updates.experiencesWishlist !== undefined) payload['experiences_wishlist'] = updates.experiencesWishlist;
 
-        let query = (this.supabase.from('socios') as any).update(payload);
-        if (existing.id && existing.id.includes('-')) {
-          query = query.eq('id', existing.id);
-        } else {
-          query = query.eq('email', existing.email);
+        const isIdQuery = Boolean(existing.id && existing.id.includes('-'));
+        let query = (this.supabase.from('socios') as any).update(payload, { count: 'exact' });
+        query = isIdQuery ? query.eq('id', existing.id) : query.eq('email', existing.email);
+        if (typeof query?.select === 'function') {
+          query = query.select('id');
         }
-        const { error } = await query;
-        if (error) {
-          console.warn('[AdminStore] Error al persistir socio en Supabase, reintentando por email:', error);
-          if (existing.email) {
-            const fallback = await (this.supabase.from('socios') as any)
-              .update(payload)
-              .eq('email', existing.email);
-            if (fallback.error) {
-              return { success: false, error: fallback.error.message };
-            }
-          } else {
-            return { success: false, error: error.message };
+
+        let { error, count, data } = await query;
+
+        // Determinar si el fallo es un error de payload/validación (ej. violación de unicidad o check constraint)
+        const isPayloadError = Boolean(
+          error &&
+            (error.code === '23505' ||
+              error.code === '23502' ||
+              error.code === '23514' ||
+              error.code === '23503' ||
+              (typeof error.code === 'string' && error.code.startsWith('23'))),
+        );
+
+        const primaryRows = Array.isArray(data)
+          ? data.length
+          : typeof count === 'number'
+            ? count
+            : data
+              ? 1
+              : 0;
+
+        // Solo reintentar por email si la consulta primaria fue por id, el error no es de payload,
+        // y el id no coincidió (0 filas) o tuvo sintaxis inválida de uuid (22P02)
+        const canRetryByEmail =
+          isIdQuery &&
+          Boolean(existing.email) &&
+          !isPayloadError &&
+          (primaryRows === 0 || error?.code === '22P02');
+
+        if (canRetryByEmail) {
+          console.warn(
+            '[AdminStore] Socio no encontrado por id en Supabase, reintentando por email:',
+            error?.message || 'rows: 0',
+          );
+          let fallback = (this.supabase.from('socios') as any)
+            .update(payload, { count: 'exact' })
+            .eq('email', existing.email);
+          if (typeof fallback?.select === 'function') {
+            fallback = fallback.select('id');
           }
+          const fallbackRes = await fallback;
+          error = fallbackRes.error;
+          count = fallbackRes.count;
+          data = fallbackRes.data;
+        }
+
+        if (error) {
+          rollback();
+          console.warn('[AdminStore] Error al persistir socio en Supabase:', error);
+          return { success: false, error: error.message };
+        }
+
+        const rowsAffected = Array.isArray(data)
+          ? data.length
+          : typeof count === 'number'
+            ? count
+            : data
+              ? 1
+              : 0;
+
+        if (rowsAffected === 0) {
+          rollback();
+          console.warn('[AdminStore] No se encontró el registro del socio en Supabase para actualizar.');
+          return {
+            success: false,
+            error: 'No se encontró el registro del socio en Supabase para actualizar.',
+          };
         }
       } catch (err: any) {
+        rollback();
         console.error('[AdminStore] Excepción al actualizar socio en Supabase:', err);
         return { success: false, error: err?.message || 'Error de red' };
       }

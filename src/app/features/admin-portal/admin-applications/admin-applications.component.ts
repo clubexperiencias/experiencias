@@ -1788,7 +1788,8 @@ export class AdminApplicationsComponent implements OnInit {
     void this.experienceService.reloadFromSupabase();
     this.route.queryParams.subscribe((params) => {
       if (params['tab'] === 'experiencias') {
-        void this.router.navigate(['/admin/experiencias'], {
+        void this.router.navigate(['experiencias'], {
+          relativeTo: this.route.parent,
           queryParams: { tab: 'postulaciones' },
           replaceUrl: true,
         });
@@ -1797,7 +1798,8 @@ export class AdminApplicationsComponent implements OnInit {
   }
 
   navigateToExperiencesProposals(): void {
-    void this.router.navigate(['/admin/experiencias'], {
+    void this.router.navigate(['experiencias'], {
+      relativeTo: this.route.parent,
       queryParams: { tab: 'postulaciones' },
     });
   }

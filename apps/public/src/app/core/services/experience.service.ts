@@ -279,61 +279,14 @@ export const SEISMILES_DEFAULT_EXPERIENCE: Experience = {
   providerSlug: 'catamarca-expediciones',
 };
 
-export const SUNSET_DEFAULT_EXPERIENCE: Experience = {
-  id: 'req-sunset-las-pirquitas',
-  slug: 'travesia-en-kayak-nocturna-luna-llena-en-el-jumeal',
-  title: 'Travesía en Kayak Nocturna & Luna Llena en El Jumeal',
-  shortTitle: 'Kayak Nocturno El Jumeal',
-  kicker: 'EXPEDICIÓN NÁUTICA: VALLE CENTRAL',
-  tagline:
-    'Remada nocturna bajo el cielo estrellado y la luna llena en el espejo de agua de El Jumeal, con fogón criollo y degustación de vinos de altura.',
-  description:
-    'Remada nocturna bajo el cielo estrellado y la luna llena en el espejo de agua de El Jumeal, con fogón criollo y degustación de vinos de altura.',
-  region: 'Valle Central y Ambato',
-  meetingPoint: 'Club Náutico El Jumeal (Fray Mamerto Esquiú, RP 1)',
-  difficulty: 'Baja',
-  durationDays: 1,
-  durationLabel: '5 Horas (Jornada Nocturna)',
-  altitudeMeters: 920,
-  bestSeason: 'Primavera y Verano (noches de Luna Llena)',
-  priceArs: 72000,
-  priceUsd: 75,
-  maxSpotsPerGroup: 14,
-  dates: ['2026-11-20', '2026-11-21'],
-  status: 'pendiente',
-  publicUrl:
-    'https://experiencias.club/experiencias/travesia-en-kayak-nocturna-luna-llena-en-el-jumeal',
-  detailRoute:
-    '/experiencias/travesia-en-kayak-nocturna-luna-llena-en-el-jumeal',
-  coverImage: '/assets/images/kayak-club-de-experiencias.jpg',
-  galleryImages: ['/assets/images/kayak-club-de-experiencias.jpg'],
-  highlights: [
-    'Remada guiada nocturna bajo el cielo estrellado de El Jumeal',
-    'Balizas acuáticas y equipamiento estanco de máxima seguridad',
-    'Fogón criollo y degustación de vinos de altura en la ensenada',
-  ],
-  isExclusiveClub: true,
-  isLocked: false,
-  providerId: 'prov-patricio',
-  providerEmail: 'patriciofacundodiaztillar@gmail.com',
-  providerName: 'Patricio Facundo Diaz Tillar',
-  providerAgency: 'Catamarca Kayak & Aventura Náutica',
-  providerPhone: '+54 383 455 8812',
-  itinerary:
-    '19:30 hs Recepción y equipamiento en Club Náutico\n20:15 hs Zarpada con balizas acuáticas\n22:00 hs Desembarco en ensenada y fogón bajo las estrellas\n23:30 hs Brindis de cierre',
-  included: [
-    'Kayaks de travesía, remos, chalecos homologados, balizas estancas, lancha de apoyo y cena rústica al fuego.',
-  ],
-  notIncluded: [
-    'Muda de ropa seca para recambio, campera térmica/rompevientos y calzado para agua.',
-  ],
-};
+export const SEEDED_REMOVED_EXPERIENCE_ID = 'req-sunset-las-pirquitas';
+export const SEEDED_REMOVED_EXPERIENCE_SLUG =
+  'travesia-en-kayak-nocturna-luna-llena-en-el-jumeal';
 
 export const DEFAULT_EXPERIENCES: Experience[] = [
   KAYAK_DEFAULT_EXPERIENCE,
   POMEZ_DEFAULT_EXPERIENCE,
   SEISMILES_DEFAULT_EXPERIENCE,
-  SUNSET_DEFAULT_EXPERIENCE,
 ];
 
 @Injectable({
@@ -1018,9 +971,22 @@ export class ExperienceService {
         if (stored) {
           const parsed = JSON.parse(stored) as Experience[];
           if (Array.isArray(parsed) && parsed.length > 0) {
-            localExperiences = this.sanitizeForPublicCatalog(
-              parsed.filter((e) => !deletedIds.has(e.id) && !deletedIds.has(e.slug)),
+            const cleaned = parsed.filter(
+              (e) =>
+                e &&
+                e.id !== SEEDED_REMOVED_EXPERIENCE_ID &&
+                e.slug !== SEEDED_REMOVED_EXPERIENCE_SLUG &&
+                !deletedIds.has(e.id) &&
+                !deletedIds.has(e.slug),
             );
+            if (cleaned.length !== parsed.length) {
+              try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned));
+              } catch {
+                // ignore
+              }
+            }
+            localExperiences = this.sanitizeForPublicCatalog(cleaned);
           }
         }
       } catch {
@@ -1063,9 +1029,26 @@ export class ExperienceService {
                   : [];
 
               if (privParsed.length > 0) {
+                const cleanedPriv = privParsed.filter(
+                  (p) =>
+                    p &&
+                    p.id !== SEEDED_REMOVED_EXPERIENCE_ID &&
+                    p.slug !== SEEDED_REMOVED_EXPERIENCE_SLUG,
+                );
+                if (cleanedPriv.length !== privParsed.length) {
+                  try {
+                    const toStore = Array.isArray(parsedJson)
+                      ? cleanedPriv
+                      : { ...parsedJson, items: cleanedPriv };
+                    localStorage.setItem(privKey, JSON.stringify(toStore));
+                    localStorage.setItem(PRIVILEGED_STORAGE_KEY, JSON.stringify(toStore));
+                  } catch {
+                    // ignore
+                  }
+                }
                 const existingIds = new Set(localExperiences.map((e) => e.id.toLowerCase()));
                 const existingSlugs = new Set(localExperiences.map((e) => e.slug.toLowerCase()));
-                for (const p of privParsed) {
+                for (const p of cleanedPriv) {
                   if (
                     p &&
                     !deletedIds.has(p.id) &&
@@ -1115,6 +1098,8 @@ export class ExperienceService {
                 p &&
                 p.slug &&
                 p.status === 'publicada' &&
+                p.id !== SEEDED_REMOVED_EXPERIENCE_ID &&
+                p.slug !== SEEDED_REMOVED_EXPERIENCE_SLUG &&
                 !deletedIds.has(p.id) &&
                 !deletedIds.has(p.slug) &&
                 !existingSlugs.has(p.slug.toLowerCase()) &&
@@ -1199,6 +1184,8 @@ export class ExperienceService {
                 const id = r.id || 'exp-' + slug;
                 if (
                   slug &&
+                  id !== SEEDED_REMOVED_EXPERIENCE_ID &&
+                  slug !== SEEDED_REMOVED_EXPERIENCE_SLUG &&
                   !deletedIds.has(id) &&
                   !deletedIds.has(slug) &&
                   !existingSlugs.has(slug.toLowerCase()) &&
@@ -1567,7 +1554,13 @@ export class ExperienceService {
         if (stored) {
           const parsed = JSON.parse(stored);
           if (Array.isArray(parsed)) {
-            const sanitized = this.sanitizeForPublicCatalog(parsed);
+            const cleaned = parsed.filter(
+              (e: any) =>
+                e &&
+                e.id !== SEEDED_REMOVED_EXPERIENCE_ID &&
+                e.slug !== SEEDED_REMOVED_EXPERIENCE_SLUG,
+            );
+            const sanitized = this.sanitizeForPublicCatalog(cleaned);
             localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
           }
         }
@@ -1755,10 +1748,10 @@ export class ExperienceService {
         const remoteSlugs = new Set(remoteExperiences.map((e) => e.slug.toLowerCase()));
         const deletedIds = this.getDeletedIds();
 
-        // Preservar experiencias locales (pendientes de sincronización o propuestas no presentes en remoto)
+        // Preservar experiencias locales (pendientes de sincronización no presentes en remoto)
         const localOnly = currentLocal.filter(
           (e) =>
-            (Boolean(e.pendingRemoteSync) || e.status === 'pendiente') &&
+            Boolean(e.pendingRemoteSync) &&
             !remoteIds.has(e.id.toLowerCase()) &&
             !remoteSlugs.has(e.slug.toLowerCase()) &&
             !deletedIds.has(e.id) &&

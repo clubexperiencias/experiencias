@@ -326,13 +326,15 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
                         <span>VER EN LA WEB</span>
                       </a>
                     }
-                    <a
-                      [routerLink]="getEditRoute(prov)"
-                      class="btn-hero-edit"
-                      title="Editar los datos y configuración de este prestador"
-                    >
-                      <span>EDITAR PRESTADOR</span>
-                    </a>
+                    @if (hasProviderRecord(prov)) {
+                      <a
+                        [routerLink]="getEditRoute(prov)"
+                        class="btn-hero-edit"
+                        title="Editar los datos y configuración de este prestador"
+                      >
+                        <span>EDITAR PRESTADOR</span>
+                      </a>
+                    }
                     <span class="status-pill is-published">Aprobado</span>
                     @if (prov.slug) {
                       <span class="slug-tag">/prestadores/{{ prov.slug }}</span>
@@ -515,9 +517,11 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
                   <span>VER EN LA WEB</span>
                 </a>
               }
-              <a [routerLink]="getEditRoute(prov)" class="btn-hero-edit">
-                <span>EDITAR PRESTADOR</span>
-              </a>
+              @if (hasProviderRecord(prov)) {
+                <a [routerLink]="getEditRoute(prov)" class="btn-hero-edit">
+                  <span>EDITAR PRESTADOR</span>
+                </a>
+              }
             </div>
           </div>
         </div>
@@ -721,13 +725,15 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
                               <span>VER FICHA</span>
                             </a>
 
-                            <a
-                              [routerLink]="getEditRoute(item)"
-                              class="btn-edit-exp"
-                              title="Editar datos del prestador"
-                            >
-                              <span>EDITAR</span>
-                            </a>
+                            @if (item.rawProvider) {
+                              <a
+                                [routerLink]="getEditRoute(item)"
+                                class="btn-edit-exp"
+                                title="Editar datos del prestador"
+                              >
+                                <span>EDITAR</span>
+                              </a>
+                            }
                           }
 
                           @if (item.origin === 'application' && item.rawApp && item.status !== 'aprobado') {
@@ -2334,9 +2340,7 @@ export class AdminProvidersComponent implements OnInit {
       const app = this.store.applications().find(
         (a) =>
           a.id.toLowerCase() === cleanSlug ||
-          slugify(a.fullName || a.id) === cleanSlug ||
-          slugify(a.category || a.id) === cleanSlug ||
-          a.email.toLowerCase().split('@')[0] === cleanSlug,
+          (Boolean(a.fullName) && slugify(a.fullName) === cleanSlug),
       );
       if (app) {
         provider = {
@@ -2345,7 +2349,7 @@ export class AdminProvidersComponent implements OnInit {
           agency: app.category ? this.formatCategory(app.category) : 'Postulación de Prestador',
           email: app.email,
           phone: app.phone || '',
-          slug: slugify(app.fullName || app.id),
+          slug: app.id,
           bio: app.description || app.motivationLetter || '',
           cuitDni: app.cuitDni || '',
           cbuAlias: app.cbuAlias || '',
@@ -2370,6 +2374,13 @@ export class AdminProvidersComponent implements OnInit {
     this.selectedProvider.set(provider);
 
     if (isEdit) {
+      if (!this.hasProviderRecord(provider)) {
+        this.notFound.set(true);
+        this.isRouteEditMode.set(false);
+        this.isRouteDetailMode.set(false);
+        this.selectedProvider.set(null);
+        return;
+      }
       this.isRouteEditMode.set(true);
       this.isRouteDetailMode.set(false);
       this.populateEditForm(provider);
@@ -2463,15 +2474,28 @@ export class AdminProvidersComponent implements OnInit {
   });
 
   getDetailRoute(item: ProviderListItem | ProviderUser): string {
-    const slug = item.slug || slugify(item.agency || item.name || item.id);
+    const slug =
+      item.slug ||
+      ('origin' in item && item.origin === 'application'
+        ? item.id
+        : slugify(item.agency || item.name || item.id));
     const base = this.isAdminRoute() ? '/admin/prestadores' : '/prestadores';
     return `${base}/${slug}`;
   }
 
   getEditRoute(item: ProviderListItem | ProviderUser): string {
-    const slug = item.slug || slugify(item.agency || item.name || item.id);
+    const slug =
+      item.slug ||
+      ('origin' in item && item.origin === 'application'
+        ? item.id
+        : slugify(item.agency || item.name || item.id));
     const base = this.isAdminRoute() ? '/admin/prestadores' : '/prestadores';
     return `${base}/${slug}/editar`;
+  }
+
+  hasProviderRecord(prov?: ProviderUser | null): boolean {
+    if (!prov?.slug) return false;
+    return Boolean(this.store.providerStore.getProviderBySlug(prov.slug));
   }
 
   getExperienceFicheRoute(slug?: string): string {
@@ -2526,7 +2550,7 @@ export class AdminProvidersComponent implements OnInit {
       if (cleanEmail && providerEmails.has(cleanEmail)) {
         continue;
       }
-      const appSlug = slugify(app.fullName || app.category || app.id || cleanEmail);
+      const appSlug = app.id;
       list.push({
         id: app.id,
         origin: 'application',

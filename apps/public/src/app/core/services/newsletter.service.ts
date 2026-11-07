@@ -1468,8 +1468,10 @@ export class NewsletterService {
 
           // Fallback vía RPC Security Definer en caso de error de privilegios (42501) en tabla
           let fallbackSuccess = false;
+          let rpcErr: any = null;
+          let rpcRes: any = null;
           try {
-            const { data: rpcRes, error: rpcErr } = await (this.supabase as any).rpc(
+            const rpcResult = await (this.supabase as any).rpc(
               'submit_provider_application',
               {
                 p_name: data.fullName.trim(),
@@ -1481,6 +1483,8 @@ export class NewsletterService {
                 p_description: data.description.trim(),
               },
             );
+            rpcRes = rpcResult?.data;
+            rpcErr = rpcResult?.error;
 
             if (!rpcErr && rpcRes) {
               if (rpcRes.success) {
@@ -1493,18 +1497,29 @@ export class NewsletterService {
                     rpcRes.message ||
                     'Ya existe una postulación o registro con este correo electrónico.',
                 };
+              } else if (rpcRes.error === 'invalid_email') {
+                return {
+                  success: false,
+                  message:
+                    rpcRes.message || 'El correo electrónico ingresado no es válido.',
+                };
               }
             }
           } catch (rpcFallbackErr) {
+            rpcErr = rpcFallbackErr;
             console.warn('[NewsletterService] Fallback RPC submit_provider_application:', rpcFallbackErr);
           }
 
           if (!fallbackSuccess) {
-            console.warn('[Supabase] Error guardando postulación de prestador en prestadores:', paError);
+            console.warn(
+              '[Supabase] Error guardando postulación de prestador en prestadores:',
+              paError,
+              { rpcErr, rpcRes },
+            );
             return {
               success: false,
               message:
-                'El sistema de postulaciones no pudo procesar la solicitud en este momento por un inconveniente técnico de recepción en el servidor. Tus datos ingresados son correctos y no presentan errores; por favor intentá nuevamente en unos instantes o avisanos por WhatsApp.',
+                'El sistema de postulaciones no pudo procesar la solicitud en este momento por un inconveniente técnico de recepción en el servidor. Por favor intentá nuevamente en unos instantes o avisanos por WhatsApp.',
             };
           }
         }
@@ -1513,7 +1528,7 @@ export class NewsletterService {
         return {
           success: false,
           message:
-            'El sistema no pudo procesar la postulación en este momento por una interrupción momentánea de recepción. Tus datos están bien completados; por favor intentá nuevamente en unos minutos o comunicate con nosotros.',
+            'El sistema no pudo procesar la postulación en este momento por una interrupción momentánea de recepción. Por favor intentá nuevamente en unos minutos o comunicate con nosotros.',
         };
       }
     }

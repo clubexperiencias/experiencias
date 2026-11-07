@@ -337,7 +337,7 @@ export class ProfileComponent implements OnInit {
       if (!result?.success) {
         this.providerError.set(
           result?.message ||
-            'El sistema no pudo procesar la postulación en este momento por un inconveniente temporal de recepción. Tus datos ingresados son correctos; por favor intentá nuevamente.',
+            'El sistema no pudo procesar la postulación en este momento por un inconveniente temporal de recepción. Por favor intentá nuevamente.',
         );
         return;
       }

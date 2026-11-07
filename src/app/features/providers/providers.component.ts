@@ -144,7 +144,7 @@ export class ProvidersComponent {
     } else {
       this.submitError.set(
         result.message ||
-          'El sistema no pudo registrar la postulación en este momento por un inconveniente técnico de recepción. Tus datos están correctamente completados; por favor intentá nuevamente.',
+          'El sistema no pudo registrar la postulación en este momento por un inconveniente técnico de recepción. Por favor intentá nuevamente.',
       );
     }
   }

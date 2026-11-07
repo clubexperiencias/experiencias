@@ -249,4 +249,228 @@ describe('AdminStoreService - Provider Status Update Flow', () => {
       expect(w.converted).toBe(false);
     });
   });
+
+  describe('AdminStoreService - updateMemberProfile rollback and fallback flow', () => {
+    const sampleMember = {
+      id: 'usr-1234-uuid',
+      email: 'socio@club.com',
+      fullName: 'Socio Original',
+      dni: '35123456',
+      phone: '+5493834111222',
+      membershipTier: 'activo' as const,
+      type: 'socio' as const,
+      position: 1,
+      googleLinked: false,
+      converted: true,
+      experiencesWishlist: [],
+      experiencesOther: '',
+      paymentsCount: 1,
+      totalSpentArs: 10000,
+      createdAt: '2026-01-01T00:00:00Z',
+    };
+
+    beforeEach(() => {
+      // Seed _members via internal signal by loading or setting
+      (adminStore as any)._members.set([sampleMember]);
+      localStorage.setItem('admin_members_cache', JSON.stringify([sampleMember]));
+    });
+
+    it('should successfully update member and persist when Supabase update succeeds with count 1', async () => {
+      const eqSpy = vi.fn().mockResolvedValue({ error: null, count: 1 });
+      const updateSpy = vi.fn().mockReturnValue({ eq: eqSpy });
+      mockSupabase.from.mockReturnValue({ update: updateSpy });
+
+      const res = await adminStore.updateMemberProfile('usr-1234-uuid', {
+        fullName: 'Socio Actualizado',
+        phone: '+5493834999999',
+      });
+
+      expect(res.success).toBe(true);
+      const updated = adminStore.getMemberById('usr-1234-uuid');
+      expect(updated?.fullName).toBe('Socio Actualizado');
+      expect(updated?.phone).toBe('+5493834999999');
+      expect(updateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          full_name: 'Socio Actualizado',
+          phone: '+5493834999999',
+        }),
+        { count: 'exact' },
+      );
+      expect(eqSpy).toHaveBeenCalledWith('id', 'usr-1234-uuid');
+    });
+
+    it('should rollback _members and localStorage when primary update returns an error and cannot retry', async () => {
+      const eqSpy = vi.fn().mockResolvedValue({
+        error: { code: '42501', message: 'permission denied' },
+        count: 0,
+      });
+      const updateSpy = vi.fn().mockReturnValue({ eq: eqSpy });
+      mockSupabase.from.mockReturnValue({ update: updateSpy });
+
+      const res = await adminStore.updateMemberProfile('usr-1234-uuid', {
+        fullName: 'Nombre Fallido',
+      });
+
+      expect(res.success).toBe(false);
+      expect(res.error).toBe('permission denied');
+      // Verificamos que se restauró el estado original
+      const rolledBack = adminStore.getMemberById('usr-1234-uuid');
+      expect(rolledBack?.fullName).toBe('Socio Original');
+      const cached = JSON.parse(localStorage.getItem('admin_members_cache') || '[]');
+      expect(cached[0].fullName).toBe('Socio Original');
+    });
+
+    it('should not retry by email on payload/constraint errors (e.g. 23505 unique violation) and rollback', async () => {
+      const eqSpy = vi.fn().mockResolvedValue({
+        error: { code: '23505', message: 'duplicate key value violates unique constraint' },
+        count: 0,
+      });
+      const updateSpy = vi.fn().mockReturnValue({ eq: eqSpy });
+      mockSupabase.from.mockReturnValue({ update: updateSpy });
+
+      const res = await adminStore.updateMemberProfile('usr-1234-uuid', {
+        email: 'existente@club.com',
+      });
+
+      expect(res.success).toBe(false);
+      expect(res.error).toContain('duplicate key');
+      // No debe haberse llamado una segunda vez a eq('email', ...)
+      expect(eqSpy).toHaveBeenCalledTimes(1);
+      expect(eqSpy).toHaveBeenCalledWith('id', 'usr-1234-uuid');
+
+      // Estado restaurado
+      expect(adminStore.getMemberById('usr-1234-uuid')?.email).toBe('socio@club.com');
+    });
+
+    it('should rollback when update returns count 0 and email fallback also yields count 0', async () => {
+      const eqSpy = vi
+        .fn()
+        .mockResolvedValueOnce({ error: null, count: 0 }) // Primario por id
+        .mockResolvedValueOnce({ error: null, count: 0 }); // Fallback por email
+      const updateSpy = vi.fn().mockReturnValue({ eq: eqSpy });
+      mockSupabase.from.mockReturnValue({ update: updateSpy });
+
+      const res = await adminStore.updateMemberProfile('usr-1234-uuid', {
+        fullName: 'No Existe en DB',
+      });
+
+      expect(res.success).toBe(false);
+      expect(res.error).toContain('No se encontró el registro del socio');
+      expect(eqSpy).toHaveBeenCalledTimes(2);
+
+      // Estado restaurado
+      expect(adminStore.getMemberById('usr-1234-uuid')?.fullName).toBe('Socio Original');
+    });
+
+    it('should succeed when primary ID query updates 0 rows but email fallback succeeds with count 1', async () => {
+      const eqSpy = vi
+        .fn()
+        .mockResolvedValueOnce({ error: null, count: 0 }) // Primario por id no encontró nada
+        .mockResolvedValueOnce({ error: null, count: 1 }); // Fallback por email encontró 1 fila
+      const updateSpy = vi.fn().mockReturnValue({ eq: eqSpy });
+      mockSupabase.from.mockReturnValue({ update: updateSpy });
+
+      const res = await adminStore.updateMemberProfile('usr-1234-uuid', {
+        fullName: 'Nombre Resuelto por Email',
+      });
+
+      expect(res.success).toBe(true);
+      expect(eqSpy).toHaveBeenCalledTimes(2);
+      expect(eqSpy).toHaveBeenNthCalledWith(1, 'id', 'usr-1234-uuid');
+      expect(eqSpy).toHaveBeenNthCalledWith(2, 'email', 'socio@club.com');
+
+      expect(adminStore.getMemberById('usr-1234-uuid')?.fullName).toBe('Nombre Resuelto por Email');
+    });
+
+    it('should invoke select(id) and rollback if returned rows array is empty', async () => {
+      const selectSpy = vi.fn().mockResolvedValue({ error: null, data: [] });
+      const eqSpy = vi.fn().mockReturnValue({ select: selectSpy });
+      const updateSpy = vi.fn().mockReturnValue({ eq: eqSpy });
+      mockSupabase.from.mockReturnValue({ update: updateSpy });
+
+      const res = await adminStore.updateMemberProfile('usr-1234-uuid', {
+        fullName: 'No Actualizado por Retorno Vacío',
+      });
+
+      expect(res.success).toBe(false);
+      expect(selectSpy).toHaveBeenCalledWith('id');
+      expect(adminStore.getMemberById('usr-1234-uuid')?.fullName).toBe('Socio Original');
+      const cached = JSON.parse(localStorage.getItem('admin_members_cache') || '[]');
+      expect(cached[0].fullName).toBe('Socio Original');
+    });
+
+    it('should invoke select(id) and succeed if returned rows array contains updated row', async () => {
+      const selectSpy = vi.fn().mockResolvedValue({ error: null, data: [{ id: 'usr-1234-uuid' }] });
+      const eqSpy = vi.fn().mockReturnValue({ select: selectSpy });
+      const updateSpy = vi.fn().mockReturnValue({ eq: eqSpy });
+      mockSupabase.from.mockReturnValue({ update: updateSpy });
+
+      const res = await adminStore.updateMemberProfile('usr-1234-uuid', {
+        fullName: 'Actualizado Con Select Id',
+      });
+
+      expect(res.success).toBe(true);
+      expect(selectSpy).toHaveBeenCalledWith('id');
+      expect(adminStore.getMemberById('usr-1234-uuid')?.fullName).toBe('Actualizado Con Select Id');
+    });
+
+    it('should rollback when an unhandled exception is thrown during persistence', async () => {
+      mockSupabase.from.mockImplementation(() => {
+        throw new Error('Crash de conexión');
+      });
+
+      const res = await adminStore.updateMemberProfile('usr-1234-uuid', {
+        fullName: 'Nombre Crash',
+      });
+
+      expect(res.success).toBe(false);
+      expect(res.error).toBe('Crash de conexión');
+      expect(adminStore.getMemberById('usr-1234-uuid')?.fullName).toBe('Socio Original');
+    });
+
+    it('should derive type and position correctly from membershipTier and preserve payment-derived converted', async () => {
+      const eqSpy = vi.fn().mockResolvedValue({ error: null, count: 1 });
+      const updateSpy = vi.fn().mockReturnValue({ eq: eqSpy });
+      mockSupabase.from.mockReturnValue({ update: updateSpy });
+
+      // Transición a waitlist: debe derivar type = 'waitlist', position = undefined, payload position = null
+      const resWaitlist = await adminStore.updateMemberProfile('usr-1234-uuid', {
+        membershipTier: 'waitlist',
+        converted: false as any, // Intento de alterar converted
+      });
+
+      expect(resWaitlist.success).toBe(true);
+      const waitlistMember = adminStore.getMemberById('usr-1234-uuid');
+      expect(waitlistMember?.type).toBe('waitlist');
+      expect(waitlistMember?.position).toBeUndefined();
+      // converted debe seguir siendo true (derivado de pagos)
+      expect(waitlistMember?.converted).toBe(true);
+      expect(updateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          membership_tier: 'waitlist',
+          position: null,
+        }),
+        { count: 'exact' },
+      );
+
+      // Transición de vuelta a socio activo con número de socio
+      const resActivo = await adminStore.updateMemberProfile('usr-1234-uuid', {
+        membershipTier: 'activo',
+        position: 42,
+      });
+
+      expect(resActivo.success).toBe(true);
+      const activeMember = adminStore.getMemberById('usr-1234-uuid');
+      expect(activeMember?.type).toBe('socio');
+      expect(activeMember?.position).toBe(42);
+      expect(activeMember?.converted).toBe(true);
+      expect(updateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          membership_tier: 'activo',
+          position: 42,
+        }),
+        { count: 'exact' },
+      );
+    });
+  });
 });

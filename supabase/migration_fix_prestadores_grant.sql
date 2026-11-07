@@ -10,6 +10,7 @@ GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT INSERT ON TABLE public.prestadores TO anon, authenticated;
 
 -- 2. Asegurar que la política RLS permita la inserción pública de nuevas postulaciones
+-- restringiendo que callers públicos no puedan fijar valores de payout ni slug
 DROP POLICY IF EXISTS "Permitir postularse como prestador" ON public.prestadores;
 CREATE POLICY "Permitir postularse como prestador"
   ON public.prestadores
@@ -18,6 +19,16 @@ CREATE POLICY "Permitir postularse como prestador"
   WITH CHECK (
     status = 'pendiente'
     AND active = false
+    AND (
+      (auth.role() = 'authenticated' OR (auth.jwt() ->> 'email') IS NOT NULL)
+      OR (
+        (slug IS NULL OR slug = '')
+        AND (cbu_alias IS NULL OR cbu_alias = '')
+        AND (cuit_dni IS NULL OR cuit_dni = '')
+        AND (bank_name IS NULL OR bank_name = '')
+        AND (account_holder IS NULL OR account_holder = '')
+      )
+    )
   );
 
 -- 3. Crear función atómica con SECURITY DEFINER como canal seguro garantizado
@@ -107,7 +118,8 @@ EXCEPTION
       'message', 'Ya existe una postulación o registro con este correo electrónico.'
     );
   WHEN OTHERS THEN
-    RETURN jsonb_build_object('success', false, 'error', SQLERRM);
+    RAISE WARNING 'Error en submit_provider_application: %', SQLERRM;
+    RETURN jsonb_build_object('success', false, 'error', 'internal_error');
 END;
 $$;
 

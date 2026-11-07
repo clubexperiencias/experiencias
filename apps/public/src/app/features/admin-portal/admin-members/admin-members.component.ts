@@ -158,31 +158,27 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
                   </div>
 
                   <div class="form-group">
-                    <label for="m-type">Tipo de Registro:</label>
-                    <select
-                      id="m-type"
-                      class="form-input"
-                      [ngModel]="editType()"
-                      (ngModelChange)="editType.set($event)"
-                      name="type"
-                    >
-                      <option value="socio">Socio Oficial del Club</option>
-                      <option value="waitlist">Lista de Espera</option>
-                    </select>
+                    <label>Tipo de Registro (Derivado):</label>
+                    <div style="padding-top: 0.25rem;">
+                      @if (editMembershipTier() === 'waitlist') {
+                        <span class="status-pill is-draft">Lista de Espera (Waitlist)</span>
+                      } @else {
+                        <span class="status-pill is-published">Socio Oficial del Club</span>
+                      }
+                    </div>
+                    <span class="field-hint">Se sincroniza automáticamente según el nivel de membresía.</span>
                   </div>
 
                   <div class="form-group">
-                    <label for="m-conv">Estado de Pagos / Conversión:</label>
-                    <select
-                      id="m-conv"
-                      class="form-input"
-                      [ngModel]="editConverted() ? 'si' : 'no'"
-                      (ngModelChange)="editConverted.set($event === 'si')"
-                      name="converted"
-                    >
-                      <option value="si">Pago OK / Comprobante Acreditado</option>
-                      <option value="no">Sin Pago Registrado</option>
-                    </select>
+                    <label>Historial de Pagos / Conversión:</label>
+                    <div style="padding-top: 0.25rem;">
+                      @if (selectedMember()?.converted) {
+                        <span class="converted-pill">Pago OK / Acreditado</span>
+                      } @else {
+                        <span class="pending-conversion-pill">Sin pagos registrados</span>
+                      }
+                    </div>
+                    <span class="field-hint">Derivado del historial real de comprobantes y transferencias.</span>
                   </div>
                 </div>
               </div>
@@ -1927,8 +1923,6 @@ export class AdminMembersComponent implements OnInit {
   readonly editPhone = signal<string>('');
   readonly editPosition = signal<number | null>(null);
   readonly editMembershipTier = signal<'emergente' | 'activo' | 'fundador' | 'waitlist'>('emergente');
-  readonly editType = signal<'socio' | 'waitlist'>('socio');
-  readonly editConverted = signal<boolean>(false);
   readonly editExperiencesOther = signal<string>('');
   readonly saving = signal<boolean>(false);
   readonly feedbackToast = signal<string | null>(null);
@@ -1946,10 +1940,10 @@ export class AdminMembersComponent implements OnInit {
 
     // Re-resolver automáticamente cuando termine de cargar la lista de miembros
     effect(() => {
-      const members = this.store.members();
-      if (members.length > 0) {
-        this.resolveRouteState();
-      }
+      this.store.members();
+      this.store.lastRefreshedAt();
+      this.store.isLoadingMembers();
+      this.resolveRouteState();
     });
   }
 
@@ -1970,14 +1964,11 @@ export class AdminMembersComponent implements OnInit {
 
   getDetailRoute(m: AdminMember): string {
     const base = this.isAdminRoute() ? '/admin/socios' : '/socios';
-    const idOrPos = m.position !== undefined ? String(m.position) : m.id;
-    return `${base}/${encodeURIComponent(idOrPos)}`;
+    return `${base}/${encodeURIComponent(m.id)}`;
   }
 
   getEditRoute(m: AdminMember): string {
-    const base = this.isAdminRoute() ? '/admin/socios' : '/socios';
-    const idOrPos = m.position !== undefined ? String(m.position) : m.id;
-    return `${base}/${encodeURIComponent(idOrPos)}/editar`;
+    return `${this.getDetailRoute(m)}/editar`;
   }
 
   readonly memberPayments = computed(() => {
@@ -2008,8 +1999,8 @@ export class AdminMembersComponent implements OnInit {
 
     const member = this.store.getMemberById(identifier);
     if (!member) {
-      // Si todavía se está cargando de Supabase, no marcar error todavía
-      if (this.store.isLoadingMembers()) {
+      // Si todavía se está cargando de Supabase o no completó la carga inicial, no marcar error todavía
+      if (this.store.isLoadingMembers() || this.store.lastRefreshedAt() === null) {
         return;
       }
       this.notFound.set(true);
@@ -2039,8 +2030,6 @@ export class AdminMembersComponent implements OnInit {
     this.editPhone.set(m.phone && m.phone !== '—' ? m.phone : '');
     this.editPosition.set(m.position !== undefined ? m.position : null);
     this.editMembershipTier.set(m.membershipTier || 'emergente');
-    this.editType.set(m.type || 'socio');
-    this.editConverted.set(Boolean(m.converted));
     this.editExperiencesOther.set(m.experiencesOther || '');
   }
 
@@ -2051,16 +2040,16 @@ export class AdminMembersComponent implements OnInit {
     this.saving.set(true);
     try {
       const posVal = this.editPosition();
+      const tierVal = this.editMembershipTier();
+      const trimmedNotes = this.editExperiencesOther().trim();
       const res = await this.store.updateMemberProfile(current.id, {
         fullName: this.editFullName().trim(),
         email: this.editEmail().trim().toLowerCase(),
         dni: this.editDni().trim(),
         phone: this.editPhone().trim(),
-        position: posVal && Number(posVal) > 0 ? Number(posVal) : undefined,
-        membershipTier: this.editMembershipTier(),
-        type: this.editType(),
-        converted: this.editConverted(),
-        experiencesOther: this.editExperiencesOther().trim() || undefined,
+        position: tierVal !== 'waitlist' && posVal && Number(posVal) > 0 ? Number(posVal) : 0,
+        membershipTier: tierVal,
+        experiencesOther: trimmedNotes || '',
       });
 
       if (res.success) {

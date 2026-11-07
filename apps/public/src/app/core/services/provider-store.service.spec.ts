@@ -438,5 +438,60 @@ describe('ProviderStoreService - Payment & Proposal Persistence', () => {
       expect(updatedPayload.dates).toEqual(['2026-12-01']);
     });
   });
+
+  describe('getProviderBySlug', () => {
+    const sampleProviders = [
+      {
+        id: 'prov-001',
+        name: 'Carlos Montaña',
+        agency: 'Aconquija Expediciones',
+        slug: 'aconquija',
+        email: 'aconquija@test.com',
+      },
+      {
+        id: 'prov-002',
+        name: 'Aconquija Guía',
+        agency: 'Otra Agencia',
+        slug: 'aconquija-guia',
+        email: 'guia@test.com',
+      },
+      {
+        id: 'aconquija-guia-raw',
+        name: 'Tercer Prestador',
+        agency: 'Tercera Agencia',
+        slug: 'tercero',
+        email: 'carlos@test.com',
+      },
+    ];
+
+    beforeEach(() => {
+      (store as any)._providers.set(sampleProviders);
+    });
+
+    it('should prioritize exact slug match in first pass over agency/name fallbacks', () => {
+      const found = store.getProviderBySlug('aconquija');
+      expect(found?.id).toBe('prov-001');
+    });
+
+    it('should prioritize exact ID match in first pass', () => {
+      const found = store.getProviderBySlug('prov-002');
+      expect(found?.name).toBe('Aconquija Guía');
+    });
+
+    it('should resolve agency fallback in second pass when no exact slug or ID matches', () => {
+      const found = store.getProviderBySlug('aconquija-expediciones');
+      expect(found?.id).toBe('prov-001');
+    });
+
+    it('should resolve name fallback in second pass when no exact slug or ID matches', () => {
+      const found = store.getProviderBySlug('carlos-montana');
+      expect(found?.id).toBe('prov-001');
+    });
+
+    it('should NOT match email local-part', () => {
+      const found = store.getProviderBySlug('carlos');
+      expect(found).toBeUndefined();
+    });
+  });
 });
 

@@ -3002,7 +3002,6 @@ export class AdminDashboardComponent {
       if (cleanEmail && providerEmails.has(cleanEmail)) {
         continue; // Ya figura como prestador oficial aprobado
       }
-      const appSlug = slugify(app.fullName || app.category || app.id || cleanEmail);
       list.push({
         id: app.id,
         origin: 'application',
@@ -3011,7 +3010,7 @@ export class AdminDashboardComponent {
         email: app.email,
         phone: app.phone || '—',
         categoryOrBio: app.description || app.motivationLetter,
-        slug: appSlug,
+        slug: app.id,
         status:
           app.status === 'aprobado'
             ? 'aprobado'
@@ -3241,7 +3240,9 @@ export class AdminDashboardComponent {
     const rawPath = this.router.url.split('?')[0].split('#')[0];
     const segments = rawPath.split('/').filter(Boolean);
     const base = segments[0] === 'admin' ? '/admin/prestadores' : '/prestadores';
-    const slug = item.slug || slugify(item.agency || item.name || item.id);
+    const slug =
+      item.slug ||
+      (item.origin === 'application' ? item.id : slugify(item.agency || item.name || item.id));
     return `${base}/${slug}`;
   }
 

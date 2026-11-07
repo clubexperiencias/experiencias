@@ -1083,13 +1083,21 @@ export class ProviderStoreService {
   getProviderBySlug(slug: string): ProviderUser | undefined {
     const clean = (slug || '').trim().toLowerCase();
     if (!clean) return undefined;
-    return this._providers().find(
+    const providers = this._providers();
+
+    // 1er pase: coincidencia exacta por slug almacenado o id
+    const exactMatch = providers.find(
+      (p) => (p.slug || '').toLowerCase() === clean || p.id.toLowerCase() === clean,
+    );
+    if (exactMatch) {
+      return exactMatch;
+    }
+
+    // 2do pase: fallbacks por agencia y nombre
+    return providers.find(
       (p) =>
-        (p.slug || '').toLowerCase() === clean ||
-        p.id.toLowerCase() === clean ||
         slugify(p.agency || '') === clean ||
         slugify(p.name || '') === clean ||
-        p.email.toLowerCase().split('@')[0] === clean ||
         (p.agency || '')
           .toLowerCase()
           .normalize('NFD')
