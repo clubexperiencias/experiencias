@@ -5,6 +5,9 @@ import {
   STORAGE_KEY,
   PRIVILEGED_STORAGE_KEY,
   PRIVILEGED_OWNER_KEY,
+  DEFAULT_EXPERIENCES,
+  SEEDED_REMOVED_EXPERIENCE_ID,
+  SEEDED_REMOVED_EXPERIENCE_SLUG,
 } from './experience.service';
 import { SUPABASE_CLIENT } from '../supabase/supabase.client';
 import { Experience } from '../models/experience.model';
@@ -350,6 +353,137 @@ describe('ExperienceService', () => {
       expect(loaded.some((e: Experience) => e.id === 'exp-stale')).toBe(false);
       expect(localStorage.getItem(PRIVILEGED_STORAGE_KEY)).toBeNull();
       expect(localStorage.getItem(PRIVILEGED_OWNER_KEY)).toBeNull();
+    });
+
+    it('should retain local experiences on remote merge only when pendingRemoteSync is true', async () => {
+      const expSyncPending: Partial<Experience> = {
+        id: 'exp-sync-1',
+        slug: 'exp-sync-1',
+        title: 'Sync Pending',
+        status: 'pendiente',
+        pendingRemoteSync: true,
+      };
+      const expNoSyncFlag: Partial<Experience> = {
+        id: 'exp-no-sync-2',
+        slug: 'exp-no-sync-2',
+        title: 'No Sync Flag',
+        status: 'pendiente',
+        pendingRemoteSync: false,
+      };
+
+      (service as any)._experiences.set([expSyncPending, expNoSyncFlag]);
+
+      // Mock remote experiences returning 1 remote experience
+      const selectQuery: any = {
+        order: vi.fn().mockResolvedValue({
+          data: [
+            {
+              id: 'exp-remote-1',
+              slug: 'exp-remote-1',
+              title: 'Remote Exp',
+              price_ars: 1000,
+            },
+          ],
+          error: null,
+        }),
+      };
+      mockSupabase.from.mockReturnValue({
+        select: vi.fn().mockReturnValue(selectQuery),
+      });
+
+      await service.reloadFromSupabase();
+
+      const experiences = service.experiences();
+      expect(experiences.some((e) => e.id === 'exp-sync-1')).toBe(true);
+      expect(experiences.some((e) => e.id === 'exp-no-sync-2')).toBe(false);
+    });
+
+    it('should not contain the seeded sunset pending experience in DEFAULT_EXPERIENCES', () => {
+      expect(
+        DEFAULT_EXPERIENCES.some(
+          (e) =>
+            e.id === SEEDED_REMOVED_EXPERIENCE_ID ||
+            e.slug === SEEDED_REMOVED_EXPERIENCE_SLUG,
+        ),
+      ).toBe(false);
+      expect(
+        DEFAULT_EXPERIENCES.some(
+          (e) => (e as any).providerEmail === 'patriciofacundodiaztillar@gmail.com',
+        ),
+      ).toBe(false);
+    });
+
+    it('should clean up cached copies of the seeded sunset experience while preserving genuine proposals', () => {
+      const genuinePublished: Partial<Experience> = {
+        id: 'exp-genuine-1',
+        slug: 'genuine-experience-slug',
+        title: 'Experiencia Genuina de Prestador',
+        status: 'publicada',
+      };
+      const seededSunsetExp: Partial<Experience> = {
+        id: SEEDED_REMOVED_EXPERIENCE_ID,
+        slug: SEEDED_REMOVED_EXPERIENCE_SLUG,
+        title: 'Travesía en Kayak Nocturna & Luna Llena en El Jumeal',
+        status: 'pendiente',
+        providerEmail: 'patriciofacundodiaztillar@gmail.com',
+      };
+
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify([genuinePublished, seededSunsetExp]),
+      );
+
+      localStorage.setItem(
+        'catamarca_experience_requests_v1',
+        JSON.stringify([
+          {
+            id: 'req-genuine-proposal',
+            title: 'Propuesta Genuina Pendiente',
+            slug: 'propuesta-genuina-pendiente',
+            status: 'pendiente',
+          },
+          {
+            id: SEEDED_REMOVED_EXPERIENCE_ID,
+            title: 'Travesía en Kayak Nocturna & Luna Llena en El Jumeal',
+            slug: SEEDED_REMOVED_EXPERIENCE_SLUG,
+            status: 'pendiente',
+          },
+        ]),
+      );
+
+      // Create new service instance to run loadInitialExperiences
+      const newService = TestBed.inject(ExperienceService);
+      const initial = (newService as any).loadInitialExperiences();
+
+      expect(
+        initial.some(
+          (e: Experience) =>
+            e.id === SEEDED_REMOVED_EXPERIENCE_ID ||
+            e.slug === SEEDED_REMOVED_EXPERIENCE_SLUG,
+        ),
+      ).toBe(false);
+      expect(
+        initial.some((e: Experience) => e.id === 'exp-genuine-1'),
+      ).toBe(true);
+      expect(
+        initial.some((e: Experience) => e.id === 'req-genuine-proposal'),
+      ).toBe(true);
+
+      const storedInLocalStorage = JSON.parse(
+        localStorage.getItem(STORAGE_KEY) || '[]',
+      );
+      expect(
+        storedInLocalStorage.some(
+          (e: any) =>
+            e.id === SEEDED_REMOVED_EXPERIENCE_ID ||
+            e.slug === SEEDED_REMOVED_EXPERIENCE_SLUG,
+        ),
+      ).toBe(false);
+      expect(
+        storedInLocalStorage.some(
+          (e: any) => e.id === 'exp-genuine-1',
+        ),
+      ).toBe(true);
     });
   });
 });

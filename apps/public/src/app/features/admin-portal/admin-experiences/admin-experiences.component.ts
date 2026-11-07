@@ -104,7 +104,6 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                       class="btn-hero-edit"
                       title="Editar los datos y contenidos de esta ficha"
                     >
-                      <mat-icon class="btn-icon-sm">edit</mat-icon>
                       <span>Editar</span>
                     </a>
                     @if (exp.status === 'publicada') {
@@ -398,7 +397,6 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                     (click)="toggleStatus(exp, 'oculta')"
                     title="Pausar ruta y ocultarla de la web pública"
                   >
-                    <mat-icon class="btn-icon-sm">pause_circle</mat-icon>
                     <span>Pausar</span>
                   </button>
                 } @else {
@@ -408,7 +406,6 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                     (click)="toggleStatus(exp, 'publicada')"
                     title="Activar y publicar en la web pública"
                   >
-                    <mat-icon class="btn-icon-sm">play_circle</mat-icon>
                     <span>Activar</span>
                   </button>
                 }
@@ -528,7 +525,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                 <th>Ruta Web Oficial</th>
                 <th>Región & Dificultad</th>
                 <th>Arancel</th>
-                <th>Cupo Máx.</th>
+                <th class="col-cupo">Cupo Máx.</th>
                 <th>Estado</th>
                 <th class="text-right">Acciones</th>
               </tr>
@@ -577,7 +574,6 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                         title="Abrir ruta pública"
                       >
                         <code>/.../{{ exp.slug }}</code>
-                        <mat-icon class="external-icon">open_in_new</mat-icon>
                       </a>
                     </div>
                   </td>
@@ -600,7 +596,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                   </td>
 
                   <!-- Columna Cupo -->
-                  <td>
+                  <td class="col-cupo">
                     <span class="cupo-badge">{{ exp.maxSpotsPerGroup }} pers.</span>
                   </td>
 
@@ -1347,6 +1343,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         display: flex;
         flex-direction: column;
         gap: 1.25rem;
+        margin-top: 1.5rem;
       }
 
       .fiche-admin-topbar {
@@ -1502,7 +1499,6 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
       }
 
       .hero-fiche-card {
-        border-left: 4px solid #ff5f00;
       }
 
       .hero-kicker-row {
@@ -1529,11 +1525,22 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         flex-wrap: wrap;
       }
 
+      .hero-badges-row .btn-hero-public-web,
+      .hero-badges-row .btn-hero-edit,
+      .hero-badges-row .status-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 28px;
+        box-sizing: border-box;
+        line-height: 1;
+      }
+
       .btn-hero-public-web {
         display: inline-flex;
         align-items: center;
         gap: 0.35rem;
-        padding: 0.32rem 0.75rem;
+        padding: 0 0.75rem;
         background: rgba(255, 255, 255, 0.08);
         border: 1px solid rgba(255, 255, 255, 0.22);
         border-radius: 4px;
@@ -1555,8 +1562,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
       .btn-hero-edit {
         display: inline-flex;
         align-items: center;
-        gap: 0.35rem;
-        padding: 0.32rem 0.75rem;
+        padding: 0 0.75rem;
         background: #ff5f00;
         border: 1px solid #ff5f00;
         border-radius: 4px;
@@ -1662,7 +1668,6 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
       .pricing-fiche-card {
         background: linear-gradient(135deg, rgba(28, 16, 8, 0.98) 0%, rgba(18, 10, 5, 0.98) 100%);
         border: 1px solid rgba(255, 95, 0, 0.28);
-        border-left: 4px solid #ff5f00;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
       }
 
@@ -2032,10 +2037,10 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        height: 42px;
-        min-height: 42px;
-        padding: 0 1.35rem;
-        font-size: 0.85rem;
+        height: 34px;
+        min-height: 34px;
+        padding: 0 1.15rem;
+        font-size: 0.8rem;
         font-weight: 800;
         border-radius: 4px;
         box-sizing: border-box;
@@ -2048,7 +2053,6 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         border: 1px solid rgba(255, 80, 80, 0.4);
         color: #ff8080;
         cursor: pointer;
-        gap: 0.35rem;
       }
 
       .btn-pause-exp-bottom:hover {
@@ -2062,7 +2066,6 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         border: 1px solid rgba(0, 204, 136, 0.4);
         color: #33ffaa;
         cursor: pointer;
-        gap: 0.35rem;
       }
 
       .btn-activate-exp-bottom:hover {
@@ -2367,7 +2370,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
 
       .admin-exp-table {
         width: 100%;
-        min-width: 1180px;
+        min-width: 1380px;
         border-collapse: collapse;
         font-size: 0.85rem;
       }
@@ -2375,20 +2378,36 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
       .admin-exp-table th {
         text-align: left;
         padding: 0.75rem 1rem;
-        background: rgba(10, 5, 2, 0.5);
+        background: #0f0703;
         color: rgba(255, 255, 255, 0.65);
         font-size: 0.72rem;
         font-weight: 800;
         text-transform: uppercase;
         letter-spacing: 0.06em;
         border-bottom: 1px solid rgba(255, 95, 0, 0.2);
+        white-space: nowrap;
       }
 
       .admin-exp-table th.text-right,
       .admin-exp-table td.text-right {
         text-align: right;
         white-space: nowrap;
-        min-width: 250px;
+        min-width: 135px;
+        width: 135px;
+        position: sticky;
+        right: 0;
+        z-index: 5;
+        background: #140b06;
+        box-shadow: -6px 0 16px rgba(0, 0, 0, 0.5);
+        position: sticky;
+        right: 0;
+        z-index: 5;
+        background: #140b06;
+        box-shadow: -6px 0 16px rgba(0, 0, 0, 0.5);
+      }
+
+      .admin-exp-table th.text-right {
+        background: #0f0703;
       }
 
       .admin-exp-table td {
@@ -2401,15 +2420,32 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         background: rgba(255, 95, 0, 0.06);
       }
 
+      .admin-exp-table tr:hover td.text-right {
+        background: #241309;
+      }
+
       .admin-exp-table tr.is-paused td {
         opacity: 0.65;
+      }
+
+      .admin-exp-table tr.is-paused td.text-right {
+        opacity: 1;
+      }
+
+      .admin-exp-table tr.is-paused td.text-right .action-buttons-cell {
+        opacity: 0.65;
+      }
+
+      .col-cupo {
+        min-width: 140px;
+        white-space: nowrap;
       }
 
       .exp-cell-main {
         display: flex;
         align-items: center;
         gap: 1rem;
-        min-width: 260px;
+        min-width: 320px;
       }
 
       .exp-table-thumb {
@@ -2431,11 +2467,13 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         font-size: 0.95rem;
         font-weight: 700;
         color: #ffffff;
+        white-space: nowrap;
       }
 
       .exp-table-sub {
         font-size: 0.78rem;
         color: rgba(255, 255, 255, 0.65);
+        white-space: nowrap;
       }
 
       .route-badge-box {
@@ -2478,7 +2516,8 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         display: flex;
         flex-direction: column;
         gap: 0.15rem;
-        min-width: 140px;
+        min-width: 160px;
+        white-space: nowrap;
       }
 
       .meta-cell strong {
@@ -2500,6 +2539,8 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         display: flex;
         flex-direction: column;
         gap: 0.15rem;
+        min-width: 110px;
+        white-space: nowrap;
       }
 
       .price-cell strong {
@@ -2512,8 +2553,14 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
       }
 
       .cupo-badge {
-        display: inline-block;
-        padding: 0.25rem 0.55rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        white-space: nowrap;
+        height: 28px;
+        box-sizing: border-box;
+        line-height: 1;
+        padding: 0 0.65rem;
         background: rgba(255, 255, 255, 0.08);
         border: 1px solid rgba(255, 255, 255, 0.18);
         border-radius: 4px;
@@ -2523,8 +2570,13 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
       }
 
       .status-pill {
-        display: inline-block;
-        padding: 0.25rem 0.65rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 28px;
+        box-sizing: border-box;
+        line-height: 1;
+        padding: 0 0.65rem;
         border-radius: 4px;
         font-size: 0.75rem;
         font-weight: 800;
@@ -2671,11 +2723,28 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
 
       .action-buttons-cell {
         display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: center;
+        gap: 0.3rem;
+        min-width: 110px;
+        max-width: 125px;
+        margin-left: auto;
+      }
+
+      .action-buttons-cell .btn-view-fiche,
+      .action-buttons-cell .btn-edit-exp,
+      .action-buttons-cell .btn-pause-exp,
+      .action-buttons-cell .btn-activate-exp {
+        display: inline-flex;
         align-items: center;
-        justify-content: flex-end;
-        gap: 0.45rem;
-        flex-wrap: nowrap;
-        white-space: nowrap;
+        justify-content: center;
+        width: 100%;
+        height: 25px;
+        min-height: 25px;
+        padding: 0 0.5rem;
+        font-size: 0.7rem;
+        box-sizing: border-box;
       }
 
       .btn-edit-exp {
@@ -4011,7 +4080,25 @@ export class AdminExperiencesComponent implements OnInit {
   });
 
   async ngOnInit(): Promise<void> {
+    void this.experienceService.reloadFromSupabase();
     void this.adminStore.providerStore.loadProposalsFromSupabase();
+
+    this.route.queryParamMap
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((params) => {
+        const tab = params.get('tab');
+        if (tab === 'postulaciones' || tab === 'experiencias' || tab === 'pendientes') {
+          this.activeTab.set('postulaciones');
+        } else if (tab === 'publicadas') {
+          this.activeTab.set('publicadas');
+        } else if (tab === 'ocultas' || tab === 'pausadas') {
+          this.activeTab.set('ocultas');
+        } else if (tab === 'borradores') {
+          this.activeTab.set('borradores');
+        } else if (tab === 'todas' || tab === 'all') {
+          this.activeTab.set('all');
+        }
+      });
 
     this.router.events
       .pipe(

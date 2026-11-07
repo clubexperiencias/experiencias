@@ -1465,17 +1465,70 @@ export class NewsletterService {
               message: 'Ya existe una postulación o registro con este correo electrónico.',
             };
           }
-          console.warn('[Supabase] Error guardando postulación de prestador en prestadores:', paError);
-          return {
-            success: false,
-            message: 'No se pudo guardar la postulación. Por favor, intentá nuevamente.',
-          };
+
+          // Fallback vía RPC Security Definer en caso de error de privilegios (42501) en tabla
+          let fallbackSuccess = false;
+          let rpcErr: any = null;
+          let rpcRes: any = null;
+          try {
+            const rpcResult = await (this.supabase as any).rpc(
+              'submit_provider_application',
+              {
+                p_name: data.fullName.trim(),
+                p_email: cleanEmail,
+                p_phone: data.phone.trim(),
+                p_category: data.category.trim() || 'guia_montaña',
+                p_region: data.region.trim() || 'Puna & Fiambalá',
+                p_website: data.website.trim(),
+                p_description: data.description.trim(),
+              },
+            );
+            rpcRes = rpcResult?.data;
+            rpcErr = rpcResult?.error;
+
+            if (!rpcErr && rpcRes) {
+              if (rpcRes.success) {
+                fallbackSuccess = true;
+              } else if (rpcRes.already_registered) {
+                return {
+                  success: false,
+                  alreadyRegistered: true,
+                  message:
+                    rpcRes.message ||
+                    'Ya existe una postulación o registro con este correo electrónico.',
+                };
+              } else if (rpcRes.error === 'invalid_email') {
+                return {
+                  success: false,
+                  message:
+                    rpcRes.message || 'El correo electrónico ingresado no es válido.',
+                };
+              }
+            }
+          } catch (rpcFallbackErr) {
+            rpcErr = rpcFallbackErr;
+            console.warn('[NewsletterService] Fallback RPC submit_provider_application:', rpcFallbackErr);
+          }
+
+          if (!fallbackSuccess) {
+            console.warn(
+              '[Supabase] Error guardando postulación de prestador en prestadores:',
+              paError,
+              { rpcErr, rpcRes },
+            );
+            return {
+              success: false,
+              message:
+                'El sistema de postulaciones no pudo procesar la solicitud en este momento por un inconveniente técnico de recepción en el servidor. Por favor intentá nuevamente en unos instantes o avisanos por WhatsApp.',
+            };
+          }
         }
       } catch (err) {
         console.warn('[Supabase] Error guardando postulación de prestador:', err);
         return {
           success: false,
-          message: 'Error al registrar la postulación. Por favor, intentá nuevamente.',
+          message:
+            'El sistema no pudo procesar la postulación en este momento por una interrupción momentánea de recepción. Por favor intentá nuevamente en unos minutos o comunicate con nosotros.',
         };
       }
     }

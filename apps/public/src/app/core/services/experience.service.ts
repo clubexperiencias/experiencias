@@ -279,6 +279,10 @@ export const SEISMILES_DEFAULT_EXPERIENCE: Experience = {
   providerSlug: 'catamarca-expediciones',
 };
 
+export const SEEDED_REMOVED_EXPERIENCE_ID = 'req-sunset-las-pirquitas';
+export const SEEDED_REMOVED_EXPERIENCE_SLUG =
+  'travesia-en-kayak-nocturna-luna-llena-en-el-jumeal';
+
 export const DEFAULT_EXPERIENCES: Experience[] = [
   KAYAK_DEFAULT_EXPERIENCE,
   POMEZ_DEFAULT_EXPERIENCE,
@@ -967,9 +971,22 @@ export class ExperienceService {
         if (stored) {
           const parsed = JSON.parse(stored) as Experience[];
           if (Array.isArray(parsed) && parsed.length > 0) {
-            localExperiences = this.sanitizeForPublicCatalog(
-              parsed.filter((e) => !deletedIds.has(e.id) && !deletedIds.has(e.slug)),
+            const cleaned = parsed.filter(
+              (e) =>
+                e &&
+                e.id !== SEEDED_REMOVED_EXPERIENCE_ID &&
+                e.slug !== SEEDED_REMOVED_EXPERIENCE_SLUG &&
+                !deletedIds.has(e.id) &&
+                !deletedIds.has(e.slug),
             );
+            if (cleaned.length !== parsed.length) {
+              try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned));
+              } catch {
+                // ignore
+              }
+            }
+            localExperiences = this.sanitizeForPublicCatalog(cleaned);
           }
         }
       } catch {
@@ -1012,9 +1029,26 @@ export class ExperienceService {
                   : [];
 
               if (privParsed.length > 0) {
+                const cleanedPriv = privParsed.filter(
+                  (p) =>
+                    p &&
+                    p.id !== SEEDED_REMOVED_EXPERIENCE_ID &&
+                    p.slug !== SEEDED_REMOVED_EXPERIENCE_SLUG,
+                );
+                if (cleanedPriv.length !== privParsed.length) {
+                  try {
+                    const toStore = Array.isArray(parsedJson)
+                      ? cleanedPriv
+                      : { ...parsedJson, items: cleanedPriv };
+                    localStorage.setItem(privKey, JSON.stringify(toStore));
+                    localStorage.setItem(PRIVILEGED_STORAGE_KEY, JSON.stringify(toStore));
+                  } catch {
+                    // ignore
+                  }
+                }
                 const existingIds = new Set(localExperiences.map((e) => e.id.toLowerCase()));
                 const existingSlugs = new Set(localExperiences.map((e) => e.slug.toLowerCase()));
-                for (const p of privParsed) {
+                for (const p of cleanedPriv) {
                   if (
                     p &&
                     !deletedIds.has(p.id) &&
@@ -1064,6 +1098,8 @@ export class ExperienceService {
                 p &&
                 p.slug &&
                 p.status === 'publicada' &&
+                p.id !== SEEDED_REMOVED_EXPERIENCE_ID &&
+                p.slug !== SEEDED_REMOVED_EXPERIENCE_SLUG &&
                 !deletedIds.has(p.id) &&
                 !deletedIds.has(p.slug) &&
                 !existingSlugs.has(p.slug.toLowerCase()) &&
@@ -1135,23 +1171,27 @@ export class ExperienceService {
               ...activeDefaults.map((d) => d.id.toLowerCase()),
             ]);
             for (const r of reqs) {
-              if (r && r.status === 'aprobada' && r.title) {
+              if (r && (r.status === 'aprobada' || r.status === 'pendiente') && r.title) {
                 const slug =
                   r.experienceSlug ||
+                  r.slug ||
                   r.title
                     .toLowerCase()
                     .normalize('NFD')
                     .replace(/[\u0300-\u036f]/g, '')
                     .replace(/[^a-z0-9]+/g, '-')
                     .replace(/(^-|-$)/g, '');
-                const id = 'exp-' + slug;
+                const id = r.id || 'exp-' + slug;
                 if (
                   slug &&
+                  id !== SEEDED_REMOVED_EXPERIENCE_ID &&
+                  slug !== SEEDED_REMOVED_EXPERIENCE_SLUG &&
                   !deletedIds.has(id) &&
                   !deletedIds.has(slug) &&
                   !existingSlugs.has(slug.toLowerCase()) &&
                   !existingIds.has(id.toLowerCase())
                 ) {
+                  const mappedStatus = r.status === 'aprobada' ? 'publicada' : 'pendiente';
                   localExperiences.push({
                     id,
                     slug,
@@ -1176,8 +1216,8 @@ export class ExperienceService {
                     priceUsd: r.priceUsd || 70,
                     promosAndPricing: r.promosAndPricing || undefined,
                     maxSpotsPerGroup: r.capacity || 12,
-                    dates: Array.isArray(r.dates) ? r.dates : [],
-                    status: 'publicada',
+                    dates: Array.isArray(r.dates) ? r.dates : r.dates ? [r.dates] : [],
+                    status: mappedStatus,
                     publicUrl: r.experienceUrl || `https://experiencias.club/experiencias/${slug}`,
                     detailRoute: `/experiencias/${slug}`,
                     coverImage: r.coverImage || KAYAK_IMAGE,
@@ -1514,7 +1554,13 @@ export class ExperienceService {
         if (stored) {
           const parsed = JSON.parse(stored);
           if (Array.isArray(parsed)) {
-            const sanitized = this.sanitizeForPublicCatalog(parsed);
+            const cleaned = parsed.filter(
+              (e: any) =>
+                e &&
+                e.id !== SEEDED_REMOVED_EXPERIENCE_ID &&
+                e.slug !== SEEDED_REMOVED_EXPERIENCE_SLUG,
+            );
+            const sanitized = this.sanitizeForPublicCatalog(cleaned);
             localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
           }
         }
@@ -1702,7 +1748,7 @@ export class ExperienceService {
         const remoteSlugs = new Set(remoteExperiences.map((e) => e.slug.toLowerCase()));
         const deletedIds = this.getDeletedIds();
 
-        // Preservar solo experiencias locales marcadas explícitamente como pendientes de sincronización remota
+        // Preservar experiencias locales (pendientes de sincronización no presentes en remoto)
         const localOnly = currentLocal.filter(
           (e) =>
             Boolean(e.pendingRemoteSync) &&

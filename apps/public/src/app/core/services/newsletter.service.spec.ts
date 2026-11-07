@@ -257,6 +257,82 @@ describe('NewsletterService - submitProviderApplication', () => {
     expect(res.alreadyRegistered).toBe(true);
     expect(res.message).toContain('Ya existe una postulación o registro');
   });
+
+  it('should handle invalid_email from fallback RPC and return rpcRes.message', async () => {
+    const insertSpy = vi.fn().mockResolvedValue({
+      data: null,
+      error: { code: '42501', message: 'permission denied for table prestadores' },
+    });
+    mockSupabase.from.mockReturnValue({ insert: insertSpy });
+    mockSupabase.rpc.mockImplementation((name: string) => {
+      if (name === 'check_provider_status') {
+        return Promise.resolve({ data: { status: 'unregistered' }, error: null });
+      }
+      if (name === 'submit_provider_application') {
+        return Promise.resolve({
+          data: {
+            success: false,
+            error: 'invalid_email',
+            message: 'El correo electrónico ingresado no es válido.',
+          },
+          error: null,
+        });
+      }
+      return Promise.resolve({ data: null, error: null });
+    });
+
+    const res = await service.submitProviderApplication({
+      fullName: 'Guía Juan',
+      category: 'guia_montaña',
+      region: 'Puna',
+      email: 'invalid-email',
+      phone: '3834123456',
+      website: '',
+      description: '',
+    });
+
+    expect(res.success).toBe(false);
+    expect(res.message).toBe('El correo electrónico ingresado no es válido.');
+  });
+
+  it('should log rpcErr and rpcRes on fallback failure and not claim data is correct', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const paError = { code: '42501', message: 'permission denied for table prestadores' };
+    const insertSpy = vi.fn().mockResolvedValue({
+      data: null,
+      error: paError,
+    });
+    mockSupabase.from.mockReturnValue({ insert: insertSpy });
+    const rpcErr = { code: 'P0001', message: 'Custom RPC failure' };
+    mockSupabase.rpc.mockImplementation((name: string) => {
+      if (name === 'check_provider_status') {
+        return Promise.resolve({ data: { status: 'unregistered' }, error: null });
+      }
+      if (name === 'submit_provider_application') {
+        return Promise.resolve({ data: null, error: rpcErr });
+      }
+      return Promise.resolve({ data: null, error: null });
+    });
+
+    const res = await service.submitProviderApplication({
+      fullName: 'Guía Juan',
+      category: 'guia_montaña',
+      region: 'Puna',
+      email: 'juan@guia.com',
+      phone: '3834123456',
+      website: '',
+      description: '',
+    });
+
+    expect(res.success).toBe(false);
+    expect(res.message).not.toContain('Tus datos ingresados son correctos');
+    expect(res.message).not.toContain('no presentan errores');
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[Supabase] Error guardando postulación de prestador en prestadores:',
+      paError,
+      { rpcErr, rpcRes: null },
+    );
+  });
 });
 
 describe('NewsletterService - registerSocio promotion update flow', () => {

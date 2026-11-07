@@ -794,6 +794,10 @@ export class ProviderStoreService {
                 ...(details?.cuitDni ? { cuitDni: details.cuitDni } : {}),
                 ...(details?.cbuAlias ? { cbuAlias: details.cbuAlias } : {}),
                 ...(details?.bankName ? { bankName: details.bankName } : {}),
+                slug:
+                  p.slug ||
+                  details?.slug ||
+                  slugify(details?.agency || details?.name || p.agency || p.name || normalized.split('@')[0]),
                 verified: status === 'aprobado',
                 status,
               }
@@ -806,6 +810,9 @@ export class ProviderStoreService {
         email: normalized,
         name: details?.name || email,
         agency: details?.agency || 'Prestador EXPERIENCIAS.CLUB',
+        slug:
+          details?.slug ||
+          slugify(details?.agency || details?.name || normalized.split('@')[0]),
         phone: details?.phone || '',
         cuitDni: details?.cuitDni || '',
         cbuAlias: details?.cbuAlias || '',
@@ -1076,10 +1083,21 @@ export class ProviderStoreService {
   getProviderBySlug(slug: string): ProviderUser | undefined {
     const clean = (slug || '').trim().toLowerCase();
     if (!clean) return undefined;
-    return this._providers().find(
+    const providers = this._providers();
+
+    // 1er pase: coincidencia exacta por slug almacenado o id
+    const exactMatch = providers.find(
+      (p) => (p.slug || '').toLowerCase() === clean || p.id.toLowerCase() === clean,
+    );
+    if (exactMatch) {
+      return exactMatch;
+    }
+
+    // 2do pase: fallbacks por agencia y nombre
+    return providers.find(
       (p) =>
-        (p.slug || '').toLowerCase() === clean ||
-        p.id.toLowerCase() === clean ||
+        slugify(p.agency || '') === clean ||
+        slugify(p.name || '') === clean ||
         (p.agency || '')
           .toLowerCase()
           .normalize('NFD')

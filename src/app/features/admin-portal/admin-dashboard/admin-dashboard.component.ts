@@ -302,22 +302,14 @@ import {
                       <span class="row-date">{{ item.createdAt | fecha: 'corta' }}</span>
                     </td>
                     <td class="text-right">
-                      @if (item.origin === 'official') {
-                        @if (item.slug) {
-                          <a
-                            [routerLink]="['/prestadores', item.slug]"
-                            target="_blank"
-                            class="btn-review"
-                            style="gap: 0.25rem;"
-                          >
-                            <span>Ver Perfil</span>
-                            <mat-icon style="font-size: 0.9rem; width: 0.9rem; height: 0.9rem;">open_in_new</mat-icon>
-                          </a>
-                        } @else {
-                          <a routerLink="/prestadores" class="btn-review">
-                            Ver Ficha
-                          </a>
-                        }
+                      @if (item.origin === 'official' || item.status === 'aprobado') {
+                        <a
+                          [routerLink]="getProviderFicheRoute(item)"
+                          class="btn-review"
+                          title="Ver ficha del prestador"
+                        >
+                          <span>Ver Ficha</span>
+                        </a>
                       } @else if (item.rawApp) {
                         <button type="button" class="btn-review" (click)="openApplication(item.rawApp)">
                           Revisar
@@ -345,8 +337,8 @@ import {
               <span class="pending-pill">0 pendientes</span>
             }
             <a
-              routerLink="/propuestas"
-              [queryParams]="{ tab: 'experiencias' }"
+              routerLink="/experiencias"
+              [queryParams]="{ tab: 'postulaciones' }"
               class="view-all-link"
             >
               <span>Ver propuestas ({{ store.experienceRequests().length }})</span>
@@ -488,7 +480,6 @@ import {
                         title="Abrir ruta pública"
                       >
                         <code>/.../{{ exp.slug }}</code>
-                        <mat-icon class="link-icon-mini">open_in_new</mat-icon>
                       </a>
                     </td>
                     <td>
@@ -1435,6 +1426,52 @@ import {
         min-width: 1080px;
       }
 
+      .exp-web-table .cupo-tag,
+      .exp-web-table .status-badge,
+      .exp-web-table .btn-review {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 28px;
+        box-sizing: border-box;
+        line-height: 1;
+      }
+
+      .exp-web-table .status-badge {
+        padding: 0 0.65rem;
+        font-size: 0.74rem;
+        font-weight: 800;
+        border-radius: 3px;
+        border: 1px solid transparent;
+      }
+
+      .exp-web-table .status-badge[data-status='aprobado'] {
+        background: rgba(16, 185, 129, 0.2);
+        border-color: rgba(52, 211, 153, 0.45);
+        color: #34d399;
+      }
+
+      .exp-web-table .status-badge[data-status='pendiente'] {
+        background: rgba(255, 95, 0, 0.2);
+        border-color: rgba(255, 95, 0, 0.45);
+        color: #ff8533;
+      }
+
+      .exp-web-table .status-badge[data-status='rechazado'],
+      .exp-web-table .status-badge[data-status='dado_de_baja'] {
+        background: rgba(239, 68, 68, 0.2);
+        border-color: rgba(239, 68, 68, 0.45);
+        color: #fca5a5;
+      }
+
+      .exp-web-table .cupo-tag {
+        padding: 0 0.55rem;
+      }
+
+      .exp-web-table .btn-review {
+        padding: 0 0.75rem;
+      }
+
       .dash-data-table th {
         background: rgba(35, 18, 10, 0.8);
         padding: 0.75rem 0.85rem;
@@ -1732,6 +1769,25 @@ import {
 
       .text-right {
         text-align: right;
+      }
+
+      .dash-data-table th.text-right,
+      .dash-data-table td.text-right {
+        text-align: right;
+        position: sticky;
+        right: 0;
+        z-index: 5;
+        background: #140b06;
+        box-shadow: -6px 0 16px rgba(0, 0, 0, 0.45);
+        white-space: nowrap;
+      }
+
+      .dash-data-table th.text-right {
+        background: #23120a;
+      }
+
+      .dash-data-table tbody tr:hover td.text-right {
+        background: #241309;
       }
 
       .table-footer-actions {
@@ -2924,6 +2980,7 @@ export class AdminDashboardComponent {
       }
       const cleanEmail = p.email?.toLowerCase().trim() || '';
       if (cleanEmail) providerEmails.add(cleanEmail);
+      const computedSlug = p.slug || slugify(p.agency || p.name || p.id || cleanEmail);
       list.push({
         id: p.id || `prov-${cleanEmail}`,
         origin: 'official',
@@ -2932,7 +2989,7 @@ export class AdminDashboardComponent {
         email: p.email,
         phone: p.phone || '—',
         categoryOrBio: p.bio,
-        slug: p.slug,
+        slug: computedSlug,
         status: 'aprobado',
         createdAt: p.joinedAt || '2024-01-01T00:00:00Z',
         rawProvider: p,
@@ -2953,6 +3010,7 @@ export class AdminDashboardComponent {
         email: app.email,
         phone: app.phone || '—',
         categoryOrBio: app.description || app.motivationLetter,
+        slug: app.id,
         status:
           app.status === 'aprobado'
             ? 'aprobado'
@@ -3176,6 +3234,16 @@ export class AdminDashboardComponent {
     const segments = rawPath.split('/').filter(Boolean);
     const base = segments[0] === 'admin' ? '/admin/experiencias' : '/experiencias';
     return `${base}/${slug || ''}`;
+  }
+
+  getProviderFicheRoute(item: ProviderListItem): string {
+    const rawPath = this.router.url.split('?')[0].split('#')[0];
+    const segments = rawPath.split('/').filter(Boolean);
+    const base = segments[0] === 'admin' ? '/admin/prestadores' : '/prestadores';
+    const slug =
+      item.slug ||
+      (item.origin === 'application' ? item.id : slugify(item.agency || item.name || item.id));
+    return `${base}/${slug}`;
   }
 
   async rejectExperience(id: string): Promise<void> {

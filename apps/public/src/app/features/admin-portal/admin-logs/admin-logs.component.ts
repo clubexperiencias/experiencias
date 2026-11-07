@@ -441,6 +441,25 @@ export interface AdminAuditLog {
         text-align: right !important;
       }
 
+      .logs-table th.text-right,
+      .logs-table td.text-right {
+        position: sticky;
+        right: 0;
+        z-index: 5;
+        background: #140b06;
+        box-shadow: -6px 0 16px rgba(0, 0, 0, 0.45);
+        white-space: nowrap;
+        text-align: right !important;
+      }
+
+      .logs-table th.text-right {
+        background: #23120a;
+      }
+
+      .logs-table tr:hover td.text-right {
+        background: #241309;
+      }
+
       .time-cell {
         display: flex;
         flex-direction: column;
@@ -705,7 +724,7 @@ export class AdminLogsComponent {
         actionDescription: `Nueva propuesta "${r.title}" cargada para evaluación técnica.`,
         targetType: 'propuesta',
         targetLabel: r.title,
-        targetLink: '/propuestas',
+        targetLink: '/experiencias',
         badgeType: 'pendiente',
         timestamp: r.createdAt || '',
       });
@@ -733,7 +752,7 @@ export class AdminLogsComponent {
           actionDescription: `Se desestimó la propuesta "${r.title}".`,
           targetType: 'propuesta',
           targetLabel: r.title,
-          targetLink: '/propuestas',
+          targetLink: '/experiencias',
           badgeType: 'rechazado',
           timestamp: r.reviewedAt,
         });
