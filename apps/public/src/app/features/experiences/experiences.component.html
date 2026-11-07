@@ -58,19 +58,6 @@
                   <div class="exp-card-media">
                     <img [src]="exp.coverImage" [alt]="exp.title" class="exp-card-img" />
                     <span class="exp-region-tag" [class.is-enabled-tag]="!exp.isLocked">{{ exp.region }}</span>
-                    @if (!exp.isLocked) {
-                      @if (isClubExperience(exp)) {
-                        <span class="exp-provider-badge is-club" title="Experiencia Oficial del Club">
-                          <mat-icon>verified</mat-icon>
-                          <span>Club</span>
-                        </span>
-                      } @else if (exp.providerName) {
-                        <span class="exp-provider-badge is-provider" title="Prestador oficial">
-                          <mat-icon>badge</mat-icon>
-                          <span>{{ exp.providerName }}</span>
-                        </span>
-                      }
-                    }
                   </div>
 
                   <div class="exp-card-content">
@@ -82,16 +69,20 @@
                       <span>{{ exp.durationLabel }}</span>
                       <span>Dificultad: {{ exp.difficulty }}</span>
                       @if (exp.providerName) {
-                      <span>Prestador: {{ exp.providerName }}</span>
+                        @if (getProviderSlug(exp); as slug) {
+                          <span>Prestador: <a [routerLink]="['/prestadores', slug]" class="provider-stat-link">{{ exp.providerName }}</a></span>
+                        } @else {
+                          <span>Prestador: <strong class="provider-stat-name">{{ exp.providerName }}</strong></span>
+                        }
                       }
                     </div>
                     }
 
                     <div class="exp-price-action-row">
                       @if (exp.isLocked) {
-                      <button class="exp-locked-btn" disabled>
+                      <a routerLink="/socios/plenos" class="exp-locked-btn">
                         <span>Próximamente</span>
-                      </button>
+                      </a>
                       } @else {
                       <div class="price-box">
                         <span class="price-val">${{ exp.priceArs.toLocaleString('es-AR') }} ARS</span>
@@ -155,9 +146,17 @@
                     @if (exp.providerName) {
                     <div class="details-col">
                       <span class="col-kicker">PRESTADOR</span>
-                      <p style="color: #ffffff; font-weight: 600; margin: 0.25rem 0 0; font-size: 0.88rem;">
-                        {{ exp.providerName }}
-                      </p>
+                      @if (getProviderSlug(exp); as slug) {
+                        <p style="margin: 0.25rem 0 0; font-size: 0.88rem;">
+                          <a [routerLink]="['/prestadores', slug]" class="provider-stat-link" style="color: #ffffff;">
+                            {{ exp.providerName }}
+                          </a>
+                        </p>
+                      } @else {
+                        <p style="color: #ffffff; font-weight: 600; margin: 0.25rem 0 0; font-size: 0.88rem;">
+                          {{ exp.providerName }}
+                        </p>
+                      }
                     </div>
                     }
                   </div>
@@ -195,19 +194,6 @@
                   <div class="exp-card-media horizontal-media">
                     <img [src]="exp.coverImage" [alt]="exp.title" class="exp-card-img" />
                     <span class="exp-region-tag" [class.is-enabled-tag]="!exp.isLocked">{{ exp.region }}</span>
-                    @if (!exp.isLocked) {
-                      @if (isClubExperience(exp)) {
-                        <span class="exp-provider-badge is-club" title="Experiencia Oficial del Club">
-                          <mat-icon>verified</mat-icon>
-                          <span>Club</span>
-                        </span>
-                      } @else if (exp.providerName) {
-                        <span class="exp-provider-badge is-provider" title="Prestador oficial">
-                          <mat-icon>badge</mat-icon>
-                          <span>{{ exp.providerName }}</span>
-                        </span>
-                      }
-                    }
                   </div>
 
                   <div class="exp-card-content horizontal-content">
@@ -219,16 +205,20 @@
                       <span>{{ exp.durationLabel }}</span>
                       <span>Dificultad: {{ exp.difficulty }}</span>
                       @if (exp.providerName) {
-                      <span>Prestador: {{ exp.providerName }}</span>
+                        @if (getProviderSlug(exp); as slug) {
+                          <span>Prestador: <a [routerLink]="['/prestadores', slug]" class="provider-stat-link">{{ exp.providerName }}</a></span>
+                        } @else {
+                          <span>Prestador: <strong class="provider-stat-name">{{ exp.providerName }}</strong></span>
+                        }
                       }
                     </div>
                     }
 
                     <div class="exp-price-action-row">
                       @if (exp.isLocked) {
-                      <button class="exp-locked-btn" disabled>
+                      <a routerLink="/socios/plenos" class="exp-locked-btn">
                         <span>Próximamente</span>
-                      </button>
+                      </a>
                       } @else {
                       <div class="price-box">
                         <span class="price-val">${{ exp.priceArs.toLocaleString('es-AR') }} ARS</span>
@@ -292,9 +282,17 @@
                     @if (exp.providerName) {
                     <div class="details-col">
                       <span class="col-kicker">PRESTADOR</span>
-                      <p style="color: #ffffff; font-weight: 600; margin: 0.25rem 0 0; font-size: 0.88rem;">
-                        {{ exp.providerName }}
-                      </p>
+                      @if (getProviderSlug(exp); as slug) {
+                        <p style="margin: 0.25rem 0 0; font-size: 0.88rem;">
+                          <a [routerLink]="['/prestadores', slug]" class="provider-stat-link" style="color: #ffffff;">
+                            {{ exp.providerName }}
+                          </a>
+                        </p>
+                      } @else {
+                        <p style="color: #ffffff; font-weight: 600; margin: 0.25rem 0 0; font-size: 0.88rem;">
+                          {{ exp.providerName }}
+                        </p>
+                      }
                     </div>
                     }
                   </div>

@@ -8,9 +8,16 @@ import { filter } from 'rxjs';
 import { ExperienceService } from '../../../core/services/experience.service';
 import { StorageService } from '../../../core/services/storage.service';
 import { AdminStoreService } from '../../../core/services/admin-store.service';
+import { ExperienceProposalRequest, parseConfirmedProposalDates } from '../../../core/services/provider-store.service';
 import { Experience, ExperienceAlbumPhoto } from '../../../core/models/experience.model';
 import { isClubExperience } from '../../../core/models/club-profile.model';
 import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
+import {
+  exportExperiencesToCsv,
+  getPublicExperienceUrl,
+} from '../../../shared/utils/csv.util';
+
+export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' | 'borradores';
 
 @Component({
   selector: 'app-admin-experiences',
@@ -74,65 +81,6 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
       } @else if (isRouteDetailMode() && editingExperience(); as exp) {
         <!-- Modo Ficha de la Experiencia: /experiencias/:slug (Punto intermedio) -->
         <div class="fiche-page-card">
-          <!-- Barra Superior de Navegación & Acciones de Admin -->
-          <div class="fiche-admin-topbar">
-            <div class="topbar-left">
-              <a [routerLink]="backToListLink()" class="btn-back-panel">
-                &larr; Volver a Experiencias
-              </a>
-              <span class="fiche-topbar-breadcrumb">
-                /experiencias / <strong>{{ exp.slug }}</strong>
-              </span>
-            </div>
-
-            <div class="topbar-actions">
-              <!-- Pausar o Activar -->
-              @if (exp.status === 'publicada') {
-                <button
-                  type="button"
-                  class="btn-pause-exp-top"
-                  (click)="toggleStatus(exp, 'oculta')"
-                  title="Pausar ruta y ocultarla de la web pública"
-                >
-                  <mat-icon class="btn-icon-sm">pause_circle</mat-icon>
-                  <span>Pausar</span>
-                </button>
-              } @else {
-                <button
-                  type="button"
-                  class="btn-activate-exp-top"
-                  (click)="toggleStatus(exp, 'publicada')"
-                  title="Activar y publicar en la web pública"
-                >
-                  <mat-icon class="btn-icon-sm">play_circle</mat-icon>
-                  <span>Activar</span>
-                </button>
-              }
-
-              <!-- Ver en la Web Pública -->
-              <a
-                [href]="getPublicExperienceUrl(exp)"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="btn-action-public-web"
-                title="Ver cómo se visualiza actualmente en experiencias.club"
-              >
-                <mat-icon class="btn-icon-sm">open_in_new</mat-icon>
-                <span>Ver en Web Pública</span>
-              </a>
-
-              <!-- Botón EDITAR EXPERIENCIA (Destacado en Naranja) -->
-              <a
-                [routerLink]="getEditRoute(exp)"
-                class="btn-action-edit-orange"
-                title="Editar los datos y contenidos de esta ficha"
-              >
-                <mat-icon class="btn-icon-sm">edit</mat-icon>
-                <span>EDITAR EXPERIENCIA</span>
-              </a>
-            </div>
-          </div>
-
           <!-- Contenido de la Ficha (Estilo Web Pública) -->
           <div class="fiche-body">
             <!-- 1. HERO CARD: Título, Kicker, Bajada y Badges Oficiales -->
@@ -141,21 +89,42 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                 <div class="hero-kicker-row">
                   <span class="hero-kicker">{{ exp.kicker || 'EXPEDICIÓN OFICIAL DEL CLUB' }}</span>
                   <div class="hero-badges-row">
-                    @if (isClub(exp)) {
-                      <span class="club-official-chip" title="Experiencia Oficial del Club de Experiencias">
-                        <mat-icon>verified</mat-icon>
-                        Club de Experiencias
-                      </span>
-                    } @else if (exp.providerName) {
-                      <span class="provider-chip" title="Prestador oficial de la experiencia">
-                        <mat-icon>badge</mat-icon>
-                        {{ exp.providerName }}
-                      </span>
-                    }
+                    <a
+                      [href]="getPublicExperienceUrl(exp)"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="btn-hero-public-web"
+                      title="Ver cómo se visualiza actualmente en la web pública"
+                    >
+                      <mat-icon class="btn-icon-sm">open_in_new</mat-icon>
+                      <span>Ver en la Web</span>
+                    </a>
+                    <a
+                      [routerLink]="getEditRoute(exp)"
+                      class="btn-hero-edit"
+                      title="Editar los datos y contenidos de esta ficha"
+                    >
+                      <mat-icon class="btn-icon-sm">edit</mat-icon>
+                      <span>Editar</span>
+                    </a>
                     @if (exp.status === 'publicada') {
-                      <span class="status-pill is-published">Publicada</span>
+                      <button
+                        type="button"
+                        class="status-pill is-published is-clickable"
+                        (click)="toggleStatus(exp, 'oculta')"
+                        title="Click para pausar esta experiencia"
+                      >
+                        Publicada
+                      </button>
                     } @else {
-                      <span class="status-pill is-hidden">Pausada</span>
+                      <button
+                        type="button"
+                        class="status-pill is-hidden is-clickable"
+                        (click)="toggleStatus(exp, 'publicada')"
+                        title="Click para activar y publicar esta experiencia"
+                      >
+                        Pausada
+                      </button>
                     }
                   </div>
                 </div>
@@ -225,19 +194,12 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                   <div class="price-figures">
                     <span class="ars-price">{{ exp.priceArs | ars }}</span>
                     @if (exp.priceUsd) {
-                      <span class="usd-price">o &#36;{{ exp.priceUsd }} USD</span>
+                      <span class="usd-price">USD {{ exp.priceUsd }}</span>
                     }
                   </div>
                   <span class="price-note">
                     {{ exp.promosAndPricing || 'Prioridad y aranceles especiales para socios de nuestro Club de Experiencias.' }}
                   </span>
-                </div>
-
-                <div class="action-btns-group">
-                  <a [routerLink]="getEditRoute(exp)" class="btn-action-edit-orange">
-                    <mat-icon>edit</mat-icon>
-                    <span>Editar Arancel y Parámetros</span>
-                  </a>
                 </div>
               </div>
 
@@ -379,7 +341,6 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                     rel="noopener noreferrer"
                     class="location-btn maps-btn"
                   >
-                    <mat-icon>place</mat-icon>
                     <span>Abrir en Google Maps</span>
                   </a>
                 </div>
@@ -422,7 +383,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
               </div>
             }
 
-            <!-- 8. PIE DE ACCIONES: Volver o Editar -->
+            <!-- 8. PIE DE ACCIONES: Volver, Pausar/Activar, Editar -->
             <div class="fiche-bottom-cta-bar">
               <div class="cta-bar-left">
                 <span class="cta-exp-title">{{ exp.title }}</span>
@@ -430,9 +391,29 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
               </div>
               <div class="cta-bar-right">
                 <a [routerLink]="backToListLink()" class="btn-cancel-edit">Volver al Catálogo</a>
+                @if (exp.status === 'publicada') {
+                  <button
+                    type="button"
+                    class="btn-pause-exp-bottom"
+                    (click)="toggleStatus(exp, 'oculta')"
+                    title="Pausar ruta y ocultarla de la web pública"
+                  >
+                    <mat-icon class="btn-icon-sm">pause_circle</mat-icon>
+                    <span>Pausar</span>
+                  </button>
+                } @else {
+                  <button
+                    type="button"
+                    class="btn-activate-exp-bottom"
+                    (click)="toggleStatus(exp, 'publicada')"
+                    title="Activar y publicar en la web pública"
+                  >
+                    <mat-icon class="btn-icon-sm">play_circle</mat-icon>
+                    <span>Activar</span>
+                  </button>
+                }
                 <a [routerLink]="getEditRoute(exp)" class="btn-action-edit-orange">
-                  <mat-icon class="btn-icon-sm">edit</mat-icon>
-                  <span>Editar Esta Experiencia</span>
+                  <span>Editar Experiencia</span>
                 </a>
               </div>
             </div>
@@ -460,9 +441,85 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
       <div class="experiences-table-card">
         <div class="card-table-head">
           <h3>Rutas de Experiencias Publicadas en el Sitio</h3>
-          <span class="table-count">{{ experiences().length }} registradas</span>
+          <span class="table-count">{{ filteredExperiences().length }} de {{ allCount() }} registradas</span>
         </div>
 
+        <!-- Barra de herramientas: Búsqueda y Pestañas -->
+        <div class="table-toolbar">
+          <div class="search-box">
+            <mat-icon class="search-icon">search</mat-icon>
+            <input
+              type="text"
+              [ngModel]="searchQuery()"
+              (ngModelChange)="searchQuery.set($event)"
+              placeholder="Buscar por título, región, prestador o slug..."
+              class="search-input"
+            />
+            @if (searchQuery()) {
+              <button
+                type="button"
+                class="clear-search-btn"
+                (click)="searchQuery.set('')"
+                aria-label="Limpiar búsqueda"
+              >
+                ×
+              </button>
+            }
+          </div>
+
+          <div class="tabs-group">
+            <button
+              type="button"
+              class="filter-tab"
+              [class.is-active]="activeTab() === 'all'"
+              (click)="activeTab.set('all')"
+            >
+              Todas ({{ allCount() }})
+            </button>
+            <button
+              type="button"
+              class="filter-tab"
+              [class.is-active]="activeTab() === 'publicadas'"
+              (click)="activeTab.set('publicadas')"
+            >
+              Publicadas ({{ publishedCount() }})
+            </button>
+            <button
+              type="button"
+              class="filter-tab"
+              [class.is-active]="activeTab() === 'postulaciones'"
+              (click)="activeTab.set('postulaciones')"
+            >
+              Postulaciones ({{ pendingCount() }})
+            </button>
+            <button
+              type="button"
+              class="filter-tab"
+              [class.is-active]="activeTab() === 'ocultas'"
+              (click)="activeTab.set('ocultas')"
+            >
+              Pausadas ({{ pausedCount() }})
+            </button>
+            <button
+              type="button"
+              class="filter-tab"
+              [class.is-active]="activeTab() === 'borradores'"
+              (click)="activeTab.set('borradores')"
+            >
+              Borradores ({{ draftCount() }})
+            </button>
+          </div>
+        </div>
+
+        @if (filteredExperiences().length === 0) {
+          <div class="empty-box" style="margin: 1.5rem; padding: 2.5rem 1.5rem; text-align: center;">
+            <mat-icon style="font-size: 2.5rem; width: 2.5rem; height: 2.5rem; color: rgba(255, 95, 0, 0.7); margin-bottom: 0.75rem;">explore_off</mat-icon>
+            <h3 style="color: #ffffff; font-size: 1.1rem; margin-bottom: 0.5rem;">No se encontraron experiencias</h3>
+            <p style="color: rgba(255, 255, 255, 0.6); font-size: 0.85rem; max-width: 480px; margin: 0 auto;">
+              No hay experiencias que coincidan con la pestaña seleccionada o el término de búsqueda ingresado.
+            </p>
+          </div>
+        } @else {
         <div class="table-responsive">
           <table class="admin-exp-table">
             <thead>
@@ -477,7 +534,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
               </tr>
             </thead>
             <tbody>
-              @for (exp of experiences(); track exp.id) {
+              @for (exp of filteredExperiences(); track exp.id) {
                 <tr [class.is-paused]="exp.status === 'oculta'">
                   <!-- Columna Experiencia / Portada -->
                   <td>
@@ -496,12 +553,10 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                           <strong class="exp-table-title">{{ exp.title }}</strong>
                           @if (isClub(exp)) {
                             <span class="club-official-chip" title="Experiencia Oficial creada por el Club de Experiencias">
-                              <mat-icon>verified</mat-icon>
                               Club
                             </span>
                           } @else if (exp.providerName) {
                             <span class="provider-chip" title="Prestador oficial de la experiencia">
-                              <mat-icon>badge</mat-icon>
                               {{ exp.providerName }}
                             </span>
                           }
@@ -553,8 +608,12 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                   <td>
                     @if (exp.status === 'publicada') {
                       <span class="status-pill is-published">Publicada</span>
+                    } @else if (exp.status === 'pendiente') {
+                      <span class="status-pill is-pending">Postulación</span>
                     } @else if (exp.status === 'oculta') {
                       <span class="status-pill is-hidden">Pausada</span>
+                    } @else if (exp.status === 'rechazada') {
+                      <span class="status-pill is-rejected">Rechazada</span>
                     } @else {
                       <span class="status-pill is-draft">Borrador</span>
                     }
@@ -581,8 +640,27 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                         <span>EDITAR</span>
                       </a>
 
-                      <!-- Pausar o Activar -->
-                      @if (exp.status === 'publicada') {
+                      <!-- Acciones según estado -->
+                      @if (exp.status === 'pendiente') {
+                        <button
+                          type="button"
+                          class="btn-activate-exp"
+                          [disabled]="isProposalProcessing(exp.id)"
+                          (click)="approveProposal(exp)"
+                          title="Aprobar y publicar experiencia en la web"
+                        >
+                          APROBAR
+                        </button>
+                        <button
+                          type="button"
+                          class="btn-pause-exp"
+                          [disabled]="isProposalProcessing(exp.id)"
+                          (click)="rejectProposal(exp)"
+                          title="Rechazar propuesta"
+                        >
+                          RECHAZAR
+                        </button>
+                      } @else if (exp.status === 'publicada') {
                         <button
                           type="button"
                           class="btn-pause-exp"
@@ -591,7 +669,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                         >
                           PAUSAR
                         </button>
-                      } @else {
+                      } @else if (exp.status === 'oculta') {
                         <button
                           type="button"
                           class="btn-activate-exp"
@@ -600,6 +678,15 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                         >
                           ACTIVAR
                         </button>
+                      } @else {
+                        <button
+                          type="button"
+                          class="btn-activate-exp"
+                          (click)="toggleStatus(exp, 'publicada')"
+                          title="Publicar experiencia en la web pública"
+                        >
+                          PUBLICAR
+                        </button>
                       }
                     </div>
                   </td>
@@ -607,6 +694,23 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
               }
             </tbody>
           </table>
+        </div>
+        }
+
+        <!-- Acciones al pie de la tabla -->
+        <div class="table-footer-actions">
+          <button
+            type="button"
+            class="btn-footer-action"
+            (click)="refresh()"
+            [disabled]="isRefreshing()"
+          >
+            {{ isRefreshing() ? 'Actualizando...' : 'Refrescar Datos' }}
+          </button>
+
+          <button type="button" class="btn-footer-action" (click)="downloadExperiencesCsv()">
+            Descargar Planilla
+          </button>
         </div>
       </div>
 
@@ -1152,7 +1256,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                 </div>
               </div>
 
-              <!-- SECCIÓN 7: Estado de Publicación (Sin borrador) -->
+              <!-- SECCIÓN 7: Estado de Publicación -->
               <div class="form-section-card">
                 <h4 class="form-section-title">7. Estado de Publicación</h4>
                 <div class="form-field">
@@ -1160,6 +1264,9 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                   <select class="form-select" [(ngModel)]="editStatus">
                     <option value="publicada">Publicada (Visible a todos los exploradores)</option>
                     <option value="oculta">Oculta / Pausada (Dada de baja temporalmente)</option>
+                    <option value="borrador">Borrador (En edición interna)</option>
+                    <option value="pendiente">Pendiente (Propuesta / Postulación a evaluar)</option>
+                    <option value="rechazada">Rechazada (No aprobada)</option>
                   </select>
                 </div>
               </div>
@@ -1419,6 +1526,53 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         display: flex;
         align-items: center;
         gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+
+      .btn-hero-public-web {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.32rem 0.75rem;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        border-radius: 4px;
+        color: #ffffff;
+        font-size: 0.75rem;
+        font-weight: 800;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        text-decoration: none;
+        transition: all 0.2s ease;
+      }
+
+      .btn-hero-public-web:hover {
+        background: rgba(255, 255, 255, 0.16);
+        border-color: rgba(255, 255, 255, 0.45);
+        color: #ffffff;
+      }
+
+      .btn-hero-edit {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.32rem 0.75rem;
+        background: #ff5f00;
+        border: 1px solid #ff5f00;
+        border-radius: 4px;
+        color: #ffffff;
+        font-size: 0.75rem;
+        font-weight: 800;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        text-decoration: none;
+        transition: all 0.2s ease;
+      }
+
+      .btn-hero-edit:hover {
+        background: #ff7722;
+        border-color: #ff7722;
+        color: #ffffff;
       }
 
       .fiche-hero-title {
@@ -1506,13 +1660,15 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
       }
 
       .pricing-fiche-card {
-        background: linear-gradient(135deg, rgba(20, 12, 6, 0.98) 0%, rgba(10, 30, 45, 0.8) 100%);
-        border: 1px solid rgba(0, 180, 255, 0.3);
+        background: linear-gradient(135deg, rgba(28, 16, 8, 0.98) 0%, rgba(18, 10, 5, 0.98) 100%);
+        border: 1px solid rgba(255, 95, 0, 0.28);
+        border-left: 4px solid #ff5f00;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
       }
 
       .pricing-card-flex {
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         justify-content: space-between;
         flex-wrap: wrap;
         gap: 1.25rem;
@@ -1521,38 +1677,51 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
       .price-data {
         display: flex;
         flex-direction: column;
-        gap: 0.35rem;
+        gap: 0.5rem;
       }
 
       .price-title {
-        font-size: 0.72rem;
+        font-size: 0.74rem;
         font-weight: 800;
-        letter-spacing: 0.08em;
+        letter-spacing: 0.12em;
         text-transform: uppercase;
-        color: #00cc88;
+        color: #ff9955;
       }
 
       .price-figures {
         display: flex;
-        align-items: baseline;
-        gap: 0.75rem;
+        align-items: center;
+        gap: 0.85rem;
+        flex-wrap: wrap;
       }
 
       .ars-price {
-        font-size: 2rem;
+        font-size: 2.25rem;
         font-weight: 900;
-        color: #33ffaa;
+        color: #ffffff;
+        letter-spacing: -0.02em;
+        line-height: 1.1;
       }
 
       .usd-price {
-        font-size: 1.15rem;
-        font-weight: 700;
-        color: rgba(255, 255, 255, 0.7);
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.65rem;
+        background: rgba(255, 170, 85, 0.12);
+        border: 1px solid rgba(255, 170, 85, 0.3);
+        border-radius: 4px;
+        font-size: 0.88rem;
+        font-weight: 800;
+        color: #ffbb77;
+        letter-spacing: 0.02em;
       }
 
       .price-note {
-        font-size: 0.82rem;
-        color: rgba(255, 255, 255, 0.65);
+        font-size: 0.86rem;
+        color: rgba(255, 255, 255, 0.72);
+        line-height: 1.5;
+        max-width: 720px;
+        margin-top: 0.15rem;
       }
 
       .fiche-dates-section {
@@ -1853,28 +2022,80 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         display: flex;
         align-items: center;
         gap: 0.75rem;
+        flex-wrap: wrap;
+      }
+
+      .cta-bar-right .btn-cancel-edit,
+      .cta-bar-right .btn-action-edit-orange,
+      .cta-bar-right .btn-pause-exp-bottom,
+      .cta-bar-right .btn-activate-exp-bottom {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 42px;
+        min-height: 42px;
+        padding: 0 1.35rem;
+        font-size: 0.85rem;
+        font-weight: 800;
+        border-radius: 4px;
+        box-sizing: border-box;
+        line-height: 1;
+        transition: all 0.2s ease;
+      }
+
+      .btn-pause-exp-bottom {
+        background: rgba(255, 80, 80, 0.16);
+        border: 1px solid rgba(255, 80, 80, 0.4);
+        color: #ff8080;
+        cursor: pointer;
+        gap: 0.35rem;
+      }
+
+      .btn-pause-exp-bottom:hover {
+        background: rgba(255, 80, 80, 0.28);
+        border-color: #ff6060;
+        color: #ffffff;
+      }
+
+      .btn-activate-exp-bottom {
+        background: rgba(0, 204, 136, 0.16);
+        border: 1px solid rgba(0, 204, 136, 0.4);
+        color: #33ffaa;
+        cursor: pointer;
+        gap: 0.35rem;
+      }
+
+      .btn-activate-exp-bottom:hover {
+        background: rgba(0, 204, 136, 0.28);
+        border-color: #00cc88;
+        color: #ffffff;
       }
 
       .btn-view-fiche {
         display: inline-flex;
         align-items: center;
-        gap: 0.35rem;
-        padding: 0.42rem 0.85rem;
+        justify-content: center;
+        padding: 0 0.75rem;
+        height: 32px;
+        min-height: 32px;
+        box-sizing: border-box;
         background: rgba(255, 95, 0, 0.18);
-        border: 1px solid rgba(255, 95, 0, 0.45);
-        border-radius: 4px;
-        color: #ff7722;
-        font-size: 0.8rem;
+        border: 1px solid #ff5f00;
+        border-radius: 3px;
+        color: #ffffff;
+        font-size: 0.75rem;
         font-weight: 700;
         text-decoration: none;
         cursor: pointer;
+        white-space: nowrap !important;
+        letter-spacing: 0.04em;
         transition: all 0.2s ease;
       }
 
       .btn-view-fiche:hover {
         background: #ff5f00;
         border-color: #ff5f00;
-        color: #070d18;
+        color: #0b0704;
       }
 
       .btn-view-fiche-top {
@@ -2121,11 +2342,32 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
       }
 
       .table-responsive {
+        width: 100%;
         overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .table-responsive::-webkit-scrollbar {
+        height: 6px;
+      }
+
+      .table-responsive::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.25);
+        border-radius: 3px;
+      }
+
+      .table-responsive::-webkit-scrollbar-thumb {
+        background: rgba(255, 95, 0, 0.4);
+        border-radius: 3px;
+      }
+
+      .table-responsive::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 95, 0, 0.7);
       }
 
       .admin-exp-table {
         width: 100%;
+        min-width: 1180px;
         border-collapse: collapse;
         font-size: 0.85rem;
       }
@@ -2140,6 +2382,13 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         text-transform: uppercase;
         letter-spacing: 0.06em;
         border-bottom: 1px solid rgba(255, 95, 0, 0.2);
+      }
+
+      .admin-exp-table th.text-right,
+      .admin-exp-table td.text-right {
+        text-align: right;
+        white-space: nowrap;
+        min-width: 250px;
       }
 
       .admin-exp-table td {
@@ -2301,6 +2550,121 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         color: #ffaa00;
       }
 
+      .status-pill.is-pending {
+        background: rgba(255, 170, 0, 0.22);
+        border: 1px solid rgba(255, 170, 0, 0.6);
+        color: #ffaa00;
+      }
+
+      .status-pill.is-rejected {
+        background: rgba(255, 80, 80, 0.18);
+        border: 1px solid rgba(255, 80, 80, 0.45);
+        color: #ff8080;
+      }
+
+      .table-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        flex-wrap: wrap;
+        padding: 0.85rem 1.25rem;
+        background: rgba(255, 255, 255, 0.02);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      }
+
+      .search-box {
+        position: relative;
+        flex: 1;
+        min-width: 260px;
+        max-width: 420px;
+      }
+
+      .search-icon {
+        position: absolute;
+        left: 0.75rem;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 1.15rem;
+        width: 1.15rem;
+        height: 1.15rem;
+        color: rgba(255, 255, 255, 0.4);
+        pointer-events: none;
+      }
+
+      .search-input {
+        width: 100%;
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 2px;
+        padding: 0.55rem 2rem 0.55rem 2.35rem;
+        color: #ffffff;
+        font-size: 0.82rem;
+        font-family: inherit;
+        outline: none;
+        transition: border-color 0.2s ease;
+      }
+
+      .search-input:focus {
+        border-color: #ff5f00;
+      }
+
+      .clear-search-btn {
+        position: absolute;
+        right: 0.5rem;
+        top: 50%;
+        transform: translateY(-50%);
+        background: transparent;
+        border: none;
+        color: rgba(255, 255, 255, 0.5);
+        font-size: 1.15rem;
+        cursor: pointer;
+        line-height: 1;
+        padding: 0.2rem 0.4rem;
+      }
+
+      .tabs-group {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 2px;
+        padding: 0.2rem;
+        flex-wrap: wrap;
+      }
+
+      .filter-tab {
+        background: transparent;
+        border: none;
+        color: rgba(255, 255, 255, 0.65);
+        padding: 0.45rem 0.85rem;
+        font-size: 0.75rem;
+        font-weight: 700;
+        cursor: pointer;
+        border-radius: 2px;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+      }
+      .filter-tab:hover {
+        color: #ffffff;
+      }
+      .filter-tab.is-active {
+        background: #ff5f00;
+        color: #ffffff;
+      }
+
+      .status-pill.is-clickable {
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border-style: solid;
+        font-family: inherit;
+      }
+
+      .status-pill.is-clickable:hover {
+        filter: brightness(1.25);
+        transform: translateY(-1px);
+      }
+
       .text-right {
         text-align: right;
       }
@@ -2310,67 +2674,100 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         align-items: center;
         justify-content: flex-end;
         gap: 0.45rem;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
+        white-space: nowrap;
       }
 
       .btn-edit-exp {
         display: inline-flex;
         align-items: center;
-        gap: 0.35rem;
-        padding: 0.42rem 0.85rem;
-        background: rgba(255, 95, 0, 0.18);
-        border: 1px solid rgba(255, 95, 0, 0.45);
-        border-radius: 4px;
-        color: #ff7722;
-        font-size: 0.8rem;
+        justify-content: center;
+        padding: 0 0.75rem;
+        height: 32px;
+        min-height: 32px;
+        box-sizing: border-box;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        border-radius: 3px;
+        color: rgba(255, 255, 255, 0.85);
+        font-size: 0.75rem;
         font-weight: 700;
         cursor: pointer;
+        white-space: nowrap !important;
+        text-decoration: none;
+        letter-spacing: 0.04em;
         transition: all 0.2s ease;
       }
 
       .btn-edit-exp:hover {
-        background: #ff5f00;
-        color: #070d18;
+        background: rgba(255, 255, 255, 0.16);
+        border-color: rgba(255, 255, 255, 0.45);
+        color: #ffffff;
       }
 
       .btn-edit-exp mat-icon {
-        font-size: 16px;
-        width: 16px;
-        height: 16px;
+        font-size: 15px;
+        width: 15px;
+        height: 15px;
       }
 
       .btn-pause-exp {
-        padding: 0.42rem 0.85rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 0.75rem;
+        height: 32px;
+        min-height: 32px;
+        box-sizing: border-box;
         background: rgba(255, 80, 80, 0.12);
         border: 1px solid rgba(255, 80, 80, 0.38);
-        border-radius: 4px;
+        border-radius: 3px;
         color: #ff8080;
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         font-weight: 700;
         cursor: pointer;
+        white-space: nowrap !important;
+        letter-spacing: 0.04em;
         transition: all 0.2s ease;
       }
 
       .btn-pause-exp:hover {
         background: rgba(255, 80, 80, 0.25);
         border-color: #ff8080;
+        color: #ffffff;
       }
 
       .btn-activate-exp {
-        padding: 0.42rem 0.85rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 0.75rem;
+        height: 32px;
+        min-height: 32px;
+        box-sizing: border-box;
         background: rgba(0, 204, 136, 0.12);
         border: 1px solid rgba(0, 204, 136, 0.38);
-        border-radius: 4px;
+        border-radius: 3px;
         color: #33ffaa;
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         font-weight: 700;
         cursor: pointer;
+        white-space: nowrap !important;
+        letter-spacing: 0.04em;
         transition: all 0.2s ease;
       }
 
       .btn-activate-exp:hover {
         background: rgba(0, 204, 136, 0.25);
-        border-color: #33ffaa;
+        border-color: #00cc88;
+        color: #ffffff;
+      }
+
+      .btn-activate-exp:disabled,
+      .btn-pause-exp:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+        pointer-events: none;
       }
 
       .btn-view-web {
@@ -2389,6 +2786,44 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
       .btn-view-web:hover {
         background: rgba(255, 255, 255, 0.18);
         color: #ffffff;
+      }
+
+      .table-footer-actions {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        margin-top: 1rem;
+        box-sizing: border-box;
+      }
+
+      .btn-footer-action {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.6rem 1.15rem;
+        border-radius: 2px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition:
+          background 0.2s ease,
+          border-color 0.2s ease,
+          filter 0.2s ease;
+        background: rgba(30, 15, 8, 0.75);
+        border: 1px solid rgba(255, 95, 0, 0.35);
+        color: #ffffff;
+      }
+
+      .btn-footer-action:hover:not(:disabled) {
+        background: rgba(45, 22, 12, 0.85);
+        border-color: rgba(255, 95, 0, 0.5);
+        filter: brightness(1.15);
+      }
+
+      .btn-footer-action:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
       }
 
       .btn-view-web mat-icon {
@@ -3320,6 +3755,18 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         color: rgba(255, 255, 255, 0.85) !important;
       }
 
+      @media (max-width: 768px) {
+        .table-footer-actions {
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+
+        .table-footer-actions .btn-footer-action {
+          width: 100%;
+          justify-content: center;
+        }
+      }
+
       @media (max-width: 640px) {
         .club-experience-banner {
           flex-direction: column;
@@ -3354,8 +3801,62 @@ export class AdminExperiencesComponent implements OnInit {
   }
 
   readonly experiences = this.experienceService.experiences;
+  readonly activeTab = signal<ExperienceTab>('all');
+  readonly searchQuery = signal<string>('');
+
+  readonly allCount = computed(() => this.experienceService.experiences().length);
+  readonly publishedCount = computed(
+    () => this.experienceService.experiences().filter((e) => e.status === 'publicada').length,
+  );
+  readonly pendingCount = computed(
+    () => this.experienceService.experiences().filter((e) => e.status === 'pendiente').length,
+  );
+  readonly pausedCount = computed(
+    () => this.experienceService.experiences().filter((e) => e.status === 'oculta').length,
+  );
+  readonly draftCount = computed(
+    () =>
+      this.experienceService
+        .experiences()
+        .filter((e) => !e.status || e.status === 'borrador' || e.status === 'rechazada').length,
+  );
+
+  readonly filteredExperiences = computed(() => {
+    const tab = this.activeTab();
+    const q = this.searchQuery().trim().toLowerCase();
+    let list = this.experienceService.experiences();
+
+    if (tab === 'publicadas') {
+      list = list.filter((e) => e.status === 'publicada');
+    } else if (tab === 'postulaciones') {
+      list = list.filter((e) => e.status === 'pendiente');
+    } else if (tab === 'ocultas') {
+      list = list.filter((e) => e.status === 'oculta');
+    } else if (tab === 'borradores') {
+      list = list.filter((e) => !e.status || e.status === 'borrador' || e.status === 'rechazada');
+    }
+
+    if (q) {
+      list = list.filter(
+        (e) =>
+          (e.title && e.title.toLowerCase().includes(q)) ||
+          (e.slug && e.slug.toLowerCase().includes(q)) ||
+          (e.region && e.region.toLowerCase().includes(q)) ||
+          (e.providerName && e.providerName.toLowerCase().includes(q)) ||
+          (e.providerEmail && e.providerEmail.toLowerCase().includes(q)),
+      );
+    }
+
+    return list;
+  });
+
   readonly feedbackToast = signal<string | null>(null);
   readonly saving = signal(false);
+  readonly processingProposalIds = signal<Set<string>>(new Set<string>());
+
+  isProposalProcessing(id: string): boolean {
+    return this.processingProposalIds().has(id);
+  }
 
   readonly isRouteEditMode = signal(false);
   readonly isRouteDetailMode = signal(false);
@@ -3510,6 +4011,8 @@ export class AdminExperiencesComponent implements OnInit {
   });
 
   async ngOnInit(): Promise<void> {
+    void this.adminStore.providerStore.loadProposalsFromSupabase();
+
     this.router.events
       .pipe(
         filter((event): event is NavigationEnd => event instanceof NavigationEnd),
@@ -3641,7 +4144,7 @@ export class AdminExperiencesComponent implements OnInit {
   readonly editDatesRaw = signal('');
   readonly editHighlightsRaw = signal('');
   readonly editIncludedRaw = signal('');
-  readonly editStatus = signal<'publicada' | 'oculta'>('publicada');
+  readonly editStatus = signal<'publicada' | 'oculta' | 'borrador' | 'pendiente' | 'rechazada'>('publicada');
   readonly editProviderName = signal('');
   readonly editProviderPhone = signal('');
   readonly editProviderCbuAlias = signal('');
@@ -3673,7 +4176,7 @@ export class AdminExperiencesComponent implements OnInit {
     this.editHighlightsRaw.set((exp.highlights || []).join('\n'));
     this.editIncludedRaw.set((exp.included || []).join('\n'));
     this.editAlbumPhotos.set([...(exp.albumPhotos || [])]);
-    this.editStatus.set(exp.status === 'oculta' ? 'oculta' : 'publicada');
+    this.editStatus.set(exp.status || 'publicada');
 
     if (this.isClub(exp)) {
       const club = this.adminStore.clubProfile();
@@ -4039,8 +4542,59 @@ export class AdminExperiencesComponent implements OnInit {
           `✨ Experiencia "${title}" creada exitosamente en la ruta /experiencias/${slug}.`,
         );
       } else {
-        await this.experienceService.updateExperience(payload);
-        this.showToast(`✅ Información de la ruta /experiencias/${slug} actualizada con éxito.`);
+        const currentExp = this.editingExperience();
+        const isFromPending = currentExp?.status === 'pendiente';
+        const newStatus = payload.status;
+
+        if (isFromPending && (newStatus === 'publicada' || newStatus === 'rechazada')) {
+          const reviewedAt = new Date().toISOString();
+          payload.reviewedAt = reviewedAt;
+
+          let req = this.findMatchingProposal({ id: payload.id, slug });
+
+          if (!req) {
+            await this.adminStore.providerStore.loadProposalsFromSupabase();
+            req = this.findMatchingProposal({ id: payload.id, slug });
+          }
+
+          if (newStatus === 'publicada') {
+            const confirmedDates = parseConfirmedProposalDates(this.editDatesRaw());
+            if (confirmedDates.length > 0) {
+              payload.dates = confirmedDates;
+            }
+
+            if (req) {
+              await this.adminStore.approveExperienceRequest(
+                req.id,
+                payload.publicUrl,
+                confirmedDates.length > 0 ? confirmedDates : undefined,
+              );
+            }
+            // Preserve and apply the other form edits as part of the same save
+            await this.experienceService.updateExperience(payload);
+            this.showToast(`🟢 La propuesta "${title}" fue aprobada y publicada con sus cambios.`);
+          } else {
+            // Rechazada
+            if (req) {
+              await this.adminStore.rejectExperienceRequest(req.id);
+            }
+            // Preserve and apply the other form edits as part of the same save
+            await this.experienceService.updateExperience(payload);
+            this.showToast(`⚠️ La propuesta "${title}" fue rechazada.`);
+          }
+
+          this.adminStore.providerStore.reloadFromStorage();
+          await this.adminStore.providerStore.loadProposalsFromSupabase();
+          await this.experienceService.reloadFromSupabase();
+        } else {
+          await this.experienceService.updateExperience(payload);
+          this.showToast(`✅ Información de la ruta /experiencias/${slug} actualizada con éxito.`);
+        }
+      }
+
+      const updated = this.experienceService.getExperienceById(payload.id);
+      if (updated && this.editingExperience()?.id === payload.id) {
+        this.editingExperience.set(updated);
       }
       if (this.isRouteEditMode()) {
         this.router.navigateByUrl(this.getDetailRoute({ slug } as Experience));
@@ -4055,7 +4609,164 @@ export class AdminExperiencesComponent implements OnInit {
     }
   }
 
-  async toggleStatus(exp: Experience, newStatus: 'publicada' | 'oculta'): Promise<void> {
+  private findMatchingProposal(exp: { id: string; slug?: string }): ExperienceProposalRequest | undefined {
+    const list = this.adminStore.providerStore.experienceRequests();
+    // 1. Coincidencia directa por id
+    const direct = list.find((r) => r.id === exp.id);
+    if (direct) return direct;
+
+    // 2. Mapeo de identidad explícito para entradas heredadas
+    const LEGACY_PROPOSAL_MAP: Record<string, string> = {
+      'exp-sunset-las-pirquitas': 'req-sunset-las-pirquitas',
+      'exp-travesia-en-kayak-nocturna-luna-llena-en-el-jumeal': 'req-sunset-las-pirquitas',
+      'travesia-en-kayak-nocturna-luna-llena-en-el-jumeal': 'req-sunset-las-pirquitas',
+    };
+    const mappedById = LEGACY_PROPOSAL_MAP[exp.id];
+    if (mappedById) {
+      const mapped = list.find((r) => r.id === mappedById);
+      if (mapped) return mapped;
+    }
+    if (exp.slug) {
+      const mappedBySlug = LEGACY_PROPOSAL_MAP[exp.slug];
+      if (mappedBySlug) {
+        const mapped = list.find((r) => r.id === mappedBySlug);
+        if (mapped) return mapped;
+      }
+    }
+
+    // 3. Mapeo explícito por prefijo 'exp-' en id
+    if (exp.id.startsWith('exp-')) {
+      const stripped = exp.id.slice(4);
+      const byStripped = list.find((r) => r.id === stripped);
+      if (byStripped) return byStripped;
+    } else {
+      const prefixed = `exp-${exp.id}`;
+      const byPrefixed = list.find((r) => r.id === prefixed);
+      if (byPrefixed) return byPrefixed;
+    }
+
+    return undefined;
+  }
+
+  async approveProposal(exp: Experience): Promise<void> {
+    if (this.isProposalProcessing(exp.id)) {
+      return;
+    }
+    this.processingProposalIds.update((set) => new Set(set).add(exp.id));
+
+    try {
+      let req = this.findMatchingProposal(exp);
+
+      if (!req) {
+        await this.adminStore.providerStore.loadProposalsFromSupabase();
+        req = this.findMatchingProposal(exp);
+      }
+
+      const datesRaw = Array.isArray(exp.dates)
+        ? exp.dates.join(', ')
+        : typeof exp.dates === 'string'
+          ? exp.dates
+          : req?.dates || '';
+      const confirmedDates = parseConfirmedProposalDates(datesRaw);
+
+      let ok = false;
+      if (req) {
+        ok = await this.adminStore.approveExperienceRequest(
+          req.id,
+          exp.publicUrl,
+          confirmedDates.length > 0 ? confirmedDates : undefined,
+        );
+      }
+
+      if (!ok) {
+        await this.experienceService.updateExperience({
+          id: exp.id,
+          status: 'publicada',
+          dates: confirmedDates.length > 0 ? confirmedDates : (Array.isArray(exp.dates) ? exp.dates : []),
+        });
+        ok = true;
+      }
+
+      this.adminStore.providerStore.reloadFromStorage();
+      await this.adminStore.providerStore.loadProposalsFromSupabase();
+      await this.experienceService.reloadFromSupabase();
+
+      const updated = this.experienceService.getExperienceById(exp.id);
+      if (updated && this.editingExperience()?.id === exp.id) {
+        this.editingExperience.set(updated);
+      }
+
+      this.showToast(`🟢 La propuesta "${exp.title}" fue aprobada y publicada.`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error al aprobar propuesta';
+      this.showToast(`⚠️ ${msg}`);
+    } finally {
+      this.processingProposalIds.update((set) => {
+        const next = new Set(set);
+        next.delete(exp.id);
+        return next;
+      });
+    }
+  }
+
+  async rejectProposal(exp: Experience): Promise<void> {
+    if (this.isProposalProcessing(exp.id)) {
+      return;
+    }
+    this.processingProposalIds.update((set) => new Set(set).add(exp.id));
+
+    try {
+      let req = this.findMatchingProposal(exp);
+
+      if (!req) {
+        await this.adminStore.providerStore.loadProposalsFromSupabase();
+        req = this.findMatchingProposal(exp);
+      }
+
+      let ok = false;
+      if (req) {
+        ok = await this.adminStore.rejectExperienceRequest(req.id);
+      }
+
+      if (!ok) {
+        await this.experienceService.toggleExperienceStatus(exp.id, 'rechazada');
+        ok = true;
+      }
+
+      this.adminStore.providerStore.reloadFromStorage();
+      await this.adminStore.providerStore.loadProposalsFromSupabase();
+      await this.experienceService.reloadFromSupabase();
+
+      const updated = this.experienceService.getExperienceById(exp.id);
+      if (updated && this.editingExperience()?.id === exp.id) {
+        this.editingExperience.set(updated);
+      }
+
+      this.showToast(`⚠️ La propuesta "${exp.title}" fue rechazada.`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error al rechazar propuesta';
+      this.showToast(`⚠️ ${msg}`);
+    } finally {
+      this.processingProposalIds.update((set) => {
+        const next = new Set(set);
+        next.delete(exp.id);
+        return next;
+      });
+    }
+  }
+
+  async toggleStatus(
+    exp: Experience,
+    newStatus: 'publicada' | 'oculta' | 'rechazada' | 'borrador' | 'pendiente',
+  ): Promise<void> {
+    if (exp.status === 'pendiente' && newStatus === 'publicada') {
+      await this.approveProposal(exp);
+      return;
+    }
+    if (exp.status === 'pendiente' && newStatus === 'rechazada') {
+      await this.rejectProposal(exp);
+      return;
+    }
     try {
       await this.experienceService.toggleExperienceStatus(exp.id, newStatus);
       const updated = this.experienceService.getExperienceById(exp.id);
@@ -4064,8 +4775,12 @@ export class AdminExperiencesComponent implements OnInit {
       }
       if (newStatus === 'oculta') {
         this.showToast(`🔴 La ruta /experiencias/${exp.slug} fue dada de baja y pausada.`);
-      } else {
+      } else if (newStatus === 'publicada') {
         this.showToast(`🟢 La ruta /experiencias/${exp.slug} fue activada y publicada.`);
+      } else if (newStatus === 'rechazada') {
+        this.showToast(`⚠️ La propuesta /experiencias/${exp.slug} fue rechazada.`);
+      } else if (newStatus === 'pendiente') {
+        this.showToast(`🟡 La ruta /experiencias/${exp.slug} volvió a estado de revisión.`);
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error al cambiar estado';
@@ -4078,11 +4793,29 @@ export class AdminExperiencesComponent implements OnInit {
     setTimeout(() => this.feedbackToast.set(null), 4500);
   }
 
-  getPublicExperienceUrl(exp: { publicUrl?: string; slug?: string; detailRoute?: string }): string {
-    if (exp.publicUrl && exp.publicUrl.trim().length > 0) {
-      return exp.publicUrl.trim();
+  readonly isRefreshing = signal(false);
+
+  async refresh(): Promise<void> {
+    this.isRefreshing.set(true);
+    try {
+      await this.experienceService.reloadFromSupabase();
+      this.showToast('Catálogo de experiencias actualizado con éxito.');
+    } catch {
+      this.showToast('No se pudieron refrescar las experiencias en este momento.');
+    } finally {
+      this.isRefreshing.set(false);
     }
-    const route = exp.detailRoute || `/experiencias/${exp.slug || ''}`;
-    return `https://experiencias.club${route.startsWith('/') ? '' : '/'}${route}`;
+  }
+
+  downloadExperiencesCsv(): void {
+    exportExperiencesToCsv(
+      this.experiences(),
+      (exp) => this.isClub(exp),
+      this.adminStore.clubProfile().email || 'admin@experiencias.club',
+    );
+  }
+
+  getPublicExperienceUrl(exp: { publicUrl?: string; slug?: string; detailRoute?: string }): string {
+    return getPublicExperienceUrl(exp);
   }
 }

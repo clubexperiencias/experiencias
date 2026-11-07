@@ -692,7 +692,7 @@ export class AdminLogsComponent {
   readonly allLogs = computed<AdminAuditLog[]>(() => {
     const logs: AdminAuditLog[] = [];
 
-    // 1. Propuestas de experiencias (propuestas_experiencias)
+    // 1. Propuestas de experiencias (en tabla experiencias)
     const requests = this.adminStore.experienceRequests();
     for (const r of requests) {
       // Evento de creación por parte del prestador

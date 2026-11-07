@@ -57,4 +57,20 @@ describe('ExperiencesComponent (/experiencias)', () => {
     expect(hrefs).toContain('/socios');
     expect(hrefs).not.toContain('/prestadores');
   });
+
+  it('should map provider slug "club" alias to "club-de-experiencias" and preserve other slugs', () => {
+    const expWithClub = {
+      id: 'test-1',
+      title: 'Test',
+      providerSlug: 'club',
+    } as any;
+    expect(component.getProviderSlug(expWithClub)).toBe('club-de-experiencias');
+
+    const expCustom = {
+      id: 'test-2',
+      title: 'Test 2',
+      providerSlug: 'guia-montana',
+    } as any;
+    expect(component.getProviderSlug(expCustom)).toBe('guia-montana');
+  });
 });

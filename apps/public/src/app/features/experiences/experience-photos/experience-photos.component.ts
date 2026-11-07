@@ -6,6 +6,7 @@ import { map } from 'rxjs';
 import { MatIconModule } from '@angular/material/icon';
 import { ExperienceService, KAYAK_ALBUM_PHOTOS } from '../../../core/services/experience.service';
 import { ExperienceAlbumPhoto } from '../../../core/models/experience.model';
+import { DEFAULT_CLUB_PROFILE, isClubExperience } from '../../../core/models/club-profile.model';
 import { HeaderComponent } from '../../../shared/components/header/header.component';
 import { FooterComponent } from '../../../shared/components/footer/footer.component';
 import {
@@ -35,9 +36,65 @@ export class ExperiencePhotosComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   readonly expService = inject(ExperienceService);
+  readonly isClubExperience = isClubExperience;
 
   readonly mobileMenuOpen = signal(false);
   readonly activePhotoIndex = signal<number | null>(null);
+
+  isUrl(value?: string): boolean {
+    if (!value) return false;
+    return /^https?:\/\//i.test(value.trim());
+  }
+
+  isValidGoogleMapsUrl(value?: string): boolean {
+    if (!value) return false;
+    const trimmed = value.trim();
+    if (!/^https?:\/\//i.test(trimmed)) return false;
+    try {
+      const parsed = new URL(trimmed);
+      const host = parsed.hostname.toLowerCase();
+      const pathname = parsed.pathname.toLowerCase();
+      if (host === 'maps.app.goo.gl') return true;
+      if (host === 'goo.gl' && pathname.startsWith('/maps')) return true;
+      const isGoogleDomain = /(^|\.)google\.(com|com\.[a-z]{2}|[a-z]{2})$/i.test(host);
+      if (isGoogleDomain && (pathname.startsWith('/maps') || /(^|\.)maps\.google\./i.test(host))) {
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
+  getTrimmedUrl(value?: string): string {
+    if (!value) return '';
+    const trimmed = value.trim();
+    if (this.isValidGoogleMapsUrl(trimmed) && /^http:\/\//i.test(trimmed)) {
+      return trimmed.replace(/^http:\/\//i, 'https://');
+    }
+    return trimmed;
+  }
+
+  getMeetingPointUrl(meetingPointUrl?: string, meetingPoint?: string): string | null {
+    if (this.isValidGoogleMapsUrl(meetingPointUrl)) {
+      return this.getTrimmedUrl(meetingPointUrl);
+    }
+    if (this.isValidGoogleMapsUrl(meetingPoint)) {
+      return this.getTrimmedUrl(meetingPoint);
+    }
+    return null;
+  }
+
+  getProviderSlug(item?: any): string | null {
+    if (!item) return null;
+    if (item.providerSlug) {
+      return item.providerSlug.toLowerCase().trim() === 'club'
+        ? DEFAULT_CLUB_PROFILE.slug
+        : item.providerSlug;
+    }
+    if (this.isClubExperience(item)) return DEFAULT_CLUB_PROFILE.slug;
+    return null;
+  }
 
   // Slug extraído de los parámetros de ruta o del route data
   private readonly slug = toSignal(

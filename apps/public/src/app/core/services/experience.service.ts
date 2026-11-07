@@ -8,8 +8,10 @@ import {
 } from '../models/club-profile.model';
 
 const KAYAK_IMAGE = '/assets/images/kayak-club-de-experiencias.jpg';
-const STORAGE_KEY = 'club_experiencias_catalog_v1';
-const DELETED_STORAGE_KEY = 'club_experiencias_deleted_ids_v1';
+export const STORAGE_KEY = 'club_experiencias_catalog_v1';
+export const PRIVILEGED_STORAGE_KEY = 'club_experiencias_privileged_v1';
+export const PRIVILEGED_OWNER_KEY = 'club_experiencias_privileged_v1_owner';
+export const DELETED_STORAGE_KEY = 'club_experiencias_deleted_ids_v1';
 export const RESERVED_EXPERIENCE_SLUGS = new Set([
   'fotos',
   'prestadores',
@@ -355,12 +357,45 @@ export class ExperienceService {
       return false;
     });
   }
+  private activeAccountIdentifier: string | null = null;
   readonly hasRemoteExperiences = this._hasRemoteExperiences.asReadonly();
   readonly remoteLoadPromise: Promise<boolean> = isSupabaseConfigured()
     ? this.loadFromSupabase()
     : Promise.resolve(true);
 
-  constructor() {}
+  constructor() {
+    if (typeof window !== 'undefined') {
+      this.activeAccountIdentifier = this.resolveActiveAccount();
+    }
+    if (isSupabaseConfigured()) {
+      try {
+        this.supabase.auth?.onAuthStateChange?.((event: string, session: any) => {
+          const newUserId = session?.user?.id || session?.user?.email;
+          const newAccount = newUserId
+            ? String(newUserId).trim().toLowerCase()
+            : this.resolveActiveAccount();
+
+          if (event === 'SIGNED_OUT') {
+            this.clearPrivilegedCache();
+            this.activeAccountIdentifier = null;
+          } else if (
+            this.activeAccountIdentifier &&
+            newAccount &&
+            this.activeAccountIdentifier !== newAccount
+          ) {
+            const prior = this.activeAccountIdentifier;
+            this.activeAccountIdentifier = newAccount;
+            this.clearAccountCache(prior);
+            void this.reloadFromSupabase();
+          } else {
+            this.activeAccountIdentifier = newAccount;
+          }
+        });
+      } catch {
+        // ignore
+      }
+    }
+  }
 
   async reloadFromSupabase(): Promise<boolean> {
     return this.loadFromSupabase();
@@ -480,6 +515,10 @@ export class ExperienceService {
           payload['provider_slug'] = updated.providerSlug || null;
         }
 
+        if (merged.reviewedAt !== undefined) {
+          payload['reviewed_at'] = merged.reviewedAt;
+        }
+
         let { data, error } = await this.supabase
           .from('experiencias')
           .update(payload as any)
@@ -531,11 +570,11 @@ export class ExperienceService {
           }
 
           if (Object.keys(providerBankingUpdate).length > 0) {
-            const { error: pbErr } = await (this.supabase.from('provider_access') as any)
+            const { error: pbErr } = await (this.supabase.from('prestadores') as any)
               .update(providerBankingUpdate)
               .eq('email', targetProviderEmail);
             if (pbErr) {
-              console.warn('[ExperienceService] Error al actualizar provider_access:', pbErr);
+              console.warn('[ExperienceService] Error al actualizar prestadores:', pbErr);
             }
           }
         }
@@ -624,17 +663,17 @@ export class ExperienceService {
           provider_slug: experience.providerSlug || null,
         };
 
-        // Asegurar que el prestador exista en provider_access para evitar fallos de clave foránea
+        // Asegurar que el prestador exista en prestadores para evitar fallos de clave foránea
         const targetEmail = (experience.providerEmail || '').trim().toLowerCase();
         if (targetEmail) {
           try {
-            const { data: existingPA } = await (this.supabase.from('provider_access') as any)
+            const { data: existingPA } = await (this.supabase.from('prestadores') as any)
               .select('id, email')
               .eq('email', targetEmail)
               .maybeSingle();
 
             if (!existingPA) {
-              await (this.supabase.from('provider_access') as any).insert({
+              await (this.supabase.from('prestadores') as any).insert({
                 email: targetEmail,
                 name: experience.providerName || targetEmail.split('@')[0],
                 agency: experience.providerName || '',
@@ -648,7 +687,7 @@ export class ExperienceService {
               });
             }
           } catch (paErr) {
-            console.warn('[ExperienceService] Error asegurando provider_access:', paErr);
+            console.warn('[ExperienceService] Error asegurando prestadores:', paErr);
           }
         }
 
@@ -741,12 +780,12 @@ export class ExperienceService {
           }
 
           if (Object.keys(providerBankingUpdate).length > 0) {
-            const { error: pbErr } = await (this.supabase.from('provider_access') as any)
+            const { error: pbErr } = await (this.supabase.from('prestadores') as any)
               .update(providerBankingUpdate)
               .eq('email', targetProviderEmail);
             if (pbErr) {
               console.warn(
-                '[ExperienceService] Error al actualizar provider_access en createExperience:',
+                '[ExperienceService] Error al actualizar prestadores en createExperience:',
                 pbErr,
               );
             }
@@ -761,7 +800,10 @@ export class ExperienceService {
     }
   }
 
-  async toggleExperienceStatus(id: string, newStatus: 'publicada' | 'oculta'): Promise<void> {
+  async toggleExperienceStatus(
+    id: string,
+    newStatus: 'publicada' | 'oculta' | 'rechazada' | 'borrador' | 'pendiente',
+  ): Promise<void> {
     await this.updateExperience({ id, status: newStatus });
   }
 
@@ -925,13 +967,78 @@ export class ExperienceService {
         if (stored) {
           const parsed = JSON.parse(stored) as Experience[];
           if (Array.isArray(parsed) && parsed.length > 0) {
-            localExperiences = parsed.filter(
-              (e) => !deletedIds.has(e.id) && !deletedIds.has(e.slug),
+            localExperiences = this.sanitizeForPublicCatalog(
+              parsed.filter((e) => !deletedIds.has(e.id) && !deletedIds.has(e.slug)),
             );
           }
         }
       } catch {
         // Fallback
+      }
+
+      const activeAccount = this.syncActiveAccount();
+      if (activeAccount) {
+        try {
+          const privKey = this.getPrivilegedStorageKey(activeAccount);
+          const recordedOwner = localStorage.getItem(PRIVILEGED_OWNER_KEY);
+
+          // Discard legacy/shared cache if its recorded owner differs from current identity
+          if (recordedOwner && recordedOwner !== activeAccount) {
+            localStorage.removeItem(PRIVILEGED_STORAGE_KEY);
+            localStorage.removeItem(PRIVILEGED_OWNER_KEY);
+          }
+
+          let privRaw = localStorage.getItem(privKey);
+          if (!privRaw && (!recordedOwner || recordedOwner === activeAccount)) {
+            privRaw = localStorage.getItem(PRIVILEGED_STORAGE_KEY);
+          }
+
+          if (privRaw) {
+            const parsedJson = JSON.parse(privRaw);
+            const rawOwner =
+              parsedJson && typeof parsedJson === 'object' && !Array.isArray(parsedJson)
+                ? parsedJson.owner
+                : null;
+
+            if (rawOwner && rawOwner !== activeAccount) {
+              localStorage.removeItem(privKey);
+              localStorage.removeItem(PRIVILEGED_STORAGE_KEY);
+              localStorage.removeItem(PRIVILEGED_OWNER_KEY);
+            } else {
+              const privParsed: Experience[] = Array.isArray(parsedJson)
+                ? parsedJson
+                : Array.isArray(parsedJson?.items)
+                  ? parsedJson.items
+                  : [];
+
+              if (privParsed.length > 0) {
+                const existingIds = new Set(localExperiences.map((e) => e.id.toLowerCase()));
+                const existingSlugs = new Set(localExperiences.map((e) => e.slug.toLowerCase()));
+                for (const p of privParsed) {
+                  if (
+                    p &&
+                    !deletedIds.has(p.id) &&
+                    !deletedIds.has(p.slug) &&
+                    !existingIds.has((p.id || '').toLowerCase()) &&
+                    !existingSlugs.has((p.slug || '').toLowerCase())
+                  ) {
+                    localExperiences.push(p);
+                    if (p.id) existingIds.add(p.id.toLowerCase());
+                    if (p.slug) existingSlugs.add(p.slug.toLowerCase());
+                  }
+                }
+              }
+            }
+          }
+        } catch {
+          // Fallback
+        }
+      } else {
+        try {
+          this.clearPrivilegedStorageKeys();
+        } catch {
+          // ignore
+        }
       }
 
       const activeDefaults = DEFAULT_EXPERIENCES.filter(
@@ -1141,7 +1248,7 @@ export class ExperienceService {
     });
     if (typeof window !== 'undefined' && localExperiences.length > 0) {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(result));
+        this.persistToLocalStorage(result);
       } catch {
         // Ignorar quota errors
       }
@@ -1149,14 +1256,287 @@ export class ExperienceService {
     return result;
   }
 
+  private sanitizeForPublicCatalog(list: Experience[]): Experience[] {
+    return list
+      .filter((exp) => (exp.status || 'publicada') === 'publicada')
+      .map((exp) => {
+        const copy: Experience = { ...exp };
+        delete copy.notes;
+        delete copy.pendingRemoteSync;
+        if (!exp.isClubExperience) {
+          delete copy.providerCbuAlias;
+          delete copy.providerCuitDni;
+          delete copy.providerBankName;
+        }
+        return copy;
+      });
+  }
+
+  resolveActiveAccount(): string | null {
+    if (typeof window === 'undefined') return null;
+    try {
+      // 1. Supabase auth token
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('sb-') && key.endsWith('-auth-token')) {
+          const raw = localStorage.getItem(key);
+          if (raw) {
+            try {
+              const parsed = JSON.parse(raw);
+              const user = parsed?.user;
+              const id = user?.id || user?.email;
+              if (id) return String(id).trim().toLowerCase();
+            } catch {
+              // ignore
+            }
+          }
+        }
+      }
+
+      // 2. Admin session
+      const adminRaw = localStorage.getItem('catamarca_admin_session_v1');
+      if (adminRaw) {
+        try {
+          const parsed = JSON.parse(adminRaw);
+          const id = parsed?.email || parsed?.id;
+          if (id) return `admin_${String(id).trim().toLowerCase()}`;
+        } catch {
+          // ignore
+        }
+      }
+
+      // 3. Provider session
+      const provRaw = localStorage.getItem('catamarca_provider_session_v5');
+      if (provRaw) {
+        try {
+          const parsed = JSON.parse(provRaw);
+          const id = parsed?.email || parsed?.id;
+          if (id) return `provider_${String(id).trim().toLowerCase()}`;
+        } catch {
+          // ignore
+        }
+      }
+    } catch {
+      return null;
+    }
+    return null;
+  }
+
+  getPrivilegedStorageKey(account?: string | null): string {
+    const acc = account !== undefined ? account : this.resolveActiveAccount();
+    if (!acc) return PRIVILEGED_STORAGE_KEY;
+    const sanitized = acc.replace(/[^a-zA-Z0-9_-]/g, '_');
+    return `${PRIVILEGED_STORAGE_KEY}:${sanitized}`;
+  }
+
+  private clearPrivilegedStorageKeys(): void {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.removeItem(PRIVILEGED_STORAGE_KEY);
+      localStorage.removeItem(PRIVILEGED_OWNER_KEY);
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith(PRIVILEGED_STORAGE_KEY)) {
+          keysToRemove.push(key);
+        }
+      }
+      for (const k of keysToRemove) {
+        localStorage.removeItem(k);
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  private clearAccountCache(accountId: string): void {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem(this.getPrivilegedStorageKey(accountId));
+        const recordedOwner = localStorage.getItem(PRIVILEGED_OWNER_KEY);
+        if (!recordedOwner || recordedOwner === accountId) {
+          localStorage.removeItem(PRIVILEGED_STORAGE_KEY);
+          localStorage.removeItem(PRIVILEGED_OWNER_KEY);
+        }
+      } catch {
+        // ignore
+      }
+    }
+    const current = this._experiences();
+    const publicOnly = current.filter((exp) => (exp.status || 'publicada') === 'publicada');
+    const sanitizedMemory = publicOnly.map((exp) => {
+      const copy = { ...exp };
+      delete copy.notes;
+      delete copy.pendingRemoteSync;
+      if (!exp.isClubExperience) {
+        delete copy.providerCbuAlias;
+        delete copy.providerCuitDni;
+        delete copy.providerBankName;
+      }
+      return copy;
+    });
+    this._experiences.set(sanitizedMemory);
+  }
+
+  private loadPrivilegedFromLocalStorage(accountId: string): void {
+    if (typeof window === 'undefined') return;
+    try {
+      const privKey = this.getPrivilegedStorageKey(accountId);
+      const recordedOwner = localStorage.getItem(PRIVILEGED_OWNER_KEY);
+      if (recordedOwner && recordedOwner !== accountId) {
+        localStorage.removeItem(PRIVILEGED_STORAGE_KEY);
+        localStorage.removeItem(PRIVILEGED_OWNER_KEY);
+      }
+
+      let privRaw = localStorage.getItem(privKey);
+      if (!privRaw && (!recordedOwner || recordedOwner === accountId)) {
+        privRaw = localStorage.getItem(PRIVILEGED_STORAGE_KEY);
+      }
+      if (!privRaw) return;
+      const parsedJson = JSON.parse(privRaw);
+      const privParsed: Experience[] = Array.isArray(parsedJson)
+        ? parsedJson
+        : Array.isArray(parsedJson?.items)
+          ? parsedJson.items
+          : [];
+      if (privParsed.length > 0) {
+        const deletedIds = this.getDeletedIds();
+        const current = this._experiences();
+        const existingIds = new Set(current.map((e) => e.id.toLowerCase()));
+        const existingSlugs = new Set(current.map((e) => e.slug.toLowerCase()));
+        const merged = [...current];
+        for (const p of privParsed) {
+          if (
+            p &&
+            !deletedIds.has(p.id) &&
+            !deletedIds.has(p.slug) &&
+            !existingIds.has((p.id || '').toLowerCase()) &&
+            !existingSlugs.has((p.slug || '').toLowerCase())
+          ) {
+            merged.push(p);
+            if (p.id) existingIds.add(p.id.toLowerCase());
+            if (p.slug) existingSlugs.add(p.slug.toLowerCase());
+          }
+        }
+        this._experiences.set(merged);
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  private syncActiveAccount(): string | null {
+    const current = this.resolveActiveAccount();
+    if (this.activeAccountIdentifier && current && this.activeAccountIdentifier !== current) {
+      const prior = this.activeAccountIdentifier;
+      this.activeAccountIdentifier = current;
+      this.clearAccountCache(prior);
+      this.loadPrivilegedFromLocalStorage(current);
+    } else if (this.activeAccountIdentifier && !current) {
+      const prior = this.activeAccountIdentifier;
+      this.activeAccountIdentifier = null;
+      this.clearAccountCache(prior);
+    } else {
+      this.activeAccountIdentifier = current;
+    }
+    return current;
+  }
+
+  hasPrivilegedSession(): boolean {
+    if (typeof window === 'undefined') return false;
+    try {
+      return Boolean(this.syncActiveAccount());
+    } catch {
+      return false;
+    }
+  }
+
+  private persistPrivilegedToLocalStorage(list: Experience[]): void {
+    if (typeof window === 'undefined') return;
+    try {
+      const activeAccount = this.syncActiveAccount();
+      if (!activeAccount) {
+        this.clearPrivilegedStorageKeys();
+        return;
+      }
+      const privKey = this.getPrivilegedStorageKey(activeAccount);
+      const privilegedItems = list.filter(
+        (exp) =>
+          exp.status !== 'publicada' ||
+          Boolean(exp.pendingRemoteSync) ||
+          Boolean(exp.notes) ||
+          (!exp.isClubExperience &&
+            (Boolean(exp.providerCbuAlias) ||
+              Boolean(exp.providerCuitDni) ||
+              Boolean(exp.providerBankName))),
+      );
+      if (privilegedItems.length > 0) {
+        localStorage.setItem(privKey, JSON.stringify(privilegedItems));
+        localStorage.setItem(PRIVILEGED_STORAGE_KEY, JSON.stringify(privilegedItems));
+        localStorage.setItem(PRIVILEGED_OWNER_KEY, activeAccount);
+      } else {
+        localStorage.removeItem(privKey);
+        localStorage.removeItem(PRIVILEGED_STORAGE_KEY);
+        localStorage.removeItem(PRIVILEGED_OWNER_KEY);
+      }
+    } catch {
+      // Ignorar quota errors
+    }
+  }
+
   private persistToLocalStorage(list: Experience[]): void {
     if (typeof window !== 'undefined') {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+        const publicOnly = this.sanitizeForPublicCatalog(list);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(publicOnly));
       } catch {
         // Ignorar quota errors
       }
+      this.persistPrivilegedToLocalStorage(list);
     }
+  }
+
+  clearPrivilegedCache(): void {
+    if (typeof window !== 'undefined') {
+      try {
+        this.clearPrivilegedStorageKeys();
+      } catch {
+        // ignore
+      }
+      try {
+        localStorage.removeItem('catamarca_experience_requests_v1');
+        localStorage.removeItem('catamarca_provider_experiences_v5');
+      } catch {
+        // ignore
+      }
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            const sanitized = this.sanitizeForPublicCatalog(parsed);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    const current = this._experiences();
+    const publicOnly = current.filter((exp) => (exp.status || 'publicada') === 'publicada');
+    const sanitizedMemory = publicOnly.map((exp) => {
+      const copy = { ...exp };
+      delete copy.notes;
+      delete copy.pendingRemoteSync;
+      if (!exp.isClubExperience) {
+        delete copy.providerCbuAlias;
+        delete copy.providerCuitDni;
+        delete copy.providerBankName;
+      }
+      return copy;
+    });
+    this._experiences.set(sanitizedMemory);
   }
 
   async loadProviderBanking(
@@ -1164,7 +1544,7 @@ export class ExperienceService {
   ): Promise<{ cbuAlias?: string; cuitDni?: string; bankName?: string } | null> {
     if (!isSupabaseConfigured() || !providerEmail) return null;
     try {
-      const { data, error } = await (this.supabase.from('provider_access') as any)
+      const { data, error } = await (this.supabase.from('prestadores') as any)
         .select('cbu_alias, cuit_dni, bank_name')
         .eq('email', providerEmail.trim().toLowerCase())
         .maybeSingle();
@@ -1195,8 +1575,13 @@ export class ExperienceService {
           .order('created_at', { ascending: true }) as any;
 
       let { data, error } = await fetchExperiences(
-        `${publicColumns}, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing`,
+        `${publicColumns}, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing, provider_agency, participant_requirements, notes, reviewed_at`,
       );
+      if (error) {
+        ({ data, error } = await fetchExperiences(
+          `${publicColumns}, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing`,
+        ));
+      }
       if (error) {
         // Reintento con fallback progresivo si alguna columna nueva no existe aún
         ({ data, error } = await fetchExperiences(`${publicColumns}, meeting_point_url`));
@@ -1218,7 +1603,7 @@ export class ExperienceService {
           const { data: sessionData } = await this.supabase.auth.getSession();
           if (sessionData?.session?.user) {
             const { data: accessRows } = await (
-              this.supabase.from('provider_access') as any
+              this.supabase.from('prestadores') as any
             ).select('email, cbu_alias, cuit_dni, bank_name');
             if (Array.isArray(accessRows)) {
               for (const row of accessRows) {
@@ -1298,6 +1683,10 @@ export class ExperienceService {
             providerCuitDni: resolvedCuitDni,
             providerBankName: resolvedBankName,
             isClubExperience: isClub,
+            providerAgency: exp.provider_agency || undefined,
+            participantRequirements: exp.participant_requirements || undefined,
+            notes: exp.notes || undefined,
+            reviewedAt: exp.reviewed_at || undefined,
             status: exp.status || 'publicada',
             publicUrl: exp.public_url || `https://experiencias.club/experiencias/${exp.slug}`,
             isExclusiveClub: true,
@@ -1306,104 +1695,7 @@ export class ExperienceService {
           };
         });
 
-        // Auto-recuperar propuestas aprobadas en Supabase que no estén aún en la tabla de experiencias
-        try {
-          const { data: approvedProposals } = await (
-            this.supabase.from('propuestas_experiencias') as any
-          )
-            .select('*')
-            .eq('status', 'aprobada');
-
-          if (Array.isArray(approvedProposals) && approvedProposals.length > 0) {
-            const knownSlugs = new Set(remoteExperiences.map((e) => e.slug.toLowerCase()));
-            const knownIds = new Set(remoteExperiences.map((e) => e.id.toLowerCase()));
-            const deletedIds = this.getDeletedIds();
-
-            for (const p of approvedProposals) {
-              const pSlug = (p.experience_slug || p.title || 'experiencia')
-                .toLowerCase()
-                .normalize('NFD')
-                .replace(/[\u0300-\u036f]/g, '')
-                .replace(/[^a-z0-9]+/g, '-')
-                .replace(/(^-|-$)/g, '');
-              const pId = 'exp-' + pSlug;
-
-              if (
-                !knownSlugs.has(pSlug.toLowerCase()) &&
-                !knownIds.has(pId.toLowerCase()) &&
-                !deletedIds.has(pId) &&
-                !deletedIds.has(pSlug)
-              ) {
-                const expFromProposal: Experience = {
-                  id: pId,
-                  slug: pSlug,
-                  title: p.title,
-                  shortTitle: p.title ? p.title.split('&')[0].trim() : '',
-                  kicker: p.kicker || 'EXPERIENCIA',
-                  tagline: p.subheading
-                    ? p.subheading.length > 90
-                      ? p.subheading.slice(0, 90) + '...'
-                      : p.subheading
-                    : p.title,
-                  description: p.subheading || '',
-                  region: p.region || 'Catamarca',
-                  meetingPoint: p.meeting_point || '',
-                  meetingPointUrl: p.meeting_point_url || '',
-                  difficulty:
-                    (p.difficulty?.split('(')[0]?.trim() as any) || 'Moderada',
-                  durationDays: 1,
-                  durationLabel: p.duration || 'Medio día',
-                  altitudeMeters: Number(p.altitude?.replace(/\D/g, '')) || 850,
-                  bestSeason: p.season || 'Todo el año',
-                  priceArs: p.price_ars || 0,
-                  priceUsd: p.price_usd || 70,
-                  promosAndPricing: p.promos_and_pricing || undefined,
-                  maxSpotsPerGroup: p.capacity || 12,
-                  dates: Array.isArray(p.dates) ? p.dates : [],
-                  status: 'publicada',
-                  publicUrl: `https://experiencias.club/experiencias/${pSlug}`,
-                  detailRoute: `/experiencias/${pSlug}`,
-                  coverImage: p.cover_image || KAYAK_IMAGE,
-                  galleryImages:
-                    Array.isArray(p.album_photos) && p.album_photos.length > 0
-                      ? p.album_photos.map((ph: any) => ph.url)
-                      : [p.cover_image || KAYAK_IMAGE],
-                  videoUrl: p.cover_video_url || '',
-                  isExclusiveClub: true,
-                  isLocked: false,
-                  albumPhotos: p.album_photos || [],
-                  itinerary: p.itinerary || undefined,
-                  highlights: [],
-                  included: p.included_services
-                    ? p.included_services
-                        .split('\n')
-                        .map((s: string) => s.trim())
-                        .filter(Boolean)
-                    : [],
-                  notIncluded: p.participant_requirements
-                    ? p.participant_requirements
-                        .split('\n')
-                        .map((s: string) => s.trim())
-                        .filter(Boolean)
-                    : [],
-                  providerId: p.provider_id,
-                  providerEmail: p.provider_email,
-                  providerSlug: p.provider_slug,
-                  providerName: p.provider_agency || p.provider_name,
-                  providerPhone: p.provider_phone,
-                  providerCbuAlias: p.provider_cbu_alias,
-                  providerCuitDni: p.provider_cuit_dni,
-                  providerBankName: p.provider_bank_name,
-                };
-                remoteExperiences.push(expFromProposal);
-                knownSlugs.add(pSlug.toLowerCase());
-                knownIds.add(pId.toLowerCase());
-              }
-            }
-          }
-        } catch (propErr) {
-          console.warn('[ExperienceService] Error consultando propuestas aprobadas:', propErr);
-        }
+        // Fin procesamiento de experiencias remotas
 
         const currentLocal = this._experiences();
         const remoteIds = new Set(remoteExperiences.map((e) => e.id.toLowerCase()));

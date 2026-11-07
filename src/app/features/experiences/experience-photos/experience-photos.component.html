@@ -36,15 +36,63 @@
                   <span class="spec-value">{{ experience.durationLabel }}</span>
                 </div>
                 <div class="spec-tile">
+                  <span class="spec-label">ALTITUD</span>
+                  <span class="spec-value">{{
+                    experience.altitudeMeters > 0 ? experience.altitudeMeters + ' msnm' : 'N/A'
+                    }}</span>
+                </div>
+                @if (experience.region) {
+                <div class="spec-tile">
                   <span class="spec-label">REGIÓN</span>
                   <span class="spec-value">{{ experience.region }}</span>
                 </div>
+                }
+                @if (isValidGoogleMapsUrl(experience.meetingPointUrl) || isValidGoogleMapsUrl(experience.meetingPoint)) {
+                <a
+                  [href]="getTrimmedUrl(isValidGoogleMapsUrl(experience.meetingPointUrl) ? experience.meetingPointUrl : experience.meetingPoint)"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="spec-tile spec-tile-clickable"
+                  title="Abrir ubicación en Google Maps"
+                >
+                  <span class="spec-label">PUNTO DE ENCUENTRO</span>
+                  <span class="spec-value spec-value-link">Ver ubicación en Maps</span>
+                </a>
+                } @else {
                 <div class="spec-tile">
-                  <span class="spec-label">ALTITUD MÁX.</span>
-                  <span class="spec-value">{{
-                    experience.altitudeMeters > 0 ? experience.altitudeMeters + ' msnm' : 'N/A'
-                  }}</span>
+                  <span class="spec-label">PUNTO DE ENCUENTRO</span>
+                  <span class="spec-value">{{ experience.meetingPoint || experience.region }}</span>
                 </div>
+                }
+                @if (experience.maxSpotsPerGroup) {
+                <div class="spec-tile">
+                  <span class="spec-label">CUPO MÁXIMO</span>
+                  <span class="spec-value">{{ experience.maxSpotsPerGroup }} personas</span>
+                </div>
+                }
+                @if (experience.bestSeason) {
+                <div class="spec-tile">
+                  <span class="spec-label">TEMPORADA</span>
+                  <span class="spec-value">{{ experience.bestSeason }}</span>
+                </div>
+                }
+                @if (experience.providerName) {
+                  @if (getProviderSlug(experience); as pSlug) {
+                  <a
+                    [routerLink]="['/prestadores', pSlug]"
+                    class="spec-tile spec-tile-clickable"
+                    title="Ver perfil oficial del prestador"
+                  >
+                    <span class="spec-label">PRESTADOR</span>
+                    <span class="spec-value spec-value-link">{{ experience.providerName }}</span>
+                  </a>
+                  } @else {
+                  <div class="spec-tile">
+                    <span class="spec-label">PRESTADOR</span>
+                    <span class="spec-value">{{ experience.providerName }}</span>
+                  </div>
+                  }
+                }
               </div>
             </div>
           </div>

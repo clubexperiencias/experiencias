@@ -145,8 +145,6 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
                         <span class="socio-hash">#</span>
                         <strong>{{ m.position }}</strong>
                       </div>
-                    } @else if (m.googleLinked) {
-                      <span class="google-linked-pill" [class.is-provider-google]="isProvider(m)">GOOGLE</span>
                     } @else {
                       <span class="waitlist-pill">Waitlist</span>
                     }
@@ -155,7 +153,11 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
                   <!-- Titular -->
                   <td>
                     <div class="member-identity">
-                      <strong class="member-name">{{ m.fullName || '—' }}</strong>
+                      @if (m.fullName && m.fullName.trim() !== '' && m.fullName !== 'Lista de Espera (Email)') {
+                        <strong class="member-name">{{ m.fullName }}</strong>
+                      } @else {
+                        <strong class="member-name is-unassigned">—</strong>
+                      }
                       @if (m.type === 'waitlist' && !m.googleLinked) {
                         <span class="member-sub-hint">Pendiente de completar formulario</span>
                       } @else if (m.type === 'waitlist' && m.googleLinked) {
@@ -741,6 +743,11 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
         font-size: 0.88rem;
       }
 
+      .member-name.is-unassigned {
+        color: rgba(255, 255, 255, 0.4);
+        font-family: var(--font-mono, monospace);
+      }
+
       .member-sub-hint {
         font-size: 0.72rem;
         color: rgba(255, 255, 255, 0.5);
@@ -924,7 +931,10 @@ export class AdminMembersComponent {
     // Filtro por búsqueda
     if (query) {
       list = list.filter((m) => {
-        const nameMatch = m.fullName?.toLowerCase().includes(query) ?? false;
+        const nameMatch =
+          m.fullName && m.fullName !== 'Lista de Espera (Email)'
+            ? m.fullName.toLowerCase().includes(query)
+            : false;
         const emailMatch = m.email.toLowerCase().includes(query);
         const dniMatch = m.dni?.includes(query) ?? false;
         const phoneMatch = m.phone?.includes(query) ?? false;
@@ -967,7 +977,9 @@ export class AdminMembersComponent {
         [
           escapeCsv(m.position ? `#${m.position}` : 'Waitlist'),
           escapeCsv(m.type === 'socio' ? 'Oficial' : 'Lista Espera'),
-          escapeCsv(m.fullName || ''),
+          escapeCsv(
+            m.fullName && m.fullName !== 'Lista de Espera (Email)' ? m.fullName : '',
+          ),
           escapeCsv(m.dni || ''),
           escapeCsv(m.email || ''),
           escapeCsv(m.phone || ''),

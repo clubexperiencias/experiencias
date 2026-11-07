@@ -27,6 +27,7 @@ import {
   BANK_TRANSFER_DESTINATION,
   DiscountCode,
   ProviderExperience,
+  PublicPaymentDestination,
   discountAmount,
   findDiscountCode,
   MAX_PARTICIPANTS_PER_BOOKING,
@@ -256,49 +257,14 @@ export class ExperiencePaymentComponent implements OnInit {
   readonly submitError = signal<string | null>(null);
   readonly confirmation = signal<TransferSubmission | null>(null);
 
-  readonly computedTransferDestination = computed(() => {
+  readonly computedTransferDestination = computed<PublicPaymentDestination>(() => {
     const exp = this.experience();
     const slug = this.slug();
     const liveExp =
       this.expService.getPublishedExperienceBySlug(slug) ||
       this.expService.getExperienceBySlug(slug);
 
-    const providerEmail = exp?.providerEmail || liveExp?.providerEmail;
-    const providerId = exp?.providerId || liveExp?.providerId;
-    const prov =
-      (providerId ? this.store.getProviderById(providerId) : undefined) ||
-      (providerEmail ? this.store.getProviderByEmail(providerEmail) : undefined);
-
-    const cbu =
-      exp?.providerCbuAlias?.trim() ||
-      liveExp?.providerCbuAlias?.trim() ||
-      prov?.cbuAlias?.trim() ||
-      BANK_TRANSFER_DESTINATION.cbu;
-
-    const accountHolder =
-      exp?.providerName?.trim() ||
-      liveExp?.providerName?.trim() ||
-      prov?.name?.trim() ||
-      BANK_TRANSFER_DESTINATION.accountHolder;
-
-    const taxId =
-      exp?.providerCuitDni?.trim() ||
-      liveExp?.providerCuitDni?.trim() ||
-      prov?.cuitDni?.trim() ||
-      BANK_TRANSFER_DESTINATION.taxId;
-
-    const entity =
-      exp?.providerBankName?.trim() ||
-      liveExp?.providerBankName?.trim() ||
-      prov?.bankName?.trim() ||
-      BANK_TRANSFER_DESTINATION.entity;
-
-    return {
-      cbu,
-      accountHolder,
-      taxId,
-      entity,
-    };
+    return this.store.getPublicPaymentDetails(exp || liveExp);
   });
 
   get transferDestination() {

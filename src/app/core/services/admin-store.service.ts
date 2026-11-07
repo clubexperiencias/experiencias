@@ -301,7 +301,7 @@ export class AdminStoreService {
   }
 
   /**
-   * Carga el perfil oficial del Club de Experiencias desde Supabase (tabla `provider_access`),
+   * Carga el perfil oficial del Club de Experiencias desde Supabase (tabla `prestadores`),
    * consultando por ID único, slug oficial o email institucional. Sincroniza el resultado
    * con el almacenamiento local y los servicios de experiencias y prestadores.
    */
@@ -314,7 +314,7 @@ export class AdminStoreService {
 
       // 1. Intentar buscar por id si ya lo tenemos registrado
       if (current.id) {
-        const res = await (this.supabase.from('provider_access') as any)
+        const res = await (this.supabase.from('prestadores') as any)
           .select('*')
           .eq('id', current.id)
           .maybeSingle();
@@ -324,7 +324,7 @@ export class AdminStoreService {
 
       // 2. Si no se encontró por id, buscar por slug oficial del club
       if (!data) {
-        const res = await (this.supabase.from('provider_access') as any)
+        const res = await (this.supabase.from('prestadores') as any)
           .select('*')
           .eq('slug', current.slug || DEFAULT_CLUB_PROFILE.slug)
           .maybeSingle();
@@ -334,7 +334,7 @@ export class AdminStoreService {
 
       // 3. Fallback por email original
       if (!data) {
-        const res = await (this.supabase.from('provider_access') as any)
+        const res = await (this.supabase.from('prestadores') as any)
           .select('*')
           .eq('email', DEFAULT_CLUB_PROFILE.email)
           .maybeSingle();
@@ -377,7 +377,7 @@ export class AdminStoreService {
   }
 
   /**
-   * Actualiza el perfil oficial del Club de Experiencias en Supabase sobre la fila de `provider_access`
+   * Actualiza el perfil oficial del Club de Experiencias en Supabase sobre la fila de `prestadores`
    * correspondiente utilizando su ID estable o slug, evitando colisiones de upsert. En caso de éxito,
    * propaga la información a las experiencias del Club y al prestador oficial.
    *
@@ -416,7 +416,7 @@ export class AdminStoreService {
           updated_at: merged.updatedAt,
         };
 
-        let updateQuery = (this.supabase.from('provider_access') as any).update(payload);
+        let updateQuery = (this.supabase.from('prestadores') as any).update(payload);
 
         if (targetId) {
           updateQuery = updateQuery.eq('id', targetId);
@@ -433,7 +433,7 @@ export class AdminStoreService {
 
         if (!data || data.length === 0) {
           // Si aún no existía la fila por id o slug, insertar una nueva
-          const { data: inserted, error: insertError } = await (this.supabase.from('provider_access') as any)
+          const { data: inserted, error: insertError } = await (this.supabase.from('prestadores') as any)
             .insert(payload)
             .select()
             .single();
@@ -496,9 +496,9 @@ export class AdminStoreService {
 
       const email = data.user.email.trim().toLowerCase();
 
-      // 1. Consultar si tiene registro en admin_access
+      // 1. Consultar si tiene registro en administradores
       const { data: adminRow, error: adminError } = await this.supabase
-        .from('admin_access' as any)
+        .from('administradores' as any)
         .select('*')
         .ilike('email', email)
         .eq('active', true)
@@ -528,7 +528,7 @@ export class AdminStoreService {
         return true;
       } else {
         if (adminError) {
-          console.error('[AdminStore] Error al consultar admin_access:', adminError);
+          console.error('[AdminStore] Error al consultar administradores:', adminError);
         }
         this._currentAdmin.set(null);
         this.clearSession();
@@ -620,6 +620,7 @@ export class AdminStoreService {
     } catch {
       // ignore
     }
+    this.experienceService.clearPrivilegedCache();
     if (isSupabaseConfigured()) {
       void this.supabase.auth.signOut();
     }
@@ -678,9 +679,9 @@ export class AdminStoreService {
             phone: s.phone || '—',
             position: s.position,
             membershipTier: s.membershipTier || s.membership_tier || 'emergente',
-            googleLinked: Boolean(s.googleLinked || s.google_linked),
+            googleLinked: Boolean(s.googleLinked || s.auth_user_id),
             // Convertido = pagó al menos una experiencia / envió comprobante
-            converted: Boolean(s.converted || s.paymentsCount > 0),
+            converted: typeof s.paymentsCount === 'number' ? s.paymentsCount > 0 : Boolean(s.converted),
             isProvider: providerEmails.has(s.email?.toLowerCase().trim()) || Boolean(s.isProvider || s.is_provider),
             experiencesWishlist: Array.isArray(s.experiencesWishlist) ? s.experiencesWishlist : [],
             experiencesOther: s.experiencesOther || s.experiences_other,
@@ -691,16 +692,24 @@ export class AdminStoreService {
             id: w.id,
             type: 'waitlist' as const,
             email: w.email,
-            fullName: 'Lista de Espera (Email)',
-            dni: '—',
-            phone: '—',
+            fullName:
+              w.fullName && w.fullName !== 'Lista de Espera (Email)'
+                ? w.fullName
+                : w.full_name || '',
+            dni: w.dni || '—',
+            phone: w.phone || '—',
             position: undefined,
             membershipTier: 'waitlist' as const,
-            googleLinked: Boolean(w.googleLinked || w.google_linked),
+            googleLinked: Boolean(w.googleLinked || w.auth_user_id),
             // Convertido = pagó al menos una experiencia / envió comprobante
-            converted: Boolean(w.converted || w.paymentsCount > 0),
+            converted: typeof w.paymentsCount === 'number' ? w.paymentsCount > 0 : Boolean(w.converted),
             isProvider: providerEmails.has(w.email?.toLowerCase().trim()) || Boolean(w.isProvider || w.is_provider),
-            experiencesWishlist: [],
+            experiencesWishlist: Array.isArray(w.experiencesWishlist)
+              ? w.experiencesWishlist
+              : Array.isArray(w.experiences_wishlist)
+                ? w.experiences_wishlist
+                : [],
+            experiencesOther: w.experiencesOther || w.experiences_other,
             createdAt: w.createdAt || w.created_at || new Date().toISOString(),
           }));
 
@@ -712,10 +721,9 @@ export class AdminStoreService {
           return;
         }
 
-        // 2. Fallback de consultas directas a las tablas public.socios y public.waitlist
-        const [sociosRes, waitlistRes, paidRows] = await Promise.all([
+        // 2. Fallback de consultas directas a la tabla public.socios (esquema canónico unificado)
+        const [sociosRes, paidRows] = await Promise.all([
           this.supabase.from('socios').select('*').order('position', { ascending: true }),
-          this.supabase.from('waitlist').select('*').order('created_at', { ascending: false }),
           this.supabase.from('pagos_transferencias' as any).select('email'),
         ]);
 
@@ -725,55 +733,62 @@ export class AdminStoreService {
 
         const providerEmails = this.providerEmailsSet();
 
-        const sociosMap = new Map<string, any>();
-        const sociosList: AdminMember[] = (sociosRes.data || []).map((s: any) => {
-          const cleanEmail = s.email?.toLowerCase().trim();
-          sociosMap.set(cleanEmail, s);
-          const hasPayment = paidEmailSet.has(cleanEmail);
-          return {
-            id: s.id,
-            type: 'socio' as const,
-            email: s.email,
-            fullName: s.full_name,
-            dni: s.dni,
-            phone: s.phone,
-            position: s.position,
-            membershipTier: s.membership_tier || 'emergente',
-            googleLinked: Boolean(s.google_linked || s.auth_user_id),
-            converted: hasPayment,
-            isProvider: providerEmails.has(cleanEmail) || Boolean(s.is_provider),
-            experiencesWishlist: Array.isArray(s.experiences_wishlist)
-              ? s.experiences_wishlist
-              : [],
-            experiencesOther: s.experiences_other,
-            createdAt: s.created_at,
-          };
-        });
+        const allSocioRows = sociosRes.data || [];
+        const sociosList: AdminMember[] = allSocioRows
+          .filter((s: any) => s.membership_tier !== 'waitlist')
+          .map((s: any) => {
+            const cleanEmail = s.email?.toLowerCase().trim();
+            const hasPayment = paidEmailSet.has(cleanEmail);
+            return {
+              id: s.id,
+              type: 'socio' as const,
+              email: s.email,
+              fullName: s.full_name,
+              dni: s.dni,
+              phone: s.phone,
+              position: s.position,
+              membershipTier: s.membership_tier || 'emergente',
+              googleLinked: Boolean(s.auth_user_id),
+              converted: hasPayment,
+              isProvider: providerEmails.has(cleanEmail) || Boolean(s.is_provider),
+              experiencesWishlist: Array.isArray(s.experiences_wishlist)
+                ? s.experiences_wishlist
+                : [],
+              experiencesOther: s.experiences_other,
+              createdAt: s.created_at,
+            };
+          });
 
-        const waitlistOnly: AdminMember[] = (waitlistRes.data || [])
-          .filter((w: any) => !sociosMap.has(w.email?.toLowerCase().trim()))
+        const waitlistOnly: AdminMember[] = allSocioRows
+          .filter((w: any) => w.membership_tier === 'waitlist')
           .map((w: any) => {
             const cleanEmail = w.email?.toLowerCase().trim();
-            const isGoogle = Boolean(w.google_linked);
-            const hasPayment = Boolean(w.converted) || paidEmailSet.has(cleanEmail);
+            const isGoogle = Boolean(w.auth_user_id);
+            const hasPayment = paidEmailSet.has(cleanEmail);
             return {
               id: w.id,
               type: 'waitlist' as const,
               email: w.email,
-              fullName: 'Lista de Espera (Email)',
-              dni: '—',
-              phone: '—',
+              fullName:
+                w.fullName && w.fullName !== 'Lista de Espera (Email)'
+                  ? w.fullName
+                  : w.full_name || '',
+              dni: w.dni || '—',
+              phone: w.phone || '—',
               position: undefined,
               membershipTier: 'waitlist' as const,
               googleLinked: isGoogle,
               converted: hasPayment,
               isProvider: providerEmails.has(cleanEmail) || Boolean(w.is_provider),
-              experiencesWishlist: [],
+              experiencesWishlist: Array.isArray(w.experiences_wishlist)
+                ? w.experiences_wishlist
+                : [],
+              experiencesOther: w.experiences_other,
               createdAt: w.created_at,
             };
           });
 
-        if (!sociosRes.error && !waitlistRes.error) {
+        if (!sociosRes.error) {
           const combined = [...sociosList, ...waitlistOnly];
           // Cuando Supabase está configurado, la fuente de la verdad es Supabase
           this._members.set(combined);
@@ -785,7 +800,7 @@ export class AdminStoreService {
 
         console.warn(
           '[AdminStore] Error al consultar tablas de miembros en Supabase:',
-          sociosRes.error || waitlistRes.error,
+          sociosRes.error,
         );
         this._isLoadingMembers.set(false);
         return;
@@ -1026,34 +1041,19 @@ export class AdminStoreService {
 
     try {
       if (isSupabaseConfigured()) {
-        const [prestadoresRes, fundadoresRes, providerAccessRes] = await Promise.all([
-          this.supabase
-            .from('postulaciones_prestadores' as any)
-            .select('*')
-            .order('created_at', { ascending: false }),
+        const [fundadoresRes, providerAccessRes] = await Promise.all([
           this.supabase
             .from('postulaciones_fundadores' as any)
             .select('*')
             .order('created_at', { ascending: false }),
           this.supabase
-            .from('provider_access' as any)
-            .select('email, status, cbu_alias, cuit_dni, bank_name, account_holder'),
+            .from('prestadores' as any)
+            .select('*')
+            .order('created_at', { ascending: false }),
         ]);
 
-        const providerAccessByEmail = new Map<string, any>(
-          (providerAccessRes.data || []).map((pa: any) => [
-            (pa.email || '').trim().toLowerCase(),
-            pa,
-          ]),
-        );
-
-        const prestadores: AdminApplication[] = (prestadoresRes.data || []).map((p: any) => {
-          const emailNorm = (p.email || '').trim().toLowerCase();
-          const pa = providerAccessByEmail.get(emailNorm);
-          const rawStatus =
-            p.status === 'rechazado' && pa?.status === 'dado_de_baja'
-              ? 'rechazado'
-              : (pa?.status || p.status);
+        const prestadores: AdminApplication[] = (providerAccessRes.data || []).map((p: any) => {
+          const rawStatus = p.status;
           const status =
             rawStatus === 'aprobado'
               ? 'aprobado'
@@ -1066,7 +1066,7 @@ export class AdminStoreService {
           return {
             id: p.id,
             type: 'prestador' as const,
-            fullName: p.full_name || 'Sin nombre',
+            fullName: p.name || 'Sin nombre',
             email: p.email,
             phone: p.phone || '—',
             category: p.category || 'guia_montaña',
@@ -1074,10 +1074,10 @@ export class AdminStoreService {
             website: p.website || '',
             description: p.description || '',
             status,
-            accountHolder: pa?.account_holder || undefined,
-            cuitDni: pa?.cuit_dni || undefined,
-            cbuAlias: pa?.cbu_alias || undefined,
-            bankName: pa?.bank_name || undefined,
+            accountHolder: p.account_holder || undefined,
+            cuitDni: p.cuit_dni || undefined,
+            cbuAlias: p.cbu_alias || undefined,
+            bankName: p.bank_name || undefined,
             createdAt: p.created_at || new Date().toISOString(),
           };
         });
@@ -1138,94 +1138,84 @@ export class AdminStoreService {
     const app = this._applications().find((a) => a.id === id);
     try {
       if (isSupabaseConfigured()) {
-        const table =
-          type === 'prestador' ? 'postulaciones_prestadores' : 'postulaciones_fundadores';
-        const dbStatus =
-          type === 'fundador'
-            ? status === 'aprobado'
-              ? 'aprobada'
-              : status === 'dado_de_baja'
-                ? 'dado_de_baja'
-                : status === 'rechazado'
-                  ? 'rechazada'
-                  : 'en_evaluacion'
-            : status;
-
-        const { error: appErr } = await this.supabase
-          .from(table as any)
-          .update({
-            status: dbStatus,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', id);
-
-        if (appErr) {
-          console.warn('[AdminStore] Error al actualizar postulación en Supabase:', appErr);
-          return false;
-        }
-
-        if (type === 'prestador' && app) {
-          const email = app.email.trim().toLowerCase();
+        if (type === 'prestador') {
+          const email = app?.email?.trim().toLowerCase();
           const active = status === 'aprobado';
           const paStatus =
             status === 'aprobado'
               ? 'aprobado'
               : status === 'pendiente'
                 ? 'pendiente'
-                : 'dado_de_baja';
+                : status === 'rechazado'
+                  ? 'rechazado'
+                  : 'dado_de_baja';
 
-          const { data: existingAccess } = await (this.supabase.from('provider_access') as any)
-            .select('id')
-            .eq('email', email)
-            .maybeSingle();
-
-          const upsertPayload: Record<string, any> = {
-            email,
-            active,
+          const updatePayload: Record<string, any> = {
             status: paStatus,
+            active,
+            updated_at: new Date().toISOString(),
           };
 
-          if (!existingAccess) {
-            if (app.fullName && app.fullName.trim()) {
-              upsertPayload['name'] = app.fullName.trim();
-            }
-            const rawAgency = (app.description || app.category || '').trim();
-            const isPlaceholderAgency =
-              !rawAgency ||
-              rawAgency.toLowerCase() === 'sin especificar' ||
-              rawAgency === '-';
-            if (!isPlaceholderAgency) {
-              upsertPayload['agency'] = rawAgency;
-            }
-            const rawPhone = (app.phone || '').trim();
-            const isPlaceholderPhone =
-              !rawPhone ||
-              rawPhone === '-' ||
-              rawPhone.toLowerCase() === 'sin telefono' ||
-              rawPhone.toLowerCase() === 'sin teléfono';
-            if (!isPlaceholderPhone) {
-              upsertPayload['phone'] = rawPhone;
-            }
+          if (bankingData) {
+            if (bankingData.accountHolder) updatePayload['account_holder'] = bankingData.accountHolder;
+            if (bankingData.cuitDni) updatePayload['cuit_dni'] = bankingData.cuitDni;
+            if (bankingData.cbuAlias) updatePayload['cbu_alias'] = bankingData.cbuAlias;
+            if (bankingData.bankName) updatePayload['bank_name'] = bankingData.bankName;
           }
 
-          const { error: paErr } = await (this.supabase.from('provider_access') as any).upsert(
-            upsertPayload,
-            { onConflict: 'email' },
-          );
+          let query = (this.supabase.from('prestadores') as any).update(updatePayload, {
+            count: 'exact',
+          });
+          if (id) {
+            query = query.eq('id', id);
+          } else if (email) {
+            query = query.eq('email', email);
+          }
+          const { error: paErr, count } = await query;
           if (paErr) {
-            console.warn('[AdminStore] Error al upsert provider_access en Supabase:', paErr);
+            console.warn('[AdminStore] Error al actualizar prestadores en Supabase:', paErr);
             return false;
           }
 
-          if (status === 'aprobado') {
+          if (count !== 1) {
+            console.warn(
+              '[AdminStore] Se esperaba exactamente 1 fila actualizada en prestadores, pero se obtuvieron:',
+              count,
+            );
+            return false;
+          }
+
+          if (status === 'aprobado' && email) {
             try {
               await this.notificationService.notifyProviderApproved({
-                fullName: app.fullName || upsertPayload['name'] || '',
+                fullName: app?.fullName || '',
                 email,
               });
             } catch (notifyErr) {
               console.warn('[AdminStore] Error al notificar aprobación de prestador:', notifyErr);
             }
+          }
+        } else {
+          // postulaciones_fundadores
+          const dbStatus =
+            status === 'aprobado'
+              ? 'aprobada'
+              : status === 'dado_de_baja'
+                ? 'dado_de_baja'
+                : status === 'rechazado'
+                  ? 'rechazada'
+                  : 'en_evaluacion';
+
+          const { error: appErr } = await (this.supabase.from('postulaciones_fundadores') as any)
+            .update({
+              status: dbStatus,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', id);
+
+          if (appErr) {
+            console.warn('[AdminStore] Error al actualizar postulación en Supabase:', appErr);
+            return false;
           }
         }
       }
@@ -1478,7 +1468,7 @@ export class AdminStoreService {
         id: 'wl-201',
         type: 'waitlist',
         email: 'sofia.valle@gmail.com',
-        fullName: 'Lista de Espera (Email)',
+        fullName: 'Sofía Valle',
         membershipTier: 'waitlist',
         googleLinked: true,
         converted: false, // Vinculó Google pero aún no pagó experiencia
@@ -1489,7 +1479,7 @@ export class AdminStoreService {
         id: 'wl-202',
         type: 'waitlist',
         email: 'marcelo.alvarez@outlook.com',
-        fullName: 'Lista de Espera (Email)',
+        fullName: '',
         membershipTier: 'waitlist',
         googleLinked: false,
         converted: false,
@@ -1500,7 +1490,7 @@ export class AdminStoreService {
         id: 'wl-203',
         type: 'waitlist',
         email: 'carolina.perez@gmail.com',
-        fullName: 'Lista de Espera (Email)',
+        fullName: 'Carolina Pérez',
         membershipTier: 'waitlist',
         googleLinked: true,
         converted: false,

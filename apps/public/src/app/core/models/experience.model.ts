@@ -45,7 +45,7 @@ export interface Experience {
     closed?: boolean;
     note?: string;
   }[];
-  status?: 'publicada' | 'borrador' | 'oculta';
+  status?: 'publicada' | 'borrador' | 'oculta' | 'pendiente' | 'rechazada';
   publicUrl?: string;
   isExclusiveClub: boolean;
   isLocked?: boolean;
@@ -55,9 +55,15 @@ export interface Experience {
   providerSlug?: string;
   providerName?: string;
   providerPhone?: string;
+  providerAgency?: string;
   providerCbuAlias?: string;
   providerCuitDni?: string;
   providerBankName?: string;
+  participantRequirements?: string;
+  coverImageName?: string;
+  coverVideoName?: string;
+  notes?: string;
+  reviewedAt?: string;
   isClubExperience?: boolean;
   pendingRemoteSync?: boolean;
 }

@@ -10,6 +10,7 @@ export type UserRole = 'socio' | 'prestador' | 'admin';
 // Flow: Suscripción ➔ Socio Emergente ➔ Socio Pleno (por cuota mensual, experiencia en el mes o admin) ➔ Socio Fundador (membresía absoluta)
 
 export type MembershipTier =
+  | 'waitlist' // Prospecto registrado desde landing/formulario inicial
   | 'emergente' // Paso 1: Suscripción confirmada. Lista de espera, acceso a contenidos y eventos preliminares.
   | 'activo' // Paso 2: Habilitado por suscripción mensual, vivir una experiencia ese mes o aprobación de admin.
   | 'fundador'; // Paso 3: Pago de la Membresía Absoluta (pase vitalicio de por vida, máxima prioridad y beneficios).

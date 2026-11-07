@@ -1,4 +1,4 @@
-export type MembershipTier = 'emergente' | 'activo' | 'fundador';
+export type MembershipTier = 'emergente' | 'activo' | 'fundador' | 'waitlist';
 
 export interface SubscriptionDetails {
   status: 'active' | 'paused' | 'cancelled';

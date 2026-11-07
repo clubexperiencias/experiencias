@@ -1,22 +1,99 @@
 /**
  * Tipos de TypeScript para la base de datos de Supabase de EXPERIENCIAS.CLUB.
- * Separación: 1. waitlist (prospectos) y 2. socios (miembros oficiales)
- * Sincronizado con supabase/migrations/002_waitlist_and_profiles.sql
+ * Esquema canónico en español: socios, prestadores, administradores, historial_bancario,
+ * experiencias, postulaciones_fundadores y pagos_transferencias.
+ * Sincronizado con supabase/schema.sql
  */
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
-export type MembershipTier = 'emergente' | 'activo' | 'fundador';
+export type MembershipTier = 'emergente' | 'activo' | 'fundador' | 'waitlist';
 
 export interface Database {
   public: {
     Tables: {
-      provider_access: {
+      prestadores: {
         Row: {
           id: string;
           email: string;
           name: string;
           agency: string;
+          active: boolean;
+          status: 'aprobado' | 'pendiente' | 'rechazado' | 'dado_de_baja';
+          cbu_alias?: string;
+          cuit_dni?: string;
+          bank_name?: string;
+          account_holder?: string;
+          phone?: string;
+          website?: string;
+          social_media?: string;
+          social_media_secondary?: string;
+          slug?: string;
+          bio?: string;
+          avatar_url?: string;
+          cover_url?: string;
+          category?: string;
+          region?: string;
+          description?: string;
+          notes?: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          email: string;
+          name?: string;
+          agency?: string;
+          active?: boolean;
+          status?: 'aprobado' | 'pendiente' | 'rechazado' | 'dado_de_baja';
+          cbu_alias?: string;
+          cuit_dni?: string;
+          bank_name?: string;
+          account_holder?: string;
+          phone?: string;
+          website?: string;
+          social_media?: string;
+          social_media_secondary?: string;
+          slug?: string;
+          bio?: string;
+          avatar_url?: string;
+          cover_url?: string;
+          category?: string;
+          region?: string;
+          description?: string;
+          notes?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          email?: string;
+          name?: string;
+          agency?: string;
+          active?: boolean;
+          status?: 'aprobado' | 'pendiente' | 'rechazado' | 'dado_de_baja';
+          cbu_alias?: string;
+          cuit_dni?: string;
+          bank_name?: string;
+          account_holder?: string;
+          phone?: string;
+          website?: string;
+          social_media?: string;
+          social_media_secondary?: string;
+          slug?: string;
+          bio?: string;
+          avatar_url?: string;
+          cover_url?: string;
+          category?: string;
+          region?: string;
+          description?: string;
+          notes?: string | null;
+        };
+        Relationships: [];
+      };
+      administradores: {
+        Row: {
+          id: string;
+          email: string;
+          name: string;
+          role: string;
           active: boolean;
           created_at: string;
         };
@@ -24,40 +101,77 @@ export interface Database {
           id?: string;
           email: string;
           name?: string;
-          agency?: string;
+          role?: string;
           active?: boolean;
           created_at?: string;
         };
         Update: {
           email?: string;
           name?: string;
-          agency?: string;
+          role?: string;
           active?: boolean;
         };
         Relationships: [];
       };
-      /**
-       * Tabla 1: Recopilación ágil de correos desde la landing page (/)
-       */
-      waitlist: {
+      historial_bancario: {
         Row: {
           id: string;
-          email: string;
-          converted: boolean;
-          google_linked: boolean;
-          created_at: string;
+          provider_email: string;
+          cbu_alias: string | null;
+          cuit_dni: string | null;
+          bank_name: string | null;
+          account_holder: string | null;
+          old_cbu_alias: string | null;
+          new_cbu_alias: string | null;
+          old_name: string | null;
+          new_name: string | null;
+          old_cuit_dni: string | null;
+          new_cuit_dni: string | null;
+          old_bank_name: string | null;
+          new_bank_name: string | null;
+          old_account_holder: string | null;
+          new_account_holder: string | null;
+          changed_by: string;
+          changed_at: string;
         };
         Insert: {
           id?: string;
-          email: string;
-          converted?: boolean;
-          google_linked?: boolean;
-          created_at?: string;
+          provider_email: string;
+          cbu_alias?: string | null;
+          cuit_dni?: string | null;
+          bank_name?: string | null;
+          account_holder?: string | null;
+          old_cbu_alias?: string | null;
+          new_cbu_alias?: string | null;
+          old_name?: string | null;
+          new_name?: string | null;
+          old_cuit_dni?: string | null;
+          new_cuit_dni?: string | null;
+          old_bank_name?: string | null;
+          new_bank_name?: string | null;
+          old_account_holder?: string | null;
+          new_account_holder?: string | null;
+          changed_by: string;
+          changed_at?: string;
         };
         Update: {
-          email?: string;
-          converted?: boolean;
-          google_linked?: boolean;
+          provider_email?: string;
+          cbu_alias?: string | null;
+          cuit_dni?: string | null;
+          bank_name?: string | null;
+          account_holder?: string | null;
+          old_cbu_alias?: string | null;
+          new_cbu_alias?: string | null;
+          old_name?: string | null;
+          new_name?: string | null;
+          old_cuit_dni?: string | null;
+          new_cuit_dni?: string | null;
+          old_bank_name?: string | null;
+          new_bank_name?: string | null;
+          old_account_holder?: string | null;
+          new_account_holder?: string | null;
+          changed_by?: string;
+          changed_at?: string;
         };
         Relationships: [];
       };
@@ -74,10 +188,9 @@ export interface Database {
           phone: string;
           experiences_wishlist: string[] | null;
           experiences_other: string | null;
-          position: number;
+          position: number | null;
           membership_tier: MembershipTier;
           auth_user_id: string | null;
-          google_linked: boolean;
           registration_token: string;
           created_at: string;
           updated_at: string;
@@ -90,10 +203,9 @@ export interface Database {
           phone: string;
           experiences_wishlist?: string[] | null;
           experiences_other?: string | null;
-          position?: number;
+          position?: number | null;
           membership_tier?: MembershipTier;
           auth_user_id?: string | null;
-          google_linked?: boolean;
           registration_token?: string;
           created_at?: string;
           updated_at?: string;
@@ -105,9 +217,9 @@ export interface Database {
           phone?: string;
           experiences_wishlist?: string[] | null;
           experiences_other?: string | null;
+          position?: number | null;
           membership_tier?: MembershipTier;
           auth_user_id?: string | null;
-          google_linked?: boolean;
           registration_token?: string;
           updated_at?: string;
         };
@@ -152,52 +264,9 @@ export interface Database {
         Relationships: [];
       };
 
-      /**
-       * Tabla 4: Postulaciones de Prestadores & Guías Locales (/experiencias/prestadores)
-       */
-      postulaciones_prestadores: {
-        Row: {
-          id: string;
-          full_name: string;
-          category: string;
-          region: string;
-          email: string;
-          phone: string;
-          website: string;
-          description: string;
-          status: 'pendiente' | 'aprobado' | 'rechazado';
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          full_name: string;
-          category?: string;
-          region?: string;
-          email: string;
-          phone: string;
-          website: string;
-          description: string;
-          status?: 'pendiente' | 'aprobado' | 'rechazado';
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          full_name?: string;
-          category?: string;
-          region?: string;
-          email?: string;
-          phone?: string;
-          website?: string;
-          description?: string;
-          status?: 'pendiente' | 'aprobado' | 'rechazado';
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
 
       /**
-       * Tabla 5: Experiencias Oficiales del Club (public.experiencias)
+       * Tabla: Experiencias Oficiales y Propuestas del Club (public.experiencias)
        */
       experiencias: {
         Row: {
@@ -214,7 +283,7 @@ export interface Database {
           kicker?: string;
           video_url?: string;
           video_poster?: string;
-          difficulty: 'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña';
+          difficulty: 'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña' | string;
           duration_label: string;
           altitude_meters?: number;
           best_season?: string;
@@ -227,8 +296,17 @@ export interface Database {
           highlights?: string[];
           included?: string[];
           not_included?: string[];
-          status: 'borrador' | 'publicada' | 'oculta';
+          status: 'borrador' | 'publicada' | 'oculta' | 'pendiente' | 'rechazada';
           public_url?: string;
+          provider_id?: string | null;
+          provider_name?: string | null;
+          provider_agency?: string | null;
+          provider_email?: string | null;
+          provider_phone?: string | null;
+          participant_requirements?: string | null;
+          notes?: string | null;
+          rejection_reason?: string | null;
+          reviewed_at?: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -246,7 +324,7 @@ export interface Database {
           kicker?: string;
           video_url?: string;
           video_poster?: string;
-          difficulty?: 'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña';
+          difficulty?: 'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña' | string;
           duration_label?: string;
           altitude_meters?: number;
           best_season?: string;
@@ -259,8 +337,17 @@ export interface Database {
           highlights?: string[];
           included?: string[];
           not_included?: string[];
-          status?: 'borrador' | 'publicada' | 'oculta';
+          status?: 'borrador' | 'publicada' | 'oculta' | 'pendiente' | 'rechazada';
           public_url?: string;
+          provider_id?: string | null;
+          provider_name?: string | null;
+          provider_agency?: string | null;
+          provider_email?: string | null;
+          provider_phone?: string | null;
+          participant_requirements?: string | null;
+          notes?: string | null;
+          rejection_reason?: string | null;
+          reviewed_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -278,7 +365,7 @@ export interface Database {
           kicker?: string;
           video_url?: string;
           video_poster?: string;
-          difficulty?: 'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña';
+          difficulty?: 'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña' | string;
           duration_label?: string;
           altitude_meters?: number;
           best_season?: string;
@@ -291,8 +378,17 @@ export interface Database {
           highlights?: string[];
           included?: string[];
           not_included?: string[];
-          status?: 'borrador' | 'publicada' | 'oculta';
+          status?: 'borrador' | 'publicada' | 'oculta' | 'pendiente' | 'rechazada';
           public_url?: string;
+          provider_id?: string | null;
+          provider_name?: string | null;
+          provider_agency?: string | null;
+          provider_email?: string | null;
+          provider_phone?: string | null;
+          participant_requirements?: string | null;
+          notes?: string | null;
+          rejection_reason?: string | null;
+          reviewed_at?: string | null;
           updated_at?: string;
         };
         Relationships: [];
@@ -431,96 +527,37 @@ export interface Database {
         };
         Relationships: [];
       };
-
-      /**
-       * Tabla: Propuestas de Experiencias cargadas por Prestadores (/experiencias/nueva)
-       */
-      propuestas_experiencias: {
-        Row: {
-          id: string;
-          provider_id: string;
-          provider_name: string;
-          provider_agency: string;
-          provider_email: string;
-          provider_phone: string | null;
-          title: string;
-          kicker: string;
-          subheading: string;
-          region: string;
-          difficulty: string;
-          duration: string;
-          altitude: string | null;
-          capacity: number;
-          season: string;
-          dates: string;
-          price_ars: number;
-          price_usd: number | null;
-          promos_and_pricing: string | null;
-          itinerary: string;
-          meeting_point: string;
-          meeting_point_url: string;
-          included_services: string;
-          participant_requirements: string;
-          notes: string | null;
-          cover_image: string | null;
-          cover_image_name: string | null;
-          cover_video_url: string | null;
-          cover_video_name: string | null;
-          status: 'pendiente' | 'aprobada' | 'rechazada';
-          created_at: string;
-          reviewed_at: string | null;
-          updated_at: string;
-        };
-        Insert: {
-          id: string;
-          provider_id: string;
-          provider_name: string;
-          provider_agency?: string;
-          provider_email: string;
-          provider_phone?: string | null;
-          title: string;
-          kicker?: string;
-          subheading?: string;
-          region?: string;
-          difficulty?: string;
-          duration?: string;
-          altitude?: string | null;
-          capacity?: number;
-          season?: string;
-          dates?: string;
-          price_ars: number;
-          price_usd?: number | null;
-          promos_and_pricing?: string | null;
-          itinerary?: string;
-          meeting_point?: string;
-          meeting_point_url?: string;
-          included_services?: string;
-          participant_requirements?: string;
-          notes?: string | null;
-          cover_image?: string | null;
-          cover_image_name?: string | null;
-          cover_video_url?: string | null;
-          cover_video_name?: string | null;
-          status?: 'pendiente' | 'aprobada' | 'rechazada';
-          created_at?: string;
-          reviewed_at?: string | null;
-          updated_at?: string;
-        };
-        Update: {
-          status?: 'pendiente' | 'aprobada' | 'rechazada';
-          reviewed_at?: string | null;
-          updated_at?: string;
-          notes?: string | null;
-        };
-        Relationships: [];
-      };
     };
 
     Views: {
-      waitlist_stats: {
+      estadisticas_socios: {
         Row: {
           total_members: number;
           max_position: number | null;
+          total_socios: number;
+          total_waitlist: number;
+          total_fundadores: number;
+          total_activos: number;
+          total_emergentes: number;
+          last_position: number | null;
+        };
+        Relationships: [];
+      };
+      perfiles_publicos: {
+        Row: {
+          email: string;
+          name: string;
+          agency: string;
+          slug: string;
+          bio: string;
+          phone: string;
+          website: string;
+          social_media: string;
+          social_media_secondary: string;
+          avatar_url: string;
+          cover_url: string;
+          active: boolean;
+          status: string;
         };
         Relationships: [];
       };
@@ -634,6 +671,14 @@ export interface Database {
           p_rejection_reason?: string | null;
         };
         Returns: Json;
+      };
+      get_admin_socios_roster: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
+      is_active_admin: {
+        Args: Record<string, never>;
+        Returns: boolean;
       };
     };
     Enums: {

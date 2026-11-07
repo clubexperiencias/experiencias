@@ -996,49 +996,28 @@ export class ProviderLoginComponent implements OnInit {
       }
 
       // 3. Fallback a consultas directas en tablas de Supabase
-      const { data: access, error: accessErr } = await (this.supabase.from('provider_access') as any)
+      const { data: access, error: accessErr } = await (this.supabase.from('prestadores') as any)
         .select('status, active')
         .eq('email', cleanEmail)
         .maybeSingle();
 
       if (accessErr) {
-        console.warn('[ProviderLogin] Error al verificar provider_access:', accessErr);
+        console.warn('[ProviderLogin] Error al verificar prestadores:', accessErr);
       }
 
       if (access) {
-        if (access.status === 'dado_de_baja' || access.active === false) {
-          this.accountStatus.set('inactive');
-          return false;
-        }
         if (access.status === 'pendiente') {
           this.accountStatus.set('pending');
           return false;
         }
-      }
-
-      const { data: app, error: appErr } = await (this.supabase.from('postulaciones_prestadores') as any)
-        .select('status')
-        .eq('email', cleanEmail)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (appErr) {
-        console.warn('[ProviderLogin] Error al verificar postulaciones_prestadores:', appErr);
-      }
-
-      if (app) {
-        const s = (app.status || '').toLowerCase();
         if (
-          s === 'rechazado' ||
-          s === 'rechazada' ||
-          s === 'dado_de_baja'
+          access.status === 'dado_de_baja' ||
+          access.status === 'rechazado' ||
+          access.active === false
         ) {
           this.accountStatus.set('inactive');
-        } else {
-          this.accountStatus.set('pending');
+          return false;
         }
-        return false;
       }
 
       this.accountStatus.set('unregistered');

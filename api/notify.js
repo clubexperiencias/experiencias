@@ -121,7 +121,7 @@ function verifySupabaseCallerAdmin(token, config) {
         }
 
         const adminUrl = new URL(
-          `${config.supabaseUrl}/rest/v1/admin_access?email=eq.${encodeURIComponent(email)}&active=eq.true&select=id`,
+          `${config.supabaseUrl}/rest/v1/administradores?email=eq.${encodeURIComponent(email)}&active=eq.true&select=id`,
         );
         const adminReq = https.request(
           {
@@ -165,7 +165,7 @@ function verifyPostulacionExists(email, config) {
     try {
       const cleanEmail = String(email).trim().toLowerCase();
       const url = new URL(
-        `${config.supabaseUrl}/rest/v1/postulaciones_prestadores?email=eq.${encodeURIComponent(cleanEmail)}&select=id,full_name,category,region,email,phone,website,description,status,created_at&order=created_at.desc&limit=1`,
+        `${config.supabaseUrl}/rest/v1/prestadores?email=eq.${encodeURIComponent(cleanEmail)}&select=id,name,agency,category,region,email,phone,website,description,status,active,created_at&order=created_at.desc&limit=1`,
       );
       const req = https.request(
         {
@@ -194,7 +194,10 @@ function verifyPostulacionExists(email, config) {
               if (!record || typeof record !== 'object') {
                 return resolve(null);
               }
-              resolve(record);
+              resolve({
+                ...record,
+                full_name: record.name || record.agency || '',
+              });
             } catch {
               resolve(null);
             }
@@ -222,7 +225,7 @@ function verifyProviderAccess(email, config) {
     try {
       const cleanEmail = String(email).trim().toLowerCase();
       const url = new URL(
-        `${config.supabaseUrl}/rest/v1/provider_access?email=eq.${encodeURIComponent(cleanEmail)}&select=email,name,agency,status,active&limit=1`,
+        `${config.supabaseUrl}/rest/v1/prestadores?email=eq.${encodeURIComponent(cleanEmail)}&select=email,name,agency,status,active&limit=1`,
       );
       const req = https.request(
         {
@@ -1209,30 +1212,19 @@ module.exports = async function handler(req, res) {
           return res.status(400).json({ success: false, error: 'Falta email.' });
         }
 
-        // 1. Revisar provider_access
-        const accessRecord = await verifyProviderAccess(email, config);
-        if (accessRecord) {
-          if (accessRecord.status === 'dado_de_baja' || accessRecord.active === false) {
-            return res.status(200).json({ success: true, status: 'inactive' });
-          }
-          if (accessRecord.status === 'aprobado' && accessRecord.active === true) {
-            return res.status(200).json({ success: true, status: 'approved' });
-          }
-          return res.status(200).json({ success: true, status: 'pending' });
-        }
-
-        // 2. Revisar postulaciones_prestadores
-        const applicationRecord = await verifyPostulacionExists(email, config);
-        if (applicationRecord) {
-          const appStatus = (applicationRecord.status || '').toLowerCase();
+        // 1. Revisar estado en public.prestadores (incluye aprobados, dados de baja y postulaciones pendientes)
+        const prestadorRecord = await verifyProviderAccess(email, config);
+        if (prestadorRecord) {
+          const status = (prestadorRecord.status || '').toLowerCase();
           if (
-            appStatus === 'rechazado' ||
-            appStatus === 'rechazada' ||
-            appStatus === 'dado_de_baja'
+            status === 'dado_de_baja' ||
+            status === 'rechazado' ||
+            status === 'rechazada' ||
+            (prestadorRecord.active === false && status !== 'pendiente')
           ) {
             return res.status(200).json({ success: true, status: 'inactive' });
           }
-          if (appStatus === 'aprobado' || appStatus === 'aprobada') {
+          if (status === 'aprobado' && prestadorRecord.active === true) {
             return res.status(200).json({ success: true, status: 'approved' });
           }
           return res.status(200).json({ success: true, status: 'pending' });

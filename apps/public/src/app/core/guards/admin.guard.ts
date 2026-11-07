@@ -4,7 +4,7 @@ import { AdminStoreService } from '../services/admin-store.service';
 
 /**
  * Guardia de seguridad para el Portal de Administración.
- * Exige sesión activa mediante Google OAuth y permisos verificados en public.admin_access.
+ * Exige sesión activa mediante Google OAuth y permisos verificados en public.administradores.
  */
 export const adminGuard: CanActivateFn = async (_route, state) => {
   const adminStore = inject(AdminStoreService);

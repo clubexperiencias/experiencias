@@ -26,6 +26,10 @@ export interface ProviderListItem {
   rawProvider?: ProviderUser;
 }
 
+const CLUB_PROVIDER_SLUGS = new Set(['club-de-experiencias', 'club']);
+const CLUB_PROVIDER_EMAIL = 'admin@experiencias.club';
+const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
+
 @Component({
   selector: 'app-admin-providers',
   standalone: true,
@@ -292,52 +296,43 @@ export interface ProviderListItem {
       } @else if (isRouteDetailMode() && selectedProvider(); as prov) {
         <!-- Modo Ficha: /prestadores/:slug -->
         <div class="fiche-view-container">
-          <div class="fiche-topbar">
-            <div class="topbar-left">
-              <a [routerLink]="backToListLink()" class="btn-back-panel">
-                &larr; Volver a Prestadores
-              </a>
-              <span class="fiche-topbar-breadcrumb">
-                /prestadores / <strong>{{ prov.slug || prov.id }}</strong>
-              </span>
-            </div>
-
-            <div class="topbar-actions">
-              <!-- Ver en Web Pública -->
-              @if (prov.slug) {
-                <a
-                  [href]="'https://experiencias.club/prestadores/' + prov.slug"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="btn-action-public-web"
-                  title="Abrir perfil público del prestador"
-                >
-                  <mat-icon class="btn-icon-sm">open_in_new</mat-icon>
-                  <span>Ver en Web Pública</span>
-                </a>
-              }
-
-              <!-- Botón Editar Prestador -->
-              <a
-                [routerLink]="getEditRoute(prov)"
-                class="btn-action-edit-orange"
-                title="Editar los datos y configuración de este prestador"
-              >
-                <span>EDITAR PRESTADOR</span>
-              </a>
-            </div>
-          </div>
-
           <!-- Hero del Prestador -->
           <div class="fiche-section-card hero-provider-card">
             <div class="provider-hero-content">
               <div class="provider-hero-avatar">
-                {{ (prov.agency || prov.name).charAt(0).toUpperCase() }}
+                @if (getProviderAvatar(prov); as avatarUrl) {
+                  <img
+                    [src]="avatarUrl"
+                    [alt]="prov.agency || prov.name"
+                    class="provider-avatar-img"
+                  />
+                } @else {
+                  <span class="provider-avatar-initial">{{ (prov.agency || prov.name).charAt(0).toUpperCase() }}</span>
+                }
               </div>
               <div class="provider-hero-text">
                 <div class="hero-kicker-row">
                   <span class="hero-kicker">PRESTADOR OFICIAL CATAMARCA</span>
                   <div class="hero-badges-row">
+                    @if (prov.slug) {
+                      <a
+                        [href]="getPublicProviderUrl(prov.slug)"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="btn-hero-public-web"
+                        title="Ver cómo se visualiza actualmente en la web pública"
+                      >
+                        <mat-icon class="btn-icon-sm">open_in_new</mat-icon>
+                        <span>VER EN LA WEB</span>
+                      </a>
+                    }
+                    <a
+                      [routerLink]="getEditRoute(prov)"
+                      class="btn-hero-edit"
+                      title="Editar los datos y configuración de este prestador"
+                    >
+                      <span>EDITAR PRESTADOR</span>
+                    </a>
                     <span class="status-pill is-published">Aprobado</span>
                     @if (prov.slug) {
                       <span class="slug-tag">/prestadores/{{ prov.slug }}</span>
@@ -346,7 +341,7 @@ export interface ProviderListItem {
                 </div>
                 <h1 class="provider-hero-title">{{ prov.agency || prov.name }}</h1>
                 <p class="provider-hero-subtitle">
-                  Responsable: <strong>{{ prov.name }}</strong> · {{ prov.email }}
+                  Responsable: <strong>{{ prov.name }}</strong> ({{ prov.email }})
                 </p>
               </div>
             </div>
@@ -357,7 +352,6 @@ export interface ProviderListItem {
             <!-- 1. Contacto & Redes -->
             <div class="fiche-section-card">
               <h3 class="fiche-card-title">
-                <mat-icon>contacts</mat-icon>
                 Información de Contacto
               </h3>
               <div class="info-list">
@@ -406,7 +400,6 @@ export interface ProviderListItem {
             <!-- 2. Datos Bancarios y Cobro -->
             <div class="fiche-section-card">
               <h3 class="fiche-card-title">
-                <mat-icon>account_balance_wallet</mat-icon>
                 Datos de Cobro y Liquidación
               </h3>
               <div class="info-list">
@@ -432,7 +425,6 @@ export interface ProviderListItem {
             <!-- 3. Biografía y Presentación -->
             <div class="fiche-section-card full-width">
               <h3 class="fiche-card-title">
-                <mat-icon>description</mat-icon>
                 Presentación y Trayectoria Oficial
               </h3>
               <p class="bio-text">
@@ -444,7 +436,6 @@ export interface ProviderListItem {
             <div class="fiche-section-card full-width">
               <div class="section-title-row">
                 <h3 class="fiche-card-title">
-                  <mat-icon>travel_explore</mat-icon>
                   Experiencias a Cargo en Catálogo ({{ providerExperiencesList().length }})
                 </h3>
               </div>
@@ -498,6 +489,35 @@ export interface ProviderListItem {
                   </table>
                 </div>
               }
+            </div>
+          </div>
+
+          <!-- Pie de acciones del Prestador -->
+          <div class="fiche-bottom-cta-bar">
+            <div class="cta-bar-left">
+              <span class="cta-prov-name">{{ prov.agency || prov.name }}</span>
+              @if (prov.slug) {
+                <span class="cta-prov-route">experiencias.club/prestadores/{{ prov.slug }}</span>
+              }
+            </div>
+            <div class="cta-bar-right">
+              <a [routerLink]="backToListLink()" class="btn-cancel-edit">
+                Volver a Prestadores
+              </a>
+              @if (prov.slug) {
+                <a
+                  [href]="getPublicProviderUrl(prov.slug)"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="btn-hero-public-web"
+                >
+                  <mat-icon class="btn-icon-sm">open_in_new</mat-icon>
+                  <span>VER EN LA WEB</span>
+                </a>
+              }
+              <a [routerLink]="getEditRoute(prov)" class="btn-hero-edit">
+                <span>EDITAR PRESTADOR</span>
+              </a>
             </div>
           </div>
         </div>
@@ -622,7 +642,11 @@ export interface ProviderListItem {
                       <td>
                         <div class="provider-identity">
                           <div class="provider-avatar">
-                            {{ item.name.charAt(0).toUpperCase() }}
+                            @if (getProviderAvatar(item); as avatarUrl) {
+                              <img [src]="avatarUrl" [alt]="item.name" class="provider-table-avatar-img" />
+                            } @else {
+                              <span>{{ item.name.charAt(0).toUpperCase() }}</span>
+                            }
                           </div>
                           <div class="identity-text">
                             <strong class="provider-name">{{ item.name }}</strong>
@@ -685,7 +709,7 @@ export interface ProviderListItem {
                         <span class="date-cell font-mono">{{ item.createdAt | fecha: 'corta' }}</span>
                       </td>
 
-                      <!-- Acciones (Botones Naranja sin Iconos) -->
+                      <!-- Acciones -->
                       <td class="text-right">
                         <div class="actions-row">
                           @if (item.origin === 'official' && item.slug) {
@@ -709,10 +733,11 @@ export interface ProviderListItem {
                           @if (item.origin === 'application' && item.rawApp) {
                             <button
                               type="button"
-                              class="btn-table-action btn-review-app"
+                              class="btn-review-app"
                               (click)="openApplication(item.rawApp)"
+                              title="Revisar postulación"
                             >
-                              Revisar
+                              <span>REVISAR</span>
                             </button>
                           }
                         </div>
@@ -1062,8 +1087,22 @@ export interface ProviderListItem {
         width: 100%;
         overflow-x: auto;
       }
+      .table-responsive::-webkit-scrollbar {
+        height: 6px;
+      }
+      .table-responsive::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.35);
+      }
+      .table-responsive::-webkit-scrollbar-thumb {
+        background: rgba(255, 95, 0, 0.35);
+        border-radius: 3px;
+      }
+      .table-responsive::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 95, 0, 0.6);
+      }
 
       .providers-table {
+        min-width: 1080px;
         width: 100%;
         border-collapse: collapse;
         font-size: 0.82rem;
@@ -1093,6 +1132,13 @@ export interface ProviderListItem {
         background: rgba(255, 95, 0, 0.04);
       }
 
+      .providers-table th.text-right,
+      .providers-table td.text-right {
+        text-align: right !important;
+        white-space: nowrap !important;
+        min-width: 220px;
+      }
+
       .text-right {
         text-align: right !important;
       }
@@ -1116,6 +1162,14 @@ export interface ProviderListItem {
         font-weight: 800;
         font-size: 0.85rem;
         flex-shrink: 0;
+        overflow: hidden;
+      }
+
+      .provider-table-avatar-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
       }
 
       .identity-text {
@@ -1200,87 +1254,90 @@ export interface ProviderListItem {
         display: flex;
         align-items: center;
         justify-content: flex-end;
-        gap: 0.5rem;
+        gap: 0.45rem;
+        flex-wrap: nowrap;
+        white-space: nowrap !important;
       }
 
-      /* Botones Naranja Idénticos a /experiencias (Sin Iconos) */
+      /* Botones de Acción Coherentes con el Portal Admin */
       .btn-view-fiche {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        padding: 0.42rem 0.85rem;
-        background: #ff5f00 !important;
-        border: 1px solid #ff5f00 !important;
-        color: #ffffff !important;
-        border-radius: 4px;
-        font-size: 0.76rem;
-        font-weight: 800;
+        padding: 0 0.75rem;
+        height: 32px;
+        min-height: 32px;
+        box-sizing: border-box;
+        background: rgba(255, 95, 0, 0.18);
+        border: 1px solid #ff5f00;
+        border-radius: 3px;
+        color: #ffffff;
+        font-size: 0.75rem;
+        font-weight: 700;
         text-decoration: none;
+        cursor: pointer;
+        white-space: nowrap !important;
         letter-spacing: 0.04em;
         text-transform: uppercase;
-        cursor: pointer;
-        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-        white-space: nowrap;
-        box-shadow: 0 2px 8px rgba(255, 95, 0, 0.25);
+        transition: all 0.2s ease;
       }
       .btn-view-fiche:hover {
-        background: #ff7728 !important;
-        border-color: #ff7728 !important;
-        color: #ffffff !important;
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(255, 95, 0, 0.4);
+        background: #ff5f00;
+        border-color: #ff5f00;
+        color: #0b0704;
       }
 
       .btn-edit-exp {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        padding: 0.42rem 0.85rem;
-        background: #ff5f00 !important;
-        border: 1px solid #ff5f00 !important;
-        color: #ffffff !important;
-        border-radius: 4px;
-        font-size: 0.76rem;
-        font-weight: 800;
+        padding: 0 0.75rem;
+        height: 32px;
+        min-height: 32px;
+        box-sizing: border-box;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        border-radius: 3px;
+        color: rgba(255, 255, 255, 0.85);
+        font-size: 0.75rem;
+        font-weight: 700;
+        cursor: pointer;
+        white-space: nowrap !important;
         text-decoration: none;
         letter-spacing: 0.04em;
         text-transform: uppercase;
-        cursor: pointer;
-        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-        white-space: nowrap;
-        box-shadow: 0 2px 8px rgba(255, 95, 0, 0.25);
+        transition: all 0.2s ease;
       }
       .btn-edit-exp:hover {
-        background: #ff7728 !important;
-        border-color: #ff7728 !important;
-        color: #ffffff !important;
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(255, 95, 0, 0.4);
-      }
-
-      .btn-table-action {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35rem;
-        padding: 0.42rem 0.85rem;
-        border-radius: 4px;
-        font-size: 0.76rem;
-        font-weight: 800;
-        text-decoration: none;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        white-space: nowrap;
-        border: 1px solid transparent;
+        background: rgba(255, 255, 255, 0.16);
+        border-color: rgba(255, 255, 255, 0.45);
+        color: #ffffff;
       }
 
       .btn-review-app {
-        background: rgba(255, 95, 0, 0.15);
-        border-color: #ff5f00;
-        color: #ff5f00;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 0.75rem;
+        height: 32px;
+        min-height: 32px;
+        box-sizing: border-box;
+        background: rgba(255, 95, 0, 0.18);
+        border: 1px solid #ff5f00;
+        border-radius: 3px;
+        color: #ffffff;
+        font-size: 0.75rem;
+        font-weight: 700;
+        cursor: pointer;
+        white-space: nowrap !important;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        transition: all 0.2s ease;
       }
       .btn-review-app:hover {
         background: #ff5f00;
-        color: #ffffff;
+        border-color: #ff5f00;
+        color: #0b0704;
       }
 
       /* Fiche & Edit View Topbars */
@@ -1322,13 +1379,14 @@ export interface ProviderListItem {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        padding: 0.45rem 1rem;
+        height: 34px;
+        padding: 0 1rem;
         background: #ffffff !important;
         border: 1px solid #ffffff !important;
         color: #000000 !important;
-        border-radius: 4px;
-        font-size: 0.8rem;
-        font-weight: 800;
+        border-radius: 3px;
+        font-size: 0.78rem;
+        font-weight: 700;
         text-decoration: none;
         letter-spacing: 0.02em;
         cursor: pointer;
@@ -1343,43 +1401,49 @@ export interface ProviderListItem {
       .btn-action-public-web {
         display: inline-flex;
         align-items: center;
+        justify-content: center;
         gap: 0.4rem;
-        padding: 0.45rem 0.95rem;
-        background: rgba(255, 255, 255, 0.08);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        color: #ffffff;
-        font-size: 0.78rem;
+        height: 34px;
+        padding: 0 0.95rem;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 0.76rem;
         font-weight: 700;
         text-decoration: none;
-        border-radius: 4px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        border-radius: 3px;
         transition: all 0.2s ease;
       }
       .btn-action-public-web:hover {
-        background: rgba(255, 255, 255, 0.15);
-        border-color: #ffffff;
+        background: rgba(255, 255, 255, 0.16);
+        border-color: rgba(255, 255, 255, 0.45);
+        color: #ffffff;
       }
 
       .btn-action-edit-orange {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        padding: 0.45rem 1.15rem;
-        background: #ff5f00 !important;
-        border: 1px solid #ff5f00 !important;
-        color: #ffffff !important;
-        border-radius: 4px;
-        font-size: 0.8rem;
-        font-weight: 800;
+        height: 34px;
+        padding: 0 1.15rem;
+        background: rgba(255, 95, 0, 0.18);
+        border: 1px solid #ff5f00;
+        color: #ffffff;
+        border-radius: 3px;
+        font-size: 0.76rem;
+        font-weight: 700;
         text-decoration: none;
         letter-spacing: 0.04em;
         text-transform: uppercase;
         cursor: pointer;
         transition: all 0.2s ease;
-        box-shadow: 0 2px 8px rgba(255, 95, 0, 0.3);
       }
       .btn-action-edit-orange:hover {
-        background: #ff7728 !important;
-        border-color: #ff7728 !important;
+        background: #ff5f00;
+        border-color: #ff5f00;
+        color: #0b0704;
       }
 
       .btn-icon-sm {
@@ -1415,18 +1479,35 @@ export interface ProviderListItem {
       }
 
       .provider-hero-avatar {
-        width: 64px;
-        height: 64px;
-        border-radius: 8px;
+        width: 96px;
+        height: 96px;
+        border-radius: 6px;
         background: rgba(255, 95, 0, 0.18);
         border: 2px solid #ff5f00;
         color: #ff5f00;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 2rem;
+        font-size: 2.25rem;
         font-weight: 900;
         flex-shrink: 0;
+        overflow: hidden;
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
+      }
+
+      .provider-avatar-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+
+      .provider-avatar-initial {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
       }
 
       .provider-hero-text {
@@ -1439,8 +1520,10 @@ export interface ProviderListItem {
       .hero-kicker-row {
         display: flex;
         align-items: center;
+        justify-content: space-between;
         gap: 0.75rem;
         flex-wrap: wrap;
+        width: 100%;
       }
 
       .hero-kicker {
@@ -1455,6 +1538,53 @@ export interface ProviderListItem {
         display: flex;
         align-items: center;
         gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+
+      .btn-hero-public-web {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.32rem 0.75rem;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        border-radius: 3px;
+        color: #ffffff;
+        font-size: 0.75rem;
+        font-weight: 800;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+      }
+      .btn-hero-public-web:hover {
+        background: rgba(255, 255, 255, 0.16);
+        border-color: rgba(255, 255, 255, 0.45);
+        color: #ffffff;
+      }
+
+      .btn-hero-edit {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.32rem 0.75rem;
+        background: rgba(255, 95, 0, 0.2);
+        border: 1px solid #ff5f00;
+        border-radius: 3px;
+        color: #ffffff;
+        font-size: 0.75rem;
+        font-weight: 800;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+      }
+      .btn-hero-edit:hover {
+        background: #ff5f00;
+        border-color: #ff5f00;
+        color: #0b0704;
       }
 
       .slug-tag {
@@ -1491,9 +1621,7 @@ export interface ProviderListItem {
       }
 
       .fiche-card-title {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
+        display: block;
         font-size: 0.95rem;
         font-weight: 800;
         color: #ffffff;
@@ -1503,11 +1631,58 @@ export interface ProviderListItem {
         border-bottom: 1px solid rgba(255, 95, 0, 0.25);
         padding-bottom: 0.6rem;
       }
-      .fiche-card-title mat-icon {
-        color: #ff5f00;
-        font-size: 20px;
-        width: 20px;
-        height: 20px;
+
+      .fiche-bottom-cta-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 1rem;
+        padding: 1.25rem 1.5rem;
+        background: rgba(18, 10, 5, 0.95);
+        border: 1px solid rgba(255, 95, 0, 0.25);
+        border-radius: 4px;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+      }
+
+      .cta-bar-left {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+      }
+
+      .cta-prov-name {
+        font-size: 1.05rem;
+        font-weight: 800;
+        color: #ffffff;
+      }
+
+      .cta-prov-route {
+        font-size: 0.78rem;
+        color: rgba(255, 255, 255, 0.55);
+        font-family: var(--font-mono, monospace);
+      }
+
+      .cta-bar-right {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+      }
+
+      .cta-bar-right .btn-cancel-edit,
+      .cta-bar-right .btn-action-edit-orange,
+      .cta-bar-right .btn-hero-public-web,
+      .cta-bar-right .btn-hero-edit {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 42px;
+        min-height: 42px;
+        padding: 0 1.35rem;
+        font-size: 0.82rem;
+        font-weight: 800;
+        box-sizing: border-box;
       }
 
       .info-list {
@@ -1699,24 +1874,26 @@ export interface ProviderListItem {
       .btn-save-primary {
         display: inline-flex;
         align-items: center;
+        justify-content: center;
         gap: 0.5rem;
-        padding: 0.65rem 1.5rem;
+        height: 38px;
+        padding: 0 1.35rem;
         background: #ff5f00 !important;
         border: 1px solid #ff5f00 !important;
-        color: #ffffff !important;
-        border-radius: 4px;
-        font-size: 0.85rem;
+        color: #0b0704 !important;
+        border-radius: 3px;
+        font-size: 0.8rem;
         font-weight: 800;
-        letter-spacing: 0.05em;
+        letter-spacing: 0.04em;
         text-transform: uppercase;
         cursor: pointer;
         transition: all 0.2s ease;
-        box-shadow: 0 4px 15px rgba(255, 95, 0, 0.35);
       }
       .btn-save-primary:hover:not(:disabled) {
-        background: #ff7728 !important;
+        background: #ff7722 !important;
+        border-color: #ff7722 !important;
+        color: #0b0704 !important;
         transform: translateY(-1px);
-        box-shadow: 0 6px 20px rgba(255, 95, 0, 0.5);
       }
       .btn-save-primary:disabled {
         opacity: 0.5;
@@ -1726,18 +1903,22 @@ export interface ProviderListItem {
       .btn-cancel {
         display: inline-flex;
         align-items: center;
-        padding: 0.65rem 1.25rem;
+        justify-content: center;
+        height: 38px;
+        padding: 0 1.25rem;
         background: transparent;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        color: rgba(255, 255, 255, 0.75);
-        border-radius: 4px;
-        font-size: 0.85rem;
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        color: rgba(255, 255, 255, 0.85);
+        border-radius: 3px;
+        font-size: 0.8rem;
         font-weight: 700;
+        letter-spacing: 0.03em;
         text-decoration: none;
         transition: all 0.2s ease;
       }
       .btn-cancel:hover {
-        border-color: #ffffff;
+        background: rgba(255, 255, 255, 0.12);
+        border-color: rgba(255, 255, 255, 0.45);
         color: #ffffff;
       }
 
@@ -1905,60 +2086,112 @@ export interface ProviderListItem {
       .action-buttons-group {
         display: flex;
         align-items: center;
-        gap: 0.65rem;
+        gap: 0.5rem;
         flex-wrap: wrap;
       }
 
       .btn-action-primary {
-        background: #10b981;
-        border: 1px solid #10b981;
-        color: #ffffff;
-        padding: 0.55rem 1.15rem;
-        font-size: 0.82rem;
-        font-weight: 800;
-        border-radius: 2px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 34px;
+        padding: 0 1.15rem;
+        background: rgba(0, 204, 136, 0.16);
+        border: 1px solid rgba(0, 204, 136, 0.45);
+        color: #33ffaa;
+        font-size: 0.76rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        border-radius: 3px;
         cursor: pointer;
         transition: all 0.2s ease;
+        white-space: nowrap;
       }
-      .btn-action-primary:hover {
-        background: #059669;
+      .btn-action-primary:hover:not(:disabled) {
+        background: #00cc88;
+        border-color: #00cc88;
+        color: #0b0704;
+      }
+      .btn-action-primary:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
       }
 
       .btn-action-reject {
-        background: #ef4444;
-        border: 1px solid #ef4444;
-        color: #ffffff !important;
-        padding: 0.55rem 1.15rem;
-        font-size: 0.82rem;
-        font-weight: 800;
-        border-radius: 2px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 34px;
+        padding: 0 1.15rem;
+        background: rgba(255, 80, 80, 0.12);
+        border: 1px solid rgba(255, 80, 80, 0.38);
+        color: #ff8080;
+        font-size: 0.76rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        border-radius: 3px;
         cursor: pointer;
         transition: all 0.2s ease;
+        white-space: nowrap;
       }
-      .btn-action-reject:hover {
-        background: #dc2626;
+      .btn-action-reject:hover:not(:disabled) {
+        background: rgba(255, 80, 80, 0.25);
+        border-color: #ff8080;
+        color: #ffffff;
+      }
+      .btn-action-reject:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
       }
 
       .btn-action-wa {
-        background: #80b3ff;
-        border: 1px solid #80b3ff;
-        color: #ffffff;
-        padding: 0.55rem 1.15rem;
-        font-size: 0.82rem;
-        font-weight: 800;
-        border-radius: 2px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 34px;
+        padding: 0 1rem;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        color: rgba(255, 255, 255, 0.85);
+        font-size: 0.76rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        border-radius: 3px;
         text-decoration: none;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+      }
+      .btn-action-wa:hover {
+        background: rgba(255, 255, 255, 0.16);
+        border-color: rgba(255, 255, 255, 0.45);
+        color: #ffffff;
       }
 
       .btn-action-close {
-        background: transparent;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        color: #ffffff;
-        padding: 0.55rem 1.15rem;
-        font-size: 0.82rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 34px;
+        padding: 0 1.25rem;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        color: rgba(255, 255, 255, 0.85);
+        font-size: 0.76rem;
         font-weight: 700;
-        border-radius: 2px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        border-radius: 3px;
         cursor: pointer;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+      }
+      .btn-action-close:hover {
+        background: rgba(255, 255, 255, 0.16);
+        border-color: rgba(255, 255, 255, 0.45);
+        color: #ffffff;
       }
 
       .approved-tag {
@@ -2327,6 +2560,70 @@ export class AdminProvidersComponent implements OnInit {
 
   closeApplication(): void {
     this.selectedApplication.set(null);
+  }
+
+  private readonly providerCoverByExperienceMap = computed(() => {
+    const map = new Map<string, string>();
+    const exps = this.store.providerStore.experiences();
+    for (const exp of exps) {
+      if (!exp.coverImage) continue;
+      if (exp.providerId && !map.has(exp.providerId)) {
+        map.set(exp.providerId, exp.coverImage);
+      }
+      if (exp.providerEmail) {
+        const normEmail = exp.providerEmail.toLowerCase().trim();
+        if (normEmail && !map.has(normEmail)) {
+          map.set(normEmail, exp.coverImage);
+        }
+      }
+      if (exp.providerSlug) {
+        const normSlug = exp.providerSlug.toLowerCase().trim();
+        if (normSlug && !map.has(normSlug)) {
+          map.set(normSlug, exp.coverImage);
+        }
+      }
+    }
+    return map;
+  });
+
+  getProviderAvatar(prov?: ProviderUser | ProviderListItem | null): string | null {
+    if (!prov) return null;
+    const user: ProviderUser | undefined =
+      'rawProvider' in prov && prov.rawProvider ? prov.rawProvider : (prov as ProviderUser);
+
+    if (user.avatar && user.avatar.trim()) {
+      return user.avatar.trim();
+    }
+    const slug = (user.slug || '').toLowerCase().trim();
+    const email = (user.email || '').toLowerCase().trim();
+    if (CLUB_PROVIDER_SLUGS.has(slug) || email === CLUB_PROVIDER_EMAIL) {
+      return CLUB_AVATAR_FALLBACK;
+    }
+    if (user.coverImage && user.coverImage.trim()) {
+      return user.coverImage.trim();
+    }
+    const coverMap = this.providerCoverByExperienceMap();
+    if (user.id && coverMap.has(user.id)) {
+      return coverMap.get(user.id)!;
+    }
+    if (email && coverMap.has(email)) {
+      return coverMap.get(email)!;
+    }
+    if (slug && coverMap.has(slug)) {
+      return coverMap.get(slug)!;
+    }
+    return null;
+  }
+
+  getPublicProviderUrl(slug?: string | null): string {
+    const cleanSlug = encodeURIComponent((slug || '').trim());
+    if (typeof window !== 'undefined' && window.location) {
+      const origin = window.location.origin;
+      if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+        return `${origin}/prestadores/${cleanSlug}`;
+      }
+    }
+    return `https://experiencias.club/prestadores/${cleanSlug}`;
   }
 
   async approve(app: AdminApplication): Promise<void> {

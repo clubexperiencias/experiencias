@@ -15,20 +15,7 @@
         <!-- ═══════════════ HERO CARD: CABECERA Y RESUMEN TÉCNICO ═══════════════ -->
         <div class="exp-detail-section-card hero-detail-card">
           <div class="card-inner-header">
-            <div class="hero-kicker-row">
-              <span class="section-kicker">{{ item.kicker || 'EXPEDICIÓN OFICIAL DEL CLUB' }}</span>
-              @if (isClubExperience(item)) {
-                <span class="club-official-chip" title="Experiencia Oficial del Club de Experiencias">
-                  <mat-icon>verified</mat-icon>
-                  Club de Experiencias
-                </span>
-              } @else if (item.providerName) {
-                <span class="provider-chip" title="Prestador oficial de la experiencia">
-                  <mat-icon>badge</mat-icon>
-                  {{ item.providerName }}
-                </span>
-              }
-            </div>
+            <span class="section-kicker">{{ item.kicker || 'EXPEDICIÓN OFICIAL DEL CLUB' }}</span>
             <h1 class="card-heading">{{ item.title }}</h1>
             @if (item.description || item.tagline) {
             <p class="card-subheading">
@@ -53,10 +40,35 @@
                 item.altitudeMeters > 0 ? item.altitudeMeters + ' msnm' : 'N/A'
                 }}</span>
             </div>
+            @if (item.region) {
+            <div class="spec-tile">
+              <span class="spec-label">REGIÓN</span>
+              <span class="spec-value">{{ item.region }}</span>
+            </div>
+            }
+            @if (isUrl(item.meetingPoint)) {
+            <a
+              [href]="getGoogleMapsUrl(item.meetingPoint, item.region, item.meetingPointUrl)"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="spec-tile spec-tile-clickable"
+              title="Abrir ubicación en Google Maps"
+            >
+              <span class="spec-label">PUNTO DE ENCUENTRO</span>
+              <span class="spec-value spec-value-link">Ver ubicación en Maps</span>
+            </a>
+            } @else {
             <div class="spec-tile">
               <span class="spec-label">PUNTO DE ENCUENTRO</span>
-              <span class="spec-value">{{ isUrl(item.meetingPoint) ? (item.region || 'Ver ubicación en Maps') : (item.meetingPoint || item.region) }}</span>
+              <span class="spec-value">{{ item.meetingPoint || item.region }}</span>
             </div>
+            }
+            @if (item.maxSpotsPerGroup) {
+            <div class="spec-tile">
+              <span class="spec-label">CUPO MÁXIMO</span>
+              <span class="spec-value">{{ item.maxSpotsPerGroup }} personas</span>
+            </div>
+            }
             @if (item.bestSeason) {
             <div class="spec-tile">
               <span class="spec-label">TEMPORADA</span>
@@ -64,9 +76,9 @@
             </div>
             }
             @if (item.providerName) {
-              @if (item.providerSlug) {
+              @if (getProviderSlug(item); as pSlug) {
               <a
-                [routerLink]="['/prestadores', item.providerSlug]"
+                [routerLink]="['/prestadores', pSlug]"
                 class="spec-tile spec-tile-clickable"
                 title="Ver perfil oficial del prestador"
               >
@@ -275,10 +287,14 @@
             <span>Pagar Experiencia</span>
           </a>
         </aside>
+        } @else if (isLoading()) {
+        <!-- ═══════════════ ESTADO: CARGANDO ═══════════════ -->
+        <div class="exp-detail-section-card loading-card">
+          <p class="card-subheading">Cargando experiencia...</p>
+        </div>
         } @else {
         <!-- ═══════════════ ESTADO: EXPERIENCIA NO ENCONTRADA ═══════════════ -->
         <div class="exp-detail-section-card not-found-card">
-          <mat-icon class="not-found-icon">explore_off</mat-icon>
           <h1 class="card-heading">Experiencia No Disponible</h1>
           <p class="card-subheading">
             La experiencia solicitada no se encuentra disponible actualmente o está en proceso de
