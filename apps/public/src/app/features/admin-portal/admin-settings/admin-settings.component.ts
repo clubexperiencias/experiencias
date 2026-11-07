@@ -1,0 +1,776 @@
+import { Component, inject, signal, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { MatIconModule } from '@angular/material/icon';
+import { AdminStoreService } from '../../../core/services/admin-store.service';
+import { ClubProfile } from '../../../core/models/club-profile.model';
+
+@Component({
+  selector: 'app-admin-settings',
+  standalone: true,
+  imports: [CommonModule, FormsModule, MatIconModule],
+  template: `
+    <div class="settings-page-container">
+      @if (feedbackToast()) {
+        <div class="toast-banner">
+          <span>{{ feedbackToast() }}</span>
+        </div>
+      }
+
+      <div class="settings-page-card">
+        <!-- Encabezado Principal -->
+        <div class="settings-header">
+          <div class="header-titles">
+            <span class="section-kicker">CONFIGURACIÓN GENERAL & FINANZAS</span>
+            <h1 class="card-heading">Configuración del Sistema & Perfil del Club</h1>
+            <p class="card-subheading">
+              Ajustá la cotización de referencia en dólares para el catálogo de experiencias y actualizá los datos institucionales y de cobro oficiales del <strong>Club de Experiencias</strong>.
+            </p>
+          </div>
+        </div>
+
+        <div class="settings-body">
+          <!-- 1. Cotización Global USD -->
+          <div class="settings-section-card">
+            <div class="section-title-row">
+              <div class="section-icon-badge">
+                <mat-icon>monetization_on</mat-icon>
+              </div>
+              <div>
+                <h3 class="settings-section-title">1. Cotización Global del Dólar (USD / ARS)</h3>
+                <p class="section-subtext">
+                  Tipo de cambio referencial aplicado en todo el portal para calcular los valores en dólares en las fichas públicas de experiencias y en las propuestas de los prestadores.
+                </p>
+              </div>
+            </div>
+
+            <div class="usd-rate-grid">
+              <div class="form-field rate-field">
+                <label for="cfg-usd-rate">Cotización de Referencia (1 USD = $ ARS): <span class="req-star">*</span></label>
+                <div class="rate-input-wrap">
+                  <span class="currency-prefix">$ ARS</span>
+                  <input
+                    id="cfg-usd-rate"
+                    type="number"
+                    class="form-input font-bold"
+                    [(ngModel)]="usdRate"
+                    placeholder="1400"
+                    min="100"
+                    max="100000"
+                    required
+                  />
+                </div>
+                <span class="field-hint">Valor numérico entero o decimal (ej: 1400).</span>
+              </div>
+
+              <div class="usd-preview-box">
+                <span class="preview-label">Cálculo de Referencia en Tiempo Real:</span>
+                <div class="preview-sample">
+                  <span class="sample-ars">$100.000 ARS</span>
+                  <span class="sample-arrow">&rarr;</span>
+                  <span class="sample-usd">~{{ sampleUsd() }} USD</span>
+                </div>
+                <span class="preview-sub">Calculado a $ {{ usdRate() || 1400 | number:'1.0-0' }} por cada dólar</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Perfil Institucional Oficial -->
+          <div class="settings-section-card">
+            <div class="section-title-row">
+              <div class="section-icon-badge">
+                <mat-icon>verified</mat-icon>
+              </div>
+              <div>
+                <h3 class="settings-section-title">2. Perfil Público Institucional del Club de Experiencias</h3>
+                <p class="section-subtext">
+                  Identidad pública oficial asignada como prestador en las expediciones exclusivas creadas por el Club.
+                </p>
+              </div>
+            </div>
+
+            <div class="form-grid-2">
+              <div class="form-field">
+                <label for="cfg-name">Nombre Comercial / Institucional: <span class="req-star">*</span></label>
+                <input
+                  id="cfg-name"
+                  type="text"
+                  class="form-input"
+                  [(ngModel)]="clubName"
+                  placeholder="Club de Experiencias"
+                  required
+                />
+              </div>
+
+              <div class="form-field">
+                <label for="cfg-agency">Denominación / Agencia Oficial: <span class="req-star">*</span></label>
+                <input
+                  id="cfg-agency"
+                  type="text"
+                  class="form-input"
+                  [(ngModel)]="clubAgency"
+                  placeholder="Club de Experiencias Catamarca"
+                  required
+                />
+              </div>
+            </div>
+
+            <div class="form-grid-3">
+              <div class="form-field">
+                <label for="cfg-email">Email Institucional: <span class="req-star">*</span></label>
+                <input
+                  id="cfg-email"
+                  type="email"
+                  class="form-input"
+                  [(ngModel)]="clubEmail"
+                  placeholder="admin@experiencias.club"
+                  required
+                />
+              </div>
+
+              <div class="form-field">
+                <label for="cfg-phone">Teléfono / WhatsApp Oficial: <span class="req-star">*</span></label>
+                <input
+                  id="cfg-phone"
+                  type="tel"
+                  class="form-input"
+                  [(ngModel)]="clubPhone"
+                  placeholder="+54 9 383 456-7890"
+                  required
+                />
+              </div>
+
+              <div class="form-field">
+                <label for="cfg-address">Sede o Ubicación Física:</label>
+                <input
+                  id="cfg-address"
+                  type="text"
+                  class="form-input"
+                  [(ngModel)]="clubAddress"
+                  placeholder="San Fernando del Valle de Catamarca"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. Datos Bancarios Oficiales -->
+          <div class="settings-section-card">
+            <div class="section-title-row">
+              <div class="section-icon-badge">
+                <mat-icon>account_balance</mat-icon>
+              </div>
+              <div>
+                <h3 class="settings-section-title">3. Datos Bancarios Oficiales para Liquidación & Cobros (CBU)</h3>
+                <p class="section-subtext">
+                  Información bancaria a la que se dirigen las reservas de las experiencias organizadas por el Club.
+                </p>
+              </div>
+            </div>
+
+            <div class="form-grid-2">
+              <div class="form-field">
+                <label for="cfg-cbu">CBU / CVU o Alias de Destino: <span class="req-star">*</span></label>
+                <input
+                  id="cfg-cbu"
+                  type="text"
+                  class="form-input text-blue-input"
+                  [(ngModel)]="clubCbuAlias"
+                  placeholder="EXPERIENCIAS.CLUB.MP"
+                  maxlength="22"
+                  required
+                />
+                <span class="field-hint">Alias o CBU único de la cuenta recaudadora oficial.</span>
+              </div>
+
+              <div class="form-field">
+                <label for="cfg-cuit">CUIT / CUIL del Titular: <span class="req-star">*</span></label>
+                <input
+                  id="cfg-cuit"
+                  type="text"
+                  class="form-input"
+                  [(ngModel)]="clubCuitDni"
+                  placeholder="30-71829401-4"
+                  maxlength="13"
+                  required
+                />
+              </div>
+            </div>
+
+            <div class="form-grid-2">
+              <div class="form-field">
+                <label for="cfg-bank">Banco o Billetera Virtual: <span class="req-star">*</span></label>
+                <input
+                  id="cfg-bank"
+                  type="text"
+                  class="form-input"
+                  [(ngModel)]="clubBankName"
+                  placeholder="Mercado Pago / Banco Nación"
+                  maxlength="60"
+                  required
+                />
+              </div>
+
+              <div class="form-field">
+                <label for="cfg-holder">Nombre / Razón Social del Titular: <span class="req-star">*</span></label>
+                <input
+                  id="cfg-holder"
+                  type="text"
+                  class="form-input"
+                  [(ngModel)]="clubAccountHolder"
+                  placeholder="Club de Experiencias Catamarca"
+                  maxlength="70"
+                  required
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. Presentación & Redes -->
+          <div class="settings-section-card">
+            <div class="section-title-row">
+              <div class="section-icon-badge">
+                <mat-icon>public</mat-icon>
+              </div>
+              <div>
+                <h3 class="settings-section-title">4. Presentación Institucional & Enlaces Web</h3>
+                <p class="section-subtext">
+                  Información complementaria visible en el perfil institucional y fichas del Club.
+                </p>
+              </div>
+            </div>
+
+            <div class="form-field">
+              <label for="cfg-bio">Presentación Institucional (Biografía):</label>
+              <textarea
+                id="cfg-bio"
+                rows="3"
+                class="form-textarea"
+                [(ngModel)]="clubBio"
+                maxlength="500"
+                placeholder="Cuenta institucional oficial del Club de Experiencias. Administrada conjuntamente por el equipo..."
+              ></textarea>
+              <span class="field-hint">Breve síntesis de la misión institucional del Club.</span>
+            </div>
+
+            <div class="form-grid-2">
+              <div class="form-field">
+                <label for="cfg-website">Sitio Web Oficial:</label>
+                <input
+                  id="cfg-website"
+                  type="url"
+                  class="form-input"
+                  [(ngModel)]="clubWebsite"
+                  placeholder="https://experiencias.club"
+                />
+              </div>
+
+              <div class="form-field">
+                <label for="cfg-social">Redes Sociales (Instagram):</label>
+                <input
+                  id="cfg-social"
+                  type="text"
+                  class="form-input"
+                  [(ngModel)]="clubSocialMedia"
+                  placeholder="instagram.com/experiencias.club"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer / Acciones -->
+        <div class="settings-footer">
+          @if (saveError()) {
+            <span class="error-text">{{ saveError() }}</span>
+          }
+          <button
+            type="button"
+            class="btn-save-settings"
+            [disabled]="isSaving()"
+            (click)="saveAllSettings()"
+          >
+            @if (isSaving()) {
+              <mat-icon class="btn-spin">sync</mat-icon>
+              <span>Guardando configuración...</span>
+            } @else {
+              <mat-icon>save</mat-icon>
+              <span>Guardar Configuración General</span>
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  `,
+  styles: [
+    `
+      :host {
+        display: block;
+      }
+
+      .settings-page-container {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+      }
+
+      .toast-banner {
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        background: #10b981;
+        color: #ffffff;
+        font-weight: 700;
+        font-size: 0.9rem;
+        padding: 0.85rem 1.4rem;
+        border-radius: 4px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        animation: fadeIn 0.25s ease-out;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .settings-page-card {
+        background: rgba(18, 10, 5, 0.95);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+        padding: 1.75rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.75rem;
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+        margin-top: 1.5rem;
+      }
+
+      .settings-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+      }
+
+      .header-titles {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        max-width: 100%;
+        width: 100%;
+      }
+
+      .section-kicker {
+        font-size: 0.72rem;
+        font-weight: 800;
+        color: #ff5f00;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .card-heading {
+        font-size: 1.75rem;
+        font-weight: 800;
+        color: #ffffff;
+        margin: 0.2rem 0;
+        letter-spacing: -0.02em;
+      }
+
+      .card-subheading {
+        font-size: 0.88rem;
+        color: rgba(255, 255, 255, 0.75);
+        margin: 0;
+        line-height: 1.45;
+      }
+
+      .settings-body {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+      }
+
+      .settings-section-card {
+        background: rgba(26, 14, 8, 0.6);
+        border: 1px solid rgba(255, 95, 0, 0.2);
+        border-radius: 4px;
+        padding: 1.25rem 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.15rem;
+      }
+
+      .section-title-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.85rem;
+        border-bottom: 1px solid rgba(255, 95, 0, 0.18);
+        padding-bottom: 0.65rem;
+      }
+
+      .section-icon-badge {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 38px;
+        height: 38px;
+        background: rgba(255, 95, 0, 0.18);
+        border: 1px solid rgba(255, 95, 0, 0.4);
+        border-radius: 4px;
+        color: #ffaa00;
+        flex-shrink: 0;
+      }
+
+      .section-icon-badge mat-icon {
+        font-size: 20px;
+        width: 20px;
+        height: 20px;
+      }
+
+      .settings-section-title {
+        font-size: 1rem;
+        font-weight: 800;
+        color: #ffaa00;
+        margin: 0;
+        letter-spacing: 0.01em;
+      }
+
+      .section-subtext {
+        font-size: 0.8rem;
+        color: rgba(255, 255, 255, 0.65);
+        margin: 0.2rem 0 0 0;
+        line-height: 1.4;
+      }
+
+      .usd-rate-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+        align-items: center;
+      }
+
+      @media (max-width: 768px) {
+        .usd-rate-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .rate-field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+      }
+
+      .rate-input-wrap {
+        display: flex;
+        align-items: stretch;
+      }
+
+      .currency-prefix {
+        display: flex;
+        align-items: center;
+        padding: 0 0.85rem;
+        background: rgba(255, 95, 0, 0.2);
+        border: 1px solid rgba(255, 95, 0, 0.45);
+        border-right: none;
+        border-radius: 4px 0 0 4px;
+        color: #ffaa00;
+        font-weight: 800;
+        font-size: 0.85rem;
+      }
+
+      .rate-input-wrap .form-input {
+        border-radius: 0 4px 4px 0;
+        color: #33ffaa;
+        font-size: 1.15rem;
+      }
+
+      .usd-preview-box {
+        background: rgba(0, 0, 0, 0.35);
+        border: 1px dashed rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
+        padding: 1rem 1.25rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+      }
+
+      .preview-label {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: rgba(255, 255, 255, 0.6);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .preview-sample {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-size: 1.25rem;
+        font-weight: 800;
+      }
+
+      .sample-ars {
+        color: #80b3ff;
+      }
+
+      .sample-arrow {
+        color: rgba(255, 255, 255, 0.4);
+      }
+
+      .sample-usd {
+        color: #33ffaa;
+      }
+
+      .preview-sub {
+        font-size: 0.74rem;
+        color: rgba(255, 255, 255, 0.5);
+      }
+
+      .form-grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+      }
+
+      .form-grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+      }
+
+      @media (max-width: 800px) {
+        .form-grid-2,
+        .form-grid-3 {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .form-field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+      }
+
+      .form-field label {
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: rgba(255, 255, 255, 0.85);
+        display: flex;
+        align-items: flex-end;
+      }
+
+      .req-star {
+        color: #ff5f00;
+        font-weight: 800;
+        margin-left: 0.25rem;
+      }
+
+      .form-input,
+      .form-textarea {
+        width: 100%;
+        box-sizing: border-box;
+        background: rgba(0, 0, 0, 0.45);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
+        color: #ffffff;
+        padding: 0.55rem 0.75rem;
+        font-size: 0.85rem;
+        outline: none;
+        transition: border-color 0.2s ease, background 0.2s ease;
+      }
+
+      .form-input:focus,
+      .form-textarea:focus {
+        border-color: #ff5f00;
+        background: rgba(0, 0, 0, 0.65);
+      }
+
+      .text-blue-input {
+        color: #80b3ff !important;
+        font-weight: 700 !important;
+      }
+
+      .font-bold {
+        font-weight: 800;
+      }
+
+      .field-hint {
+        font-size: 0.72rem;
+        color: rgba(255, 255, 255, 0.5);
+        line-height: 1.3;
+      }
+
+      .settings-footer {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 1rem;
+        padding-top: 1.25rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        margin-top: 0.5rem;
+      }
+
+      .error-text {
+        color: #fca5a5;
+        font-size: 0.85rem;
+        font-weight: 600;
+      }
+
+      .btn-save-settings {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.6rem;
+        background: linear-gradient(135deg, #ff5f00 0%, #e05300 100%);
+        border: 1px solid #ff7a26;
+        color: #ffffff;
+        font-size: 0.88rem;
+        font-weight: 800;
+        border-radius: 4px;
+        cursor: pointer;
+        box-shadow: 0 6px 18px rgba(255, 95, 0, 0.35);
+        transition: all 0.2s ease;
+      }
+
+      .btn-save-settings:hover:not(:disabled) {
+        background: linear-gradient(135deg, #ff701a 0%, #ff5f00 100%);
+        box-shadow: 0 8px 22px rgba(255, 95, 0, 0.5);
+        transform: translateY(-1px);
+      }
+
+      .btn-save-settings:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .btn-spin {
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+    `,
+  ],
+})
+export class AdminSettingsComponent implements OnInit {
+  protected readonly adminStore = inject(AdminStoreService);
+
+  readonly usdRate = signal<number>(1400);
+  readonly clubName = signal('');
+  readonly clubAgency = signal('');
+  readonly clubEmail = signal('');
+  readonly clubPhone = signal('');
+  readonly clubAddress = signal('');
+  readonly clubCbuAlias = signal('');
+  readonly clubCuitDni = signal('');
+  readonly clubBankName = signal('');
+  readonly clubAccountHolder = signal('');
+  readonly clubBio = signal('');
+  readonly clubWebsite = signal('');
+  readonly clubSocialMedia = signal('');
+
+  readonly isSaving = signal(false);
+  readonly saveError = signal<string | null>(null);
+  readonly feedbackToast = signal<string | null>(null);
+
+  sampleUsd(): number {
+    const rate = this.usdRate() || 1400;
+    return Math.round(100000 / rate);
+  }
+
+  ngOnInit(): void {
+    this.loadFromStore();
+  }
+
+  private loadFromStore(): void {
+    const profile = this.adminStore.clubProfile();
+    this.usdRate.set(this.adminStore.usdExchangeRate() || 1400);
+
+    this.clubName.set(profile.name || 'Club de Experiencias');
+    this.clubAgency.set(profile.agency || 'Club de Experiencias Catamarca');
+    this.clubEmail.set(profile.email || 'admin@experiencias.club');
+    this.clubPhone.set(profile.phone || '+54 9 383 456-7890');
+    this.clubAddress.set(profile.address || 'San Fernando del Valle de Catamarca');
+    this.clubCbuAlias.set(profile.cbuAlias || 'EXPERIENCIAS.CLUB.MP');
+    this.clubCuitDni.set(profile.cuitDni || '30-71829401-4');
+    this.clubBankName.set(profile.bankName || 'Mercado Pago / Banco Nación');
+    this.clubAccountHolder.set(profile.accountHolder || 'Club de Experiencias Catamarca');
+    this.clubBio.set(profile.bio || '');
+    this.clubWebsite.set(profile.website || 'https://experiencias.club');
+    this.clubSocialMedia.set(profile.socialMedia || 'instagram.com/experiencias.club');
+  }
+
+  async saveAllSettings(): Promise<void> {
+    const rate = Number(this.usdRate());
+    if (!rate || rate <= 0) {
+      this.saveError.set('⚠️ Por favor ingresá una cotización válida mayor a 0.');
+      return;
+    }
+
+    const name = this.clubName().trim();
+    if (!name) {
+      this.saveError.set('⚠️ El nombre del Club es obligatorio.');
+      return;
+    }
+
+    const cbu = this.clubCbuAlias().trim();
+    if (!cbu) {
+      this.saveError.set('⚠️ El CBU / Alias de cobro es obligatorio.');
+      return;
+    }
+
+    this.saveError.set(null);
+    this.isSaving.set(true);
+
+    try {
+      this.adminStore.setUsdExchangeRate(rate);
+
+      const profilePayload: Partial<ClubProfile> = {
+        name,
+        agency: this.clubAgency().trim() || name,
+        email: this.clubEmail().trim() || 'admin@experiencias.club',
+        phone: this.clubPhone().trim(),
+        address: this.clubAddress().trim(),
+        cbuAlias: cbu,
+        cuitDni: this.clubCuitDni().trim(),
+        bankName: this.clubBankName().trim(),
+        accountHolder: this.clubAccountHolder().trim(),
+        bio: this.clubBio().trim(),
+        website: this.clubWebsite().trim(),
+        socialMedia: this.clubSocialMedia().trim(),
+        usdExchangeRate: rate,
+      };
+
+      const res = await this.adminStore.updateClubProfile(profilePayload);
+      if (res && !res.success) {
+        this.saveError.set(res.error || 'Ocurrió un error al guardar la configuración.');
+        return;
+      }
+
+      this.showToast('✅ Configuración global y Perfil del Club actualizados con éxito.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error inesperado';
+      this.saveError.set(msg);
+    } finally {
+      this.isSaving.set(false);
+    }
+  }
+
+  private showToast(msg: string): void {
+    this.feedbackToast.set(msg);
+    setTimeout(() => this.feedbackToast.set(null), 4500);
+  }
+}
+

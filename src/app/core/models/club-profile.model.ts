@@ -14,6 +14,7 @@ export interface ClubProfile {
   socialMedia: string;
   address: string;
   updatedAt: string;
+  usdExchangeRate?: number;
 }
 
 export const DEFAULT_CLUB_PROFILE: ClubProfile = {
@@ -31,6 +32,7 @@ export const DEFAULT_CLUB_PROFILE: ClubProfile = {
   socialMedia: 'instagram.com/experiencias.club',
   address: 'San Fernando del Valle de Catamarca',
   updatedAt: '2026-01-01T00:00:00.000Z',
+  usdExchangeRate: 1400,
 };
 
 /**

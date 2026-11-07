@@ -95,6 +95,7 @@ export class AdminStoreService {
 
   private readonly _clubProfile = signal<ClubProfile>(this.loadStoredClubProfile());
   private readonly _isClubProfileModalOpen = signal<boolean>(false);
+  private readonly _usdExchangeRate = signal<number>(this.loadStoredUsdExchangeRate());
 
   readonly currentAdmin = this._currentAdmin.asReadonly();
   readonly isAuthenticated = computed(() => this._currentAdmin() !== null);
@@ -107,6 +108,38 @@ export class AdminStoreService {
   readonly lastRefreshedAt = this._lastRefreshedAt.asReadonly();
   readonly clubProfile = this._clubProfile.asReadonly();
   readonly isClubProfileModalOpen = this._isClubProfileModalOpen.asReadonly();
+  readonly usdExchangeRate = this._usdExchangeRate.asReadonly();
+
+  private loadStoredUsdExchangeRate(): number {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('catamarca_usd_exchange_rate_v1');
+        const num = Number(stored);
+        if (num && num > 0) return num;
+      } catch {
+        // ignore
+      }
+    }
+    const profile = this.loadStoredClubProfile();
+    return profile?.usdExchangeRate || DEFAULT_CLUB_PROFILE.usdExchangeRate || 1400;
+  }
+
+  setUsdExchangeRate(rate: number): void {
+    const validRate = Math.round(Number(rate)) || 1400;
+    if (validRate <= 0) return;
+    this._usdExchangeRate.set(validRate);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('catamarca_usd_exchange_rate_v1', String(validRate));
+      } catch {
+        // ignore
+      }
+    }
+    const current = this._clubProfile();
+    if (current.usdExchangeRate !== validRate) {
+      this._clubProfile.update((p) => ({ ...p, usdExchangeRate: validRate }));
+    }
+  }
 
   openClubProfileModal(): void {
     this._isClubProfileModalOpen.set(true);
@@ -344,6 +377,17 @@ export class AdminStoreService {
       }
 
       if (!error && data) {
+        let usdRate = DEFAULT_CLUB_PROFILE.usdExchangeRate || 1400;
+        if (data.notes) {
+          try {
+            const parsed = JSON.parse(data.notes);
+            if (parsed && typeof parsed.usd_exchange_rate === 'number' && parsed.usd_exchange_rate > 0) {
+              usdRate = parsed.usd_exchange_rate;
+            }
+          } catch {
+            // ignore non-json
+          }
+        }
         const loaded: ClubProfile = {
           id: data.id,
           name: data.name || DEFAULT_CLUB_PROFILE.name,
@@ -360,8 +404,10 @@ export class AdminStoreService {
           socialMedia: data.social_media || DEFAULT_CLUB_PROFILE.socialMedia,
           address: DEFAULT_CLUB_PROFILE.address,
           updatedAt: data.updated_at || new Date().toISOString(),
+          usdExchangeRate: usdRate,
         };
         this._clubProfile.set(loaded);
+        this.setUsdExchangeRate(usdRate);
         if (typeof window !== 'undefined') {
           try {
             localStorage.setItem('catamarca_club_official_profile_v1', JSON.stringify(loaded));
@@ -390,15 +436,24 @@ export class AdminStoreService {
     const targetId = current.id;
     const targetSlug = current.slug || DEFAULT_CLUB_PROFILE.slug;
 
+    if (updated.usdExchangeRate && Number(updated.usdExchangeRate) > 0) {
+      this.setUsdExchangeRate(Number(updated.usdExchangeRate));
+    }
+
     const merged: ClubProfile = {
       ...current,
       ...updated,
       slug: targetSlug,
+      usdExchangeRate: updated.usdExchangeRate ? Number(updated.usdExchangeRate) : (current.usdExchangeRate || this._usdExchangeRate()),
       updatedAt: new Date().toISOString(),
     };
 
     if (isSupabaseConfigured()) {
       try {
+        const notesPayload = JSON.stringify({
+          usd_exchange_rate: merged.usdExchangeRate || this._usdExchangeRate(),
+          system: 'configuracion_club',
+        });
         const payload = {
           email: merged.email || DEFAULT_CLUB_PROFILE.email,
           name: merged.name,
@@ -412,6 +467,7 @@ export class AdminStoreService {
           bio: merged.bio,
           website: merged.website,
           social_media: merged.socialMedia,
+          notes: notesPayload,
           active: true,
           status: 'aprobado',
           updated_at: merged.updatedAt,

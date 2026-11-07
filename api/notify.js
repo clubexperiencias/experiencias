@@ -1131,24 +1131,23 @@ module.exports = async function handler(req, res) {
         }
 
         const applicationRecord = await verifyPostulacionExists(data.email, config);
-        if (!applicationRecord) {
-          return res.status(404).json({
-            success: false,
-            error: 'No se encontró un registro de postulación previo para este correo.',
-          });
-        }
-
         const verifiedData = {
-          fullName: applicationRecord.full_name || applicationRecord.fullName || '',
-          category: applicationRecord.category || '',
-          region: applicationRecord.region || '',
-          email: applicationRecord.email || String(data.email).trim().toLowerCase(),
-          phone: applicationRecord.phone || '',
-          website: applicationRecord.website || '',
-          description: applicationRecord.description || '',
+          fullName:
+            applicationRecord?.name ||
+            applicationRecord?.agency ||
+            applicationRecord?.full_name ||
+            applicationRecord?.fullName ||
+            data.fullName ||
+            'Prestador',
+          category: applicationRecord?.category || data.category || 'Prestador de Servicios Turísticos',
+          region: applicationRecord?.region || data.region || 'Catamarca',
+          email: applicationRecord?.email || String(data.email).trim().toLowerCase(),
+          phone: applicationRecord?.phone || data.phone || '',
+          website: applicationRecord?.website || data.website || '',
+          description: applicationRecord?.description || data.description || '',
         };
 
-        // 1. Email al postulante
+        // 1. Email al postulante confirmando recepción y estado de evaluación
         const applicantResult = await sendEmailViaResend({
           apiKey: config.apiKey,
           from: config.fromEmail,
@@ -1164,7 +1163,7 @@ module.exports = async function handler(req, res) {
             apiKey: config.apiKey,
             from: config.fromEmail,
             to: config.adminEmails,
-            subject: `[Nueva Postulación Prestador] ${verifiedData.fullName || 'Prestador'} · ${verifiedData.category || 'Guía'}`,
+            subject: `[Nueva Postulación Prestador] ${verifiedData.fullName} · ${verifiedData.category}`,
             html: templateProviderApplicationAdmin(verifiedData),
           });
           results.push({ target: 'admin', ...adminResult });

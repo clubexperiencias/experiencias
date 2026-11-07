@@ -83,43 +83,7 @@ export interface ExperienceProposalRequest {
   reviewedAt?: string;
 }
 
-const SEED_EXPERIENCE_REQUESTS: ExperienceProposalRequest[] = [
-  {
-    id: 'req-sunset-las-pirquitas',
-    providerId: 'prov-patricio',
-    providerName: 'Patricio Facundo Diaz Tillar',
-    providerAgency: 'Catamarca Kayak & Aventura Náutica',
-    providerEmail: 'patriciofacundodiaztillar@gmail.com',
-    providerPhone: '+54 383 455 8812',
-    title: 'Travesía en Kayak Nocturna & Luna Llena en El Jumeal',
-    kicker: 'EXPEDICIÓN NÁUTICA: VALLE CENTRAL',
-    subheading:
-      'Remada nocturna bajo el cielo estrellado y la luna llena en el espejo de agua de El Jumeal, con fogón criollo y degustación de vinos de altura.',
-    region: 'Valle Central y Ambato',
-    difficulty: 'Baja (Sin experiencia previa)',
-    duration: '5 Horas (Jornada Nocturna)',
-    altitude: '920 msnm',
-    capacity: 14,
-    season: 'Primavera y Verano (noches de Luna Llena)',
-    dates: 'Viernes y Sábados de Luna Llena 19:30 hs',
-    priceArs: 72000,
-    priceUsd: 75,
-    promosAndPricing: '10% de descuento abonando en efectivo o para grupos de 4 o más personas.',
-    itinerary:
-      '19:30 hs Recepción y equipamiento en Club Náutico\n20:15 hs Zarpada con balizas acuáticas\n22:00 hs Desembarco en ensenada y fogón bajo las estrellas\n23:30 hs Brindis de cierre',
-    meetingPoint: 'Club Náutico El Jumeal (Fray Mamerto Esquiú, RP 1)',
-    includedServices:
-      'Kayaks de travesía, remos, chalecos homologados, balizas estancas, lancha de apoyo y cena rústica al fuego.',
-    participantRequirements:
-      'Muda de ropa seca para recambio, campera térmica/rompevientos y calzado para agua.',
-    notes: 'Fotos de alta resolución y ruta GPS cargadas.',
-    coverImage: '/assets/images/kayak-club-de-experiencias.jpg',
-    coverImageName: 'kayak-nocturno-pirquitas.jpg',
-    coverVideoName: 'kayak-trailer.mp4',
-    status: 'pendiente',
-    createdAt: hoursAgo(14),
-  },
-];
+const SEED_EXPERIENCE_REQUESTS: ExperienceProposalRequest[] = [];
 
 function upcomingDate(daysFromNow: number): string {
   const date = new Date();
@@ -1158,6 +1122,9 @@ export class ProviderStoreService {
         if (updates.status !== undefined) {
           payload['status'] = updates.status;
           payload['active'] = updates.status === 'aprobado';
+        }
+        if (updates.notes !== undefined) {
+          payload['notes'] = updates.notes;
         }
 
         const { data: updatedRows, error } = await (this.supabase.from('prestadores') as any)
@@ -2473,14 +2440,21 @@ export class ProviderStoreService {
           };
         });
 
-        const existingMap = new Map(this._experienceRequests().map((r) => [r.id, r]));
-        for (const m of mapped) {
-          existingMap.set(m.id, m);
+        if (!providerEmail) {
+          // Si es consulta global de administrador, Supabase es la fuente de verdad
+          this._experienceRequests.set(mapped);
+        } else {
+          // Si es para un prestador particular, se actualizan sus propuestas y se preservan las demás
+          const others = this._experienceRequests().filter(
+            (r) =>
+              r.id !== 'req-sunset-las-pirquitas' &&
+              r.providerEmail?.toLowerCase() !== providerEmail.toLowerCase(),
+          );
+          const merged = [...mapped, ...others].sort(
+            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+          );
+          this._experienceRequests.set(merged);
         }
-        const merged = Array.from(existingMap.values()).sort(
-          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-        );
-        this._experienceRequests.set(merged);
         this.saveRequests();
       }
     } catch (err) {
@@ -2910,18 +2884,20 @@ export class ProviderStoreService {
   }
 
   private loadStoredRequests(): ExperienceProposalRequest[] {
-    if (typeof window === 'undefined') return SEED_EXPERIENCE_REQUESTS;
+    if (typeof window === 'undefined') return [];
     try {
       const raw = localStorage.getItem(STORAGE_KEYS.experienceRequests);
-      const parsed: ExperienceProposalRequest[] = raw ? JSON.parse(raw) : SEED_EXPERIENCE_REQUESTS;
-      return parsed.map((r) => ({
-        ...r,
-        coverImage: (!r.coverImage || r.coverImage.startsWith('blob:'))
-          ? '/assets/images/kayak-club-de-experiencias.jpg'
-          : r.coverImage,
-      }));
+      const parsed: ExperienceProposalRequest[] = raw ? JSON.parse(raw) : [];
+      return parsed
+        .filter((r) => r && r.id !== 'req-sunset-las-pirquitas')
+        .map((r) => ({
+          ...r,
+          coverImage: (!r.coverImage || r.coverImage.startsWith('blob:'))
+            ? '/assets/images/kayak-club-de-experiencias.jpg'
+            : r.coverImage,
+        }));
     } catch {
-      return SEED_EXPERIENCE_REQUESTS;
+      return [];
     }
   }
 

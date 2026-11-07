@@ -7,6 +7,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { filter } from 'rxjs';
 import { AdminStoreService, AdminApplication } from '../../../core/services/admin-store.service';
 import { ProviderUser, slugify } from '../../../core/services/provider-store.service';
+import { ExperienceService } from '../../../core/services/experience.service';
+import { Experience } from '../../../core/models/experience.model';
 import { FechaPipe, ArsPipe } from '../../../shared/pipes/format.pipes';
 
 export type ProviderTab = 'todos' | 'oficiales' | 'postulaciones';
@@ -55,17 +57,6 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
       } @else if (isRouteEditMode() && selectedProvider(); as prov) {
         <!-- Modo Edición: /prestadores/:slug/editar -->
         <div class="edit-page-card">
-          <div class="fiche-topbar">
-            <div class="topbar-left">
-              <a [routerLink]="getDetailRoute(prov)" class="btn-back-panel">
-                &larr; Volver a la Ficha
-              </a>
-              <span class="fiche-topbar-breadcrumb">
-                /prestadores / <strong>{{ prov.slug || prov.id }}</strong> / editar
-              </span>
-            </div>
-          </div>
-
           <div class="edit-form-card">
             <div class="edit-header">
               <span class="section-kicker">GESTIÓN DE PRESTADORES OFICIALES</span>
@@ -79,12 +70,11 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
               <!-- Datos de Identidad & Agencia -->
               <div class="form-section">
                 <h3 class="form-section-title">
-                  <mat-icon>badge</mat-icon>
                   Identidad y Marca Comercial
                 </h3>
                 <div class="form-grid">
                   <div class="form-group">
-                    <label for="p-name">Nombre y Apellido del Responsable:</label>
+                    <label for="p-name">Nombre y Apellido del Responsable: <span class="required-star">*</span></label>
                     <input
                       id="p-name"
                       type="text"
@@ -98,7 +88,7 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
                   </div>
 
                   <div class="form-group">
-                    <label for="p-agency">Agencia o Emprendimiento:</label>
+                    <label for="p-agency">Agencia o Emprendimiento: <span class="required-star">*</span></label>
                     <input
                       id="p-agency"
                       type="text"
@@ -112,7 +102,7 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
                   </div>
 
                   <div class="form-group full-width">
-                    <label for="p-slug">Slug de la URL Pública (Identificador Único):</label>
+                    <label for="p-slug">Slug de la URL Pública (Identificador Único): <span class="required-star">*</span></label>
                     <div class="slug-input-wrapper">
                       <span class="slug-prefix">experiencias.club/prestadores/</span>
                       <input
@@ -132,7 +122,7 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
                   </div>
 
                   <div class="form-group">
-                    <label for="p-email">Correo Electrónico (Login y Notificaciones):</label>
+                    <label for="p-email">Correo Electrónico (Login y Notificaciones): <span class="required-star">*</span></label>
                     <input
                       id="p-email"
                       type="email"
@@ -146,7 +136,7 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
                   </div>
 
                   <div class="form-group">
-                    <label for="p-phone">Teléfono / WhatsApp de Contacto:</label>
+                    <label for="p-phone">Teléfono / WhatsApp de Contacto: <span class="required-star">*</span></label>
                     <input
                       id="p-phone"
                       type="tel"
@@ -159,7 +149,7 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
                   </div>
 
                   <div class="form-group">
-                    <label for="p-status">Estado del Prestador:</label>
+                    <label for="p-status">Estado del Prestador: <span class="required-star">*</span></label>
                     <select
                       id="p-status"
                       class="form-input"
@@ -217,12 +207,11 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
               <!-- Datos Fiscales y de Liquidación Bancaria -->
               <div class="form-section">
                 <h3 class="form-section-title">
-                  <mat-icon>account_balance</mat-icon>
                   Datos Fiscales y Liquidación Bancaria
                 </h3>
                 <div class="form-grid">
                   <div class="form-group">
-                    <label for="p-cbu">CBU / CVU o Alias:</label>
+                    <label for="p-cbu">CBU / CVU o Alias Oficial: <span class="required-star">*</span></label>
                     <input
                       id="p-cbu"
                       type="text"
@@ -235,7 +224,7 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
                   </div>
 
                   <div class="form-group">
-                    <label for="p-cuit">CUIT / DNI:</label>
+                    <label for="p-cuit">CUIT / DNI: <span class="required-star">*</span></label>
                     <input
                       id="p-cuit"
                       type="text"
@@ -248,7 +237,7 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
                   </div>
 
                   <div class="form-group">
-                    <label for="p-bank">Banco / Entidad Financiera:</label>
+                    <label for="p-bank">Banco / Entidad Financiera: <span class="required-star">*</span></label>
                     <input
                       id="p-bank"
                       type="text"
@@ -261,7 +250,7 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
                   </div>
 
                   <div class="form-group">
-                    <label for="p-holder">Titular de la Cuenta:</label>
+                    <label for="p-holder">Titular Registrado de la Cuenta: <span class="required-star">*</span></label>
                     <input
                       id="p-holder"
                       type="text"
@@ -277,18 +266,17 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
 
               <!-- Botones de Acción -->
               <div class="form-actions-bar">
+                <a [routerLink]="getDetailRoute(prov)" class="btn-cancel">
+                  Cancelar
+                </a>
+
                 <button
                   type="submit"
                   class="btn-save-primary"
                   [disabled]="saving()"
                 >
-                  <mat-icon class="btn-icon-sm">save</mat-icon>
-                  <span>{{ saving() ? 'Guardando Cambios...' : 'GUARDAR CAMBIOS' }}</span>
+                  <span>{{ saving() ? 'Guardando cambios...' : 'Guardar prestador' }}</span>
                 </button>
-
-                <a [routerLink]="getDetailRoute(prov)" class="btn-cancel">
-                  Cancelar
-                </a>
               </div>
             </form>
           </div>
@@ -326,18 +314,10 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
                         <span>VER EN LA WEB</span>
                       </a>
                     }
-                    @if (hasProviderRecord(prov)) {
-                      <a
-                        [routerLink]="getEditRoute(prov)"
-                        class="btn-hero-edit"
-                        title="Editar los datos y configuración de este prestador"
-                      >
-                        <span>EDITAR PRESTADOR</span>
-                      </a>
-                    }
-                    <span class="status-pill is-published">Aprobado</span>
-                    @if (prov.slug) {
-                      <span class="slug-tag">/prestadores/{{ prov.slug }}</span>
+                    @if (isProviderBaja(prov)) {
+                      <span class="status-pill is-paused">Dado de baja</span>
+                    } @else {
+                      <span class="status-pill is-published">Aprobado</span>
                     }
                   </div>
                 </div>
@@ -503,23 +483,32 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
               }
             </div>
             <div class="cta-bar-right">
-              <a [routerLink]="backToListLink()" class="btn-cancel-edit">
-                Volver a Prestadores
-              </a>
-              @if (prov.slug) {
-                <a
-                  [href]="getPublicProviderUrl(prov.slug)"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="btn-hero-public-web"
-                >
-                  <mat-icon class="btn-icon-sm">open_in_new</mat-icon>
-                  <span>VER EN LA WEB</span>
-                </a>
+              @if (!isClubProvider(prov)) {
+                @if (isProviderBaja(prov)) {
+                  <button
+                    type="button"
+                    class="btn-activate-exp-bottom"
+                    [disabled]="saving()"
+                    (click)="toggleProviderBajaStatus(prov)"
+                    title="Habilitar prestador y reactivar sus experiencias que fueron pausadas"
+                  >
+                    <span>Habilitar</span>
+                  </button>
+                } @else {
+                  <button
+                    type="button"
+                    class="btn-pause-exp-bottom"
+                    [disabled]="saving()"
+                    (click)="toggleProviderBajaStatus(prov)"
+                    title="Dar de baja prestador y pausar sus experiencias publicadas"
+                  >
+                    <span>Dar de baja</span>
+                  </button>
+                }
               }
               @if (hasProviderRecord(prov)) {
-                <a [routerLink]="getEditRoute(prov)" class="btn-hero-edit">
-                  <span>EDITAR PRESTADOR</span>
+                <a [routerLink]="getEditRoute(prov)" class="btn-action-edit-orange">
+                  <span>Editar Prestador</span>
                 </a>
               }
             </div>
@@ -1149,15 +1138,11 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
         z-index: 5;
         background: #140b06;
         box-shadow: -6px 0 16px rgba(0, 0, 0, 0.45);
-        position: sticky;
-        right: 0;
-        z-index: 5;
-        background: #140b06;
-        box-shadow: -6px 0 16px rgba(0, 0, 0, 0.45);
       }
 
       .providers-table th.text-right {
         background: #0f0703 !important;
+        text-align: center !important;
       }
 
       .providers-table tr:hover td.text-right {
@@ -1230,12 +1215,17 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
       }
 
       .contact-whatsapp {
-        color: #80b3ff;
+        color: #ffffff;
         text-decoration: none;
         font-size: 0.82rem;
       }
       .contact-whatsapp:hover {
+        color: #ffffff;
         text-decoration: underline;
+      }
+
+      .info-row .contact-whatsapp {
+        color: #ffffff;
       }
 
       .phone-muted {
@@ -1293,8 +1283,8 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
         align-items: center;
         justify-content: center;
         width: 100%;
-        height: 25px;
-        min-height: 25px;
+        height: 28px;
+        min-height: 28px;
         padding: 0 0.5rem;
         font-size: 0.7rem;
         box-sizing: border-box;
@@ -1306,8 +1296,8 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
         align-items: center;
         justify-content: center;
         padding: 0 0.75rem;
-        height: 32px;
-        min-height: 32px;
+        height: 28px;
+        min-height: 28px;
         box-sizing: border-box;
         background: rgba(255, 95, 0, 0.18);
         border: 1px solid #ff5f00;
@@ -1582,11 +1572,25 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
         flex-wrap: wrap;
       }
 
+      .hero-badges-row .btn-hero-public-web,
+      .hero-badges-row .status-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 28px;
+        min-height: 28px;
+        box-sizing: border-box;
+        line-height: 1;
+        padding: 0 0.75rem;
+        font-size: 0.75rem;
+        border-radius: 3px;
+      }
+
       .btn-hero-public-web {
         display: inline-flex;
         align-items: center;
         gap: 0.35rem;
-        padding: 0.32rem 0.75rem;
+        padding: 0 0.75rem;
         background: rgba(255, 255, 255, 0.08);
         border: 1px solid rgba(255, 255, 255, 0.22);
         border-radius: 3px;
@@ -1714,7 +1718,9 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
       .cta-bar-right .btn-cancel-edit,
       .cta-bar-right .btn-action-edit-orange,
       .cta-bar-right .btn-hero-public-web,
-      .cta-bar-right .btn-hero-edit {
+      .cta-bar-right .btn-hero-edit,
+      .cta-bar-right .btn-pause-exp-bottom,
+      .cta-bar-right .btn-activate-exp-bottom {
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -1724,6 +1730,69 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
         font-size: 0.82rem;
         font-weight: 800;
         box-sizing: border-box;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .btn-pause-exp-bottom {
+        background: rgba(255, 80, 80, 0.16) !important;
+        border: 1px solid rgba(255, 80, 80, 0.4) !important;
+        color: #ff8080 !important;
+        cursor: pointer;
+      }
+
+      .btn-pause-exp-bottom:hover:not(:disabled) {
+        background: rgba(255, 80, 80, 0.28) !important;
+        border-color: #ff6060 !important;
+        color: #ffffff !important;
+      }
+
+      .btn-activate-exp-bottom {
+        background: rgba(251, 191, 36, 0.16) !important;
+        border: 1px solid rgba(251, 191, 36, 0.45) !important;
+        color: #fbbf24 !important;
+        cursor: pointer;
+      }
+
+      .btn-activate-exp-bottom:hover:not(:disabled) {
+        background: rgba(251, 191, 36, 0.28) !important;
+        border-color: #fbbf24 !important;
+        color: #ffffff !important;
+      }
+
+      .btn-action-edit-orange {
+        background: #ff5f00 !important;
+        border: 1px solid #ff5f00 !important;
+        color: #0b0704 !important;
+        cursor: pointer;
+        text-decoration: none;
+      }
+
+      .btn-action-edit-orange:hover {
+        background: #ff7722 !important;
+        border-color: #ff7722 !important;
+        color: #ffffff !important;
+      }
+
+      .hero-badges-row .btn-pause-exp-bottom,
+      .hero-badges-row .btn-activate-exp-bottom {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.32rem 0.75rem;
+        border-radius: 3px;
+        font-size: 0.75rem;
+        font-weight: 800;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+
+      .required-star {
+        color: #ff5f00;
+        font-weight: bold;
+        margin-left: 0.2rem;
       }
 
       .info-list {
@@ -1789,6 +1858,7 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
         display: flex;
         flex-direction: column;
         gap: 1.25rem;
+        margin-top: 2.25rem;
       }
 
       .edit-form-card {
@@ -1907,9 +1977,11 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
       .form-actions-bar {
         display: flex;
         align-items: center;
+        justify-content: space-between;
         gap: 1rem;
         padding-top: 1.5rem;
         border-top: 1px solid rgba(255, 95, 0, 0.25);
+        width: 100%;
       }
 
       .btn-save-primary {
@@ -2268,6 +2340,7 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
 })
 export class AdminProvidersComponent implements OnInit {
   readonly store = inject(AdminStoreService);
+  private readonly expService = inject(ExperienceService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
@@ -2418,39 +2491,251 @@ export class AdminProvidersComponent implements OnInit {
     this.editSlug.set(clean);
   }
 
+  isProviderBaja(prov: ProviderUser | null | undefined): boolean {
+    if (!prov) return false;
+    return prov.status === 'dado_de_baja' || prov.active === false;
+  }
+
+  async toggleProviderBajaStatus(prov: ProviderUser): Promise<void> {
+    if (this.saving()) return;
+    const isCurrentlyBaja = this.isProviderBaja(prov);
+
+    this.saving.set(true);
+
+    try {
+      const cleanEmail = prov.email?.toLowerCase().trim();
+      const cleanSlug = prov.slug?.toLowerCase().trim();
+      const allExps = this.expService.experiences();
+      const providerExps = allExps.filter((e: Experience) => {
+        const eEmail = e.providerEmail?.toLowerCase().trim() || '';
+        const eSlug = e.providerSlug?.toLowerCase().trim() || '';
+        return (cleanEmail && eEmail === cleanEmail) || (cleanSlug && eSlug === cleanSlug);
+      });
+
+      let notesObj: any = {};
+      try {
+        notesObj = prov.notes ? JSON.parse(prov.notes) : {};
+      } catch {
+        notesObj = {};
+      }
+
+      if (!isCurrentlyBaja) {
+        // DAR DE BAJA:
+        // Pausar sus experiencias publicadas y registrar cuáles se pausaron por la baja
+        const publishedExps = providerExps.filter((e: Experience) => e.status === 'publicada');
+        const publishedIds = publishedExps.map((e: Experience) => e.id);
+
+        notesObj.pausedByBajaExpIds = publishedIds;
+        const updatedNotes = JSON.stringify(notesObj);
+
+        const res = await this.store.providerStore.adminUpdateProvider(prov.email, {
+          status: 'dado_de_baja',
+          notes: updatedNotes,
+        });
+
+        if (!res.success) {
+          this.showToast(res.message || 'Error al dar de baja al prestador.');
+          return;
+        }
+
+        // Pausar cada experiencia publicada
+        for (const exp of publishedExps) {
+          try {
+            await this.expService.updateExperience({ id: exp.id, status: 'oculta' });
+          } catch (expErr) {
+            console.warn(`[AdminProviders] Error al pausar experiencia ${exp.id}:`, expErr);
+          }
+        }
+
+        this.showToast(
+          `Prestador dado de baja. Se pausaron ${publishedIds.length} experiencia(s) en el catálogo.`,
+        );
+      } else {
+        // HABILITAR:
+        // Reactivar únicamente las experiencias que fueron pausadas al darlo de baja
+        const savedIds: string[] = Array.isArray(notesObj.pausedByBajaExpIds)
+          ? notesObj.pausedByBajaExpIds
+          : [];
+
+        const toReactivate = providerExps.filter((e: Experience) =>
+          (savedIds.length > 0 ? savedIds.includes(e.id) : true) && e.status === 'oculta',
+        );
+
+        delete notesObj.pausedByBajaExpIds;
+        const updatedNotes = Object.keys(notesObj).length > 0 ? JSON.stringify(notesObj) : '';
+
+        const res = await this.store.providerStore.adminUpdateProvider(prov.email, {
+          status: 'aprobado',
+          notes: updatedNotes,
+        });
+
+        if (!res.success) {
+          this.showToast(res.message || 'Error al habilitar al prestador.');
+          return;
+        }
+
+        for (const exp of toReactivate) {
+          try {
+            await this.expService.updateExperience({ id: exp.id, status: 'publicada' });
+          } catch (expErr) {
+            console.warn(`[AdminProviders] Error al reactivar experiencia ${exp.id}:`, expErr);
+          }
+        }
+
+        this.showToast(
+          `Prestador habilitado con éxito. Se reactivaron ${toReactivate.length} experiencia(s).`,
+        );
+      }
+    } catch (err: any) {
+      console.error('[AdminProviders] Error en toggleProviderBajaStatus:', err);
+      this.showToast('Ocurrió un error al actualizar el estado del prestador.');
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
   async saveProviderChanges(): Promise<void> {
     const p = this.selectedProvider();
     if (!p) return;
 
-    const slug = this.editSlug().trim().toLowerCase();
-    if (!slug) {
-      this.showToast('El slug de la URL no puede estar vacío.');
+    const name = this.editName().trim();
+    if (!name || name.length < 3) {
+      this.showToast('⚠️ Por favor ingresá el nombre y apellido del responsable (mínimo 3 caracteres).');
       return;
     }
 
+    const agency = this.editAgency().trim();
+    if (!agency || agency.length < 2) {
+      this.showToast('⚠️ Por favor indicá el nombre de la agencia o emprendimiento.');
+      return;
+    }
+
+    const slug = this.editSlug().trim().toLowerCase();
+    if (!slug) {
+      this.showToast('⚠️ Por favor ingresá un slug válido para la URL pública.');
+      return;
+    }
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
+      this.showToast('⚠️ El slug solo puede contener letras minúsculas, números y guiones medios.');
+      return;
+    }
+
+    const email = this.editEmail().trim().toLowerCase();
+    if (!email) {
+      this.showToast('⚠️ Por favor ingresá un correo electrónico.');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      this.showToast('⚠️ Por favor ingresá un correo electrónico válido (ej: nombre@dominio.com).');
+      return;
+    }
+
+    const phone = this.editPhone().trim();
+    if (!phone) {
+      this.showToast('⚠️ Por favor indicá el teléfono o WhatsApp de contacto.');
+      return;
+    }
+    const cleanPhoneDigits = phone.replace(/\D/g, '');
+    if (cleanPhoneDigits.length < 6) {
+      this.showToast('⚠️ El número de teléfono debe contener al menos 6 dígitos numéricos.');
+      return;
+    }
+
+    const cbu = this.editCbuAlias().trim();
+    if (!cbu) {
+      this.showToast('⚠️ Por favor ingresá el CBU, CVU o Alias oficial para la liquidación.');
+      return;
+    }
+
+    const cuit = this.editCuitDni().trim();
+    if (!cuit) {
+      this.showToast('⚠️ Por favor ingresá el CUIT, CUIL o DNI del prestador.');
+      return;
+    }
+
+    const bank = this.editBankName().trim();
+    if (!bank) {
+      this.showToast('⚠️ Por favor indicá el banco o entidad financiera.');
+      return;
+    }
+
+    const holder = this.editAccountHolder().trim() || name;
+
+    const website = this.editWebsite().trim();
+    if (website && !/^https?:\/\//i.test(website)) {
+      this.showToast('⚠️ El sitio web debe comenzar con http:// o https://');
+      return;
+    }
+
+    const newStatus = this.editStatus();
+    const oldStatus = p.status;
+
     this.saving.set(true);
+
+    let notesObj: any = {};
+    try {
+      notesObj = p.notes ? JSON.parse(p.notes) : {};
+    } catch {
+      notesObj = {};
+    }
+
+    const cleanEmail = p.email?.toLowerCase().trim();
+    const cleanSlug = p.slug?.toLowerCase().trim();
+    const providerExps = this.expService.experiences().filter((e: Experience) => {
+      const eEmail = e.providerEmail?.toLowerCase().trim() || '';
+      const eSlug = e.providerSlug?.toLowerCase().trim() || '';
+      return (cleanEmail && eEmail === cleanEmail) || (cleanSlug && eSlug === cleanSlug);
+    });
+
+    if (newStatus === 'dado_de_baja' && oldStatus !== 'dado_de_baja') {
+      const published = providerExps.filter((e: Experience) => e.status === 'publicada');
+      notesObj.pausedByBajaExpIds = published.map((e: Experience) => e.id);
+      for (const exp of published) {
+        try {
+          await this.expService.updateExperience({ id: exp.id, status: 'oculta' });
+        } catch (eErr) {
+          console.warn('[AdminProviders] Error pausando experiencia:', eErr);
+        }
+      }
+    } else if (newStatus === 'aprobado' && oldStatus === 'dado_de_baja') {
+      const savedIds: string[] = Array.isArray(notesObj.pausedByBajaExpIds) ? notesObj.pausedByBajaExpIds : [];
+      const toReactivate = providerExps.filter((e: Experience) =>
+        (savedIds.length > 0 ? savedIds.includes(e.id) : true) && e.status === 'oculta',
+      );
+      delete notesObj.pausedByBajaExpIds;
+      for (const exp of toReactivate) {
+        try {
+          await this.expService.updateExperience({ id: exp.id, status: 'publicada' });
+        } catch (eErr) {
+          console.warn('[AdminProviders] Error reactivando experiencia:', eErr);
+        }
+      }
+    }
+
+    const updatedNotes = Object.keys(notesObj).length > 0 ? JSON.stringify(notesObj) : (p.notes || '');
+
     const res = await this.store.providerStore.adminUpdateProvider(p.email, {
-      name: this.editName().trim(),
-      agency: this.editAgency().trim(),
-      slug: slug,
-      email: this.editEmail().trim().toLowerCase(),
-      phone: this.editPhone().trim(),
+      name,
+      agency,
+      slug,
+      email,
+      phone,
       bio: this.editBio().trim(),
-      website: this.editWebsite().trim(),
+      website,
       socialMedia: this.editSocialMedia().trim(),
-      cuitDni: this.editCuitDni().trim(),
-      cbuAlias: this.editCbuAlias().trim(),
-      bankName: this.editBankName().trim(),
-      accountHolder: this.editAccountHolder().trim(),
-      status: this.editStatus(),
+      cuitDni: cuit,
+      cbuAlias: cbu,
+      bankName: bank,
+      accountHolder: holder,
+      status: newStatus,
+      notes: updatedNotes,
     });
 
     this.saving.set(false);
 
     if (res.success) {
-      this.showToast('¡Prestador actualizado correctamente!');
-      const base = this.isAdminRoute() ? '/admin/prestadores' : '/prestadores';
-      void this.router.navigateByUrl(`${base}/${slug}`);
+      this.showToast('¡Prestador guardado con éxito!');
+      void this.router.navigateByUrl(this.getDetailRoute({ ...p, slug }));
     } else {
       this.showToast(res.message || 'Error al guardar los cambios.');
     }
@@ -2498,19 +2783,26 @@ export class AdminProvidersComponent implements OnInit {
     return Boolean(this.store.providerStore.getProviderBySlug(prov.slug));
   }
 
+  isClubProvider(prov?: ProviderUser | ProviderListItem | null): boolean {
+    if (!prov) return false;
+    const slug = (prov.slug || '').toLowerCase().trim();
+    const email = (prov.email || '').toLowerCase().trim();
+    return CLUB_PROVIDER_SLUGS.has(slug) || email === CLUB_PROVIDER_EMAIL;
+  }
+
   getExperienceFicheRoute(slug?: string): string {
     const base = this.isAdminRoute() ? '/admin/experiencias' : '/experiencias';
     return `${base}/${slug || ''}`;
   }
 
-  readonly providerExperiencesList = computed(() => {
+  readonly providerExperiencesList = computed<Experience[]>(() => {
     const p = this.selectedProvider();
     if (!p) return [];
     const pId = p.id;
     const pEmail = (p.email || '').toLowerCase().trim();
     const pSlug = (p.slug || '').toLowerCase().trim();
-    return this.store.providerStore.experiences().filter(
-      (e) =>
+    return this.expService.experiences().filter(
+      (e: Experience) =>
         e.providerId === pId ||
         (e.providerEmail && e.providerEmail.toLowerCase().trim() === pEmail) ||
         (e.providerSlug && e.providerSlug.toLowerCase().trim() === pSlug),
