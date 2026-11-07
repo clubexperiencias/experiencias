@@ -126,13 +126,16 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
                     <input
                       id="p-email"
                       type="email"
-                      class="form-input font-mono"
+                      class="form-input font-mono opacity-70 cursor-not-allowed"
                       [ngModel]="editEmail()"
-                      (ngModelChange)="editEmail.set($event)"
                       name="email"
                       placeholder="prestador@email.com"
-                      required
+                      disabled
+                      readonly
                     />
+                    <span class="field-hint">
+                      El correo electrónico está vinculado a la cuenta y autenticación y no puede modificarse.
+                    </span>
                   </div>
 
                   <div class="form-group">
@@ -2491,6 +2494,48 @@ export class AdminProvidersComponent implements OnInit {
     this.editSlug.set(clean);
   }
 
+  private parseProviderNotes(raw: string | undefined | null): {
+    metadata: Record<string, any>;
+    freeText: string;
+  } {
+    const trimmed = (raw || '').trim();
+    if (!trimmed) {
+      return { metadata: {}, freeText: '' };
+    }
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        const freeText = typeof parsed['text'] === 'string' ? parsed['text'] : '';
+        return { metadata: parsed, freeText };
+      }
+      if (typeof parsed === 'string') {
+        return { metadata: {}, freeText: parsed };
+      }
+      // null, arrays, numbers, booleans are treated as empty metadata with no free text
+      return { metadata: {}, freeText: '' };
+    } catch {
+      // Non-JSON string is treated as free text
+      return { metadata: {}, freeText: trimmed };
+    }
+  }
+
+  private serializeProviderNotes(metadata: Record<string, any>, freeText: string): string {
+    const copy: Record<string, any> = { ...metadata };
+    if (freeText.trim()) {
+      copy['text'] = freeText.trim();
+    } else {
+      delete copy['text'];
+    }
+    const keys = Object.keys(copy);
+    if (keys.length === 0) {
+      return '';
+    }
+    if (keys.length === 1 && typeof copy['text'] === 'string') {
+      return copy['text'];
+    }
+    return JSON.stringify(copy);
+  }
+
   isProviderBaja(prov: ProviderUser | null | undefined): boolean {
     if (!prov) return false;
     return prov.status === 'dado_de_baja' || prov.active === false;
@@ -2512,12 +2557,8 @@ export class AdminProvidersComponent implements OnInit {
         return (cleanEmail && eEmail === cleanEmail) || (cleanSlug && eSlug === cleanSlug);
       });
 
-      let notesObj: any = {};
-      try {
-        notesObj = prov.notes ? JSON.parse(prov.notes) : {};
-      } catch {
-        notesObj = {};
-      }
+      const { metadata, freeText } = this.parseProviderNotes(prov.notes);
+      const notesObj = metadata;
 
       if (!isCurrentlyBaja) {
         // DAR DE BAJA:
@@ -2525,8 +2566,8 @@ export class AdminProvidersComponent implements OnInit {
         const publishedExps = providerExps.filter((e: Experience) => e.status === 'publicada');
         const publishedIds = publishedExps.map((e: Experience) => e.id);
 
-        notesObj.pausedByBajaExpIds = publishedIds;
-        const updatedNotes = JSON.stringify(notesObj);
+        notesObj['pausedByBajaExpIds'] = publishedIds;
+        const updatedNotes = this.serializeProviderNotes(notesObj, freeText);
 
         const res = await this.store.providerStore.adminUpdateProvider(prov.email, {
           status: 'dado_de_baja',
@@ -2539,30 +2580,39 @@ export class AdminProvidersComponent implements OnInit {
         }
 
         // Pausar cada experiencia publicada
+        let pausedCount = 0;
+        let hasPauseErrors = false;
         for (const exp of publishedExps) {
           try {
             await this.expService.updateExperience({ id: exp.id, status: 'oculta' });
+            pausedCount++;
           } catch (expErr) {
+            hasPauseErrors = true;
             console.warn(`[AdminProviders] Error al pausar experiencia ${exp.id}:`, expErr);
           }
         }
 
-        this.showToast(
-          `Prestador dado de baja. Se pausaron ${publishedIds.length} experiencia(s) en el catálogo.`,
-        );
+        if (hasPauseErrors) {
+          this.showToast(
+            `⚠️ Prestador dado de baja. Se pausaron ${pausedCount} de ${publishedIds.length} experiencia(s); algunas no pudieron actualizarse.`,
+          );
+        } else {
+          this.showToast(
+            `Prestador dado de baja. Se pausaron ${pausedCount} experiencia(s) en el catálogo.`,
+          );
+        }
       } else {
         // HABILITAR:
         // Reactivar únicamente las experiencias que fueron pausadas al darlo de baja
-        const savedIds: string[] = Array.isArray(notesObj.pausedByBajaExpIds)
-          ? notesObj.pausedByBajaExpIds
+        const hasExplicitBajaList = Array.isArray(notesObj['pausedByBajaExpIds']);
+        const savedIds: string[] = hasExplicitBajaList ? notesObj['pausedByBajaExpIds'] : [];
+
+        const toReactivate = hasExplicitBajaList
+          ? providerExps.filter((e: Experience) => savedIds.includes(e.id) && e.status === 'oculta')
           : [];
 
-        const toReactivate = providerExps.filter((e: Experience) =>
-          (savedIds.length > 0 ? savedIds.includes(e.id) : true) && e.status === 'oculta',
-        );
-
-        delete notesObj.pausedByBajaExpIds;
-        const updatedNotes = Object.keys(notesObj).length > 0 ? JSON.stringify(notesObj) : '';
+        delete notesObj['pausedByBajaExpIds'];
+        const updatedNotes = this.serializeProviderNotes(notesObj, freeText);
 
         const res = await this.store.providerStore.adminUpdateProvider(prov.email, {
           status: 'aprobado',
@@ -2574,17 +2624,36 @@ export class AdminProvidersComponent implements OnInit {
           return;
         }
 
+        let reactivatedCount = 0;
+        let hasReactivateErrors = false;
         for (const exp of toReactivate) {
           try {
             await this.expService.updateExperience({ id: exp.id, status: 'publicada' });
+            reactivatedCount++;
           } catch (expErr) {
+            hasReactivateErrors = true;
             console.warn(`[AdminProviders] Error al reactivar experiencia ${exp.id}:`, expErr);
           }
         }
 
-        this.showToast(
-          `Prestador habilitado con éxito. Se reactivaron ${toReactivate.length} experiencia(s).`,
-        );
+        if (hasReactivateErrors) {
+          this.showToast(
+            `⚠️ Prestador habilitado. Se reactivaron ${reactivatedCount} de ${toReactivate.length} experiencia(s); algunas no pudieron actualizarse.`,
+          );
+        } else if (!hasExplicitBajaList) {
+          const hiddenCount = providerExps.filter((e: Experience) => e.status === 'oculta').length;
+          if (hiddenCount > 0) {
+            this.showToast(
+              `Prestador habilitado con éxito. Sin historial de baja previa: ${hiddenCount} experiencia(s) ocultas se mantuvieron en pausa para revisión manual.`,
+            );
+          } else {
+            this.showToast('Prestador habilitado con éxito.');
+          }
+        } else {
+          this.showToast(
+            `Prestador habilitado con éxito. Se reactivaron ${reactivatedCount} experiencia(s).`,
+          );
+        }
       }
     } catch (err: any) {
       console.error('[AdminProviders] Error en toggleProviderBajaStatus:', err);
@@ -2621,8 +2690,13 @@ export class AdminProvidersComponent implements OnInit {
     }
 
     const email = this.editEmail().trim().toLowerCase();
+    const originalEmail = p.email.trim().toLowerCase();
     if (!email) {
       this.showToast('⚠️ Por favor ingresá un correo electrónico.');
+      return;
+    }
+    if (email !== originalEmail) {
+      this.showToast('⚠️ No se permite modificar el correo del prestador porque afectaría el inicio de sesión y la autenticación.');
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -2672,12 +2746,8 @@ export class AdminProvidersComponent implements OnInit {
 
     this.saving.set(true);
 
-    let notesObj: any = {};
-    try {
-      notesObj = p.notes ? JSON.parse(p.notes) : {};
-    } catch {
-      notesObj = {};
-    }
+    const { metadata, freeText } = this.parseProviderNotes(p.notes);
+    const notesObj = metadata;
 
     const cleanEmail = p.email?.toLowerCase().trim();
     const cleanSlug = p.slug?.toLowerCase().trim();
@@ -2687,38 +2757,30 @@ export class AdminProvidersComponent implements OnInit {
       return (cleanEmail && eEmail === cleanEmail) || (cleanSlug && eSlug === cleanSlug);
     });
 
+    let expsToPause: Experience[] = [];
+    let expsToReactivate: Experience[] = [];
+
     if (newStatus === 'dado_de_baja' && oldStatus !== 'dado_de_baja') {
-      const published = providerExps.filter((e: Experience) => e.status === 'publicada');
-      notesObj.pausedByBajaExpIds = published.map((e: Experience) => e.id);
-      for (const exp of published) {
-        try {
-          await this.expService.updateExperience({ id: exp.id, status: 'oculta' });
-        } catch (eErr) {
-          console.warn('[AdminProviders] Error pausando experiencia:', eErr);
-        }
-      }
+      expsToPause = providerExps.filter((e: Experience) => e.status === 'publicada');
+      notesObj['pausedByBajaExpIds'] = expsToPause.map((e: Experience) => e.id);
     } else if (newStatus === 'aprobado' && oldStatus === 'dado_de_baja') {
-      const savedIds: string[] = Array.isArray(notesObj.pausedByBajaExpIds) ? notesObj.pausedByBajaExpIds : [];
-      const toReactivate = providerExps.filter((e: Experience) =>
-        (savedIds.length > 0 ? savedIds.includes(e.id) : true) && e.status === 'oculta',
-      );
-      delete notesObj.pausedByBajaExpIds;
-      for (const exp of toReactivate) {
-        try {
-          await this.expService.updateExperience({ id: exp.id, status: 'publicada' });
-        } catch (eErr) {
-          console.warn('[AdminProviders] Error reactivando experiencia:', eErr);
-        }
-      }
+      const hasExplicitBajaList = Array.isArray(notesObj['pausedByBajaExpIds']);
+      const savedIds: string[] = hasExplicitBajaList ? notesObj['pausedByBajaExpIds'] : [];
+      expsToReactivate = hasExplicitBajaList
+        ? providerExps.filter((e: Experience) => savedIds.includes(e.id) && e.status === 'oculta')
+        : [];
+      delete notesObj['pausedByBajaExpIds'];
     }
 
-    const updatedNotes = Object.keys(notesObj).length > 0 ? JSON.stringify(notesObj) : (p.notes || '');
+    const statusChangedToOrFromBaja =
+      (newStatus === 'dado_de_baja' && oldStatus !== 'dado_de_baja') ||
+      (newStatus === 'aprobado' && oldStatus === 'dado_de_baja');
 
-    const res = await this.store.providerStore.adminUpdateProvider(p.email, {
+    const updatePayload: Partial<ProviderUser> = {
       name,
       agency,
       slug,
-      email,
+      email: originalEmail,
       phone,
       bio: this.editBio().trim(),
       website,
@@ -2728,13 +2790,44 @@ export class AdminProvidersComponent implements OnInit {
       bankName: bank,
       accountHolder: holder,
       status: newStatus,
-      notes: updatedNotes,
-    });
+    };
+
+    if (statusChangedToOrFromBaja) {
+      const newNotes = this.serializeProviderNotes(notesObj, freeText);
+      const originalNotes = (p.notes || '').trim();
+      if (newNotes !== originalNotes) {
+        updatePayload.notes = newNotes;
+      }
+    }
+
+    const res = await this.store.providerStore.adminUpdateProvider(p.email, updatePayload);
 
     this.saving.set(false);
 
     if (res.success) {
-      this.showToast('¡Prestador guardado con éxito!');
+      let expUpdateErrors = false;
+      for (const exp of expsToPause) {
+        try {
+          await this.expService.updateExperience({ id: exp.id, status: 'oculta' });
+        } catch (eErr) {
+          expUpdateErrors = true;
+          console.warn('[AdminProviders] Error pausando experiencia:', eErr);
+        }
+      }
+      for (const exp of expsToReactivate) {
+        try {
+          await this.expService.updateExperience({ id: exp.id, status: 'publicada' });
+        } catch (eErr) {
+          expUpdateErrors = true;
+          console.warn('[AdminProviders] Error reactivando experiencia:', eErr);
+        }
+      }
+
+      if (expUpdateErrors) {
+        this.showToast('⚠️ Prestador guardado con éxito, pero algunas experiencias asociadas no pudieron actualizar su estado.');
+      } else {
+        this.showToast('¡Prestador guardado con éxito!');
+      }
       void this.router.navigateByUrl(this.getDetailRoute({ ...p, slug }));
     } else {
       this.showToast(res.message || 'Error al guardar los cambios.');

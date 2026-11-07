@@ -160,7 +160,7 @@ function verifyPostulacionExists(email, config) {
   return new Promise((resolve) => {
     const privilegedKey = config.supabaseServiceRoleKey || config.supabaseKey;
     if (!config.supabaseUrl || !privilegedKey || !email) {
-      return resolve(null);
+      return resolve({ status: 'error', error: 'Missing configuration or email' });
     }
     try {
       const cleanEmail = String(email).trim().toLowerCase();
@@ -180,7 +180,10 @@ function verifyPostulacionExists(email, config) {
         },
         (res) => {
           if (res.statusCode < 200 || res.statusCode >= 300) {
-            return resolve(null);
+            return resolve({
+              status: 'error',
+              error: `Database query returned HTTP ${res.statusCode}`,
+            });
           }
           let data = '';
           res.on('data', (c) => (data += c));
@@ -188,30 +191,33 @@ function verifyPostulacionExists(email, config) {
             try {
               const records = JSON.parse(data);
               if (!Array.isArray(records) || records.length === 0) {
-                return resolve(null);
+                return resolve({ status: 'not_found' });
               }
               const record = records[0];
               if (!record || typeof record !== 'object') {
-                return resolve(null);
+                return resolve({ status: 'not_found' });
               }
               resolve({
-                ...record,
-                full_name: record.name || record.agency || '',
+                status: 'found',
+                record: {
+                  ...record,
+                  full_name: record.name || record.agency || '',
+                },
               });
-            } catch {
-              resolve(null);
+            } catch (err) {
+              resolve({ status: 'error', error: err.message });
             }
           });
         },
       );
       req.setTimeout(8000, () => {
         req.destroy();
-        resolve(null);
+        resolve({ status: 'error', error: 'Database request timed out' });
       });
-      req.on('error', () => resolve(null));
+      req.on('error', (err) => resolve({ status: 'error', error: err.message }));
       req.end();
-    } catch {
-      resolve(null);
+    } catch (err) {
+      resolve({ status: 'error', error: err.message });
     }
   });
 }
@@ -1130,21 +1136,44 @@ module.exports = async function handler(req, res) {
           });
         }
 
-        const applicationRecord = await verifyPostulacionExists(data.email, config);
+        const lookupResult = await verifyPostulacionExists(data.email, config);
+        if (lookupResult.status === 'error') {
+          return res.status(502).json({
+            success: false,
+            error: 'No se pudo verificar el registro de postulación por un problema de conexión con el servidor.',
+          });
+        }
+
+        if (lookupResult.status === 'not_found' || !lookupResult.record) {
+          return res.status(404).json({
+            success: false,
+            error: 'No se encontró un registro de postulación previo para este correo.',
+          });
+        }
+
+        const applicationRecord = lookupResult.record;
+        const verifiedEmail = String(applicationRecord.email || '').trim().toLowerCase();
+        if (!verifiedEmail) {
+          return res.status(400).json({
+            success: false,
+            error: 'El registro de postulación no posee una dirección de correo válida.',
+          });
+        }
+
         const verifiedData = {
           fullName:
-            applicationRecord?.name ||
-            applicationRecord?.agency ||
-            applicationRecord?.full_name ||
-            applicationRecord?.fullName ||
+            applicationRecord.name ||
+            applicationRecord.agency ||
+            applicationRecord.full_name ||
+            applicationRecord.fullName ||
             data.fullName ||
             'Prestador',
-          category: applicationRecord?.category || data.category || 'Prestador de Servicios Turísticos',
-          region: applicationRecord?.region || data.region || 'Catamarca',
-          email: applicationRecord?.email || String(data.email).trim().toLowerCase(),
-          phone: applicationRecord?.phone || data.phone || '',
-          website: applicationRecord?.website || data.website || '',
-          description: applicationRecord?.description || data.description || '',
+          category: applicationRecord.category || data.category || 'Prestador de Servicios Turísticos',
+          region: applicationRecord.region || data.region || 'Catamarca',
+          email: verifiedEmail,
+          phone: applicationRecord.phone || data.phone || '',
+          website: applicationRecord.website || data.website || '',
+          description: applicationRecord.description || data.description || '',
         };
 
         // 1. Email al postulante confirmando recepción y estado de evaluación

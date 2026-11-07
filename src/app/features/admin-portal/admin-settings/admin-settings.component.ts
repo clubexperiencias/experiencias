@@ -286,10 +286,13 @@ import { ClubProfile } from '../../../core/models/club-profile.model';
           <button
             type="button"
             class="btn-save-settings"
-            [disabled]="isSaving()"
+            [disabled]="isSaving() || isLoading()"
             (click)="saveAllSettings()"
           >
-            @if (isSaving()) {
+            @if (isLoading()) {
+              <mat-icon class="btn-spin">sync</mat-icon>
+              <span>Cargando configuración...</span>
+            } @else if (isSaving()) {
               <mat-icon class="btn-spin">sync</mat-icon>
               <span>Guardando configuración...</span>
             } @else {
@@ -681,6 +684,7 @@ export class AdminSettingsComponent implements OnInit {
   readonly clubWebsite = signal('');
   readonly clubSocialMedia = signal('');
 
+  readonly isLoading = signal(true);
   readonly isSaving = signal(false);
   readonly saveError = signal<string | null>(null);
   readonly feedbackToast = signal<string | null>(null);
@@ -690,8 +694,14 @@ export class AdminSettingsComponent implements OnInit {
     return Math.round(100000 / rate);
   }
 
-  ngOnInit(): void {
-    this.loadFromStore();
+  async ngOnInit(): Promise<void> {
+    this.isLoading.set(true);
+    try {
+      await this.adminStore.loadClubProfile();
+      this.loadFromStore();
+    } finally {
+      this.isLoading.set(false);
+    }
   }
 
   private loadFromStore(): void {
@@ -713,11 +723,15 @@ export class AdminSettingsComponent implements OnInit {
   }
 
   async saveAllSettings(): Promise<void> {
-    const rate = Number(this.usdRate());
-    if (!rate || rate <= 0) {
-      this.saveError.set('⚠️ Por favor ingresá una cotización válida mayor a 0.');
+    if (this.isLoading()) {
       return;
     }
+    const rawRate = Number(this.usdRate());
+    if (!Number.isFinite(rawRate) || rawRate < 100) {
+      this.saveError.set('⚠️ Por favor ingresá una cotización válida (mínimo $100 ARS).');
+      return;
+    }
+    const rate = Math.round(rawRate);
 
     const name = this.clubName().trim();
     if (!name) {
@@ -735,8 +749,6 @@ export class AdminSettingsComponent implements OnInit {
     this.isSaving.set(true);
 
     try {
-      this.adminStore.setUsdExchangeRate(rate);
-
       const profilePayload: Partial<ClubProfile> = {
         name,
         agency: this.clubAgency().trim() || name,

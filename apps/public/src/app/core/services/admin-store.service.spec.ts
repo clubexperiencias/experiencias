@@ -41,6 +41,7 @@ describe('AdminStoreService - Provider Status Update Flow', () => {
       syncProviderStatusFromAdmin: vi.fn(),
       loadStoredProviders: vi.fn().mockReturnValue([]),
       reloadFromStorage: vi.fn(),
+      syncClubProviderProfile: vi.fn(),
     };
 
     TestBed.configureTestingModule({
@@ -50,7 +51,10 @@ describe('AdminStoreService - Provider Status Update Flow', () => {
         { provide: NotificationService, useValue: mockNotification },
         { provide: ProviderStoreService, useValue: mockProviderStore },
         { provide: NewsletterService, useValue: {} },
-        { provide: ExperienceService, useValue: { getClubProfile: vi.fn() } },
+        {
+          provide: ExperienceService,
+          useValue: { getClubProfile: vi.fn(), syncClubExperiencesWithProfile: vi.fn() },
+        },
       ],
     });
 
@@ -471,6 +475,74 @@ describe('AdminStoreService - Provider Status Update Flow', () => {
         }),
         { count: 'exact' },
       );
+    });
+  });
+
+  describe('USD Exchange Rate Management', () => {
+    it('should normalize accepted rates once and synchronize signal, localStorage, and club profile', () => {
+      adminStore.setUsdExchangeRate(1450.75);
+      expect(adminStore.usdExchangeRate()).toBe(1451);
+      expect(adminStore.clubProfile().usdExchangeRate).toBe(1451);
+      expect(localStorage.getItem('catamarca_usd_exchange_rate_v1')).toBe('1451');
+    });
+
+    it('should reject non-finite and non-positive rates without mutating existing rate', () => {
+      adminStore.setUsdExchangeRate(1350);
+      expect(adminStore.usdExchangeRate()).toBe(1350);
+
+      adminStore.setUsdExchangeRate(0);
+      expect(adminStore.usdExchangeRate()).toBe(1350);
+
+      adminStore.setUsdExchangeRate(-200);
+      expect(adminStore.usdExchangeRate()).toBe(1350);
+
+      adminStore.setUsdExchangeRate(NaN);
+      expect(adminStore.usdExchangeRate()).toBe(1350);
+
+      adminStore.setUsdExchangeRate(Infinity);
+      expect(adminStore.usdExchangeRate()).toBe(1350);
+
+      adminStore.setUsdExchangeRate(0.4);
+      expect(adminStore.usdExchangeRate()).toBe(1350);
+    });
+
+    it('should consistently use validated rounded rate in signal, merged data, and notes on updateClubProfile success', async () => {
+      let capturedPayload: any = null;
+      (adminStore as any).supabase.from = vi.fn().mockReturnValue({
+        update: vi.fn().mockImplementation((payload: any) => {
+          capturedPayload = payload;
+          return {
+            eq: vi.fn().mockReturnValue({
+              select: vi.fn().mockResolvedValue({ data: [{ ...payload, id: 'club-1' }], error: null }),
+            }),
+          };
+        }),
+      });
+
+      const res = await adminStore.updateClubProfile({ usdExchangeRate: 1550.6 });
+      expect(res.success).toBe(true);
+      expect(adminStore.usdExchangeRate()).toBe(1551);
+      expect(adminStore.clubProfile().usdExchangeRate).toBe(1551);
+      const notes = JSON.parse(capturedPayload.notes);
+      expect(notes.usd_exchange_rate).toBe(1551);
+    });
+
+    it('should keep USD exchange rate unchanged if updateClubProfile fails on database write', async () => {
+      adminStore.setUsdExchangeRate(1300);
+      expect(adminStore.usdExchangeRate()).toBe(1300);
+
+      (adminStore as any).supabase.from = vi.fn().mockReturnValue({
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            select: vi.fn().mockResolvedValue({ data: null, error: { message: 'Database connection failed' } }),
+          }),
+        }),
+      });
+
+      const res = await adminStore.updateClubProfile({ usdExchangeRate: 1600 });
+      expect(res.success).toBe(false);
+      expect(adminStore.usdExchangeRate()).toBe(1300);
+      expect(adminStore.clubProfile().usdExchangeRate).toBe(1300);
     });
   });
 });

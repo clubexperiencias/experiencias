@@ -1123,8 +1123,90 @@ export class ProviderStoreService {
           payload['status'] = updates.status;
           payload['active'] = updates.status === 'aprobado';
         }
+
+        // Cargar notas remotas actuales antes de aplicar la actualización para preservar
+        // metadatos persistidos (como pausedByBajaExpIds) si el registro local no los tenía cargados.
+        let remoteNotes: string | null = null;
+        try {
+          const { data: remoteRow } = await (this.supabase.from('prestadores') as any)
+            .select('notes')
+            .eq('email', email)
+            .maybeSingle();
+          if (remoteRow && typeof remoteRow.notes === 'string') {
+            remoteNotes = remoteRow.notes;
+          }
+        } catch (fetchErr) {
+          console.warn('[ProviderStore] No se pudieron cargar las notas remotas del prestador:', fetchErr);
+        }
+
         if (updates.notes !== undefined) {
-          payload['notes'] = updates.notes;
+          let finalNotes = updates.notes;
+
+          if (remoteNotes) {
+            let remoteObj: Record<string, any> | null = null;
+            try {
+              const parsed = JSON.parse(remoteNotes);
+              if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                remoteObj = parsed;
+              }
+            } catch {
+              remoteObj = null;
+            }
+
+            let localObj: Record<string, any> | null = null;
+            if (current.notes) {
+              try {
+                const parsedLocal = JSON.parse(current.notes);
+                if (parsedLocal && typeof parsedLocal === 'object' && !Array.isArray(parsedLocal)) {
+                  localObj = parsedLocal;
+                }
+              } catch {
+                localObj = null;
+              }
+            }
+
+            if (remoteObj) {
+              let updatesObj: Record<string, any> | null = null;
+              if (typeof updates.notes === 'string' && updates.notes.trim()) {
+                try {
+                  const parsedUpdates = JSON.parse(updates.notes);
+                  if (parsedUpdates && typeof parsedUpdates === 'object' && !Array.isArray(parsedUpdates)) {
+                    updatesObj = parsedUpdates;
+                  }
+                } catch {
+                  updatesObj = null;
+                }
+              }
+
+              const localHadBajaIds = !!(localObj && 'pausedByBajaExpIds' in localObj);
+              const shouldPreserveBajaIds = !localHadBajaIds && 'pausedByBajaExpIds' in remoteObj;
+
+              if (updatesObj) {
+                const merged = { ...remoteObj, ...updatesObj };
+                if (shouldPreserveBajaIds && !('pausedByBajaExpIds' in updatesObj)) {
+                  merged['pausedByBajaExpIds'] = remoteObj['pausedByBajaExpIds'];
+                }
+                finalNotes = JSON.stringify(merged);
+              } else if (typeof updates.notes === 'string') {
+                if (shouldPreserveBajaIds) {
+                  const merged = { ...remoteObj };
+                  if (updates.notes.trim()) {
+                    merged['text'] = updates.notes.trim();
+                  }
+                  finalNotes = JSON.stringify(merged);
+                } else if (!updates.notes.trim() && !localHadBajaIds && Object.keys(remoteObj).length > 0) {
+                  finalNotes = remoteNotes;
+                }
+              }
+            } else if (!updates.notes.trim() && (!current.notes || !current.notes.trim()) && remoteNotes.trim()) {
+              finalNotes = remoteNotes;
+            }
+          }
+
+          payload['notes'] = finalNotes;
+          updated.notes = finalNotes;
+        } else if (remoteNotes !== null && current.notes !== remoteNotes) {
+          updated.notes = remoteNotes;
         }
 
         const { data: updatedRows, error } = await (this.supabase.from('prestadores') as any)
@@ -2361,9 +2443,12 @@ export class ProviderStoreService {
   async loadProposalsFromSupabase(providerEmail?: string): Promise<void> {
     if (!isSupabaseConfigured()) return;
     try {
+      const statusFilter = providerEmail
+        ? ['pendiente', 'rechazada', 'publicada']
+        : ['pendiente', 'rechazada'];
       let expQuery = (this.supabase.from('experiencias') as any)
         .select('*')
-        .in('status', ['pendiente', 'rechazada']);
+        .in('status', statusFilter);
       if (providerEmail) {
         expQuery = expQuery.ilike('provider_email', providerEmail.trim().toLowerCase());
       }
@@ -2434,7 +2519,10 @@ export class ProviderStoreService {
             coverVideoUrl: row.video_url || '',
             coverVideoName: row.cover_video_name || '',
             albumPhotos: Array.isArray(row.album_photos) ? row.album_photos : [],
-            status: row.status as 'pendiente' | 'aprobada' | 'rechazada',
+            status: (row.status === 'publicada' ? 'aprobada' : row.status) as
+              | 'pendiente'
+              | 'aprobada'
+              | 'rechazada',
             createdAt: row.created_at || new Date().toISOString(),
             reviewedAt: row.reviewed_at || undefined,
           };
@@ -2444,13 +2532,22 @@ export class ProviderStoreService {
           // Si es consulta global de administrador, Supabase es la fuente de verdad
           this._experienceRequests.set(mapped);
         } else {
-          // Si es para un prestador particular, se actualizan sus propuestas y se preservan las demás
+          // Si es para un prestador particular, se actualizan sus propuestas y se preservan las demás,
+          // asegurando que las propuestas aprobadas sigan disponibles tras recargar.
+          const mappedIds = new Set(mapped.map((r) => r.id));
+          const preservedApproved = this._experienceRequests().filter(
+            (r) =>
+              r.id !== 'req-sunset-las-pirquitas' &&
+              r.providerEmail?.toLowerCase() === providerEmail.toLowerCase() &&
+              (r.status === 'aprobada' || (r.status as string) === 'publicada') &&
+              !mappedIds.has(r.id),
+          );
           const others = this._experienceRequests().filter(
             (r) =>
               r.id !== 'req-sunset-las-pirquitas' &&
               r.providerEmail?.toLowerCase() !== providerEmail.toLowerCase(),
           );
-          const merged = [...mapped, ...others].sort(
+          const merged = [...mapped, ...preservedApproved, ...others].sort(
             (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
           );
           this._experienceRequests.set(merged);

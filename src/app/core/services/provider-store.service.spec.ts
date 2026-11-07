@@ -493,5 +493,163 @@ describe('ProviderStoreService - Payment & Proposal Persistence', () => {
       expect(found).toBeUndefined();
     });
   });
+
+  describe('adminUpdateProvider - remote notes preservation', () => {
+    it('should preserve remote notes and pausedByBajaExpIds when updating unrelated provider fields', async () => {
+      const existingProvider = {
+        id: 'prov-001',
+        name: 'Guía Juan',
+        email: 'juan@test.com',
+        phone: '12345',
+        status: 'aprobado' as const,
+        notes: '',
+      };
+      (store as any)._providers.set([existingProvider]);
+
+      const remoteNotesJson = JSON.stringify({
+        pausedByBajaExpIds: ['exp-1', 'exp-2'],
+        text: 'Nota previa',
+      });
+
+      let capturedPayload: any = null;
+      mockSupabase.from = vi.fn().mockImplementation((table: string) => {
+        if (table === 'prestadores') {
+          return {
+            select: vi.fn().mockImplementation((cols: string) => {
+              if (cols === 'notes') {
+                return {
+                  eq: vi.fn().mockReturnValue({
+                    maybeSingle: vi.fn().mockResolvedValue({
+                      data: { notes: remoteNotesJson },
+                      error: null,
+                    }),
+                  }),
+                };
+              }
+              return {
+                eq: vi.fn().mockResolvedValue({ data: [{ id: 'prov-001' }], error: null }),
+              };
+            }),
+            update: vi.fn().mockImplementation((payload: any) => {
+              capturedPayload = payload;
+              return {
+                eq: vi.fn().mockReturnValue({
+                  select: vi.fn().mockResolvedValue({
+                    data: [{ id: 'prov-001' }],
+                    error: null,
+                  }),
+                }),
+              };
+            }),
+          };
+        }
+        return {
+          select: vi.fn().mockReturnThis(),
+        };
+      });
+
+      const res = await store.adminUpdateProvider('juan@test.com', {
+        phone: '5493834001122',
+      });
+
+      expect(res.success).toBe(true);
+      expect(capturedPayload).toBeTruthy();
+      expect(capturedPayload.phone).toBe('5493834001122');
+      expect(capturedPayload.notes).toBeUndefined();
+      const updated = store.allProviders().find((p) => p.email === 'juan@test.com');
+      expect(updated?.notes).toBe(remoteNotesJson);
+    });
+  });
+
+  describe('loadProposalsFromSupabase - provider refresh and approval recognition', () => {
+    it('should query published status and map remote status "publicada" to "aprobada", preserving approved requests', async () => {
+      // Local proposals before refresh: an approved request from this provider and one from another provider
+      const localApprovedReq: any = {
+        id: 'prop-approved-local',
+        title: 'Trekking Antofagasta',
+        providerEmail: 'guia@test.com',
+        status: 'aprobada',
+        createdAt: '2026-10-01T10:00:00.000Z',
+      };
+      const otherProviderReq: any = {
+        id: 'prop-other',
+        title: 'Cabalgata Belén',
+        providerEmail: 'carlos@test.com',
+        status: 'pendiente',
+        createdAt: '2026-10-02T10:00:00.000Z',
+      };
+      (store as any)._experienceRequests.set([localApprovedReq, otherProviderReq]);
+
+      let capturedStatuses: string[] = [];
+      mockSupabase.from = vi.fn().mockImplementation((table: string) => {
+        if (table === 'experiencias') {
+          return {
+            select: vi.fn().mockReturnValue({
+              in: vi.fn().mockImplementation((col: string, values: string[]) => {
+                capturedStatuses = values;
+                return {
+                  ilike: vi.fn().mockReturnValue({
+                    order: vi.fn().mockResolvedValue({
+                      data: [
+                        {
+                          id: 'remote-pub-1',
+                          title: 'Volcán Galán 4x4',
+                          provider_email: 'guia@test.com',
+                          status: 'publicada',
+                          created_at: '2026-10-05T10:00:00.000Z',
+                        },
+                        {
+                          id: 'remote-pend-1',
+                          title: 'Ruta del Adobe',
+                          provider_email: 'guia@test.com',
+                          status: 'pendiente',
+                          created_at: '2026-10-06T10:00:00.000Z',
+                        },
+                      ],
+                      error: null,
+                    }),
+                  }),
+                };
+              }),
+            }),
+          };
+        }
+        if (table === 'prestadores') {
+          return {
+            select: vi.fn().mockResolvedValue({ data: [], error: null }),
+          };
+        }
+        return {
+          select: vi.fn().mockReturnThis(),
+        };
+      });
+
+      await store.loadProposalsFromSupabase('guia@test.com');
+
+      expect(capturedStatuses).toContain('publicada');
+      expect(capturedStatuses).toContain('pendiente');
+      expect(capturedStatuses).toContain('rechazada');
+
+      const all = store.experienceRequests();
+      // remote-pub-1 should be mapped to status: 'aprobada'
+      const remotePub = all.find((r) => r.id === 'remote-pub-1');
+      expect(remotePub).toBeTruthy();
+      expect(remotePub?.status).toBe('aprobada');
+
+      // remote-pend-1 should remain 'pendiente'
+      const remotePend = all.find((r) => r.id === 'remote-pend-1');
+      expect(remotePend).toBeTruthy();
+      expect(remotePend?.status).toBe('pendiente');
+
+      // localApprovedReq from same provider should be preserved
+      const preservedLocal = all.find((r) => r.id === 'prop-approved-local');
+      expect(preservedLocal).toBeTruthy();
+      expect(preservedLocal?.status).toBe('aprobada');
+
+      // otherProviderReq from different provider should also be preserved
+      const preservedOther = all.find((r) => r.id === 'prop-other');
+      expect(preservedOther).toBeTruthy();
+    });
+  });
 });
 
