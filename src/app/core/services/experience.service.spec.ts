@@ -4,6 +4,7 @@ import {
   RESERVED_EXPERIENCE_SLUGS,
   STORAGE_KEY,
   PRIVILEGED_STORAGE_KEY,
+  PRIVILEGED_OWNER_KEY,
 } from './experience.service';
 import { SUPABASE_CLIENT } from '../supabase/supabase.client';
 import { Experience } from '../models/experience.model';
@@ -229,8 +230,9 @@ describe('ExperienceService', () => {
       expect(pubSaved?.providerCuitDni).toBeUndefined();
       expect(pubSaved?.providerBankName).toBeUndefined();
 
-      // Privileged items are in PRIVILEGED_STORAGE_KEY
-      const privRaw = localStorage.getItem(PRIVILEGED_STORAGE_KEY);
+      // Privileged items are in scoped storage key
+      const privKey = service.getPrivilegedStorageKey();
+      const privRaw = localStorage.getItem(privKey);
       expect(privRaw).toBeTruthy();
       const privParsed: Experience[] = JSON.parse(privRaw!);
       expect(privParsed.some((e) => e.id === 'exp-pend')).toBe(true);
@@ -238,16 +240,116 @@ describe('ExperienceService', () => {
 
     it('should clear privileged proposal copies and reset state on clearPrivilegedCache', () => {
       localStorage.setItem('catamarca_admin_session_v1', JSON.stringify({ email: 'admin@experiencias.club' }));
+      const privKey = service.getPrivilegedStorageKey();
       localStorage.setItem('catamarca_experience_requests_v1', JSON.stringify([{ id: 'req-1', status: 'pendiente' }]));
       localStorage.setItem('catamarca_provider_experiences_v5', JSON.stringify([{ id: 'prov-1', status: 'borrador' }]));
-      localStorage.setItem(PRIVILEGED_STORAGE_KEY, JSON.stringify([{ id: 'exp-pend', status: 'pendiente' }]));
+      localStorage.setItem(privKey, JSON.stringify([{ id: 'exp-pend', status: 'pendiente' }]));
 
       service.clearPrivilegedCache();
 
+      expect(localStorage.getItem(privKey)).toBeNull();
       expect(localStorage.getItem(PRIVILEGED_STORAGE_KEY)).toBeNull();
       expect(localStorage.getItem('catamarca_experience_requests_v1')).toBeNull();
       expect(localStorage.getItem('catamarca_provider_experiences_v5')).toBeNull();
       expect(service.experiences().some((e) => e.status === 'pendiente')).toBe(false);
+    });
+
+    it('should scope privileged cache to user identifier and clear prior cache on account change without SIGNED_OUT', () => {
+      // 1. Session for User A
+      localStorage.setItem('catamarca_admin_session_v1', JSON.stringify({ email: 'adminA@experiencias.club' }));
+      const keyA = service.getPrivilegedStorageKey();
+      expect(keyA).toContain('admin_admina_experiencias_club');
+
+      const privA: Experience[] = [
+        {
+          id: 'exp-priv-a',
+          slug: 'exp-priv-a',
+          title: 'Exp A',
+          tagline: 'Tagline',
+          description: 'Desc',
+          region: 'Puna',
+          difficulty: 'Exigente',
+          durationDays: 1,
+          durationLabel: '4 Horas',
+          altitudeMeters: 2000,
+          priceArs: 1000,
+          priceUsd: 10,
+          maxSpotsPerGroup: 5,
+          coverImage: '/img.jpg',
+          galleryImages: [],
+          highlights: [],
+          included: [],
+          status: 'pendiente',
+          isExclusiveClub: false,
+          isLocked: false,
+          detailRoute: '/experiencias/exp-priv-a',
+          publicUrl: 'https://experiencias.club/experiencias/exp-priv-a',
+        },
+      ];
+      (service as any).persistToLocalStorage(privA);
+      expect(localStorage.getItem(keyA)).toBeTruthy();
+
+      // 2. Switch session to User B without SIGNED_OUT
+      localStorage.setItem('catamarca_admin_session_v1', JSON.stringify({ email: 'adminB@experiencias.club' }));
+      const keyB = service.getPrivilegedStorageKey();
+      expect(keyB).toContain('admin_adminb_experiencias_club');
+      expect(keyB).not.toBe(keyA);
+
+      // Trigger sync by checking privileged session or persisting B's items
+      const privB: Experience[] = [
+        {
+          id: 'exp-priv-b',
+          slug: 'exp-priv-b',
+          title: 'Exp B',
+          tagline: 'Tagline',
+          description: 'Desc',
+          region: 'Puna',
+          difficulty: 'Exigente',
+          durationDays: 1,
+          durationLabel: '4 Horas',
+          altitudeMeters: 2000,
+          priceArs: 2000,
+          priceUsd: 20,
+          maxSpotsPerGroup: 5,
+          coverImage: '/img.jpg',
+          galleryImages: [],
+          highlights: [],
+          included: [],
+          status: 'pendiente',
+          isExclusiveClub: false,
+          isLocked: false,
+          detailRoute: '/experiencias/exp-priv-b',
+          publicUrl: 'https://experiencias.club/experiencias/exp-priv-b',
+        },
+      ];
+      (service as any).persistToLocalStorage(privB);
+
+      // Prior account A's cache must be cleared
+      expect(localStorage.getItem(keyA)).toBeNull();
+      // New account B's cache is active
+      expect(localStorage.getItem(keyB)).toBeTruthy();
+      const bParsed: Experience[] = JSON.parse(localStorage.getItem(keyB)!);
+      expect(bParsed.some((e) => e.id === 'exp-priv-b')).toBe(true);
+      expect(bParsed.some((e) => e.id === 'exp-priv-a')).toBe(false);
+    });
+
+    it('should discard PRIVILEGED_STORAGE_KEY before merging if its recorded owner differs from current identity', () => {
+      localStorage.setItem(
+        PRIVILEGED_STORAGE_KEY,
+        JSON.stringify([{ id: 'exp-stale', status: 'pendiente' }]),
+      );
+      localStorage.setItem(PRIVILEGED_OWNER_KEY, 'admin_old_admin@experiencias.club');
+
+      localStorage.setItem(
+        'catamarca_admin_session_v1',
+        JSON.stringify({ email: 'new_admin@experiencias.club' }),
+      );
+
+      const loaded = (service as any).loadInitialExperiences();
+
+      expect(loaded.some((e: Experience) => e.id === 'exp-stale')).toBe(false);
+      expect(localStorage.getItem(PRIVILEGED_STORAGE_KEY)).toBeNull();
+      expect(localStorage.getItem(PRIVILEGED_OWNER_KEY)).toBeNull();
     });
   });
 });

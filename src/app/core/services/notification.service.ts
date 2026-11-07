@@ -125,7 +125,7 @@ export class NotificationService {
   async notifyAlreadyRegistered(member: {
     email: string;
     fullName?: string;
-    position?: number | string;
+    position?: number | string | null;
     tier?: string;
   }): Promise<NotificationResult> {
     const payload = {

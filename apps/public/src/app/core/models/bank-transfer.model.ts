@@ -150,6 +150,14 @@ export function discountAmount(subtotalArs: number, discount: DiscountCode | und
 
 export type NewProviderExperience = Omit<ProviderExperience, 'id' | 'slug' | 'createdAt'>;
 
+export interface PublicPaymentDestination {
+  cbu: string;
+  accountHolder: string;
+  taxId: string;
+  entity: string;
+  isOfficialClub?: boolean;
+}
+
 export const BANK_TRANSFER_DESTINATION = {
   cbu: '3840200500000056402423',
   accountHolder: 'Patricio Facundo Diaz Tillar',

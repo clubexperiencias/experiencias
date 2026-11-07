@@ -124,7 +124,7 @@ export class NewsletterService {
             if (wlRpcErr) {
               await (this.supabase.from('socios') as any).upsert(
                 { email: authEmail, auth_user_id: authId, membership_tier: 'waitlist' },
-                { onConflict: 'email' },
+                { onConflict: 'email', ignoreDuplicates: true },
               );
             }
 
@@ -211,7 +211,7 @@ export class NewsletterService {
           if (wlRpcErr) {
             await (this.supabase.from('socios') as any).upsert(
               { email: authEmail, membership_tier: 'waitlist' },
-              { onConflict: 'email' },
+              { onConflict: 'email', ignoreDuplicates: true },
             );
           }
 
@@ -523,7 +523,7 @@ export class NewsletterService {
               .notifyAlreadyRegistered({
                 email: cleanEmail,
                 fullName: existing.full_name || cleanName,
-                position: existing.position,
+                position: existing.position ?? undefined,
                 tier: existing.membership_tier,
               })
               .catch((err) =>
@@ -550,14 +550,25 @@ export class NewsletterService {
             updatePayload['membership_tier'] = 'emergente';
           }
 
-          const { data: updatedSocio } = await this.supabase
+          const { data: updatedSocio, error: updateError } = await this.supabase
             .from('socios')
             .update(updatePayload as any)
             .eq('id', existing.id)
             .select('*')
             .maybeSingle();
 
-          const entry = mapDbRowToEntry(updatedSocio || existing);
+          if (updateError || !updatedSocio) {
+            this._isLoading.set(false);
+            console.warn('[NewsletterService] Error o fila vacía al actualizar socio:', updateError);
+            return {
+              success: false,
+              message:
+                updateError?.message ||
+                'No se pudo actualizar el registro de socio. Por favor, intentá nuevamente.',
+            };
+          }
+
+          const entry = mapDbRowToEntry(updatedSocio);
           const updatedEntries = [entry, ...this._entries().filter((e) => e.email !== cleanEmail)];
           this._entries.set(updatedEntries);
           this._currentMember.set(entry);

@@ -10,6 +10,7 @@ import {
 const KAYAK_IMAGE = '/assets/images/kayak-club-de-experiencias.jpg';
 export const STORAGE_KEY = 'club_experiencias_catalog_v1';
 export const PRIVILEGED_STORAGE_KEY = 'club_experiencias_privileged_v1';
+export const PRIVILEGED_OWNER_KEY = 'club_experiencias_privileged_v1_owner';
 export const DELETED_STORAGE_KEY = 'club_experiencias_deleted_ids_v1';
 export const RESERVED_EXPERIENCE_SLUGS = new Set([
   'fotos',
@@ -356,17 +357,38 @@ export class ExperienceService {
       return false;
     });
   }
+  private activeAccountIdentifier: string | null = null;
   readonly hasRemoteExperiences = this._hasRemoteExperiences.asReadonly();
   readonly remoteLoadPromise: Promise<boolean> = isSupabaseConfigured()
     ? this.loadFromSupabase()
     : Promise.resolve(true);
 
   constructor() {
+    if (typeof window !== 'undefined') {
+      this.activeAccountIdentifier = this.resolveActiveAccount();
+    }
     if (isSupabaseConfigured()) {
       try {
-        this.supabase.auth?.onAuthStateChange?.((event: string) => {
+        this.supabase.auth?.onAuthStateChange?.((event: string, session: any) => {
+          const newUserId = session?.user?.id || session?.user?.email;
+          const newAccount = newUserId
+            ? String(newUserId).trim().toLowerCase()
+            : this.resolveActiveAccount();
+
           if (event === 'SIGNED_OUT') {
             this.clearPrivilegedCache();
+            this.activeAccountIdentifier = null;
+          } else if (
+            this.activeAccountIdentifier &&
+            newAccount &&
+            this.activeAccountIdentifier !== newAccount
+          ) {
+            const prior = this.activeAccountIdentifier;
+            this.activeAccountIdentifier = newAccount;
+            this.clearAccountCache(prior);
+            void this.reloadFromSupabase();
+          } else {
+            this.activeAccountIdentifier = newAccount;
           }
         });
       } catch {
@@ -491,6 +513,10 @@ export class ExperienceService {
 
         if (updated.providerSlug !== undefined) {
           payload['provider_slug'] = updated.providerSlug || null;
+        }
+
+        if (merged.reviewedAt !== undefined) {
+          payload['reviewed_at'] = merged.reviewedAt;
         }
 
         let { data, error } = await this.supabase
@@ -950,25 +976,56 @@ export class ExperienceService {
         // Fallback
       }
 
-      if (this.hasPrivilegedSession()) {
+      const activeAccount = this.syncActiveAccount();
+      if (activeAccount) {
         try {
-          const privRaw = localStorage.getItem(PRIVILEGED_STORAGE_KEY);
+          const privKey = this.getPrivilegedStorageKey(activeAccount);
+          const recordedOwner = localStorage.getItem(PRIVILEGED_OWNER_KEY);
+
+          // Discard legacy/shared cache if its recorded owner differs from current identity
+          if (recordedOwner && recordedOwner !== activeAccount) {
+            localStorage.removeItem(PRIVILEGED_STORAGE_KEY);
+            localStorage.removeItem(PRIVILEGED_OWNER_KEY);
+          }
+
+          let privRaw = localStorage.getItem(privKey);
+          if (!privRaw && (!recordedOwner || recordedOwner === activeAccount)) {
+            privRaw = localStorage.getItem(PRIVILEGED_STORAGE_KEY);
+          }
+
           if (privRaw) {
-            const privParsed = JSON.parse(privRaw) as Experience[];
-            if (Array.isArray(privParsed) && privParsed.length > 0) {
-              const existingIds = new Set(localExperiences.map((e) => e.id.toLowerCase()));
-              const existingSlugs = new Set(localExperiences.map((e) => e.slug.toLowerCase()));
-              for (const p of privParsed) {
-                if (
-                  p &&
-                  !deletedIds.has(p.id) &&
-                  !deletedIds.has(p.slug) &&
-                  !existingIds.has((p.id || '').toLowerCase()) &&
-                  !existingSlugs.has((p.slug || '').toLowerCase())
-                ) {
-                  localExperiences.push(p);
-                  if (p.id) existingIds.add(p.id.toLowerCase());
-                  if (p.slug) existingSlugs.add(p.slug.toLowerCase());
+            const parsedJson = JSON.parse(privRaw);
+            const rawOwner =
+              parsedJson && typeof parsedJson === 'object' && !Array.isArray(parsedJson)
+                ? parsedJson.owner
+                : null;
+
+            if (rawOwner && rawOwner !== activeAccount) {
+              localStorage.removeItem(privKey);
+              localStorage.removeItem(PRIVILEGED_STORAGE_KEY);
+              localStorage.removeItem(PRIVILEGED_OWNER_KEY);
+            } else {
+              const privParsed: Experience[] = Array.isArray(parsedJson)
+                ? parsedJson
+                : Array.isArray(parsedJson?.items)
+                  ? parsedJson.items
+                  : [];
+
+              if (privParsed.length > 0) {
+                const existingIds = new Set(localExperiences.map((e) => e.id.toLowerCase()));
+                const existingSlugs = new Set(localExperiences.map((e) => e.slug.toLowerCase()));
+                for (const p of privParsed) {
+                  if (
+                    p &&
+                    !deletedIds.has(p.id) &&
+                    !deletedIds.has(p.slug) &&
+                    !existingIds.has((p.id || '').toLowerCase()) &&
+                    !existingSlugs.has((p.slug || '').toLowerCase())
+                  ) {
+                    localExperiences.push(p);
+                    if (p.id) existingIds.add(p.id.toLowerCase());
+                    if (p.slug) existingSlugs.add(p.slug.toLowerCase());
+                  }
                 }
               }
             }
@@ -978,7 +1035,7 @@ export class ExperienceService {
         }
       } else {
         try {
-          localStorage.removeItem(PRIVILEGED_STORAGE_KEY);
+          this.clearPrivilegedStorageKeys();
         } catch {
           // ignore
         }
@@ -1215,15 +1272,180 @@ export class ExperienceService {
       });
   }
 
-  private hasPrivilegedSession(): boolean {
+  resolveActiveAccount(): string | null {
+    if (typeof window === 'undefined') return null;
+    try {
+      // 1. Supabase auth token
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('sb-') && key.endsWith('-auth-token')) {
+          const raw = localStorage.getItem(key);
+          if (raw) {
+            try {
+              const parsed = JSON.parse(raw);
+              const user = parsed?.user;
+              const id = user?.id || user?.email;
+              if (id) return String(id).trim().toLowerCase();
+            } catch {
+              // ignore
+            }
+          }
+        }
+      }
+
+      // 2. Admin session
+      const adminRaw = localStorage.getItem('catamarca_admin_session_v1');
+      if (adminRaw) {
+        try {
+          const parsed = JSON.parse(adminRaw);
+          const id = parsed?.email || parsed?.id;
+          if (id) return `admin_${String(id).trim().toLowerCase()}`;
+        } catch {
+          // ignore
+        }
+      }
+
+      // 3. Provider session
+      const provRaw = localStorage.getItem('catamarca_provider_session_v5');
+      if (provRaw) {
+        try {
+          const parsed = JSON.parse(provRaw);
+          const id = parsed?.email || parsed?.id;
+          if (id) return `provider_${String(id).trim().toLowerCase()}`;
+        } catch {
+          // ignore
+        }
+      }
+    } catch {
+      return null;
+    }
+    return null;
+  }
+
+  getPrivilegedStorageKey(account?: string | null): string {
+    const acc = account !== undefined ? account : this.resolveActiveAccount();
+    if (!acc) return PRIVILEGED_STORAGE_KEY;
+    const sanitized = acc.replace(/[^a-zA-Z0-9_-]/g, '_');
+    return `${PRIVILEGED_STORAGE_KEY}:${sanitized}`;
+  }
+
+  private clearPrivilegedStorageKeys(): void {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.removeItem(PRIVILEGED_STORAGE_KEY);
+      localStorage.removeItem(PRIVILEGED_OWNER_KEY);
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith(PRIVILEGED_STORAGE_KEY)) {
+          keysToRemove.push(key);
+        }
+      }
+      for (const k of keysToRemove) {
+        localStorage.removeItem(k);
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  private clearAccountCache(accountId: string): void {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem(this.getPrivilegedStorageKey(accountId));
+        const recordedOwner = localStorage.getItem(PRIVILEGED_OWNER_KEY);
+        if (!recordedOwner || recordedOwner === accountId) {
+          localStorage.removeItem(PRIVILEGED_STORAGE_KEY);
+          localStorage.removeItem(PRIVILEGED_OWNER_KEY);
+        }
+      } catch {
+        // ignore
+      }
+    }
+    const current = this._experiences();
+    const publicOnly = current.filter((exp) => (exp.status || 'publicada') === 'publicada');
+    const sanitizedMemory = publicOnly.map((exp) => {
+      const copy = { ...exp };
+      delete copy.notes;
+      delete copy.pendingRemoteSync;
+      if (!exp.isClubExperience) {
+        delete copy.providerCbuAlias;
+        delete copy.providerCuitDni;
+        delete copy.providerBankName;
+      }
+      return copy;
+    });
+    this._experiences.set(sanitizedMemory);
+  }
+
+  private loadPrivilegedFromLocalStorage(accountId: string): void {
+    if (typeof window === 'undefined') return;
+    try {
+      const privKey = this.getPrivilegedStorageKey(accountId);
+      const recordedOwner = localStorage.getItem(PRIVILEGED_OWNER_KEY);
+      if (recordedOwner && recordedOwner !== accountId) {
+        localStorage.removeItem(PRIVILEGED_STORAGE_KEY);
+        localStorage.removeItem(PRIVILEGED_OWNER_KEY);
+      }
+
+      let privRaw = localStorage.getItem(privKey);
+      if (!privRaw && (!recordedOwner || recordedOwner === accountId)) {
+        privRaw = localStorage.getItem(PRIVILEGED_STORAGE_KEY);
+      }
+      if (!privRaw) return;
+      const parsedJson = JSON.parse(privRaw);
+      const privParsed: Experience[] = Array.isArray(parsedJson)
+        ? parsedJson
+        : Array.isArray(parsedJson?.items)
+          ? parsedJson.items
+          : [];
+      if (privParsed.length > 0) {
+        const deletedIds = this.getDeletedIds();
+        const current = this._experiences();
+        const existingIds = new Set(current.map((e) => e.id.toLowerCase()));
+        const existingSlugs = new Set(current.map((e) => e.slug.toLowerCase()));
+        const merged = [...current];
+        for (const p of privParsed) {
+          if (
+            p &&
+            !deletedIds.has(p.id) &&
+            !deletedIds.has(p.slug) &&
+            !existingIds.has((p.id || '').toLowerCase()) &&
+            !existingSlugs.has((p.slug || '').toLowerCase())
+          ) {
+            merged.push(p);
+            if (p.id) existingIds.add(p.id.toLowerCase());
+            if (p.slug) existingSlugs.add(p.slug.toLowerCase());
+          }
+        }
+        this._experiences.set(merged);
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  private syncActiveAccount(): string | null {
+    const current = this.resolveActiveAccount();
+    if (this.activeAccountIdentifier && current && this.activeAccountIdentifier !== current) {
+      const prior = this.activeAccountIdentifier;
+      this.activeAccountIdentifier = current;
+      this.clearAccountCache(prior);
+      this.loadPrivilegedFromLocalStorage(current);
+    } else if (this.activeAccountIdentifier && !current) {
+      const prior = this.activeAccountIdentifier;
+      this.activeAccountIdentifier = null;
+      this.clearAccountCache(prior);
+    } else {
+      this.activeAccountIdentifier = current;
+    }
+    return current;
+  }
+
+  hasPrivilegedSession(): boolean {
     if (typeof window === 'undefined') return false;
     try {
-      const hasProviderSession = Boolean(localStorage.getItem('catamarca_provider_session_v5'));
-      const hasAdminSession = Boolean(localStorage.getItem('catamarca_admin_session_v1'));
-      const hasSbAuth = Object.keys(localStorage).some(
-        (k) => k.startsWith('sb-') && k.endsWith('-auth-token') && Boolean(localStorage.getItem(k)),
-      );
-      return hasProviderSession || hasAdminSession || hasSbAuth;
+      return Boolean(this.syncActiveAccount());
     } catch {
       return false;
     }
@@ -1232,10 +1454,12 @@ export class ExperienceService {
   private persistPrivilegedToLocalStorage(list: Experience[]): void {
     if (typeof window === 'undefined') return;
     try {
-      if (!this.hasPrivilegedSession()) {
-        localStorage.removeItem(PRIVILEGED_STORAGE_KEY);
+      const activeAccount = this.syncActiveAccount();
+      if (!activeAccount) {
+        this.clearPrivilegedStorageKeys();
         return;
       }
+      const privKey = this.getPrivilegedStorageKey(activeAccount);
       const privilegedItems = list.filter(
         (exp) =>
           exp.status !== 'publicada' ||
@@ -1247,9 +1471,13 @@ export class ExperienceService {
               Boolean(exp.providerBankName))),
       );
       if (privilegedItems.length > 0) {
+        localStorage.setItem(privKey, JSON.stringify(privilegedItems));
         localStorage.setItem(PRIVILEGED_STORAGE_KEY, JSON.stringify(privilegedItems));
+        localStorage.setItem(PRIVILEGED_OWNER_KEY, activeAccount);
       } else {
+        localStorage.removeItem(privKey);
         localStorage.removeItem(PRIVILEGED_STORAGE_KEY);
+        localStorage.removeItem(PRIVILEGED_OWNER_KEY);
       }
     } catch {
       // Ignorar quota errors
@@ -1271,7 +1499,7 @@ export class ExperienceService {
   clearPrivilegedCache(): void {
     if (typeof window !== 'undefined') {
       try {
-        localStorage.removeItem(PRIVILEGED_STORAGE_KEY);
+        this.clearPrivilegedStorageKeys();
       } catch {
         // ignore
       }

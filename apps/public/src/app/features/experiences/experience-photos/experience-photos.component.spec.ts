@@ -109,6 +109,23 @@ describe('ExperiencePhotosComponent (/experiencias/:slug/fotos)', () => {
     expect(component.isValidGoogleMapsUrl(undefined)).toBe(false);
 
     expect(component.getTrimmedUrl('   https://maps.google.com   ')).toBe('https://maps.google.com');
+    expect(component.getTrimmedUrl('http://maps.google.com/?q=Catamarca')).toBe('https://maps.google.com/?q=Catamarca');
+    expect(component.getTrimmedUrl('   http://maps.app.goo.gl/xyz123   ')).toBe('https://maps.app.goo.gl/xyz123');
+    expect(component.getTrimmedUrl('http://example.com/not-maps')).toBe('http://example.com/not-maps');
     expect(component.getTrimmedUrl(undefined)).toBe('');
+
+    // Preference: meetingPointUrl over meetingPoint
+    expect(
+      component.getMeetingPointUrl('https://maps.app.goo.gl/explicit', 'Dique El Jumeal'),
+    ).toBe('https://maps.app.goo.gl/explicit');
+    expect(
+      component.getMeetingPointUrl('http://maps.google.com/?q=preferred', 'https://maps.google.com/?q=fallback'),
+    ).toBe('https://maps.google.com/?q=preferred');
+    expect(
+      component.getMeetingPointUrl(undefined, 'http://maps.app.goo.gl/fallback'),
+    ).toBe('https://maps.app.goo.gl/fallback');
+    expect(
+      component.getMeetingPointUrl(undefined, 'Dique El Jumeal'),
+    ).toBeNull();
   });
 });

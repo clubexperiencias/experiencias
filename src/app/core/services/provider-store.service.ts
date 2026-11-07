@@ -1,6 +1,7 @@
-export type { ProviderUser };
+export type { ProviderUser, PublicPaymentDestination };
 import { Injectable, computed, inject, signal } from '@angular/core';
 import {
+  BANK_TRANSFER_DESTINATION,
   ExperienceAlbumPhoto,
   ExperienceDateSlot,
   MAX_PARTICIPANTS_PER_BOOKING,
@@ -8,6 +9,7 @@ import {
   NewTransferSubmission,
   ProviderExperience,
   ProviderUser,
+  PublicPaymentDestination,
   RECEIPT_ACCEPTED_TYPES,
   RECEIPT_MAX_BYTES,
   TransferStatus,
@@ -19,7 +21,7 @@ import { Experience } from '../models/experience.model';
 import { TransactionalEmailService } from './transactional-email.service';
 import { NewsletterService } from './newsletter.service';
 import { ActivityHistoryService } from './activity-history.service';
-import { ClubProfile, isClubProvider } from '../models/club-profile.model';
+import { ClubProfile, isClubExperience, isClubProvider } from '../models/club-profile.model';
 import {
   ExperienceService,
   KAYAK_ALBUM_PHOTOS,
@@ -42,6 +44,7 @@ const STORAGE_KEYS = {
 
 export interface ExperienceProposalRequest {
   id: string;
+  slug?: string;
   providerId: string;
   providerName: string;
   providerAgency: string;
@@ -2264,9 +2267,15 @@ export class ProviderStoreService {
       typeof crypto !== 'undefined' && crypto.randomUUID
         ? crypto.randomUUID()
         : 'req-' + Date.now();
+    const idSuffix = id.replace(/[^a-z0-9]/gi, '').slice(-8).toLowerCase() || 'prop';
+    const rawSlug = slugify(data.title || '');
+    const baseSlug = rawSlug || 'experiencia';
+    const generatedSlug = `${baseSlug}-${idSuffix}`;
+
     const newReq: ExperienceProposalRequest = {
       ...data,
       id,
+      slug: (data as any).slug || generatedSlug,
       status: 'pendiente',
       createdAt: new Date().toISOString(),
     };
@@ -2276,16 +2285,9 @@ export class ProviderStoreService {
     // Persistir en Supabase en tabla unificada experiencias (status: 'pendiente')
     if (isSupabaseConfigured()) {
       try {
-        const generatedSlug = (newReq.title || 'experiencia')
-          .toLowerCase()
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/(^-|-$)/g, '');
-
         const unifiedExpPayload: Record<string, any> = {
           id: newReq.id,
-          slug: generatedSlug,
+          slug: newReq.slug || generatedSlug,
           title: newReq.title,
           kicker: newReq.kicker || 'EXPERIENCIA',
           tagline: newReq.subheading || '',
@@ -2309,9 +2311,6 @@ export class ProviderStoreService {
           provider_agency: newReq.providerAgency || '',
           provider_email: (newReq.providerEmail || '').toLowerCase(),
           provider_phone: newReq.providerPhone || '',
-          provider_cbu_alias: newReq.providerCbuAlias || '',
-          provider_cuit_dni: newReq.providerCuitDni || '',
-          provider_bank_name: newReq.providerBankName || '',
           participant_requirements: newReq.participantRequirements || '',
           notes: newReq.notes || '',
           status: 'pendiente',
@@ -2327,6 +2326,41 @@ export class ProviderStoreService {
           this._experienceRequests.update((list) => list.filter((r) => r.id !== newReq.id));
           this.saveRequests();
           throw insErr;
+        }
+
+        // Persistir identificadores bancarios de forma aislada en prestadores (protegido por RLS)
+        const targetEmail = (newReq.providerEmail || '').trim().toLowerCase();
+        if (
+          targetEmail &&
+          (newReq.providerCbuAlias || newReq.providerCuitDni || newReq.providerBankName)
+        ) {
+          const bankingPayload: Record<string, any> = {};
+          if (newReq.providerCbuAlias) bankingPayload['cbu_alias'] = newReq.providerCbuAlias.trim();
+          if (newReq.providerCuitDni) bankingPayload['cuit_dni'] = newReq.providerCuitDni.trim();
+          if (newReq.providerBankName) bankingPayload['bank_name'] = newReq.providerBankName.trim();
+
+          try {
+            const { data: updatedRows, error: upErr } = await (this.supabase.from('prestadores') as any)
+              .update(bankingPayload)
+              .eq('email', targetEmail)
+              .select('email');
+
+            if (!upErr && (!updatedRows || updatedRows.length === 0)) {
+              await (this.supabase.from('prestadores') as any).insert({
+                email: targetEmail,
+                name: newReq.providerName || targetEmail.split('@')[0],
+                agency: newReq.providerAgency || '',
+                phone: newReq.providerPhone || '',
+                cbu_alias: newReq.providerCbuAlias?.trim() || '',
+                cuit_dni: newReq.providerCuitDni?.trim() || '',
+                bank_name: newReq.providerBankName?.trim() || '',
+                active: false,
+                status: 'pendiente',
+              });
+            }
+          } catch (pErr) {
+            console.warn('[ProviderStore] Error persistiendo datos bancarios en prestadores:', pErr);
+          }
         }
       } catch (dbErr) {
         console.warn('[ProviderStore] Error al guardar propuesta en base de datos:', dbErr);
@@ -2358,44 +2392,68 @@ export class ProviderStoreService {
       }
 
       if (expData && Array.isArray(expData)) {
-        const mapped: ExperienceProposalRequest[] = expData.map((row: any) => ({
-          id: row.id,
-          providerId: row.provider_id || '',
-          providerName: row.provider_name || '',
-          providerAgency: row.provider_agency || '',
-          providerEmail: row.provider_email || '',
-          providerPhone: row.provider_phone || '',
-          providerCbuAlias: row.provider_cbu_alias || undefined,
-          providerBankName: row.provider_bank_name || undefined,
-          providerCuitDni: row.provider_cuit_dni || undefined,
-          title: row.title,
-          kicker: row.kicker || 'EXPERIENCIA',
-          subheading: row.tagline || row.description || '',
-          region: row.region || '',
-          difficulty: row.difficulty || 'Moderada',
-          duration: row.duration_label || '4 horas',
-          altitude: row.altitude_meters ? `${row.altitude_meters} msnm` : '',
-          capacity: row.capacity_per_date || 12,
-          season: row.best_season || 'Todo el año',
-          dates: Array.isArray(row.dates) && row.dates.length > 0 ? row.dates[0] : 'A coordinar',
-          priceArs: row.price_ars,
-          priceUsd: row.price_usd,
-          promosAndPricing: row.promos_and_pricing || '',
-          itinerary: row.itinerary || '',
-          meetingPoint: row.meeting_point || '',
-          meetingPointUrl: row.meeting_point_url || '',
-          includedServices: Array.isArray(row.included) ? row.included.join('\n') : '',
-          participantRequirements: row.participant_requirements || '',
-          notes: row.notes || '',
-          coverImage: row.cover_image || '/assets/images/kayak-club-de-experiencias.jpg',
-          coverImageName: row.cover_image_name || '',
-          coverVideoUrl: row.video_url || '',
-          coverVideoName: row.cover_video_name || '',
-          albumPhotos: row.album_photos || [],
-          status: row.status as 'pendiente' | 'aprobada' | 'rechazada',
-          createdAt: row.created_at || new Date().toISOString(),
-          reviewedAt: row.reviewed_at || undefined,
-        }));
+        let providerBankingMap = new Map<
+          string,
+          { cbu_alias?: string; cuit_dni?: string; bank_name?: string }
+        >();
+        try {
+          const { data: accessRows } = await (
+            this.supabase.from('prestadores') as any
+          ).select('email, cbu_alias, cuit_dni, bank_name');
+          if (Array.isArray(accessRows)) {
+            for (const row of accessRows) {
+              if (row?.email) {
+                providerBankingMap.set(row.email.trim().toLowerCase(), row);
+              }
+            }
+          }
+        } catch {
+          // Si no está autorizado para leer prestadores, se maneja de forma segura
+        }
+
+        const mapped: ExperienceProposalRequest[] = expData.map((row: any) => {
+          const email = (row.provider_email || '').trim().toLowerCase();
+          const banking = providerBankingMap.get(email);
+          return {
+            id: row.id,
+            slug: row.slug || undefined,
+            providerId: row.provider_id || '',
+            providerName: row.provider_name || '',
+            providerAgency: row.provider_agency || '',
+            providerEmail: row.provider_email || '',
+            providerPhone: row.provider_phone || '',
+            providerCbuAlias: banking?.cbu_alias || undefined,
+            providerBankName: banking?.bank_name || undefined,
+            providerCuitDni: banking?.cuit_dni || undefined,
+            title: row.title,
+            kicker: row.kicker || 'EXPERIENCIA',
+            subheading: row.tagline || row.description || '',
+            region: row.region || '',
+            difficulty: row.difficulty || 'Moderada',
+            duration: row.duration_label || '4 horas',
+            altitude: row.altitude_meters ? `${row.altitude_meters} msnm` : '',
+            capacity: row.capacity_per_date || 12,
+            season: row.best_season || 'Todo el año',
+            dates: Array.isArray(row.dates) && row.dates.length > 0 ? row.dates[0] : 'A coordinar',
+            priceArs: row.price_ars,
+            priceUsd: row.price_usd,
+            promosAndPricing: row.promos_and_pricing || '',
+            itinerary: row.itinerary || '',
+            meetingPoint: row.meeting_point || '',
+            meetingPointUrl: row.meeting_point_url || '',
+            includedServices: Array.isArray(row.included) ? row.included.join('\n') : '',
+            participantRequirements: row.participant_requirements || '',
+            notes: row.notes || '',
+            coverImage: row.cover_image || '/assets/images/kayak-club-de-experiencias.jpg',
+            coverImageName: row.cover_image_name || '',
+            coverVideoUrl: row.video_url || '',
+            coverVideoName: row.cover_video_name || '',
+            albumPhotos: Array.isArray(row.album_photos) ? row.album_photos : [],
+            status: row.status as 'pendiente' | 'aprobada' | 'rechazada',
+            createdAt: row.created_at || new Date().toISOString(),
+            reviewedAt: row.reviewed_at || undefined,
+          };
+        });
 
         const existingMap = new Map(this._experienceRequests().map((r) => [r.id, r]));
         for (const m of mapped) {
@@ -2428,7 +2486,8 @@ export class ProviderStoreService {
     const resolvedProviderName = (req.providerAgency || req.providerName || '').trim();
     const resolvedProviderPhone = req.providerPhone?.trim() || undefined;
 
-    let baseSlug = slugify(req.title) || 'experiencia';
+    const storedSlug = (req.slug || '').trim().toLowerCase();
+    let baseSlug = storedSlug || slugify(req.title) || 'experiencia';
     if (RESERVED_EXPERIENCE_SLUGS.has(baseSlug.toLowerCase())) {
       baseSlug = `${baseSlug}-exp`;
     }
@@ -2459,7 +2518,7 @@ export class ProviderStoreService {
       generatedSlug = `${baseSlug}-${suffix++}`;
     }
     const finalId = 'exp-' + generatedSlug;
-    const resolvedUrl = `https://experiencias.club/experiencias/${generatedSlug}`;
+    const resolvedUrl = publicUrl?.trim() || `https://experiencias.club/experiencias/${generatedSlug}`;
 
     // Solo usar fechas confirmadas por el prestador o administrador.
     // Cuando las fechas son "A coordinar", se publican sin fechas reservables fijas ([]).
@@ -2468,18 +2527,81 @@ export class ProviderStoreService {
         ? confirmedDates
         : parseConfirmedProposalDates(req.dates);
 
+    let bankingFromPrestadores: { cbu_alias?: string; cuit_dni?: string; bank_name?: string } | null = null;
+    if (isSupabaseConfigured() && normalizedEmail) {
+      try {
+        const { data: pRow } = await (this.supabase.from('prestadores') as any)
+          .select('cbu_alias, cuit_dni, bank_name')
+          .eq('email', normalizedEmail)
+          .maybeSingle();
+        if (pRow) {
+          bankingFromPrestadores = pRow;
+        }
+      } catch {
+        // Fallback si no hay conexión o permisos
+      }
+    }
+
     // 1. Preservar o crear en el catálogo oficial de ExperienceService antes de reportar aprobación
-    const existingInService = this.expService.experiences().find((e) => e.id === requestId);
+    const existingInService = this.expService
+      .experiences()
+      .find((e) => e.id === requestId || e.id === finalId || e.slug === generatedSlug);
+
+    const publishedId = existingInService ? existingInService.id : requestId;
+
+    let remoteRow: any = null;
+    if (isSupabaseConfigured()) {
+      try {
+        const { data } = await (this.supabase.from('experiencias') as any)
+          .select('id, slug, status')
+          .eq('id', requestId)
+          .maybeSingle();
+        remoteRow = data;
+      } catch {
+        remoteRow = null;
+      }
+    }
+
     if (existingInService) {
       await this.expService.updateExperience({
-        id: requestId,
+        id: publishedId,
+        slug: generatedSlug,
         status: 'publicada',
         dates: publishedDates,
         publicUrl: resolvedUrl,
+        reviewedAt: new Date().toISOString(),
       });
+    } else if (remoteRow) {
+      try {
+        const { error: updErr } = await (this.supabase.from('experiencias') as any)
+          .update({
+            status: 'publicada',
+            slug: generatedSlug,
+            public_url: resolvedUrl,
+            dates: publishedDates,
+            provider_cbu_alias: null,
+            provider_cuit_dni: null,
+            provider_bank_name: null,
+            reviewed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', requestId);
+
+        if (updErr) {
+          console.warn('[ProviderStore] Error actualizando fila remota en experiencias:', updErr);
+        }
+      } catch (err) {
+        console.warn('[ProviderStore] Excepción al actualizar fila remota en experiencias:', err);
+      }
+
+      try {
+        await this.expService.reloadFromSupabase();
+      } catch (err) {
+        console.warn('[ProviderStore] Error recargando catálogo en ExperienceService:', err);
+      }
     } else {
       const experienceForCatalog: Experience = {
-        id: finalId,
+        id: publishedId,
         slug: generatedSlug,
         title: req.title,
         shortTitle: req.title.split('&')[0].trim(),
@@ -2532,9 +2654,12 @@ export class ProviderStoreService {
         providerSlug: resolvedProviderSlug,
         providerName: resolvedProviderName || undefined,
         providerPhone: resolvedProviderPhone,
-        providerCbuAlias: req.providerCbuAlias || existingProvider?.cbuAlias,
-        providerCuitDni: req.providerCuitDni || existingProvider?.cuitDni,
-        providerBankName: req.providerBankName || existingProvider?.bankName,
+        providerCbuAlias:
+          bankingFromPrestadores?.cbu_alias || req.providerCbuAlias || existingProvider?.cbuAlias,
+        providerCuitDni:
+          bankingFromPrestadores?.cuit_dni || req.providerCuitDni || existingProvider?.cuitDni,
+        providerBankName:
+          bankingFromPrestadores?.bank_name || req.providerBankName || existingProvider?.bankName,
       };
 
       try {
@@ -2548,22 +2673,27 @@ export class ProviderStoreService {
     this._experienceRequests.update((list) =>
       list.map((r) =>
         r.id === requestId
-          ? { ...r, status: 'aprobada' as const, reviewedAt: new Date().toISOString() }
+          ? { ...r, slug: generatedSlug, status: 'aprobada' as const, reviewedAt: new Date().toISOString() }
           : r,
       ),
     );
     this.saveRequests();
 
-    if (isSupabaseConfigured()) {
+    if (isSupabaseConfigured() && !remoteRow) {
       try {
         const { error } = await (this.supabase.from('experiencias') as any)
           .update({
             status: 'publicada',
+            slug: generatedSlug,
+            public_url: resolvedUrl,
             dates: publishedDates,
+            provider_cbu_alias: null,
+            provider_cuit_dni: null,
+            provider_bank_name: null,
             reviewed_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           })
-          .eq('id', requestId);
+          .eq('id', publishedId);
 
         if (error) {
           console.warn(
@@ -2577,12 +2707,15 @@ export class ProviderStoreService {
     }
 
     if (req) {
-      const exists = this._experiences().some(
-        (e) => e.title.toLowerCase() === req.title.toLowerCase(),
+      const existsIndex = this._experiences().findIndex(
+        (e) =>
+          e.id === publishedId ||
+          e.slug === generatedSlug ||
+          e.title.toLowerCase() === req.title.toLowerCase(),
       );
-      if (!exists) {
+      if (existsIndex === -1) {
         const newExp: ProviderExperience = {
-          id: finalId,
+          id: publishedId,
           slug: generatedSlug,
           title: req.title,
           shortTitle: req.title.split('&')[0].trim(),
@@ -2605,13 +2738,32 @@ export class ProviderStoreService {
           providerSlug: resolvedProviderSlug,
           providerName: resolvedProviderName,
           providerPhone: resolvedProviderPhone,
-          providerCbuAlias: req.providerCbuAlias || existingProvider?.cbuAlias,
-          providerCuitDni: req.providerCuitDni || existingProvider?.cuitDni,
-          providerBankName: req.providerBankName || existingProvider?.bankName,
+          providerCbuAlias:
+            bankingFromPrestadores?.cbu_alias || req.providerCbuAlias || existingProvider?.cbuAlias,
+          providerCuitDni:
+            bankingFromPrestadores?.cuit_dni || req.providerCuitDni || existingProvider?.cuitDni,
+          providerBankName:
+            bankingFromPrestadores?.bank_name || req.providerBankName || existingProvider?.bankName,
           coverImage: req.coverImage || '/assets/images/kayak-club-de-experiencias.jpg',
           createdAt: new Date().toISOString(),
         };
         this._experiences.update((exps) => [newExp, ...exps]);
+        this.saveExperiences();
+      } else {
+        this._experiences.update((exps) =>
+          exps.map((e, idx) =>
+            idx === existsIndex
+              ? {
+                  ...e,
+                  id: publishedId,
+                  slug: generatedSlug,
+                  status: 'publicada',
+                  publicUrl: resolvedUrl,
+                  dates: publishedDates,
+                }
+              : e,
+          ),
+        );
         this.saveExperiences();
       }
     }
@@ -2642,7 +2794,21 @@ export class ProviderStoreService {
 
     const inService = this.expService.experiences().find((e) => e.id === requestId);
     if (inService) {
-      await this.expService.updateExperience({ id: requestId, status: 'rechazada' });
+      try {
+        await this.expService.updateExperience({ id: requestId, status: 'rechazada' });
+      } catch (err) {
+        console.warn(
+          '[ProviderStore] Error actualizando experiencia en ExperienceService al rechazar:',
+          err,
+        );
+        this._experienceRequests.update((list) =>
+          list.map((r) =>
+            r.id === requestId ? { ...r, status: prevStatus, reviewedAt: prevReviewedAt } : r,
+          ),
+        );
+        this.saveRequests();
+        return false;
+      }
     }
 
     if (isSupabaseConfigured()) {
@@ -2680,6 +2846,49 @@ export class ProviderStoreService {
       }
     }
     return true;
+  }
+
+  getPublicPaymentDetails(
+    experience?: ProviderExperience | Experience | null,
+  ): PublicPaymentDestination {
+    const club = this.expService.getClubProfile();
+    const isClub =
+      !experience ||
+      isClubExperience({
+        slug: experience.slug,
+        providerSlug: experience.providerSlug,
+        providerEmail: experience.providerEmail,
+        providerName: experience.providerName,
+      });
+
+    if (isClub) {
+      return {
+        cbu: club.cbuAlias || BANK_TRANSFER_DESTINATION.cbu,
+        accountHolder: club.accountHolder || club.name || BANK_TRANSFER_DESTINATION.accountHolder,
+        taxId: club.cuitDni || BANK_TRANSFER_DESTINATION.taxId,
+        entity: club.bankName || BANK_TRANSFER_DESTINATION.entity,
+        isOfficialClub: true,
+      };
+    }
+
+    const hasPrivileged = this.expService.hasPrivilegedSession();
+    if (hasPrivileged && experience.providerCbuAlias) {
+      return {
+        cbu: experience.providerCbuAlias,
+        accountHolder: experience.providerName || BANK_TRANSFER_DESTINATION.accountHolder,
+        taxId: experience.providerCuitDni || BANK_TRANSFER_DESTINATION.taxId,
+        entity: experience.providerBankName || BANK_TRANSFER_DESTINATION.entity,
+        isOfficialClub: false,
+      };
+    }
+
+    return {
+      cbu: BANK_TRANSFER_DESTINATION.cbu,
+      accountHolder: BANK_TRANSFER_DESTINATION.accountHolder,
+      taxId: BANK_TRANSFER_DESTINATION.taxId,
+      entity: BANK_TRANSFER_DESTINATION.entity,
+      isOfficialClub: true,
+    };
   }
 
   private loadStoredRequests(): ExperienceProposalRequest[] {

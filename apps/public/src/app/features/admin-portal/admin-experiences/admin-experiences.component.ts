@@ -8,7 +8,7 @@ import { filter } from 'rxjs';
 import { ExperienceService } from '../../../core/services/experience.service';
 import { StorageService } from '../../../core/services/storage.service';
 import { AdminStoreService } from '../../../core/services/admin-store.service';
-import { parseConfirmedProposalDates } from '../../../core/services/provider-store.service';
+import { ExperienceProposalRequest, parseConfirmedProposalDates } from '../../../core/services/provider-store.service';
 import { Experience, ExperienceAlbumPhoto } from '../../../core/models/experience.model';
 import { isClubExperience } from '../../../core/models/club-profile.model';
 import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
@@ -645,6 +645,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                         <button
                           type="button"
                           class="btn-activate-exp"
+                          [disabled]="isProposalProcessing(exp.id)"
                           (click)="approveProposal(exp)"
                           title="Aprobar y publicar experiencia en la web"
                         >
@@ -653,6 +654,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                         <button
                           type="button"
                           class="btn-pause-exp"
+                          [disabled]="isProposalProcessing(exp.id)"
                           (click)="rejectProposal(exp)"
                           title="Rechazar propuesta"
                         >
@@ -2761,6 +2763,13 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         color: #ffffff;
       }
 
+      .btn-activate-exp:disabled,
+      .btn-pause-exp:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+        pointer-events: none;
+      }
+
       .btn-view-web {
         display: inline-flex;
         align-items: center;
@@ -3843,6 +3852,11 @@ export class AdminExperiencesComponent implements OnInit {
 
   readonly feedbackToast = signal<string | null>(null);
   readonly saving = signal(false);
+  readonly processingProposalIds = signal<Set<string>>(new Set<string>());
+
+  isProposalProcessing(id: string): boolean {
+    return this.processingProposalIds().has(id);
+  }
 
   readonly isRouteEditMode = signal(false);
   readonly isRouteDetailMode = signal(false);
@@ -4528,8 +4542,59 @@ export class AdminExperiencesComponent implements OnInit {
           `✨ Experiencia "${title}" creada exitosamente en la ruta /experiencias/${slug}.`,
         );
       } else {
-        await this.experienceService.updateExperience(payload);
-        this.showToast(`✅ Información de la ruta /experiencias/${slug} actualizada con éxito.`);
+        const currentExp = this.editingExperience();
+        const isFromPending = currentExp?.status === 'pendiente';
+        const newStatus = payload.status;
+
+        if (isFromPending && (newStatus === 'publicada' || newStatus === 'rechazada')) {
+          const reviewedAt = new Date().toISOString();
+          payload.reviewedAt = reviewedAt;
+
+          let req = this.findMatchingProposal({ id: payload.id, slug });
+
+          if (!req) {
+            await this.adminStore.providerStore.loadProposalsFromSupabase();
+            req = this.findMatchingProposal({ id: payload.id, slug });
+          }
+
+          if (newStatus === 'publicada') {
+            const confirmedDates = parseConfirmedProposalDates(this.editDatesRaw());
+            if (confirmedDates.length > 0) {
+              payload.dates = confirmedDates;
+            }
+
+            if (req) {
+              await this.adminStore.approveExperienceRequest(
+                req.id,
+                payload.publicUrl,
+                confirmedDates.length > 0 ? confirmedDates : undefined,
+              );
+            }
+            // Preserve and apply the other form edits as part of the same save
+            await this.experienceService.updateExperience(payload);
+            this.showToast(`🟢 La propuesta "${title}" fue aprobada y publicada con sus cambios.`);
+          } else {
+            // Rechazada
+            if (req) {
+              await this.adminStore.rejectExperienceRequest(req.id);
+            }
+            // Preserve and apply the other form edits as part of the same save
+            await this.experienceService.updateExperience(payload);
+            this.showToast(`⚠️ La propuesta "${title}" fue rechazada.`);
+          }
+
+          this.adminStore.providerStore.reloadFromStorage();
+          await this.adminStore.providerStore.loadProposalsFromSupabase();
+          await this.experienceService.reloadFromSupabase();
+        } else {
+          await this.experienceService.updateExperience(payload);
+          this.showToast(`✅ Información de la ruta /experiencias/${slug} actualizada con éxito.`);
+        }
+      }
+
+      const updated = this.experienceService.getExperienceById(payload.id);
+      if (updated && this.editingExperience()?.id === payload.id) {
+        this.editingExperience.set(updated);
       }
       if (this.isRouteEditMode()) {
         this.router.navigateByUrl(this.getDetailRoute({ slug } as Experience));
@@ -4544,17 +4609,57 @@ export class AdminExperiencesComponent implements OnInit {
     }
   }
 
+  private findMatchingProposal(exp: { id: string; slug?: string }): ExperienceProposalRequest | undefined {
+    const list = this.adminStore.providerStore.experienceRequests();
+    // 1. Coincidencia directa por id
+    const direct = list.find((r) => r.id === exp.id);
+    if (direct) return direct;
+
+    // 2. Mapeo de identidad explícito para entradas heredadas
+    const LEGACY_PROPOSAL_MAP: Record<string, string> = {
+      'exp-sunset-las-pirquitas': 'req-sunset-las-pirquitas',
+      'exp-travesia-en-kayak-nocturna-luna-llena-en-el-jumeal': 'req-sunset-las-pirquitas',
+      'travesia-en-kayak-nocturna-luna-llena-en-el-jumeal': 'req-sunset-las-pirquitas',
+    };
+    const mappedById = LEGACY_PROPOSAL_MAP[exp.id];
+    if (mappedById) {
+      const mapped = list.find((r) => r.id === mappedById);
+      if (mapped) return mapped;
+    }
+    if (exp.slug) {
+      const mappedBySlug = LEGACY_PROPOSAL_MAP[exp.slug];
+      if (mappedBySlug) {
+        const mapped = list.find((r) => r.id === mappedBySlug);
+        if (mapped) return mapped;
+      }
+    }
+
+    // 3. Mapeo explícito por prefijo 'exp-' en id
+    if (exp.id.startsWith('exp-')) {
+      const stripped = exp.id.slice(4);
+      const byStripped = list.find((r) => r.id === stripped);
+      if (byStripped) return byStripped;
+    } else {
+      const prefixed = `exp-${exp.id}`;
+      const byPrefixed = list.find((r) => r.id === prefixed);
+      if (byPrefixed) return byPrefixed;
+    }
+
+    return undefined;
+  }
+
   async approveProposal(exp: Experience): Promise<void> {
+    if (this.isProposalProcessing(exp.id)) {
+      return;
+    }
+    this.processingProposalIds.update((set) => new Set(set).add(exp.id));
+
     try {
-      let req = this.adminStore.providerStore
-        .experienceRequests()
-        .find((r) => r.id === exp.id || r.title.toLowerCase() === exp.title.toLowerCase());
+      let req = this.findMatchingProposal(exp);
 
       if (!req) {
         await this.adminStore.providerStore.loadProposalsFromSupabase();
-        req = this.adminStore.providerStore
-          .experienceRequests()
-          .find((r) => r.id === exp.id || r.title.toLowerCase() === exp.title.toLowerCase());
+        req = this.findMatchingProposal(exp);
       }
 
       const datesRaw = Array.isArray(exp.dates)
@@ -4595,20 +4700,27 @@ export class AdminExperiencesComponent implements OnInit {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error al aprobar propuesta';
       this.showToast(`⚠️ ${msg}`);
+    } finally {
+      this.processingProposalIds.update((set) => {
+        const next = new Set(set);
+        next.delete(exp.id);
+        return next;
+      });
     }
   }
 
   async rejectProposal(exp: Experience): Promise<void> {
+    if (this.isProposalProcessing(exp.id)) {
+      return;
+    }
+    this.processingProposalIds.update((set) => new Set(set).add(exp.id));
+
     try {
-      let req = this.adminStore.providerStore
-        .experienceRequests()
-        .find((r) => r.id === exp.id || r.title.toLowerCase() === exp.title.toLowerCase());
+      let req = this.findMatchingProposal(exp);
 
       if (!req) {
         await this.adminStore.providerStore.loadProposalsFromSupabase();
-        req = this.adminStore.providerStore
-          .experienceRequests()
-          .find((r) => r.id === exp.id || r.title.toLowerCase() === exp.title.toLowerCase());
+        req = this.findMatchingProposal(exp);
       }
 
       let ok = false;
@@ -4634,6 +4746,12 @@ export class AdminExperiencesComponent implements OnInit {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error al rechazar propuesta';
       this.showToast(`⚠️ ${msg}`);
+    } finally {
+      this.processingProposalIds.update((set) => {
+        const next = new Set(set);
+        next.delete(exp.id);
+        return next;
+      });
     }
   }
 

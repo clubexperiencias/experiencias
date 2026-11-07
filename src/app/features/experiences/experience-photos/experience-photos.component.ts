@@ -67,7 +67,22 @@ export class ExperiencePhotosComponent {
   }
 
   getTrimmedUrl(value?: string): string {
-    return value ? value.trim() : '';
+    if (!value) return '';
+    const trimmed = value.trim();
+    if (this.isValidGoogleMapsUrl(trimmed) && /^http:\/\//i.test(trimmed)) {
+      return trimmed.replace(/^http:\/\//i, 'https://');
+    }
+    return trimmed;
+  }
+
+  getMeetingPointUrl(meetingPointUrl?: string, meetingPoint?: string): string | null {
+    if (this.isValidGoogleMapsUrl(meetingPointUrl)) {
+      return this.getTrimmedUrl(meetingPointUrl);
+    }
+    if (this.isValidGoogleMapsUrl(meetingPoint)) {
+      return this.getTrimmedUrl(meetingPoint);
+    }
+    return null;
   }
 
   getProviderSlug(item?: any): string | null {

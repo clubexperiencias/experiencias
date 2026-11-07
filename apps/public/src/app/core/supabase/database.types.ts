@@ -188,7 +188,7 @@ export interface Database {
           phone: string;
           experiences_wishlist: string[] | null;
           experiences_other: string | null;
-          position: number;
+          position: number | null;
           membership_tier: MembershipTier;
           auth_user_id: string | null;
           registration_token: string;
@@ -203,7 +203,7 @@ export interface Database {
           phone: string;
           experiences_wishlist?: string[] | null;
           experiences_other?: string | null;
-          position?: number;
+          position?: number | null;
           membership_tier?: MembershipTier;
           auth_user_id?: string | null;
           registration_token?: string;
@@ -217,6 +217,7 @@ export interface Database {
           phone?: string;
           experiences_wishlist?: string[] | null;
           experiences_other?: string | null;
+          position?: number | null;
           membership_tier?: MembershipTier;
           auth_user_id?: string | null;
           registration_token?: string;
@@ -295,7 +296,7 @@ export interface Database {
           highlights?: string[];
           included?: string[];
           not_included?: string[];
-          status: 'borrador' | 'publicada' | 'oculta' | 'pendiente' | 'aprobada' | 'rechazada';
+          status: 'borrador' | 'publicada' | 'oculta' | 'pendiente' | 'rechazada';
           public_url?: string;
           provider_id?: string | null;
           provider_name?: string | null;
@@ -336,7 +337,7 @@ export interface Database {
           highlights?: string[];
           included?: string[];
           not_included?: string[];
-          status?: 'borrador' | 'publicada' | 'oculta' | 'pendiente' | 'aprobada' | 'rechazada';
+          status?: 'borrador' | 'publicada' | 'oculta' | 'pendiente' | 'rechazada';
           public_url?: string;
           provider_id?: string | null;
           provider_name?: string | null;
@@ -377,7 +378,7 @@ export interface Database {
           highlights?: string[];
           included?: string[];
           not_included?: string[];
-          status?: 'borrador' | 'publicada' | 'oculta' | 'pendiente' | 'aprobada' | 'rechazada';
+          status?: 'borrador' | 'publicada' | 'oculta' | 'pendiente' | 'rechazada';
           public_url?: string;
           provider_id?: string | null;
           provider_name?: string | null;
@@ -676,9 +677,7 @@ export interface Database {
         Returns: Json;
       };
       is_active_admin: {
-        Args: {
-          p_email?: string;
-        };
+        Args: Record<string, never>;
         Returns: boolean;
       };
     };

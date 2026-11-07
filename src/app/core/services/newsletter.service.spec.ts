@@ -259,3 +259,241 @@ describe('NewsletterService - submitProviderApplication', () => {
   });
 });
 
+describe('NewsletterService - registerSocio promotion update flow', () => {
+  let service: NewsletterService;
+  let mockSupabase: any;
+
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('CATAMARCA_SUPABASE_URL', 'https://prod-project.supabase.co');
+    localStorage.setItem(
+      'CATAMARCA_SUPABASE_ANON_KEY',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.valid_anon_key_for_tests_123456789',
+    );
+
+    mockSupabase = {
+      from: vi.fn(),
+      rpc: vi.fn().mockResolvedValue({ data: null, error: { message: 'RPC not available' } }),
+      auth: {
+        getSession: vi.fn().mockResolvedValue({
+          data: { session: { user: { email: 'waitlist@example.com' } } },
+        }),
+        onAuthStateChange: vi.fn().mockReturnValue({
+          data: { subscription: { unsubscribe: vi.fn() } },
+        }),
+      },
+    };
+
+    TestBed.configureTestingModule({
+      providers: [
+        NewsletterService,
+        { provide: SUPABASE_CLIENT, useValue: mockSupabase },
+      ],
+    });
+
+    service = TestBed.inject(NewsletterService);
+  });
+
+  afterEach(() => {
+    localStorage.clear();
+    vi.restoreAllMocks();
+  });
+
+  it('should reset loading state and return failure when update returns error', async () => {
+    const existingWaitlist = {
+      id: 'socio-123',
+      email: 'waitlist@example.com',
+      full_name: 'Existing Waitlist',
+      dni: '12345678',
+      phone: '3834000000',
+      membership_tier: 'waitlist',
+      position: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    mockSupabase.from.mockImplementation((table: string) => {
+      if (table === 'socios') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({ data: existingWaitlist, error: null }),
+            }),
+          }),
+          update: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              select: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: null,
+                  error: { message: 'RLS check_socio_update_permissions failed' },
+                }),
+              }),
+            }),
+          }),
+        };
+      }
+      return {};
+    });
+
+    const res = await service.registerSocio({
+      email: 'waitlist@example.com',
+      fullName: 'Promoted Member',
+      dni: '12345678',
+      phone: '3834000000',
+    });
+
+    expect(res.success).toBe(false);
+    expect(res.message).toContain('RLS check_socio_update_permissions failed');
+    expect(service.isLoading()).toBe(false);
+  });
+
+  it('should reset loading state and return failure when update returns no row', async () => {
+    const existingWaitlist = {
+      id: 'socio-123',
+      email: 'waitlist@example.com',
+      full_name: 'Existing Waitlist',
+      dni: '12345678',
+      phone: '3834000000',
+      membership_tier: 'waitlist',
+      position: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    mockSupabase.from.mockImplementation((table: string) => {
+      if (table === 'socios') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({ data: existingWaitlist, error: null }),
+            }),
+          }),
+          update: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              select: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: null,
+                  error: null,
+                }),
+              }),
+            }),
+          }),
+        };
+      }
+      return {};
+    });
+
+    const res = await service.registerSocio({
+      email: 'waitlist@example.com',
+      fullName: 'Promoted Member',
+      dni: '12345678',
+      phone: '3834000000',
+    });
+
+    expect(res.success).toBe(false);
+    expect(res.message).toContain('No se pudo actualizar el registro de socio');
+    expect(service.isLoading()).toBe(false);
+  });
+
+  it('should map returned row directly and report success when update succeeds', async () => {
+    const existingWaitlist = {
+      id: 'socio-123',
+      email: 'waitlist@example.com',
+      full_name: 'Existing Waitlist',
+      dni: '12345678',
+      phone: '3834000000',
+      membership_tier: 'waitlist',
+      position: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    const promotedSocio = {
+      id: 'socio-123',
+      email: 'waitlist@example.com',
+      full_name: 'Promoted Member',
+      dni: '12345678',
+      phone: '3834000000',
+      membership_tier: 'emergente',
+      position: 101,
+      created_at: existingWaitlist.created_at,
+      updated_at: new Date().toISOString(),
+    };
+
+    mockSupabase.from.mockImplementation((table: string) => {
+      if (table === 'socios') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({ data: existingWaitlist, error: null }),
+            }),
+          }),
+          update: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              select: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: promotedSocio,
+                  error: null,
+                }),
+              }),
+            }),
+          }),
+        };
+      }
+      return {};
+    });
+
+    const res = await service.registerSocio({
+      email: 'waitlist@example.com',
+      fullName: 'Promoted Member',
+      dni: '12345678',
+      phone: '3834000000',
+    });
+
+    expect(res.success).toBe(true);
+    expect(res.socio?.position).toBe(101);
+    expect(res.socio?.membershipTier).toBe('emergente');
+    expect(res.socio?.fullName).toBe('Promoted Member');
+    expect(service.isLoading()).toBe(false);
+  });
+
+  it('should use ignoreDuplicates: true in isAuthenticated fallback upsert', async () => {
+    const upsertSpy = vi.fn().mockResolvedValue({ data: null, error: null });
+    mockSupabase.auth.getSession.mockResolvedValue({
+      data: {
+        session: {
+          user: { id: 'usr-123', email: 'active-socio@example.com' },
+        },
+      },
+    });
+    mockSupabase.rpc.mockImplementation((fn: string) => {
+      if (fn === 'record_waitlist_email') {
+        return Promise.resolve({ error: { message: 'RPC failure' } });
+      }
+      if (fn === 'get_socio_by_session_or_token') {
+        return Promise.resolve({
+          data: {
+            status: 'ok',
+            socio: {
+              id: 'socio-1',
+              email: 'active-socio@example.com',
+              membership_tier: 'activo',
+            },
+          },
+          error: null,
+        });
+      }
+      return Promise.resolve({ data: null, error: null });
+    });
+    mockSupabase.from.mockReturnValue({ upsert: upsertSpy });
+
+    const authed = await service.isAuthenticated();
+
+    expect(authed).toBe(true);
+    expect(upsertSpy).toHaveBeenCalledWith(
+      { email: 'active-socio@example.com', membership_tier: 'waitlist' },
+      { onConflict: 'email', ignoreDuplicates: true },
+    );
+  });
+});
+

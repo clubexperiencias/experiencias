@@ -681,7 +681,7 @@ export class AdminStoreService {
             membershipTier: s.membershipTier || s.membership_tier || 'emergente',
             googleLinked: Boolean(s.googleLinked || s.auth_user_id),
             // Convertido = pagó al menos una experiencia / envió comprobante
-            converted: Boolean(s.converted || s.paymentsCount > 0),
+            converted: typeof s.paymentsCount === 'number' ? s.paymentsCount > 0 : Boolean(s.converted),
             isProvider: providerEmails.has(s.email?.toLowerCase().trim()) || Boolean(s.isProvider || s.is_provider),
             experiencesWishlist: Array.isArray(s.experiencesWishlist) ? s.experiencesWishlist : [],
             experiencesOther: s.experiencesOther || s.experiences_other,
@@ -696,15 +696,20 @@ export class AdminStoreService {
               w.fullName && w.fullName !== 'Lista de Espera (Email)'
                 ? w.fullName
                 : w.full_name || '',
-            dni: '—',
-            phone: '—',
+            dni: w.dni || '—',
+            phone: w.phone || '—',
             position: undefined,
             membershipTier: 'waitlist' as const,
             googleLinked: Boolean(w.googleLinked || w.auth_user_id),
             // Convertido = pagó al menos una experiencia / envió comprobante
-            converted: Boolean(w.converted || w.paymentsCount > 0),
+            converted: typeof w.paymentsCount === 'number' ? w.paymentsCount > 0 : Boolean(w.converted),
             isProvider: providerEmails.has(w.email?.toLowerCase().trim()) || Boolean(w.isProvider || w.is_provider),
-            experiencesWishlist: [],
+            experiencesWishlist: Array.isArray(w.experiencesWishlist)
+              ? w.experiencesWishlist
+              : Array.isArray(w.experiences_wishlist)
+                ? w.experiences_wishlist
+                : [],
+            experiencesOther: w.experiencesOther || w.experiences_other,
             createdAt: w.createdAt || w.created_at || new Date().toISOString(),
           }));
 
@@ -778,6 +783,7 @@ export class AdminStoreService {
               experiencesWishlist: Array.isArray(w.experiences_wishlist)
                 ? w.experiences_wishlist
                 : [],
+              experiencesOther: w.experiences_other,
               createdAt: w.created_at,
             };
           });
@@ -1157,15 +1163,25 @@ export class AdminStoreService {
             if (bankingData.bankName) updatePayload['bank_name'] = bankingData.bankName;
           }
 
-          let query = (this.supabase.from('prestadores') as any).update(updatePayload);
+          let query = (this.supabase.from('prestadores') as any).update(updatePayload, {
+            count: 'exact',
+          });
           if (id) {
             query = query.eq('id', id);
           } else if (email) {
             query = query.eq('email', email);
           }
-          const { error: paErr } = await query;
+          const { error: paErr, count } = await query;
           if (paErr) {
             console.warn('[AdminStore] Error al actualizar prestadores en Supabase:', paErr);
+            return false;
+          }
+
+          if (count !== 1) {
+            console.warn(
+              '[AdminStore] Se esperaba exactamente 1 fila actualizada en prestadores, pero se obtuvieron:',
+              count,
+            );
             return false;
           }
 

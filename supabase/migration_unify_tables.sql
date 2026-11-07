@@ -19,6 +19,9 @@
 
 BEGIN;
 
+-- Asegurar extensión unaccent para derivación de slugs canónicos
+CREATE EXTENSION IF NOT EXISTS "unaccent";
+
 -- ==============================================================================
 -- 1. UNIFICACIÓN DE SOCIOS & WAITLIST
 -- ==============================================================================
@@ -75,19 +78,22 @@ BEGIN
     SELECT
       LOWER(TRIM(w.email)),
       'waitlist',
-      COALESCE(w.converted, false),
-      COALESCE(w.google_linked, false),
+      BOOL_OR(COALESCE(w.converted, false)),
+      BOOL_OR(COALESCE(w.google_linked, false)),
       '',
       '',
       '',
       NULL,
-      w.created_at,
-      w.created_at
+      MIN(w.created_at),
+      MIN(w.created_at)
     FROM public.waitlist w
+    WHERE w.email IS NOT NULL AND TRIM(w.email) <> ''
+    GROUP BY LOWER(TRIM(w.email))
     ON CONFLICT (email) DO UPDATE
     SET
       converted = public.socios.converted OR EXCLUDED.converted,
-      google_linked = public.socios.google_linked OR EXCLUDED.google_linked;
+      google_linked = public.socios.google_linked OR EXCLUDED.google_linked,
+      created_at = LEAST(public.socios.created_at, EXCLUDED.created_at);
   END IF;
 END $$;
 
@@ -163,6 +169,9 @@ ALTER TABLE public.experiencias ADD CONSTRAINT experiencias_difficulty_check
   );
 
 -- 3.3 Agregar columnas de propuesta a experiencias
+ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS kicker TEXT DEFAULT '';
+ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS best_season TEXT DEFAULT '';
+ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS itinerary TEXT DEFAULT '';
 ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS provider_agency TEXT NOT NULL DEFAULT '';
 ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS cover_image_name TEXT;
 ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS cover_video_name TEXT;
@@ -236,15 +245,36 @@ SET
   notes = COALESCE(e.notes, p.notes),
   reviewed_at = COALESCE(e.reviewed_at, p.reviewed_at, now()),
   cover_image_name = COALESCE(e.cover_image_name, p.cover_image_name),
-  cover_video_name = COALESCE(e.cover_video_name, p.cover_video_url),
-  status = 'publicada',
+  video_url = COALESCE(e.video_url, p.cover_video_url),
   updated_at = GREATEST(e.updated_at, COALESCE(p.updated_at, p.created_at, e.updated_at))
 FROM public.propuestas_experiencias p
 WHERE p.status = 'aprobada'
   AND (
     e.id = p.id::TEXT
-    OR e.id = 'exp-' || LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(p.title, '[^a-zA-Z0-9]+', '-', 'g')))
-    OR e.slug = LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(p.title, '[^a-zA-Z0-9]+', '-', 'g')))
+    OR e.id = 'exp-' || p.id::TEXT
+    OR (
+      p.id::TEXT = 'req-sunset-las-pirquitas'
+      AND (
+        e.id IN ('exp-sunset-las-pirquitas', 'exp-travesia-en-kayak-nocturna-luna-llena-en-el-jumeal')
+        OR e.slug = 'sunset-las-pirquitas'
+      )
+    )
+    OR (
+      (
+        LOWER(TRIM(unaccent(e.title))) =
+        LOWER(TRIM(unaccent(p.title)))
+        OR (
+          p.provider_email IS NOT NULL AND TRIM(p.provider_email) <> ''
+          AND LOWER(TRIM(e.provider_email)) = LOWER(TRIM(p.provider_email))
+        )
+      )
+      AND (
+        e.slug = LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(unaccent(p.title), '[^a-zA-Z0-9]+', '-', 'g')))
+        OR e.slug ~ ('^' || LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(TRANSLATE(p.title, 'ÁÉÍÓÚáéíóúÀÈÌÒÙàèìòùÄËÏÖÜäëïöüÂÊÎÔÛâêîôûÑñ', 'AEIOUaeiouAEIOUaeiouAEIOUaeiouNn'), '[^a-zA-Z0-9]+', '-', 'g'))) || '(-[0-9]+|-exp)$')
+        OR e.id = 'exp-' || LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(TRANSLATE(p.title, 'ÁÉÍÓÚáéíóúÀÈÌÒÙàèìòùÄËÏÖÜäëïöüÂÊÎÔÛâêîôûÑñ', 'AEIOUaeiouAEIOUaeiouAEIOUaeiouNn'), '[^a-zA-Z0-9]+', '-', 'g')))
+        OR e.id ~ ('^exp-' || LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(TRANSLATE(p.title, 'ÁÉÍÓÚáéíóúÀÈÌÒÙàèìòùÄËÏÖÜäëïöüÂÊÎÔÛâêîôûÑñ', 'AEIOUaeiouAEIOUaeiouAEIOUaeiouNn'), '[^a-zA-Z0-9]+', '-', 'g'))) || '(-[0-9]+|-exp)$')
+      )
+    )
   );
 
 -- 3.6 Migrar registros restantes de propuestas_experiencias a experiencias con slugs únicos
@@ -252,12 +282,12 @@ WITH proposals_to_insert AS (
   SELECT
     p.*,
     COALESCE(
-      NULLIF(LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(p.title, '[^a-zA-Z0-9]+', '-', 'g'))), ''),
+      NULLIF(LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(unaccent(p.title), '[^a-zA-Z0-9]+', '-', 'g'))), ''),
       'exp-' || SUBSTRING(REPLACE(p.id::TEXT, '-', '') FROM 1 FOR 8)
     ) AS base_slug,
     ROW_NUMBER() OVER (
       PARTITION BY COALESCE(
-        NULLIF(LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(p.title, '[^a-zA-Z0-9]+', '-', 'g'))), ''),
+        NULLIF(LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(unaccent(p.title), '[^a-zA-Z0-9]+', '-', 'g'))), ''),
         'exp-' || SUBSTRING(REPLACE(p.id::TEXT, '-', '') FROM 1 FOR 8)
       )
       ORDER BY p.created_at, p.id
@@ -269,8 +299,30 @@ WITH proposals_to_insert AS (
        OR (
          p.status = 'aprobada'
          AND (
-           e.id = 'exp-' || LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(p.title, '[^a-zA-Z0-9]+', '-', 'g')))
-           OR e.slug = LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(p.title, '[^a-zA-Z0-9]+', '-', 'g')))
+           e.id = 'exp-' || p.id::TEXT
+           OR (
+             p.id::TEXT = 'req-sunset-las-pirquitas'
+             AND (
+               e.id IN ('exp-sunset-las-pirquitas', 'exp-travesia-en-kayak-nocturna-luna-llena-en-el-jumeal')
+               OR e.slug = 'sunset-las-pirquitas'
+             )
+           )
+           OR (
+             (
+               LOWER(TRIM(unaccent(e.title))) =
+               LOWER(TRIM(unaccent(p.title)))
+               OR (
+                 p.provider_email IS NOT NULL AND TRIM(p.provider_email) <> ''
+                 AND LOWER(TRIM(e.provider_email)) = LOWER(TRIM(p.provider_email))
+               )
+             )
+             AND (
+               e.slug = LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(unaccent(p.title), '[^a-zA-Z0-9]+', '-', 'g')))
+               OR e.slug ~ ('^' || LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(TRANSLATE(p.title, 'ÁÉÍÓÚáéíóúÀÈÌÒÙàèìòùÄËÏÖÜäëïöüÂÊÎÔÛâêîôûÑñ', 'AEIOUaeiouAEIOUaeiouAEIOUaeiouNn'), '[^a-zA-Z0-9]+', '-', 'g'))) || '(-[0-9]+|-exp)$')
+               OR e.id = 'exp-' || LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(TRANSLATE(p.title, 'ÁÉÍÓÚáéíóúÀÈÌÒÙàèìòùÄËÏÖÜäëïöüÂÊÎÔÛâêîôûÑñ', 'AEIOUaeiouAEIOUaeiouAEIOUaeiouNn'), '[^a-zA-Z0-9]+', '-', 'g')))
+               OR e.id ~ ('^exp-' || LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(TRANSLATE(p.title, 'ÁÉÍÓÚáéíóúÀÈÌÒÙàèìòùÄËÏÖÜäëïöüÂÊÎÔÛâêîôûÑñ', 'AEIOUaeiouAEIOUaeiouAEIOUaeiouNn'), '[^a-zA-Z0-9]+', '-', 'g'))) || '(-[0-9]+|-exp)$')
+             )
+           )
          )
        )
   )
@@ -330,7 +382,14 @@ SELECT
     ELSE 'Moderada'
   END,
   COALESCE(sp.duration, '4 horas'),
-  COALESCE(NULLIF(REGEXP_REPLACE(sp.altitude, '[^0-9]', '', 'g'), '')::INTEGER, 850),
+  CASE
+    WHEN sp.altitude ~ '[0-9]+[^0-9]+[0-9]+' THEN 850
+    WHEN NULLIF(REGEXP_REPLACE(sp.altitude, '[^0-9]', '', 'g'), '') IS NULL THEN 850
+    WHEN LENGTH(REGEXP_REPLACE(sp.altitude, '[^0-9]', '', 'g')) <= 4
+     AND REGEXP_REPLACE(sp.altitude, '[^0-9]', '', 'g')::INTEGER BETWEEN 0 AND 7000
+      THEN REGEXP_REPLACE(sp.altitude, '[^0-9]', '', 'g')::INTEGER
+    ELSE 850
+  END,
   GREATEST(0, COALESCE(sp.price_ars, 0)),
   sp.price_usd,
   GREATEST(1, COALESCE(NULLIF(sp.capacity, 0), 12)),
@@ -471,11 +530,9 @@ BEGIN
         'position', s.position,
         'membershipTier', s.membership_tier,
         'googleLinked', (COALESCE(s.google_linked, false) OR (s.auth_user_id IS NOT NULL)),
-        'converted', (
-          COALESCE(s.converted, false) OR EXISTS (
-            SELECT 1 FROM public.pagos_transferencias p
-            WHERE LOWER(TRIM(p.email)) = LOWER(TRIM(s.email))
-          )
+        'converted', EXISTS (
+          SELECT 1 FROM public.pagos_transferencias p
+          WHERE LOWER(TRIM(p.email)) = LOWER(TRIM(s.email))
         ),
         'paymentsCount', (
           SELECT COUNT(*)::INTEGER FROM public.pagos_transferencias p
@@ -510,11 +567,9 @@ BEGIN
         'position', NULL,
         'membershipTier', 'waitlist',
         'googleLinked', (COALESCE(s.google_linked, false) OR (u.id IS NOT NULL) OR (s.auth_user_id IS NOT NULL)),
-        'converted', (
-          COALESCE(s.converted, false) OR EXISTS (
-            SELECT 1 FROM public.pagos_transferencias p
-            WHERE LOWER(TRIM(p.email)) = LOWER(TRIM(s.email))
-          )
+        'converted', EXISTS (
+          SELECT 1 FROM public.pagos_transferencias p
+          WHERE LOWER(TRIM(p.email)) = LOWER(TRIM(s.email))
         ),
         'paymentsCount', (
           SELECT COUNT(*)::INTEGER FROM public.pagos_transferencias p

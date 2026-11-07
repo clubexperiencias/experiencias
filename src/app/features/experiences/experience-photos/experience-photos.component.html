@@ -47,9 +47,9 @@
                   <span class="spec-value">{{ experience.region }}</span>
                 </div>
                 }
-                @if (isValidGoogleMapsUrl(experience.meetingPoint)) {
+                @if (isValidGoogleMapsUrl(experience.meetingPointUrl) || isValidGoogleMapsUrl(experience.meetingPoint)) {
                 <a
-                  [href]="getTrimmedUrl(experience.meetingPoint)"
+                  [href]="getTrimmedUrl(isValidGoogleMapsUrl(experience.meetingPointUrl) ? experience.meetingPointUrl : experience.meetingPoint)"
                   target="_blank"
                   rel="noopener noreferrer"
                   class="spec-tile spec-tile-clickable"
