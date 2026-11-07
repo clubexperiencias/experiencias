@@ -322,7 +322,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                     <td class="text-right">
                       <strong class="amount-val">{{ sub.amountArs | ars }}</strong>
                     </td>
-                    <td class="text-right">
+                    <td class="col-td-action text-right">
                       <a
                         type="button"
                         (click)="openReceipt(sub)"
@@ -873,6 +873,22 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         text-transform: uppercase;
         letter-spacing: 0.06em;
         white-space: nowrap;
+      }
+      .fin-data-table th.col-th-action,
+      .fin-data-table td.col-td-action {
+        position: sticky;
+        right: 0;
+        z-index: 5;
+        background: #091024;
+        box-shadow: -6px 0 16px rgba(0, 0, 0, 0.45);
+        white-space: nowrap;
+        text-align: right;
+      }
+      .fin-data-table th.col-th-action {
+        background: #162155;
+      }
+      .fin-data-table tbody tr:hover td.col-td-action {
+        background: #0f1c3f;
       }
       .fin-data-table td {
         padding: 0.95rem 1rem;

@@ -60,7 +60,23 @@ const adminRoutes: Routes = [
       },
       {
         path: 'socios',
-        title: 'Portal de Admin del Club de Experiencias',
+        title: 'Nómina de Socios - Portal de Admin',
+        loadComponent: () =>
+          import('./features/admin-portal/admin-members/admin-members.component').then(
+            (m) => m.AdminMembersComponent,
+          ),
+      },
+      {
+        path: 'socios/:id/editar',
+        title: 'Editar Socio - Portal de Admin',
+        loadComponent: () =>
+          import('./features/admin-portal/admin-members/admin-members.component').then(
+            (m) => m.AdminMembersComponent,
+          ),
+      },
+      {
+        path: 'socios/:id',
+        title: 'Ficha del Socio - Portal de Admin',
         loadComponent: () =>
           import('./features/admin-portal/admin-members/admin-members.component').then(
             (m) => m.AdminMembersComponent,
@@ -467,7 +483,23 @@ const publicRoutes: Routes = [
       },
       {
         path: 'socios',
-        title: 'Portal de Admin del Club de Experiencias',
+        title: 'Nómina de Socios - Portal de Admin',
+        loadComponent: () =>
+          import('./features/admin-portal/admin-members/admin-members.component').then(
+            (m) => m.AdminMembersComponent,
+          ),
+      },
+      {
+        path: 'socios/:id/editar',
+        title: 'Editar Socio - Portal de Admin',
+        loadComponent: () =>
+          import('./features/admin-portal/admin-members/admin-members.component').then(
+            (m) => m.AdminMembersComponent,
+          ),
+      },
+      {
+        path: 'socios/:id',
+        title: 'Ficha del Socio - Portal de Admin',
         loadComponent: () =>
           import('./features/admin-portal/admin-members/admin-members.component').then(
             (m) => m.AdminMembersComponent,

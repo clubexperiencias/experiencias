@@ -2,25 +2,23 @@ import { Component, computed, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import {
   AdminStoreService,
   AdminApplication,
   ApplicationType,
   ApplicationStatus,
-  ExperienceProposalRequest,
 } from '../../../core/services/admin-store.service';
 import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
-import { slugify } from '../../../core/services/provider-store.service';
 import { ExperienceService } from '../../../core/services/experience.service';
 
 type ApplicationFilterTab =
-  'todas' | 'prestadores' | 'fundadores' | 'experiencias' | 'pendientes' | 'aprobadas' | 'bajas';
+  'todas' | 'prestadores' | 'fundadores' | 'pendientes' | 'aprobadas' | 'bajas';
 
 @Component({
   selector: 'app-admin-applications',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, ArsPipe, FechaPipe],
+  imports: [CommonModule, FormsModule, MatIconModule, FechaPipe],
   template: `
     <div class="applications-container">
       <div class="applications-header">
@@ -52,17 +50,17 @@ type ApplicationFilterTab =
           <strong class="sum-value">{{ store.applicationStats().fundadoresCount }}</strong>
           <span class="sum-sub">Aspirantes al padrón vitalicio</span>
         </div>
-        <div class="summary-item highlight-box" (click)="activeTab.set('experiencias')" style="cursor: pointer;" title="Ver Nuevas Experiencias">
+        <div class="summary-item highlight-box" (click)="navigateToExperiencesProposals()" style="cursor: pointer;" title="Ir al catálogo de experiencias (Postulaciones)">
           <span class="sum-label">Nuevas Experiencias</span>
-          <strong class="sum-value text-orange">{{ store.experienceRequests().length }}</strong>
+          <strong class="sum-value text-orange">{{ pendingExperienceCount() }}</strong>
           <span class="sum-sub"
-            >{{ store.pendingExperienceRequestsCount() }} pendientes de revisión</span
+            >{{ pendingExperienceCount() }} pendientes en catálogo &rarr;</span
           >
         </div>
         <div class="summary-item">
           <span class="sum-label">Pendientes Totales</span>
           <strong class="sum-value">{{
-            store.applicationStats().pendientesCount + store.pendingExperienceRequestsCount()
+            store.applicationStats().pendientesCount + pendingExperienceCount()
           }}</strong>
           <span class="sum-sub">Requieren evaluación</span>
         </div>
@@ -75,11 +73,7 @@ type ApplicationFilterTab =
           <input
             type="text"
             class="search-input"
-            [placeholder]="
-              activeTab() === 'experiencias'
-                ? 'Buscar por experiencia, prestador, región, kicker...'
-                : 'Buscar por postulante, email, teléfono, rubro o región...'
-            "
+            placeholder="Buscar por postulante, email, teléfono, rubro o región..."
             [ngModel]="searchQuery()"
             (ngModelChange)="searchQuery.set($event)"
           />
@@ -118,18 +112,6 @@ type ApplicationFilterTab =
 
           <button
             type="button"
-            class="filter-tab exp-tab"
-            [class.is-active]="activeTab() === 'experiencias'"
-            (click)="activeTab.set('experiencias')"
-          >
-            Nuevas Experiencias ({{ store.experienceRequests().length }})
-            @if (store.pendingExperienceRequestsCount() > 0) {
-              <span class="tab-badge">{{ store.pendingExperienceRequestsCount() }}</span>
-            }
-          </button>
-
-          <button
-            type="button"
             class="filter-tab"
             [class.is-active]="activeTab() === 'pendientes'"
             (click)="activeTab.set('pendientes')"
@@ -157,265 +139,142 @@ type ApplicationFilterTab =
         </div>
       </div>
 
-      <!-- VISTA CONDICIONAL: Pestaña Nuevas Experiencias -->
-      @if (activeTab() === 'experiencias') {
-        @if (filteredExperienceRequests().length === 0) {
-          <div class="empty-box">
-            <mat-icon>explore_off</mat-icon>
-            <h3>No se encontraron propuestas de experiencias</h3>
-            <p>
-              Probá cambiando la búsqueda o aguardá nuevas propuestas enviadas desde el portal de
-              prestadores.
-            </p>
-          </div>
-        } @else {
-          <div class="table-wrapper">
-            <table class="applications-table exp-table">
-              <thead>
-                <tr>
-                  <th>Prestador</th>
-                  <th>Experiencia Propuesta</th>
-                  <th>Región & Dificultad</th>
-                  <th>Arancel</th>
-                  <th>Fecha</th>
-                  <th class="col-actions">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (req of filteredExperienceRequests(); track req.id) {
-                  <tr [class.row-pending]="req.status === 'pendiente'">
-                    <!-- Prestador -->
-                    <td>
-                      <div class="postulante-cell">
-                        <strong class="postulante-name">{{ req.providerName }}</strong>
-                        <span class="rubro-sub">{{ req.providerAgency }}</span>
-                        @if (req.providerPhone) {
-                          <a
-                            [href]="getWhatsappLink(req.providerPhone, req.providerName)"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            class="contact-whatsapp"
-                            title="Contactar vía WhatsApp"
-                          >
-                            <span>{{ req.providerPhone }}</span>
-                          </a>
-                        }
-                      </div>
-                    </td>
-
-                    <!-- Experiencia Propuesta -->
-                    <td>
-                      <div class="exp-cell-wrap">
-                        <img
-                          [src]="getProposalCover(req.coverImage)"
-                          (error)="onImgError($event)"
-                          alt="Portada"
-                          class="exp-cell-thumb"
-                        />
-                        <div class="exp-cell-text">
-                          <strong class="exp-title-cell">{{ req.title }}</strong>
-                          <span class="exp-kicker-sub font-mono">{{ req.kicker }}</span>
-                        </div>
-                      </div>
-                    </td>
-
-                    <!-- Región & Dificultad -->
-                    <td>
-                      <div class="detail-cell">
-                        <strong class="rubro-title">{{ req.region }}</strong>
-                        <span class="rubro-sub">Dificultad: {{ req.difficulty }}</span>
-                      </div>
-                    </td>
-
-                    <!-- Arancel -->
-                    <td>
-                      <div class="price-cell">
-                        <strong class="amount-val">{{ req.priceArs | ars }}</strong>
-                        @if (req.priceUsd) {
-                          <span class="usd-val">USD {{ req.priceUsd }}</span>
-                        }
-                      </div>
-                    </td>
-
-                    <!-- Fecha -->
-                    <td>
-                      <span class="date-text">{{ req.createdAt | fecha: 'corta' }}</span>
-                    </td>
-
-                    <!-- Acciones -->
-                    <td>
-                      <button
-                        type="button"
-                        class="btn-view"
-                        (click)="openExperienceRequest(req)"
-                        title="Revisar propuesta"
-                      >
-                        Revisar
-                      </button>
-                    </td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-
-          <div class="table-footer-actions">
-            <button
-              type="button"
-              class="btn-footer-action"
-              (click)="refresh()"
-              [disabled]="store.isLoadingApplications()"
-            >
-              {{ store.isLoadingApplications() ? 'Actualizando...' : 'Refrescar' }}
-            </button>
-
-            <button
-              type="button"
-              class="btn-footer-action"
-              (click)="downloadExperienceRequestsCsv()"
-            >
-              Descargar
-            </button>
-          </div>
-        }
+      <!-- Postulaciones Generales -->
+      @if (filteredApplications().length === 0) {
+        <div class="empty-box">
+          <mat-icon>assignment_late</mat-icon>
+          <h3>No se encontraron postulaciones</h3>
+          <p>Probá cambiando la búsqueda o seleccionando otra pestaña de filtro.</p>
+        </div>
       } @else {
-        <!-- VISTA CONDICIONAL: Pestañas de Postulaciones Generales -->
-        @if (filteredApplications().length === 0) {
-          <div class="empty-box">
-            <mat-icon>assignment_late</mat-icon>
-            <h3>No se encontraron postulaciones</h3>
-            <p>Probá cambiando la búsqueda o seleccionando otra pestaña de filtro.</p>
-          </div>
-        } @else {
-          <div class="table-wrapper">
-            <table class="applications-table">
-              <thead>
-                <tr>
-                  <th class="col-type">Tipo</th>
-                  <th class="col-postulante">Postulante</th>
-                  <th class="col-rubro">Detalles</th>
-                  <th class="col-estado">Estado</th>
-                  <th class="col-fecha">Fecha</th>
-                  <th class="col-actions">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (app of filteredApplications(); track app.id) {
-                  <tr
-                    [class.is-prestador]="app.type === 'prestador'"
-                    [class.is-fundador]="app.type === 'fundador'"
-                  >
-                    <!-- Tipo -->
-                    <td>
-                      @if (app.type === 'prestador') {
-                        <span class="badge-type badge-prestador">PRESTADOR</span>
-                      } @else {
-                        <span class="badge-type badge-fundador">SOCIO FUNDADOR</span>
-                      }
-                    </td>
+        <div class="table-wrapper">
+          <table class="applications-table">
+            <thead>
+              <tr>
+                <th class="col-type">Tipo</th>
+                <th class="col-postulante">Postulante</th>
+                <th class="col-rubro">Detalles</th>
+                <th class="col-estado">Estado</th>
+                <th class="col-fecha">Fecha</th>
+                <th class="col-actions">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (app of filteredApplications(); track app.id) {
+                <tr
+                  [class.is-prestador]="app.type === 'prestador'"
+                  [class.is-fundador]="app.type === 'fundador'"
+                >
+                  <!-- Tipo -->
+                  <td>
+                    @if (app.type === 'prestador') {
+                      <span class="badge-type badge-prestador">PRESTADOR</span>
+                    } @else {
+                      <span class="badge-type badge-fundador">SOCIO FUNDADOR</span>
+                    }
+                  </td>
 
-                    <!-- Postulante -->
-                    <td>
-                      <div class="postulante-cell">
-                        <strong class="postulante-name">{{ app.fullName }}</strong>
-                        <span class="postulante-email">{{ app.email }}</span>
-                        @if (app.phone && app.phone !== '—') {
+                  <!-- Postulante -->
+                  <td>
+                    <div class="postulante-cell">
+                      <strong class="postulante-name">{{ app.fullName }}</strong>
+                      <span class="postulante-email">{{ app.email }}</span>
+                      @if (app.phone && app.phone !== '—') {
+                        <a
+                          [href]="getWhatsappLink(app.phone, app.fullName)"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="contact-whatsapp"
+                          title="Contactar vía WhatsApp"
+                        >
+                          <span>{{ app.phone }}</span>
+                        </a>
+                      }
+                    </div>
+                  </td>
+
+                  <!-- Rubro / Detalle -->
+                  <td>
+                    <div class="detail-cell">
+                      @if (app.type === 'prestador') {
+                        <strong class="rubro-title">{{ formatCategory(app.category) }}</strong>
+                        <span class="rubro-sub">{{ app.region || 'Catamarca' }}</span>
+                        @if (app.website) {
                           <a
-                            [href]="getWhatsappLink(app.phone, app.fullName)"
+                            [href]="app.website"
                             target="_blank"
                             rel="noopener noreferrer"
-                            class="contact-whatsapp"
-                            title="Contactar vía WhatsApp"
+                            class="rubro-link"
                           >
-                            <span>{{ app.phone }}</span>
+                            {{ app.website }}
                           </a>
                         }
-                      </div>
-                    </td>
+                      } @else {
+                        <strong class="rubro-title">Cuadro Fundacional</strong>
+                        <span class="rubro-snippet" [title]="app.motivationLetter">
+                          {{ getSnippet(app.motivationLetter) }}
+                        </span>
+                      }
+                    </div>
+                  </td>
 
-                    <!-- Rubro / Detalle -->
-                    <td>
-                      <div class="detail-cell">
-                        @if (app.type === 'prestador') {
-                          <strong class="rubro-title">{{ formatCategory(app.category) }}</strong>
-                          <span class="rubro-sub">{{ app.region || 'Catamarca' }}</span>
-                          @if (app.website) {
-                            <a
-                              [href]="app.website"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              class="rubro-link"
-                            >
-                              {{ app.website }}
-                            </a>
-                          }
-                        } @else {
-                          <strong class="rubro-title">Cuadro Fundacional</strong>
-                          <span class="rubro-snippet" [title]="app.motivationLetter">
-                            {{ getSnippet(app.motivationLetter) }}
-                          </span>
+                  <!-- Estado -->
+                  <td>
+                    <span class="status-badge" [attr.data-status]="app.status">
+                      @switch (app.status) {
+                        @case ('aprobado') {
+                          Aprobado
                         }
-                      </div>
-                    </td>
-
-                    <!-- Estado -->
-                    <td>
-                      <span class="status-badge" [attr.data-status]="app.status">
-                        @switch (app.status) {
-                          @case ('aprobado') {
-                            Aprobado
-                          }
-                          @case ('rechazado') {
-                            Rechazado
-                          }
-                          @case ('dado_de_baja') {
-                            Dado de baja
-                          }
-                          @default {
-                            Pendiente
-                          }
+                        @case ('rechazado') {
+                          Rechazado
                         }
-                      </span>
-                    </td>
+                        @case ('dado_de_baja') {
+                          Dado de baja
+                        }
+                        @default {
+                          Pendiente
+                        }
+                      }
+                    </span>
+                  </td>
 
-                    <!-- Fecha -->
-                    <td>
-                      <span class="date-text">{{ app.createdAt | fecha: 'corta' }}</span>
-                    </td>
+                  <!-- Fecha -->
+                  <td>
+                    <span class="date-text">{{ app.createdAt | fecha: 'corta' }}</span>
+                  </td>
 
-                    <!-- Acciones -->
-                    <td>
-                      <button
-                        type="button"
-                        class="btn-view"
-                        (click)="openDetailModal(app)"
-                        title="Ver postulación completa"
-                      >
-                        Ver Detalle
-                      </button>
-                    </td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
+                  <!-- Acciones -->
+                  <td class="col-actions">
+                    <button
+                      type="button"
+                      class="btn-view"
+                      (click)="openDetailModal(app)"
+                      title="Ver postulación completa"
+                    >
+                      Ver Detalle
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
 
-          <!-- Botones de Acción al Pie de la Tabla -->
-          <div class="table-footer-actions">
-            <button
-              type="button"
-              class="btn-footer-action"
-              (click)="refresh()"
-              [disabled]="store.isLoadingApplications()"
-            >
-              {{ store.isLoadingApplications() ? 'Actualizando...' : 'Refrescar' }}
-            </button>
+        <!-- Botones de Acción al Pie de la Tabla -->
+        <div class="table-footer-actions">
+          <button
+            type="button"
+            class="btn-footer-action"
+            (click)="refresh()"
+            [disabled]="store.isLoadingApplications()"
+          >
+            {{ store.isLoadingApplications() ? 'Actualizando...' : 'Refrescar' }}
+          </button>
 
-            <button type="button" class="btn-footer-action" (click)="downloadRoster()">
-              Descargar
-            </button>
-          </div>
-        }
+          <button type="button" class="btn-footer-action" (click)="downloadRoster()">
+            Descargar
+          </button>
+        </div>
       }
 
       <!-- Modal de Detalle de Postulación General -->
@@ -590,281 +449,6 @@ type ApplicationFilterTab =
               </div>
 
               <button type="button" class="btn-close" (click)="closeDetailModal()">Cerrar</button>
-            </div>
-          </div>
-        </div>
-      }
-
-      <!-- Modal de Revisión de Ficha de Nueva Experiencia -->
-      @if (selectedExperienceRequest(); as expReq) {
-        <div class="modal-backdrop" (click)="closeExperienceRequest()">
-          <div class="modal-dialog exp-req-modal-card" (click)="$event.stopPropagation()">
-            <div class="modal-head">
-              <div>
-                <span class="modal-kicker">{{ expReq.kicker }}</span>
-                <h2 class="modal-title">{{ expReq.title }}</h2>
-                <p class="modal-sub-author">
-                  Propuesta presentada por <strong>{{ expReq.providerName }}</strong> ({{
-                    expReq.providerAgency
-                  }})
-                </p>
-              </div>
-              <button type="button" class="modal-close-btn" (click)="closeExperienceRequest()">
-                ×
-              </button>
-            </div>
-
-            <div class="modal-body">
-              <!-- Media Banner -->
-              <div class="exp-req-media-banner">
-                <img
-                  [src]="getProposalCover(expReq.coverImage)"
-                  (error)="onImgError($event)"
-                  alt="Portada de la propuesta"
-                  class="exp-req-cover-img"
-                />
-                <div class="exp-req-media-tags">
-                  @if (expReq.coverImageName) {
-                    <span class="exp-media-tag"
-                      ><mat-icon>image</mat-icon> {{ expReq.coverImageName }}</span
-                    >
-                  }
-                  @if (expReq.coverVideoName) {
-                    <span class="exp-media-tag"
-                      ><mat-icon>videocam</mat-icon> Video: {{ expReq.coverVideoName }}</span
-                    >
-                  }
-                </div>
-                @if (proposalCoverLoadError()) {
-                  <div style="background: rgba(220, 38, 38, 0.2); border: 1px solid #ef4444; color: #fca5a5; padding: 0.5rem 1rem; border-radius: 4px; font-size: 0.82rem; margin-top: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
-                    <mat-icon style="font-size: 18px; width: 18px; height: 18px;">warning</mat-icon>
-                    <span>La foto original de portada no pudo cargarse en el servidor. Se usará la portada por defecto del Club al aprobar.</span>
-                  </div>
-                }
-              </div>
-
-              <!-- 1. Síntesis descriptiva -->
-              <div class="app-desc-box quote-accent">
-                <span class="desc-heading">Síntesis descriptiva</span>
-                <p class="desc-content">{{ expReq.subheading }}</p>
-              </div>
-
-              <!-- 2. Ficha Técnica en Grid -->
-              <div class="exp-req-specs-grid">
-                <div class="spec-cell">
-                  <span class="spec-lbl">Región</span>
-                  <strong>{{ expReq.region }}</strong>
-                </div>
-                <div class="spec-cell">
-                  <span class="spec-lbl">Dificultad</span>
-                  <strong>{{ expReq.difficulty }}</strong>
-                </div>
-                <div class="spec-cell">
-                  <span class="spec-lbl">Duración</span>
-                  <strong>{{ expReq.duration }}</strong>
-                </div>
-                <div class="spec-cell">
-                  <span class="spec-lbl">Altitud</span>
-                  <strong>{{ expReq.altitude || '—' }}</strong>
-                </div>
-                <div class="spec-cell">
-                  <span class="spec-lbl">Cupo Máx.</span>
-                  <strong>{{ expReq.capacity }} personas</strong>
-                </div>
-                <div class="spec-cell">
-                  <span class="spec-lbl">Temporada</span>
-                  <strong>{{ expReq.season }}</strong>
-                </div>
-              </div>
-
-              <!-- 3. Arancel & Promociones Card Premium -->
-              <div class="exp-tariff-card">
-                <div class="tariff-main-col">
-                  <span class="tariff-kicker">Arancel por Persona</span>
-                  <div class="tariff-figures">
-                    <span class="tariff-ars">{{ expReq.priceArs | ars }}</span>
-                    @if (expReq.priceUsd) {
-                      <span class="tariff-usd-pill">Referencia: USD {{ expReq.priceUsd }}</span>
-                    }
-                  </div>
-                </div>
-
-                @if (expReq.capacity) {
-                  <div class="tariff-capacity-col">
-                    <span class="tariff-cap-lbl">Cupo Máximo</span>
-                    <strong class="tariff-cap-val">{{ expReq.capacity }} participantes</strong>
-                  </div>
-                }
-              </div>
-
-              @if (expReq.promosAndPricing) {
-                <div class="app-desc-box promo-accent">
-                  <span class="desc-heading"
-                    >Promociones, descuentos y consideraciones tarifarias</span
-                  >
-                  <p class="desc-content">{{ expReq.promosAndPricing }}</p>
-                </div>
-              }
-
-              <!-- 4. Cronograma & Itinerario -->
-              <div class="app-desc-box">
-                <span class="desc-heading">Cronograma e itinerario propuesto</span>
-                <p class="desc-content" style="white-space: pre-line;">{{ expReq.itinerary }}</p>
-              </div>
-
-              <!-- 5. Logística, Seguridad & Requisitos -->
-              <dl class="modal-dl">
-                <div>
-                  <dt>Punto de Encuentro:</dt>
-                  <dd>{{ expReq.meetingPoint }}</dd>
-                </div>
-                @if (expReq.meetingPointUrl) {
-                  <div>
-                    <dt>Ubicación (Google Maps):</dt>
-                    <dd>
-                      <a [href]="expReq.meetingPointUrl" target="_blank" rel="noopener noreferrer">{{
-                        expReq.meetingPointUrl
-                      }}</a>
-                    </dd>
-                  </div>
-                }
-                <div>
-                  <dt>Fechas / Frecuencia:</dt>
-                  <dd>{{ expReq.dates }}</dd>
-                </div>
-                <div>
-                  <dt>Provisto por el Prestador:</dt>
-                  <dd>{{ expReq.includedServices }}</dd>
-                </div>
-                <div>
-                  <dt>Requisitos del usuario:</dt>
-                  <dd>{{ expReq.participantRequirements }}</dd>
-                </div>
-                @if (expReq.notes) {
-                  <div>
-                    <dt>Notas / Enlaces:</dt>
-                    <dd>
-                      <a [href]="expReq.notes" target="_blank" rel="noopener" class="dt-link">{{
-                        expReq.notes
-                      }}</a>
-                    </dd>
-                  </div>
-                }
-                <div>
-                  <dt>Contacto prestador:</dt>
-                  <dd>
-                    <a [href]="'mailto:' + expReq.providerEmail" class="dt-link">{{
-                      expReq.providerEmail
-                    }}</a>
-                  </dd>
-                </div>
-              </dl>
-
-              @if (expReq.albumPhotos && expReq.albumPhotos.length > 0) {
-                <div class="exp-album-review-box">
-                  <span class="desc-heading">Álbum de fotos de la experiencia ({{ expReq.albumPhotos.length }})</span>
-                  <div class="exp-album-thumbnails-grid">
-                    @for (photo of expReq.albumPhotos; track $index) {
-                      <div class="album-thumb-card">
-                        <img [src]="photo.url" (error)="onImgError($event)" [alt]="photo.caption || 'Foto de propuesta'" class="album-thumb-img" />
-                        @if (photo.caption) {
-                          <span class="album-thumb-caption">{{ photo.caption }}</span>
-                        }
-                      </div>
-                    }
-                  </div>
-                </div>
-              }
-
-              <div class="exp-provider-banking-card">
-                <span class="desc-heading">Información del Prestador y Datos Bancarios</span>
-                <div class="provider-banking-grid">
-                  <div class="banking-cell">
-                    <span class="banking-lbl">Prestador</span>
-                    <strong>{{ expReq.providerName }}</strong>
-                  </div>
-                  <div class="banking-cell">
-                    <span class="banking-lbl">Emprendimiento / Agencia</span>
-                    <strong>{{ expReq.providerAgency || 'Particular' }}</strong>
-                  </div>
-                  <div class="banking-cell">
-                    <span class="banking-lbl">Email</span>
-                    <strong>{{ expReq.providerEmail }}</strong>
-                  </div>
-                  @if (expReq.providerPhone) {
-                    <div class="banking-cell">
-                      <span class="banking-lbl">Teléfono / WhatsApp</span>
-                      <strong>{{ expReq.providerPhone }}</strong>
-                    </div>
-                  }
-                  @if (expReq.providerCuitDni) {
-                    <div class="banking-cell">
-                      <span class="banking-lbl">CUIT / DNI</span>
-                      <strong>{{ expReq.providerCuitDni }}</strong>
-                    </div>
-                  }
-                  @if (expReq.providerCbuAlias) {
-                    <div class="banking-cell">
-                      <span class="banking-lbl">CBU / Alias</span>
-                      <strong>{{ expReq.providerCbuAlias }}</strong>
-                    </div>
-                  }
-                  @if (expReq.providerBankName) {
-                    <div class="banking-cell">
-                      <span class="banking-lbl">Banco / Entidad</span>
-                      <strong>{{ expReq.providerBankName }}</strong>
-                    </div>
-                  }
-                </div>
-              </div>
-            </div>
-
-            <!-- Acciones al Pie -->
-            <div class="modal-actions">
-              <div class="state-buttons">
-                @if (expReq.status === 'pendiente') {
-                  <button
-                    type="button"
-                    class="btn-state btn-approve"
-                    (click)="approveExperience(expReq.id)"
-                  >
-                    Aprobar y publicar
-                  </button>
-                  <button
-                    type="button"
-                    class="btn-state btn-reject"
-                    (click)="rejectExperience(expReq.id)"
-                  >
-                    Rechazar
-                  </button>
-                } @else {
-                  <span
-                    class="status-reviewed-tag"
-                    [class.is-approved]="expReq.status === 'aprobada'"
-                  >
-                    {{
-                      expReq.status === 'aprobada'
-                        ? '✓ Propuesta Aprobada'
-                        : '✕ Propuesta Rechazada'
-                    }}
-                  </span>
-                }
-
-                @if (expReq.providerPhone) {
-                  <a
-                    [href]="getWhatsappLink(expReq.providerPhone, expReq.providerName)"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="btn-state btn-whatsapp btn-contact-provider"
-                  >
-                    <span>Contactar prestador</span>
-                  </a>
-                }
-              </div>
-
-              <button type="button" class="btn-close" (click)="closeExperienceRequest()">
-                Cerrar
-              </button>
             </div>
           </div>
         </div>
@@ -1137,6 +721,21 @@ type ApplicationFilterTab =
         white-space: nowrap;
       }
 
+      .applications-table th.col-actions,
+      .applications-table td.col-actions {
+        position: sticky;
+        right: 0;
+        z-index: 5;
+        background: #140b06;
+        box-shadow: -6px 0 16px rgba(0, 0, 0, 0.45);
+        white-space: nowrap;
+        text-align: right;
+      }
+
+      .applications-table th.col-actions {
+        background: #23120a;
+      }
+
       .applications-table td {
         padding: 0.85rem 1rem;
         border-bottom: 1px solid rgba(255, 95, 0, 0.12);
@@ -1145,6 +744,10 @@ type ApplicationFilterTab =
 
       .applications-table tr:hover td {
         background: rgba(255, 95, 0, 0.04);
+      }
+
+      .applications-table tr:hover td.col-actions {
+        background: #241309;
       }
 
       .badge-type {
@@ -2163,27 +1766,39 @@ export class AdminApplicationsComponent implements OnInit {
   readonly store = inject(AdminStoreService);
   readonly experienceService = inject(ExperienceService);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
   readonly searchQuery = signal<string>('');
   readonly activeTab = signal<ApplicationFilterTab>('todas');
   readonly selectedApp = signal<AdminApplication | null>(null);
-  readonly selectedExperienceRequest = signal<ExperienceProposalRequest | null>(null);
-  readonly expPublicUrlInput = signal<string>('');
 
   readonly providerAccountHolder = signal<string>('');
   readonly providerCuitDni = signal<string>('');
   readonly providerCbuAlias = signal<string>('');
   readonly providerBankName = signal<string>('');
 
+  readonly pendingExperienceCount = computed(
+    () => this.experienceService.experiences().filter((e) => e.status === 'pendiente').length,
+  );
+
   ngOnInit(): void {
     this.store.providerStore.reloadFromStorage();
     void this.store.providerStore.loadProposalsFromSupabase();
+    void this.store.loadAllApplications();
+    void this.experienceService.reloadFromSupabase();
     this.route.queryParams.subscribe((params) => {
       if (params['tab'] === 'experiencias') {
-        this.activeTab.set('experiencias');
-      } else if (!params['tab'] && this.store.pendingExperienceRequestsCount() > 0) {
-        this.activeTab.set('experiencias');
+        void this.router.navigate(['/admin/experiencias'], {
+          queryParams: { tab: 'postulaciones' },
+          replaceUrl: true,
+        });
       }
+    });
+  }
+
+  navigateToExperiencesProposals(): void {
+    void this.router.navigate(['/admin/experiencias'], {
+      queryParams: { tab: 'postulaciones' },
     });
   }
 
@@ -2220,26 +1835,11 @@ export class AdminApplicationsComponent implements OnInit {
     return list;
   });
 
-  readonly filteredExperienceRequests = computed(() => {
-    let list = this.store.experienceRequests();
-    const query = this.searchQuery().trim().toLowerCase();
-    if (query) {
-      list = list.filter((r) => {
-        const titleMatch = r.title.toLowerCase().includes(query);
-        const nameMatch = r.providerName.toLowerCase().includes(query);
-        const agencyMatch = r.providerAgency.toLowerCase().includes(query);
-        const kickerMatch = r.kicker.toLowerCase().includes(query);
-        const regionMatch = r.region.toLowerCase().includes(query);
-        return titleMatch || nameMatch || agencyMatch || kickerMatch || regionMatch;
-      });
-    }
-    return list;
-  });
-
   refresh(): void {
     this.store.providerStore.reloadFromStorage();
     void this.store.providerStore.loadProposalsFromSupabase();
     void this.store.loadAllApplications();
+    void this.experienceService.reloadFromSupabase();
   }
 
   openDetailModal(app: AdminApplication): void {
@@ -2252,81 +1852,6 @@ export class AdminApplicationsComponent implements OnInit {
 
   closeDetailModal(): void {
     this.selectedApp.set(null);
-  }
-
-  readonly proposalCoverLoadError = signal(false);
-
-  openExperienceRequest(req: ExperienceProposalRequest): void {
-    this.selectedExperienceRequest.set(req);
-    this.proposalCoverLoadError.set(false);
-    const slug = slugify(req.title);
-    this.expPublicUrlInput.set(`https://experiencias.club/experiencias/${slug}`);
-  }
-
-  closeExperienceRequest(): void {
-    this.selectedExperienceRequest.set(null);
-    this.proposalCoverLoadError.set(false);
-  }
-
-  getProposalCover(url?: string | null): string {
-    if (!url || typeof url !== 'string' || url.startsWith('blob:')) {
-      return '/assets/images/kayak-club-de-experiencias.jpg';
-    }
-    return url;
-  }
-
-  onImgError(event: Event): void {
-    const target = event.target as HTMLImageElement;
-    if (target && !target.src.includes('kayak-club-de-experiencias.jpg')) {
-      target.src = '/assets/images/kayak-club-de-experiencias.jpg';
-      this.proposalCoverLoadError.set(true);
-    }
-  }
-
-  async approveExperience(id: string): Promise<void> {
-    try {
-      const current = this.selectedExperienceRequest();
-      if (this.proposalCoverLoadError() && current) {
-        current.coverImage = '/assets/images/kayak-club-de-experiencias.jpg';
-      }
-      const ok = await this.store.approveExperienceRequest(id);
-      if (ok) {
-        if (current && current.id === id) {
-          this.selectedExperienceRequest.set({
-            ...current,
-            status: 'aprobada',
-            reviewedAt: new Date().toISOString(),
-          });
-        }
-        this.store.providerStore.reloadFromStorage();
-        await this.store.providerStore.loadProposalsFromSupabase();
-        await this.store.loadAllApplications();
-        await this.experienceService.reloadFromSupabase();
-        this.closeExperienceRequest();
-      }
-    } catch (err) {
-      console.error('[AdminApplications] Error al aprobar propuesta de experiencia:', err);
-    }
-  }
-
-  async rejectExperience(id: string): Promise<void> {
-    const success = await this.store.rejectExperienceRequest(id);
-    if (!success) {
-      alert('No se pudo rechazar la propuesta en el servidor. Por favor, reintentá.');
-      return;
-    }
-    const current = this.selectedExperienceRequest();
-    if (current && current.id === id) {
-      this.selectedExperienceRequest.set({
-        ...current,
-        status: 'rechazada',
-        reviewedAt: new Date().toISOString(),
-      });
-    }
-    this.store.providerStore.reloadFromStorage();
-    await this.store.providerStore.loadProposalsFromSupabase();
-    await this.store.loadAllApplications();
-    this.closeExperienceRequest();
   }
 
   async approveProvider(): Promise<void> {
@@ -2474,67 +1999,6 @@ export class AdminApplicationsComponent implements OnInit {
     const link = document.createElement('a');
     link.href = url;
     link.download = `postulaciones_${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-  }
-
-  downloadExperienceRequestsCsv(): void {
-    const list = this.store.experienceRequests();
-    const headers = [
-      'Título Propuesta',
-      'Kicker',
-      'Prestador',
-      'Agencia',
-      'Email',
-      'Teléfono',
-      'Región',
-      'Dificultad',
-      'Duración',
-      'Cupo Máximo',
-      'Precio ARS',
-      'Precio USD',
-      'Estado',
-      'Fecha',
-      'Síntesis',
-      'Itinerario',
-      'Promociones',
-    ];
-    const escapeCsv = (val: any) => {
-      let str = val != null ? String(val) : '';
-      if (/^[=+\-@\t\r]/.test(str)) {
-        str = "'" + str;
-      }
-      return `"${str.replace(/"/g, '""')}"`;
-    };
-    const rows = [
-      headers.map(escapeCsv).join(','),
-      ...list.map((r) =>
-        [
-          escapeCsv(r.title),
-          escapeCsv(r.kicker),
-          escapeCsv(r.providerName),
-          escapeCsv(r.providerAgency),
-          escapeCsv(r.providerEmail),
-          escapeCsv(r.providerPhone),
-          escapeCsv(r.region),
-          escapeCsv(r.difficulty),
-          escapeCsv(r.duration),
-          escapeCsv(r.capacity),
-          escapeCsv(r.priceArs),
-          escapeCsv(r.priceUsd),
-          escapeCsv(r.status.toUpperCase()),
-          escapeCsv(new Date(r.createdAt).toLocaleDateString('es-AR')),
-          escapeCsv(r.subheading),
-          escapeCsv(r.itinerary),
-          escapeCsv(r.promosAndPricing),
-        ].join(','),
-      ),
-    ];
-    const blob = new Blob(['\uFEFF' + rows.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `experiencias_${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   }

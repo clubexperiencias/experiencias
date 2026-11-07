@@ -794,6 +794,10 @@ export class ProviderStoreService {
                 ...(details?.cuitDni ? { cuitDni: details.cuitDni } : {}),
                 ...(details?.cbuAlias ? { cbuAlias: details.cbuAlias } : {}),
                 ...(details?.bankName ? { bankName: details.bankName } : {}),
+                slug:
+                  p.slug ||
+                  details?.slug ||
+                  slugify(details?.agency || details?.name || p.agency || p.name || normalized.split('@')[0]),
                 verified: status === 'aprobado',
                 status,
               }
@@ -806,6 +810,9 @@ export class ProviderStoreService {
         email: normalized,
         name: details?.name || email,
         agency: details?.agency || 'Prestador EXPERIENCIAS.CLUB',
+        slug:
+          details?.slug ||
+          slugify(details?.agency || details?.name || normalized.split('@')[0]),
         phone: details?.phone || '',
         cuitDni: details?.cuitDni || '',
         cbuAlias: details?.cbuAlias || '',
@@ -1080,6 +1087,9 @@ export class ProviderStoreService {
       (p) =>
         (p.slug || '').toLowerCase() === clean ||
         p.id.toLowerCase() === clean ||
+        slugify(p.agency || '') === clean ||
+        slugify(p.name || '') === clean ||
+        p.email.toLowerCase().split('@')[0] === clean ||
         (p.agency || '')
           .toLowerCase()
           .normalize('NFD')

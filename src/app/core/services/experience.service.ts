@@ -279,10 +279,61 @@ export const SEISMILES_DEFAULT_EXPERIENCE: Experience = {
   providerSlug: 'catamarca-expediciones',
 };
 
+export const SUNSET_DEFAULT_EXPERIENCE: Experience = {
+  id: 'req-sunset-las-pirquitas',
+  slug: 'travesia-en-kayak-nocturna-luna-llena-en-el-jumeal',
+  title: 'Travesía en Kayak Nocturna & Luna Llena en El Jumeal',
+  shortTitle: 'Kayak Nocturno El Jumeal',
+  kicker: 'EXPEDICIÓN NÁUTICA: VALLE CENTRAL',
+  tagline:
+    'Remada nocturna bajo el cielo estrellado y la luna llena en el espejo de agua de El Jumeal, con fogón criollo y degustación de vinos de altura.',
+  description:
+    'Remada nocturna bajo el cielo estrellado y la luna llena en el espejo de agua de El Jumeal, con fogón criollo y degustación de vinos de altura.',
+  region: 'Valle Central y Ambato',
+  meetingPoint: 'Club Náutico El Jumeal (Fray Mamerto Esquiú, RP 1)',
+  difficulty: 'Baja',
+  durationDays: 1,
+  durationLabel: '5 Horas (Jornada Nocturna)',
+  altitudeMeters: 920,
+  bestSeason: 'Primavera y Verano (noches de Luna Llena)',
+  priceArs: 72000,
+  priceUsd: 75,
+  maxSpotsPerGroup: 14,
+  dates: ['2026-11-20', '2026-11-21'],
+  status: 'pendiente',
+  publicUrl:
+    'https://experiencias.club/experiencias/travesia-en-kayak-nocturna-luna-llena-en-el-jumeal',
+  detailRoute:
+    '/experiencias/travesia-en-kayak-nocturna-luna-llena-en-el-jumeal',
+  coverImage: '/assets/images/kayak-club-de-experiencias.jpg',
+  galleryImages: ['/assets/images/kayak-club-de-experiencias.jpg'],
+  highlights: [
+    'Remada guiada nocturna bajo el cielo estrellado de El Jumeal',
+    'Balizas acuáticas y equipamiento estanco de máxima seguridad',
+    'Fogón criollo y degustación de vinos de altura en la ensenada',
+  ],
+  isExclusiveClub: true,
+  isLocked: false,
+  providerId: 'prov-patricio',
+  providerEmail: 'patriciofacundodiaztillar@gmail.com',
+  providerName: 'Patricio Facundo Diaz Tillar',
+  providerAgency: 'Catamarca Kayak & Aventura Náutica',
+  providerPhone: '+54 383 455 8812',
+  itinerary:
+    '19:30 hs Recepción y equipamiento en Club Náutico\n20:15 hs Zarpada con balizas acuáticas\n22:00 hs Desembarco en ensenada y fogón bajo las estrellas\n23:30 hs Brindis de cierre',
+  included: [
+    'Kayaks de travesía, remos, chalecos homologados, balizas estancas, lancha de apoyo y cena rústica al fuego.',
+  ],
+  notIncluded: [
+    'Muda de ropa seca para recambio, campera térmica/rompevientos y calzado para agua.',
+  ],
+};
+
 export const DEFAULT_EXPERIENCES: Experience[] = [
   KAYAK_DEFAULT_EXPERIENCE,
   POMEZ_DEFAULT_EXPERIENCE,
   SEISMILES_DEFAULT_EXPERIENCE,
+  SUNSET_DEFAULT_EXPERIENCE,
 ];
 
 @Injectable({
@@ -1135,16 +1186,17 @@ export class ExperienceService {
               ...activeDefaults.map((d) => d.id.toLowerCase()),
             ]);
             for (const r of reqs) {
-              if (r && r.status === 'aprobada' && r.title) {
+              if (r && (r.status === 'aprobada' || r.status === 'pendiente') && r.title) {
                 const slug =
                   r.experienceSlug ||
+                  r.slug ||
                   r.title
                     .toLowerCase()
                     .normalize('NFD')
                     .replace(/[\u0300-\u036f]/g, '')
                     .replace(/[^a-z0-9]+/g, '-')
                     .replace(/(^-|-$)/g, '');
-                const id = 'exp-' + slug;
+                const id = r.id || 'exp-' + slug;
                 if (
                   slug &&
                   !deletedIds.has(id) &&
@@ -1152,6 +1204,7 @@ export class ExperienceService {
                   !existingSlugs.has(slug.toLowerCase()) &&
                   !existingIds.has(id.toLowerCase())
                 ) {
+                  const mappedStatus = r.status === 'aprobada' ? 'publicada' : 'pendiente';
                   localExperiences.push({
                     id,
                     slug,
@@ -1176,8 +1229,8 @@ export class ExperienceService {
                     priceUsd: r.priceUsd || 70,
                     promosAndPricing: r.promosAndPricing || undefined,
                     maxSpotsPerGroup: r.capacity || 12,
-                    dates: Array.isArray(r.dates) ? r.dates : [],
-                    status: 'publicada',
+                    dates: Array.isArray(r.dates) ? r.dates : r.dates ? [r.dates] : [],
+                    status: mappedStatus,
                     publicUrl: r.experienceUrl || `https://experiencias.club/experiencias/${slug}`,
                     detailRoute: `/experiencias/${slug}`,
                     coverImage: r.coverImage || KAYAK_IMAGE,
@@ -1702,10 +1755,10 @@ export class ExperienceService {
         const remoteSlugs = new Set(remoteExperiences.map((e) => e.slug.toLowerCase()));
         const deletedIds = this.getDeletedIds();
 
-        // Preservar solo experiencias locales marcadas explícitamente como pendientes de sincronización remota
+        // Preservar experiencias locales (pendientes de sincronización o propuestas no presentes en remoto)
         const localOnly = currentLocal.filter(
           (e) =>
-            Boolean(e.pendingRemoteSync) &&
+            (Boolean(e.pendingRemoteSync) || e.status === 'pendiente') &&
             !remoteIds.has(e.id.toLowerCase()) &&
             !remoteSlugs.has(e.slug.toLowerCase()) &&
             !deletedIds.has(e.id) &&

@@ -280,6 +280,7 @@ export class AdminStoreService {
       void this.loadAllMembers();
       void this.loadAllSubmissions();
       void this.loadAllApplications();
+      void this.experienceService.reloadFromSupabase();
     }
   }
 
@@ -823,6 +824,81 @@ export class AdminStoreService {
     }
     this._lastRefreshedAt.set(new Date().toLocaleTimeString('es-AR'));
     this._isLoadingMembers.set(false);
+  }
+
+  getMemberById(idOrIdentifier: string): AdminMember | undefined {
+    const clean = idOrIdentifier.trim().toLowerCase();
+    return this._members().find(
+      (m) =>
+        m.id.toLowerCase() === clean ||
+        (m.position !== undefined && String(m.position) === clean) ||
+        m.email.toLowerCase() === clean,
+    );
+  }
+
+  async updateMemberProfile(
+    id: string,
+    updates: Partial<AdminMember>,
+  ): Promise<{ success: boolean; error?: string }> {
+    const existing = this.getMemberById(id);
+    if (!existing) {
+      return { success: false, error: 'Socio no encontrado' };
+    }
+
+    const merged: AdminMember = {
+      ...existing,
+      ...updates,
+    };
+
+    // Actualizar estado local inmediatamente
+    this._members.update((list) =>
+      list.map((m) => (m.id === existing.id || m.email === existing.email ? merged : m)),
+    );
+    this.persistMembers(this._members());
+
+    if (isSupabaseConfigured()) {
+      try {
+        const payload: Record<string, any> = {
+          updated_at: new Date().toISOString(),
+        };
+        if (updates.fullName !== undefined) payload['full_name'] = updates.fullName;
+        if (updates.email !== undefined) payload['email'] = updates.email;
+        if (updates.dni !== undefined) payload['dni'] = updates.dni;
+        if (updates.phone !== undefined) payload['phone'] = updates.phone;
+        if (updates.position !== undefined) {
+          payload['position'] = updates.position && updates.position > 0 ? updates.position : null;
+        }
+        if (updates.membershipTier !== undefined) payload['membership_tier'] = updates.membershipTier;
+        if (updates.experiencesOther !== undefined) payload['experiences_other'] = updates.experiencesOther;
+        if (updates.experiencesWishlist !== undefined) payload['experiences_wishlist'] = updates.experiencesWishlist;
+
+        let query = (this.supabase.from('socios') as any).update(payload);
+        if (existing.id && existing.id.includes('-')) {
+          query = query.eq('id', existing.id);
+        } else {
+          query = query.eq('email', existing.email);
+        }
+        const { error } = await query;
+        if (error) {
+          console.warn('[AdminStore] Error al persistir socio en Supabase, reintentando por email:', error);
+          if (existing.email) {
+            const fallback = await (this.supabase.from('socios') as any)
+              .update(payload)
+              .eq('email', existing.email);
+            if (fallback.error) {
+              return { success: false, error: fallback.error.message };
+            }
+          } else {
+            return { success: false, error: error.message };
+          }
+        }
+      } catch (err: any) {
+        console.error('[AdminStore] Excepción al actualizar socio en Supabase:', err);
+        return { success: false, error: err?.message || 'Error de red' };
+      }
+    }
+
+    return { success: true };
   }
 
   // ============================================================

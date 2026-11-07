@@ -171,7 +171,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                   <th>Cupos</th>
                   <th>Monto</th>
                   <th>Estado</th>
-                  <th>Acciones</th>
+                  <th class="col-actions">Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -249,7 +249,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                     </td>
 
                     <!-- Columna Acciones: Ver comprobante abre el modal unificado sin símbolo -->
-                    <td>
+                    <td class="col-actions">
                       <button
                         type="button"
                         class="view-receipt-btn"
@@ -819,7 +819,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         font-size: 0.85rem;
       }
       .members-table th {
-        background: rgba(7, 13, 28, 0.7);
+        background: rgba(7, 13, 28, 0.95);
         padding: 0.85rem 1rem;
         font-size: 0.72rem;
         text-transform: uppercase;
@@ -827,6 +827,23 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         color: #80b3ff;
         font-weight: 700;
         border-bottom: 1px solid rgba(128, 179, 255, 0.25);
+        white-space: nowrap;
+      }
+      .members-table th.col-actions,
+      .members-table td.col-actions {
+        position: sticky;
+        right: 0;
+        z-index: 5;
+        background: #091024;
+        box-shadow: -6px 0 16px rgba(0, 0, 0, 0.45);
+        white-space: nowrap;
+        text-align: right;
+      }
+      .members-table th.col-actions {
+        background: #070d1c;
+      }
+      .members-table tr:hover td.col-actions {
+        background: #0f1c3f;
       }
       .members-table td {
         padding: 1rem;

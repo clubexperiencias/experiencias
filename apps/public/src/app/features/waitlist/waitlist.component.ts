@@ -465,7 +465,8 @@ export class WaitlistComponent {
 
       if (!result?.success) {
         this.providerError.set(
-          'No se pudo enviar la postulación. Por favor verificá tus datos e intentá de nuevo.',
+          result?.message ||
+            'El sistema no pudo procesar la postulación en este momento por un inconveniente temporal de recepción. Tus datos ingresados son correctos; por favor intentá nuevamente.',
         );
         return;
       }

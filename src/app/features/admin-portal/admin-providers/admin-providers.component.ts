@@ -6,7 +6,7 @@ import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { filter } from 'rxjs';
 import { AdminStoreService, AdminApplication } from '../../../core/services/admin-store.service';
-import { ProviderUser } from '../../../core/services/provider-store.service';
+import { ProviderUser, slugify } from '../../../core/services/provider-store.service';
 import { FechaPipe, ArsPipe } from '../../../shared/pipes/format.pipes';
 
 export type ProviderTab = 'todos' | 'oficiales' | 'postulaciones';
@@ -712,7 +712,7 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
                       <!-- Acciones -->
                       <td class="text-right">
                         <div class="actions-row">
-                          @if (item.origin === 'official' && item.slug) {
+                          @if ((item.origin === 'official' || item.status === 'aprobado') && item.slug) {
                             <a
                               [routerLink]="getDetailRoute(item)"
                               class="btn-view-fiche"
@@ -730,7 +730,7 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
                             </a>
                           }
 
-                          @if (item.origin === 'application' && item.rawApp) {
+                          @if (item.origin === 'application' && item.rawApp && item.status !== 'aprobado') {
                             <button
                               type="button"
                               class="btn-review-app"
@@ -1136,7 +1136,26 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
       .providers-table td.text-right {
         text-align: right !important;
         white-space: nowrap !important;
-        min-width: 220px;
+        min-width: 135px;
+        width: 135px;
+        position: sticky;
+        right: 0;
+        z-index: 5;
+        background: #140b06;
+        box-shadow: -6px 0 16px rgba(0, 0, 0, 0.45);
+        position: sticky;
+        right: 0;
+        z-index: 5;
+        background: #140b06;
+        box-shadow: -6px 0 16px rgba(0, 0, 0, 0.45);
+      }
+
+      .providers-table th.text-right {
+        background: #0f0703 !important;
+      }
+
+      .providers-table tr:hover td.text-right {
+        background: #241309;
       }
 
       .text-right {
@@ -1252,11 +1271,27 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
 
       .actions-row {
         display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: center;
+        gap: 0.3rem;
+        min-width: 110px;
+        max-width: 125px;
+        margin-left: auto;
+      }
+
+      .actions-row .btn-view-fiche,
+      .actions-row .btn-edit-exp,
+      .actions-row .btn-review-app {
+        display: inline-flex;
         align-items: center;
-        justify-content: flex-end;
-        gap: 0.45rem;
-        flex-wrap: nowrap;
-        white-space: nowrap !important;
+        justify-content: center;
+        width: 100%;
+        height: 25px;
+        min-height: 25px;
+        padding: 0 0.5rem;
+        font-size: 0.7rem;
+        box-sizing: border-box;
       }
 
       /* Botones de Acción Coherentes con el Portal Admin */
@@ -2293,7 +2328,36 @@ export class AdminProvidersComponent implements OnInit {
     const slug = segments[prestIdx + 1];
     const isEdit = segments.includes('editar');
 
-    const provider = this.store.providerStore.getProviderBySlug(slug);
+    let provider = this.store.providerStore.getProviderBySlug(slug);
+    if (!provider) {
+      const cleanSlug = slug.toLowerCase().trim();
+      const app = this.store.applications().find(
+        (a) =>
+          a.id.toLowerCase() === cleanSlug ||
+          slugify(a.fullName || a.id) === cleanSlug ||
+          slugify(a.category || a.id) === cleanSlug ||
+          a.email.toLowerCase().split('@')[0] === cleanSlug,
+      );
+      if (app) {
+        provider = {
+          id: app.id,
+          name: app.fullName || 'Postulante',
+          agency: app.category ? this.formatCategory(app.category) : 'Postulación de Prestador',
+          email: app.email,
+          phone: app.phone || '',
+          slug: slugify(app.fullName || app.id),
+          bio: app.description || app.motivationLetter || '',
+          cuitDni: app.cuitDni || '',
+          cbuAlias: app.cbuAlias || '',
+          bankName: app.bankName || '',
+          verified: app.status === 'aprobado',
+          status: app.status === 'aprobado' ? 'aprobado' : 'pendiente',
+          role: 'prestador',
+          joinedAt: app.createdAt,
+        };
+      }
+    }
+
     if (!provider) {
       this.notFound.set(true);
       this.isRouteEditMode.set(false);
@@ -2399,13 +2463,13 @@ export class AdminProvidersComponent implements OnInit {
   });
 
   getDetailRoute(item: ProviderListItem | ProviderUser): string {
-    const slug = item.slug || ('id' in item ? item.id : '');
+    const slug = item.slug || slugify(item.agency || item.name || item.id);
     const base = this.isAdminRoute() ? '/admin/prestadores' : '/prestadores';
     return `${base}/${slug}`;
   }
 
   getEditRoute(item: ProviderListItem | ProviderUser): string {
-    const slug = item.slug || ('id' in item ? item.id : '');
+    const slug = item.slug || slugify(item.agency || item.name || item.id);
     const base = this.isAdminRoute() ? '/admin/prestadores' : '/prestadores';
     return `${base}/${slug}/editar`;
   }
@@ -2440,6 +2504,7 @@ export class AdminProvidersComponent implements OnInit {
       }
       const cleanEmail = p.email?.toLowerCase().trim() || '';
       if (cleanEmail) providerEmails.add(cleanEmail);
+      const computedSlug = p.slug || slugify(p.agency || p.name || p.id || cleanEmail);
       list.push({
         id: p.id || `prov-${cleanEmail}`,
         origin: 'official',
@@ -2448,7 +2513,7 @@ export class AdminProvidersComponent implements OnInit {
         email: p.email,
         phone: p.phone || '—',
         categoryOrBio: p.bio,
-        slug: p.slug,
+        slug: computedSlug,
         status: 'aprobado',
         createdAt: p.joinedAt || '2024-01-01T00:00:00Z',
         rawProvider: p,
@@ -2461,6 +2526,7 @@ export class AdminProvidersComponent implements OnInit {
       if (cleanEmail && providerEmails.has(cleanEmail)) {
         continue;
       }
+      const appSlug = slugify(app.fullName || app.category || app.id || cleanEmail);
       list.push({
         id: app.id,
         origin: 'application',
@@ -2469,6 +2535,7 @@ export class AdminProvidersComponent implements OnInit {
         email: app.email,
         phone: app.phone || '—',
         categoryOrBio: app.description || app.motivationLetter,
+        slug: appSlug,
         status:
           app.status === 'aprobado'
             ? 'aprobado'

@@ -115,7 +115,7 @@ type StatusFilter = TransferStatus | 'todos';
                 <th>Cupos</th>
                 <th>Importe</th>
                 <th>Comprobante</th>
-                <th>Acción</th>
+                <th class="col-actions">Acción</th>
               </tr>
             </thead>
             <tbody>
@@ -184,7 +184,7 @@ type StatusFilter = TransferStatus | 'todos';
                   </td>
 
                   <!-- Botón Acción -->
-                  <td>
+                  <td class="col-actions">
                     <button type="button" class="review-btn" (click)="openReceipt(sub)">
                       Revisar
                     </button>
@@ -737,6 +737,21 @@ type StatusFilter = TransferStatus | 'todos';
         white-space: nowrap;
       }
 
+      .receipts-table th.col-actions,
+      .receipts-table td.col-actions {
+        position: sticky;
+        right: 0;
+        z-index: 5;
+        background: #140b06;
+        box-shadow: -6px 0 16px rgba(0, 0, 0, 0.45);
+        white-space: nowrap;
+        text-align: right;
+      }
+
+      .receipts-table th.col-actions {
+        background: #23120a;
+      }
+
       .receipts-table td {
         padding: 0.85rem 1rem;
         border-bottom: 1px solid rgba(255, 95, 0, 0.15);
@@ -746,6 +761,10 @@ type StatusFilter = TransferStatus | 'todos';
 
       .receipts-table tbody tr:hover {
         background: rgba(255, 95, 0, 0.08);
+      }
+
+      .receipts-table tbody tr:hover td.col-actions {
+        background: #241309;
       }
 
       .receipts-table tbody tr.row-pending {
