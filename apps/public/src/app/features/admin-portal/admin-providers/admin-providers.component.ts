@@ -2557,7 +2557,9 @@ export class AdminProvidersComponent implements OnInit {
         return (cleanEmail && eEmail === cleanEmail) || (cleanSlug && eSlug === cleanSlug);
       });
 
-      const { metadata, freeText } = this.parseProviderNotes(prov.notes);
+      const remoteNotes = await this.store.providerStore.loadProviderNotes(prov.email);
+      const notesToUse = remoteNotes !== null ? remoteNotes : (prov.notes || '');
+      const { metadata, freeText } = this.parseProviderNotes(notesToUse);
       const notesObj = metadata;
 
       if (!isCurrentlyBaja) {
@@ -2746,7 +2748,9 @@ export class AdminProvidersComponent implements OnInit {
 
     this.saving.set(true);
 
-    const { metadata, freeText } = this.parseProviderNotes(p.notes);
+    const remoteNotes = await this.store.providerStore.loadProviderNotes(p.email);
+    const notesToUse = remoteNotes !== null ? remoteNotes : (p.notes || '');
+    const { metadata, freeText } = this.parseProviderNotes(notesToUse);
     const notesObj = metadata;
 
     const cleanEmail = p.email?.toLowerCase().trim();
@@ -2794,7 +2798,7 @@ export class AdminProvidersComponent implements OnInit {
 
     if (statusChangedToOrFromBaja) {
       const newNotes = this.serializeProviderNotes(notesObj, freeText);
-      const originalNotes = (p.notes || '').trim();
+      const originalNotes = (notesToUse || '').trim();
       if (newNotes !== originalNotes) {
         updatePayload.notes = newNotes;
       }

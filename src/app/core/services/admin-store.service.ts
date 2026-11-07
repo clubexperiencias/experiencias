@@ -399,6 +399,7 @@ export class AdminStoreService {
 
         if (!error && data) {
           let usdRate: number | undefined;
+          let parsedAddress: string | undefined;
           if (data.notes) {
             try {
               const parsed = JSON.parse(data.notes);
@@ -413,10 +414,19 @@ export class AdminStoreService {
                   usdRate = rounded;
                 }
               }
+              if (parsed && typeof parsed.address === 'string' && parsed.address.trim()) {
+                parsedAddress = parsed.address.trim();
+              }
             } catch {
               // ignore non-json
             }
           }
+          const loadedAddress =
+            parsedAddress ||
+            (typeof (data as any).address === 'string' && (data as any).address.trim()
+              ? (data as any).address.trim()
+              : current.address || DEFAULT_CLUB_PROFILE.address);
+
           const loaded: ClubProfile = {
             id: data.id,
             name: data.name || DEFAULT_CLUB_PROFILE.name,
@@ -431,7 +441,7 @@ export class AdminStoreService {
             bio: data.bio || DEFAULT_CLUB_PROFILE.bio,
             website: data.website || DEFAULT_CLUB_PROFILE.website,
             socialMedia: data.social_media || DEFAULT_CLUB_PROFILE.socialMedia,
-            address: DEFAULT_CLUB_PROFILE.address,
+            address: loadedAddress,
             updatedAt: data.updated_at || new Date().toISOString(),
             ...(usdRate !== undefined ? { usdExchangeRate: usdRate } : {}),
           };
@@ -503,10 +513,98 @@ export class AdminStoreService {
 
     if (isSupabaseConfigured()) {
       try {
-        const notesPayload = JSON.stringify({
-          ...(targetRate !== undefined ? { usd_exchange_rate: targetRate } : {}),
+        let existingNotesObj: Record<string, any> = {};
+        if (typeof (this.supabase.from as any) === 'function') {
+          try {
+            const table = this.supabase.from('prestadores') as any;
+            if (table && typeof table.select === 'function') {
+              let remoteRow: any = null;
+              if (targetId) {
+                try {
+                  const res = await table.select('notes').eq('id', targetId).maybeSingle();
+                  remoteRow = res?.data;
+                } catch {
+                  // fallback
+                }
+              }
+              if (!remoteRow) {
+                try {
+                  const res = await table.select('notes').eq('slug', targetSlug).maybeSingle();
+                  remoteRow = res?.data;
+                } catch {
+                  // fallback
+                }
+              }
+              if (!remoteRow) {
+                try {
+                  const res = await table
+                    .select('notes')
+                    .eq('email', merged.email || DEFAULT_CLUB_PROFILE.email)
+                    .maybeSingle();
+                  remoteRow = res?.data;
+                } catch {
+                  // fallback
+                }
+              }
+              if (remoteRow?.notes) {
+                try {
+                  const parsed = JSON.parse(remoteRow.notes);
+                  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                    existingNotesObj = parsed;
+                  } else {
+                    existingNotesObj = { text: String(remoteRow.notes) };
+                  }
+                } catch {
+                  existingNotesObj = { text: String(remoteRow.notes) };
+                }
+              }
+            }
+          } catch {
+            // Ignorar error al leer notas remotas previas
+          }
+        }
+
+        if (Object.keys(existingNotesObj).length === 0) {
+          try {
+            const clubProv = this.providerStore.allProviders()?.find(
+              (p) =>
+                p.id === 'prov-club' ||
+                (p.email || '').toLowerCase() === (merged.email || DEFAULT_CLUB_PROFILE.email).toLowerCase() ||
+                p.slug === targetSlug,
+            );
+            if (clubProv?.notes) {
+              try {
+                const parsed = JSON.parse(clubProv.notes);
+                if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                  existingNotesObj = parsed;
+                } else {
+                  existingNotesObj = { text: String(clubProv.notes) };
+                }
+              } catch {
+                existingNotesObj = { text: String(clubProv.notes) };
+              }
+            }
+          } catch {
+            // Ignorar
+          }
+        }
+
+        const nextNotesObj: Record<string, any> = {
+          ...existingNotesObj,
           system: 'configuracion_club',
-        });
+          ...(targetRate !== undefined ? { usd_exchange_rate: targetRate } : {}),
+        };
+
+        if (typeof merged.address === 'string') {
+          const trimmedAddress = merged.address.trim();
+          if (trimmedAddress) {
+            nextNotesObj['address'] = trimmedAddress;
+          } else {
+            delete nextNotesObj['address'];
+          }
+        }
+
+        const notesPayload = JSON.stringify(nextNotesObj);
         const payload = {
           email: merged.email || DEFAULT_CLUB_PROFILE.email,
           name: merged.name,

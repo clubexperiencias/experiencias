@@ -1071,6 +1071,40 @@ export class ProviderStoreService {
     );
   }
 
+  /**
+   * Consulta las notas remotas actuales del prestador en Supabase.
+   * Si la consulta es exitosa, sincroniza la copia local en `_providers` y retorna el string de notas.
+   * En caso de error o si Supabase no está configurado, retorna null para permitir fallback a las notas locales.
+   */
+  async loadProviderNotes(emailOrId: string): Promise<string | null> {
+    if (!isSupabaseConfigured() || !emailOrId) return null;
+    try {
+      const cleanKey = emailOrId.trim().toLowerCase();
+      let query = (this.supabase.from('prestadores') as any).select('notes');
+      if (cleanKey.includes('@')) {
+        query = query.eq('email', cleanKey);
+      } else {
+        query = query.eq('id', cleanKey);
+      }
+      const { data: remoteRow, error } = await query.maybeSingle();
+
+      if (!error && remoteRow && typeof remoteRow.notes === 'string') {
+        this._providers.update((list) =>
+          list.map((p) =>
+            (p.email || '').trim().toLowerCase() === cleanKey ||
+            (p.id || '').trim().toLowerCase() === cleanKey
+              ? { ...p, notes: remoteRow.notes }
+              : p,
+          ),
+        );
+        return remoteRow.notes;
+      }
+    } catch (err) {
+      console.warn('[ProviderStore] Error cargando notas remotas del prestador:', err);
+    }
+    return null;
+  }
+
   async adminUpdateProvider(
     providerIdOrEmail: string,
     updates: Partial<ProviderUser>,
@@ -1182,20 +1216,27 @@ export class ProviderStoreService {
               const shouldPreserveBajaIds = !localHadBajaIds && 'pausedByBajaExpIds' in remoteObj;
 
               if (updatesObj) {
-                const merged = { ...remoteObj, ...updatesObj };
                 if (shouldPreserveBajaIds && !('pausedByBajaExpIds' in updatesObj)) {
-                  merged['pausedByBajaExpIds'] = remoteObj['pausedByBajaExpIds'];
+                  finalNotes = JSON.stringify({
+                    ...updatesObj,
+                    pausedByBajaExpIds: remoteObj['pausedByBajaExpIds'],
+                  });
+                } else {
+                  finalNotes = JSON.stringify(updatesObj);
                 }
-                finalNotes = JSON.stringify(merged);
               } else if (typeof updates.notes === 'string') {
                 if (shouldPreserveBajaIds) {
-                  const merged = { ...remoteObj };
+                  const merged: Record<string, any> = {
+                    pausedByBajaExpIds: remoteObj['pausedByBajaExpIds'],
+                  };
                   if (updates.notes.trim()) {
                     merged['text'] = updates.notes.trim();
                   }
                   finalNotes = JSON.stringify(merged);
                 } else if (!updates.notes.trim() && !localHadBajaIds && Object.keys(remoteObj).length > 0) {
                   finalNotes = remoteNotes;
+                } else {
+                  finalNotes = updates.notes;
                 }
               }
             } else if (!updates.notes.trim() && (!current.notes || !current.notes.trim()) && remoteNotes.trim()) {
@@ -2443,9 +2484,7 @@ export class ProviderStoreService {
   async loadProposalsFromSupabase(providerEmail?: string): Promise<void> {
     if (!isSupabaseConfigured()) return;
     try {
-      const statusFilter = providerEmail
-        ? ['pendiente', 'rechazada', 'publicada']
-        : ['pendiente', 'rechazada'];
+      const statusFilter = ['pendiente', 'rechazada', 'publicada', 'oculta'];
       let expQuery = (this.supabase.from('experiencias') as any)
         .select('*')
         .in('status', statusFilter);
@@ -2519,7 +2558,7 @@ export class ProviderStoreService {
             coverVideoUrl: row.video_url || '',
             coverVideoName: row.cover_video_name || '',
             albumPhotos: Array.isArray(row.album_photos) ? row.album_photos : [],
-            status: (row.status === 'publicada' ? 'aprobada' : row.status) as
+            status: (row.status === 'publicada' || row.status === 'oculta' ? 'aprobada' : row.status) as
               | 'pendiente'
               | 'aprobada'
               | 'rechazada',
@@ -2539,7 +2578,7 @@ export class ProviderStoreService {
             (r) =>
               r.id !== 'req-sunset-las-pirquitas' &&
               r.providerEmail?.toLowerCase() === providerEmail.toLowerCase() &&
-              (r.status === 'aprobada' || (r.status as string) === 'publicada') &&
+              (r.status === 'aprobada' || (r.status as string) === 'publicada' || (r.status as string) === 'oculta') &&
               !mappedIds.has(r.id),
           );
           const others = this._experienceRequests().filter(
