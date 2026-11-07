@@ -40,6 +40,7 @@ export interface ProviderUser {
   role: 'prestador';
   avatar?: string;
   coverImage?: string;
+  notes?: string;
   joinedAt: string;
 }
 

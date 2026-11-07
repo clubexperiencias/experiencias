@@ -116,15 +116,12 @@ const adminRoutes: Routes = [
       },
       {
         path: 'propuestas',
-        title: 'Portal de Admin del Club de Experiencias',
-        loadComponent: () =>
-          import('./features/admin-portal/admin-applications/admin-applications.component').then(
-            (m) => m.AdminApplicationsComponent,
-          ),
+        redirectTo: 'experiencias',
+        pathMatch: 'full',
       },
       {
         path: 'postulaciones',
-        redirectTo: 'propuestas',
+        redirectTo: 'prestadores',
         pathMatch: 'full',
       },
       {
@@ -173,6 +170,22 @@ const adminRoutes: Routes = [
         loadComponent: () =>
           import('./features/admin-portal/admin-logs/admin-logs.component').then(
             (m) => m.AdminLogsComponent,
+          ),
+      },
+      {
+        path: 'logs/socios',
+        title: 'Logs de Socios - Portal de Admin',
+        loadComponent: () =>
+          import('./features/admin-portal/admin-logs/admin-logs.component').then(
+            (m) => m.AdminLogsComponent,
+          ),
+      },
+      {
+        path: 'configuracion',
+        title: 'Configuración General - Portal de Admin',
+        loadComponent: () =>
+          import('./features/admin-portal/admin-settings/admin-settings.component').then(
+            (m) => m.AdminSettingsComponent,
           ),
       },
       { path: '**', redirectTo: 'dashboard' },
@@ -539,15 +552,12 @@ const publicRoutes: Routes = [
       },
       {
         path: 'propuestas',
-        title: 'Portal de Admin del Club de Experiencias',
-        loadComponent: () =>
-          import('./features/admin-portal/admin-applications/admin-applications.component').then(
-            (m) => m.AdminApplicationsComponent,
-          ),
+        redirectTo: 'experiencias',
+        pathMatch: 'full',
       },
       {
         path: 'postulaciones',
-        redirectTo: 'propuestas',
+        redirectTo: 'prestadores',
         pathMatch: 'full',
       },
       {
@@ -596,6 +606,22 @@ const publicRoutes: Routes = [
         loadComponent: () =>
           import('./features/admin-portal/admin-logs/admin-logs.component').then(
             (m) => m.AdminLogsComponent,
+          ),
+      },
+      {
+        path: 'logs/socios',
+        title: 'Logs de Socios - Portal de Admin',
+        loadComponent: () =>
+          import('./features/admin-portal/admin-logs/admin-logs.component').then(
+            (m) => m.AdminLogsComponent,
+          ),
+      },
+      {
+        path: 'configuracion',
+        title: 'Configuración General - Portal de Admin',
+        loadComponent: () =>
+          import('./features/admin-portal/admin-settings/admin-settings.component').then(
+            (m) => m.AdminSettingsComponent,
           ),
       },
       { path: '**', redirectTo: 'dashboard' },

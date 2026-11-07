@@ -1058,6 +1058,7 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
 
       .members-table th.text-right {
         background: #23120a;
+        text-align: center;
       }
 
       .members-table tbody tr:hover td.text-right {

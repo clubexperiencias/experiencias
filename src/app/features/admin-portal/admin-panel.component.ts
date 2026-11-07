@@ -14,14 +14,13 @@ const ROUTE_LABELS: Record<string, string> = {
   socios: 'SOCIOS',
   prestadores: 'PRESTADORES',
   comprobantes: 'COMPROBANTES',
-  propuestas: 'PROPUESTAS',
-  postulaciones: 'PROPUESTAS',
   experiencias: 'EXPERIENCIAS',
   nueva: 'NUEVA',
   editar: 'EDITAR',
   perfil: 'PERFIL',
   logs: 'REGISTRO DE ACTIVIDAD',
   admins: 'ADMINS',
+  configuracion: 'CONFIGURACIÓN',
 };
 
 @Component({
@@ -126,17 +125,6 @@ const ROUTE_LABELS: Record<string, string> = {
                   </a>
 
                   <a
-                    [routerLink]="adminLink('/propuestas')"
-                    class="dropdown-item enlarged-item"
-                    (click)="userMenuOpen.set(false)"
-                  >
-                    <mat-icon class="menu-item-icon">assignment_ind</mat-icon>
-                    <div class="menu-item-info">
-                      <strong class="menu-item-title">Ver Propuestas</strong>
-                    </div>
-                  </a>
-
-                  <a
                     [routerLink]="adminLink('/experiencias')"
                     class="dropdown-item enlarged-item"
                     (click)="userMenuOpen.set(false)"
@@ -159,17 +147,17 @@ const ROUTE_LABELS: Record<string, string> = {
                     </div>
                   </a>
 
-                  <button
-                    type="button"
+                  <a
+                    [routerLink]="adminLink('/configuracion')"
                     class="dropdown-item enlarged-item club-profile-item"
-                    (click)="openClubProfileModal(); userMenuOpen.set(false)"
+                    (click)="userMenuOpen.set(false)"
                   >
-                    <mat-icon class="menu-item-icon club-icon">account_balance</mat-icon>
+                    <mat-icon class="menu-item-icon club-icon">settings</mat-icon>
                     <div class="menu-item-info">
-                      <strong class="menu-item-title">Perfil del Club</strong>
-                      <span class="menu-item-subtitle">Prestador oficial & datos de cobro</span>
+                      <strong class="menu-item-title">Configuración</strong>
+                      <span class="menu-item-subtitle">Perfil del Club & Cotización USD</span>
                     </div>
-                  </button>
+                  </a>
                 </div>
 
                 <div class="dropdown-divider"></div>

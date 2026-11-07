@@ -83,43 +83,7 @@ export interface ExperienceProposalRequest {
   reviewedAt?: string;
 }
 
-const SEED_EXPERIENCE_REQUESTS: ExperienceProposalRequest[] = [
-  {
-    id: 'req-sunset-las-pirquitas',
-    providerId: 'prov-patricio',
-    providerName: 'Patricio Facundo Diaz Tillar',
-    providerAgency: 'Catamarca Kayak & Aventura Náutica',
-    providerEmail: 'patriciofacundodiaztillar@gmail.com',
-    providerPhone: '+54 383 455 8812',
-    title: 'Travesía en Kayak Nocturna & Luna Llena en El Jumeal',
-    kicker: 'EXPEDICIÓN NÁUTICA: VALLE CENTRAL',
-    subheading:
-      'Remada nocturna bajo el cielo estrellado y la luna llena en el espejo de agua de El Jumeal, con fogón criollo y degustación de vinos de altura.',
-    region: 'Valle Central y Ambato',
-    difficulty: 'Baja (Sin experiencia previa)',
-    duration: '5 Horas (Jornada Nocturna)',
-    altitude: '920 msnm',
-    capacity: 14,
-    season: 'Primavera y Verano (noches de Luna Llena)',
-    dates: 'Viernes y Sábados de Luna Llena 19:30 hs',
-    priceArs: 72000,
-    priceUsd: 75,
-    promosAndPricing: '10% de descuento abonando en efectivo o para grupos de 4 o más personas.',
-    itinerary:
-      '19:30 hs Recepción y equipamiento en Club Náutico\n20:15 hs Zarpada con balizas acuáticas\n22:00 hs Desembarco en ensenada y fogón bajo las estrellas\n23:30 hs Brindis de cierre',
-    meetingPoint: 'Club Náutico El Jumeal (Fray Mamerto Esquiú, RP 1)',
-    includedServices:
-      'Kayaks de travesía, remos, chalecos homologados, balizas estancas, lancha de apoyo y cena rústica al fuego.',
-    participantRequirements:
-      'Muda de ropa seca para recambio, campera térmica/rompevientos y calzado para agua.',
-    notes: 'Fotos de alta resolución y ruta GPS cargadas.',
-    coverImage: '/assets/images/kayak-club-de-experiencias.jpg',
-    coverImageName: 'kayak-nocturno-pirquitas.jpg',
-    coverVideoName: 'kayak-trailer.mp4',
-    status: 'pendiente',
-    createdAt: hoursAgo(14),
-  },
-];
+const SEED_EXPERIENCE_REQUESTS: ExperienceProposalRequest[] = [];
 
 function upcomingDate(daysFromNow: number): string {
   const date = new Date();
@@ -1107,6 +1071,40 @@ export class ProviderStoreService {
     );
   }
 
+  /**
+   * Consulta las notas remotas actuales del prestador en Supabase.
+   * Si la consulta es exitosa, sincroniza la copia local en `_providers` y retorna el string de notas.
+   * En caso de error o si Supabase no está configurado, retorna null para permitir fallback a las notas locales.
+   */
+  async loadProviderNotes(emailOrId: string): Promise<string | null> {
+    if (!isSupabaseConfigured() || !emailOrId) return null;
+    try {
+      const cleanKey = emailOrId.trim().toLowerCase();
+      let query = (this.supabase.from('prestadores') as any).select('notes');
+      if (cleanKey.includes('@')) {
+        query = query.eq('email', cleanKey);
+      } else {
+        query = query.eq('id', cleanKey);
+      }
+      const { data: remoteRow, error } = await query.maybeSingle();
+
+      if (!error && remoteRow && typeof remoteRow.notes === 'string') {
+        this._providers.update((list) =>
+          list.map((p) =>
+            (p.email || '').trim().toLowerCase() === cleanKey ||
+            (p.id || '').trim().toLowerCase() === cleanKey
+              ? { ...p, notes: remoteRow.notes }
+              : p,
+          ),
+        );
+        return remoteRow.notes;
+      }
+    } catch (err) {
+      console.warn('[ProviderStore] Error cargando notas remotas del prestador:', err);
+    }
+    return null;
+  }
+
   async adminUpdateProvider(
     providerIdOrEmail: string,
     updates: Partial<ProviderUser>,
@@ -1158,6 +1156,98 @@ export class ProviderStoreService {
         if (updates.status !== undefined) {
           payload['status'] = updates.status;
           payload['active'] = updates.status === 'aprobado';
+        }
+
+        // Cargar notas remotas actuales antes de aplicar la actualización para preservar
+        // metadatos persistidos (como pausedByBajaExpIds) si el registro local no los tenía cargados.
+        let remoteNotes: string | null = null;
+        try {
+          const { data: remoteRow } = await (this.supabase.from('prestadores') as any)
+            .select('notes')
+            .eq('email', email)
+            .maybeSingle();
+          if (remoteRow && typeof remoteRow.notes === 'string') {
+            remoteNotes = remoteRow.notes;
+          }
+        } catch (fetchErr) {
+          console.warn('[ProviderStore] No se pudieron cargar las notas remotas del prestador:', fetchErr);
+        }
+
+        if (updates.notes !== undefined) {
+          let finalNotes = updates.notes;
+
+          if (remoteNotes) {
+            let remoteObj: Record<string, any> | null = null;
+            try {
+              const parsed = JSON.parse(remoteNotes);
+              if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                remoteObj = parsed;
+              }
+            } catch {
+              remoteObj = null;
+            }
+
+            let localObj: Record<string, any> | null = null;
+            if (current.notes) {
+              try {
+                const parsedLocal = JSON.parse(current.notes);
+                if (parsedLocal && typeof parsedLocal === 'object' && !Array.isArray(parsedLocal)) {
+                  localObj = parsedLocal;
+                }
+              } catch {
+                localObj = null;
+              }
+            }
+
+            if (remoteObj) {
+              let updatesObj: Record<string, any> | null = null;
+              if (typeof updates.notes === 'string' && updates.notes.trim()) {
+                try {
+                  const parsedUpdates = JSON.parse(updates.notes);
+                  if (parsedUpdates && typeof parsedUpdates === 'object' && !Array.isArray(parsedUpdates)) {
+                    updatesObj = parsedUpdates;
+                  }
+                } catch {
+                  updatesObj = null;
+                }
+              }
+
+              const localHadBajaIds = !!(localObj && 'pausedByBajaExpIds' in localObj);
+              const shouldPreserveBajaIds = !localHadBajaIds && 'pausedByBajaExpIds' in remoteObj;
+
+              if (updatesObj) {
+                if (shouldPreserveBajaIds && !('pausedByBajaExpIds' in updatesObj)) {
+                  finalNotes = JSON.stringify({
+                    ...updatesObj,
+                    pausedByBajaExpIds: remoteObj['pausedByBajaExpIds'],
+                  });
+                } else {
+                  finalNotes = JSON.stringify(updatesObj);
+                }
+              } else if (typeof updates.notes === 'string') {
+                if (shouldPreserveBajaIds) {
+                  const merged: Record<string, any> = {
+                    pausedByBajaExpIds: remoteObj['pausedByBajaExpIds'],
+                  };
+                  if (updates.notes.trim()) {
+                    merged['text'] = updates.notes.trim();
+                  }
+                  finalNotes = JSON.stringify(merged);
+                } else if (!updates.notes.trim() && !localHadBajaIds && Object.keys(remoteObj).length > 0) {
+                  finalNotes = remoteNotes;
+                } else {
+                  finalNotes = updates.notes;
+                }
+              }
+            } else if (!updates.notes.trim() && (!current.notes || !current.notes.trim()) && remoteNotes.trim()) {
+              finalNotes = remoteNotes;
+            }
+          }
+
+          payload['notes'] = finalNotes;
+          updated.notes = finalNotes;
+        } else if (remoteNotes !== null && current.notes !== remoteNotes) {
+          updated.notes = remoteNotes;
         }
 
         const { data: updatedRows, error } = await (this.supabase.from('prestadores') as any)
@@ -2394,9 +2484,10 @@ export class ProviderStoreService {
   async loadProposalsFromSupabase(providerEmail?: string): Promise<void> {
     if (!isSupabaseConfigured()) return;
     try {
+      const statusFilter = ['pendiente', 'rechazada', 'publicada', 'oculta'];
       let expQuery = (this.supabase.from('experiencias') as any)
         .select('*')
-        .in('status', ['pendiente', 'rechazada']);
+        .in('status', statusFilter);
       if (providerEmail) {
         expQuery = expQuery.ilike('provider_email', providerEmail.trim().toLowerCase());
       }
@@ -2467,20 +2558,39 @@ export class ProviderStoreService {
             coverVideoUrl: row.video_url || '',
             coverVideoName: row.cover_video_name || '',
             albumPhotos: Array.isArray(row.album_photos) ? row.album_photos : [],
-            status: row.status as 'pendiente' | 'aprobada' | 'rechazada',
+            status: (row.status === 'publicada' || row.status === 'oculta' ? 'aprobada' : row.status) as
+              | 'pendiente'
+              | 'aprobada'
+              | 'rechazada',
             createdAt: row.created_at || new Date().toISOString(),
             reviewedAt: row.reviewed_at || undefined,
           };
         });
 
-        const existingMap = new Map(this._experienceRequests().map((r) => [r.id, r]));
-        for (const m of mapped) {
-          existingMap.set(m.id, m);
+        if (!providerEmail) {
+          // Si es consulta global de administrador, Supabase es la fuente de verdad
+          this._experienceRequests.set(mapped);
+        } else {
+          // Si es para un prestador particular, se actualizan sus propuestas y se preservan las demás,
+          // asegurando que las propuestas aprobadas sigan disponibles tras recargar.
+          const mappedIds = new Set(mapped.map((r) => r.id));
+          const preservedApproved = this._experienceRequests().filter(
+            (r) =>
+              r.id !== 'req-sunset-las-pirquitas' &&
+              r.providerEmail?.toLowerCase() === providerEmail.toLowerCase() &&
+              (r.status === 'aprobada' || (r.status as string) === 'publicada' || (r.status as string) === 'oculta') &&
+              !mappedIds.has(r.id),
+          );
+          const others = this._experienceRequests().filter(
+            (r) =>
+              r.id !== 'req-sunset-las-pirquitas' &&
+              r.providerEmail?.toLowerCase() !== providerEmail.toLowerCase(),
+          );
+          const merged = [...mapped, ...preservedApproved, ...others].sort(
+            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+          );
+          this._experienceRequests.set(merged);
         }
-        const merged = Array.from(existingMap.values()).sort(
-          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-        );
-        this._experienceRequests.set(merged);
         this.saveRequests();
       }
     } catch (err) {
@@ -2910,18 +3020,20 @@ export class ProviderStoreService {
   }
 
   private loadStoredRequests(): ExperienceProposalRequest[] {
-    if (typeof window === 'undefined') return SEED_EXPERIENCE_REQUESTS;
+    if (typeof window === 'undefined') return [];
     try {
       const raw = localStorage.getItem(STORAGE_KEYS.experienceRequests);
-      const parsed: ExperienceProposalRequest[] = raw ? JSON.parse(raw) : SEED_EXPERIENCE_REQUESTS;
-      return parsed.map((r) => ({
-        ...r,
-        coverImage: (!r.coverImage || r.coverImage.startsWith('blob:'))
-          ? '/assets/images/kayak-club-de-experiencias.jpg'
-          : r.coverImage,
-      }));
+      const parsed: ExperienceProposalRequest[] = raw ? JSON.parse(raw) : [];
+      return parsed
+        .filter((r) => r && r.id !== 'req-sunset-las-pirquitas')
+        .map((r) => ({
+          ...r,
+          coverImage: (!r.coverImage || r.coverImage.startsWith('blob:'))
+            ? '/assets/images/kayak-club-de-experiencias.jpg'
+            : r.coverImage,
+        }));
     } catch {
-      return SEED_EXPERIENCE_REQUESTS;
+      return [];
     }
   }
 

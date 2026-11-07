@@ -1,5 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { vi } from 'vitest';
+import { NewsletterService } from '../../core/services/newsletter.service';
 import { ProvidersComponent } from './providers.component';
 
 describe('ProvidersComponent', () => {
@@ -34,10 +36,13 @@ describe('ProvidersComponent', () => {
     expect(brandLink.getAttribute('routerlink') || brandLink.getAttribute('href')).toBe('/');
   });
 
-  it('should allow submitting provider registration', () => {
+  it('should allow submitting provider registration', async () => {
+    const newsletter = TestBed.inject(NewsletterService);
+    vi.spyOn(newsletter, 'submitProviderApplication').mockResolvedValue({ success: true });
+
     component.providerName.set('Carlos Guía');
     component.providerEmail.set('carlos@catamarca.com');
-    component.submitProvider();
+    await component.submitProvider();
     fixture.detectChanges();
 
     expect(component.providerSuccess()).toBe(true);
