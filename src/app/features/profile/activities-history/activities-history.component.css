@@ -472,9 +472,21 @@
 }
 
 .activity-status.confirmada {
-  color: var(--color-gold);
-  background: rgba(255, 212, 42, 0.15);
-  border: 1px solid rgba(255, 212, 42, 0.35);
+  color: #34d399;
+  background: rgba(52, 211, 153, 0.15);
+  border: 1px solid rgba(52, 211, 153, 0.45);
+}
+
+.activity-status.pendiente_pago {
+  color: #fb923c;
+  background: rgba(251, 146, 60, 0.15);
+  border: 1px solid rgba(251, 146, 60, 0.45);
+}
+
+.activity-status.cancelada {
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.15);
+  border: 1px solid rgba(248, 113, 113, 0.45);
 }
 
 .activity-region {
@@ -590,6 +602,19 @@
 .btn-receipt-doc:hover {
   background: #668888;
   border-color: #ffffff;
+}
+
+.btn-receipt-download {
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.btn-receipt-download:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.45);
 }
 
 .modal-backdrop {

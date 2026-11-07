@@ -6,6 +6,8 @@ import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { filter } from 'rxjs';
 import { AdminStoreService, AdminMember } from '../../../core/services/admin-store.service';
+import { ExperienceService } from '../../../core/services/experience.service';
+import { TransferSubmission } from '../../../core/models/bank-transfer.model';
 import { FechaPipe, ArsPipe } from '../../../shared/pipes/format.pipes';
 
 type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos';
@@ -36,17 +38,6 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
       } @else if (isRouteEditMode() && selectedMember(); as m) {
         <!-- Modo Edición: /socios/:id/editar -->
         <div class="edit-page-card">
-          <div class="fiche-topbar">
-            <div class="topbar-left">
-              <a [routerLink]="getDetailRoute(m)" class="btn-back-panel">
-                &larr; Volver a la Ficha
-              </a>
-              <span class="fiche-topbar-breadcrumb">
-                /socios / <strong>{{ m.position !== undefined ? '#' + m.position : (m.fullName || m.id) }}</strong> / editar
-              </span>
-            </div>
-          </div>
-
           <div class="edit-form-card">
             <div class="edit-header">
               <span class="section-kicker">GESTIÓN DE SOCIOS Y NÓMINA</span>
@@ -60,7 +51,6 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
               <!-- 1. Datos Personales -->
               <div class="form-section">
                 <h3 class="form-section-title">
-                  <mat-icon>person</mat-icon>
                   Datos de Identidad
                 </h3>
                 <div class="form-grid">
@@ -123,7 +113,6 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
               <!-- 2. Membresía y Padrón -->
               <div class="form-section">
                 <h3 class="form-section-title">
-                  <mat-icon>card_membership</mat-icon>
                   Membresía y Número de Socio
                 </h3>
                 <div class="form-grid">
@@ -131,14 +120,14 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
                     <label for="m-pos">Número de Socio en Padrón (#):</label>
                     <input
                       id="m-pos"
-                      type="number"
-                      class="form-input font-mono"
-                      [ngModel]="editPosition()"
-                      (ngModelChange)="editPosition.set($event)"
+                      type="text"
+                      class="form-input font-mono is-disabled"
+                      [value]="editPosition() ? '#' + editPosition() : 'Sin número asignado'"
+                      disabled
+                      readonly
                       name="position"
-                      placeholder="Ej: 1, 2, 3... (o dejar vacío)"
                     />
-                    <span class="field-hint">Asigna la posición oficial en el cuadro de honor y carnet.</span>
+                    <span class="field-hint">El número oficial en el padrón es inmutable y no puede modificarse.</span>
                   </div>
 
                   <div class="form-group">
@@ -154,13 +143,16 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
                       <option value="activo">Socio Activo / Pleno</option>
                       <option value="emergente">Socio Emergente</option>
                       <option value="waitlist">Lista de Espera (Waitlist)</option>
+                      <option value="dado_de_baja">Dado de baja</option>
                     </select>
                   </div>
 
                   <div class="form-group">
                     <label>Tipo de Registro (Derivado):</label>
                     <div style="padding-top: 0.25rem;">
-                      @if (editMembershipTier() === 'waitlist') {
+                      @if (editMembershipTier() === 'dado_de_baja') {
+                        <span class="status-pill is-paused">Dado de baja</span>
+                      } @else if (editMembershipTier() === 'waitlist') {
                         <span class="status-pill is-draft">Lista de Espera (Waitlist)</span>
                       } @else {
                         <span class="status-pill is-published">Socio Oficial del Club</span>
@@ -183,13 +175,30 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
                 </div>
               </div>
 
-              <!-- 3. Observaciones & Deseos -->
+              <!-- 3. Intereses & Deseos de Expedición -->
               <div class="form-section">
                 <h3 class="form-section-title">
-                  <mat-icon>notes</mat-icon>
-                  Observaciones y Expediciones Sugeridas
+                  Intereses & Deseos de Expedición
                 </h3>
                 <div class="form-group full-width">
+                  <label>Seleccionar experiencias y travesías de interés del socio:</label>
+                  <div class="edit-wishlist-chips">
+                    @for (opt of allWishlistOptionsToDisplay(); track opt) {
+                      <button
+                        type="button"
+                        class="edit-wishlist-chip"
+                        [class.is-selected]="isWishlistSelected(opt)"
+                        (click)="toggleWishlistItem(opt)"
+                      >
+                        <span class="chip-check">{{ isWishlistSelected(opt) ? '✓' : '+' }}</span>
+                        <span>{{ opt }}</span>
+                      </button>
+                    }
+                  </div>
+                  <span class="field-hint">Hacé click en cada expedición para activar o desactivar el interés del socio.</span>
+                </div>
+
+                <div class="form-group full-width" style="margin-top: 0.5rem;">
                   <label for="m-notes">Observaciones del socio / Otras experiencias deseadas:</label>
                   <textarea
                     id="m-notes"
@@ -211,7 +220,7 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
                   class="btn-save-orange"
                   [disabled]="saving()"
                 >
-                  {{ saving() ? 'Guardando cambios...' : 'Guardar Información del Socio' }}
+                  {{ saving() ? 'Guardando cambios...' : 'Guardar información del socio' }}
                 </button>
               </div>
             </form>
@@ -220,29 +229,18 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
       } @else if (isRouteDetailMode() && selectedMember(); as m) {
         <!-- Modo Ficha: /socios/:id -->
         <div class="fiche-view-container">
-          <!-- Topbar de Navegación -->
-          <div class="fiche-topbar">
-            <div class="topbar-left">
-              <a [routerLink]="backToListLink()" class="btn-back-panel">
-                &larr; Volver a Socios
-              </a>
-              <span class="fiche-topbar-breadcrumb">
-                /socios / <strong>{{ m.position !== undefined ? '#' + m.position : (m.fullName || m.id) }}</strong>
-              </span>
-            </div>
-            <div class="topbar-right">
-              <a [routerLink]="getEditRoute(m)" class="btn-topbar-edit">
-                <mat-icon class="btn-icon-sm">edit</mat-icon>
-                <span>Editar Socio</span>
-              </a>
-            </div>
-          </div>
-
           <!-- Hero del Socio -->
           <div class="fiche-section-card hero-member-card">
             <div class="member-hero-content">
               <div class="member-hero-avatar">
-                @if (m.position !== undefined) {
+                @if (getMemberAvatar(m); as avatarUrl) {
+                  <img
+                    [src]="avatarUrl"
+                    [alt]="m.fullName || m.email"
+                    class="member-avatar-img"
+                    (error)="handleAvatarError(m.id)"
+                  />
+                } @else if (m.position !== undefined && m.position !== null) {
                   <span class="member-pos-badge">#{{ m.position }}</span>
                 } @else {
                   <span class="member-avatar-initial">{{ (m.fullName || m.email).charAt(0).toUpperCase() }}</span>
@@ -254,16 +252,6 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
                     {{ m.type === 'waitlist' ? 'LISTA DE ESPERA' : formatTier(m.membershipTier).toUpperCase() }}
                   </span>
                   <div class="hero-badges-row">
-                    <a
-                      [routerLink]="getEditRoute(m)"
-                      class="btn-hero-edit"
-                      title="Editar datos del socio"
-                    >
-                      <span>EDITAR SOCIO</span>
-                    </a>
-                    @if (m.position !== undefined) {
-                      <span class="socio-pill-badge">#{{ m.position }}</span>
-                    }
                     <span class="tier-badge" [attr.data-tier]="m.membershipTier">
                       {{ formatTier(m.membershipTier) }}
                     </span>
@@ -436,8 +424,30 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
                     <tbody>
                       @for (sub of memberPayments(); track sub.id) {
                         <tr>
-                          <td class="font-mono"><strong>#{{ sub.reference }}</strong></td>
-                          <td>{{ sub.experienceTitle }}</td>
+                          <td class="font-mono">
+                            <a
+                              [href]="getReceiptLink(sub)"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              class="receipt-ref-link"
+                              title="Abrir comprobante #{{ sub.reference }} en una nueva pestaña"
+                            >
+                              <strong>#{{ sub.reference }}</strong>
+                              <mat-icon class="link-ext-icon">open_in_new</mat-icon>
+                            </a>
+                          </td>
+                          <td>
+                            <a
+                              [href]="getExperienceLink(sub)"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              class="exp-title-link"
+                              title="Abrir ficha de la experiencia en una nueva pestaña"
+                            >
+                              <span>{{ sub.experienceTitle }}</span>
+                              <mat-icon class="link-ext-icon">open_in_new</mat-icon>
+                            </a>
+                          </td>
                           <td>{{ sub.date | fecha: 'corta' }}</td>
                           <td><strong class="text-blue">{{ sub.amountArs | ars }}</strong></td>
                           <td>
@@ -453,6 +463,38 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
                 </div>
               </div>
             }
+          </div>
+
+          <!-- Pie de Acciones del Socio -->
+          <div class="fiche-bottom-cta-bar">
+            <div class="cta-bar-left">
+              @if (isMemberBaja(m)) {
+                <button
+                  type="button"
+                  class="btn-bottom-alta"
+                  [disabled]="saving()"
+                  (click)="toggleMemberBajaStatus(m)"
+                  title="Dar de alta al socio en el padrón activo"
+                >
+                  <span>Dar de alta</span>
+                </button>
+              } @else {
+                <button
+                  type="button"
+                  class="btn-bottom-baja"
+                  [disabled]="saving()"
+                  (click)="toggleMemberBajaStatus(m)"
+                  title="Dar de baja socio del padrón"
+                >
+                  <span>Dar de baja</span>
+                </button>
+              }
+            </div>
+            <div class="cta-bar-right">
+              <a [routerLink]="getEditRoute(m)" class="btn-bottom-edit">
+                <span>Editar Socio</span>
+              </a>
+            </div>
           </div>
         </div>
       } @else {
@@ -608,7 +650,7 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
                           </a>
                         }
                         @if (m.type === 'waitlist' && !m.googleLinked) {
-                          <span class="member-sub-hint">Pendiente de completar formulario</span>
+                          <span class="member-sub-hint">Pendiente de sociedad</span>
                         } @else if (m.type === 'waitlist' && m.googleLinked) {
                           <span class="member-sub-hint">Cuenta Google vinculada</span>
                         } @else if (m.experiencesWishlist && m.experiencesWishlist.length > 0) {
@@ -1197,11 +1239,38 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
         color: #80b3ff;
       }
 
+      .tier-badge[data-tier='dado_de_baja'] {
+        background: rgba(239, 68, 68, 0.15);
+        border: 1px solid rgba(239, 68, 68, 0.35);
+        color: #fca5a5;
+      }
+
       .status-tags-row {
         display: flex;
         flex-direction: column;
+        align-items: stretch;
         gap: 0.3rem;
+        width: 80px;
+        min-width: 80px;
+        max-width: 80px;
+        box-sizing: border-box;
+      }
+
+      .status-tags-row .google-linked-pill,
+      .status-tags-row .pending-conversion-pill,
+      .status-tags-row .converted-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 22px;
+        min-height: 22px;
+        padding: 0 0.35rem;
+        box-sizing: border-box;
+        text-align: center;
         white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
       .google-linked-pill,
@@ -1251,8 +1320,11 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
       .actions-row {
         display: flex;
         flex-direction: column;
-        align-items: flex-end;
+        align-items: stretch;
+        justify-content: center;
         gap: 0.35rem;
+        width: 105px;
+        margin-left: auto;
       }
 
       .btn-view-fiche,
@@ -1260,6 +1332,7 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
         display: inline-flex;
         align-items: center;
         justify-content: center;
+        width: 100%;
         height: 28px;
         padding: 0 0.65rem;
         border-radius: 2px;
@@ -1365,7 +1438,8 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
       .fiche-view-container {
         display: flex;
         flex-direction: column;
-        gap: 1.25rem;
+        gap: 1.5rem;
+        padding-top: 1.25rem;
       }
 
       .fiche-topbar {
@@ -1438,37 +1512,51 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
       }
 
       .member-hero-avatar {
+        width: 124px;
+        height: 124px;
+        border-radius: 50%;
+        background: rgba(255, 95, 0, 0.18);
+        border: 3px solid #ff5f00;
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         flex-shrink: 0;
+        overflow: hidden;
+        box-shadow: 0 0 30px rgba(255, 95, 0, 0.4);
+      }
+
+      .member-avatar-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+        border-radius: 50%;
       }
 
       .member-pos-badge {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 68px;
-        height: 68px;
-        border-radius: 50%;
-        background: rgba(255, 95, 0, 0.2);
-        border: 2px solid #ff5f00;
+        width: 100%;
+        height: 100%;
         color: #ffffff;
         font-family: var(--font-mono, monospace);
-        font-size: 1.35rem;
+        font-size: 2.25rem;
         font-weight: 900;
-        box-shadow: 0 0 20px rgba(255, 95, 0, 0.3);
+        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
       }
 
       .member-avatar-initial {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 68px;
-        height: 68px;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.1);
-        border: 2px solid rgba(255, 255, 255, 0.3);
+        width: 100%;
+        height: 100%;
         color: #ffffff;
-        font-size: 1.75rem;
+        font-size: 2.25rem;
         font-weight: 800;
+        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
       }
 
       .member-hero-text {
@@ -1728,13 +1816,166 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
         color: rgba(255, 255, 255, 0.85);
       }
 
+      .receipt-ref-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        color: #ff5f00;
+        font-weight: 700;
+        text-decoration: none;
+        transition: color 0.2s ease, text-decoration 0.2s ease;
+      }
+
+      .receipt-ref-link:hover {
+        color: #ff8533;
+        text-decoration: underline;
+      }
+
+      .exp-title-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        color: #ffffff;
+        font-weight: 600;
+        text-decoration: none;
+        transition: color 0.2s ease, text-decoration 0.2s ease;
+      }
+
+      .exp-title-link:hover {
+        color: #ff5f00;
+        text-decoration: underline;
+      }
+
+      .link-ext-icon {
+        font-size: 0.95rem;
+        width: 0.95rem;
+        height: 0.95rem;
+        opacity: 0.7;
+        transition: opacity 0.2s ease, transform 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .receipt-ref-link:hover .link-ext-icon,
+      .exp-title-link:hover .link-ext-icon {
+        opacity: 1;
+        transform: translate(1px, -1px);
+      }
+
+      /* ============================================================
+         FICHE BOTTOM CTA BAR (MEMBER ACTIONS)
+         ============================================================ */
+      .fiche-bottom-cta-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 1rem;
+        padding: 1.25rem 1.5rem;
+        background: rgba(18, 10, 5, 0.95);
+        border: 1px solid rgba(255, 95, 0, 0.25);
+        border-radius: 4px;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+      }
+
+      .fiche-bottom-cta-bar .cta-bar-left {
+        display: flex;
+        align-items: center;
+      }
+
+      .fiche-bottom-cta-bar .cta-bar-right {
+        display: flex;
+        align-items: center;
+        margin-left: auto;
+      }
+
+      .btn-bottom-baja {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 42px;
+        min-height: 42px;
+        padding: 0 1.5rem;
+        box-sizing: border-box;
+        background: rgba(239, 68, 68, 0.15);
+        border: 1px solid rgba(239, 68, 68, 0.45);
+        border-radius: 4px;
+        color: #fca5a5;
+        font-size: 0.85rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .btn-bottom-baja:hover {
+        background: #dc2626;
+        border-color: #dc2626;
+        color: #ffffff;
+      }
+
+      .btn-bottom-alta {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 42px;
+        min-height: 42px;
+        padding: 0 1.5rem;
+        box-sizing: border-box;
+        background: rgba(16, 185, 129, 0.15);
+        border: 1px solid rgba(52, 211, 153, 0.45);
+        border-radius: 4px;
+        color: #34d399;
+        font-size: 0.85rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .btn-bottom-alta:hover:not(:disabled) {
+        background: #10b981;
+        border-color: #10b981;
+        color: #ffffff;
+      }
+
+      .btn-bottom-alta:disabled,
+      .btn-bottom-baja:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .btn-bottom-edit {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 42px;
+        min-height: 42px;
+        padding: 0 1.5rem;
+        box-sizing: border-box;
+        background: #ff5f00;
+        border: 1px solid #ff5f00;
+        border-radius: 4px;
+        color: #000000;
+        font-size: 0.85rem;
+        font-weight: 700;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .btn-bottom-edit:hover {
+        background: #ff7728;
+        border-color: #ff7728;
+      }
+
       /* ============================================================
          EDIT FORM MODE STYLING
          ============================================================ */
       .edit-page-card {
         display: flex;
         flex-direction: column;
-        gap: 1.25rem;
+        gap: 1.5rem;
+        padding-top: 1.25rem;
       }
 
       .edit-form-card {
@@ -1823,6 +2064,14 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
         font-family: inherit;
       }
 
+      .form-input:disabled,
+      .form-input[readonly] {
+        opacity: 0.7;
+        cursor: not-allowed;
+        background: rgba(0, 0, 0, 0.45);
+        color: rgba(255, 255, 255, 0.65);
+      }
+
       .form-input:focus,
       .form-textarea:focus {
         border-color: #ff5f00;
@@ -1843,9 +2092,55 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
         color: rgba(255, 255, 255, 0.5);
       }
 
+      .edit-wishlist-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        padding-top: 0.35rem;
+      }
+
+      .edit-wishlist-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.45rem 0.85rem;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
+        color: rgba(255, 255, 255, 0.8);
+        font-size: 0.82rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        user-select: none;
+      }
+
+      .edit-wishlist-chip:hover {
+        background: rgba(255, 255, 255, 0.12);
+        border-color: rgba(255, 255, 255, 0.4);
+        color: #ffffff;
+      }
+
+      .edit-wishlist-chip.is-selected {
+        background: rgba(255, 95, 0, 0.18);
+        border-color: #ff5f00;
+        color: #ff8533;
+        font-weight: 700;
+      }
+
+      .edit-wishlist-chip.is-selected:hover {
+        background: rgba(255, 95, 0, 0.28);
+        border-color: #ff7728;
+      }
+
+      .chip-check {
+        font-size: 0.85rem;
+        font-weight: 800;
+      }
+
       .form-actions-bar {
         display: flex;
-        justify-content: flex-end;
+        justify-content: space-between;
         align-items: center;
         gap: 1rem;
         margin-top: 1rem;
@@ -1857,7 +2152,10 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        padding: 0.65rem 1.25rem;
+        height: 42px;
+        min-height: 42px;
+        padding: 0 1.5rem;
+        box-sizing: border-box;
         background: rgba(255, 255, 255, 0.08);
         border: 1px solid rgba(255, 255, 255, 0.2);
         color: #ffffff;
@@ -1877,7 +2175,10 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        padding: 0.65rem 1.5rem;
+        height: 42px;
+        min-height: 42px;
+        padding: 0 1.5rem;
+        box-sizing: border-box;
         background: #ff5f00;
         border: 1px solid #ff5f00;
         color: #0b0704;
@@ -1903,6 +2204,7 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
 })
 export class AdminMembersComponent implements OnInit {
   readonly store = inject(AdminStoreService);
+  private readonly experienceService = inject(ExperienceService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
@@ -1923,10 +2225,47 @@ export class AdminMembersComponent implements OnInit {
   readonly editDni = signal<string>('');
   readonly editPhone = signal<string>('');
   readonly editPosition = signal<number | null>(null);
-  readonly editMembershipTier = signal<'emergente' | 'activo' | 'fundador' | 'waitlist'>('emergente');
+  readonly editMembershipTier = signal<'emergente' | 'activo' | 'fundador' | 'waitlist' | 'dado_de_baja'>('emergente');
   readonly editExperiencesOther = signal<string>('');
+  readonly editExperiencesWishlist = signal<string[]>([]);
   readonly saving = signal<boolean>(false);
   readonly feedbackToast = signal<string | null>(null);
+
+  readonly availableWishlistOptions: string[] = [
+    'Volcán Galán & Caldera Gigante',
+    'Travesía 4x4 Paso San Francisco & Seismiles',
+    'Kayak & Aguas Calmas en Diques Andinos',
+    'Trekking Balcón del Pissis & Lagunas',
+    'Astrofotografía & Cielos de la Puna',
+    'Termas de Fiambalá & Valles Secretos',
+  ];
+
+  readonly allWishlistOptionsToDisplay = computed<string[]>(() => {
+    const list = [...this.availableWishlistOptions];
+    for (const item of this.editExperiencesWishlist()) {
+      if (!list.some((opt) => opt.toLowerCase().trim() === item.toLowerCase().trim())) {
+        list.push(item);
+      }
+    }
+    return list;
+  });
+
+  isWishlistSelected(item: string): boolean {
+    return this.editExperiencesWishlist().some(
+      (w) => w.toLowerCase().trim() === item.toLowerCase().trim(),
+    );
+  }
+
+  toggleWishlistItem(item: string): void {
+    const current = this.editExperiencesWishlist();
+    if (this.isWishlistSelected(item)) {
+      this.editExperiencesWishlist.set(
+        current.filter((w) => w.toLowerCase().trim() !== item.toLowerCase().trim()),
+      );
+    } else {
+      this.editExperiencesWishlist.set([...current, item]);
+    }
+  }
 
   constructor() {
     this.router.events
@@ -1970,6 +2309,29 @@ export class AdminMembersComponent implements OnInit {
 
   getEditRoute(m: AdminMember): string {
     return `${this.getDetailRoute(m)}/editar`;
+  }
+
+  getReceiptLink(sub: TransferSubmission): string {
+    const base = this.isAdminRoute() ? '/admin/comprobantes' : '/comprobantes';
+    return `${base}?ref=${encodeURIComponent(sub.reference)}`;
+  }
+
+  getExperienceLink(sub: TransferSubmission): string {
+    const base = this.isAdminRoute() ? '/admin/experiencias' : '/experiencias';
+    if (!sub.experienceId && !sub.experienceTitle) {
+      return base;
+    }
+    const exp =
+      (sub.experienceId ? this.experienceService.getExperienceById(sub.experienceId) : null) ||
+      (sub.experienceId ? this.experienceService.getExperienceBySlug(sub.experienceId) : null) ||
+      (sub.experienceTitle
+        ? this.experienceService
+            .experiences()
+            .find((e) => e.title.toLowerCase().trim() === sub.experienceTitle.toLowerCase().trim())
+        : null);
+
+    const slug = exp?.slug || sub.experienceId || '';
+    return slug ? `${base}/${encodeURIComponent(slug)}` : base;
   }
 
   readonly memberPayments = computed(() => {
@@ -2032,6 +2394,7 @@ export class AdminMembersComponent implements OnInit {
     this.editPosition.set(m.position !== undefined ? m.position : null);
     this.editMembershipTier.set(m.membershipTier || 'emergente');
     this.editExperiencesOther.set(m.experiencesOther || '');
+    this.editExperiencesWishlist.set([...(m.experiencesWishlist || [])]);
   }
 
   async saveMemberChanges(): Promise<void> {
@@ -2040,7 +2403,6 @@ export class AdminMembersComponent implements OnInit {
 
     this.saving.set(true);
     try {
-      const posVal = this.editPosition();
       const tierVal = this.editMembershipTier();
       const trimmedNotes = this.editExperiencesOther().trim();
       const res = await this.store.updateMemberProfile(current.id, {
@@ -2048,9 +2410,10 @@ export class AdminMembersComponent implements OnInit {
         email: this.editEmail().trim().toLowerCase(),
         dni: this.editDni().trim(),
         phone: this.editPhone().trim(),
-        position: tierVal !== 'waitlist' && posVal && Number(posVal) > 0 ? Number(posVal) : 0,
+        position: current.position,
         membershipTier: tierVal,
         experiencesOther: trimmedNotes || '',
+        experiencesWishlist: this.editExperiencesWishlist(),
       });
 
       if (res.success) {
@@ -2066,6 +2429,61 @@ export class AdminMembersComponent implements OnInit {
       }
     } finally {
       this.saving.set(false);
+    }
+  }
+
+  isMemberBaja(m?: AdminMember | null): boolean {
+    return m?.membershipTier === 'dado_de_baja';
+  }
+
+  async toggleMemberBajaStatus(m: AdminMember): Promise<void> {
+    const isBaja = this.isMemberBaja(m);
+    const memberName = m.fullName && m.fullName.trim() !== '' ? m.fullName : m.email;
+
+    if (isBaja) {
+      const confirmed = confirm(`¿Deseas dar de alta al socio "${memberName}"?`);
+      if (!confirmed) return;
+
+      this.saving.set(true);
+      try {
+        const res = await this.store.updateMemberProfile(m.id, {
+          membershipTier: 'activo',
+        });
+        if (res.success) {
+          this.feedbackToast.set(`El socio "${memberName}" fue dado de alta correctamente.`);
+          setTimeout(() => this.feedbackToast.set(null), 4000);
+          const updated = this.store.getMemberById(m.id);
+          if (updated) {
+            this.selectedMember.set(updated);
+          }
+        } else {
+          alert('Error al dar de alta al socio: ' + (res.error || 'Ocurrió un error inesperado'));
+        }
+      } finally {
+        this.saving.set(false);
+      }
+    } else {
+      const confirmed = confirm(`¿Estás seguro de que deseas dar de baja al socio "${memberName}"?`);
+      if (!confirmed) return;
+
+      this.saving.set(true);
+      try {
+        const res = await this.store.updateMemberProfile(m.id, {
+          membershipTier: 'dado_de_baja',
+        });
+        if (res.success) {
+          this.feedbackToast.set(`El socio "${memberName}" fue dado de baja.`);
+          setTimeout(() => this.feedbackToast.set(null), 4000);
+          const updated = this.store.getMemberById(m.id);
+          if (updated) {
+            this.selectedMember.set(updated);
+          }
+        } else {
+          alert('Error al dar de baja al socio: ' + (res.error || 'Ocurrió un error inesperado'));
+        }
+      } finally {
+        this.saving.set(false);
+      }
     }
   }
 
@@ -2162,7 +2580,7 @@ export class AdminMembersComponent implements OnInit {
     return `https://wa.me/${cleanDigits}?text=Hola%20${cleanName},%20nos%20comunicamos%20desde%20la%20administraci%C3%B3n%20de%20EXPERIENCIAS.CLUB`;
   }
 
-  formatTier(tier: string): string {
+  formatTier(tier?: string): string {
     switch (tier) {
       case 'fundador':
         return 'Socio Fundador';
@@ -2170,6 +2588,8 @@ export class AdminMembersComponent implements OnInit {
         return 'Socio Activo';
       case 'emergente':
         return 'Socio Emergente';
+      case 'dado_de_baja':
+        return 'Dado de baja';
       default:
         return 'Lista de Espera';
     }
@@ -2178,5 +2598,41 @@ export class AdminMembersComponent implements OnInit {
   isProvider(member: AdminMember): boolean {
     if (member.isProvider) return true;
     return this.store.isProviderEmail(member.email);
+  }
+
+  readonly failedAvatars = signal<Set<string>>(new Set<string>());
+
+  handleAvatarError(id: string): void {
+    this.failedAvatars.update((set) => {
+      const next = new Set(set);
+      next.add(id);
+      return next;
+    });
+  }
+
+  getMemberAvatar(m: AdminMember): string | null {
+    if (this.failedAvatars().has(m.id)) return null;
+
+    if (m.avatarUrl && m.avatarUrl.trim()) {
+      return m.avatarUrl.trim();
+    }
+
+    const admin = this.store.currentAdmin();
+    if (admin && admin.email && m.email && admin.email.toLowerCase().trim() === m.email.toLowerCase().trim()) {
+      if (admin.avatar && admin.avatar.trim()) {
+        return admin.avatar.trim();
+      }
+    }
+
+    if (m.email && m.email.toLowerCase().trim() === 'gonzagramaglia@gmail.com') {
+      return admin?.avatar || '/assets/images/gonza.jpg';
+    }
+
+    const prov = this.store.providerStore.getProviderByEmail(m.email);
+    if (prov && prov.avatar && prov.avatar.trim()) {
+      return prov.avatar.trim();
+    }
+
+    return null;
   }
 }

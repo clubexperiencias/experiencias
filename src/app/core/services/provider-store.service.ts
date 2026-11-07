@@ -189,213 +189,10 @@ export const CLUB_OFFICIAL_PROVIDER: ProviderUser = {
 
 export const SEED_PROVIDERS: ProviderUser[] = [
   CLUB_OFFICIAL_PROVIDER,
-  {
-    id: 'prov-patricio',
-    email: 'patriciofacundodiaztillar@gmail.com',
-    name: 'Patricio Facundo Diaz Tillar',
-    agency: 'Catamarca Kayak & Aventura Náutica',
-    slug: 'catamarca-kayak',
-    bio: 'Pioneros en turismo náutico y expediciones en kayak en los diques andinos de Catamarca. Instructores certificados, flota propia y experiencias seguras en aguas mansas con degustaciones de productos regionales al atardecer.',
-    phone: '+54 383 455 8812',
-    website: 'https://experiencias.club/experiencias/kayak',
-    socialMedia: 'instagram.com/catamarca.kayak',
-    cuitDni: '20-30456123-4',
-    cbuAlias: '3840200500000056402423',
-    bankName: 'Uala Bank S.A.U',
-    verified: true,
-    status: 'aprobado',
-    role: 'prestador',
-    avatar: '/assets/aistudio/patricio.jpg',
-    coverImage: '/assets/images/kayak-club-de-experiencias.jpg',
-    joinedAt: '2024-03-15T10:00:00Z',
-  },
-  {
-    id: 'prov-vegvarel',
-    email: 'vegvarel@gmail.com',
-    name: 'vegvarel',
-    agency: 'Catamarca Expediciones & Trekking',
-    slug: 'catamarca-expediciones',
-    bio: 'Especialistas en travesías 4x4 y alta montaña en la Puna catamarqueña. Rutas al Campo de Piedra Pómez, Volcán Galán y Seismiles con logística integral y guías de montaña habilitados.',
-    phone: '+54 383 488 9900',
-    website: 'https://experiencias.club',
-    socialMedia: 'instagram.com/catamarcaexpediciones',
-    cuitDni: '20-33221144-5',
-    cbuAlias: 'VEGVAREL.EXPERIENCIAS',
-    bankName: 'Banco Nación',
-    verified: true,
-    status: 'aprobado',
-    role: 'prestador',
-    avatar: '/assets/aistudio/patricio.jpg',
-    coverImage: '/assets/images/catamarca_pomez.jpg',
-    joinedAt: '2024-05-10T11:00:00Z',
-  },
-  {
-    id: 'prov-gonza',
-    email: 'gonzagramaglia@gmail.com',
-    name: 'Gonzalo Gramaglia',
-    agency: 'Catamarca Experiencias & Expediciones',
-    slug: 'gonzagramaglia',
-    bio: 'Expediciones y experiencias exclusivas por las quebradas y cordillera catamarqueña para socios del club.',
-    phone: '+54 9 11 5566 7788',
-    website: 'https://experiencias.club',
-    socialMedia: 'instagram.com/experiencias.club',
-    cuitDni: '',
-    cbuAlias: '',
-    bankName: '',
-    verified: true,
-    status: 'aprobado',
-    role: 'prestador',
-    avatar: '/assets/images/gonza.jpg',
-    coverImage: '/assets/images/laguna_blanca.jpg',
-    joinedAt: '2024-01-01T00:00:00Z',
-  },
 ];
 
-const KAYAK_ID = 'exp-kayak';
-const POMEZ_ID = 'exp-pomez-4x4';
-
-const SEED_EXPERIENCES: ProviderExperience[] = [
-  {
-    id: KAYAK_ID,
-    slug: 'kayak',
-    title: 'Travesía en Kayak & Sunset en El Jumeal',
-    shortTitle: 'Travesía en Kayak',
-    tagline: 'Remada guiada al atardecer con brindis de productos catamarqueños.',
-    description:
-      'Remada guiada en kayak en aguas calmas rodeadas de quebradas y vegetación de yungas andinas. Presenciamos la caída del sol reflejada en el dique y cerramos con un brindis.',
-    region: 'Valle Central y Ambato',
-    meetingPoint: 'Club Náutico Dique El Jumeal',
-    difficulty: 'Baja',
-    durationLabel: '4 horas',
-    priceArs: 65000,
-    capacityPerDate: 12,
-    dates: [upcomingDate(9), upcomingDate(16), upcomingDate(23)],
-    status: 'publicada',
-    publicUrl: 'https://experiencias.club/experiencias/kayak',
-    providerId: 'prov-club',
-    providerName: 'Club de Experiencias',
-    coverImage: '/assets/images/kayak-club-de-experiencias.jpg',
-    albumPhotos: KAYAK_ALBUM_PHOTOS,
-    createdAt: hoursAgo(24 * 30),
-  },
-  {
-    id: POMEZ_ID,
-    slug: 'campo-de-piedra-pomez',
-    title: 'Expedición 4x4 Campo de Piedra Pómez & Volcanes',
-    shortTitle: 'Piedra Pómez 4x4',
-    tagline: 'Aventura lunar en el laberinto blanco de la Puna catamarqueña a más de 3.000 msnm.',
-    description:
-      'Travesía en camionetas 4x4 equipadas hacia el majestuoso Campo de Piedra Pómez. Incluye cruce de médanos gigantes, avistaje de vicuñas en Laguna Blanca y merienda andina en el silencio absoluto de la cordillera.',
-    region: 'Puna de Atacama',
-    meetingPoint: 'Plaza Principal de El Peñón, Antofagasta de la Sierra',
-    difficulty: 'Moderada',
-    durationLabel: 'Día completo (10 h)',
-    priceArs: 145000,
-    capacityPerDate: 8,
-    dates: [upcomingDate(12), upcomingDate(26)],
-    status: 'borrador',
-    providerId: 'prov-claudio',
-    providerName: 'Catamarca Kayak & Aventura Náutica',
-    coverImage: '/assets/images/catamarca_pomez.jpg',
-    albumPhotos: [
-      {
-        id: 'pomez-1',
-        url: '/assets/images/catamarca_pomez.jpg',
-        title: 'Campo de Piedra Pómez',
-        caption: 'Laberinto blanco esculpido por el viento a más de 3.000 msnm.',
-        isCover: true,
-        isFeatured: false,
-        order: 1,
-      },
-      {
-        id: 'pomez-2',
-        url: '/assets/images/laguna-verde.jpg',
-        title: 'Laguna y Volcanes',
-        caption: 'Contrastes turquesas en la alta cordillera catamarqueña.',
-        isCover: false,
-        isFeatured: true,
-        order: 2,
-      },
-      {
-        id: 'pomez-3',
-        url: '/assets/images/dron.jpg',
-        title: 'Panorámica de la Puna',
-        caption: 'Inmensidad andina y formaciones de ceniza volcánica.',
-        isCover: false,
-        isFeatured: true,
-        order: 3,
-      },
-    ],
-    createdAt: hoursAgo(24 * 5),
-  },
-];
-
-const SEED_SUBMISSIONS: TransferSubmission[] = [
-  {
-    id: 'sub-1',
-    reference: 'KAY-4F7Q',
-    experienceId: KAYAK_ID,
-    experienceTitle: SEED_EXPERIENCES[0].title,
-    date: SEED_EXPERIENCES[0].dates[0],
-    participants: 2,
-    amountArs: 130000,
-    fullName: 'Lucía Fernández',
-    email: 'lucia.fernandez@ejemplo.com',
-    dni: '32458190',
-    phone: '+54 383 455 1290',
-    receipt: {
-      fileName: 'transferencia-lucia.png',
-      mimeType: 'image/png',
-      sizeBytes: 412_000,
-      url: SAMPLE_RECEIPT_URL,
-    },
-    status: 'pendiente',
-    submittedAt: hoursAgo(3),
-  },
-  {
-    id: 'sub-2',
-    reference: 'KAY-9M2D',
-    experienceId: KAYAK_ID,
-    experienceTitle: SEED_EXPERIENCES[0].title,
-    date: SEED_EXPERIENCES[0].dates[0],
-    participants: 1,
-    amountArs: 65000,
-    fullName: 'Martín Quiroga',
-    email: 'mquiroga@ejemplo.com',
-    dni: '28771034',
-    phone: '+54 11 5021 7781',
-    receipt: {
-      fileName: 'comprobante.png',
-      mimeType: 'image/png',
-      sizeBytes: 388_000,
-      url: SAMPLE_RECEIPT_URL,
-    },
-    status: 'pendiente',
-    submittedAt: hoursAgo(20),
-  },
-  {
-    id: 'sub-3',
-    reference: 'KAY-2X8B',
-    experienceId: KAYAK_ID,
-    experienceTitle: SEED_EXPERIENCES[0].title,
-    date: SEED_EXPERIENCES[0].dates[1],
-    participants: 3,
-    amountArs: 195000,
-    fullName: 'Carla Ahumada',
-    email: 'carla.ahumada@ejemplo.com',
-    dni: '35120988',
-    phone: '+54 383 412 0033',
-    receipt: {
-      fileName: 'pago-kayak.png',
-      mimeType: 'image/png',
-      sizeBytes: 401_000,
-      url: SAMPLE_RECEIPT_URL,
-    },
-    status: 'aprobado',
-    submittedAt: hoursAgo(52),
-    reviewedAt: hoursAgo(48),
-  },
-];
+const SEED_EXPERIENCES: ProviderExperience[] = [];
+const SEED_SUBMISSIONS: TransferSubmission[] = [];
 
 @Injectable({ providedIn: 'root' })
 export class ProviderStoreService {
@@ -487,16 +284,14 @@ export class ProviderStoreService {
     const exps = this.providerExperiences();
 
     const confirmedRevenue = subs
-      .filter((s) => s.status === 'aprobado')
-      .reduce((sum, s) => sum + s.amountArs, 0);
+      .filter((s) => s.status !== 'rechazado')
+      .reduce((sum, s) => sum + (Number(s.amountArs) || 0), 0);
 
-    const pendingRevenue = subs
-      .filter((s) => s.status === 'pendiente')
-      .reduce((sum, s) => sum + s.amountArs, 0);
+    const pendingRevenue = 0;
 
     const totalEnrolled = subs
       .filter((s) => s.status !== 'rechazado')
-      .reduce((sum, s) => sum + s.participants, 0);
+      .reduce((sum, s) => sum + (Number(s.participants) || 0), 0);
 
     const publishedCount = exps.filter((e) => e.status === 'publicada').length;
     const pendingModerationCount = exps.filter(
@@ -513,7 +308,7 @@ export class ProviderStoreService {
       publishedCount,
       pendingModerationCount,
       totalExperiences: exps.length,
-      pendingReceiptsCount: subs.filter((s) => s.status === 'pendiente').length,
+      pendingReceiptsCount: 0,
     };
   });
 
@@ -2152,7 +1947,7 @@ export class ProviderStoreService {
         storageKey,
         provider: storageProvider,
       },
-      status: 'pendiente',
+      status: 'aprobado',
       submittedAt: new Date().toISOString(),
     };
 
@@ -2291,8 +2086,10 @@ export class ProviderStoreService {
     if (typeof window === 'undefined') return SEED_PROVIDERS;
     try {
       const raw = localStorage.getItem(STORAGE_KEYS.providers);
-      const list = raw ? JSON.parse(raw) : SEED_PROVIDERS;
-      return Array.isArray(list) ? list.map((p) => this.sanitizeProvider(p)) : SEED_PROVIDERS;
+      if (!raw) return SEED_PROVIDERS;
+      const list = JSON.parse(raw);
+      if (!Array.isArray(list)) return SEED_PROVIDERS;
+      return list.map((p) => this.sanitizeProvider(p));
     } catch {
       return SEED_PROVIDERS;
     }
@@ -2309,22 +2106,31 @@ export class ProviderStoreService {
   }
 
   private loadStoredExperiences(): ProviderExperience[] {
-    if (typeof window === 'undefined') return SEED_EXPERIENCES;
+    if (typeof window === 'undefined') return [];
     try {
       const raw = localStorage.getItem(STORAGE_KEYS.experiences);
-      return raw ? JSON.parse(raw) : SEED_EXPERIENCES;
+      return raw ? JSON.parse(raw) : [];
     } catch {
-      return SEED_EXPERIENCES;
+      return [];
     }
   }
 
   private loadStoredSubmissions(): TransferSubmission[] {
-    if (typeof window === 'undefined') return SEED_SUBMISSIONS;
+    if (typeof window === 'undefined') return [];
     try {
       const raw = localStorage.getItem(STORAGE_KEYS.submissions);
-      return raw ? JSON.parse(raw) : SEED_SUBMISSIONS;
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      return parsed
+        .filter((s) => s && !['sub-1', 'sub-2', 'sub-3'].includes(s.id))
+        .map((s) => ({
+          ...s,
+          amountArs: Number(s.amountArs) || 0,
+          status: s.status === 'rechazado' ? ('rechazado' as const) : ('aprobado' as const),
+        }));
     } catch {
-      return SEED_SUBMISSIONS;
+      return [];
     }
   }
 
@@ -2520,7 +2326,14 @@ export class ProviderStoreService {
           // Si no está autorizado para leer prestadores, se maneja de forma segura
         }
 
-        const mapped: ExperienceProposalRequest[] = expData.map((row: any) => {
+        const validRows = expData.filter((row: any) => {
+          if (row.status === 'publicada' || row.status === 'oculta') {
+            return typeof row.provider_email === 'string' && row.provider_email.trim().length > 0;
+          }
+          return true;
+        });
+
+        const mapped: ExperienceProposalRequest[] = validRows.map((row: any) => {
           const email = (row.provider_email || '').trim().toLowerCase();
           const banking = providerBankingMap.get(email);
           return {

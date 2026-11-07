@@ -33,15 +33,10 @@ import { ClubProfile } from '../../../core/models/club-profile.model';
           <!-- 1. Cotización Global USD -->
           <div class="settings-section-card">
             <div class="section-title-row">
-              <div class="section-icon-badge">
-                <mat-icon>monetization_on</mat-icon>
-              </div>
-              <div>
-                <h3 class="settings-section-title">1. Cotización Global del Dólar (USD / ARS)</h3>
-                <p class="section-subtext">
-                  Tipo de cambio referencial aplicado en todo el portal para calcular los valores en dólares en las fichas públicas de experiencias y en las propuestas de los prestadores.
-                </p>
-              </div>
+              <h3 class="settings-section-title">1. Cotización Global del Dólar (USD / ARS)</h3>
+              <p class="section-subtext">
+                Tipo de cambio referencial aplicado en todo el portal para calcular los valores en dólares en las fichas públicas de experiencias y en las propuestas de los prestadores.
+              </p>
             </div>
 
             <div class="usd-rate-grid">
@@ -60,17 +55,14 @@ import { ClubProfile } from '../../../core/models/club-profile.model';
                     required
                   />
                 </div>
-                <span class="field-hint">Valor numérico entero o decimal (ej: 1400).</span>
               </div>
 
               <div class="usd-preview-box">
-                <span class="preview-label">Cálculo de Referencia en Tiempo Real:</span>
                 <div class="preview-sample">
                   <span class="sample-ars">$100.000 ARS</span>
                   <span class="sample-arrow">&rarr;</span>
                   <span class="sample-usd">~{{ sampleUsd() }} USD</span>
                 </div>
-                <span class="preview-sub">Calculado a $ {{ usdRate() || 1400 | number:'1.0-0' }} por cada dólar</span>
               </div>
             </div>
           </div>
@@ -78,15 +70,10 @@ import { ClubProfile } from '../../../core/models/club-profile.model';
           <!-- 2. Perfil Institucional Oficial -->
           <div class="settings-section-card">
             <div class="section-title-row">
-              <div class="section-icon-badge">
-                <mat-icon>verified</mat-icon>
-              </div>
-              <div>
-                <h3 class="settings-section-title">2. Perfil Público Institucional del Club de Experiencias</h3>
-                <p class="section-subtext">
-                  Identidad pública oficial asignada como prestador en las expediciones exclusivas creadas por el Club.
-                </p>
-              </div>
+              <h3 class="settings-section-title">2. Perfil Público Institucional del Club de Experiencias</h3>
+              <p class="section-subtext">
+                Identidad pública oficial asignada como prestador en las expediciones exclusivas creadas por el Club.
+              </p>
             </div>
 
             <div class="form-grid-2">
@@ -156,15 +143,10 @@ import { ClubProfile } from '../../../core/models/club-profile.model';
           <!-- 3. Datos Bancarios Oficiales -->
           <div class="settings-section-card">
             <div class="section-title-row">
-              <div class="section-icon-badge">
-                <mat-icon>account_balance</mat-icon>
-              </div>
-              <div>
-                <h3 class="settings-section-title">3. Datos Bancarios Oficiales para Liquidación & Cobros (CBU)</h3>
-                <p class="section-subtext">
-                  Información bancaria a la que se dirigen las reservas de las experiencias organizadas por el Club.
-                </p>
-              </div>
+              <h3 class="settings-section-title">3. Datos Bancarios Oficiales para Liquidación & Cobros (CBU)</h3>
+              <p class="section-subtext">
+                Información bancaria a la que se dirigen las reservas de las experiencias organizadas por el Club.
+              </p>
             </div>
 
             <div class="form-grid-2">
@@ -228,15 +210,10 @@ import { ClubProfile } from '../../../core/models/club-profile.model';
           <!-- 4. Presentación & Redes -->
           <div class="settings-section-card">
             <div class="section-title-row">
-              <div class="section-icon-badge">
-                <mat-icon>public</mat-icon>
-              </div>
-              <div>
-                <h3 class="settings-section-title">4. Presentación Institucional & Enlaces Web</h3>
-                <p class="section-subtext">
-                  Información complementaria visible en el perfil institucional y fichas del Club.
-                </p>
-              </div>
+              <h3 class="settings-section-title">4. Presentación Institucional & Enlaces Web</h3>
+              <p class="section-subtext">
+                Información complementaria visible en el perfil institucional y fichas del Club.
+              </p>
             </div>
 
             <div class="form-field">
@@ -280,26 +257,36 @@ import { ClubProfile } from '../../../core/models/club-profile.model';
 
         <!-- Footer / Acciones -->
         <div class="settings-footer">
-          @if (saveError()) {
-            <span class="error-text">{{ saveError() }}</span>
-          }
           <button
             type="button"
-            class="btn-save-settings"
+            class="btn-cancel-settings"
+            (click)="cancelSettings()"
             [disabled]="isSaving() || isLoading()"
-            (click)="saveAllSettings()"
           >
-            @if (isLoading()) {
-              <mat-icon class="btn-spin">sync</mat-icon>
-              <span>Cargando configuración...</span>
-            } @else if (isSaving()) {
-              <mat-icon class="btn-spin">sync</mat-icon>
-              <span>Guardando configuración...</span>
-            } @else {
-              <mat-icon>save</mat-icon>
-              <span>Guardar Configuración General</span>
-            }
+            Cancelar
           </button>
+
+          <div class="footer-right">
+            @if (saveError()) {
+              <span class="error-text">{{ saveError() }}</span>
+            }
+            <button
+              type="button"
+              class="btn-save-settings"
+              [disabled]="isSaving() || isLoading()"
+              (click)="saveAllSettings()"
+            >
+              @if (isLoading()) {
+                <mat-icon class="btn-spin">sync</mat-icon>
+                <span>Cargando configuración...</span>
+              } @else if (isSaving()) {
+                <mat-icon class="btn-spin">sync</mat-icon>
+                <span>Guardando configuración...</span>
+              } @else {
+                <span>Guardar configuración</span>
+              }
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -412,29 +399,10 @@ import { ClubProfile } from '../../../core/models/club-profile.model';
 
       .section-title-row {
         display: flex;
-        align-items: flex-start;
-        gap: 0.85rem;
+        flex-direction: column;
+        gap: 0.25rem;
         border-bottom: 1px solid rgba(255, 95, 0, 0.18);
         padding-bottom: 0.65rem;
-      }
-
-      .section-icon-badge {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 38px;
-        height: 38px;
-        background: rgba(255, 95, 0, 0.18);
-        border: 1px solid rgba(255, 95, 0, 0.4);
-        border-radius: 4px;
-        color: #ffaa00;
-        flex-shrink: 0;
-      }
-
-      .section-icon-badge mat-icon {
-        font-size: 20px;
-        width: 20px;
-        height: 20px;
       }
 
       .settings-section-title {
@@ -479,6 +447,7 @@ import { ClubProfile } from '../../../core/models/club-profile.model';
       .currency-prefix {
         display: flex;
         align-items: center;
+        justify-content: center;
         padding: 0 0.85rem;
         background: rgba(255, 95, 0, 0.2);
         border: 1px solid rgba(255, 95, 0, 0.45);
@@ -487,6 +456,8 @@ import { ClubProfile } from '../../../core/models/club-profile.model';
         color: #ffaa00;
         font-weight: 800;
         font-size: 0.85rem;
+        white-space: nowrap;
+        flex-shrink: 0;
       }
 
       .rate-input-wrap .form-input {
@@ -499,18 +470,10 @@ import { ClubProfile } from '../../../core/models/club-profile.model';
         background: rgba(0, 0, 0, 0.35);
         border: 1px dashed rgba(255, 255, 255, 0.2);
         border-radius: 4px;
-        padding: 1rem 1.25rem;
+        padding: 0.75rem 1.25rem;
         display: flex;
-        flex-direction: column;
-        gap: 0.35rem;
-      }
-
-      .preview-label {
-        font-size: 0.75rem;
-        font-weight: 700;
-        color: rgba(255, 255, 255, 0.6);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
+        align-items: center;
+        justify-content: center;
       }
 
       .preview-sample {
@@ -531,11 +494,6 @@ import { ClubProfile } from '../../../core/models/club-profile.model';
 
       .sample-usd {
         color: #33ffaa;
-      }
-
-      .preview-sub {
-        font-size: 0.74rem;
-        color: rgba(255, 255, 255, 0.5);
       }
 
       .form-grid-2 {
@@ -615,11 +573,43 @@ import { ClubProfile } from '../../../core/models/club-profile.model';
       .settings-footer {
         display: flex;
         align-items: center;
-        justify-content: flex-end;
+        justify-content: space-between;
         gap: 1rem;
         padding-top: 1.25rem;
         border-top: 1px solid rgba(255, 255, 255, 0.1);
         margin-top: 0.5rem;
+      }
+
+      .footer-right {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+
+      .btn-cancel-settings {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.75rem 1.6rem;
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        color: rgba(255, 255, 255, 0.85);
+        font-size: 0.88rem;
+        font-weight: 700;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .btn-cancel-settings:hover:not(:disabled) {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.5);
+        color: #ffffff;
+      }
+
+      .btn-cancel-settings:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
       }
 
       .error-text {
@@ -720,6 +710,12 @@ export class AdminSettingsComponent implements OnInit {
     this.clubBio.set(profile.bio || '');
     this.clubWebsite.set(profile.website || 'https://experiencias.club');
     this.clubSocialMedia.set(profile.socialMedia || 'instagram.com/experiencias.club');
+  }
+
+  cancelSettings(): void {
+    this.saveError.set(null);
+    this.loadFromStore();
+    this.showToast('Cambios descartados.');
   }
 
   async saveAllSettings(): Promise<void> {

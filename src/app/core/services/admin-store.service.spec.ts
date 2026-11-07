@@ -86,8 +86,8 @@ describe('AdminStoreService - Provider Status Update Flow', () => {
         id: 'prov-1',
         type: 'prestador',
         status: 'pendiente',
-        email: 'guia@catamarca.com',
-        fullName: 'Guía Catamarca',
+        email: 'guia@test.com',
+        fullName: 'Guía Test',
       },
     ]);
 
@@ -97,8 +97,8 @@ describe('AdminStoreService - Provider Status Update Flow', () => {
     expect(mockUpdateQuery.eq).toHaveBeenCalledWith('id', 'prov-1');
     expect(result).toBe(true);
     expect(mockNotification.notifyProviderApproved).toHaveBeenCalledWith({
-      fullName: 'Guía Catamarca',
-      email: 'guia@catamarca.com',
+      fullName: 'Guía Test',
+      email: 'guia@test.com',
     });
     expect(mockProviderStore.syncProviderStatusFromAdmin).toHaveBeenCalled();
   });
@@ -123,7 +123,7 @@ describe('AdminStoreService - Provider Status Update Flow', () => {
         id: 'prov-non-existent',
         type: 'prestador',
         status: 'pendiente',
-        email: 'unknown@catamarca.com',
+        email: 'unknown@test.com',
         fullName: 'Desconocido',
       },
     ]);
@@ -161,7 +161,7 @@ describe('AdminStoreService - Provider Status Update Flow', () => {
         id: 'prov-err',
         type: 'prestador',
         status: 'pendiente',
-        email: 'err@catamarca.com',
+        email: 'err@test.com',
         fullName: 'Error Test',
       },
     ]);
@@ -596,6 +596,17 @@ describe('AdminStoreService - Provider Status Update Flow', () => {
 
       const savedLocal = JSON.parse(localStorage.getItem('catamarca_club_official_profile_v1') || '{}');
       expect(savedLocal.address).toBe('Esquiu 456, San Fernando del Valle');
+    });
+
+    it('should clear activeLoadClubProfilePromise even if query fails synchronously and avoid caching settled promise', async () => {
+      (adminStore as any).activeLoadClubProfilePromise = null;
+      (adminStore as any).supabase.from = vi.fn().mockImplementation(() => {
+        throw new Error('Synchronous query failure');
+      });
+
+      await adminStore.loadClubProfile();
+      expect((adminStore as any).activeLoadClubProfilePromise).toBeNull();
+      expect(adminStore.isLoadingClubProfile()).toBe(false);
     });
 
     it('should merge latest remote notes preserving free text, metadata, and pausedByBajaExpIds on updateClubProfile', async () => {

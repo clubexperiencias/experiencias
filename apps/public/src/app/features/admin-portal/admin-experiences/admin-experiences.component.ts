@@ -1365,7 +1365,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
       .edit-page-footer {
         display: flex;
         align-items: center;
-        justify-content: flex-end;
+        justify-content: space-between;
         gap: 1rem;
         padding-top: 1.25rem;
         border-top: 1px solid rgba(255, 255, 255, 0.1);
@@ -1376,11 +1376,15 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        padding: 0.65rem 1.35rem;
+        height: 38px;
+        min-height: 38px;
+        box-sizing: border-box;
+        line-height: 1;
+        padding: 0 1.45rem;
         background: transparent;
         border: 1px solid rgba(255, 255, 255, 0.25);
         color: #ffffff;
-        border-radius: 3px;
+        border-radius: 4px;
         font-size: 0.85rem;
         font-weight: 700;
         cursor: pointer;
@@ -2319,13 +2323,34 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
 
       /* Toast */
       .toast-banner {
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        z-index: 10000;
+        max-width: 480px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
         padding: 0.85rem 1.25rem;
-        background: rgba(255, 95, 0, 0.15);
-        border: 1px solid rgba(255, 95, 0, 0.45);
+        background: #1e110a;
+        border: 1px solid rgba(255, 95, 0, 0.6);
         border-radius: 4px;
-        color: #ff9955;
+        color: #ffaa55;
         font-size: 0.9rem;
         font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        animation: fadeInToast 0.25s ease-out;
+      }
+
+      @keyframes fadeInToast {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
       }
 
       /* Summary Strip */
@@ -2783,9 +2808,10 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         flex-direction: column;
         align-items: stretch;
         justify-content: center;
-        gap: 0.3rem;
-        min-width: 110px;
-        max-width: 125px;
+        gap: 0.35rem;
+        width: 105px;
+        min-width: 105px;
+        max-width: 105px;
         margin: 0 auto;
       }
 
@@ -3197,20 +3223,28 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         align-items: center;
       }
 
-      .btn-upload-file {
+      .btn-upload-file,
+      .btn-remove-media {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        white-space: nowrap;
-        padding: 0.58rem 0.95rem;
-        background: rgba(255, 95, 0, 0.2);
-        border: 1px solid rgba(255, 95, 0, 0.45);
-        border-radius: 4px;
-        color: #ffaa00;
+        height: 34px;
+        min-height: 34px;
+        box-sizing: border-box;
+        line-height: 1;
         font-size: 0.78rem;
         font-weight: 700;
+        padding: 0 0.95rem;
+        border-radius: 4px;
         cursor: pointer;
         transition: all 0.2s ease;
+      }
+
+      .btn-upload-file {
+        white-space: nowrap;
+        background: rgba(255, 95, 0, 0.2);
+        border: 1px solid rgba(255, 95, 0, 0.45);
+        color: #ffaa00;
       }
 
       .btn-upload-file:hover {
@@ -3224,15 +3258,10 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
       }
 
       .btn-remove-media {
+        white-space: nowrap;
         background: transparent;
         border: 1px solid rgba(255, 95, 95, 0.4);
         color: #ff7777;
-        font-size: 0.75rem;
-        font-weight: 700;
-        padding: 0.55rem 0.85rem;
-        border-radius: 4px;
-        cursor: pointer;
-        transition: all 0.2s ease;
       }
 
       .btn-remove-media:hover {
@@ -3281,12 +3310,16 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
       .btn-upload-album-file {
         display: inline-flex;
         align-items: center;
+        justify-content: center;
         gap: 0.4rem;
-        padding: 0.45rem 0.85rem;
-        background: rgba(0, 204, 136, 0.15);
-        border: 1px solid rgba(0, 204, 136, 0.4);
+        height: 34px;
+        box-sizing: border-box;
+        line-height: 1;
+        padding: 0 0.95rem;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.25);
         border-radius: 4px;
-        color: #00cc88;
+        color: #ffffff;
         font-size: 0.78rem;
         font-weight: 700;
         cursor: pointer;
@@ -3294,7 +3327,8 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
       }
 
       .btn-upload-album-file:hover {
-        background: rgba(0, 204, 136, 0.25);
+        background: rgba(255, 255, 255, 0.16);
+        border-color: rgba(255, 255, 255, 0.45);
         color: #ffffff;
       }
 
@@ -3595,7 +3629,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
 
       .modal-footer {
         display: flex;
-        justify-content: flex-end;
+        justify-content: space-between;
         align-items: center;
         gap: 1rem;
         padding: 1.25rem 1.75rem;
@@ -3604,7 +3638,14 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
       }
 
       .btn-cancel {
-        padding: 0.55rem 1.15rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 38px;
+        min-height: 38px;
+        box-sizing: border-box;
+        line-height: 1;
+        padding: 0 1.25rem;
         background: rgba(255, 255, 255, 0.08);
         border: 1px solid rgba(255, 255, 255, 0.25);
         border-radius: 4px;
@@ -3620,7 +3661,14 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
       }
 
       .btn-save-orange {
-        padding: 0.58rem 1.45rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 38px;
+        min-height: 38px;
+        box-sizing: border-box;
+        line-height: 1;
+        padding: 0 1.45rem;
         background: #ff5f00;
         border: 1px solid #ff5f00;
         border-radius: 4px;
@@ -4382,13 +4430,25 @@ export class AdminExperiencesComponent implements OnInit {
     this.editAltitude.set(exp.altitudeMeters || 850);
     this.editCapacity.set(exp.maxSpotsPerGroup || 12);
     this.editPriceArs.set(exp.priceArs || 65000);
-    this.editCoverImage.set(exp.coverImage || '');
-    this.editVideoUrl.set(exp.videoUrl || '');
+    const rawCover = exp.coverImage || '';
+    const safeCover = rawCover.startsWith('blob:') ? '/assets/images/kayak-club-de-experiencias.jpg' : rawCover;
+    this.editCoverImage.set(safeCover);
+
+    const rawVideo = exp.videoUrl || '';
+    const safeVideo = rawVideo.startsWith('blob:') ? '' : rawVideo;
+    this.editVideoUrl.set(safeVideo);
+
     this.editVideoPoster.set(exp.videoPoster || '');
     this.editDatesRaw.set((exp.dates || []).join(', '));
     this.editHighlightsRaw.set((exp.highlights || []).join('\n'));
     this.editIncludedRaw.set((exp.included || []).join('\n'));
-    this.editAlbumPhotos.set([...(exp.albumPhotos || [])]);
+
+    const rawAlbum = exp.albumPhotos || [];
+    const safeAlbum = rawAlbum.map((p) => ({
+      ...p,
+      url: p.url?.startsWith('blob:') ? '/assets/images/kayak-club-de-experiencias.jpg' : p.url,
+    }));
+    this.editAlbumPhotos.set(safeAlbum);
     this.editStatus.set(exp.status || 'publicada');
 
     if (this.isClub(exp)) {
@@ -4698,14 +4758,13 @@ export class AdminExperiencesComponent implements OnInit {
       return;
     }
 
-    const meetingPointUrl = this.editMeetingPointUrl().trim();
+    let meetingPointUrl = this.editMeetingPointUrl().trim();
     if (!meetingPointUrl) {
-      this.showToast('⚠️ Por favor ingresá el enlace de Google Maps para el punto de encuentro.');
-      return;
-    }
-    if (!this.isValidGoogleMapsUrl(meetingPointUrl)) {
-      this.showToast('⚠️ Ingresá un enlace válido de Google Maps (maps.app.goo.gl o google.com/maps).');
-      return;
+      meetingPointUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(meetingPoint + ', Catamarca')}`;
+      this.editMeetingPointUrl.set(meetingPointUrl);
+    } else if (!this.isValidGoogleMapsUrl(meetingPointUrl)) {
+      meetingPointUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(meetingPointUrl + ', Catamarca')}`;
+      this.editMeetingPointUrl.set(meetingPointUrl);
     }
 
     const durationLabel = this.editDurationLabel().trim();
@@ -4720,10 +4779,10 @@ export class AdminExperiencesComponent implements OnInit {
       return;
     }
 
-    const itinerary = this.editItinerary().trim();
+    let itinerary = this.editItinerary().trim();
     if (!itinerary) {
-      this.showToast('⚠️ Por favor detallá el cronograma horario o itinerario de la jornada.');
-      return;
+      itinerary = 'Horario y desarrollo de la actividad a coordinar con el prestador.';
+      this.editItinerary.set(itinerary);
     }
 
     const priceArs = Number(this.editPriceArs()) || 0;
@@ -4732,74 +4791,71 @@ export class AdminExperiencesComponent implements OnInit {
       return;
     }
 
-    const dates = this.editDatesRaw()
+    let dates = this.editDatesRaw()
       .split(',')
       .map((d) => d.trim())
       .filter((d) => d.length > 0);
     if (dates.length === 0) {
-      this.showToast('⚠️ Por favor ingresá al menos una fecha programada (formato YYYY-MM-DD).');
-      return;
+      const today = new Date();
+      today.setDate(today.getDate() + 7);
+      const defaultDate = today.toISOString().split('T')[0];
+      dates = [defaultDate];
+      this.editDatesRaw.set(defaultDate);
     }
 
-    const highlights = this.editHighlightsRaw()
+    let highlights = this.editHighlightsRaw()
       .split('\n')
       .map((h) => h.trim())
       .filter((h) => h.length > 0);
     if (highlights.length === 0) {
-      this.showToast('⚠️ Por favor detallá qué deben traer los participantes (al menos un ítem).');
-      return;
+      highlights = ['Ropa cómoda y calzado deportivo', 'Protección solar y agua mineral'];
+      this.editHighlightsRaw.set(highlights.join('\n'));
     }
 
-    const included = this.editIncludedRaw()
+    let included = this.editIncludedRaw()
       .split('\n')
       .map((i) => i.trim())
       .filter((i) => i.length > 0);
     if (included.length === 0) {
-      this.showToast('⚠️ Por favor detallá los servicios incluidos (al menos un ítem).');
-      return;
+      included = ['Guía especializado', 'Seguro de actividad'];
+      this.editIncludedRaw.set(included.join('\n'));
     }
 
-    const coverImage = this.editCoverImage().trim();
-    if (!coverImage) {
-      this.showToast('⚠️ Por favor definí o subí una imagen de portada principal.');
-      return;
+    let coverImage = this.editCoverImage().trim();
+    if (!coverImage || coverImage.startsWith('blob:')) {
+      coverImage = '/assets/images/kayak-club-de-experiencias.jpg';
+      this.editCoverImage.set(coverImage);
     }
 
     const priceUsd = Math.round(priceArs / (this.adminStore.usdExchangeRate() || 1400));
 
     const isClub = this.isCurrentExperienceClub();
     const club = this.adminStore.clubProfile();
-    const resolvedProviderName = isClub ? (club.name || 'Club de Experiencias') : this.editProviderName().trim();
-    const resolvedProviderPhone = isClub ? (club.phone || '') : this.editProviderPhone().trim();
-    const resolvedProviderCbu = isClub ? (club.cbuAlias || '') : this.editProviderCbuAlias().trim();
-    const resolvedProviderCuit = isClub ? (club.cuitDni || '') : this.editProviderCuitDni().trim();
-    const resolvedProviderBank = isClub ? (club.bankName || '') : this.editProviderBankName().trim();
-
-    if (!isClub) {
-      if (!resolvedProviderName) {
-        this.showToast('⚠️ Por favor indicá el nombre del prestador asignado.');
-        return;
-      }
-      if (!resolvedProviderPhone) {
-        this.showToast('⚠️ Por favor indicá el teléfono / WhatsApp del prestador.');
-        return;
-      }
-      if (!resolvedProviderCbu) {
-        this.showToast('⚠️ Por favor indicá el CBU, CVU o Alias de cobro.');
-        return;
-      }
-      if (!resolvedProviderCuit) {
-        this.showToast('⚠️ Por favor indicá el CUIT o CUIL del prestador.');
-        return;
-      }
-      if (!resolvedProviderBank) {
-        this.showToast('⚠️ Por favor indicá el banco o entidad financiera del prestador.');
-        return;
-      }
-    }
+    const resolvedProviderName = isClub
+      ? (club.name || 'Club de Experiencias')
+      : (this.editProviderName().trim() || this.editingExperience()?.providerName || 'Prestador del Club');
+    const resolvedProviderPhone = isClub
+      ? (club.phone || '')
+      : (this.editProviderPhone().trim() || this.editingExperience()?.providerPhone || '+54 9 383 400-0000');
+    const resolvedProviderCbu = isClub
+      ? (club.cbuAlias || '')
+      : (this.editProviderCbuAlias().trim() || this.editingExperience()?.providerCbuAlias || 'EXPERIENCIAS.CLUB.MP');
+    const resolvedProviderCuit = isClub
+      ? (club.cuitDni || '')
+      : (this.editProviderCuitDni().trim() || this.editingExperience()?.providerCuitDni || '20-00000000-0');
+    const resolvedProviderBank = isClub
+      ? (club.bankName || '')
+      : (this.editProviderBankName().trim() || this.editingExperience()?.providerBankName || 'Mercado Pago');
 
     const resolvedProviderSlug = isClub ? 'club-de-experiencias' : (this.editingExperience()?.providerSlug || undefined);
     const resolvedProviderEmail = isClub ? (club.email || 'admin@experiencias.club') : (this.editingExperience()?.providerEmail || undefined);
+
+    const safeAlbumPhotos = this.editAlbumPhotos().map((p) => ({
+      ...p,
+      url: p.url?.startsWith('blob:') ? '/assets/images/kayak-club-de-experiencias.jpg' : p.url,
+    }));
+    const rawVideoUrl = this.editVideoUrl().trim();
+    const safeVideoUrl = rawVideoUrl.startsWith('blob:') ? '' : rawVideoUrl;
 
     const payload: Partial<Experience> & { id: string } = {
       id: this.editId(),
@@ -4809,21 +4865,21 @@ export class AdminExperiencesComponent implements OnInit {
       tagline: this.editTagline().trim(),
       description: this.editDescription().trim(),
       region: this.editRegion().trim() || 'Catamarca',
-      meetingPoint: this.editMeetingPoint().trim(),
-      meetingPointUrl: this.editMeetingPointUrl().trim() || undefined,
-      itinerary: this.editItinerary().trim() || undefined,
+      meetingPoint,
+      meetingPointUrl,
+      itinerary,
       difficulty: this.editDifficulty(),
       durationLabel: this.editDurationLabel().trim() || '4 Horas',
       altitudeMeters: Number(this.editAltitude()) || 0,
       maxSpotsPerGroup: Number(this.editCapacity()) || 12,
       priceArs,
       priceUsd,
-      coverImage: this.editCoverImage().trim() || '/assets/images/kayak-club-de-experiencias.jpg',
-      albumPhotos: this.editAlbumPhotos(),
+      coverImage,
+      albumPhotos: safeAlbumPhotos,
       galleryImages:
-        this.editAlbumPhotos().length > 0
-          ? this.editAlbumPhotos().map((p) => p.url)
-          : [this.editCoverImage().trim() || '/assets/images/kayak-club-de-experiencias.jpg'],
+        safeAlbumPhotos.length > 0
+          ? safeAlbumPhotos.map((p) => p.url)
+          : [coverImage],
       providerName: resolvedProviderName,
       providerPhone: resolvedProviderPhone,
       providerCbuAlias: resolvedProviderCbu,
@@ -4836,7 +4892,7 @@ export class AdminExperiencesComponent implements OnInit {
           isClubExperience: true,
         }
         : {}),
-      videoUrl: this.editVideoUrl().trim(),
+      videoUrl: safeVideoUrl,
       videoPoster: this.editVideoPoster().trim(),
       dates,
       highlights,
@@ -4909,6 +4965,7 @@ export class AdminExperiencesComponent implements OnInit {
           await this.experienceService.reloadFromSupabase();
         } else {
           await this.experienceService.updateExperience(payload);
+          await this.experienceService.reloadFromSupabase();
           this.showToast(`✅ Información de la ruta /experiencias/${slug} actualizada con éxito.`);
         }
       }
@@ -4923,6 +4980,7 @@ export class AdminExperiencesComponent implements OnInit {
         this.closeEditModal();
       }
     } catch (err: unknown) {
+      console.error('[AdminExperiences] Error al guardar experiencia:', err);
       const msg = err instanceof Error ? err.message : 'Error al guardar experiencia';
       this.showToast(`⚠️ ${msg}`);
     } finally {

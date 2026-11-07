@@ -1,4 +1,6 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -73,14 +75,6 @@ type StatusFilter = TransferStatus | 'todos';
           <button
             type="button"
             class="filter-tab"
-            [class.is-active]="statusFilter() === 'pendiente'"
-            (click)="statusFilter.set('pendiente')"
-          >
-            Pendientes ({{ store.stats().pendingReceiptsCount }})
-          </button>
-          <button
-            type="button"
-            class="filter-tab"
             [class.is-active]="statusFilter() === 'aprobado'"
             (click)="statusFilter.set('aprobado')"
           >
@@ -120,7 +114,7 @@ type StatusFilter = TransferStatus | 'todos';
             </thead>
             <tbody>
               @for (sub of filteredSubmissions(); track sub.id) {
-                <tr [class.row-pending]="sub.status === 'pendiente'">
+                <tr [class.row-rejected]="sub.status === 'rechazado'">
                   <!-- Referencia -->
                   <td>
                     <span class="ref-badge font-mono">{{ sub.reference }}</span>
@@ -287,7 +281,21 @@ type StatusFilter = TransferStatus | 'todos';
                 </div>
                 <div>
                   <dt>Teléfono:</dt>
-                  <dd>{{ sub.phone }}</dd>
+                  <dd class="phone-data-row">
+                    <span>{{ sub.phone || '—' }}</span>
+                    @if (getReservationWhatsappLink(sub); as waLink) {
+                      <a
+                        [href]="waLink"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="contact-whatsapp-link"
+                        title="Contactar por WhatsApp sobre esta reserva"
+                      >
+                        <mat-icon class="arrow-up-right-icon">north_east</mat-icon>
+                        <span>Contactar</span>
+                      </a>
+                    }
+                  </dd>
                 </div>
                 <div>
                   <dt>Experiencia:</dt>
@@ -314,75 +322,72 @@ type StatusFilter = TransferStatus | 'todos';
               </dl>
 
               <!-- Estado del Comprobante -->
-              <div class="status-summary-box" [attr.data-status]="sub.status">
+              <div class="status-summary-box" [attr.data-status]="sub.status === 'rechazado' ? 'rechazado' : 'aprobado'">
                 <mat-icon>{{
-                  sub.status === 'aprobado'
-                    ? 'verified'
-                    : sub.status === 'rechazado'
-                      ? 'cancel'
-                      : 'schedule'
+                  sub.status === 'rechazado' ? 'cancel' : 'verified'
                 }}</mat-icon>
                 <div>
-                  <strong>Pago {{ sub.status | uppercase }}</strong>
+                  <strong>Pago {{ (sub.status === 'rechazado' ? 'rechazado' : 'aprobado') | uppercase }}</strong>
                   @if (sub.reviewedAt) {
                     <span> · {{ sub.reviewedAt | fecha: 'corta' }}</span>
                   }
-                  @if (sub.rejectionReason) {
+                  @if (sub.status === 'rechazado' && sub.rejectionReason) {
                     <p class="rej-text">{{ sub.rejectionReason }}</p>
                   }
                 </div>
               </div>
 
-              <!-- Acciones de Validación para comprobantes pendientes -->
-              @if (sub.status === 'pendiente') {
-                @if (!rejecting()) {
-                  <div class="modal-actions-row">
+              <!-- Acciones de Validación / Descarga -->
+              @if (!rejecting()) {
+                <div class="modal-actions-row">
+                  @if (sub.status !== 'rechazado') {
                     <button type="button" class="btn-reject" (click)="rejecting.set(true)">
                       Rechazar Pago
                     </button>
-                    <button type="button" class="btn-approve" (click)="confirmApprove(sub.id)">
-                      Aprobar Comprobante
+                  }
+                  <a
+                    [href]="sub.receipt.url"
+                    [download]="sub.receipt.fileName"
+                    target="_blank"
+                    rel="noopener"
+                    class="btn-download-action"
+                    title="Descargar comprobante"
+                  >
+                    <span>Descargar comprobante</span>
+                  </a>
+                </div>
+              } @else {
+                <div class="reject-box">
+                  <label class="reject-label" for="rej-reason-input">Motivo del Rechazo:</label>
+                  <div class="quick-reasons-row">
+                    <button type="button" class="quick-reason-chip" (click)="rejectionReason.set('Comprobante ilegible o borroso.')">Ilegible</button>
+                    <button type="button" class="quick-reason-chip" (click)="rejectionReason.set('El monto transferido no coincide con el total de la reserva.')">Monto incorrecto</button>
+                    <button type="button" class="quick-reason-chip" (click)="rejectionReason.set('La transferencia no impactó en la cuenta bancaria.')">No acreditado</button>
+                    <button type="button" class="quick-reason-chip" (click)="rejectionReason.set('Comprobante duplicado o ya utilizado.')">Duplicado</button>
+                  </div>
+                  <textarea
+                    id="rej-reason-input"
+                    class="reject-textarea"
+                    rows="2"
+                    placeholder="Ej: El importe no coincide con el total..."
+                    [value]="rejectionReason()"
+                    (input)="rejectionReason.set($any($event.target).value)"
+                  ></textarea>
+                  <div class="reject-actions">
+                    <button type="button" class="cancel-btn" (click)="rejecting.set(false)">
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      class="confirm-reject-btn"
+                      [disabled]="rejectionReason().trim().length < 4"
+                      (click)="confirmReject(sub.id)"
+                    >
+                      Confirmar Rechazo
                     </button>
                   </div>
-                } @else {
-                  <div class="reject-box">
-                    <label class="reject-label" for="rej-reason-input">Motivo del Rechazo:</label>
-                    <textarea
-                      id="rej-reason-input"
-                      class="reject-textarea"
-                      rows="2"
-                      placeholder="Ej: El importe no coincide con el total..."
-                      [value]="rejectionReason()"
-                      (input)="rejectionReason.set($any($event.target).value)"
-                    ></textarea>
-                    <div class="reject-actions">
-                      <button type="button" class="cancel-btn" (click)="rejecting.set(false)">
-                        Cancelar
-                      </button>
-                      <button
-                        type="button"
-                        class="confirm-reject-btn"
-                        [disabled]="rejectionReason().trim().length < 4"
-                        (click)="confirmReject(sub.id)"
-                      >
-                        Confirmar Rechazo
-                      </button>
-                    </div>
-                  </div>
-                }
+                </div>
               }
-
-              <!-- Descarga Directa -->
-              <a
-                [href]="sub.receipt.url"
-                [download]="sub.receipt.fileName"
-                target="_blank"
-                rel="noopener"
-                class="download-link-btn"
-              >
-                <mat-icon>download</mat-icon>
-                <span>Descargar archivo original ({{ sub.receipt.fileName }})</span>
-              </a>
             </div>
           </div>
         </div>
@@ -1071,6 +1076,44 @@ type StatusFilter = TransferStatus | 'todos';
         color: #ffffff;
       }
 
+      .phone-data-row {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+
+      .contact-whatsapp-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.15rem 0.55rem;
+        font-size: 0.76rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #25d366;
+        background: rgba(37, 211, 102, 0.12);
+        border: 1px solid rgba(37, 211, 102, 0.35);
+        border-radius: 9999px;
+        text-decoration: none;
+        transition: all 0.2s ease;
+      }
+
+      .contact-whatsapp-link:hover {
+        background: rgba(37, 211, 102, 0.25);
+        border-color: #25d366;
+        color: #ffffff;
+        transform: translateY(-1px);
+      }
+
+      .arrow-up-right-icon {
+        font-size: 0.85rem !important;
+        width: 0.85rem !important;
+        height: 0.85rem !important;
+        line-height: 0.85rem !important;
+      }
+
       .modal-actions-row {
         display: flex;
         gap: 0.75rem;
@@ -1078,32 +1121,43 @@ type StatusFilter = TransferStatus | 'todos';
 
       .btn-reject {
         flex: 1;
-        padding: 0.75rem;
-        background: rgba(239, 68, 68, 0.2);
-        border: 1px solid #ef4444;
+        padding: 0.75rem 1rem;
+        background: rgba(239, 68, 68, 0.15);
+        border: 1px solid rgba(239, 68, 68, 0.6);
         color: #fca5a5;
         font-weight: 700;
+        font-size: 0.88rem;
         border-radius: 2px;
         cursor: pointer;
+        transition: all 0.2s ease;
       }
 
       .btn-reject:hover {
-        background: rgba(239, 68, 68, 0.35);
+        background: rgba(239, 68, 68, 0.3);
+        border-color: #ef4444;
       }
 
-      .btn-approve {
+      .btn-download-action {
         flex: 1;
-        padding: 0.75rem;
-        background: #10b981;
-        border: 1px solid #10b981;
-        color: #0b0704;
-        font-weight: 800;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.75rem 1rem;
+        background: rgba(0, 220, 130, 0.18);
+        border: 1px solid rgba(0, 220, 130, 0.45);
+        color: #00dc82;
+        font-weight: 700;
+        font-size: 0.88rem;
         border-radius: 2px;
+        text-decoration: none;
         cursor: pointer;
+        transition: all 0.2s ease;
       }
 
-      .btn-approve:hover {
-        background: #34d399;
+      .btn-download-action:hover {
+        background: rgba(0, 220, 130, 0.32);
+        border-color: #00dc82;
+        color: #ffffff;
       }
 
       .reject-box {
@@ -1120,6 +1174,30 @@ type StatusFilter = TransferStatus | 'todos';
         font-size: 0.78rem;
         font-weight: 700;
         color: #fca5a5;
+      }
+
+      .quick-reasons-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        margin-bottom: 0.25rem;
+      }
+
+      .quick-reason-chip {
+        padding: 0.25rem 0.55rem;
+        font-size: 0.72rem;
+        background: rgba(239, 68, 68, 0.12);
+        border: 1px solid rgba(239, 68, 68, 0.35);
+        color: #fca5a5;
+        border-radius: 2px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+
+      .quick-reason-chip:hover {
+        background: rgba(239, 68, 68, 0.28);
+        border-color: #ef4444;
+        color: #ffffff;
       }
 
       .reject-textarea {
@@ -1298,12 +1376,44 @@ type StatusFilter = TransferStatus | 'todos';
 })
 export class AdminReceiptsComponent {
   readonly store = inject(AdminStoreService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly searchQuery = signal<string>('');
   readonly statusFilter = signal<StatusFilter>('todos');
   readonly selected = signal<TransferSubmission | null>(null);
   readonly rejecting = signal<boolean>(false);
   readonly rejectionReason = signal<string>('');
+  readonly targetRefQuery = signal<string | null>(null);
+  private hasOpenedTargetModal = false;
+
+  constructor() {
+    this.route.queryParamMap
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((params) => {
+        const ref = params.get('ref') || params.get('id');
+        if (ref) {
+          const clean = ref.trim();
+          this.targetRefQuery.set(clean);
+          this.searchQuery.set(clean);
+          this.hasOpenedTargetModal = false;
+        }
+      });
+
+    effect(() => {
+      const submissions = this.store.submissions();
+      const target = this.targetRefQuery()?.toLowerCase().trim();
+      if (target && submissions.length > 0 && !this.selected() && !this.hasOpenedTargetModal) {
+        const found = submissions.find(
+          (s) => s.reference.toLowerCase() === target || s.id.toLowerCase() === target,
+        );
+        if (found) {
+          this.hasOpenedTargetModal = true;
+          this.selected.set(found);
+        }
+      }
+    });
+  }
 
   readonly filteredSubmissions = computed(() => {
     let list = this.store.submissions();
@@ -1311,7 +1421,13 @@ export class AdminReceiptsComponent {
     const status = this.statusFilter();
 
     if (status !== 'todos') {
-      list = list.filter((s) => s.status === status);
+      if (status === 'aprobado') {
+        list = list.filter((s) => s.status !== 'rechazado');
+      } else if (status === 'rechazado') {
+        list = list.filter((s) => s.status === 'rechazado');
+      } else {
+        list = list.filter((s) => s.status === status);
+      }
     }
 
     if (query) {
@@ -1421,5 +1537,30 @@ export class AdminReceiptsComponent {
 
   isPdf(mimeType?: string): boolean {
     return mimeType === 'application/pdf';
+  }
+
+  getReservationWhatsappLink(sub: TransferSubmission): string {
+    const raw = (sub.phone || '').replace(/\D/g, '');
+    if (!raw) return '';
+
+    let num = raw;
+    if (num.startsWith('549')) {
+      // standard Argentina format
+    } else if (num.startsWith('54')) {
+      num = '549' + num.slice(2);
+    } else if (num.startsWith('0')) {
+      num = '549' + num.replace(/^0+/, '');
+    } else if (num.length === 10) {
+      num = '549' + num;
+    } else if (!num.startsWith('549')) {
+      num = '549' + num;
+    }
+
+    const name = sub.fullName?.trim() ? ` ${sub.fullName.trim()}` : '';
+    const ref = sub.reference ? `#${sub.reference}` : '';
+    const exp = sub.experienceTitle ? `"${sub.experienceTitle}"` : 'tu reserva';
+    const msg = `Hola${name}, te contactamos desde el equipo de Club de Experiencias sobre tu reserva ${ref} para ${exp}.`.trim();
+
+    return `https://wa.me/${num}?text=${encodeURIComponent(msg)}`;
   }
 }

@@ -56,7 +56,7 @@
                 [class.is-locked-card]="exp.isLocked">
                 <div class="exp-card-main">
                   <div class="exp-card-media">
-                    <img [src]="exp.coverImage" [alt]="exp.title" class="exp-card-img" />
+                    <img [src]="exp.coverImage" [alt]="exp.title" class="exp-card-img" loading="lazy" decoding="async" />
                     <span class="exp-region-tag" [class.is-enabled-tag]="!exp.isLocked">{{ exp.region }}</span>
                   </div>
 
@@ -192,7 +192,7 @@
                 [class.is-expanded]="selectedExperience()?.id === exp.id" [class.is-locked-card]="exp.isLocked">
                 <div class="exp-card-main">
                   <div class="exp-card-media horizontal-media">
-                    <img [src]="exp.coverImage" [alt]="exp.title" class="exp-card-img" />
+                    <img [src]="exp.coverImage" [alt]="exp.title" class="exp-card-img" loading="lazy" decoding="async" />
                     <span class="exp-region-tag" [class.is-enabled-tag]="!exp.isLocked">{{ exp.region }}</span>
                   </div>
 

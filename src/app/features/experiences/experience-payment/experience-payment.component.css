@@ -813,3 +813,195 @@
   color: #000000;
   border-radius: 0;
 }
+
+/* ═══════════════ FECHAS VACÍAS (ESTADO AMIGABLE) ═══════════════ */
+.pay-no-dates-card {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.85rem;
+  padding: 1.5rem 1.25rem;
+  background: rgba(18, 28, 48, 0.6);
+  border: 1px dashed rgba(128, 179, 255, 0.35);
+  border-radius: 8px;
+}
+
+.pay-no-dates-icon {
+  font-size: 36px;
+  width: 36px;
+  height: 36px;
+  color: #fb923c;
+}
+
+.pay-no-dates-info strong {
+  display: block;
+  font-size: 0.95rem;
+  color: #ffffff;
+  margin-bottom: 0.25rem;
+}
+
+.pay-no-dates-info p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.pay-no-dates-wa-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.25rem;
+  background: #25d366;
+  color: #ffffff;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border-radius: 6px;
+  text-decoration: none;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.pay-no-dates-wa-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+}
+
+/* ═══════════════ MINIATURA Y PREVIEW COMPROBANTE ═══════════════ */
+.pay-file-thumb-wrap {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  border-radius: 6px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 1px solid rgba(128, 179, 255, 0.4);
+}
+
+.pay-file-thumb-wrap:hover .pay-file-thumb-zoom {
+  opacity: 1;
+}
+
+.pay-file-thumb-zoom {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.pay-file-thumb-zoom mat-icon {
+  font-size: 24px;
+  width: 24px;
+  height: 24px;
+}
+
+.pay-file-pdf {
+  width: 60px;
+  height: 60px;
+  border-radius: 6px;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #f87171;
+}
+
+.pay-file-pdf mat-icon {
+  font-size: 32px;
+  width: 32px;
+  height: 32px;
+}
+
+.pay-file-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  color: #34d399;
+  font-weight: 600;
+  margin-top: 0.2rem;
+}
+
+.pay-file-status mat-icon {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+}
+
+/* ═══════════════ MODAL PREVIEW COMPROBANTE ═══════════════ */
+.pay-preview-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.pay-preview-modal-content {
+  background: #0d1527;
+  border: 1px solid rgba(128, 179, 255, 0.3);
+  border-radius: 12px;
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+}
+
+.pay-preview-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.pay-preview-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #ffffff;
+}
+
+.pay-preview-close-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: color 0.15s ease;
+}
+
+.pay-preview-close-btn:hover {
+  color: #ffffff;
+}
+
+.pay-preview-modal-body {
+  padding: 1rem;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-height: calc(90vh - 70px);
+}
+
+.pay-preview-modal-img {
+  max-width: 100%;
+  max-height: 75vh;
+  object-fit: contain;
+  border-radius: 4px;
+}

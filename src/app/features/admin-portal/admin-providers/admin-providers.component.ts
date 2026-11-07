@@ -11,7 +11,7 @@ import { ExperienceService } from '../../../core/services/experience.service';
 import { Experience } from '../../../core/models/experience.model';
 import { FechaPipe, ArsPipe } from '../../../shared/pipes/format.pipes';
 
-export type ProviderTab = 'todos' | 'oficiales' | 'postulaciones';
+export type ProviderTab = 'todos' | 'aprobados' | 'baja' | 'rechazados' | 'postulantes';
 
 export interface ProviderListItem {
   id: string;
@@ -50,9 +50,6 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
         <div class="empty-state-card">
           <h2 class="card-heading">Prestador no encontrado</h2>
           <p class="card-subheading">No pudimos encontrar al prestador solicitado en el padrón.</p>
-          <a [routerLink]="backToListLink()" class="btn-back-panel" style="margin-top: 1.25rem;">
-            &larr; Volver a Prestadores
-          </a>
         </div>
       } @else if (isRouteEditMode() && selectedProvider(); as prov) {
         <!-- Modo Edición: /prestadores/:slug/editar -->
@@ -534,13 +531,8 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
         <div class="summary-strip">
           <div class="summary-item">
             <span class="sum-label">Prestadores Oficiales</span>
-            <strong class="sum-value">{{ officialProvidersCount() }}</strong>
+            <strong class="sum-value text-blue">{{ officialProvidersCount() }}</strong>
             <span class="sum-sub">Habilitados en catálogo</span>
-          </div>
-          <div class="summary-item">
-            <span class="sum-label">Postulaciones Pendientes</span>
-            <strong class="sum-value text-orange">{{ pendingApplicationsCount() }}</strong>
-            <span class="sum-sub">Por evaluar y aprobar</span>
           </div>
           <div class="summary-item">
             <span class="sum-label">Experiencias a Cargo</span>
@@ -548,14 +540,19 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
             <span class="sum-sub">En catálogo activo</span>
           </div>
           <div class="summary-item">
-            <span class="sum-label">Postulaciones Totales</span>
-            <strong class="sum-value">{{ allApplicationsCount() }}</strong>
-            <span class="sum-sub">Historial recibido</span>
+            <span class="sum-label">Pendientes</span>
+            <strong class="sum-value text-orange">{{ pendingApplicationsCount() }}</strong>
+            <span class="sum-sub">Por evaluar y aprobar</span>
           </div>
           <div class="summary-item">
-            <span class="sum-label">Total Padrón</span>
-            <strong class="sum-value">{{ allProviders().length }}</strong>
-            <span class="sum-sub">Oficiales + Postulantes</span>
+            <span class="sum-label">Cupos vendidos</span>
+            <strong class="sum-value">{{ totalEnrolled() }}</strong>
+            <span class="sum-sub">Reservas confirmadas</span>
+          </div>
+          <div class="summary-item">
+            <span class="sum-label">Dinero generado</span>
+            <strong class="sum-value text-green">{{ confirmedRevenue() | ars }}</strong>
+            <span class="sum-sub">Total recaudado</span>
           </div>
         </div>
 
@@ -594,18 +591,34 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
             <button
               type="button"
               class="filter-tab"
-              [class.is-active]="activeTab() === 'oficiales'"
-              (click)="activeTab.set('oficiales')"
+              [class.is-active]="activeTab() === 'aprobados'"
+              (click)="activeTab.set('aprobados')"
             >
-              Oficiales Aprobados ({{ officialProvidersCount() }})
+              Aprobados ({{ approvedProvidersCount() }})
             </button>
             <button
               type="button"
               class="filter-tab"
-              [class.is-active]="activeTab() === 'postulaciones'"
-              (click)="activeTab.set('postulaciones')"
+              [class.is-active]="activeTab() === 'baja'"
+              (click)="activeTab.set('baja')"
             >
-              Postulaciones ({{ allApplicationsCount() }})
+              De baja ({{ bajaProvidersCount() }})
+            </button>
+            <button
+              type="button"
+              class="filter-tab"
+              [class.is-active]="activeTab() === 'rechazados'"
+              (click)="activeTab.set('rechazados')"
+            >
+              Rechazados ({{ rejectedProvidersCount() }})
+            </button>
+            <button
+              type="button"
+              class="filter-tab"
+              [class.is-active]="activeTab() === 'postulantes'"
+              (click)="activeTab.set('postulantes')"
+            >
+              Postulantes ({{ applicantsCount() }})
             </button>
           </div>
         </div>
@@ -956,6 +969,10 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
         color: #80b3ff !important;
       }
 
+      .text-green {
+        color: #34d399 !important;
+      }
+
       /* Filters & Search */
       .filters-bar {
         display: flex;
@@ -1273,9 +1290,10 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
         flex-direction: column;
         align-items: stretch;
         justify-content: center;
-        gap: 0.3rem;
-        min-width: 110px;
-        max-width: 125px;
+        gap: 0.35rem;
+        width: 105px;
+        min-width: 105px;
+        max-width: 105px;
         margin-left: auto;
       }
 
@@ -1491,6 +1509,7 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
         display: flex;
         flex-direction: column;
         gap: 1.25rem;
+        padding-top: 1.25rem;
       }
 
       .fiche-section-card {
@@ -2044,16 +2063,28 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
         border-radius: 4px;
         padding: 3rem 1.5rem;
         text-align: center;
+        margin-top: 1.5rem;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+        backdrop-filter: blur(14px);
       }
 
       .toast-banner {
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        z-index: 10000;
+        max-width: 480px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
         padding: 0.85rem 1.25rem;
-        background: rgba(255, 95, 0, 0.15);
-        border: 1px solid rgba(255, 95, 0, 0.45);
+        background: #1e110a;
+        border: 1px solid rgba(255, 95, 0, 0.6);
         border-radius: 4px;
-        color: #ff9955;
+        color: #ffaa55;
         font-size: 0.9rem;
         font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
       }
 
       /* Modal Styling */
@@ -2390,10 +2421,11 @@ export class AdminProvidersComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.resolveRouteState();
+    void this.store.loadAllApplications();
+    void this.resolveRouteState();
   }
 
-  private resolveRouteState(): void {
+  private async resolveRouteState(): Promise<void> {
     const rawPath = this.currentUrl().split('?')[0].split('#')[0];
     const segments = rawPath.split('/').filter(Boolean);
     const prestIdx = segments.indexOf('prestadores');
@@ -2407,35 +2439,17 @@ export class AdminProvidersComponent implements OnInit {
       return;
     }
 
-    const slug = segments[prestIdx + 1];
+    const rawSlug = segments[prestIdx + 1];
+    const slug = decodeURIComponent(rawSlug).trim();
     const isEdit = segments.includes('editar');
 
-    let provider = this.store.providerStore.getProviderBySlug(slug);
+    let provider = this.lookupProvider(slug);
     if (!provider) {
-      const cleanSlug = slug.toLowerCase().trim();
-      const app = this.store.applications().find(
-        (a) =>
-          a.id.toLowerCase() === cleanSlug ||
-          (Boolean(a.fullName) && slugify(a.fullName) === cleanSlug),
-      );
-      if (app) {
-        provider = {
-          id: app.id,
-          name: app.fullName || 'Postulante',
-          agency: app.category ? this.formatCategory(app.category) : 'Postulación de Prestador',
-          email: app.email,
-          phone: app.phone || '',
-          slug: app.id,
-          bio: app.description || app.motivationLetter || '',
-          cuitDni: app.cuitDni || '',
-          cbuAlias: app.cbuAlias || '',
-          bankName: app.bankName || '',
-          verified: app.status === 'aprobado',
-          status: app.status === 'aprobado' ? 'aprobado' : 'pendiente',
-          role: 'prestador',
-          joinedAt: app.createdAt,
-        };
-      }
+      await Promise.allSettled([
+        this.store.loadAllApplications(),
+        this.store.providerStore.loadProposalsFromSupabase(),
+      ]);
+      provider = this.lookupProvider(slug);
     }
 
     if (!provider) {
@@ -2450,13 +2464,6 @@ export class AdminProvidersComponent implements OnInit {
     this.selectedProvider.set(provider);
 
     if (isEdit) {
-      if (!this.hasProviderRecord(provider)) {
-        this.notFound.set(true);
-        this.isRouteEditMode.set(false);
-        this.isRouteDetailMode.set(false);
-        this.selectedProvider.set(null);
-        return;
-      }
       this.isRouteEditMode.set(true);
       this.isRouteDetailMode.set(false);
       this.populateEditForm(provider);
@@ -2464,6 +2471,60 @@ export class AdminProvidersComponent implements OnInit {
       this.isRouteEditMode.set(false);
       this.isRouteDetailMode.set(true);
     }
+  }
+
+  private lookupProvider(slug: string): ProviderUser | undefined {
+    let provider = this.store.providerStore.getProviderBySlug(slug);
+    if (provider) return provider;
+
+    const cleanSlug = slug.toLowerCase().trim();
+    const normalizedSlug = slug
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9-]+/g, '-')
+      .replace(/(^-|-$)+/g, '');
+
+    provider =
+      this.store.providerStore.getProviderBySlug(normalizedSlug) ||
+      this.store.providerStore.getProviderById(slug) ||
+      this.store.providerStore.getProviderById(cleanSlug) ||
+      this.store.providerStore.getProviderByEmail(slug);
+
+    if (provider) return provider;
+
+    const app = this.store.applications().find(
+      (a: any) =>
+        a.id.toLowerCase() === cleanSlug ||
+        a.id.toLowerCase() === normalizedSlug ||
+        (Boolean(a.fullName) && slugify(a.fullName) === cleanSlug) ||
+        (Boolean(a.fullName) && slugify(a.fullName) === normalizedSlug) ||
+        (Boolean(a.agency) && slugify(a.agency) === cleanSlug) ||
+        (Boolean(a.agency) && slugify(a.agency) === normalizedSlug) ||
+        (Boolean(a.category) && (a.category || '').toLowerCase() === cleanSlug) ||
+        (Boolean(a.category) && slugify(a.category || '') === normalizedSlug),
+    );
+
+    if (app) {
+      return {
+        id: app.id,
+        name: app.fullName || 'Postulante',
+        agency: (app as any).agency || (app.category ? this.formatCategory(app.category) : 'Postulación de Prestador'),
+        email: app.email,
+        phone: app.phone || '',
+        slug: app.id,
+        bio: app.description || app.motivationLetter || '',
+        cuitDni: app.cuitDni || '',
+        cbuAlias: app.cbuAlias || '',
+        bankName: app.bankName || '',
+        verified: app.status === 'aprobado',
+        status: app.status === 'aprobado' ? 'aprobado' : 'pendiente',
+        role: 'prestador',
+        joinedAt: app.createdAt,
+      };
+    }
+
+    return undefined;
   }
 
   private populateEditForm(p: ProviderUser): void {
@@ -2876,8 +2937,12 @@ export class AdminProvidersComponent implements OnInit {
   }
 
   hasProviderRecord(prov?: ProviderUser | null): boolean {
-    if (!prov?.slug) return false;
-    return Boolean(this.store.providerStore.getProviderBySlug(prov.slug));
+    if (!prov) return false;
+    if (prov.slug && Boolean(this.store.providerStore.getProviderBySlug(prov.slug))) return true;
+    if (prov.id && Boolean(this.store.providerStore.getProviderById(prov.id))) return true;
+    if (prov.email && Boolean(this.store.providerStore.getProviderByEmail(prov.email))) return true;
+    if (this.store.applications().some((a) => a.id === prov.id || a.email === prov.email)) return true;
+    return false;
   }
 
   isClubProvider(prov?: ProviderUser | ProviderListItem | null): boolean {
@@ -2909,15 +2974,21 @@ export class AdminProvidersComponent implements OnInit {
   readonly allProviders = computed<ProviderListItem[]>(() => {
     const list: ProviderListItem[] = [];
     const officialProviders = this.store.providerStore.providers();
-    const providerEmails = new Set<string>();
+    const approvedProviderEmails = new Set<string>();
 
     for (const p of officialProviders) {
-      if (!p.verified || p.status === 'dado_de_baja' || p.status === 'pendiente') {
-        continue;
-      }
       const cleanEmail = p.email?.toLowerCase().trim() || '';
-      if (cleanEmail) providerEmails.add(cleanEmail);
+      if (cleanEmail && p.status === 'aprobado') approvedProviderEmails.add(cleanEmail);
       const computedSlug = p.slug || slugify(p.agency || p.name || p.id || cleanEmail);
+      const itemStatus: 'aprobado' | 'pendiente' | 'rechazado' | 'dado_de_baja' =
+        p.status === 'dado_de_baja'
+          ? 'dado_de_baja'
+          : p.status === 'rechazado'
+            ? 'rechazado'
+            : p.status === 'pendiente'
+              ? 'pendiente'
+              : 'aprobado';
+
       list.push({
         id: p.id || `prov-${cleanEmail}`,
         origin: 'official',
@@ -2927,7 +2998,7 @@ export class AdminProvidersComponent implements OnInit {
         phone: p.phone || '—',
         categoryOrBio: p.bio,
         slug: computedSlug,
-        status: 'aprobado',
+        status: itemStatus,
         createdAt: p.joinedAt || '2024-01-01T00:00:00Z',
         rawProvider: p,
       });
@@ -2936,7 +3007,7 @@ export class AdminProvidersComponent implements OnInit {
     const applications = this.store.applications().filter((a) => a.type === 'prestador');
     for (const app of applications) {
       const cleanEmail = app.email?.toLowerCase().trim() || '';
-      if (cleanEmail && providerEmails.has(cleanEmail)) {
+      if (cleanEmail && approvedProviderEmails.has(cleanEmail)) {
         continue;
       }
       const appSlug = app.id;
@@ -2965,12 +3036,28 @@ export class AdminProvidersComponent implements OnInit {
     return list;
   });
 
+  readonly approvedProvidersCount = computed(
+    () => this.allProviders().filter((p) => p.status === 'aprobado').length,
+  );
+
+  readonly bajaProvidersCount = computed(
+    () => this.allProviders().filter((p) => p.status === 'dado_de_baja').length,
+  );
+
+  readonly rejectedProvidersCount = computed(
+    () => this.allProviders().filter((p) => p.status === 'rechazado').length,
+  );
+
+  readonly applicantsCount = computed(
+    () => this.allProviders().filter((p) => p.status === 'pendiente').length,
+  );
+
   readonly officialProvidersCount = computed(
-    () => this.allProviders().filter((p) => p.origin === 'official').length,
+    () => this.allProviders().filter((p) => p.origin === 'official' && p.status === 'aprobado').length,
   );
 
   readonly pendingApplicationsCount = computed(
-    () => this.allProviders().filter((p) => p.origin === 'application' && p.status === 'pendiente').length,
+    () => this.allProviders().filter((p) => p.status === 'pendiente').length,
   );
 
   readonly allApplicationsCount = computed(
@@ -2981,15 +3068,27 @@ export class AdminProvidersComponent implements OnInit {
     () => this.store.providerStore.experiences().length,
   );
 
+  readonly totalEnrolled = computed(
+    () => this.store.stats().totalEnrolled,
+  );
+
+  readonly confirmedRevenue = computed(
+    () => this.store.stats().confirmedRevenue,
+  );
+
   readonly filteredProviders = computed(() => {
     let list = this.allProviders();
     const tab = this.activeTab();
     const query = this.searchQuery().trim().toLowerCase();
 
-    if (tab === 'oficiales') {
-      list = list.filter((p) => p.origin === 'official');
-    } else if (tab === 'postulaciones') {
-      list = list.filter((p) => p.origin === 'application');
+    if (tab === 'aprobados') {
+      list = list.filter((p) => p.status === 'aprobado');
+    } else if (tab === 'baja') {
+      list = list.filter((p) => p.status === 'dado_de_baja');
+    } else if (tab === 'rechazados') {
+      list = list.filter((p) => p.status === 'rechazado');
+    } else if (tab === 'postulantes') {
+      list = list.filter((p) => p.status === 'pendiente');
     }
 
     if (query) {

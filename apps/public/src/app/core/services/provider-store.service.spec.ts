@@ -443,7 +443,7 @@ describe('ProviderStoreService - Payment & Proposal Persistence', () => {
     const sampleProviders = [
       {
         id: 'prov-001',
-        name: 'Carlos Montaña',
+        name: 'Guía Andino',
         agency: 'Aconquija Expediciones',
         slug: 'aconquija',
         email: 'aconquija@test.com',
@@ -460,7 +460,7 @@ describe('ProviderStoreService - Payment & Proposal Persistence', () => {
         name: 'Tercer Prestador',
         agency: 'Tercera Agencia',
         slug: 'tercero',
-        email: 'carlos@test.com',
+        email: 'andino@test.com',
       },
     ];
 
@@ -484,12 +484,12 @@ describe('ProviderStoreService - Payment & Proposal Persistence', () => {
     });
 
     it('should resolve name fallback in second pass when no exact slug or ID matches', () => {
-      const found = store.getProviderBySlug('carlos-montana');
+      const found = store.getProviderBySlug('guia-andino');
       expect(found?.id).toBe('prov-001');
     });
 
     it('should NOT match email local-part', () => {
-      const found = store.getProviderBySlug('carlos');
+      const found = store.getProviderBySlug('andino');
       expect(found).toBeUndefined();
     });
   });
@@ -757,7 +757,7 @@ describe('ProviderStoreService - Payment & Proposal Persistence', () => {
       const otherProviderReq: any = {
         id: 'prop-other',
         title: 'Cabalgata Belén',
-        providerEmail: 'carlos@test.com',
+        providerEmail: 'otro@test.com',
         status: 'pendiente',
         createdAt: '2026-10-02T10:00:00.000Z',
       };
@@ -866,6 +866,20 @@ describe('ProviderStoreService - Payment & Proposal Persistence', () => {
                         status: 'pendiente',
                         created_at: '2026-10-11T10:00:00.000Z',
                       },
+                      {
+                        id: 'direct-created-1',
+                        title: 'Experiencia Creada Directamente',
+                        provider_email: '',
+                        status: 'publicada',
+                        created_at: '2026-10-12T10:00:00.000Z',
+                      },
+                      {
+                        id: 'direct-created-paused',
+                        title: 'Experiencia Directa Pausada',
+                        provider_email: null,
+                        status: 'oculta',
+                        created_at: '2026-10-12T11:00:00.000Z',
+                      },
                     ],
                     error: null,
                   }),
@@ -892,6 +906,10 @@ describe('ProviderStoreService - Payment & Proposal Persistence', () => {
       const pausedApproved = requests.find((r) => r.id === 'global-paused-1');
       expect(pausedApproved).toBeTruthy();
       expect(pausedApproved?.status).toBe('aprobada');
+      const direct1 = requests.find((r) => r.id === 'direct-created-1');
+      expect(direct1).toBeUndefined();
+      const directPaused = requests.find((r) => r.id === 'direct-created-paused');
+      expect(directPaused).toBeUndefined();
     });
   });
 });

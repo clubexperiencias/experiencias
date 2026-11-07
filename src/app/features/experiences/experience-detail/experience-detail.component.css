@@ -309,6 +309,16 @@
   font-weight: 600;
 }
 
+.no-dates-detail-action {
+  margin-top: 1.25rem;
+}
+
+.no-dates-detail-action .cta-primary-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 /* ═══════════════ CRONOGRAMA & ITINERARIO ═══════════════ */
 .timeline-list {
   display: flex;
@@ -463,6 +473,8 @@
   background: rgba(255, 255, 255, 0.08);
   color: #ffffff;
   border: 1px solid rgba(255, 255, 255, 0.22);
+  cursor: pointer;
+  font-family: inherit;
 }
 
 .location-btn .loc-icon {
@@ -475,6 +487,12 @@
   background: rgba(255, 255, 255, 0.16);
   border-color: rgba(255, 255, 255, 0.45);
   transform: translateY(-2px);
+}
+
+.location-btn.copied {
+  background: rgba(52, 211, 153, 0.18);
+  border-color: rgba(52, 211, 153, 0.6);
+  color: #34d399;
 }
 
 /* ═══════════════ LOADING & NOT FOUND STATE ═══════════════ */

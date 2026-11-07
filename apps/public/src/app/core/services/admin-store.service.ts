@@ -27,9 +27,10 @@ export interface AdminMember {
   dni?: string;
   phone?: string;
   position?: number | null;
-  membershipTier: 'emergente' | 'activo' | 'fundador' | 'waitlist';
+  membershipTier: 'emergente' | 'activo' | 'fundador' | 'waitlist' | 'dado_de_baja';
   googleLinked: boolean;
   converted: boolean;
+  avatarUrl?: string;
   isProvider?: boolean;
   experiencesWishlist: string[];
   experiencesOther?: string | null;
@@ -230,45 +231,46 @@ export class AdminStoreService {
     const list = this._members();
     const subs = this._submissions();
 
-    const officialSocios = list.filter((m) => m.type === 'socio');
+    const officialSocios = list.filter((m) => m.type === 'socio' && m.membershipTier !== 'dado_de_baja');
     const waitlistOnly = list.filter((m) => m.type === 'waitlist' && !m.googleLinked);
     const googleLinked = list.filter((m) => Boolean(m.googleLinked));
     const converted = list.filter((m) => m.converted);
 
-    const approvedSubs = subs.filter((s) => s.status === 'aprobado');
-    const pendingSubs = subs.filter((s) => s.status === 'pendiente');
+    // Los pagos se aprueban por defecto a menos que estén explícitamente rechazados
+    const approvedSubs = subs.filter((s) => s.status !== 'rechazado');
     const rejectedSubs = subs.filter((s) => s.status === 'rechazado');
+    const pendingSubs = subs.filter((s) => s.status === 'pendiente');
 
-    const confirmedRevenue = approvedSubs.reduce((sum, s) => sum + s.amountArs, 0);
-    const pendingRevenue = pendingSubs.reduce((sum, s) => sum + s.amountArs, 0);
-    const totalEnrolled = approvedSubs.reduce((sum, s) => sum + s.participants, 0);
+    const confirmedRevenue = approvedSubs.reduce((sum, s) => sum + (Number(s.amountArs) || 0), 0);
+    const pendingRevenue = 0;
+    const totalEnrolled = approvedSubs.reduce((sum, s) => sum + (Number(s.participants) || 0), 0);
 
     const conversionRate = list.length > 0 ? Math.round((converted.length / list.length) * 100) : 0;
 
     // Métricas temporales (Día, Semana, Mes)
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const endOfToday = startOfToday + 86400000;
     const sevenDaysAgo = startOfToday - 6 * 86400000;
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
-    const thirtyDaysAgo = startOfToday - 29 * 86400000;
-    const monthBoundary = Math.min(startOfMonth, thirtyDaysAgo);
+    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime();
 
     const isToday = (dateStr?: string) => {
       if (!dateStr) return false;
       const t = new Date(dateStr).getTime();
-      return !isNaN(t) && t >= startOfToday;
+      return !isNaN(t) && t >= startOfToday && t < endOfToday;
     };
 
     const isThisWeek = (dateStr?: string) => {
       if (!dateStr) return false;
       const t = new Date(dateStr).getTime();
-      return !isNaN(t) && t >= sevenDaysAgo;
+      return !isNaN(t) && t >= sevenDaysAgo && t < endOfToday;
     };
 
     const isThisMonth = (dateStr?: string) => {
       if (!dateStr) return false;
       const t = new Date(dateStr).getTime();
-      return !isNaN(t) && t >= monthBoundary;
+      return !isNaN(t) && t >= startOfMonth && t < nextMonth;
     };
 
     const sociosList = list.filter((m) => Boolean(m.googleLinked));
@@ -276,17 +278,21 @@ export class AdminStoreService {
     const membersThisWeek = sociosList.filter((m) => isThisWeek(m.createdAt)).length;
     const membersThisMonth = sociosList.filter((m) => isThisMonth(m.createdAt)).length;
 
+    const getPaymentDate = (s: TransferSubmission): string => {
+      return s.submittedAt || s.date || '';
+    };
+
     const revenueToday = approvedSubs
-      .filter((s) => isToday(s.submittedAt || s.date))
-      .reduce((sum, s) => sum + s.amountArs, 0);
+      .filter((s) => isToday(getPaymentDate(s)))
+      .reduce((sum, s) => sum + (Number(s.amountArs) || 0), 0);
 
     const revenueThisWeek = approvedSubs
-      .filter((s) => isThisWeek(s.submittedAt || s.date))
-      .reduce((sum, s) => sum + s.amountArs, 0);
+      .filter((s) => isThisWeek(getPaymentDate(s)))
+      .reduce((sum, s) => sum + (Number(s.amountArs) || 0), 0);
 
     const revenueThisMonth = approvedSubs
-      .filter((s) => isThisMonth(s.submittedAt || s.date))
-      .reduce((sum, s) => sum + s.amountArs, 0);
+      .filter((s) => isThisMonth(getPaymentDate(s)))
+      .reduce((sum, s) => sum + (Number(s.amountArs) || 0), 0);
 
     return {
       totalRecords: list.length,
@@ -361,7 +367,9 @@ export class AdminStoreService {
     }
 
     this._isLoadingClubProfile.set(true);
-    this.activeLoadClubProfilePromise = (async () => {
+    let thisLoadPromise: Promise<void> | null = null;
+    const loadTask = async () => {
+      await Promise.resolve();
       try {
         const current = this._clubProfile();
         let data: any = null;
@@ -464,11 +472,15 @@ export class AdminStoreService {
       } finally {
         this._isLoadingClubProfile.set(false);
         this._clubProfileLoaded.set(true);
-        this.activeLoadClubProfilePromise = null;
+        if (this.activeLoadClubProfilePromise === thisLoadPromise) {
+          this.activeLoadClubProfilePromise = null;
+        }
       }
-    })();
+    };
 
-    return this.activeLoadClubProfilePromise;
+    thisLoadPromise = loadTask();
+    this.activeLoadClubProfilePromise = thisLoadPromise;
+    return thisLoadPromise;
   }
 
   /**
@@ -894,6 +906,7 @@ export class AdminStoreService {
             googleLinked: Boolean(s.googleLinked || s.auth_user_id),
             // Convertido = pagó al menos una experiencia / envió comprobante
             converted: typeof s.paymentsCount === 'number' ? s.paymentsCount > 0 : Boolean(s.converted),
+            avatarUrl: s.avatarUrl || s.avatar_url || s.picture || s.avatar || undefined,
             isProvider: providerEmails.has(s.email?.toLowerCase().trim()) || Boolean(s.isProvider || s.is_provider),
             experiencesWishlist: Array.isArray(s.experiencesWishlist) ? s.experiencesWishlist : [],
             experiencesOther: s.experiencesOther || s.experiences_other,
@@ -915,6 +928,7 @@ export class AdminStoreService {
             googleLinked: Boolean(w.googleLinked || w.auth_user_id),
             // Convertido = pagó al menos una experiencia / envió comprobante
             converted: typeof w.paymentsCount === 'number' ? w.paymentsCount > 0 : Boolean(w.converted),
+            avatarUrl: w.avatarUrl || w.avatar_url || w.picture || w.avatar || undefined,
             isProvider: providerEmails.has(w.email?.toLowerCase().trim()) || Boolean(w.isProvider || w.is_provider),
             experiencesWishlist: Array.isArray(w.experiencesWishlist)
               ? w.experiencesWishlist
@@ -930,6 +944,7 @@ export class AdminStoreService {
           this.persistMembers(combined);
           this._lastRefreshedAt.set(new Date().toLocaleTimeString('es-AR'));
           this._isLoadingMembers.set(false);
+          void this.enrichMembersWithAuthAvatars(combined);
           return;
         }
 
@@ -962,6 +977,7 @@ export class AdminStoreService {
               membershipTier: s.membership_tier || 'emergente',
               googleLinked: Boolean(s.auth_user_id),
               converted: hasPayment,
+              avatarUrl: s.avatar_url || s.avatar || s.picture || undefined,
               isProvider: providerEmails.has(cleanEmail) || Boolean(s.is_provider),
               experiencesWishlist: Array.isArray(s.experiences_wishlist)
                 ? s.experiences_wishlist
@@ -991,6 +1007,7 @@ export class AdminStoreService {
               membershipTier: 'waitlist' as const,
               googleLinked: isGoogle,
               converted: hasPayment,
+              avatarUrl: w.avatar_url || w.avatar || w.picture || undefined,
               isProvider: providerEmails.has(cleanEmail) || Boolean(w.is_provider),
               experiencesWishlist: Array.isArray(w.experiences_wishlist)
                 ? w.experiences_wishlist
@@ -1007,6 +1024,7 @@ export class AdminStoreService {
           this.persistMembers(combined);
           this._lastRefreshedAt.set(new Date().toLocaleTimeString('es-AR'));
           this._isLoadingMembers.set(false);
+          void this.enrichMembersWithAuthAvatars(combined);
           return;
         }
 
@@ -1027,14 +1045,41 @@ export class AdminStoreService {
 
     // 3. Respaldo local SÓLO si Supabase no está configurado
     const stored = this.loadStoredMembers();
-    if (stored && stored.length > 0) {
-      this._members.set(stored);
-    } else {
-      const local = this.generateSampleMembers();
-      this._members.set(local);
-    }
+    this._members.set(stored || []);
     this._lastRefreshedAt.set(new Date().toLocaleTimeString('es-AR'));
     this._isLoadingMembers.set(false);
+  }
+
+  private async enrichMembersWithAuthAvatars(members: AdminMember[]): Promise<void> {
+    try {
+      const avatarRes = await fetch('/api/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'GET_AUTH_AVATARS' }),
+      });
+      if (avatarRes.ok) {
+        const avatarData = await avatarRes.json();
+        if (avatarData?.success && avatarData?.avatars) {
+          const avatars = avatarData.avatars as Record<string, string>;
+          let hasUpdates = false;
+          const updatedMembers = members.map((m) => {
+            const em = m.email?.toLowerCase().trim();
+            const foundAvatar = (em && avatars[em]) || (m.id && avatars[m.id]);
+            if (foundAvatar && m.avatarUrl !== foundAvatar) {
+              hasUpdates = true;
+              return { ...m, avatarUrl: foundAvatar };
+            }
+            return m;
+          });
+          if (hasUpdates) {
+            this._members.set(updatedMembers);
+            this.persistMembers(updatedMembers);
+          }
+        }
+      }
+    } catch {
+      // Ignore background avatar enrichment errors
+    }
   }
 
   getMemberById(idOrIdentifier: string): AdminMember | undefined {
@@ -1205,6 +1250,33 @@ export class AdminStoreService {
     return { success: true };
   }
 
+  async deleteMemberProfile(id: string): Promise<{ success: boolean; error?: string }> {
+    const existing = this.getMemberById(id);
+    if (!existing) {
+      return { success: false, error: 'Socio no encontrado' };
+    }
+
+    const previousMembers = this._members();
+    this._members.update((list) => list.filter((m) => m.id !== existing.id && m.email !== existing.email));
+    this.persistMembers(this._members());
+
+    if (isSupabaseConfigured()) {
+      try {
+        const isIdQuery = Boolean(existing.id && existing.id.includes('-'));
+        let query = (this.supabase.from('socios') as any).delete();
+        query = isIdQuery ? query.eq('id', existing.id) : query.eq('email', existing.email);
+        const { error } = await query;
+        if (error) {
+          console.warn('[AdminStore] Error al eliminar socio en Supabase:', error);
+        }
+      } catch (err: any) {
+        console.warn('[AdminStore] Excepción al eliminar socio en Supabase:', err);
+      }
+    }
+
+    return { success: true };
+  }
+
   // ============================================================
   // GESTIÓN DE COMPROBANTES DE PAGO ENVIADOS
   // ============================================================
@@ -1226,10 +1298,10 @@ export class AdminStoreService {
             experienceId: p.experienceId || p.experience_id,
             experienceTitle: p.experienceTitle || p.experience_title,
             date: p.date,
-            participants: p.participants,
-            amountArs: p.amountArs || p.amount_ars,
+            participants: Number(p.participants) || 1,
+            amountArs: Number(p.amountArs || p.amount_ars) || 0,
             discountCode: p.discountCode || p.discount_code,
-            discountArs: p.discountArs || p.discount_ars,
+            discountArs: Number(p.discountArs || p.discount_ars) || 0,
             fullName: p.fullName || p.full_name,
             email: p.email,
             dni: p.dni,
@@ -1240,9 +1312,9 @@ export class AdminStoreService {
               sizeBytes: p.receipt_size_bytes || 1,
               url: p.receipt_url || '/assets/images/comprobante-ejemplo.png',
             },
-            status: p.status || 'pendiente',
+            status: p.status === 'rechazado' ? 'rechazado' : 'aprobado',
             rejectionReason: p.rejectionReason || p.rejection_reason,
-            submittedAt: p.submittedAt || p.submitted_at || new Date().toISOString(),
+            submittedAt: p.submittedAt || p.submitted_at || p.created_at || new Date().toISOString(),
             reviewedAt: p.reviewedAt || p.reviewed_at,
           }));
 
@@ -1264,10 +1336,10 @@ export class AdminStoreService {
             experienceId: p.experience_id,
             experienceTitle: p.experience_title,
             date: p.selected_date || p.date,
-            participants: p.participants,
-            amountArs: p.amount_ars,
+            participants: Number(p.participants) || 1,
+            amountArs: Number(p.amount_ars || p.amountArs) || 0,
             discountCode: p.discount_code,
-            discountArs: p.discount_ars,
+            discountArs: Number(p.discount_ars) || 0,
             fullName: p.full_name,
             email: p.email,
             dni: p.dni,
@@ -1280,9 +1352,9 @@ export class AdminStoreService {
               storageKey: p.receipt_storage_path || p.receipt_storage_key || p.receipt_url,
               provider: p.receipt_storage_provider,
             },
-            status: p.status,
+            status: p.status === 'rechazado' ? 'rechazado' : 'aprobado',
             rejectionReason: p.rejection_reason,
-            submittedAt: p.created_at || p.submitted_at || new Date().toISOString(),
+            submittedAt: p.created_at || p.submitted_at || p.submittedAt || new Date().toISOString(),
             reviewedAt: p.reviewed_at,
           }));
 
@@ -1308,12 +1380,13 @@ export class AdminStoreService {
     }
 
     // 3. Respaldo local SÓLO si Supabase no está configurado
-    const providerSubs = this.providerStore.submissions();
-    if (providerSubs.length > 0) {
-      this._submissions.set(providerSubs);
-    } else {
-      this._submissions.set(this.generateSampleSubmissions());
-    }
+    const providerSubs = (this.providerStore.submissions() || []).map((s) => ({
+      ...s,
+      participants: Number(s.participants) || 1,
+      amountArs: Number(s.amountArs) || 0,
+      status: s.status === 'rechazado' ? ('rechazado' as const) : ('aprobado' as const),
+    }));
+    this._submissions.set(providerSubs);
     this._isLoadingSubmissions.set(false);
   }
 
@@ -1421,6 +1494,10 @@ export class AdminStoreService {
 
     try {
       if (isSupabaseConfigured()) {
+        let providerRows: any[] = [];
+        let fundadoresRows: any[] = [];
+
+        // 1. Intentar consulta directa en Supabase
         const [fundadoresRes, providerAccessRes] = await Promise.all([
           this.supabase
             .from('postulaciones_fundadores' as any)
@@ -1432,7 +1509,39 @@ export class AdminStoreService {
             .order('created_at', { ascending: false }),
         ]);
 
-        const prestadores: AdminApplication[] = (providerAccessRes.data || []).map((p: any) => {
+        if (!providerAccessRes.error && Array.isArray(providerAccessRes.data) && providerAccessRes.data.length > 0) {
+          providerRows = providerAccessRes.data;
+        } else if (providerAccessRes.error) {
+          console.warn('[AdminStore] Error al consultar prestadores en Supabase:', providerAccessRes.error);
+        }
+
+        if (!fundadoresRes.error && Array.isArray(fundadoresRes.data)) {
+          fundadoresRows = fundadoresRes.data;
+        }
+
+        // 2. Si la consulta directa a prestadores falló o vino vacía (por RLS anónima), recurrir a /api/notify con service role
+        if (providerRows.length === 0) {
+          try {
+            const notifyRes = await fetch('/api/notify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'GET_ADMIN_APPLICATIONS' }),
+            });
+            if (notifyRes.ok) {
+              const notifyData = await notifyRes.json();
+              if (notifyData && Array.isArray(notifyData.prestadores) && notifyData.prestadores.length > 0) {
+                providerRows = notifyData.prestadores;
+              }
+              if (fundadoresRows.length === 0 && Array.isArray(notifyData.fundadores)) {
+                fundadoresRows = notifyData.fundadores;
+              }
+            }
+          } catch (backendErr) {
+            console.warn('[AdminStore] Error en fallback backend de postulaciones:', backendErr);
+          }
+        }
+
+        const prestadores: AdminApplication[] = providerRows.map((p: any) => {
           const rawStatus = p.status;
           const status =
             rawStatus === 'aprobado'
@@ -1462,7 +1571,7 @@ export class AdminStoreService {
           };
         });
 
-        const fundadores: AdminApplication[] = (fundadoresRes.data || []).map((f: any) => ({
+        const fundadores: AdminApplication[] = fundadoresRows.map((f: any) => ({
           id: f.id,
           type: 'fundador' as const,
           fullName: f.full_name || 'Sin nombre',
@@ -1495,12 +1604,7 @@ export class AdminStoreService {
     }
 
     const stored = this.loadStoredApplications();
-    if (stored && stored.length > 0) {
-      this._applications.set(stored);
-    } else {
-      const sample = this.generateSampleApplications();
-      this._applications.set(sample);
-    }
+    this._applications.set(stored || []);
     this._isLoadingApplications.set(false);
   }
 
@@ -1650,80 +1754,12 @@ export class AdminStoreService {
   private loadStoredApplications(): AdminApplication[] {
     try {
       const raw = localStorage.getItem(STORAGE_KEYS.adminApplicationsCache);
-      return raw ? JSON.parse(raw) : [];
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
     } catch {
       return [];
     }
-  }
-
-  private generateSampleApplications(): AdminApplication[] {
-    return [
-      {
-        id: 'post-1',
-        type: 'prestador',
-        fullName: 'Esteban Carrizo (Catamarca 4x4)',
-        accountHolder: 'Esteban Carrizo',
-        cuitDni: '20-31889900-4',
-        cbuAlias: 'CATAMARCA.4X4.MP',
-        bankName: 'Mercado Pago',
-        email: 'esteban.guias@catamarca4x4.com',
-        phone: '+54 383 490 2211',
-        category: 'transporte_4x4',
-        region: 'Puna & Fiambalá',
-        website: 'https://catamarca4x4.com',
-        description:
-          'Flota de 3 camionetas Toyota Hilux 4x4 equipadas para alta montaña, rescate, tubo de oxígeno y comunicaciones VHF/Satelital.',
-        status: 'pendiente',
-        createdAt: new Date(Date.now() - 3 * 3600000).toISOString(),
-      },
-      {
-        id: 'post-2',
-        type: 'fundador',
-        fullName: 'Mariana Zavaleta',
-        email: 'mariana.zavaleta@fundacion.org',
-        phone: '+54 11 4455 8899',
-        motivationLetter:
-          'Deseo sumarme al cuadro fundacional para colaborar con la preservación arqueológica de los valles del Shincal y respaldar expediciones de impacto ecológico positivo.',
-        status: 'pendiente',
-        createdAt: new Date(Date.now() - 14 * 3600000).toISOString(),
-      },
-      {
-        id: 'post-3',
-        type: 'prestador',
-        fullName: 'Ignacio Jalil (Travesías Náuticas)',
-        accountHolder: 'Ignacio Jalil',
-        cuitDni: '20-33445566-9',
-        cbuAlias: 'JALIL.KAYAK.MP',
-        bankName: 'Ualá Bank S.A.U',
-        email: 'ignacio@jumealkayak.com.ar',
-        phone: '+54 383 455 8820',
-        category: 'kayak_nautica',
-        region: 'San Fernando del Valle',
-        website: 'https://instagram.com/jumealkayak',
-        description:
-          'Guía habilitado de kayak y SUP con 12 embarcaciones completas, chalecos certificados y lancha de apoyo en el dique El Jumeal.',
-        status: 'aprobado',
-        createdAt: new Date(Date.now() - 48 * 3600000).toISOString(),
-      },
-      {
-        id: 'post-4',
-        type: 'prestador',
-        fullName: 'Carlos Tula (Andes Aventura)',
-        accountHolder: 'Carlos Alberto Tula',
-        cuitDni: '20-25667788-3',
-        cbuAlias: 'ANDES.AVENTURA',
-        bankName: 'Banco Macro',
-        email: 'carlos.tula@andescatamarca.com',
-        phone: '+54 383 411 9900',
-        category: 'alta_montana',
-        region: 'Paso de San Francisco',
-        website: 'https://andescatamarca.com',
-        description:
-          'Servicio de mulas y porteadores en seismiles. Actualmente suspendido por veda invernal.',
-        status: 'dado_de_baja',
-        createdAt: new Date(Date.now() - 72 * 3600000).toISOString(),
-      },
-    ];
   }
 
   // ============================================================
@@ -1764,7 +1800,7 @@ export class AdminStoreService {
   }
 
   // ============================================================
-  // PERSISTENCIA Y MOCKS
+  // PERSISTENCIA
   // ============================================================
 
   private persistMembers(members: AdminMember[]): void {
@@ -1779,174 +1815,18 @@ export class AdminStoreService {
   private loadStoredMembers(): AdminMember[] {
     try {
       const raw = localStorage.getItem(STORAGE_KEYS.adminMembersCache);
-      return raw ? JSON.parse(raw) : [];
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter(
+        (m) =>
+          m &&
+          !['soc-100', 'soc-101', 'soc-102', 'soc-103', 'wl-201', 'wl-202', 'wl-203'].includes(
+            m.id,
+          ),
+      );
     } catch {
       return [];
     }
-  }
-
-  private generateSampleMembers(): AdminMember[] {
-    return [
-      {
-        id: 'soc-100',
-        type: 'socio',
-        email: 'gonzagramaglia@gmail.com',
-        fullName: 'Gonzalo Gramaglia',
-        dni: '35120988',
-        phone: '+54 383 455 1290',
-        position: 100,
-        membershipTier: 'fundador',
-        googleLinked: true,
-        converted: true,
-        experiencesWishlist: ['kayak', 'seismiles', 'pomez'],
-        createdAt: new Date(Date.now() - 2 * 3600000).toISOString(),
-      },
-      {
-        id: 'soc-101',
-        type: 'socio',
-        email: 'lucia.fernandez@ejemplo.com',
-        fullName: 'Lucía Fernández',
-        dni: '32458190',
-        phone: '+54 383 455 1290',
-        position: 101,
-        membershipTier: 'activo',
-        googleLinked: true,
-        converted: true,
-        experiencesWishlist: ['kayak'],
-        createdAt: new Date(Date.now() - 26 * 3600000).toISOString(),
-      },
-      {
-        id: 'soc-102',
-        type: 'socio',
-        email: 'mquiroga@ejemplo.com',
-        fullName: 'Martín Quiroga',
-        dni: '28771034',
-        phone: '+54 11 5021 7781',
-        position: 102,
-        membershipTier: 'emergente',
-        googleLinked: false,
-        converted: true,
-        experiencesWishlist: ['pomez', 'campo_galan'],
-        createdAt: new Date(Date.now() - 3 * 86400000).toISOString(),
-      },
-      {
-        id: 'soc-103',
-        type: 'socio',
-        email: 'patriciofacundodiaztillar@gmail.com',
-        fullName: 'Patricio Facundo Diaz Tillar',
-        dni: '33445566',
-        phone: '+54 383 455 8812',
-        position: 103,
-        membershipTier: 'fundador',
-        googleLinked: true,
-        converted: true,
-        isProvider: true,
-        experiencesWishlist: ['kayak'],
-        createdAt: new Date(Date.now() - 4 * 86400000).toISOString(),
-      },
-      {
-        id: 'wl-201',
-        type: 'waitlist',
-        email: 'sofia.valle@gmail.com',
-        fullName: 'Sofía Valle',
-        membershipTier: 'waitlist',
-        googleLinked: true,
-        converted: false, // Vinculó Google pero aún no pagó experiencia
-        experiencesWishlist: [],
-        createdAt: new Date(Date.now() - 5 * 86400000).toISOString(),
-      },
-      {
-        id: 'wl-202',
-        type: 'waitlist',
-        email: 'marcelo.alvarez@outlook.com',
-        fullName: '',
-        membershipTier: 'waitlist',
-        googleLinked: false,
-        converted: false,
-        experiencesWishlist: [],
-        createdAt: new Date(Date.now() - 10 * 86400000).toISOString(),
-      },
-      {
-        id: 'wl-203',
-        type: 'waitlist',
-        email: 'carolina.perez@gmail.com',
-        fullName: 'Carolina Pérez',
-        membershipTier: 'waitlist',
-        googleLinked: true,
-        converted: false,
-        experiencesWishlist: [],
-        createdAt: new Date(Date.now() - 18 * 86400000).toISOString(),
-      },
-    ];
-  }
-
-  private generateSampleSubmissions(): TransferSubmission[] {
-    return [
-      {
-        id: 'sub-1',
-        reference: 'KAY-4F7Q',
-        experienceId: 'exp-kayak',
-        experienceTitle: 'Travesía en Kayak & Sunset en El Jumeal',
-        date: '2026-11-08',
-        participants: 2,
-        amountArs: 130000,
-        fullName: 'Lucía Fernández',
-        email: 'lucia.fernandez@ejemplo.com',
-        dni: '32458190',
-        phone: '+54 383 455 1290',
-        receipt: {
-          fileName: 'transferencia-lucia.png',
-          mimeType: 'image/png',
-          sizeBytes: 412_000,
-          url: '/assets/images/comprobante-ejemplo.png',
-        },
-        status: 'pendiente',
-        submittedAt: new Date(Date.now() - 3 * 3600000).toISOString(),
-      },
-      {
-        id: 'sub-2',
-        reference: 'KAY-9M2D',
-        experienceId: 'exp-kayak',
-        experienceTitle: 'Travesía en Kayak & Sunset en El Jumeal',
-        date: '2026-11-08',
-        participants: 1,
-        amountArs: 65000,
-        fullName: 'Martín Quiroga',
-        email: 'mquiroga@ejemplo.com',
-        dni: '28771034',
-        phone: '+54 11 5021 7781',
-        receipt: {
-          fileName: 'comprobante-martin.png',
-          mimeType: 'image/png',
-          sizeBytes: 388_000,
-          url: '/assets/images/comprobante-ejemplo.png',
-        },
-        status: 'aprobado',
-        submittedAt: new Date(Date.now() - 20 * 3600000).toISOString(),
-        reviewedAt: new Date(Date.now() - 18 * 3600000).toISOString(),
-      },
-      {
-        id: 'sub-3',
-        reference: 'KAY-2X8B',
-        experienceId: 'exp-kayak',
-        experienceTitle: 'Travesía en Kayak & Sunset en El Jumeal',
-        date: '2026-11-15',
-        participants: 3,
-        amountArs: 195000,
-        fullName: 'Carla Ahumada',
-        email: 'carla.ahumada@ejemplo.com',
-        dni: '35120988',
-        phone: '+54 383 412 0033',
-        receipt: {
-          fileName: 'pago-kayak.png',
-          mimeType: 'image/png',
-          sizeBytes: 401_000,
-          url: '/assets/images/comprobante-ejemplo.png',
-        },
-        status: 'aprobado',
-        submittedAt: new Date(Date.now() - 2 * 3600000).toISOString(),
-        reviewedAt: new Date(Date.now() - 1 * 3600000).toISOString(),
-      },
-    ];
   }
 }

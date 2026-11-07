@@ -148,6 +148,67 @@ export class ExperienceDetailComponent {
     return e.dates.filter((d) => d >= today).sort();
   });
 
+  readonly whatsAppInquiryUrl = computed(() => {
+    const e = this.exp();
+    const phone = e?.providerPhone || DEFAULT_CLUB_PROFILE.phone;
+    const cleanPhone = (phone || '5493834567890').replace(/\D/g, '') || '5493834567890';
+    const title = e?.title || 'Experiencia';
+    const text = encodeURIComponent(
+      `Hola! Quisiera consultar por próximas fechas y disponibilidad para la experiencia: "${title}".`,
+    );
+    return `https://wa.me/${cleanPhone}?text=${text}`;
+  });
+
+  readonly shareCopied = signal(false);
+  private shareTimeout: any = null;
+
+  async shareExperience(item?: any): Promise<void> {
+    if (!item) return;
+    const url =
+      typeof window !== 'undefined'
+        ? window.location.href
+        : `https://experiencias.club/experiencias/${item.slug}`;
+    const shareData = {
+      title: `${item.title} | Club de Experiencias`,
+      text: item.tagline || `Descubrí "${item.title}" en el Club de Experiencias de Catamarca.`,
+      url,
+    };
+
+    if (
+      typeof navigator !== 'undefined' &&
+      navigator.share &&
+      typeof navigator.canShare === 'function' &&
+      navigator.canShare(shareData)
+    ) {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch (err: any) {
+        if (err?.name === 'AbortError') return;
+      }
+    }
+
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const input = document.createElement('input');
+        input.value = url;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        document.body.removeChild(input);
+      }
+      this.shareCopied.set(true);
+      if (this.shareTimeout) clearTimeout(this.shareTimeout);
+      this.shareTimeout = setTimeout(() => {
+        this.shareCopied.set(false);
+      }, 2500);
+    } catch {
+      // Ignorar fallback error
+    }
+  }
+
   readonly itinerarySteps = computed<{ time: string; title: string; description: string }[]>(() => {
     const e = this.exp();
     if (!e) return [];
