@@ -160,12 +160,12 @@ function verifyPostulacionExists(email, config) {
   return new Promise((resolve) => {
     const privilegedKey = config.supabaseServiceRoleKey || config.supabaseKey;
     if (!config.supabaseUrl || !privilegedKey || !email) {
-      return resolve(null);
+      return resolve({ status: 'error', error: 'Missing configuration or email' });
     }
     try {
       const cleanEmail = String(email).trim().toLowerCase();
       const url = new URL(
-        `${config.supabaseUrl}/rest/v1/prestadores?email=eq.${encodeURIComponent(cleanEmail)}&select=id,name,agency,category,region,email,phone,website,description,status,active,created_at&order=created_at.desc&limit=1`,
+        `${config.supabaseUrl}/rest/v1/prestadores?email=eq.${encodeURIComponent(cleanEmail)}&select=id,name,agency,category,region,email,phone,website,description,status,active,notes,created_at&order=created_at.desc&limit=1`,
       );
       const req = https.request(
         {
@@ -180,7 +180,10 @@ function verifyPostulacionExists(email, config) {
         },
         (res) => {
           if (res.statusCode < 200 || res.statusCode >= 300) {
-            return resolve(null);
+            return resolve({
+              status: 'error',
+              error: `Database query returned HTTP ${res.statusCode}`,
+            });
           }
           let data = '';
           res.on('data', (c) => (data += c));
@@ -188,30 +191,112 @@ function verifyPostulacionExists(email, config) {
             try {
               const records = JSON.parse(data);
               if (!Array.isArray(records) || records.length === 0) {
-                return resolve(null);
+                return resolve({ status: 'not_found' });
               }
               const record = records[0];
               if (!record || typeof record !== 'object') {
-                return resolve(null);
+                return resolve({ status: 'not_found' });
               }
               resolve({
-                ...record,
-                full_name: record.name || record.agency || '',
+                status: 'found',
+                record: {
+                  ...record,
+                  full_name: record.name || record.agency || '',
+                },
               });
-            } catch {
-              resolve(null);
+            } catch (err) {
+              resolve({ status: 'error', error: err.message });
             }
           });
         },
       );
       req.setTimeout(8000, () => {
         req.destroy();
-        resolve(null);
+        resolve({ status: 'error', error: 'Database request timed out' });
       });
-      req.on('error', () => resolve(null));
+      req.on('error', (err) => resolve({ status: 'error', error: err.message }));
       req.end();
-    } catch {
-      resolve(null);
+    } catch (err) {
+      resolve({ status: 'error', error: err.message });
+    }
+  });
+}
+
+function updateApplicationNotes(recordId, notesObject, config, expectedNotes) {
+  return new Promise((resolve) => {
+    const privilegedKey = config.supabaseServiceRoleKey || config.supabaseKey;
+    if (!config.supabaseUrl || !privilegedKey || !recordId) {
+      return resolve({ success: false, error: 'Missing configuration or recordId' });
+    }
+    try {
+      const payload = JSON.stringify({ notes: JSON.stringify(notesObject) });
+      let queryPath = `/rest/v1/prestadores?id=eq.${encodeURIComponent(recordId)}`;
+
+      if (expectedNotes !== undefined) {
+        if (expectedNotes === null) {
+          queryPath += '&notes=is.null';
+        } else {
+          const quoted = `"${String(expectedNotes).replace(/"/g, '\\"')}"`;
+          queryPath += `&notes=eq.${encodeURIComponent(quoted)}`;
+        }
+      }
+
+      const url = new URL(`${config.supabaseUrl}${queryPath}`);
+      const req = https.request(
+        {
+          hostname: url.hostname,
+          port: url.port || 443,
+          path: url.pathname + url.search,
+          method: 'PATCH',
+          headers: {
+            apikey: privilegedKey,
+            Authorization: `Bearer ${privilegedKey}`,
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(payload),
+            Prefer: 'return=representation',
+          },
+        },
+        (res) => {
+          let rawBody = '';
+          res.on('data', (chunk) => {
+            rawBody += chunk;
+          });
+          res.on('end', () => {
+            if (res.statusCode >= 200 && res.statusCode < 300) {
+              try {
+                const parsed = JSON.parse(rawBody);
+                if (Array.isArray(parsed)) {
+                  return resolve({
+                    success: true,
+                    count: parsed.length,
+                    matched: parsed.length > 0,
+                    rows: parsed,
+                  });
+                }
+                return resolve({ success: true, count: 1, matched: true });
+              } catch {
+                return resolve({ success: true, count: 1, matched: true });
+              }
+            }
+            resolve({
+              success: false,
+              statusCode: res.statusCode,
+              error: rawBody || `HTTP ${res.statusCode}`,
+            });
+          });
+        },
+      );
+      req.on('error', (err) => {
+        resolve({ success: false, error: err.message });
+      });
+      req.setTimeout(8000, () => {
+        req.destroy();
+        resolve({ success: false, error: 'Request timed out' });
+      });
+      req.write(payload);
+      req.end();
+    } catch (err) {
+      resolve({ success: false, error: err.message });
     }
   });
 }
@@ -1130,44 +1215,175 @@ module.exports = async function handler(req, res) {
           });
         }
 
-        const applicationRecord = await verifyPostulacionExists(data.email, config);
-        if (!applicationRecord) {
+        const lookupResult = await verifyPostulacionExists(data.email, config);
+        if (lookupResult.status === 'error') {
+          return res.status(502).json({
+            success: false,
+            error: 'No se pudo verificar el registro de postulación por un problema de conexión con el servidor.',
+          });
+        }
+
+        if (lookupResult.status === 'not_found' || !lookupResult.record) {
           return res.status(404).json({
             success: false,
             error: 'No se encontró un registro de postulación previo para este correo.',
           });
         }
 
+        const applicationRecord = lookupResult.record;
+
+        // Validar que el registro corresponda estrictamente a una postulación en estado pendiente
+        if (applicationRecord.status !== 'pendiente') {
+          return res.status(409).json({
+            success: false,
+            error: 'El registro no corresponde a una postulación pendiente de evaluación.',
+          });
+        }
+
+        const verifiedEmail = String(applicationRecord.email || '').trim().toLowerCase();
+        if (!verifiedEmail) {
+          return res.status(400).json({
+            success: false,
+            error: 'El registro de postulación no posee una dirección de correo válida.',
+          });
+        }
+
+        // Parsear notas para verificar y gestionar estado duradero y atómico de notificación
+        let notesObj = {};
+        if (applicationRecord.notes) {
+          try {
+            const parsed = JSON.parse(applicationRecord.notes);
+            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+              notesObj = parsed;
+            } else {
+              notesObj = { text: String(applicationRecord.notes) };
+            }
+          } catch {
+            notesObj = { text: String(applicationRecord.notes) };
+          }
+        }
+
+        // 1. Prevenir envíos duplicados si la postulación ya fue notificada previamente
+        if (notesObj.application_notified_at) {
+          return res.status(200).json({
+            success: true,
+            alreadyNotified: true,
+            message: 'La postulación ya fue notificada previamente.',
+          });
+        }
+
+        // 2. Prevenir envíos concurrentes entre distintos llamadores o IPs
+        const inProgressAt = notesObj.application_notifying_at
+          ? new Date(notesObj.application_notifying_at).getTime()
+          : 0;
+        const now = Date.now();
+        if (inProgressAt && now - inProgressAt < 60 * 1000) {
+          return res.status(409).json({
+            success: false,
+            error: 'Notificación de postulación en curso para esta solicitud.',
+          });
+        }
+
+        // Marcar estado en curso duraderamente en Supabase de forma condicional al valor previo de notes
+        const expectedNotes =
+          applicationRecord.notes !== undefined ? applicationRecord.notes : null;
+
+        const lockResult = await updateApplicationNotes(
+          applicationRecord.id,
+          { ...notesObj, application_notifying_at: new Date().toISOString() },
+          config,
+          expectedNotes,
+        );
+
+        if (!lockResult.success) {
+          return res.status(502).json({
+            success: false,
+            error: 'No se pudo registrar el bloqueo de notificación en la base de datos.',
+            details: lockResult.error,
+          });
+        }
+
+        if (!lockResult.matched) {
+          return res.status(409).json({
+            success: false,
+            error: 'Notificación de postulación en curso o ya modificada para esta solicitud.',
+          });
+        }
+
         const verifiedData = {
-          fullName: applicationRecord.full_name || applicationRecord.fullName || '',
-          category: applicationRecord.category || '',
-          region: applicationRecord.region || '',
-          email: applicationRecord.email || String(data.email).trim().toLowerCase(),
-          phone: applicationRecord.phone || '',
-          website: applicationRecord.website || '',
-          description: applicationRecord.description || '',
+          fullName:
+            applicationRecord.name ||
+            applicationRecord.agency ||
+            applicationRecord.full_name ||
+            applicationRecord.fullName ||
+            data.fullName ||
+            'Prestador',
+          category: applicationRecord.category || data.category || 'Prestador de Servicios Turísticos',
+          region: applicationRecord.region || data.region || 'Catamarca',
+          email: verifiedEmail,
+          phone: applicationRecord.phone || data.phone || '',
+          website: applicationRecord.website || data.website || '',
+          description: applicationRecord.description || data.description || '',
         };
 
-        // 1. Email al postulante
-        const applicantResult = await sendEmailViaResend({
-          apiKey: config.apiKey,
-          from: config.fromEmail,
-          to: verifiedData.email,
-          subject: `Recibimos tu postulación como prestador en EXPERIENCIAS.CLUB`,
-          html: templateProviderApplicationSubmitted(verifiedData),
-        });
-        results.push({ target: 'applicant', ...applicantResult });
+        let applicantResult = null;
+        let deliverySuccess = false;
+
+        try {
+          // 1. Email al postulante confirmando recepción y estado de evaluación
+          applicantResult = await sendEmailViaResend({
+            apiKey: config.apiKey,
+            from: config.fromEmail,
+            to: verifiedData.email,
+            subject: `Recibimos tu postulación como prestador en EXPERIENCIAS.CLUB`,
+            html: templateProviderApplicationSubmitted(verifiedData),
+          });
+          results.push({ target: 'applicant', ...applicantResult });
+          deliverySuccess = Boolean(applicantResult && !applicantResult.simulated);
+        } catch (deliveryErr) {
+          console.warn('[Notify] Error enviando correo al postulante:', deliveryErr);
+          deliverySuccess = false;
+        }
 
         // 2. Alerta a administradores
         if (config.adminEmails && config.adminEmails.length > 0) {
-          const adminResult = await sendEmailViaResend({
-            apiKey: config.apiKey,
-            from: config.fromEmail,
-            to: config.adminEmails,
-            subject: `[Nueva Postulación Prestador] ${verifiedData.fullName || 'Prestador'} · ${verifiedData.category || 'Guía'}`,
-            html: templateProviderApplicationAdmin(verifiedData),
-          });
-          results.push({ target: 'admin', ...adminResult });
+          try {
+            const adminResult = await sendEmailViaResend({
+              apiKey: config.apiKey,
+              from: config.fromEmail,
+              to: config.adminEmails,
+              subject: `[Nueva Postulación Prestador] ${verifiedData.fullName} · ${verifiedData.category}`,
+              html: templateProviderApplicationAdmin(verifiedData),
+            });
+            results.push({ target: 'admin', ...adminResult });
+          } catch (adminErr) {
+            console.warn('[Notify] Error enviando alerta a administradores:', adminErr);
+            results.push({
+              target: 'admin',
+              error: adminErr instanceof Error ? adminErr.message : String(adminErr),
+            });
+          }
+        }
+
+        if (deliverySuccess) {
+          // Marcar durablemente como notificada completada
+          const finalNotes = { ...notesObj };
+          delete finalNotes.application_notifying_at;
+          finalNotes.application_notified_at = new Date().toISOString();
+          await updateApplicationNotes(applicationRecord.id, finalNotes, config);
+        } else {
+          // Si falló el envío o fue simulado, limpiar el bloqueo en curso para que quede disponible para reintento
+          const retryNotes = { ...notesObj };
+          delete retryNotes.application_notifying_at;
+          await updateApplicationNotes(applicationRecord.id, retryNotes, config);
+
+          if (!applicantResult || !applicantResult.simulated) {
+            return res.status(502).json({
+              success: false,
+              error: 'No se pudo entregar el correo de notificación. Queda disponible para reintento.',
+              results,
+            });
+          }
         }
         break;
       }

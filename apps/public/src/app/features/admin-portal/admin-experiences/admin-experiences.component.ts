@@ -49,11 +49,6 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
               <span class="section-kicker">GESTIÓN DE CATÁLOGO & RUTAS WEB</span>
               <div class="title-row">
                 <h1 class="card-heading">Editar Experiencia: {{ editTitle() }}</h1>
-                <div class="top-header-actions">
-                  <a [routerLink]="getDetailRoute(exp)" class="btn-view-fiche-top" title="Ver ficha completa">
-                    <span>Ver Ficha</span>
-                  </a>
-                </div>
               </div>
               <p class="card-subheading">
                 Ruta web oficial: <code>/experiencias/{{ editSlug() }}</code>.
@@ -74,7 +69,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
               [disabled]="saving()"
               (click)="saveExperience()"
             >
-              {{ saving() ? 'Guardando cambios...' : 'Guardar Información de la Ruta' }}
+              {{ saving() ? 'Guardando cambios...' : 'Guardar experiencia' }}
             </button>
           </div>
         </div>
@@ -98,13 +93,6 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                     >
                       <mat-icon class="btn-icon-sm">open_in_new</mat-icon>
                       <span>Ver en la Web</span>
-                    </a>
-                    <a
-                      [routerLink]="getEditRoute(exp)"
-                      class="btn-hero-edit"
-                      title="Editar los datos y contenidos de esta ficha"
-                    >
-                      <span>Editar</span>
                     </a>
                     @if (exp.status === 'publicada') {
                       <button
@@ -340,6 +328,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                     rel="noopener noreferrer"
                     class="location-btn maps-btn"
                   >
+                    <mat-icon class="btn-icon-sm">open_in_new</mat-icon>
                     <span>Abrir en Google Maps</span>
                   </a>
                 </div>
@@ -351,14 +340,11 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
               <div class="fiche-section-card">
                 <div class="section-title-row">
                   <div>
-                    <h3 class="fiche-card-title">Álbum & Galería Oficial</h3>
+                    <h3 class="fiche-card-title">Álbum Oficial</h3>
                     <p class="section-subtext">
-                      {{ exp.albumPhotos.length }} fotos cargadas ({{ detailFeaturedPhotos().length }} destacadas, {{ detailGalleryPhotos().length }} en galería común).
+                      {{ exp.albumPhotos.length }} fotos cargadas ({{ detailFeaturedPhotos().length }} destacadas, {{ detailGalleryPhotos().length }} en la galería).
                     </p>
                   </div>
-                  <a [routerLink]="getEditRoute(exp)" class="btn-text-edit-album">
-                    Modificar fotos en edición &rarr;
-                  </a>
                 </div>
 
                 <div class="fiche-album-grid">
@@ -370,7 +356,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                           <span class="photo-badge badge-cover">Portada</span>
                         }
                         @if (photo.isFeatured) {
-                          <span class="photo-badge badge-featured">⭐ Destacada</span>
+                          <span class="photo-badge badge-featured">Destacada</span>
                         }
                       </div>
                       @if (photo.caption || photo.title) {
@@ -389,7 +375,9 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                 <span class="cta-exp-route">experiencias.club/experiencias/{{ exp.slug }}</span>
               </div>
               <div class="cta-bar-right">
-                <a [routerLink]="backToListLink()" class="btn-cancel-edit">Volver al Catálogo</a>
+                <a [routerLink]="getEditRoute(exp)" class="btn-action-edit-orange">
+                  <span>Editar Experiencia</span>
+                </a>
                 @if (exp.status === 'publicada') {
                   <button
                     type="button"
@@ -409,9 +397,6 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                     <span>Activar</span>
                   </button>
                 }
-                <a [routerLink]="getEditRoute(exp)" class="btn-action-edit-orange">
-                  <span>Editar Experiencia</span>
-                </a>
               </div>
             </div>
           </div>
@@ -764,15 +749,14 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                 La asignación de prestador y los datos de cobro (CBU / Alias) están vinculados al perfil central del Club administrado conjuntamente por todos los administradores.
               </p>
             </div>
-            <button
-              type="button"
+            <a
+              [routerLink]="getConfigRoute()"
               class="btn-edit-club-profile"
-              (click)="openClubProfileModal()"
-              title="Editar Perfil del Club de Experiencias"
+              title="Ir a Configuración del Club de Experiencias"
             >
-              <mat-icon>account_balance</mat-icon>
-              <span>Editar Perfil del Club</span>
-            </button>
+              <mat-icon>settings</mat-icon>
+              <span>Configuración del Club</span>
+            </a>
           </div>
         }
 
@@ -780,7 +764,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         <div class="form-section-card">
           <h4 class="form-section-title">1. Identificación & Ruta Pública</h4>
           <div class="form-field">
-            <label>Ruta / Slug oficial (URL final en la web pública):</label>
+            <label>Ruta / Slug oficial (URL final en la web pública): <span class="req-star">*</span></label>
             <div class="slug-input-wrap">
               <span class="slug-prefix">https://experiencias.club/experiencias/</span>
               <input
@@ -788,6 +772,8 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                 class="form-input slug-field"
                 [(ngModel)]="editSlug"
                 placeholder="ej: kayak, trekking-el-jumeal"
+                maxlength="70"
+                required
               />
             </div>
             <span class="field-hint">
@@ -795,477 +781,531 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
             </span>
           </div>
 
-                <div class="form-field">
-                  <label>Título principal de la Experiencia:</label>
-                  <input
-                    type="text"
-                    class="form-input"
-                    [(ngModel)]="editTitle"
-                    placeholder="Ej: Travesía en Kayak & Sunset en el Dique El Jumeal"
-                  />
-                </div>
+          <div class="form-field">
+            <div class="field-label-row">
+              <label>Título principal de la Experiencia: <span class="req-star">*</span></label>
+              <span class="char-counter">{{ editTitle().length }}/70</span>
+            </div>
+            <input
+              type="text"
+              class="form-input"
+              [(ngModel)]="editTitle"
+              placeholder="Ej: Travesía en Kayak & Sunset en el Dique El Jumeal"
+              maxlength="70"
+              required
+            />
+          </div>
 
-                <div class="form-field">
-                  <label>Subtítulo / Bajada destacada (Tagline):</label>
-                  <input
-                    type="text"
-                    class="form-input"
-                    [(ngModel)]="editTagline"
-                    placeholder="Remada guiada al atardecer con brindis de productos catamarqueños."
-                  />
-                </div>
+          <div class="form-field">
+            <div class="field-label-row">
+              <label>Subtítulo / Bajada destacada (Tagline): <span class="req-star">*</span></label>
+              <span class="char-counter">{{ editTagline().length }}/160</span>
+            </div>
+            <input
+              type="text"
+              class="form-input"
+              [(ngModel)]="editTagline"
+              placeholder="Remada guiada al atardecer con brindis de productos catamarqueños."
+              maxlength="160"
+              required
+            />
+          </div>
 
-                <div class="form-field">
-                  <div class="field-label-row">
-                    <label>Descripción atractiva de la Experiencia:</label>
-                    <span class="char-counter">{{ editDescription().length }}/500</span>
-                  </div>
-                  <textarea
-                    class="form-textarea"
-                    rows="3"
-                    [(ngModel)]="editDescription"
-                    maxlength="500"
-                    placeholder="Escribí una síntesis atractiva de hasta 2 párrafos concisos para los exploradores..."
-                  ></textarea>
-                  <span class="field-hint">Máximo 2 párrafos concisos y atractivos (hasta 500 caracteres).</span>
-                </div>
+          <div class="form-field">
+            <div class="field-label-row">
+              <label>Descripción atractiva de la Experiencia: <span class="req-star">*</span></label>
+              <span class="char-counter">{{ editDescription().length }}/500</span>
+            </div>
+            <textarea
+              class="form-textarea"
+              rows="3"
+              [(ngModel)]="editDescription"
+              maxlength="500"
+              placeholder="Escribí una síntesis atractiva de hasta 2 párrafos concisos para los exploradores..."
+              required
+            ></textarea>
+            <span class="field-hint">Máximo 2 párrafos concisos y atractivos (hasta 500 caracteres).</span>
+          </div>
+        </div>
+
+        <!-- SECCIÓN 2: Ficha Técnica & Parámetros -->
+        <div class="form-section-card">
+          <h4 class="form-section-title">2. Ficha Técnica & Parámetros de Operación</h4>
+          <div class="form-grid-2">
+            <div class="form-field">
+              <label>Región de Catamarca: <span class="req-star">*</span></label>
+              <input
+                type="text"
+                class="form-input"
+                [(ngModel)]="editRegion"
+                placeholder="Ej: Valle Central y Ambato"
+                maxlength="40"
+                required
+              />
+            </div>
+
+            <div class="form-field">
+              <label>Nivel de Dificultad: <span class="req-star">*</span></label>
+              <select class="form-select" [(ngModel)]="editDifficulty" required>
+                <option value="Baja">Baja</option>
+                <option value="Moderada">Moderada</option>
+                <option value="Exigente">Exigente</option>
+                <option value="Alta Montaña">Alta Montaña</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-field">
+              <label>Punto de Encuentro: <span class="req-star">*</span></label>
+              <input
+                type="text"
+                class="form-input"
+                [(ngModel)]="editMeetingPoint"
+                placeholder="Ej: Club Náutico Dique El Jumeal"
+                maxlength="160"
+                required
+              />
+              <span class="field-hint">Lugar o referencia física de encuentro para los exploradores.</span>
+            </div>
+
+            <div class="form-field">
+              <label>Ubicación (Link de Google Maps): <span class="req-star">*</span></label>
+              <input
+                type="url"
+                class="form-input"
+                [(ngModel)]="editMeetingPointUrl"
+                placeholder="Ej: https://maps.app.goo.gl/... o https://www.google.com/maps/..."
+                maxlength="300"
+                required
+              />
+              <span class="field-hint">Enlace oficial de Google Maps para el botón 'Cómo llegar' de la ficha.</span>
+            </div>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-field">
+              <label>Duración estimada: <span class="req-star">*</span></label>
+              <input
+                type="text"
+                class="form-input"
+                [(ngModel)]="editDurationLabel"
+                placeholder="Ej: 4 Horas (Media Jornada)"
+                maxlength="50"
+                required
+              />
+            </div>
+
+            <div class="form-field">
+              <label>Altitud (msnm):</label>
+              <input
+                type="number"
+                class="form-input"
+                [(ngModel)]="editAltitude"
+                placeholder="850"
+                min="0"
+                max="7000"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- SECCIÓN 3: Cronograma e Itinerario de la Jornada -->
+        <div class="form-section-card">
+          <div class="section-title-row">
+            <h4 class="form-section-title">3. Cronograma e Itinerario de la Jornada <span class="req-star">*</span></h4>
+            <span class="char-counter" [class.counter-warn]="editItinerary().length > 1400">
+              {{ editItinerary().length }} / 1500 caracteres
+            </span>
+          </div>
+          <p class="section-subtext">
+            Detallá el cronograma horario o etapas de la vivencia (una por renglón). Esto se renderiza con formato de línea de tiempo interactiva en la página pública de la experiencia.
+          </p>
+          <div class="form-field">
+            <textarea
+              rows="5"
+              maxlength="1500"
+              class="form-input form-textarea"
+              [(ngModel)]="editItinerary"
+              placeholder="Ej:&#10;15:30 hs - Recepción de participantes y entrega de chalecos/equipamiento&#10;16:15 hs - Charla de técnica de remo y seguridad en tierra firme&#10;16:45 hs - Zarpada al espejo de agua y recorrido guiado por las bahías&#10;18:15 hs - Pausa Sunset, hidratación y merienda en la costa&#10;19:30 hs - Cierre de jornada y despedida"
+              required
+            ></textarea>
+          </div>
+        </div>
+
+        <!-- SECCIÓN 4: Arancel Oficial & Fechas Programadas (Unificados) -->
+        <div class="form-section-card">
+          <h4 class="form-section-title">4. Arancel Oficial & Fechas Programadas</h4>
+          <div class="form-grid-arancel">
+            <div class="form-field">
+              <label>Arancel en Pesos Argentinos (ARS): <span class="req-star">*</span></label>
+              <input
+                type="number"
+                class="form-input"
+                [(ngModel)]="editPriceArs"
+                placeholder="65000"
+                min="1000"
+                required
+              />
+              <span class="field-hint">
+                Equivalente estimado: ~&#36;{{ calculatedUsd() }} USD (calculado a &#36;{{ usdExchangeRate() | number:'1.0-0' }}/USD).
+              </span>
+            </div>
+
+            <div class="form-field">
+              <label>Cupo Máximo por Salida: <span class="req-star">*</span></label>
+              <input
+                type="number"
+                class="form-input"
+                [(ngModel)]="editCapacity"
+                placeholder="12"
+                min="1"
+                max="200"
+                required
+              />
+              <span class="field-hint">Capacidad de personas por fecha.</span>
+            </div>
+
+            <div class="form-field field-dates-col">
+              <label>Fechas programadas (YYYY-MM-DD): <span class="req-star">*</span></label>
+              <input
+                type="text"
+                class="form-input"
+                [(ngModel)]="editDatesRaw"
+                placeholder="2026-11-10, 2026-11-17, 2026-11-24"
+                required
+              />
+              <span class="field-hint">Separadas por coma. Habilitadas para reservar cupos.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECCIÓN: Prestador Asignado & Datos de Cobro (CBU / Liquidación) -->
+        <div class="form-section-card" [class.is-club-section]="isCurrentExperienceClub()">
+          <div class="section-title-row">
+            <h4 class="form-section-title">Prestador Asignado & Datos de Cobro (CBU)</h4>
+            @if (isCurrentExperienceClub()) {
+              <span class="club-locked-chip">
+                <mat-icon>lock</mat-icon>
+                Vinculado al Perfil del Club
+              </span>
+            }
+          </div>
+
+          @if (isCurrentExperienceClub()) {
+            <div class="club-locked-notice">
+              <mat-icon class="locked-info-icon">info</mat-icon>
+              <div class="notice-text">
+                <span>
+                  Prestador fijado como <strong>Club de Experiencias</strong>. Los datos de contacto y cobro se sincronizan automáticamente con el Perfil del Club editable por los administradores desde el menú superior.
+                </span>
+                <a [routerLink]="getConfigRoute()" class="btn-text-edit-club">
+                  Modificar en Configuración &rarr;
+                </a>
               </div>
+            </div>
+          }
 
-              <!-- SECCIÓN 2: Ficha Técnica & Parámetros -->
-              <div class="form-section-card">
-                <h4 class="form-section-title">2. Ficha Técnica & Parámetros de Operación</h4>
-                <div class="form-grid-2">
-                  <div class="form-field">
-                    <label>Región de Catamarca:</label>
-                    <input
-                      type="text"
-                      class="form-input"
-                      [(ngModel)]="editRegion"
-                      placeholder="Ej: Valle Central y Ambato"
-                    />
-                  </div>
+          <div class="form-grid-2">
+            <div class="form-field">
+              <label>Nombre / Prestador Asignado: @if (!isCurrentExperienceClub()) { <span class="req-star">*</span> }</label>
+              <input
+                type="text"
+                class="form-input"
+                [class.input-locked]="isCurrentExperienceClub()"
+                [disabled]="isCurrentExperienceClub()"
+                [(ngModel)]="editProviderName"
+                placeholder="Ej: Gonzalo Gramaglia o Catamarca Kayak"
+                maxlength="70"
+                [required]="!isCurrentExperienceClub()"
+              />
+            </div>
 
-                  <div class="form-field">
-                    <label>Nivel de Dificultad:</label>
-                    <select class="form-select" [(ngModel)]="editDifficulty">
-                      <option value="Baja">Baja</option>
-                      <option value="Moderada">Moderada</option>
-                      <option value="Exigente">Exigente</option>
-                      <option value="Alta Montaña">Alta Montaña</option>
-                    </select>
-                  </div>
-                </div>
+            <div class="form-field">
+              <label>Teléfono / WhatsApp de Contacto: @if (!isCurrentExperienceClub()) { <span class="req-star">*</span> }</label>
+              <input
+                type="tel"
+                class="form-input"
+                [class.input-locked]="isCurrentExperienceClub()"
+                [disabled]="isCurrentExperienceClub()"
+                [(ngModel)]="editProviderPhone"
+                placeholder="Ej: +54 9 383 4567890"
+                maxlength="30"
+                [required]="!isCurrentExperienceClub()"
+              />
+            </div>
+          </div>
 
-                <div class="form-grid-2">
-                  <div class="form-field">
-                    <label>Punto de Encuentro:</label>
-                    <input
-                      type="text"
-                      class="form-input"
-                      [(ngModel)]="editMeetingPoint"
-                      placeholder="Ej: Club Náutico Dique El Jumeal"
-                    />
-                    <span class="field-hint">Lugar o referencia física de encuentro para los exploradores.</span>
-                  </div>
+          <div class="form-grid-3">
+            <div class="form-field">
+              <label>CBU / CVU o Alias: @if (!isCurrentExperienceClub()) { <span class="req-star">*</span> }</label>
+              <input
+                type="text"
+                class="form-input text-blue-input"
+                [class.input-locked]="isCurrentExperienceClub()"
+                [disabled]="isCurrentExperienceClub()"
+                [(ngModel)]="editProviderCbuAlias"
+                placeholder="Ej: EXPERIENCIAS.CLUB.MP"
+                maxlength="22"
+                [required]="!isCurrentExperienceClub()"
+              />
+            </div>
 
-                  <div class="form-field">
-                    <div class="field-header-row">
-                      <label>Ubicación (Link de Google Maps):</label>
-                      @if (editMeetingPointUrl() && isValidGoogleMapsUrl(editMeetingPointUrl())) {
-                        <a
-                          [href]="editMeetingPointUrl()"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          class="link-maps-preview"
-                        >
-                          Abrir en Maps ↗
-                        </a>
-                      }
-                    </div>
-                    <input
-                      type="url"
-                      class="form-input"
-                      [(ngModel)]="editMeetingPointUrl"
-                      placeholder="Ej: https://maps.app.goo.gl/... o https://www.google.com/maps/..."
-                    />
-                    <span class="field-hint">Enlace oficial de Google Maps para el botón 'Cómo llegar' de la ficha.</span>
-                  </div>
-                </div>
+            <div class="form-field">
+              <label>CUIT / CUIL: @if (!isCurrentExperienceClub()) { <span class="req-star">*</span> }</label>
+              <input
+                type="text"
+                class="form-input"
+                [class.input-locked]="isCurrentExperienceClub()"
+                [disabled]="isCurrentExperienceClub()"
+                [(ngModel)]="editProviderCuitDni"
+                placeholder="Ej: 20-33445566-7"
+                maxlength="13"
+                [required]="!isCurrentExperienceClub()"
+              />
+            </div>
 
-                <div class="form-grid-2">
-                  <div class="form-field">
-                    <label>Duración estimada:</label>
-                    <input
-                      type="text"
-                      class="form-input"
-                      [(ngModel)]="editDurationLabel"
-                      placeholder="Ej: 4 Horas (Media Jornada)"
-                    />
-                  </div>
+            <div class="form-field">
+              <label>Banco / Entidad: @if (!isCurrentExperienceClub()) { <span class="req-star">*</span> }</label>
+              <input
+                type="text"
+                class="form-input"
+                [class.input-locked]="isCurrentExperienceClub()"
+                [disabled]="isCurrentExperienceClub()"
+                [(ngModel)]="editProviderBankName"
+                placeholder="Ej: Banco Nación / Mercado Pago"
+                maxlength="60"
+                [required]="!isCurrentExperienceClub()"
+              />
+            </div>
+          </div>
+        </div>
 
-                  <div class="form-field">
-                    <label>Altitud (msnm):</label>
-                    <input
-                      type="number"
-                      class="form-input"
-                      [(ngModel)]="editAltitude"
-                      placeholder="850"
-                    />
-                  </div>
-                </div>
+        <!-- SECCIÓN 5: Multimedia, Video & Portada (con subida a Supabase Storage y Álbum) -->
+        <div class="form-section-card">
+          <h4 class="form-section-title">5. Multimedia, Video & Portada</h4>
+          <div class="form-grid-2">
+            <div class="form-field">
+              <label>Imagen de Portada Principal: <span class="req-star">*</span></label>
+              <div class="media-upload-row">
+                <label class="btn-upload-file" [class.is-uploading]="uploadingCover()">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    (change)="onUploadCoverImage($event)"
+                    style="display: none"
+                  />
+                  <span>{{ uploadingCover() ? 'Subiendo...' : (editCoverImage() ? 'Cambiar Portada' : 'Subir Portada') }}</span>
+                </label>
+                @if (editCoverImage()) {
+                  <button
+                    type="button"
+                    class="btn-remove-media"
+                    (click)="editCoverImage.set('')"
+                    title="Quitar imagen de portada"
+                  >
+                    Quitar
+                  </button>
+                }
               </div>
+              @if (editCoverImage()) {
+                <div class="media-preview-box">
+                  <img [src]="editCoverImage()" alt="Preview Portada" class="media-preview-img" />
+                </div>
+              }
+            </div>
 
-              <!-- SECCIÓN 3: Cronograma e Itinerario de la Jornada -->
-              <div class="form-section-card">
-                <div class="section-title-row">
-                  <h4 class="form-section-title">3. Cronograma e Itinerario de la Jornada</h4>
-                  <span class="char-counter" [class.counter-warn]="editItinerary().length > 1400">
-                    {{ editItinerary().length }} / 1500 caracteres
+            <div class="form-field">
+              <label>Video Oficial (.mp4):</label>
+              <div class="media-upload-row">
+                <label class="btn-upload-file" [class.is-uploading]="uploadingVideo()">
+                  <input
+                    type="file"
+                    accept="video/mp4,video/*"
+                    (change)="onUploadVideo($event)"
+                    style="display: none"
+                  />
+                  <span>{{ uploadingVideo() ? 'Subiendo...' : (editVideoUrl() ? 'Cambiar Video' : 'Subir Video') }}</span>
+                </label>
+                @if (editVideoUrl()) {
+                  <button
+                    type="button"
+                    class="btn-remove-media"
+                    (click)="editVideoUrl.set('')"
+                    title="Quitar video oficial"
+                  >
+                    Quitar
+                  </button>
+                }
+              </div>
+              @if (editVideoUrl()) {
+                <div class="media-preview-box video-preview-box">
+                  <video [src]="editVideoUrl()" controls class="media-preview-img"></video>
+                </div>
+              }
+              <span class="field-hint">Video promocional reproducido en la ficha de la experiencia.</span>
+            </div>
+          </div>
+
+          <!-- Álbum de Fotos Oficial de la Experiencia -->
+          <div class="album-upload-section">
+            <div class="album-header-row">
+              <div>
+                <label class="album-section-label">Álbum Oficial de Fotos</label>
+                <span class="field-hint">
+                  Configurá las 2 fotos destacadas y hasta 9 fotos para la galería (máximo 12 fotos totales).
+                </span>
+                <div class="album-counters-bar">
+                  <span class="album-counter-pill is-featured-pill">
+                    Destacadas: <strong>{{ featuredPhotos().length }} / 2</strong>
+                  </span>
+                  <span
+                    class="album-counter-pill is-gallery-pill"
+                    [class.is-limit-reached]="galleryPhotos().length >= 9"
+                  >
+                    Galería: <strong>{{ galleryPhotos().length }} / 9</strong>
+                  </span>
+                  <span class="album-counter-pill">
+                    Total Álbum: <strong>{{ editAlbumPhotos().length }} / 12</strong>
                   </span>
                 </div>
-                <p class="section-subtext">
-                  Detallá el cronograma horario o etapas de la vivencia (una por renglón). Esto se renderiza con formato de línea de tiempo interactiva en la página pública de la experiencia.
-                </p>
-                <div class="form-field">
-                  <textarea
-                    rows="5"
-                    maxlength="1500"
-                    class="form-input form-textarea"
-                    [(ngModel)]="editItinerary"
-                    placeholder="Ej:&#10;15:30 hs - Recepción de participantes y entrega de chalecos/equipamiento&#10;16:15 hs - Charla de técnica de remo y seguridad en tierra firme&#10;16:45 hs - Zarpada al espejo de agua y recorrido guiado por las bahías&#10;18:15 hs - Pausa Sunset, hidratación y merienda en la costa&#10;19:30 hs - Cierre de jornada y despedida"
-                  ></textarea>
-                </div>
               </div>
 
-              <!-- SECCIÓN 4: Arancel Oficial & Fechas Programadas (Unificados) -->
-              <div class="form-section-card">
-                <h4 class="form-section-title">4. Arancel Oficial & Fechas Programadas</h4>
-                <div class="form-grid-2">
-                  <div class="form-field">
-                    <label>Arancel en Pesos Argentinos (ARS):</label>
-                    <input
-                      type="number"
-                      class="form-input"
-                      [(ngModel)]="editPriceArs"
-                      placeholder="65000"
-                    />
-                    <span class="field-hint">
-                      Equivalente estimado: ~&#36;{{ calculatedUsd() }} USD (calculado a $1.600/USD).
-                    </span>
-                  </div>
+              <label
+                class="btn-upload-album-file"
+                [class.is-uploading]="uploadingAlbum()"
+                [class.is-disabled]="galleryPhotos().length >= 9"
+                [title]="galleryPhotos().length >= 9 ? 'Límite de 9 fotos de galería alcanzado' : 'Subir fotos al álbum'"
+              >
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  [disabled]="galleryPhotos().length >= 9"
+                  (change)="onUploadAlbumPhotos($event)"
+                  style="display: none"
+                />
+                <span>
+                  {{
+                    uploadingAlbum()
+                      ? 'Subiendo...'
+                      : galleryPhotos().length >= 9
+                        ? 'Límite de Galería (9/9) Alcanzado'
+                        : 'Subir Fotos al Álbum'
+                  }}
+                </span>
+              </label>
+            </div>
 
-                  <div class="form-field">
-                    <label>Fechas programadas (YYYY-MM-DD):</label>
-                    <input
-                      type="text"
-                      class="form-input"
-                      [(ngModel)]="editDatesRaw"
-                      placeholder="2026-11-10, 2026-11-17, 2026-11-24"
-                    />
-                    <span class="field-hint">Separadas por coma. Habilitadas para reservar cupos.</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- SECCIÓN: Prestador Asignado & Datos de Cobro (CBU / Liquidación) -->
-              <div class="form-section-card" [class.is-club-section]="isCurrentExperienceClub()">
-                <div class="section-title-row">
-                  <h4 class="form-section-title">Prestador Asignado & Datos de Cobro (CBU)</h4>
-                  @if (isCurrentExperienceClub()) {
-                    <span class="club-locked-chip">
-                      <mat-icon>lock</mat-icon>
-                      Vinculado al Perfil del Club
-                    </span>
-                  }
-                </div>
-
-                @if (isCurrentExperienceClub()) {
-                  <div class="club-locked-notice">
-                    <mat-icon class="locked-info-icon">info</mat-icon>
-                    <div class="notice-text">
-                      <span>
-                        Prestador fijado como <strong>Club de Experiencias</strong>. Los datos de contacto y cobro se sincronizan automáticamente con el Perfil del Club editable por los administradores desde el menú superior.
-                      </span>
-                      <button type="button" class="btn-text-edit-club" (click)="openClubProfileModal()">
-                        Modificar en Perfil del Club &rarr;
+            @if (editAlbumPhotos().length > 0) {
+              <div class="album-photos-grid">
+                @for (photo of editAlbumPhotos(); track photo.id; let idx = $index) {
+                  <div
+                    class="album-photo-item"
+                    [class.is-featured-item]="photo.isFeatured"
+                    [class.is-cover-item]="photo.isCover"
+                  >
+                    <div class="photo-badge-overlay">
+                      @if (photo.isCover) {
+                        <span class="photo-badge badge-cover">Portada</span>
+                      }
+                      @if (photo.isFeatured) {
+                        <span class="photo-badge badge-featured">Destacada</span>
+                      }
+                    </div>
+                    <img [src]="photo.url" [alt]="photo.caption || 'Foto de álbum'" class="album-thumb" />
+                    <div class="album-item-meta">
+                      <input
+                        type="text"
+                        class="album-caption-input"
+                        [value]="photo.caption || ''"
+                        (input)="updatePhotoCaption(idx, $any($event.target).value)"
+                        placeholder="Epígrafe o título..."
+                      />
+                      <button
+                        type="button"
+                        class="album-delete-btn"
+                        (click)="removeAlbumPhoto(idx)"
+                        title="Eliminar foto del álbum"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <div class="album-photo-actions">
+                      <button
+                        type="button"
+                        class="btn-photo-action btn-action-featured"
+                        [class.is-active-featured]="photo.isFeatured"
+                        (click)="toggleFeaturedPhoto(idx)"
+                        [title]="photo.isFeatured ? 'Quitar condición de destacada' : 'Fijar como foto destacada (máx 2)'"
+                      >
+                        {{ photo.isFeatured ? 'Destacada' : 'Destacar' }}
+                      </button>
+                      <button
+                        type="button"
+                        class="btn-photo-action btn-action-cover"
+                        [class.is-active-cover]="photo.isCover"
+                        (click)="setCoverPhoto(idx)"
+                        title="Definir como foto de portada principal"
+                      >
+                        {{ photo.isCover ? 'Portada' : 'Hacer Portada' }}
                       </button>
                     </div>
                   </div>
                 }
-
-                <div class="form-grid-2">
-                  <div class="form-field">
-                    <label>Nombre / Prestador Asignado:</label>
-                    <input
-                      type="text"
-                      class="form-input"
-                      [class.input-locked]="isCurrentExperienceClub()"
-                      [disabled]="isCurrentExperienceClub()"
-                      [(ngModel)]="editProviderName"
-                      placeholder="Ej: Gonzalo Gramaglia o Catamarca Kayak"
-                    />
-                  </div>
-
-                  <div class="form-field">
-                    <label>Teléfono / WhatsApp de Contacto:</label>
-                    <input
-                      type="tel"
-                      class="form-input"
-                      [class.input-locked]="isCurrentExperienceClub()"
-                      [disabled]="isCurrentExperienceClub()"
-                      [(ngModel)]="editProviderPhone"
-                      placeholder="Ej: +54 9 383 4567890"
-                    />
-                  </div>
-                </div>
-
-                <div class="form-grid-3">
-                  <div class="form-field">
-                    <label>CBU / CVU o Alias:</label>
-                    <input
-                      type="text"
-                      class="form-input text-blue-input"
-                      [class.input-locked]="isCurrentExperienceClub()"
-                      [disabled]="isCurrentExperienceClub()"
-                      [(ngModel)]="editProviderCbuAlias"
-                      placeholder="Ej: EXPERIENCIAS.CLUB.MP"
-                    />
-                  </div>
-
-                  <div class="form-field">
-                    <label>CUIT / CUIL:</label>
-                    <input
-                      type="text"
-                      class="form-input"
-                      [class.input-locked]="isCurrentExperienceClub()"
-                      [disabled]="isCurrentExperienceClub()"
-                      [(ngModel)]="editProviderCuitDni"
-                      placeholder="Ej: 20-33445566-7"
-                    />
-                  </div>
-
-                  <div class="form-field">
-                    <label>Banco / Entidad:</label>
-                    <input
-                      type="text"
-                      class="form-input"
-                      [class.input-locked]="isCurrentExperienceClub()"
-                      [disabled]="isCurrentExperienceClub()"
-                      [(ngModel)]="editProviderBankName"
-                      placeholder="Ej: Banco Nación / Mercado Pago"
-                    />
-                  </div>
-                </div>
               </div>
-
-              <!-- SECCIÓN 5: Multimedia, Video & Portada (con subida a Supabase Storage y Álbum) -->
-              <div class="form-section-card">
-                <h4 class="form-section-title">5. Multimedia, Video & Portada</h4>
-                <div class="form-grid-2">
-                  <div class="form-field">
-                    <label>Imagen de Portada Principal:</label>
-                    <div class="media-upload-row">
-                      <input
-                        type="text"
-                        class="form-input"
-                        [(ngModel)]="editCoverImage"
-                        placeholder="https://... o seleccioná un archivo"
-                      />
-                      <label class="btn-upload-file" [class.is-uploading]="uploadingCover()">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          (change)="onUploadCoverImage($event)"
-                          style="display: none"
-                        />
-                        <span>{{ uploadingCover() ? 'Subiendo...' : 'Subir Portada' }}</span>
-                      </label>
-                    </div>
-                    @if (editCoverImage()) {
-                      <div class="media-preview-box">
-                        <img [src]="editCoverImage()" alt="Preview Portada" class="media-preview-img" />
-                      </div>
-                    }
-                  </div>
-
-                  <div class="form-field">
-                    <label>Video Oficial (.mp4):</label>
-                    <div class="media-upload-row">
-                      <input
-                        type="text"
-                        class="form-input"
-                        [(ngModel)]="editVideoUrl"
-                        placeholder="/assets/videos/kayak.mp4 o seleccioná un video"
-                      />
-                      <label class="btn-upload-file" [class.is-uploading]="uploadingVideo()">
-                        <input
-                          type="file"
-                          accept="video/mp4,video/*"
-                          (change)="onUploadVideo($event)"
-                          style="display: none"
-                        />
-                        <span>{{ uploadingVideo() ? 'Subiendo...' : 'Subir Video' }}</span>
-                      </label>
-                    </div>
-                    <span class="field-hint">Video promocional reproducido en la ficha de la experiencia.</span>
-                  </div>
-                </div>
-
-                <!-- Álbum de Fotos Oficial de la Experiencia -->
-                <div class="album-upload-section">
-                  <div class="album-header-row">
-                    <div>
-                      <label class="album-section-label">Álbum & Galería de Fotos Oficial</label>
-                      <span class="field-hint">
-                        Configurá las 2 fotos destacadas y hasta 9 fotos para la galería común (máximo 12 fotos totales).
-                      </span>
-                      <div class="album-counters-bar">
-                        <span class="album-counter-pill is-featured-pill">
-                          ⭐ Destacadas: <strong>{{ featuredPhotos().length }} / 2</strong>
-                        </span>
-                        <span
-                          class="album-counter-pill is-gallery-pill"
-                          [class.is-limit-reached]="galleryPhotos().length >= 9"
-                        >
-                          🖼️ Galería común: <strong>{{ galleryPhotos().length }} / 9</strong>
-                        </span>
-                        <span class="album-counter-pill">
-                          📷 Total Álbum: <strong>{{ editAlbumPhotos().length }} / 12</strong>
-                        </span>
-                      </div>
-                    </div>
-
-                    <label
-                      class="btn-upload-album-file"
-                      [class.is-uploading]="uploadingAlbum()"
-                      [class.is-disabled]="galleryPhotos().length >= 9"
-                      [title]="galleryPhotos().length >= 9 ? 'Límite de 9 fotos de galería común alcanzado' : 'Subir fotos al álbum'"
-                    >
-                      <input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        [disabled]="galleryPhotos().length >= 9"
-                        (change)="onUploadAlbumPhotos($event)"
-                        style="display: none"
-                      />
-                      <span>
-                        {{
-                          uploadingAlbum()
-                            ? 'Subiendo...'
-                            : galleryPhotos().length >= 9
-                              ? 'Límite de Galería (9/9) Alcanzado'
-                              : '+ Subir Fotos al Álbum'
-                        }}
-                      </span>
-                    </label>
-                  </div>
-
-                  @if (editAlbumPhotos().length > 0) {
-                    <div class="album-photos-grid">
-                      @for (photo of editAlbumPhotos(); track photo.id; let idx = $index) {
-                        <div
-                          class="album-photo-item"
-                          [class.is-featured-item]="photo.isFeatured"
-                          [class.is-cover-item]="photo.isCover"
-                        >
-                          <div class="photo-badge-overlay">
-                            @if (photo.isCover) {
-                              <span class="photo-badge badge-cover">Portada</span>
-                            }
-                            @if (photo.isFeatured) {
-                              <span class="photo-badge badge-featured">⭐ Destacada</span>
-                            }
-                          </div>
-                          <img [src]="photo.url" [alt]="photo.caption || 'Foto de álbum'" class="album-thumb" />
-                          <div class="album-item-meta">
-                            <input
-                              type="text"
-                              class="album-caption-input"
-                              [value]="photo.caption || ''"
-                              (input)="updatePhotoCaption(idx, $any($event.target).value)"
-                              placeholder="Epígrafe o título..."
-                            />
-                            <button
-                              type="button"
-                              class="album-delete-btn"
-                              (click)="removeAlbumPhoto(idx)"
-                              title="Eliminar foto del álbum"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                          <div class="album-photo-actions">
-                            <button
-                              type="button"
-                              class="btn-photo-action"
-                              [class.is-active-featured]="photo.isFeatured"
-                              (click)="toggleFeaturedPhoto(idx)"
-                              [title]="photo.isFeatured ? 'Quitar condición de destacada' : 'Fijar como foto destacada (máx 2)'"
-                            >
-                              ⭐ {{ photo.isFeatured ? 'Destacada' : 'Destacar' }}
-                            </button>
-                            <button
-                              type="button"
-                              class="btn-photo-action"
-                              [class.is-active-cover]="photo.isCover"
-                              (click)="setCoverPhoto(idx)"
-                              title="Definir como foto de portada principal"
-                            >
-                              📸 {{ photo.isCover ? 'Portada' : 'Hacer Portada' }}
-                            </button>
-                          </div>
-                        </div>
-                      }
-                    </div>
-                  } @else {
-                    <div class="album-empty-placeholder">
-                      <span>No hay fotos cargadas en el álbum. Podés subir imágenes para la galería (máximo 9 de galería común y 2 destacadas).</span>
-                    </div>
-                  }
-                </div>
+            } @else {
+              <div class="album-empty-placeholder">
+                <span>No hay fotos cargadas en el álbum. Podés subir imágenes para la galería (máximo 9 de galería y 2 destacadas).</span>
               </div>
+            }
+          </div>
+        </div>
 
-              <!-- SECCIÓN 6: Servicios Incluidos & Qué Debes Traer (Orden invertido) -->
-              <div class="form-section-card">
-                <h4 class="form-section-title">6. Servicios Incluidos & Qué Debes Traer</h4>
-                <div class="form-grid-2">
-                  <div class="form-field">
-                    <label>Servicios Incluidos (un ítem por línea):</label>
-                    <textarea
-                      class="form-textarea"
-                      rows="4"
-                      [(ngModel)]="editIncludedRaw"
-                      placeholder="Kayaks de travesía y remos de carbono&#10;Chaleco salvavidas reglamentario PFD&#10;Guía náutico certificado&#10;Seguro de accidentes"
-                    ></textarea>
-                  </div>
+        <!-- SECCIÓN 6: Servicios Incluidos & Qué Debes Traer (Orden invertido) -->
+        <div class="form-section-card">
+          <h4 class="form-section-title">6. Servicios Incluidos & Qué Debes Traer</h4>
+          <div class="form-grid-2">
+            <div class="form-field">
+              <label>Servicios Incluidos (un ítem por línea): <span class="req-star">*</span></label>
+              <textarea
+                class="form-textarea"
+                rows="4"
+                [(ngModel)]="editIncludedRaw"
+                maxlength="1000"
+                placeholder="Kayaks de travesía y remos de carbono&#10;Chaleco salvavidas reglamentario PFD&#10;Guía náutico certificado&#10;Seguro de accidentes"
+                required
+              ></textarea>
+            </div>
 
-                  <div class="form-field">
-                    <label>Qué Debes Traer (un ítem por línea):</label>
-                    <textarea
-                      class="form-textarea"
-                      rows="4"
-                      [(ngModel)]="editHighlightsRaw"
-                      placeholder="Muda de ropa cómoda&#10;Protector solar y gorra&#10;Botella de agua personal"
-                    ></textarea>
-                  </div>
-                </div>
-              </div>
+            <div class="form-field">
+              <label>Qué Debes Traer (un ítem por línea): <span class="req-star">*</span></label>
+              <textarea
+                class="form-textarea"
+                rows="4"
+                [(ngModel)]="editHighlightsRaw"
+                maxlength="1000"
+                placeholder="Muda de ropa cómoda&#10;Protector solar y gorra&#10;Botella de agua personal"
+                required
+              ></textarea>
+            </div>
+          </div>
+        </div>
 
-              <!-- SECCIÓN 7: Estado de Publicación -->
-              <div class="form-section-card">
-                <h4 class="form-section-title">7. Estado de Publicación</h4>
-                <div class="form-field">
-                  <label>Estado en experiencias.club:</label>
-                  <select class="form-select" [(ngModel)]="editStatus">
-                    <option value="publicada">Publicada (Visible a todos los exploradores)</option>
-                    <option value="oculta">Oculta / Pausada (Dada de baja temporalmente)</option>
-                    <option value="borrador">Borrador (En edición interna)</option>
-                    <option value="pendiente">Pendiente (Propuesta / Postulación a evaluar)</option>
-                    <option value="rechazada">Rechazada (No aprobada)</option>
-                  </select>
-                </div>
-              </div>
+        <!-- SECCIÓN 7: Estado de Publicación -->
+        <div class="form-section-card">
+          <h4 class="form-section-title">7. Estado de Publicación</h4>
+          <div class="form-field">
+            <label>Estado en experiencias.club: <span class="req-star">*</span></label>
+            <select class="form-select" [(ngModel)]="editStatus" required>
+              <option value="publicada">Publicada (Visible a todos los exploradores)</option>
+              <option value="oculta">Oculta / Pausada (Dada de baja temporalmente)</option>
+              <option value="borrador">Borrador (En edición interna)</option>
+              <option value="pendiente">Pendiente (Propuesta / Postulación a evaluar)</option>
+              <option value="rechazada">Rechazada (No aprobada)</option>
+            </select>
+          </div>
+        </div>
       </ng-template>
     </div>
   `,
@@ -1293,6 +1333,27 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         flex-direction: column;
         gap: 1.5rem;
         box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+        margin-top: 2.25rem;
+      }
+
+      .edit-page-card .admin-page-header {
+        width: 100%;
+      }
+
+      .edit-page-card .header-titles {
+        max-width: 100%;
+        width: 100%;
+        flex: 1 1 100%;
+      }
+
+      .edit-page-card .title-row {
+        width: 100%;
+      }
+
+      .edit-page-card .card-heading {
+        font-size: clamp(1.4rem, 2.2vw, 1.75rem);
+        max-width: 100%;
+        width: 100%;
       }
 
       .edit-page-body {
@@ -1924,14 +1985,14 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
       }
 
       .location-btn.maps-btn {
-        background: rgba(0, 204, 136, 0.18);
-        border: 1px solid rgba(0, 204, 136, 0.45);
-        color: #33ffaa;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        color: #ffffff;
       }
 
       .location-btn.maps-btn:hover {
-        background: rgba(0, 204, 136, 0.3);
-        border-color: #00cc88;
+        background: rgba(255, 255, 255, 0.16);
+        border-color: rgba(255, 255, 255, 0.45);
         color: #ffffff;
       }
 
@@ -2079,8 +2140,8 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         align-items: center;
         justify-content: center;
         padding: 0 0.75rem;
-        height: 32px;
-        min-height: 32px;
+        height: 28px;
+        min-height: 28px;
         box-sizing: border-box;
         background: rgba(255, 95, 0, 0.18);
         border: 1px solid #ff5f00;
@@ -2399,15 +2460,11 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         z-index: 5;
         background: #140b06;
         box-shadow: -6px 0 16px rgba(0, 0, 0, 0.5);
-        position: sticky;
-        right: 0;
-        z-index: 5;
-        background: #140b06;
-        box-shadow: -6px 0 16px rgba(0, 0, 0, 0.5);
       }
 
       .admin-exp-table th.text-right {
         background: #0f0703;
+        text-align: center;
       }
 
       .admin-exp-table td {
@@ -2729,7 +2786,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         gap: 0.3rem;
         min-width: 110px;
         max-width: 125px;
-        margin-left: auto;
+        margin: 0 auto;
       }
 
       .action-buttons-cell .btn-view-fiche,
@@ -2740,8 +2797,8 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         align-items: center;
         justify-content: center;
         width: 100%;
-        height: 25px;
-        min-height: 25px;
+        height: 28px;
+        min-height: 28px;
         padding: 0 0.5rem;
         font-size: 0.7rem;
         box-sizing: border-box;
@@ -3025,6 +3082,30 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         gap: 1rem;
       }
 
+      .form-grid-arancel {
+        display: grid;
+        grid-template-columns: 1fr 1fr 2fr;
+        gap: 1rem;
+      }
+
+      @media (max-width: 900px) {
+        .form-grid-arancel {
+          grid-template-columns: 1fr 1fr;
+        }
+        .form-grid-arancel .field-dates-col {
+          grid-column: span 2;
+        }
+      }
+
+      @media (max-width: 600px) {
+        .form-grid-arancel {
+          grid-template-columns: 1fr;
+        }
+        .form-grid-arancel .field-dates-col {
+          grid-column: span 1;
+        }
+      }
+
       .form-field {
         display: flex;
         flex-direction: column;
@@ -3043,6 +3124,12 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+      }
+
+      .req-star {
+        color: #ff5f00;
+        font-weight: 800;
+        margin-left: 0.25rem;
       }
 
       .field-label-row {
@@ -3134,6 +3221,24 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
       .btn-upload-file.is-uploading {
         opacity: 0.6;
         pointer-events: none;
+      }
+
+      .btn-remove-media {
+        background: transparent;
+        border: 1px solid rgba(255, 95, 95, 0.4);
+        color: #ff7777;
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 0.55rem 0.85rem;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .btn-remove-media:hover {
+        background: rgba(255, 95, 95, 0.15);
+        color: #ff9999;
+        border-color: #ff5f5f;
       }
 
       .media-preview-box {
@@ -3353,6 +3458,18 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
       .btn-photo-action:hover {
         background: rgba(255, 255, 255, 0.18);
         color: #ffffff;
+      }
+
+      .btn-photo-action.btn-action-featured {
+        background: rgba(255, 170, 0, 0.12);
+        border: 1px solid rgba(255, 170, 0, 0.35);
+        color: #ffaa00;
+      }
+
+      .btn-photo-action.btn-action-featured:hover {
+        background: rgba(255, 170, 0, 0.22);
+        border-color: rgba(255, 170, 0, 0.6);
+        color: #ffbb22;
       }
 
       .btn-photo-action.is-active-featured {
@@ -3952,6 +4069,11 @@ export class AdminExperiencesComponent implements OnInit {
     return `${base}/${exp.slug || ''}/editar`;
   }
 
+  getConfigRoute(): string {
+    const base = this.isAdminRoute() ? '/admin' : '';
+    return `${base}/configuracion`;
+  }
+
   getGoogleMapsUrl(meetingPoint?: string, region?: string, customUrl?: string): string {
     if (customUrl && customUrl.trim()) {
       return customUrl.trim();
@@ -4224,7 +4346,11 @@ export class AdminExperiencesComponent implements OnInit {
   readonly editAltitude = signal(850);
   readonly editCapacity = signal(12);
   readonly editPriceArs = signal(65000);
-  readonly calculatedUsd = computed(() => Math.round((Number(this.editPriceArs()) || 0) / 1600));
+  readonly usdExchangeRate = computed(() => this.adminStore.usdExchangeRate() || 1400);
+  readonly calculatedUsd = computed(() => {
+    const rate = this.usdExchangeRate();
+    return Math.round((Number(this.editPriceArs()) || 0) / rate);
+  });
   readonly editCoverImage = signal('');
   readonly editVideoUrl = signal('');
   readonly editVideoPoster = signal('');
@@ -4474,7 +4600,7 @@ export class AdminExperiencesComponent implements OnInit {
     this.editAlbumPhotos.update((photos) =>
       photos.map((p, i) => (i === index ? { ...p, isFeatured: true } : p)),
     );
-    this.showToast('⭐ Foto marcada como destacada (máx 2).');
+    this.showToast('Foto marcada como destacada (máx 2).');
   }
 
   setCoverPhoto(index: number): void {
@@ -4497,7 +4623,7 @@ export class AdminExperiencesComponent implements OnInit {
       }),
     );
     this.editCoverImage.set(photo.url);
-    this.showToast('📸 Foto fijada como Portada Principal.');
+    this.showToast('Foto fijada como Portada Principal.');
   }
 
   updatePhotoCaption(index: number, caption: string): void {
@@ -4530,6 +4656,10 @@ export class AdminExperiencesComponent implements OnInit {
       this.showToast('⚠️ Por favor ingresá un título para la experiencia.');
       return;
     }
+    if (title.length < 6) {
+      this.showToast('⚠️ El título debe tener al menos 6 caracteres.');
+      return;
+    }
 
     const rawSlug = this.editSlug().trim() || title;
     const slug = rawSlug
@@ -4539,23 +4669,103 @@ export class AdminExperiencesComponent implements OnInit {
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)/g, '');
 
+    if (!slug) {
+      this.showToast('⚠️ La ruta o slug oficial no puede estar vacía.');
+      return;
+    }
+
+    const tagline = this.editTagline().trim();
+    if (!tagline) {
+      this.showToast('⚠️ Por favor ingresá un subtítulo o bajada destacada (tagline).');
+      return;
+    }
+
+    const description = this.editDescription().trim();
+    if (!description) {
+      this.showToast('⚠️ Por favor ingresá una descripción atractiva de la experiencia.');
+      return;
+    }
+
+    const region = this.editRegion().trim();
+    if (!region) {
+      this.showToast('⚠️ Por favor indicá la región turística de Catamarca.');
+      return;
+    }
+
+    const meetingPoint = this.editMeetingPoint().trim();
+    if (!meetingPoint) {
+      this.showToast('⚠️ Por favor indicá el punto de encuentro.');
+      return;
+    }
+
+    const meetingPointUrl = this.editMeetingPointUrl().trim();
+    if (!meetingPointUrl) {
+      this.showToast('⚠️ Por favor ingresá el enlace de Google Maps para el punto de encuentro.');
+      return;
+    }
+    if (!this.isValidGoogleMapsUrl(meetingPointUrl)) {
+      this.showToast('⚠️ Ingresá un enlace válido de Google Maps (maps.app.goo.gl o google.com/maps).');
+      return;
+    }
+
+    const durationLabel = this.editDurationLabel().trim();
+    if (!durationLabel) {
+      this.showToast('⚠️ Por favor indicá la duración estimada de la experiencia.');
+      return;
+    }
+
+    const capacity = Number(this.editCapacity()) || 0;
+    if (capacity < 1 || capacity > 200) {
+      this.showToast('⚠️ El cupo máximo por salida debe ser entre 1 y 200 personas.');
+      return;
+    }
+
+    const itinerary = this.editItinerary().trim();
+    if (!itinerary) {
+      this.showToast('⚠️ Por favor detallá el cronograma horario o itinerario de la jornada.');
+      return;
+    }
+
+    const priceArs = Number(this.editPriceArs()) || 0;
+    if (priceArs < 1000) {
+      this.showToast('⚠️ Por favor ingresá un arancel válido en pesos ($ ARS, mínimo $1.000).');
+      return;
+    }
+
     const dates = this.editDatesRaw()
       .split(',')
       .map((d) => d.trim())
       .filter((d) => d.length > 0);
+    if (dates.length === 0) {
+      this.showToast('⚠️ Por favor ingresá al menos una fecha programada (formato YYYY-MM-DD).');
+      return;
+    }
 
     const highlights = this.editHighlightsRaw()
       .split('\n')
       .map((h) => h.trim())
       .filter((h) => h.length > 0);
+    if (highlights.length === 0) {
+      this.showToast('⚠️ Por favor detallá qué deben traer los participantes (al menos un ítem).');
+      return;
+    }
 
     const included = this.editIncludedRaw()
       .split('\n')
       .map((i) => i.trim())
       .filter((i) => i.length > 0);
+    if (included.length === 0) {
+      this.showToast('⚠️ Por favor detallá los servicios incluidos (al menos un ítem).');
+      return;
+    }
 
-    const priceArs = Number(this.editPriceArs()) || 0;
-    const priceUsd = Math.round(priceArs / 1600);
+    const coverImage = this.editCoverImage().trim();
+    if (!coverImage) {
+      this.showToast('⚠️ Por favor definí o subí una imagen de portada principal.');
+      return;
+    }
+
+    const priceUsd = Math.round(priceArs / (this.adminStore.usdExchangeRate() || 1400));
 
     const isClub = this.isCurrentExperienceClub();
     const club = this.adminStore.clubProfile();
@@ -4564,6 +4774,30 @@ export class AdminExperiencesComponent implements OnInit {
     const resolvedProviderCbu = isClub ? (club.cbuAlias || '') : this.editProviderCbuAlias().trim();
     const resolvedProviderCuit = isClub ? (club.cuitDni || '') : this.editProviderCuitDni().trim();
     const resolvedProviderBank = isClub ? (club.bankName || '') : this.editProviderBankName().trim();
+
+    if (!isClub) {
+      if (!resolvedProviderName) {
+        this.showToast('⚠️ Por favor indicá el nombre del prestador asignado.');
+        return;
+      }
+      if (!resolvedProviderPhone) {
+        this.showToast('⚠️ Por favor indicá el teléfono / WhatsApp del prestador.');
+        return;
+      }
+      if (!resolvedProviderCbu) {
+        this.showToast('⚠️ Por favor indicá el CBU, CVU o Alias de cobro.');
+        return;
+      }
+      if (!resolvedProviderCuit) {
+        this.showToast('⚠️ Por favor indicá el CUIT o CUIL del prestador.');
+        return;
+      }
+      if (!resolvedProviderBank) {
+        this.showToast('⚠️ Por favor indicá el banco o entidad financiera del prestador.');
+        return;
+      }
+    }
+
     const resolvedProviderSlug = isClub ? 'club-de-experiencias' : (this.editingExperience()?.providerSlug || undefined);
     const resolvedProviderEmail = isClub ? (club.email || 'admin@experiencias.club') : (this.editingExperience()?.providerEmail || undefined);
 
@@ -4597,10 +4831,10 @@ export class AdminExperiencesComponent implements OnInit {
       providerBankName: resolvedProviderBank,
       ...(isClub
         ? {
-            providerSlug: resolvedProviderSlug,
-            providerEmail: resolvedProviderEmail,
-            isClubExperience: true,
-          }
+          providerSlug: resolvedProviderSlug,
+          providerEmail: resolvedProviderEmail,
+          isClubExperience: true,
+        }
         : {}),
       videoUrl: this.editVideoUrl().trim(),
       videoPoster: this.editVideoPoster().trim(),

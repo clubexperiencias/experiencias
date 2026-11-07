@@ -95,6 +95,9 @@ export class AdminStoreService {
 
   private readonly _clubProfile = signal<ClubProfile>(this.loadStoredClubProfile());
   private readonly _isClubProfileModalOpen = signal<boolean>(false);
+  private readonly _usdExchangeRate = signal<number>(this.loadStoredUsdExchangeRate());
+  private readonly _isLoadingClubProfile = signal<boolean>(false);
+  private readonly _clubProfileLoaded = signal<boolean>(false);
 
   readonly currentAdmin = this._currentAdmin.asReadonly();
   readonly isAuthenticated = computed(() => this._currentAdmin() !== null);
@@ -104,9 +107,49 @@ export class AdminStoreService {
   readonly isLoadingMembers = this._isLoadingMembers.asReadonly();
   readonly isLoadingSubmissions = this._isLoadingSubmissions.asReadonly();
   readonly isLoadingApplications = this._isLoadingApplications.asReadonly();
+  readonly isLoadingClubProfile = this._isLoadingClubProfile.asReadonly();
+  readonly clubProfileLoaded = this._clubProfileLoaded.asReadonly();
   readonly lastRefreshedAt = this._lastRefreshedAt.asReadonly();
   readonly clubProfile = this._clubProfile.asReadonly();
   readonly isClubProfileModalOpen = this._isClubProfileModalOpen.asReadonly();
+  readonly usdExchangeRate = this._usdExchangeRate.asReadonly();
+
+  private loadStoredUsdExchangeRate(): number {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('catamarca_usd_exchange_rate_v1');
+        const num = Number(stored);
+        if (num && num > 0) return num;
+      } catch {
+        // ignore
+      }
+    }
+    const profile = this.loadStoredClubProfile();
+    return profile?.usdExchangeRate || DEFAULT_CLUB_PROFILE.usdExchangeRate || 1400;
+  }
+
+  setUsdExchangeRate(rate: number): void {
+    const num = Number(rate);
+    if (!Number.isFinite(num) || num <= 0) {
+      return;
+    }
+    const normalizedRate = Math.round(num);
+    if (normalizedRate <= 0) {
+      return;
+    }
+    this._usdExchangeRate.set(normalizedRate);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('catamarca_usd_exchange_rate_v1', String(normalizedRate));
+      } catch {
+        // ignore
+      }
+    }
+    const current = this._clubProfile();
+    if (current.usdExchangeRate !== normalizedRate) {
+      this._clubProfile.update((p) => ({ ...p, usdExchangeRate: normalizedRate }));
+    }
+  }
 
   openClubProfileModal(): void {
     this._isClubProfileModalOpen.set(true);
@@ -301,80 +344,131 @@ export class AdminStoreService {
     return DEFAULT_CLUB_PROFILE;
   }
 
+  private activeLoadClubProfilePromise: Promise<void> | null = null;
+
   /**
    * Carga el perfil oficial del Club de Experiencias desde Supabase (tabla `prestadores`),
    * consultando por ID único, slug oficial o email institucional. Sincroniza el resultado
    * con el almacenamiento local y los servicios de experiencias y prestadores.
    */
   async loadClubProfile(): Promise<void> {
-    if (!isSupabaseConfigured()) return;
-    try {
-      const current = this._clubProfile();
-      let data: any = null;
-      let error: any = null;
-
-      // 1. Intentar buscar por id si ya lo tenemos registrado
-      if (current.id) {
-        const res = await (this.supabase.from('prestadores') as any)
-          .select('*')
-          .eq('id', current.id)
-          .maybeSingle();
-        data = res.data;
-        error = res.error;
-      }
-
-      // 2. Si no se encontró por id, buscar por slug oficial del club
-      if (!data) {
-        const res = await (this.supabase.from('prestadores') as any)
-          .select('*')
-          .eq('slug', current.slug || DEFAULT_CLUB_PROFILE.slug)
-          .maybeSingle();
-        data = res.data;
-        error = res.error;
-      }
-
-      // 3. Fallback por email original
-      if (!data) {
-        const res = await (this.supabase.from('prestadores') as any)
-          .select('*')
-          .eq('email', DEFAULT_CLUB_PROFILE.email)
-          .maybeSingle();
-        data = res.data;
-        error = res.error;
-      }
-
-      if (!error && data) {
-        const loaded: ClubProfile = {
-          id: data.id,
-          name: data.name || DEFAULT_CLUB_PROFILE.name,
-          agency: data.agency || DEFAULT_CLUB_PROFILE.agency,
-          email: data.email || DEFAULT_CLUB_PROFILE.email,
-          slug: data.slug || DEFAULT_CLUB_PROFILE.slug,
-          phone: data.phone || DEFAULT_CLUB_PROFILE.phone,
-          cbuAlias: data.cbu_alias || DEFAULT_CLUB_PROFILE.cbuAlias,
-          cuitDni: data.cuit_dni || DEFAULT_CLUB_PROFILE.cuitDni,
-          bankName: data.bank_name || DEFAULT_CLUB_PROFILE.bankName,
-          accountHolder: data.account_holder || DEFAULT_CLUB_PROFILE.accountHolder,
-          bio: data.bio || DEFAULT_CLUB_PROFILE.bio,
-          website: data.website || DEFAULT_CLUB_PROFILE.website,
-          socialMedia: data.social_media || DEFAULT_CLUB_PROFILE.socialMedia,
-          address: DEFAULT_CLUB_PROFILE.address,
-          updatedAt: data.updated_at || new Date().toISOString(),
-        };
-        this._clubProfile.set(loaded);
-        if (typeof window !== 'undefined') {
-          try {
-            localStorage.setItem('catamarca_club_official_profile_v1', JSON.stringify(loaded));
-          } catch {
-            // Ignorar
-          }
-        }
-        this.experienceService.syncClubExperiencesWithProfile(loaded);
-        this.providerStore.syncClubProviderProfile(loaded);
-      }
-    } catch (err) {
-      console.warn('[AdminStore] Error al cargar perfil del Club:', err);
+    if (!isSupabaseConfigured()) {
+      this._clubProfileLoaded.set(true);
+      return;
     }
+    if (this.activeLoadClubProfilePromise) {
+      return this.activeLoadClubProfilePromise;
+    }
+
+    this._isLoadingClubProfile.set(true);
+    this.activeLoadClubProfilePromise = (async () => {
+      try {
+        const current = this._clubProfile();
+        let data: any = null;
+        let error: any = null;
+
+        // 1. Intentar buscar por id si ya lo tenemos registrado
+        if (current.id) {
+          const res = await (this.supabase.from('prestadores') as any)
+            .select('*')
+            .eq('id', current.id)
+            .maybeSingle();
+          data = res.data;
+          error = res.error;
+        }
+
+        // 2. Si no se encontró por id, buscar por slug oficial del club
+        if (!data) {
+          const res = await (this.supabase.from('prestadores') as any)
+            .select('*')
+            .eq('slug', current.slug || DEFAULT_CLUB_PROFILE.slug)
+            .maybeSingle();
+          data = res.data;
+          error = res.error;
+        }
+
+        // 3. Fallback por email original
+        if (!data) {
+          const res = await (this.supabase.from('prestadores') as any)
+            .select('*')
+            .eq('email', DEFAULT_CLUB_PROFILE.email)
+            .maybeSingle();
+          data = res.data;
+          error = res.error;
+        }
+
+        if (!error && data) {
+          let usdRate: number | undefined;
+          let parsedAddress: string | undefined;
+          if (data.notes) {
+            try {
+              const parsed = JSON.parse(data.notes);
+              if (
+                parsed &&
+                typeof parsed.usd_exchange_rate === 'number' &&
+                Number.isFinite(parsed.usd_exchange_rate) &&
+                parsed.usd_exchange_rate > 0
+              ) {
+                const rounded = Math.round(parsed.usd_exchange_rate);
+                if (rounded > 0) {
+                  usdRate = rounded;
+                }
+              }
+              if (parsed && typeof parsed.address === 'string' && parsed.address.trim()) {
+                parsedAddress = parsed.address.trim();
+              }
+            } catch {
+              // ignore non-json
+            }
+          }
+          const loadedAddress =
+            parsedAddress ||
+            (typeof (data as any).address === 'string' && (data as any).address.trim()
+              ? (data as any).address.trim()
+              : current.address || DEFAULT_CLUB_PROFILE.address);
+
+          const loaded: ClubProfile = {
+            id: data.id,
+            name: data.name || DEFAULT_CLUB_PROFILE.name,
+            agency: data.agency || DEFAULT_CLUB_PROFILE.agency,
+            email: data.email || DEFAULT_CLUB_PROFILE.email,
+            slug: data.slug || DEFAULT_CLUB_PROFILE.slug,
+            phone: data.phone || DEFAULT_CLUB_PROFILE.phone,
+            cbuAlias: data.cbu_alias || DEFAULT_CLUB_PROFILE.cbuAlias,
+            cuitDni: data.cuit_dni || DEFAULT_CLUB_PROFILE.cuitDni,
+            bankName: data.bank_name || DEFAULT_CLUB_PROFILE.bankName,
+            accountHolder: data.account_holder || DEFAULT_CLUB_PROFILE.accountHolder,
+            bio: data.bio || DEFAULT_CLUB_PROFILE.bio,
+            website: data.website || DEFAULT_CLUB_PROFILE.website,
+            socialMedia: data.social_media || DEFAULT_CLUB_PROFILE.socialMedia,
+            address: loadedAddress,
+            updatedAt: data.updated_at || new Date().toISOString(),
+            ...(usdRate !== undefined ? { usdExchangeRate: usdRate } : {}),
+          };
+          this._clubProfile.set(loaded);
+          if (usdRate !== undefined) {
+            this.setUsdExchangeRate(usdRate);
+          }
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.setItem('catamarca_club_official_profile_v1', JSON.stringify(loaded));
+            } catch {
+              // Ignorar
+            }
+          }
+          this.experienceService.syncClubExperiencesWithProfile(loaded);
+          this.providerStore.syncClubProviderProfile(loaded);
+        }
+      } catch (err) {
+        console.warn('[AdminStore] Error al cargar perfil del Club:', err);
+      } finally {
+        this._isLoadingClubProfile.set(false);
+        this._clubProfileLoaded.set(true);
+        this.activeLoadClubProfilePromise = null;
+      }
+    })();
+
+    return this.activeLoadClubProfilePromise;
   }
 
   /**
@@ -390,15 +484,127 @@ export class AdminStoreService {
     const targetId = current.id;
     const targetSlug = current.slug || DEFAULT_CLUB_PROFILE.slug;
 
+    let targetRate: number | undefined;
+    if (updated.usdExchangeRate !== undefined) {
+      const num = Number(updated.usdExchangeRate);
+      if (Number.isFinite(num) && num > 0) {
+        const rounded = Math.round(num);
+        if (rounded > 0) {
+          targetRate = rounded;
+        }
+      }
+    } else if (current.usdExchangeRate !== undefined) {
+      const num = Number(current.usdExchangeRate);
+      if (Number.isFinite(num) && num > 0) {
+        const rounded = Math.round(num);
+        if (rounded > 0) {
+          targetRate = rounded;
+        }
+      }
+    }
+
     const merged: ClubProfile = {
       ...current,
       ...updated,
       slug: targetSlug,
+      ...(targetRate !== undefined ? { usdExchangeRate: targetRate } : {}),
       updatedAt: new Date().toISOString(),
     };
 
     if (isSupabaseConfigured()) {
       try {
+        let existingNotesObj: Record<string, any> = {};
+        if (typeof (this.supabase.from as any) === 'function') {
+          try {
+            const table = this.supabase.from('prestadores') as any;
+            if (table && typeof table.select === 'function') {
+              let remoteRow: any = null;
+              if (targetId) {
+                try {
+                  const res = await table.select('notes').eq('id', targetId).maybeSingle();
+                  remoteRow = res?.data;
+                } catch {
+                  // fallback
+                }
+              }
+              if (!remoteRow) {
+                try {
+                  const res = await table.select('notes').eq('slug', targetSlug).maybeSingle();
+                  remoteRow = res?.data;
+                } catch {
+                  // fallback
+                }
+              }
+              if (!remoteRow) {
+                try {
+                  const res = await table
+                    .select('notes')
+                    .eq('email', merged.email || DEFAULT_CLUB_PROFILE.email)
+                    .maybeSingle();
+                  remoteRow = res?.data;
+                } catch {
+                  // fallback
+                }
+              }
+              if (remoteRow?.notes) {
+                try {
+                  const parsed = JSON.parse(remoteRow.notes);
+                  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                    existingNotesObj = parsed;
+                  } else {
+                    existingNotesObj = { text: String(remoteRow.notes) };
+                  }
+                } catch {
+                  existingNotesObj = { text: String(remoteRow.notes) };
+                }
+              }
+            }
+          } catch {
+            // Ignorar error al leer notas remotas previas
+          }
+        }
+
+        if (Object.keys(existingNotesObj).length === 0) {
+          try {
+            const clubProv = this.providerStore.allProviders()?.find(
+              (p) =>
+                p.id === 'prov-club' ||
+                (p.email || '').toLowerCase() === (merged.email || DEFAULT_CLUB_PROFILE.email).toLowerCase() ||
+                p.slug === targetSlug,
+            );
+            if (clubProv?.notes) {
+              try {
+                const parsed = JSON.parse(clubProv.notes);
+                if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                  existingNotesObj = parsed;
+                } else {
+                  existingNotesObj = { text: String(clubProv.notes) };
+                }
+              } catch {
+                existingNotesObj = { text: String(clubProv.notes) };
+              }
+            }
+          } catch {
+            // Ignorar
+          }
+        }
+
+        const nextNotesObj: Record<string, any> = {
+          ...existingNotesObj,
+          system: 'configuracion_club',
+          ...(targetRate !== undefined ? { usd_exchange_rate: targetRate } : {}),
+        };
+
+        if (typeof merged.address === 'string') {
+          const trimmedAddress = merged.address.trim();
+          if (trimmedAddress) {
+            nextNotesObj['address'] = trimmedAddress;
+          } else {
+            delete nextNotesObj['address'];
+          }
+        }
+
+        const notesPayload = JSON.stringify(nextNotesObj);
         const payload = {
           email: merged.email || DEFAULT_CLUB_PROFILE.email,
           name: merged.name,
@@ -412,6 +618,7 @@ export class AdminStoreService {
           bio: merged.bio,
           website: merged.website,
           social_media: merged.socialMedia,
+          notes: notesPayload,
           active: true,
           status: 'aprobado',
           updated_at: merged.updatedAt,
@@ -453,6 +660,10 @@ export class AdminStoreService {
         console.error('[AdminStore] Excepción al guardar perfil del Club en Supabase:', err);
         return { success: false, error: err?.message || 'Error inesperado al conectar con la base de datos' };
       }
+    }
+
+    if (targetRate !== undefined) {
+      this.setUsdExchangeRate(targetRate);
     }
 
     this._clubProfile.set(merged);

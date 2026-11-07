@@ -493,5 +493,406 @@ describe('ProviderStoreService - Payment & Proposal Persistence', () => {
       expect(found).toBeUndefined();
     });
   });
+
+  describe('adminUpdateProvider - remote notes preservation', () => {
+    it('should preserve remote notes and pausedByBajaExpIds when updating unrelated provider fields', async () => {
+      const existingProvider = {
+        id: 'prov-001',
+        name: 'Guía Juan',
+        email: 'juan@test.com',
+        phone: '12345',
+        status: 'aprobado' as const,
+        notes: '',
+      };
+      (store as any)._providers.set([existingProvider]);
+
+      const remoteNotesJson = JSON.stringify({
+        pausedByBajaExpIds: ['exp-1', 'exp-2'],
+        text: 'Nota previa',
+      });
+
+      let capturedPayload: any = null;
+      mockSupabase.from = vi.fn().mockImplementation((table: string) => {
+        if (table === 'prestadores') {
+          return {
+            select: vi.fn().mockImplementation((cols: string) => {
+              if (cols === 'notes') {
+                return {
+                  eq: vi.fn().mockReturnValue({
+                    maybeSingle: vi.fn().mockResolvedValue({
+                      data: { notes: remoteNotesJson },
+                      error: null,
+                    }),
+                  }),
+                };
+              }
+              return {
+                eq: vi.fn().mockResolvedValue({ data: [{ id: 'prov-001' }], error: null }),
+              };
+            }),
+            update: vi.fn().mockImplementation((payload: any) => {
+              capturedPayload = payload;
+              return {
+                eq: vi.fn().mockReturnValue({
+                  select: vi.fn().mockResolvedValue({
+                    data: [{ id: 'prov-001' }],
+                    error: null,
+                  }),
+                }),
+              };
+            }),
+          };
+        }
+        return {
+          select: vi.fn().mockReturnThis(),
+        };
+      });
+
+      const res = await store.adminUpdateProvider('juan@test.com', {
+        phone: '5493834001122',
+      });
+
+      expect(res.success).toBe(true);
+      expect(capturedPayload).toBeTruthy();
+      expect(capturedPayload.phone).toBe('5493834001122');
+      expect(capturedPayload.notes).toBeUndefined();
+      const updated = store.allProviders().find((p) => p.email === 'juan@test.com');
+      expect(updated?.notes).toBe(remoteNotesJson);
+    });
+
+    it('should treat updates.notes as full new value without merging missing remote keys when caller loaded remote notes', async () => {
+      const initialNotesJson = JSON.stringify({
+        pausedByBajaExpIds: ['exp-1'],
+        extraKey: 'toDelete',
+        text: 'nota original',
+      });
+      const existingProvider = {
+        id: 'prov-002',
+        name: 'Guía Maria',
+        email: 'maria@test.com',
+        phone: '12345',
+        status: 'aprobado' as const,
+        notes: initialNotesJson,
+      };
+      (store as any)._providers.set([existingProvider]);
+
+      let capturedPayload: any = null;
+      mockSupabase.from = vi.fn().mockImplementation((table: string) => {
+        if (table === 'prestadores') {
+          return {
+            select: vi.fn().mockImplementation((cols: string) => {
+              if (cols === 'notes') {
+                return {
+                  eq: vi.fn().mockReturnValue({
+                    maybeSingle: vi.fn().mockResolvedValue({
+                      data: { notes: initialNotesJson },
+                      error: null,
+                    }),
+                  }),
+                };
+              }
+              return {
+                eq: vi.fn().mockResolvedValue({ data: [{ id: 'prov-002' }], error: null }),
+              };
+            }),
+            update: vi.fn().mockImplementation((payload: any) => {
+              capturedPayload = payload;
+              return {
+                eq: vi.fn().mockReturnValue({
+                  select: vi.fn().mockResolvedValue({
+                    data: [{ id: 'prov-002' }],
+                    error: null,
+                  }),
+                }),
+              };
+            }),
+          };
+        }
+        return { select: vi.fn().mockReturnThis() };
+      });
+
+      // El caller envía una actualización explícita que eliminó pausedByBajaExpIds y extraKey
+      const newNotesObj = { text: 'nota modificada' };
+      const res = await store.adminUpdateProvider('maria@test.com', {
+        notes: JSON.stringify(newNotesObj),
+      });
+
+      expect(res.success).toBe(true);
+      expect(capturedPayload).toBeTruthy();
+      const savedNotes = JSON.parse(capturedPayload.notes);
+      expect(savedNotes).toEqual({ text: 'nota modificada' });
+      expect(savedNotes.pausedByBajaExpIds).toBeUndefined();
+      expect(savedNotes.extraKey).toBeUndefined();
+    });
+
+    it('should preserve pausedByBajaExpIds via shouldPreserveBajaIds only when caller had not loaded remote notes', async () => {
+      const existingProvider = {
+        id: 'prov-003',
+        name: 'Guía Pedro',
+        email: 'pedro@test.com',
+        phone: '12345',
+        status: 'aprobado' as const,
+        notes: '', // local notes NO tenía pausedByBajaExpIds
+      };
+      (store as any)._providers.set([existingProvider]);
+
+      const remoteNotesJson = JSON.stringify({
+        pausedByBajaExpIds: ['exp-3', 'exp-4'],
+        text: 'remoto',
+      });
+
+      let capturedPayload: any = null;
+      mockSupabase.from = vi.fn().mockImplementation((table: string) => {
+        if (table === 'prestadores') {
+          return {
+            select: vi.fn().mockImplementation((cols: string) => {
+              if (cols === 'notes') {
+                return {
+                  eq: vi.fn().mockReturnValue({
+                    maybeSingle: vi.fn().mockResolvedValue({
+                      data: { notes: remoteNotesJson },
+                      error: null,
+                    }),
+                  }),
+                };
+              }
+              return {
+                eq: vi.fn().mockResolvedValue({ data: [{ id: 'prov-003' }], error: null }),
+              };
+            }),
+            update: vi.fn().mockImplementation((payload: any) => {
+              capturedPayload = payload;
+              return {
+                eq: vi.fn().mockReturnValue({
+                  select: vi.fn().mockResolvedValue({
+                    data: [{ id: 'prov-003' }],
+                    error: null,
+                  }),
+                }),
+              };
+            }),
+          };
+        }
+        return { select: vi.fn().mockReturnThis() };
+      });
+
+      const res = await store.adminUpdateProvider('pedro@test.com', {
+        notes: JSON.stringify({ text: 'nueva nota desde formulario ciego' }),
+      });
+
+      expect(res.success).toBe(true);
+      expect(capturedPayload).toBeTruthy();
+      const savedNotes = JSON.parse(capturedPayload.notes);
+      expect(savedNotes.text).toBe('nueva nota desde formulario ciego');
+      expect(savedNotes.pausedByBajaExpIds).toEqual(['exp-3', 'exp-4']);
+    });
+  });
+
+  describe('loadProviderNotes', () => {
+    it('should query Supabase for remote notes and update local provider when found', async () => {
+      const prov = {
+        id: 'prov-notes-1',
+        name: 'Guía Test',
+        email: 'guia-notes@test.com',
+        phone: '123',
+        status: 'aprobado' as const,
+        notes: 'local note',
+      };
+      (store as any)._providers.set([prov]);
+
+      mockSupabase.from = vi.fn().mockImplementation((table: string) => {
+        if (table === 'prestadores') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { notes: JSON.stringify({ pausedByBajaExpIds: ['exp-99'], text: 'remote' }) },
+                  error: null,
+                }),
+              }),
+            }),
+          };
+        }
+        return { select: vi.fn().mockReturnThis() };
+      });
+
+      const notes = await store.loadProviderNotes('guia-notes@test.com');
+      expect(notes).toBe(JSON.stringify({ pausedByBajaExpIds: ['exp-99'], text: 'remote' }));
+      const updated = store.allProviders().find((p) => p.email === 'guia-notes@test.com');
+      expect(updated?.notes).toBe(notes);
+    });
+
+    it('should return null when remote lookup fails or notes not found', async () => {
+      mockSupabase.from = vi.fn().mockImplementation((table: string) => {
+        if (table === 'prestadores') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: null,
+                  error: { message: 'Not found' },
+                }),
+              }),
+            }),
+          };
+        }
+        return { select: vi.fn().mockReturnThis() };
+      });
+
+      const notes = await store.loadProviderNotes('inexistente@test.com');
+      expect(notes).toBeNull();
+    });
+  });
+
+  describe('loadProposalsFromSupabase - provider refresh and approval recognition', () => {
+    it('should query published status and map remote status "publicada" to "aprobada", preserving approved requests', async () => {
+      // Local proposals before refresh: an approved request from this provider and one from another provider
+      const localApprovedReq: any = {
+        id: 'prop-approved-local',
+        title: 'Trekking Antofagasta',
+        providerEmail: 'guia@test.com',
+        status: 'aprobada',
+        createdAt: '2026-10-01T10:00:00.000Z',
+      };
+      const otherProviderReq: any = {
+        id: 'prop-other',
+        title: 'Cabalgata Belén',
+        providerEmail: 'carlos@test.com',
+        status: 'pendiente',
+        createdAt: '2026-10-02T10:00:00.000Z',
+      };
+      (store as any)._experienceRequests.set([localApprovedReq, otherProviderReq]);
+
+      let capturedStatuses: string[] = [];
+      mockSupabase.from = vi.fn().mockImplementation((table: string) => {
+        if (table === 'experiencias') {
+          return {
+            select: vi.fn().mockReturnValue({
+              in: vi.fn().mockImplementation((col: string, values: string[]) => {
+                capturedStatuses = values;
+                return {
+                  ilike: vi.fn().mockReturnValue({
+                    order: vi.fn().mockResolvedValue({
+                      data: [
+                        {
+                          id: 'remote-pub-1',
+                          title: 'Volcán Galán 4x4',
+                          provider_email: 'guia@test.com',
+                          status: 'publicada',
+                          created_at: '2026-10-05T10:00:00.000Z',
+                        },
+                        {
+                          id: 'remote-pend-1',
+                          title: 'Ruta del Adobe',
+                          provider_email: 'guia@test.com',
+                          status: 'pendiente',
+                          created_at: '2026-10-06T10:00:00.000Z',
+                        },
+                      ],
+                      error: null,
+                    }),
+                  }),
+                };
+              }),
+            }),
+          };
+        }
+        if (table === 'prestadores') {
+          return {
+            select: vi.fn().mockResolvedValue({ data: [], error: null }),
+          };
+        }
+        return {
+          select: vi.fn().mockReturnThis(),
+        };
+      });
+
+      await store.loadProposalsFromSupabase('guia@test.com');
+
+      expect(capturedStatuses).toContain('publicada');
+      expect(capturedStatuses).toContain('pendiente');
+      expect(capturedStatuses).toContain('rechazada');
+
+      const all = store.experienceRequests();
+      // remote-pub-1 should be mapped to status: 'aprobada'
+      const remotePub = all.find((r) => r.id === 'remote-pub-1');
+      expect(remotePub).toBeTruthy();
+      expect(remotePub?.status).toBe('aprobada');
+
+      // remote-pend-1 should remain 'pendiente'
+      const remotePend = all.find((r) => r.id === 'remote-pend-1');
+      expect(remotePend).toBeTruthy();
+      expect(remotePend?.status).toBe('pendiente');
+
+      // localApprovedReq from same provider should be preserved
+      const preservedLocal = all.find((r) => r.id === 'prop-approved-local');
+      expect(preservedLocal).toBeTruthy();
+      expect(preservedLocal?.status).toBe('aprobada');
+
+      // otherProviderReq from different provider should also be preserved
+      const preservedOther = all.find((r) => r.id === 'prop-other');
+      expect(preservedOther).toBeTruthy();
+    });
+
+    it('should include "publicada" and "oculta" in statusFilter during global query so approved proposals remain in _experienceRequests', async () => {
+      let capturedStatuses: string[] = [];
+      mockSupabase.from = vi.fn().mockImplementation((table: string) => {
+        if (table === 'experiencias') {
+          return {
+            select: vi.fn().mockReturnValue({
+              in: vi.fn().mockImplementation((col: string, values: string[]) => {
+                capturedStatuses = values;
+                return {
+                  order: vi.fn().mockResolvedValue({
+                    data: [
+                      {
+                        id: 'global-pub-1',
+                        title: 'Experiencia Oficial Aprobada',
+                        provider_email: 'oficial@test.com',
+                        status: 'publicada',
+                        created_at: '2026-10-10T10:00:00.000Z',
+                      },
+                      {
+                        id: 'global-paused-1',
+                        title: 'Experiencia Aprobada Pausada',
+                        provider_email: 'pausado@test.com',
+                        status: 'oculta',
+                        created_at: '2026-10-10T11:00:00.000Z',
+                      },
+                      {
+                        id: 'global-pend-1',
+                        title: 'Experiencia Nueva',
+                        provider_email: 'otro@test.com',
+                        status: 'pendiente',
+                        created_at: '2026-10-11T10:00:00.000Z',
+                      },
+                    ],
+                    error: null,
+                  }),
+                };
+              }),
+            }),
+          };
+        }
+        if (table === 'prestadores') {
+          return {
+            select: vi.fn().mockResolvedValue({ data: [], error: null }),
+          };
+        }
+        return { select: vi.fn().mockReturnThis() };
+      });
+
+      await store.loadProposalsFromSupabase();
+
+      expect(capturedStatuses).toEqual(['pendiente', 'rechazada', 'publicada', 'oculta']);
+      const requests = store.experienceRequests();
+      const approved = requests.find((r) => r.id === 'global-pub-1');
+      expect(approved).toBeTruthy();
+      expect(approved?.status).toBe('aprobada');
+      const pausedApproved = requests.find((r) => r.id === 'global-paused-1');
+      expect(pausedApproved).toBeTruthy();
+      expect(pausedApproved?.status).toBe('aprobada');
+    });
+  });
 });
 

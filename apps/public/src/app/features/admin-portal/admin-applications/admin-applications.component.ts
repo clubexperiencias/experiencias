@@ -734,6 +734,7 @@ type ApplicationFilterTab =
 
       .applications-table th.col-actions {
         background: #23120a;
+        text-align: center;
       }
 
       .applications-table td {

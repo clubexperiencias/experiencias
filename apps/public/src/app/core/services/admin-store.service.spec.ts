@@ -41,6 +41,7 @@ describe('AdminStoreService - Provider Status Update Flow', () => {
       syncProviderStatusFromAdmin: vi.fn(),
       loadStoredProviders: vi.fn().mockReturnValue([]),
       reloadFromStorage: vi.fn(),
+      syncClubProviderProfile: vi.fn(),
     };
 
     TestBed.configureTestingModule({
@@ -50,7 +51,10 @@ describe('AdminStoreService - Provider Status Update Flow', () => {
         { provide: NotificationService, useValue: mockNotification },
         { provide: ProviderStoreService, useValue: mockProviderStore },
         { provide: NewsletterService, useValue: {} },
-        { provide: ExperienceService, useValue: { getClubProfile: vi.fn() } },
+        {
+          provide: ExperienceService,
+          useValue: { getClubProfile: vi.fn(), syncClubExperiencesWithProfile: vi.fn() },
+        },
       ],
     });
 
@@ -471,6 +475,247 @@ describe('AdminStoreService - Provider Status Update Flow', () => {
         }),
         { count: 'exact' },
       );
+    });
+  });
+
+  describe('USD Exchange Rate Management', () => {
+    it('should normalize accepted rates once and synchronize signal, localStorage, and club profile', () => {
+      adminStore.setUsdExchangeRate(1450.75);
+      expect(adminStore.usdExchangeRate()).toBe(1451);
+      expect(adminStore.clubProfile().usdExchangeRate).toBe(1451);
+      expect(localStorage.getItem('catamarca_usd_exchange_rate_v1')).toBe('1451');
+    });
+
+    it('should reject non-finite and non-positive rates without mutating existing rate', () => {
+      adminStore.setUsdExchangeRate(1350);
+      expect(adminStore.usdExchangeRate()).toBe(1350);
+
+      adminStore.setUsdExchangeRate(0);
+      expect(adminStore.usdExchangeRate()).toBe(1350);
+
+      adminStore.setUsdExchangeRate(-200);
+      expect(adminStore.usdExchangeRate()).toBe(1350);
+
+      adminStore.setUsdExchangeRate(NaN);
+      expect(adminStore.usdExchangeRate()).toBe(1350);
+
+      adminStore.setUsdExchangeRate(Infinity);
+      expect(adminStore.usdExchangeRate()).toBe(1350);
+
+      adminStore.setUsdExchangeRate(0.4);
+      expect(adminStore.usdExchangeRate()).toBe(1350);
+    });
+
+    it('should consistently use validated rounded rate in signal, merged data, and notes on updateClubProfile success', async () => {
+      let capturedPayload: any = null;
+      (adminStore as any).supabase.from = vi.fn().mockReturnValue({
+        update: vi.fn().mockImplementation((payload: any) => {
+          capturedPayload = payload;
+          return {
+            eq: vi.fn().mockReturnValue({
+              select: vi.fn().mockResolvedValue({ data: [{ ...payload, id: 'club-1' }], error: null }),
+            }),
+          };
+        }),
+      });
+
+      const res = await adminStore.updateClubProfile({ usdExchangeRate: 1550.6 });
+      expect(res.success).toBe(true);
+      expect(adminStore.usdExchangeRate()).toBe(1551);
+      expect(adminStore.clubProfile().usdExchangeRate).toBe(1551);
+      const notes = JSON.parse(capturedPayload.notes);
+      expect(notes.usd_exchange_rate).toBe(1551);
+    });
+
+    it('should keep USD exchange rate unchanged if updateClubProfile fails on database write', async () => {
+      adminStore.setUsdExchangeRate(1300);
+      expect(adminStore.usdExchangeRate()).toBe(1300);
+
+      (adminStore as any).supabase.from = vi.fn().mockReturnValue({
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            select: vi.fn().mockResolvedValue({ data: null, error: { message: 'Database connection failed' } }),
+          }),
+        }),
+      });
+
+      const res = await adminStore.updateClubProfile({ usdExchangeRate: 1600 });
+      expect(res.success).toBe(false);
+      expect(adminStore.usdExchangeRate()).toBe(1300);
+      expect(adminStore.clubProfile().usdExchangeRate).toBe(1300);
+    });
+
+    it('should persist editable address in notes, signal, and local storage on updateClubProfile', async () => {
+      let capturedPayload: any = null;
+      (adminStore as any).supabase.from = vi.fn().mockReturnValue({
+        update: vi.fn().mockImplementation((payload: any) => {
+          capturedPayload = payload;
+          return {
+            eq: vi.fn().mockReturnValue({
+              select: vi.fn().mockResolvedValue({ data: [{ ...payload, id: 'club-1' }], error: null }),
+            }),
+          };
+        }),
+      });
+
+      const res = await adminStore.updateClubProfile({ address: 'Av. Virgen del Valle 123, Catamarca' });
+      expect(res.success).toBe(true);
+      expect(adminStore.clubProfile().address).toBe('Av. Virgen del Valle 123, Catamarca');
+      const parsedNotes = JSON.parse(capturedPayload.notes);
+      expect(parsedNotes.address).toBe('Av. Virgen del Valle 123, Catamarca');
+
+      const savedLocal = JSON.parse(localStorage.getItem('catamarca_club_official_profile_v1') || '{}');
+      expect(savedLocal.address).toBe('Av. Virgen del Valle 123, Catamarca');
+    });
+
+    it('should restore editable address from remote notes on loadClubProfile and persist it in local storage', async () => {
+      (adminStore as any).activeLoadClubProfilePromise = null;
+      (adminStore as any).supabase.from = vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: {
+                id: 'club-remote-1',
+                name: 'Club de Experiencias',
+                slug: 'club-de-experiencias',
+                notes: JSON.stringify({
+                  system: 'configuracion_club',
+                  usd_exchange_rate: 1450,
+                  address: 'Esquiu 456, San Fernando del Valle',
+                }),
+              },
+              error: null,
+            }),
+          }),
+        }),
+      });
+
+      await adminStore.loadClubProfile();
+      expect(adminStore.clubProfile().address).toBe('Esquiu 456, San Fernando del Valle');
+      expect(adminStore.clubProfile().usdExchangeRate).toBe(1450);
+
+      const savedLocal = JSON.parse(localStorage.getItem('catamarca_club_official_profile_v1') || '{}');
+      expect(savedLocal.address).toBe('Esquiu 456, San Fernando del Valle');
+    });
+
+    it('should merge latest remote notes preserving free text, metadata, and pausedByBajaExpIds on updateClubProfile', async () => {
+      let capturedPayload: any = null;
+      const remoteNotesJson = JSON.stringify({
+        system: 'legacy_system',
+        customMeta: 'preserved_value',
+        pausedByBajaExpIds: ['exp-1', 'exp-2'],
+        text: 'Notas importantes del prestador oficial',
+      });
+
+      (adminStore as any).supabase.from = vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: { notes: remoteNotesJson },
+              error: null,
+            }),
+          }),
+        }),
+        update: vi.fn().mockImplementation((payload: any) => {
+          capturedPayload = payload;
+          return {
+            eq: vi.fn().mockReturnValue({
+              select: vi.fn().mockResolvedValue({ data: [{ ...payload, id: 'club-1' }], error: null }),
+            }),
+          };
+        }),
+      });
+
+      const res = await adminStore.updateClubProfile({
+        usdExchangeRate: 1420,
+        address: 'Nueva Sede Central',
+      });
+
+      expect(res.success).toBe(true);
+      expect(capturedPayload).not.toBeNull();
+      const parsedNotes = JSON.parse(capturedPayload.notes);
+      expect(parsedNotes.system).toBe('configuracion_club');
+      expect(parsedNotes.usd_exchange_rate).toBe(1420);
+      expect(parsedNotes.address).toBe('Nueva Sede Central');
+      expect(parsedNotes.customMeta).toBe('preserved_value');
+      expect(parsedNotes.pausedByBajaExpIds).toEqual(['exp-1', 'exp-2']);
+      expect(parsedNotes.text).toBe('Notas importantes del prestador oficial');
+    });
+
+    it('should preserve non-JSON free text in remote notes under text property when updating club profile', async () => {
+      let capturedPayload: any = null;
+      const rawTextNotes = 'Texto plano de notas ingresado previamente';
+
+      (adminStore as any).supabase.from = vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: { notes: rawTextNotes },
+              error: null,
+            }),
+          }),
+        }),
+        update: vi.fn().mockImplementation((payload: any) => {
+          capturedPayload = payload;
+          return {
+            eq: vi.fn().mockReturnValue({
+              select: vi.fn().mockResolvedValue({ data: [{ ...payload, id: 'club-1' }], error: null }),
+            }),
+          };
+        }),
+      });
+
+      const res = await adminStore.updateClubProfile({
+        usdExchangeRate: 1430,
+      });
+
+      expect(res.success).toBe(true);
+      const parsedNotes = JSON.parse(capturedPayload.notes);
+      expect(parsedNotes.text).toBe(rawTextNotes);
+      expect(parsedNotes.usd_exchange_rate).toBe(1430);
+      expect(parsedNotes.system).toBe('configuracion_club');
+    });
+
+    it('should remove address from notes when saving a blank address on updateClubProfile, preserving other notes fields', async () => {
+      let capturedPayload: any = null;
+      const remoteNotesJson = JSON.stringify({
+        system: 'legacy_system',
+        customMeta: 'preserved_value',
+        pausedByBajaExpIds: ['exp-1'],
+        address: 'Calle Anterior 123',
+      });
+
+      (adminStore as any).supabase.from = vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: { notes: remoteNotesJson },
+              error: null,
+            }),
+          }),
+        }),
+        update: vi.fn().mockImplementation((payload: any) => {
+          capturedPayload = payload;
+          return {
+            eq: vi.fn().mockReturnValue({
+              select: vi.fn().mockResolvedValue({ data: [{ ...payload, id: 'club-1' }], error: null }),
+            }),
+          };
+        }),
+      });
+
+      const res = await adminStore.updateClubProfile({
+        address: '   ',
+      });
+
+      expect(res.success).toBe(true);
+      expect(capturedPayload).not.toBeNull();
+      const parsedNotes = JSON.parse(capturedPayload.notes);
+      expect(parsedNotes.address).toBeUndefined();
+      expect('address' in parsedNotes).toBe(false);
+      expect(parsedNotes.system).toBe('configuracion_club');
+      expect(parsedNotes.customMeta).toBe('preserved_value');
+      expect(parsedNotes.pausedByBajaExpIds).toEqual(['exp-1']);
     });
   });
 });

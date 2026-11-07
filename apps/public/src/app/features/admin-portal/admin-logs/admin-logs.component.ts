@@ -7,7 +7,7 @@ import { AdminStoreService } from '../../../core/services/admin-store.service';
 import { ExperienceService } from '../../../core/services/experience.service';
 import { FechaPipe } from '../../../shared/pipes/format.pipes';
 
-export type LogFilterTab = 'todos' | 'admins' | 'prestadores';
+export type LogFilterTab = 'todos' | 'admins' | 'prestadores' | 'socios';
 
 export interface AdminAuditLog {
   id: string;
@@ -100,7 +100,7 @@ export interface AdminAuditLog {
             [class.is-active]="activeTab() === 'admins'"
             (click)="selectTab('admins')"
           >
-            Solo Administradores ({{ adminLogsCount() }})
+            Administradores ({{ adminLogsCount() }})
           </button>
           <button
             type="button"
@@ -108,7 +108,15 @@ export interface AdminAuditLog {
             [class.is-active]="activeTab() === 'prestadores'"
             (click)="selectTab('prestadores')"
           >
-            Solo Prestadores ({{ providerLogsCount() }})
+            Prestadores ({{ providerLogsCount() }})
+          </button>
+          <button
+            type="button"
+            class="filter-tab"
+            [class.is-active]="activeTab() === 'socios'"
+            (click)="selectTab('socios')"
+          >
+            Socios ({{ memberLogsCount() }})
           </button>
         </div>
       </div>
@@ -126,8 +134,9 @@ export interface AdminAuditLog {
             <table class="logs-table">
               <thead>
                 <tr>
-                  <th>Fecha y Hora</th>
-                  <th>Operador / Rol</th>
+                  <th class="col-datetime">Fecha y Hora</th>
+                  <th>Rol</th>
+                  <th>Operador</th>
                   <th>Acción Realizada</th>
                   <th>Detalle & Objeto</th>
                   <th>Tipo / Categoría</th>
@@ -138,27 +147,29 @@ export interface AdminAuditLog {
                 @for (log of filteredLogs(); track log.id) {
                   <tr>
                     <!-- Fecha y Hora -->
-                    <td class="font-mono time-cell">
+                    <td class="font-mono col-datetime">
                       <span class="log-date">{{ (log.timestamp | fecha: 'hora') || '—' }}</span>
                     </td>
 
-                    <!-- Operador / Rol -->
+                    <!-- Rol -->
                     <td>
-                      <div class="actor-cell">
-                        <span
-                          class="actor-badge"
-                          [class.is-admin]="log.actorType === 'admin'"
-                          [class.is-provider]="log.actorType === 'prestador'"
-                          [class.is-member]="log.actorType === 'socio'"
-                        >
-                          {{ log.actorType === 'admin' ? 'ADMIN' : log.actorType === 'prestador' ? 'PRESTADOR' : 'SOCIO' }}
-                        </span>
-                        <div class="actor-info">
-                          <strong class="actor-name">{{ log.actorName }}</strong>
-                          @if (log.actorEmail) {
-                            <span class="actor-email font-mono">{{ log.actorEmail }}</span>
-                          }
-                        </div>
+                      <span
+                        class="actor-badge"
+                        [class.is-admin]="log.actorType === 'admin'"
+                        [class.is-provider]="log.actorType === 'prestador'"
+                        [class.is-member]="log.actorType === 'socio'"
+                      >
+                        {{ log.actorType === 'admin' ? 'ADMIN' : log.actorType === 'prestador' ? 'PRESTADOR' : 'SOCIO' }}
+                      </span>
+                    </td>
+
+                    <!-- Operador -->
+                    <td>
+                      <div class="actor-info">
+                        <strong class="actor-name">{{ log.actorName }}</strong>
+                        @if (log.actorEmail) {
+                          <span class="actor-email font-mono">{{ log.actorEmail }}</span>
+                        }
                       </div>
                     </td>
 
@@ -193,8 +204,7 @@ export interface AdminAuditLog {
                     <td class="text-right">
                       @if (log.targetLink) {
                         <a [routerLink]="resolveAdminLink(log.targetLink)" class="btn-goto-link" title="Ir al registro">
-                          <span>Ver</span>
-                          <mat-icon class="link-icon">arrow_forward</mat-icon>
+                          <span>Ver ahora</span>
                         </a>
                       } @else {
                         <span class="text-muted">—</span>
@@ -460,6 +470,14 @@ export interface AdminAuditLog {
         background: #241309;
       }
 
+      .col-datetime,
+      .logs-table th.col-datetime,
+      .logs-table td.col-datetime {
+        min-width: 165px;
+        width: 175px;
+        white-space: nowrap;
+      }
+
       .time-cell {
         display: flex;
         flex-direction: column;
@@ -470,6 +488,8 @@ export interface AdminAuditLog {
         color: #ffffff;
         font-size: 0.78rem;
         font-weight: 700;
+        white-space: nowrap;
+        display: inline-block;
       }
 
       .log-hour {
@@ -484,12 +504,14 @@ export interface AdminAuditLog {
       }
 
       .actor-badge {
+        display: inline-block;
         font-size: 0.62rem;
         font-weight: 800;
         letter-spacing: 0.06em;
         padding: 0.2rem 0.45rem;
         border-radius: 2px;
         text-transform: uppercase;
+        white-space: nowrap;
       }
 
       .actor-badge.is-admin {
@@ -611,8 +633,11 @@ export interface AdminAuditLog {
       .btn-goto-link {
         display: inline-flex;
         align-items: center;
-        gap: 0.3rem;
-        padding: 0.35rem 0.65rem;
+        justify-content: center;
+        padding: 0 0.75rem;
+        height: 28px;
+        min-height: 28px;
+        box-sizing: border-box;
         background: rgba(255, 95, 0, 0.12);
         border: 1px solid rgba(255, 95, 0, 0.35);
         color: #ff9955;
@@ -620,18 +645,13 @@ export interface AdminAuditLog {
         font-weight: 700;
         text-decoration: none;
         border-radius: 2px;
+        white-space: nowrap;
         transition: all 0.2s ease;
       }
       .btn-goto-link:hover {
         background: #ff5f00;
         color: #ffffff;
         border-color: #ff5f00;
-      }
-
-      .link-icon {
-        font-size: 13px;
-        width: 13px;
-        height: 13px;
       }
 
       .text-muted {
@@ -680,6 +700,8 @@ export class AdminLogsComponent {
       this.activeTab.set('admins');
     } else if (path.includes('/logs/prestadores')) {
       this.activeTab.set('prestadores');
+    } else if (path.includes('/logs/socios')) {
+      this.activeTab.set('socios');
     }
   }
 
@@ -695,6 +717,8 @@ export class AdminLogsComponent {
       void this.router.navigateByUrl(`${base}/logs/admins`);
     } else if (tab === 'prestadores') {
       void this.router.navigateByUrl(`${base}/logs/prestadores`);
+    } else if (tab === 'socios') {
+      void this.router.navigateByUrl(`${base}/logs/socios`);
     }
   }
 
@@ -889,6 +913,7 @@ export class AdminLogsComponent {
 
   readonly adminLogsCount = computed(() => this.allLogs().filter((l) => l.actorType === 'admin').length);
   readonly providerLogsCount = computed(() => this.allLogs().filter((l) => l.actorType === 'prestador').length);
+  readonly memberLogsCount = computed(() => this.allLogs().filter((l) => l.actorType === 'socio').length);
   readonly proposalsCount = computed(() => this.allLogs().filter((l) => l.targetType === 'propuesta').length);
   readonly receiptsCount = computed(() => this.allLogs().filter((l) => l.targetType === 'comprobante').length);
 
@@ -901,6 +926,8 @@ export class AdminLogsComponent {
       list = list.filter((l) => l.actorType === 'admin');
     } else if (tab === 'prestadores') {
       list = list.filter((l) => l.actorType === 'prestador');
+    } else if (tab === 'socios') {
+      list = list.filter((l) => l.actorType === 'socio');
     }
 
     if (query) {
