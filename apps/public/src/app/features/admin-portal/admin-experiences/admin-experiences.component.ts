@@ -4821,14 +4821,10 @@ export class AdminExperiencesComponent implements OnInit {
     }
 
     const confirmedDates = parseConfirmedProposalDates(datesRaw);
-    const dates: string[] = isUnscheduledProposal
-      ? []
-      : (confirmedDates.length > 0
-          ? confirmedDates
-          : datesRaw.split(',').map((d) => d.trim()).filter((d) => d.length > 0));
+    const dates: string[] = isUnscheduledProposal ? [] : confirmedDates;
 
-    if (!isUnscheduledProposal && dates.length === 0) {
-      this.showToast('⚠️ Por favor definí al menos una fecha de salida para la experiencia.');
+    if (!isUnscheduledProposal && confirmedDates.length === 0) {
+      this.showToast('⚠️ Por favor definí al menos una fecha válida (YYYY-MM-DD) o indicá "A coordinar".');
       return;
     }
 
@@ -4973,7 +4969,13 @@ export class AdminExperiencesComponent implements OnInit {
 
           if (newStatus === 'publicada') {
             const confirmedDates = parseConfirmedProposalDates(this.editDatesRaw());
-            payload.dates = confirmedDates.length > 0 ? confirmedDates : dates;
+            if (!isUnscheduledProposal && confirmedDates.length === 0) {
+              this.showToast(
+                '⚠️ No se puede publicar la experiencia: las fechas no tienen un formato válido (YYYY-MM-DD). Para salidas flexibles usá "A coordinar".',
+              );
+              return;
+            }
+            payload.dates = isUnscheduledProposal ? [] : confirmedDates;
 
             if (req) {
               await this.adminStore.approveExperienceRequest(
@@ -5081,7 +5083,17 @@ export class AdminExperiencesComponent implements OnInit {
         : typeof exp.dates === 'string'
           ? exp.dates
           : req?.dates || '';
+      const isUnscheduled =
+        datesRaw.toLowerCase().includes('a coordinar') ||
+        (!datesRaw.trim() && exp.status === 'pendiente');
       const confirmedDates = parseConfirmedProposalDates(datesRaw);
+
+      if (!isUnscheduled && confirmedDates.length === 0) {
+        this.showToast(
+          '⚠️ No se puede aprobar la propuesta: las fechas no tienen formato válido (YYYY-MM-DD). Para salidas flexibles usá "A coordinar".',
+        );
+        return;
+      }
 
       let ok = false;
       if (req) {
@@ -5096,7 +5108,7 @@ export class AdminExperiencesComponent implements OnInit {
         await this.experienceService.updateExperience({
           id: exp.id,
           status: 'publicada',
-          dates: confirmedDates.length > 0 ? confirmedDates : (Array.isArray(exp.dates) ? exp.dates : []),
+          dates: isUnscheduled ? [] : confirmedDates,
         });
         ok = true;
       }

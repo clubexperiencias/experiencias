@@ -1905,6 +1905,9 @@ export class ProviderStoreService {
           );
         }
 
+        if (rpcPayload?.status === 'invalid_date') {
+          throw new Error('La fecha elegida no está disponible.');
+        }
         if (rpcPayload?.status === 'date_closed') {
           throw new Error('La fecha elegida se encuentra cerrada para nuevas reservas.');
         }
@@ -1923,7 +1926,8 @@ export class ProviderStoreService {
           err?.message?.includes('válidos') ||
           err?.message?.includes('servidor') ||
           err?.message?.includes('cerrada') ||
-          err?.message?.includes('importe')
+          err?.message?.includes('importe') ||
+          err?.message?.includes('disponible')
         ) {
           throw err;
         }

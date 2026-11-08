@@ -1806,16 +1806,8 @@ export class ExperienceService {
             providerSlugMap.get(email) ||
             providerSlugMap.get(name) ||
             providerSlugMap.get(agency);
-          const fallbackSlug = !isClub && (exp.provider_name || exp.provider_agency)
-            ? (exp.provider_name || exp.provider_agency)
-                .toLowerCase()
-                .normalize('NFD')
-                .replace(/[\u0300-\u036f]/g, '')
-                .replace(/[^a-z0-9]+/g, '-')
-                .replace(/(^-|-$)+/g, '')
-            : undefined;
 
-          const resolvedProviderSlug = isClub ? 'club-de-experiencias' : (mappedSlug || fallbackSlug || undefined);
+          const resolvedProviderSlug = isClub ? 'club-de-experiencias' : (mappedSlug || undefined);
           const resolvedProviderName = isClub ? (clubProfile.name || 'Club de Experiencias') : (exp.provider_name || undefined);
           const resolvedProviderEmail = isClub ? (clubProfile.email || 'admin@experiencias.club') : (exp.provider_email || undefined);
           const resolvedProviderPhone = isClub ? (clubProfile.phone || '+54 9 383 456-7890') : (exp.provider_phone || undefined);

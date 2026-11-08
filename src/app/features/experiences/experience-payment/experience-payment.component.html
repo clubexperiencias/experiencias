@@ -192,20 +192,37 @@
                             </span>
                           </button>
                         } @empty {
-                          <div class="pay-no-dates-card">
-                            <div class="pay-no-dates-info">
-                              <strong>Salidas con fecha a coordinar</strong>
-                              <p>Podés reservar tu experiencia ahora mismo y coordinar la fecha exacta de salida luego con el prestador, o consultar próximas aperturas por WhatsApp.</p>
+                          @if (hasNoFixedDates()) {
+                            <div class="pay-no-dates-card">
+                              <div class="pay-no-dates-info">
+                                <strong>Salidas con fecha a coordinar</strong>
+                                <p>Podés reservar tu experiencia ahora mismo y coordinar la fecha exacta de salida luego con el prestador, o consultar próximas aperturas por WhatsApp.</p>
+                              </div>
+                              <a
+                                [href]="whatsAppInquiryUrl()"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="pay-no-dates-wa-btn"
+                              >
+                                <span>Consultar Fechas por WhatsApp</span>
+                              </a>
                             </div>
-                            <a
-                              [href]="whatsAppInquiryUrl()"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              class="pay-no-dates-wa-btn"
-                            >
-                              <span>Consultar Fechas por WhatsApp</span>
-                            </a>
-                          </div>
+                          } @else {
+                            <div class="pay-no-dates-card">
+                              <div class="pay-no-dates-info">
+                                <strong>No hay salidas programadas disponibles</strong>
+                                <p>Las fechas para esta experiencia se encuentran completas o cerradas. Podés consultar próximas aperturas por WhatsApp.</p>
+                              </div>
+                              <a
+                                [href]="whatsAppInquiryUrl()"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="pay-no-dates-wa-btn"
+                              >
+                                <span>Consultar Próximas Fechas por WhatsApp</span>
+                              </a>
+                            </div>
+                          }
                         }
                       </div>
                       @if (

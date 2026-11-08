@@ -144,6 +144,39 @@ describe('ProviderStoreService - Payment & Proposal Persistence', () => {
       expect(sub.status).toBe('pendiente');
     });
 
+    it('should throw and reject transfer when submit_experience_transfer RPC returns invalid_date status', async () => {
+      const exp: Partial<ProviderExperience> = {
+        id: 'exp-kayak-test-date',
+        slug: 'kayak-en-el-jumeal',
+        title: 'Kayak en El Jumeal',
+        status: 'publicada',
+        priceArs: 15000,
+        dates: ['2026-11-20'],
+        capacityPerDate: 10,
+      };
+      (store as any)._experiences.set([exp]);
+      mockSupabase.rpc.mockResolvedValueOnce({
+        data: { status: 'invalid_date', message: 'La fecha seleccionada no está disponible.' },
+        error: null,
+      });
+
+      const file = new File(['dummy-content'], 'comprobante.jpg', { type: 'image/jpeg' });
+      await expect(
+        store.submitTransfer({
+          experienceId: 'exp-kayak-test-date',
+          date: '2026-11-20',
+          participants: 1,
+          fullName: 'Juan Pérez',
+          email: 'juan@test.com',
+          dni: '38123456',
+          phone: '+5493834112233',
+          receiptFile: file,
+        }),
+      ).rejects.toThrow('La fecha elegida no está disponible.');
+
+      expect(store.submissions().length).toBe(0);
+    });
+
     it('should preserve pendiente, aprobado, and rechazado statuses on loadStoredSubmissions without promoting unreviewed receipts', () => {
       const stored = [
         { id: 'sub-p1', amountArs: 10000, status: 'pendiente' },

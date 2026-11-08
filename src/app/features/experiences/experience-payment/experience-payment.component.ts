@@ -197,14 +197,14 @@ export class ExperiencePaymentComponent implements OnInit {
 
   readonly hasNoFixedDates = computed(() => {
     const exp = this.experience();
-    return Boolean(exp && this.dateOptions().length === 0);
+    return Boolean(exp && (!exp.dates || exp.dates.length === 0));
   });
 
   readonly seatsForSelectedDate = computed(() => {
     const selected = this.formValue().date;
-    if (this.dateOptions().length === 0) {
+    if (this.hasNoFixedDates()) {
       const exp = this.experience();
-      return (exp as any)?.maxSpotsPerGroup || exp?.capacityPerDate || MAX_PARTICIPANTS_PER_BOOKING;
+      return exp?.capacityPerDate || MAX_PARTICIPANTS_PER_BOOKING;
     }
     return this.dateOptions().find((o) => o.date === selected)?.available ?? 0;
   });

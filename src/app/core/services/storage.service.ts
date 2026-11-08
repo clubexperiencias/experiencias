@@ -82,7 +82,7 @@ export class StorageService {
         .from(primaryBucket)
         .upload(storageKey, file, {
           contentType: file.type || 'application/octet-stream',
-          upsert: false,
+          upsert: true,
         });
 
       if (uploadErr) {

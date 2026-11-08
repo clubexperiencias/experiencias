@@ -79,7 +79,7 @@
 
             <!-- Botones de Acción / Contacto -->
             <div class="contact-actions-bar">
-              @if (p.phone) {
+              @if (cleanWhatsApp(p.phone)) {
                 <a
                   [href]="getWhatsAppUrl(p)"
                   target="_blank"

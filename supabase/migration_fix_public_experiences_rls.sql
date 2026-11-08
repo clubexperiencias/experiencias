@@ -1,5 +1,6 @@
 -- ==============================================================================
--- Migration: Enable public reading of experiences for anonymous role (anon)
+-- [SUPERSEDED] This migration is incorporated in supabase/schema.sql and
+-- supabase/migration_consolidated_patches.sql. Retained for historical reference.
 -- ==============================================================================
 
 -- 1. Grant table select privileges to 'anon' role

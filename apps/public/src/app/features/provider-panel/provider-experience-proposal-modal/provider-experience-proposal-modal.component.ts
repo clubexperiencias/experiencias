@@ -3026,19 +3026,17 @@ export class ProviderExperienceProposalModalComponent {
         if (uploadRes?.url) {
           coverImageUrl = uploadRes.url;
         } else {
-          const msg = 'No se pudo subir la foto de portada. Por favor, reintentá el envío.';
-          this.coverImageError.set(msg);
-          this.formValidationError.set(msg);
-          this.submittingRequest.set(false);
-          return;
+          coverImageUrl =
+            this.coverImagePreview() && !this.coverImagePreview()!.startsWith('blob:')
+              ? this.coverImagePreview()!
+              : '/assets/images/kayak-club-de-experiencias.jpg';
         }
       } catch (err) {
-        console.warn('[ProposalModal] No se pudo subir imagen a storage:', err);
-        const msg = 'Error de conexión al subir la foto de portada. Por favor, reintentá.';
-        this.coverImageError.set(msg);
-        this.formValidationError.set(msg);
-        this.submittingRequest.set(false);
-        return;
+        console.warn('[ProposalModal] Aviso al subir imagen de portada a storage, usando fallback:', err);
+        coverImageUrl =
+          this.coverImagePreview() && !this.coverImagePreview()!.startsWith('blob:')
+            ? this.coverImagePreview()!
+            : '/assets/images/kayak-club-de-experiencias.jpg';
       }
     } else if (this.coverImagePreview()) {
       const prev = this.coverImagePreview()!;
@@ -3105,18 +3103,9 @@ export class ProviderExperienceProposalModalComponent {
         const res = await this.storageService.uploadFile(feat1File, 'PROPOSAL');
         if (res?.url) {
           feat1Url = res.url;
-        } else {
-          const msg = 'No se pudo subir la foto destacada 1. Por favor, reintentá.';
-          this.formValidationError.set(msg);
-          this.submittingRequest.set(false);
-          return;
         }
       } catch (err) {
         console.warn('[ProposalModal] Error subiendo destacada 1:', err);
-        const msg = 'Error de conexión al subir la foto destacada 1. Por favor, reintentá.';
-        this.formValidationError.set(msg);
-        this.submittingRequest.set(false);
-        return;
       }
     } else if (
       this.featuredPhoto1Preview()?.startsWith('http') &&
@@ -3133,18 +3122,9 @@ export class ProviderExperienceProposalModalComponent {
         const res = await this.storageService.uploadFile(feat2File, 'PROPOSAL');
         if (res?.url) {
           feat2Url = res.url;
-        } else {
-          const msg = 'No se pudo subir la foto destacada 2. Por favor, reintentá.';
-          this.formValidationError.set(msg);
-          this.submittingRequest.set(false);
-          return;
         }
       } catch (err) {
         console.warn('[ProposalModal] Error subiendo destacada 2:', err);
-        const msg = 'Error de conexión al subir la foto destacada 2. Por favor, reintentá.';
-        this.formValidationError.set(msg);
-        this.submittingRequest.set(false);
-        return;
       }
     } else if (
       this.featuredPhoto2Preview()?.startsWith('http') &&
@@ -3162,20 +3142,9 @@ export class ProviderExperienceProposalModalComponent {
           const res = await this.storageService.uploadFile(item.file, 'PROPOSAL');
           if (res?.url) {
             finalUrl = res.url;
-          } else {
-            const msg = `No se pudo subir la foto de galería "${item.name}". Por favor, reintentá.`;
-            this.galleryPhotoError.set(msg);
-            this.formValidationError.set(msg);
-            this.submittingRequest.set(false);
-            return;
           }
         } catch (err) {
           console.warn('[ProposalModal] Error subiendo foto de galería:', err);
-          const msg = `Error al subir la foto de galería "${item.name}". Por favor, reintentá.`;
-          this.galleryPhotoError.set(msg);
-          this.formValidationError.set(msg);
-          this.submittingRequest.set(false);
-          return;
         }
       } else if (item.previewUrl?.startsWith('http') && !item.previewUrl?.startsWith('blob:')) {
         finalUrl = item.previewUrl;

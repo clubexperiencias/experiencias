@@ -54,15 +54,6 @@ export class ExperienceDetailComponent {
         : item.providerSlug;
     }
     if (this.isClubExperience(item)) return DEFAULT_CLUB_PROFILE.slug;
-    if (item.providerName || item.providerAgency) {
-      const fallback = (item.providerName || item.providerAgency)
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)+/g, '');
-      if (fallback) return fallback;
-    }
     return null;
   }
 

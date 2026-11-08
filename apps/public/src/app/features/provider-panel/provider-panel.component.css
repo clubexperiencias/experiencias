@@ -567,8 +567,9 @@
 }
 
 /* Responsive */
-@media (max-width: 680px) {
+@media (max-width: 768px) {
   .portal-top-nav {
+    height: 60px;
     padding: 0 1rem;
   }
 
@@ -577,6 +578,7 @@
   }
 
   .portal-breadcrumb-bar {
+    top: 60px;
     padding: 0.5rem 1rem;
   }
 
@@ -661,6 +663,10 @@
 @media (max-width: 480px) {
   .portal-top-nav {
     height: 60px;
+  }
+
+  .portal-breadcrumb-bar {
+    top: 60px;
   }
 
   .portal-emblem-img {

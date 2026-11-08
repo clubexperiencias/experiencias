@@ -444,7 +444,7 @@ import { ClubProfile } from '../../../core/models/club-profile.model';
       .rate-input-wrap {
         display: flex;
         align-items: stretch;
-        height: 38px;
+        min-height: 38px;
       }
 
       .currency-prefix {
@@ -480,7 +480,7 @@ import { ClubProfile } from '../../../core/models/club-profile.model';
         display: flex;
         align-items: center;
         justify-content: center;
-        height: 38px;
+        min-height: 38px;
         box-sizing: border-box;
       }
 
@@ -559,7 +559,7 @@ import { ClubProfile } from '../../../core/models/club-profile.model';
       }
 
       .form-input {
-        height: 38px;
+        min-height: 38px;
       }
 
       .form-input:focus,
