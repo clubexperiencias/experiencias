@@ -195,17 +195,9 @@
                           @if (hasNoFixedDates()) {
                             <div class="pay-no-dates-card">
                               <div class="pay-no-dates-info">
-                                <strong>Salidas con fecha a coordinar</strong>
-                                <p>Podés reservar tu experiencia ahora mismo y coordinar la fecha exacta de salida luego con el prestador, o consultar próximas aperturas por WhatsApp.</p>
+                                <strong>Salidas con fecha a convenir</strong>
+                                <p>Podés reservar tu experiencia ahora mismo y coordinar la fecha de salida luego.</p>
                               </div>
-                              <a
-                                [href]="whatsAppInquiryUrl()"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                class="pay-no-dates-wa-btn"
-                              >
-                                <span>Consultar Fechas por WhatsApp</span>
-                              </a>
                             </div>
                           } @else {
                             <div class="pay-no-dates-card">
@@ -472,15 +464,26 @@
                           <div class="pay-file-meta">
                             <span class="pay-file-name">{{ file.name }}</span>
                             <span class="pay-file-size">{{ formatSize(file.size) }}</span>
-                            <span class="pay-file-status">
-                              <mat-icon aria-hidden="true">check_circle</mat-icon>
-                              Listo para enviar
-                            </span>
+                            <span class="pay-file-status">Listo para enviar</span>
                           </div>
-                          <button type="button" class="pay-copy-btn" (click)="removeReceipt()">
-                            <mat-icon aria-hidden="true">close</mat-icon>
-                            Quitar
-                          </button>
+                          <div class="pay-file-actions">
+                            <button
+                              type="button"
+                              class="pay-copy-btn pay-view-preview-btn"
+                              (click)="openPreviewModal()"
+                            >
+                              <mat-icon aria-hidden="true">visibility</mat-icon>
+                              Ver vista previa
+                            </button>
+                            <button
+                              type="button"
+                              class="pay-copy-btn pay-remove-file-btn"
+                              (click)="removeReceipt()"
+                            >
+                              <mat-icon aria-hidden="true">close</mat-icon>
+                              Quitar
+                            </button>
+                          </div>
                         </div>
                       } @else {
                         <label

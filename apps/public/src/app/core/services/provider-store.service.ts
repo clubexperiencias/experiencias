@@ -2236,6 +2236,14 @@ export class ProviderStoreService {
           best_season: newReq.season || 'Todo el año',
           dates: newReq.dates ? [newReq.dates] : [],
           itinerary: newReq.itinerary || '',
+          highlights: (newReq.participantRequirements || '')
+            .split('\n')
+            .map((s: string) => s.trim())
+            .filter(Boolean),
+          included: (newReq.includedServices || '')
+            .split('\n')
+            .map((s: string) => s.trim())
+            .filter(Boolean),
           cover_image: newReq.coverImage || '/assets/images/kayak-club-de-experiencias.jpg',
           cover_image_name: newReq.coverImageName || '',
           video_url: newReq.coverVideoUrl || '',
@@ -2382,8 +2390,16 @@ export class ProviderStoreService {
             itinerary: row.itinerary || '',
             meetingPoint: row.meeting_point || '',
             meetingPointUrl: row.meeting_point_url || '',
-            includedServices: Array.isArray(row.included) ? row.included.join('\n') : '',
-            participantRequirements: row.participant_requirements || '',
+            includedServices:
+              Array.isArray(row.included) && row.included.length > 0
+                ? row.included.join('\n')
+                : (row.included_services || ''),
+            participantRequirements:
+              (row.participant_requirements && String(row.participant_requirements).trim().length > 0)
+                ? row.participant_requirements
+                : (Array.isArray(row.highlights) && row.highlights.length > 0
+                    ? row.highlights.join('\n')
+                    : ''),
             notes: row.notes || '',
             coverImage: row.cover_image || '/assets/images/kayak-club-de-experiencias.jpg',
             coverImageName: row.cover_image_name || '',

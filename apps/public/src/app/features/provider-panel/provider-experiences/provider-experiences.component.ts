@@ -103,7 +103,7 @@ export class ProviderExperiencesComponent implements OnInit {
   }
 
   onAlbumSaved(updated: ProviderExperience): void {
-    this.showToast(`📸 Álbum de "${updated.title}" guardado correctamente.`);
+    this.showToast(`Álbum de "${updated.title}" guardado correctamente.`);
   }
 
   readonly rows = computed(() => {
@@ -170,10 +170,10 @@ export class ProviderExperiencesComponent implements OnInit {
   onRequestPublish(exp: ProviderExperience): void {
     try {
       this.store.requestPublish(exp.id);
-      this.showToast('✅ Solicitud de publicación enviada al Admin para revisión.');
+      this.showToast('Solicitud de publicación enviada al Admin para revisión.');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error al solicitar publicación';
-      this.showToast(`⚠️ ${msg}`);
+      this.showToast(msg);
     }
   }
 
@@ -187,7 +187,7 @@ export class ProviderExperiencesComponent implements OnInit {
     if (!exp) return;
     this.store.requestHide(exp.id, this.hideReasonText());
     this.hideReasonModal.set(null);
-    this.showToast('🟠 Solicitud de ocultación enviada al Admin.');
+    this.showToast('Solicitud de ocultación enviada al Admin.');
   }
 
   onDeleteClick(exp: ProviderExperience): void {
@@ -205,10 +205,10 @@ export class ProviderExperiencesComponent implements OnInit {
     try {
       this.store.requestDelete(exp.id);
       this.selectedExpForDelete.set(null);
-      this.showToast('🔴 Solicitud de eliminación enviada al Admin.');
+      this.showToast('Solicitud de eliminación enviada al Admin.');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error al eliminar';
-      this.showToast(`⚠️ ${msg}`);
+      this.showToast(msg);
     }
   }
 
@@ -236,11 +236,14 @@ export class ProviderExperiencesComponent implements OnInit {
 
   onAdminSimulateApprove(expId: string): void {
     this.store.adminApproveAction(expId);
-    this.showToast('✨ [Simulador Admin] Solicitud aprobada con éxito.');
+    this.showToast('[Simulador Admin] Solicitud aprobada con éxito.');
   }
 
   private showToast(msg: string): void {
-    this.feedbackToast.set(msg);
+    const cleanMsg = (msg || '')
+      .replace(/^[\p{Emoji_Presentation}\p{Extended_Pictographic}\u2600-\u27BF\uFE0F\s]+/u, '')
+      .trim();
+    this.feedbackToast.set(cleanMsg || msg);
     setTimeout(() => this.feedbackToast.set(null), 4000);
   }
 

@@ -21,11 +21,20 @@ import {
   exportExperiencesToCsv,
   getPublicExperienceUrl,
 } from '../../../shared/utils/csv.util';
+import { AdminApplicationModalComponent } from '../admin-application-modal/admin-application-modal.component';
 
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, MatIconModule, ArsPipe, FechaPipe],
+  imports: [
+    CommonModule,
+    FormsModule,
+    RouterLink,
+    MatIconModule,
+    ArsPipe,
+    FechaPipe,
+    AdminApplicationModalComponent,
+  ],
   template: `
     <div class="dash-container">
       <!-- Welcome Header Sobrio y Minimalista -->
@@ -737,175 +746,13 @@ import {
         </div>
       }
 
-      <!-- Modal Rápido de Revisión de Postulación -->
+      <!-- Modal Rápido de Revisión de Postulación (Componente Compartido) -->
       @if (selectedApplication(); as app) {
-        <div class="modal-backdrop" (click)="closeApplication()">
-          <div class="quick-modal-card app-quick-modal" (click)="$event.stopPropagation()">
-            <div class="modal-info-col full-app-col">
-              <div class="modal-top">
-                <div>
-                  <span class="card-kicker">
-                    {{
-                      app.type === 'prestador'
-                        ? 'POSTULACIÓN PRESTADOR'
-                        : 'POSTULACIÓN SOCIO FUNDADOR'
-                    }}
-                  </span>
-                  <h3 class="modal-sub-name">{{ app.fullName }}</h3>
-                </div>
-                <button type="button" class="modal-x" (click)="closeApplication()">×</button>
-              </div>
-
-              <dl class="modal-dl">
-                <div>
-                  <dt>Email:</dt>
-                  <dd>
-                    <a [href]="'mailto:' + app.email" class="modal-link">{{ app.email }}</a>
-                  </dd>
-                </div>
-                <div>
-                  <dt>Teléfono:</dt>
-                  <dd>{{ app.phone || '—' }}</dd>
-                </div>
-                <div>
-                  <dt>Estado:</dt>
-                  <dd>
-                    <span class="status-badge" [attr.data-status]="app.status">
-                      @switch (app.status) {
-                        @case ('aprobado') {
-                          Aprobado
-                        }
-                        @case ('rechazado') {
-                          Rechazado
-                        }
-                        @case ('dado_de_baja') {
-                          Dado de baja
-                        }
-                        @default {
-                          Pendiente
-                        }
-                      }
-                    </span>
-                  </dd>
-                </div>
-                @if (app.type === 'prestador') {
-                  <div>
-                    <dt>Rubro:</dt>
-                    <dd>{{ formatCategory(app.category) }}</dd>
-                  </div>
-                  <div>
-                    <dt>Región:</dt>
-                    <dd>{{ app.region || 'Catamarca' }}</dd>
-                  </div>
-                  @if (app.website) {
-                    <div>
-                      <dt>Web:</dt>
-                      <dd>
-                        <a [href]="app.website" target="_blank" rel="noopener" class="modal-link">{{
-                          app.website
-                        }}</a>
-                      </dd>
-                    </div>
-                  }
-                } @else {
-                  <div>
-                    <dt>Categoría:</dt>
-                    <dd>Padrón de Socios Fundadores</dd>
-                  </div>
-                }
-                <div>
-                  <dt>Fecha:</dt>
-                  <dd>{{ app.createdAt | fecha: 'larga' }}</dd>
-                </div>
-              </dl>
-
-              @if ((app.type === 'prestador' && app.description?.trim()) || (app.type !== 'prestador' && app.motivationLetter?.trim())) {
-                <div class="app-desc-box">
-                  <span class="desc-heading">{{
-                    app.type === 'prestador'
-                      ? 'Descripción de servicios y equipamiento:'
-                      : 'Carta de motivación:'
-                  }}</span>
-                  <p class="desc-content">
-                    {{ app.type === 'prestador' ? app.description : app.motivationLetter }}
-                  </p>
-                </div>
-              }
-
-              @if (app.type === 'prestador' && (app.cbuAlias || app.cuitDni)) {
-                <div class="provider-banking-card">
-                  <h4 class="banking-card-title">Datos Bancarios para Liquidación de Pagos</h4>
-                  <div class="banking-display-grid">
-                    <div class="banking-display-item">
-                      <span class="banking-item-lbl">Titular</span>
-                      <strong class="banking-item-val">{{ app.accountHolder || app.fullName }}</strong>
-                    </div>
-                    <div class="banking-display-item">
-                      <span class="banking-item-lbl">CUIT / CUIL</span>
-                      <strong class="banking-item-val">{{ app.cuitDni || '—' }}</strong>
-                    </div>
-                    <div class="banking-display-item">
-                      <span class="banking-item-lbl">CBU / CVU o Alias</span>
-                      <strong class="banking-item-val">{{ app.cbuAlias || '—' }}</strong>
-                    </div>
-                    <div class="banking-display-item">
-                      <span class="banking-item-lbl">Entidad</span>
-                      <strong class="banking-item-val">{{ app.bankName || '—' }}</strong>
-                    </div>
-                  </div>
-                </div>
-              }
-
-              <div class="modal-actions-row">
-                <div class="dash-modal-state-btns">
-                  @if (app.type === 'prestador') {
-                    @if (app.status !== 'aprobado') {
-                      <button
-                        type="button"
-                        class="btn-state btn-approve"
-                        (click)="approveProvider()"
-                      >
-                        Aprobar Prestador
-                      </button>
-                    }
-                    @if (app.status !== 'dado_de_baja') {
-                      <button
-                        type="button"
-                        class="btn-state btn-reject"
-                        (click)="darDeBajaProvider()"
-                      >
-                        Dar de baja
-                      </button>
-                    }
-                  } @else {
-                    @if (app.status !== 'aprobado') {
-                      <button
-                        type="button"
-                        class="btn-state btn-approve"
-                        (click)="changeApplicationStatus('aprobado')"
-                      >
-                        Aprobar Postulación
-                      </button>
-                    }
-                    @if (app.status !== 'dado_de_baja') {
-                      <button
-                        type="button"
-                        class="btn-state btn-reject"
-                        (click)="changeApplicationStatus('dado_de_baja')"
-                      >
-                        Dar de baja
-                      </button>
-                    }
-                  }
-                </div>
-
-                <button type="button" class="btn-close-dash" (click)="closeApplication()">
-                  Cerrar
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <app-admin-application-modal
+          [application]="app"
+          (closed)="closeApplication()"
+          (statusChanged)="onApplicationStatusChanged($event)"
+        />
       }
 
       <!-- Modal de Revisión de Ficha de Nueva Experiencia -->
@@ -2529,11 +2376,16 @@ import {
         flex-wrap: wrap;
       }
 
+      .dash-modal-state-btns .btn-state {
+        height: 34px !important;
+        box-sizing: border-box !important;
+      }
+
       .btn-close-dash {
         flex: 0 0 auto !important;
         align-self: center !important;
-        height: 38px !important;
-        max-height: 38px !important;
+        height: 34px !important;
+        max-height: 34px !important;
         padding: 0 1.25rem !important;
         display: inline-flex !important;
         align-items: center !important;
@@ -2543,7 +2395,7 @@ import {
         color: #ffffff !important;
         font-weight: 700 !important;
         font-size: 0.82rem !important;
-        border-radius: 2px !important;
+        border-radius: 3px !important;
         cursor: pointer !important;
         white-space: nowrap !important;
         box-sizing: border-box !important;
@@ -2983,14 +2835,20 @@ import {
       }
 
       .btn-close {
-        padding: 0.6rem 1.25rem;
+        height: 34px !important;
+        max-height: 34px !important;
+        padding: 0 1.25rem !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
         background: transparent;
         border: 1px solid rgba(255, 255, 255, 0.3);
         color: #ffffff;
         font-size: 0.8rem;
         font-weight: 700;
-        border-radius: 2px;
+        border-radius: 3px;
         cursor: pointer;
+        box-sizing: border-box !important;
       }
 
       .btn-close:hover {
@@ -3546,6 +3404,10 @@ export class AdminDashboardComponent {
     this.selectedApplication.set(null);
   }
 
+  onApplicationStatusChanged(event: { application: AdminApplication; status: ApplicationStatus }): void {
+    this.selectedApplication.set(event.application);
+  }
+
   async approveProvider(): Promise<void> {
     const current = this.selectedApplication();
     if (!current) return;
@@ -3622,6 +3484,10 @@ export class AdminDashboardComponent {
       experiencias_culturales: 'Cultura & Talleres',
     };
     return category ? (map[category] ?? category) : 'General';
+  }
+
+  hasPhoneDigits(phone?: string | null): boolean {
+    return Boolean(phone && phone.replace(/\D/g, '').length > 0);
   }
 
   getWhatsappLink(phone?: string, name?: string): string {

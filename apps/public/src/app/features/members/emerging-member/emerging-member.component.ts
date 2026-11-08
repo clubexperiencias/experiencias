@@ -177,8 +177,13 @@ export class EmergingMemberComponent implements OnInit {
 
   async linkGoogleAccount(): Promise<void> {
     this.authError.set(null);
+    const returnPath =
+      typeof window !== 'undefined'
+        ? window.location.pathname + window.location.search
+        : '/socios/emergentes';
+    this.newsletter.saveAuthReturnUrl(returnPath);
     const result = await this.newsletter.signInWithGoogle(
-      typeof window !== 'undefined' ? `${window.location.origin}/socios/emergentes` : undefined,
+      typeof window !== 'undefined' ? `${window.location.origin}${returnPath}` : undefined,
     );
     if (!result.success) {
       this.authError.set(result.message);

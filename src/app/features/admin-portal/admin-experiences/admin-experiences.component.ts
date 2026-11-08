@@ -2321,11 +2321,13 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
       .toast-banner {
         position: fixed;
         bottom: 2rem;
-        right: 2rem;
+        left: 50%;
+        transform: translateX(-50%);
         z-index: 10000;
-        max-width: 480px;
+        max-width: 90vw;
+        width: max-content;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
-        padding: 0.85rem 1.25rem;
+        padding: 0.85rem 1.4rem;
         background: #1e110a;
         border: 1px solid rgba(255, 95, 0, 0.6);
         border-radius: 4px;
@@ -2334,6 +2336,8 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         font-weight: 700;
         display: flex;
         align-items: center;
+        justify-content: center;
+        text-align: center;
         gap: 0.6rem;
         animation: fadeInToast 0.25s ease-out;
       }
@@ -2341,11 +2345,11 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
       @keyframes fadeInToast {
         from {
           opacity: 0;
-          transform: translateY(10px);
+          transform: translate(-50%, 10px);
         }
         to {
           opacity: 1;
-          transform: translateY(0);
+          transform: translate(-50%, 0);
         }
       }
 
@@ -4449,8 +4453,19 @@ export class AdminExperiencesComponent implements OnInit {
     const rawDates = (exp.dates || []).join(', ');
     const displayDates = rawDates || (exp.status === 'pendiente' ? 'A coordinar' : '');
     this.editDatesRaw.set(displayDates);
-    this.editHighlightsRaw.set((exp.highlights || []).join('\n'));
-    this.editIncludedRaw.set((exp.included || []).join('\n'));
+
+    const matchingProposal = this.findMatchingProposal(exp);
+    const resolvedHighlights =
+      exp.highlights && exp.highlights.length > 0
+        ? exp.highlights.join('\n')
+        : matchingProposal?.participantRequirements || '';
+    const resolvedIncluded =
+      exp.included && exp.included.length > 0
+        ? exp.included.join('\n')
+        : matchingProposal?.includedServices || '';
+
+    this.editHighlightsRaw.set(resolvedHighlights);
+    this.editIncludedRaw.set(resolvedIncluded);
 
     const rawAlbum = exp.albumPhotos || [];
     const safeAlbum = rawAlbum.map((p) => ({
@@ -4562,10 +4577,10 @@ export class AdminExperiencesComponent implements OnInit {
       const slug = this.editSlug() || 'exp';
       const res = await this.storageService.uploadFile(file, `COVER-${slug}`);
       this.editCoverImage.set(res.url);
-      this.showToast('✅ Imagen de portada subida con éxito');
+      this.showToast('Imagen de portada subida con éxito');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error al subir portada';
-      this.showToast(`❌ ${msg}`);
+      this.showToast(msg);
     } finally {
       this.uploadingCover.set(false);
       input.value = '';
@@ -4582,10 +4597,10 @@ export class AdminExperiencesComponent implements OnInit {
       const slug = this.editSlug() || 'exp';
       const res = await this.storageService.uploadFile(file, `VID-${slug}`);
       this.editVideoUrl.set(res.url);
-      this.showToast('✅ Video subido con éxito');
+      this.showToast('Video subido con éxito');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error al subir video';
-      this.showToast(`❌ ${msg}`);
+      this.showToast(msg);
     } finally {
       this.uploadingVideo.set(false);
       input.value = '';
@@ -4601,7 +4616,7 @@ export class AdminExperiencesComponent implements OnInit {
     const remainingGallerySlots = 9 - currentGalleryCount;
 
     if (remainingGallerySlots <= 0) {
-      this.showToast('⚠️ La galería común ya alcanzó el límite máximo de 9 fotos.');
+      this.showToast('La galería común ya alcanzó el límite máximo de 9 fotos.');
       input.value = '';
       return;
     }
@@ -4610,7 +4625,7 @@ export class AdminExperiencesComponent implements OnInit {
     if (files.length > remainingGallerySlots) {
       filesToUpload = files.slice(0, remainingGallerySlots);
       this.showToast(
-        `ℹ️ Se seleccionaron ${files.length} fotos. Solo se subirán las primeras ${remainingGallerySlots} para respetar el límite de 9 de galería.`,
+        `Se seleccionaron ${files.length} fotos. Solo se subirán las primeras ${remainingGallerySlots} para respetar el límite de 9 de galería.`,
       );
     }
 
@@ -4630,10 +4645,10 @@ export class AdminExperiencesComponent implements OnInit {
         });
       }
       this.editAlbumPhotos.update((current) => [...current, ...newPhotos]);
-      this.showToast(`✅ ${newPhotos.length} foto(s) agregada(s) a la galería`);
+      this.showToast(`${newPhotos.length} foto(s) agregada(s) a la galería`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error al subir fotos';
-      this.showToast(`❌ ${msg}`);
+      this.showToast(msg);
     } finally {
       this.uploadingAlbum.set(false);
       input.value = '';
@@ -4646,23 +4661,23 @@ export class AdminExperiencesComponent implements OnInit {
 
     if (photo.isFeatured) {
       if (this.galleryPhotos().length >= 9) {
-        this.showToast('⚠️ No se puede desmarcar: la galería común ya tiene el límite máximo de 9 fotos.');
+        this.showToast('No se puede desmarcar: la galería común ya tiene el límite máximo de 9 fotos.');
         return;
       }
       this.editAlbumPhotos.update((photos) =>
         photos.map((p, i) => (i === index ? { ...p, isFeatured: false } : p)),
       );
-      this.showToast('ℹ️ Foto desmarcada como destacada.');
+      this.showToast('Foto desmarcada como destacada.');
       return;
     }
 
     if (photo.isCover) {
-      this.showToast('⚠️ La foto de portada no puede ser destacada simultáneamente.');
+      this.showToast('La foto de portada no puede ser destacada simultáneamente.');
       return;
     }
 
     if (this.featuredPhotos().length >= 2) {
-      this.showToast('⚠️ Ya tenés 2 fotos seleccionadas como destacadas. Desmarcá una primero.');
+      this.showToast('Ya tenés 2 fotos seleccionadas como destacadas. Desmarcá una primero.');
       return;
     }
 
@@ -4679,7 +4694,7 @@ export class AdminExperiencesComponent implements OnInit {
     const prevCover = this.coverPhoto();
     const wouldIncreaseGallery = Boolean(prevCover && prevCover !== photo && photo.isFeatured);
     if (wouldIncreaseGallery && this.galleryPhotos().length >= 9) {
-      this.showToast('⚠️ No se puede asignar como portada: la foto anterior pasaría a la galería y se superaría el límite de 9 fotos.');
+      this.showToast('No se puede asignar como portada: la foto anterior pasaría a la galería y se superaría el límite de 9 fotos.');
       return;
     }
 
@@ -4716,7 +4731,7 @@ export class AdminExperiencesComponent implements OnInit {
         this.editCoverImage.set('');
       }
     }
-    this.showToast('🗑️ Foto eliminada del álbum.');
+    this.showToast('Foto eliminada del álbum.');
   }
 
   /**
@@ -4727,11 +4742,11 @@ export class AdminExperiencesComponent implements OnInit {
   async saveExperience(): Promise<void> {
     const title = this.editTitle().trim();
     if (!title) {
-      this.showToast('⚠️ Por favor ingresá un título para la experiencia.');
+      this.showToast('Por favor ingresá un título para la experiencia.');
       return;
     }
     if (title.length < 6) {
-      this.showToast('⚠️ El título debe tener al menos 6 caracteres.');
+      this.showToast('El título debe tener al menos 6 caracteres.');
       return;
     }
 
@@ -4744,31 +4759,31 @@ export class AdminExperiencesComponent implements OnInit {
       .replace(/(^-|-$)/g, '');
 
     if (!slug) {
-      this.showToast('⚠️ La ruta o slug oficial no puede estar vacía.');
+      this.showToast('La ruta o slug oficial no puede estar vacía.');
       return;
     }
 
     const tagline = this.editTagline().trim();
     if (!tagline) {
-      this.showToast('⚠️ Por favor ingresá un subtítulo o bajada destacada (tagline).');
+      this.showToast('Por favor ingresá un subtítulo o bajada destacada (tagline).');
       return;
     }
 
     const description = this.editDescription().trim();
     if (!description) {
-      this.showToast('⚠️ Por favor ingresá una descripción atractiva de la experiencia.');
+      this.showToast('Por favor ingresá una descripción atractiva de la experiencia.');
       return;
     }
 
     const region = this.editRegion().trim();
     if (!region) {
-      this.showToast('⚠️ Por favor indicá la región turística de Catamarca.');
+      this.showToast('Por favor indicá la región turística de Catamarca.');
       return;
     }
 
     const meetingPoint = this.editMeetingPoint().trim();
     if (!meetingPoint) {
-      this.showToast('⚠️ Por favor indicá el punto de encuentro.');
+      this.showToast('Por favor indicá el punto de encuentro.');
       return;
     }
 
@@ -4783,13 +4798,13 @@ export class AdminExperiencesComponent implements OnInit {
 
     const durationLabel = this.editDurationLabel().trim();
     if (!durationLabel) {
-      this.showToast('⚠️ Por favor indicá la duración estimada de la experiencia.');
+      this.showToast('Por favor indicá la duración estimada de la experiencia.');
       return;
     }
 
     const capacity = Number(this.editCapacity()) || 0;
     if (capacity < 1 || capacity > 200) {
-      this.showToast('⚠️ El cupo máximo por salida debe ser entre 1 y 200 personas.');
+      this.showToast('El cupo máximo por salida debe ser entre 1 y 200 personas.');
       return;
     }
 
@@ -4801,7 +4816,7 @@ export class AdminExperiencesComponent implements OnInit {
 
     const priceArs = Number(this.editPriceArs()) || 0;
     if (priceArs < 1000) {
-      this.showToast('⚠️ Por favor ingresá un arancel válido en pesos ($ ARS, mínimo $1.000).');
+      this.showToast('Por favor ingresá un arancel válido en pesos ($ ARS, mínimo $1.000).');
       return;
     }
 
@@ -4816,7 +4831,7 @@ export class AdminExperiencesComponent implements OnInit {
         this.editDatesRaw.set('A coordinar');
       }
     } else if (!datesRaw) {
-      this.showToast('⚠️ Por favor definí al menos una fecha de salida para la experiencia.');
+      this.showToast('Por favor definí al menos una fecha de salida para la experiencia.');
       return;
     }
 
@@ -4824,17 +4839,8 @@ export class AdminExperiencesComponent implements OnInit {
     const dates: string[] = isUnscheduledProposal ? [] : confirmedDates;
 
     if (!isUnscheduledProposal && confirmedDates.length === 0) {
-      this.showToast('⚠️ Por favor definí al menos una fecha válida (YYYY-MM-DD) o indicá "A coordinar".');
+      this.showToast('Por favor definí al menos una fecha válida (YYYY-MM-DD) o indicá "A coordinar".');
       return;
-    }
-
-    let highlights = this.editHighlightsRaw()
-      .split('\n')
-      .map((h) => h.trim())
-      .filter((h) => h.length > 0);
-    if (highlights.length === 0) {
-      highlights = ['Ropa cómoda y calzado deportivo', 'Protección solar y agua mineral'];
-      this.editHighlightsRaw.set(highlights.join('\n'));
     }
 
     const included = this.editIncludedRaw()
@@ -4842,7 +4848,16 @@ export class AdminExperiencesComponent implements OnInit {
       .map((i) => i.trim())
       .filter((i) => i.length > 0);
     if (included.length === 0) {
-      this.showToast('⚠️ Por favor detallá los servicios incluidos (al menos un ítem).');
+      this.showToast('Por favor detallá los servicios incluidos (al menos un ítem).');
+      return;
+    }
+
+    const highlights = this.editHighlightsRaw()
+      .split('\n')
+      .map((h) => h.trim())
+      .filter((h) => h.length > 0);
+    if (highlights.length === 0) {
+      this.showToast('Por favor detallá qué debe traer el participante (al menos un ítem).');
       return;
     }
 
@@ -4949,7 +4964,7 @@ export class AdminExperiencesComponent implements OnInit {
         } as Experience;
         await this.experienceService.createExperience(fullNewExp);
         this.showToast(
-          `✨ Experiencia "${title}" creada exitosamente en la ruta /experiencias/${slug}.`,
+          `Experiencia "${title}" creada exitosamente en la ruta /experiencias/${slug}.`,
         );
       } else {
         const currentExp = this.editingExperience();
@@ -4971,7 +4986,7 @@ export class AdminExperiencesComponent implements OnInit {
             const confirmedDates = parseConfirmedProposalDates(this.editDatesRaw());
             if (!isUnscheduledProposal && confirmedDates.length === 0) {
               this.showToast(
-                '⚠️ No se puede publicar la experiencia: las fechas no tienen un formato válido (YYYY-MM-DD). Para salidas flexibles usá "A coordinar".',
+                'No se puede publicar la experiencia: las fechas no tienen un formato válido (YYYY-MM-DD). Para salidas flexibles usá "A coordinar".',
               );
               return;
             }
@@ -4986,7 +5001,7 @@ export class AdminExperiencesComponent implements OnInit {
             }
             // Preserve and apply the other form edits as part of the same save
             await this.experienceService.updateExperience(payload);
-            this.showToast(`🟢 La propuesta "${title}" fue aprobada y publicada con sus cambios.`);
+            this.showToast(`La propuesta "${title}" fue aprobada y publicada con sus cambios.`);
           } else {
             // Rechazada
             if (req) {
@@ -4994,7 +5009,7 @@ export class AdminExperiencesComponent implements OnInit {
             }
             // Preserve and apply the other form edits as part of the same save
             await this.experienceService.updateExperience(payload);
-            this.showToast(`⚠️ La propuesta "${title}" fue rechazada.`);
+            this.showToast(`La propuesta "${title}" fue rechazada.`);
           }
 
           this.adminStore.providerStore.reloadFromStorage();
@@ -5003,7 +5018,7 @@ export class AdminExperiencesComponent implements OnInit {
         } else {
           await this.experienceService.updateExperience(payload);
           await this.experienceService.reloadFromSupabase();
-          this.showToast(`✅ Información de la ruta /experiencias/${slug} actualizada con éxito.`);
+          this.showToast(`Información de la ruta /experiencias/${slug} actualizada con éxito.`);
         }
       }
 
@@ -5019,7 +5034,7 @@ export class AdminExperiencesComponent implements OnInit {
     } catch (err: unknown) {
       console.error('[AdminExperiences] Error al guardar experiencia:', err);
       const msg = err instanceof Error ? err.message : 'Error al guardar experiencia';
-      this.showToast(`⚠️ ${msg}`);
+      this.showToast(msg);
     } finally {
       this.saving.set(false);
     }
@@ -5090,7 +5105,7 @@ export class AdminExperiencesComponent implements OnInit {
 
       if (!isUnscheduled && confirmedDates.length === 0) {
         this.showToast(
-          '⚠️ No se puede aprobar la propuesta: las fechas no tienen formato válido (YYYY-MM-DD). Para salidas flexibles usá "A coordinar".',
+          'No se puede aprobar la propuesta: las fechas no tienen formato válido (YYYY-MM-DD). Para salidas flexibles usá "A coordinar".',
         );
         return;
       }
@@ -5122,10 +5137,10 @@ export class AdminExperiencesComponent implements OnInit {
         this.editingExperience.set(updated);
       }
 
-      this.showToast(`🟢 La propuesta "${exp.title}" fue aprobada y publicada.`);
+      this.showToast(`La propuesta "${exp.title}" fue aprobada y publicada.`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error al aprobar propuesta';
-      this.showToast(`⚠️ ${msg}`);
+      this.showToast(msg);
     } finally {
       this.processingProposalIds.update((set) => {
         const next = new Set(set);
@@ -5168,10 +5183,10 @@ export class AdminExperiencesComponent implements OnInit {
         this.editingExperience.set(updated);
       }
 
-      this.showToast(`⚠️ La propuesta "${exp.title}" fue rechazada.`);
+      this.showToast(`La propuesta "${exp.title}" fue rechazada.`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error al rechazar propuesta';
-      this.showToast(`⚠️ ${msg}`);
+      this.showToast(msg);
     } finally {
       this.processingProposalIds.update((set) => {
         const next = new Set(set);
@@ -5200,22 +5215,25 @@ export class AdminExperiencesComponent implements OnInit {
         this.editingExperience.set(updated);
       }
       if (newStatus === 'oculta') {
-        this.showToast(`🔴 La ruta /experiencias/${exp.slug} fue dada de baja y pausada.`);
+        this.showToast(`La ruta /experiencias/${exp.slug} fue dada de baja y pausada.`);
       } else if (newStatus === 'publicada') {
-        this.showToast(`🟢 La ruta /experiencias/${exp.slug} fue activada y publicada.`);
+        this.showToast(`La ruta /experiencias/${exp.slug} fue activada y publicada.`);
       } else if (newStatus === 'rechazada') {
-        this.showToast(`⚠️ La propuesta /experiencias/${exp.slug} fue rechazada.`);
+        this.showToast(`La propuesta /experiencias/${exp.slug} fue rechazada.`);
       } else if (newStatus === 'pendiente') {
-        this.showToast(`🟡 La ruta /experiencias/${exp.slug} volvió a estado de revisión.`);
+        this.showToast(`La ruta /experiencias/${exp.slug} volvió a estado de revisión.`);
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error al cambiar estado';
-      this.showToast(`⚠️ ${msg}`);
+      this.showToast(msg);
     }
   }
 
   private showToast(msg: string): void {
-    this.feedbackToast.set(msg);
+    const cleanMsg = (msg || '')
+      .replace(/^[\p{Emoji_Presentation}\p{Extended_Pictographic}\u2600-\u27BF\uFE0F\s]+/u, '')
+      .trim();
+    this.feedbackToast.set(cleanMsg || msg);
     setTimeout(() => this.feedbackToast.set(null), 4500);
   }
 

@@ -1319,19 +1319,19 @@ export class ExperienceService {
                     isLocked: false,
                     albumPhotos: r.albumPhotos || [],
                     itinerary: r.itinerary,
-                    highlights: [],
+                    highlights: r.participantRequirements
+                      ? r.participantRequirements
+                          .split('\n')
+                          .map((s: string) => s.trim())
+                          .filter(Boolean)
+                      : [],
                     included: r.includedServices
                       ? r.includedServices
                           .split('\n')
                           .map((s: string) => s.trim())
                           .filter(Boolean)
                       : [],
-                    notIncluded: r.participantRequirements
-                      ? r.participantRequirements
-                          .split('\n')
-                          .map((s: string) => s.trim())
-                          .filter(Boolean)
-                      : [],
+                    notIncluded: [],
                     providerId: r.providerId,
                     providerEmail: r.providerEmail,
                     providerSlug: r.providerSlug,

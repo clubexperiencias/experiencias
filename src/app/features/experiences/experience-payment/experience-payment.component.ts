@@ -349,10 +349,22 @@ export class ExperiencePaymentComponent implements OnInit {
   async linkGoogleAccount(): Promise<void> {
     this.authError.set(null);
     const exp = this.experience();
+    const currentPath =
+      typeof window !== 'undefined'
+        ? window.location.pathname + window.location.search
+        : exp?.slug
+          ? `/experiencias/${exp.slug}/pago`
+          : undefined;
+
+    if (currentPath) {
+      this.newsletter.saveAuthReturnUrl(currentPath);
+    }
+
     const redirectTo =
-      exp && typeof window !== 'undefined'
-        ? `${window.location.origin}/experiencias/${exp.slug}/pago`
+      typeof window !== 'undefined'
+        ? `${window.location.origin}${currentPath || window.location.pathname}`
         : undefined;
+
     const result = await this.newsletter.signInWithGoogle(redirectTo);
     if (!result.success) {
       this.authError.set(result.message);
@@ -414,7 +426,7 @@ export class ExperiencePaymentComponent implements OnInit {
     if (error) return;
     this.removeReceipt();
     this.receiptFile.set(file);
-    if (file.type.startsWith('image/')) {
+    if (file.type.startsWith('image/') || file.type === 'application/pdf') {
       this.receiptPreview.set(URL.createObjectURL(file));
     }
   }
@@ -497,6 +509,14 @@ export class ExperiencePaymentComponent implements OnInit {
   }
 
   openPreviewModal(): void {
+    const file = this.receiptFile();
+    if (file?.type === 'application/pdf') {
+      const url = this.receiptPreview() || (typeof window !== 'undefined' ? URL.createObjectURL(file) : null);
+      if (url && typeof window !== 'undefined') {
+        window.open(url, '_blank');
+      }
+      return;
+    }
     if (this.receiptPreview()) {
       this.previewModalOpen.set(true);
     }

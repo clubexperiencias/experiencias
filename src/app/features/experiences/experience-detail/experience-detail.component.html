@@ -274,7 +274,23 @@
               [class.copied]="shareCopied()"
               title="Compartir esta experiencia"
             >
-              <span>{{ shareCopied() ? 'Enlace copiado' : 'Compartir Experiencia' }}</span>
+              @if (shareCopied()) {
+                <svg
+                  class="share-check-icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#ffffff"
+                  stroke-width="2.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>Enlace copiado</span>
+              } @else {
+                <span>Compartir Experiencia</span>
+              }
             </button>
           </div>
         </div>

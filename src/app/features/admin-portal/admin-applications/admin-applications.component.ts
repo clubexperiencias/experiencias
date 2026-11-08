@@ -331,7 +331,19 @@ type ApplicationFilterTab =
 
                 <div class="detail-item">
                   <span class="dt-label">Teléfono</span>
-                  <span class="dt-value">{{ selectedApp()!.phone || '—' }}</span>
+                  @if (hasPhoneDigits(selectedApp()!.phone)) {
+                    <a
+                      [href]="getWhatsappLink(selectedApp()!.phone, selectedApp()!.fullName)"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="dt-link"
+                      title="Contactar por WhatsApp respecto a su postulación"
+                    >
+                      {{ selectedApp()!.phone }}
+                    </a>
+                  } @else {
+                    <span class="dt-value">{{ selectedApp()!.phone || '—' }}</span>
+                  }
                 </div>
 
                 @if (selectedApp()!.type === 'prestador') {
@@ -1736,11 +1748,16 @@ type ApplicationFilterTab =
 
 
 
+      .state-buttons .btn-state {
+        height: 34px !important;
+        box-sizing: border-box !important;
+      }
+
       .btn-close {
         flex: 0 0 auto !important;
         align-self: center !important;
-        height: 38px !important;
-        max-height: 38px !important;
+        height: 34px !important;
+        max-height: 34px !important;
         padding: 0 1.25rem !important;
         display: inline-flex !important;
         align-items: center !important;
@@ -1750,7 +1767,7 @@ type ApplicationFilterTab =
         color: #ffffff !important;
         font-size: 0.82rem !important;
         font-weight: 700 !important;
-        border-radius: 2px !important;
+        border-radius: 3px !important;
         cursor: pointer !important;
         white-space: nowrap !important;
         box-sizing: border-box !important;
@@ -1919,6 +1936,10 @@ export class AdminApplicationsComponent implements OnInit {
     if (ok) {
       this.selectedApp.update((a) => (a ? { ...a, status, ...(banking || {}) } : null));
     }
+  }
+
+  hasPhoneDigits(phone?: string | null): boolean {
+    return Boolean(phone && phone.replace(/\D/g, '').length > 0);
   }
 
   getWhatsappLink(phone?: string, name?: string): string {

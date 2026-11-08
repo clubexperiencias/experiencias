@@ -5,11 +5,16 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { filter } from 'rxjs';
-import { AdminStoreService, AdminApplication } from '../../../core/services/admin-store.service';
+import {
+  AdminStoreService,
+  AdminApplication,
+  ApplicationStatus,
+} from '../../../core/services/admin-store.service';
 import { ProviderUser, slugify } from '../../../core/services/provider-store.service';
 import { ExperienceService } from '../../../core/services/experience.service';
 import { Experience } from '../../../core/models/experience.model';
 import { FechaPipe, ArsPipe } from '../../../shared/pipes/format.pipes';
+import { AdminApplicationModalComponent } from '../admin-application-modal/admin-application-modal.component';
 
 export type ProviderTab = 'todos' | 'aprobados' | 'baja' | 'rechazados' | 'postulantes';
 
@@ -35,7 +40,15 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
 @Component({
   selector: 'app-admin-providers',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule, MatIconModule, FechaPipe, ArsPipe],
+  imports: [
+    CommonModule,
+    RouterLink,
+    FormsModule,
+    MatIconModule,
+    FechaPipe,
+    ArsPipe,
+    AdminApplicationModalComponent,
+  ],
   template: `
     <div class="providers-view-container">
       <!-- Toast Feedback -->
@@ -741,7 +754,7 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
                             }
                           }
 
-                          @if (item.origin === 'application' && item.rawApp && item.status !== 'aprobado') {
+                          @if (item.origin === 'application' && item.rawApp) {
                             <button
                               type="button"
                               class="btn-review-app"
@@ -761,115 +774,13 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
           </div>
         }
 
-        <!-- Modal de Revisión de Postulación de Prestador -->
+        <!-- Modal Rápido de Revisión de Postulación (Idéntico a Dashboard) -->
         @if (selectedApplication(); as app) {
-          <div class="modal-backdrop" (click)="closeApplication()">
-            <div class="modal-dialog" (click)="$event.stopPropagation()">
-              <div class="modal-head">
-                <div>
-                  <span class="modal-kicker">POSTULACIÓN DE NUEVO PRESTADOR</span>
-                  <h2 class="modal-title">{{ app.fullName }}</h2>
-                  <p class="modal-sub">{{ app.email }} · {{ app.phone }}</p>
-                </div>
-                <button type="button" class="modal-close-btn" (click)="closeApplication()">×</button>
-              </div>
-
-              <div class="modal-body">
-                <div class="app-details-grid">
-                  <div class="detail-block">
-                    <span class="detail-label">Rubro / Categoría Propuesta</span>
-                    <strong class="detail-value">{{ formatCategory(app.category) }}</strong>
-                  </div>
-
-                  <div class="detail-block">
-                    <span class="detail-label">Fecha de Envío</span>
-                    <strong class="detail-value font-mono">{{ app.createdAt | fecha: 'larga' }}</strong>
-                  </div>
-
-                  @if (app.description) {
-                    <div class="detail-block full-width">
-                      <span class="detail-label">Presentación y Experiencia del Prestador</span>
-                      <p class="detail-desc">{{ app.description }}</p>
-                    </div>
-                  }
-
-                  @if (app.motivationLetter) {
-                    <div class="detail-block full-width">
-                      <span class="detail-label">Carta de Motivación / Notas</span>
-                      <p class="detail-desc">{{ app.motivationLetter }}</p>
-                    </div>
-                  }
-
-                  <!-- Datos bancarios / fiscales si los completó -->
-                  @if (app.cuitDni || app.cbuAlias || app.bankName) {
-                    <div class="detail-block full-width banking-card">
-                      <span class="detail-label">Datos Fiscales y de Liquidación</span>
-                      <div class="banking-grid">
-                        <div>
-                          <span class="bank-sub-lbl">CUIT / DNI</span>
-                          <strong>{{ app.cuitDni || '—' }}</strong>
-                        </div>
-                        <div>
-                          <span class="bank-sub-lbl">CBU / Alias</span>
-                          <strong>{{ app.cbuAlias || '—' }}</strong>
-                        </div>
-                        <div>
-                          <span class="bank-sub-lbl">Banco</span>
-                          <strong>{{ app.bankName || '—' }}</strong>
-                        </div>
-                        <div>
-                          <span class="bank-sub-lbl">Titular</span>
-                          <strong>{{ app.accountHolder || app.fullName }}</strong>
-                        </div>
-                      </div>
-                    </div>
-                  }
-                </div>
-              </div>
-
-              <div class="modal-foot">
-                <div class="action-buttons-group">
-                  @if (app.status === 'pendiente') {
-                    <button
-                      type="button"
-                      class="btn-action-primary"
-                      [disabled]="isUpdating()"
-                      (click)="approve(app)"
-                    >
-                      Aprobar como Prestador Oficial
-                    </button>
-                    <button
-                      type="button"
-                      class="btn-action-reject"
-                      [disabled]="isUpdating()"
-                      (click)="reject(app)"
-                    >
-                      Rechazar
-                    </button>
-                  } @else if (app.status === 'aprobado') {
-                    <span class="approved-tag">Postulación Aprobada</span>
-                  } @else {
-                    <span class="rejected-tag">Postulación Rechazada</span>
-                  }
-
-                  @if (app.phone && app.phone !== '—') {
-                    <a
-                      [href]="getWhatsappLink(app.phone, app.fullName)"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="btn-action-wa"
-                    >
-                      Contactar prestador
-                    </a>
-                  }
-                </div>
-
-                <button type="button" class="btn-action-close" (click)="closeApplication()">
-                  Cerrar
-                </button>
-              </div>
-            </div>
-          </div>
+          <app-admin-application-modal
+            [application]="app"
+            (closed)="closeApplication()"
+            (statusChanged)="onApplicationStatusChanged($event)"
+          />
         }
       }
     </div>
@@ -2071,11 +1982,13 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
       .toast-banner {
         position: fixed;
         bottom: 2rem;
-        right: 2rem;
+        left: 50%;
+        transform: translateX(-50%);
         z-index: 10000;
-        max-width: 480px;
+        max-width: 90vw;
+        width: max-content;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
-        padding: 0.85rem 1.25rem;
+        padding: 0.85rem 1.4rem;
         background: #1e110a;
         border: 1px solid rgba(255, 95, 0, 0.6);
         border-radius: 4px;
@@ -2084,7 +1997,21 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
         font-weight: 700;
         display: flex;
         align-items: center;
+        justify-content: center;
+        text-align: center;
         gap: 0.6rem;
+        animation: fadeInToast 0.25s ease-out;
+      }
+
+      @keyframes fadeInToast {
+        from {
+          opacity: 0;
+          transform: translate(-50%, 10px);
+        }
+        to {
+          opacity: 1;
+          transform: translate(-50%, 0);
+        }
       }
 
       /* Modal Styling */
@@ -2657,7 +2584,7 @@ export class AdminProvidersComponent implements OnInit {
 
         if (hasPauseErrors) {
           this.showToast(
-            `⚠️ Prestador dado de baja. Se pausaron ${pausedCount} de ${publishedIds.length} experiencia(s); algunas no pudieron actualizarse.`,
+            `Prestador dado de baja. Se pausaron ${pausedCount} de ${publishedIds.length} experiencia(s); algunas no pudieron actualizarse.`,
           );
         } else {
           this.showToast(
@@ -2701,7 +2628,7 @@ export class AdminProvidersComponent implements OnInit {
 
         if (hasReactivateErrors) {
           this.showToast(
-            `⚠️ Prestador habilitado. Se reactivaron ${reactivatedCount} de ${toReactivate.length} experiencia(s); algunas no pudieron actualizarse.`,
+            `Prestador habilitado. Se reactivaron ${reactivatedCount} de ${toReactivate.length} experiencia(s); algunas no pudieron actualizarse.`,
           );
         } else if (!hasExplicitBajaList) {
           const hiddenCount = providerExps.filter((e: Experience) => e.status === 'oculta').length;
@@ -2732,67 +2659,67 @@ export class AdminProvidersComponent implements OnInit {
 
     const name = this.editName().trim();
     if (!name || name.length < 3) {
-      this.showToast('⚠️ Por favor ingresá el nombre y apellido del responsable (mínimo 3 caracteres).');
+      this.showToast('Por favor ingresá el nombre y apellido del responsable (mínimo 3 caracteres).');
       return;
     }
 
     const agency = this.editAgency().trim();
     if (!agency || agency.length < 2) {
-      this.showToast('⚠️ Por favor indicá el nombre de la agencia o emprendimiento.');
+      this.showToast('Por favor indicá el nombre de la agencia o emprendimiento.');
       return;
     }
 
     const slug = this.editSlug().trim().toLowerCase();
     if (!slug) {
-      this.showToast('⚠️ Por favor ingresá un slug válido para la URL pública.');
+      this.showToast('Por favor ingresá un slug válido para la URL pública.');
       return;
     }
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
-      this.showToast('⚠️ El slug solo puede contener letras minúsculas, números y guiones medios.');
+      this.showToast('El slug solo puede contener letras minúsculas, números y guiones medios.');
       return;
     }
 
     const email = this.editEmail().trim().toLowerCase();
     const originalEmail = p.email.trim().toLowerCase();
     if (!email) {
-      this.showToast('⚠️ Por favor ingresá un correo electrónico.');
+      this.showToast('Por favor ingresá un correo electrónico.');
       return;
     }
     if (email !== originalEmail) {
-      this.showToast('⚠️ No se permite modificar el correo del prestador porque afectaría el inicio de sesión y la autenticación.');
+      this.showToast('No se permite modificar el correo del prestador porque afectaría el inicio de sesión y la autenticación.');
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      this.showToast('⚠️ Por favor ingresá un correo electrónico válido (ej: nombre@dominio.com).');
+      this.showToast('Por favor ingresá un correo electrónico válido (ej: nombre@dominio.com).');
       return;
     }
 
     const phone = this.editPhone().trim();
     if (!phone) {
-      this.showToast('⚠️ Por favor indicá el teléfono o WhatsApp de contacto.');
+      this.showToast('Por favor indicá el teléfono o WhatsApp de contacto.');
       return;
     }
     const cleanPhoneDigits = phone.replace(/\D/g, '');
     if (cleanPhoneDigits.length < 6) {
-      this.showToast('⚠️ El número de teléfono debe contener al menos 6 dígitos numéricos.');
+      this.showToast('El número de teléfono debe contener al menos 6 dígitos numéricos.');
       return;
     }
 
     const cbu = this.editCbuAlias().trim();
     if (!cbu) {
-      this.showToast('⚠️ Por favor ingresá el CBU, CVU o Alias oficial para la liquidación.');
+      this.showToast('Por favor ingresá el CBU, CVU o Alias oficial para la liquidación.');
       return;
     }
 
     const cuit = this.editCuitDni().trim();
     if (!cuit) {
-      this.showToast('⚠️ Por favor ingresá el CUIT, CUIL o DNI del prestador.');
+      this.showToast('Por favor ingresá el CUIT, CUIL o DNI del prestador.');
       return;
     }
 
     const bank = this.editBankName().trim();
     if (!bank) {
-      this.showToast('⚠️ Por favor indicá el banco o entidad financiera.');
+      this.showToast('Por favor indicá el banco o entidad financiera.');
       return;
     }
 
@@ -2800,7 +2727,7 @@ export class AdminProvidersComponent implements OnInit {
 
     const website = this.editWebsite().trim();
     if (website && !/^https?:\/\//i.test(website)) {
-      this.showToast('⚠️ El sitio web debe comenzar con http:// o https://');
+      this.showToast('El sitio web debe comenzar con http:// o https://');
       return;
     }
 
@@ -2889,7 +2816,7 @@ export class AdminProvidersComponent implements OnInit {
       }
 
       if (expUpdateErrors) {
-        this.showToast('⚠️ Prestador guardado con éxito, pero algunas experiencias asociadas no pudieron actualizar su estado.');
+        this.showToast('Prestador guardado con éxito, pero algunas experiencias asociadas no pudieron actualizar su estado.');
       } else {
         this.showToast('¡Prestador guardado con éxito!');
       }
@@ -2900,7 +2827,10 @@ export class AdminProvidersComponent implements OnInit {
   }
 
   private showToast(msg: string): void {
-    this.feedbackToast.set(msg);
+    const cleanMsg = (msg || '')
+      .replace(/^[\p{Emoji_Presentation}\p{Extended_Pictographic}\u2600-\u27BF\uFE0F\s]+/u, '')
+      .trim();
+    this.feedbackToast.set(cleanMsg || msg);
     setTimeout(() => {
       this.feedbackToast.set(null);
     }, 4000);
@@ -3139,6 +3069,11 @@ export class AdminProvidersComponent implements OnInit {
 
   closeApplication(): void {
     this.selectedApplication.set(null);
+  }
+
+  onApplicationStatusChanged(event: { application: AdminApplication; status: ApplicationStatus }): void {
+    this.selectedApplication.set(event.application);
+    this.store.providerStore.reloadFromStorage();
   }
 
   private readonly providerCoverByExperienceMap = computed(() => {

@@ -534,16 +534,22 @@
   color: var(--color-text-muted);
 }
 
-.pay-file-card .pay-copy-btn {
+.pay-file-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
   width: 100%;
+}
+
+.pay-file-actions .pay-copy-btn {
+  flex: 1;
   height: 42px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.35rem;
-  border: 1px solid rgba(239, 68, 68, 0.4);
-  color: #fca5a5;
-  background: rgba(239, 68, 68, 0.06);
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
   border-radius: 4px;
   cursor: pointer;
   transition:
@@ -552,6 +558,28 @@
     color var(--transition-fast);
 }
 
+.pay-file-actions .pay-view-preview-btn {
+  border: 1px solid rgba(128, 179, 255, 0.45);
+  color: #80b3ff;
+  background: rgba(128, 179, 255, 0.08);
+}
+
+.pay-file-actions .pay-view-preview-btn:hover,
+.pay-file-actions .pay-view-preview-btn:active {
+  border-color: #80b3ff;
+  color: #ffffff;
+  background: rgba(128, 179, 255, 0.2);
+}
+
+.pay-file-actions .pay-remove-file-btn,
+.pay-file-card .pay-copy-btn {
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.06);
+}
+
+.pay-file-actions .pay-remove-file-btn:hover,
+.pay-file-actions .pay-remove-file-btn:active,
 .pay-file-card .pay-copy-btn:hover,
 .pay-file-card .pay-copy-btn:active {
   border-color: #ef4444;
@@ -832,7 +860,7 @@
   text-align: center;
   gap: 0.85rem;
   padding: 1.5rem 1.25rem;
-  background: rgba(18, 28, 48, 0.6);
+  background: rgba(10, 17, 29, 0.22);
   border: 1px dashed rgba(128, 179, 255, 0.35);
   border-radius: 8px;
 }
