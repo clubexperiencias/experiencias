@@ -104,7 +104,7 @@
           </div>
           } @else if (item.coverImage) {
           <div class="detail-cover-media-wrap">
-            <img [src]="item.coverImage" [alt]="item.title" class="detail-cover-img" />
+            <img [src]="item.coverImage" [alt]="item.title" class="detail-cover-img" fetchpriority="high" decoding="async" />
           </div>
           }
         </div>
@@ -149,6 +149,22 @@
               <span class="date-chip-text">{{ d | fecha: 'larga' }}</span>
             </div>
             }
+          </div>
+        </div>
+        } @else {
+        <div class="exp-detail-section-card no-dates-detail-card">
+          <div class="card-inner-header">
+            <span class="section-kicker">CALENDARIO DE SALIDAS</span>
+            <h2 class="card-heading">Fechas y Salidas Privadas</h2>
+            <p class="card-subheading">
+              Actualmente no hay salidas públicas abiertas en el calendario. Podés coordinar una salida privada a medida o consultar la próxima apertura de cupos directamente por WhatsApp.
+            </p>
+          </div>
+          <div class="no-dates-detail-action">
+            <a [href]="whatsAppInquiryUrl()" target="_blank" rel="noopener noreferrer" class="cta-primary-btn cta-blue-btn">
+              <mat-icon aria-hidden="true">chat</mat-icon>
+              <span>Consultar Fechas por WhatsApp</span>
+            </a>
           </div>
         </div>
         }
@@ -251,6 +267,17 @@
               <span>Fotos de Experiencias Pasadas</span>
             </a>
             }
+
+            <button
+              type="button"
+              class="location-btn share-btn"
+              (click)="shareExperience(item)"
+              [class.copied]="shareCopied()"
+              title="Compartir esta experiencia"
+            >
+              <mat-icon class="loc-icon" aria-hidden="true">{{ shareCopied() ? 'check' : 'share' }}</mat-icon>
+              <span>{{ shareCopied() ? '¡Enlace copiado!' : 'Compartir Experiencia' }}</span>
+            </button>
           </div>
         </div>
         }

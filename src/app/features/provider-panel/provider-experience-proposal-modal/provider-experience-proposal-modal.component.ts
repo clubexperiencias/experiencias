@@ -3041,7 +3041,8 @@ export class ProviderExperienceProposalModalComponent {
         return;
       }
     } else if (this.coverImagePreview()) {
-      coverImageUrl = this.coverImagePreview()!;
+      const prev = this.coverImagePreview()!;
+      coverImageUrl = prev.startsWith('blob:') ? '/assets/images/kayak-club-de-experiencias.jpg' : prev;
     }
 
     this.finalSuccessCoverUrl.set(coverImageUrl || this.coverImagePreview());
@@ -3118,8 +3119,8 @@ export class ProviderExperienceProposalModalComponent {
         return;
       }
     } else if (
-      this.featuredPhoto1Preview()?.startsWith('http') ||
-      this.featuredPhoto1Preview()?.startsWith('blob:')
+      this.featuredPhoto1Preview()?.startsWith('http') &&
+      !this.featuredPhoto1Preview()?.startsWith('blob:')
     ) {
       feat1Url = this.featuredPhoto1Preview() || undefined;
     }
@@ -3146,8 +3147,8 @@ export class ProviderExperienceProposalModalComponent {
         return;
       }
     } else if (
-      this.featuredPhoto2Preview()?.startsWith('http') ||
-      this.featuredPhoto2Preview()?.startsWith('blob:')
+      this.featuredPhoto2Preview()?.startsWith('http') &&
+      !this.featuredPhoto2Preview()?.startsWith('blob:')
     ) {
       feat2Url = this.featuredPhoto2Preview() || undefined;
     }
@@ -3176,7 +3177,7 @@ export class ProviderExperienceProposalModalComponent {
           this.submittingRequest.set(false);
           return;
         }
-      } else if (item.previewUrl?.startsWith('http') || item.previewUrl?.startsWith('blob:')) {
+      } else if (item.previewUrl?.startsWith('http') && !item.previewUrl?.startsWith('blob:')) {
         finalUrl = item.previewUrl;
       }
       if (finalUrl) {

@@ -60,6 +60,17 @@
         <button type="button" class="pill-action-btn secondary" (click)="closeReceipt()">
           Cerrar
         </button>
+        @if (receipt.receiptFileUrl) {
+          <a
+            [href]="receipt.receiptFileUrl"
+            [download]="receipt.receiptFileName || 'comprobante.jpg'"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="pill-action-btn secondary"
+          >
+            Descargar archivo original
+          </a>
+        }
         <button type="button" class="pill-action-btn" (click)="printReceipt()">
           Imprimir / Descargar Comprobante
         </button>

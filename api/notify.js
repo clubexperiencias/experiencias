@@ -236,8 +236,7 @@ function updateApplicationNotes(recordId, notesObject, config, expectedNotes) {
         if (expectedNotes === null) {
           queryPath += '&notes=is.null';
         } else {
-          const quoted = `"${String(expectedNotes).replace(/"/g, '\\"')}"`;
-          queryPath += `&notes=eq.${encodeURIComponent(quoted)}`;
+          queryPath += `&notes=eq.${encodeURIComponent(String(expectedNotes))}`;
         }
       }
 
@@ -1089,7 +1088,8 @@ module.exports = async function handler(req, res) {
     const { type, action, data } = req.body || {};
     const messageType = type || action;
 
-    if (!messageType || !data) {
+    const noDataActions = ['GET_ADMIN_APPLICATIONS', 'GET_AUTH_AVATARS'];
+    if (!messageType || (!data && !noDataActions.includes(messageType))) {
       return res.status(400).json({
         success: false,
         error: 'Cuerpo de solicitud incompleto. Se requiere type y data.',
@@ -1296,10 +1296,10 @@ module.exports = async function handler(req, res) {
         );
 
         if (!lockResult.success) {
+          console.error('[Notify] Error registrando bloqueo de notificación en base de datos:', lockResult.error);
           return res.status(502).json({
             success: false,
             error: 'No se pudo registrar el bloqueo de notificación en la base de datos.',
-            details: lockResult.error,
           });
         }
 
@@ -1327,26 +1327,36 @@ module.exports = async function handler(req, res) {
         };
 
         let applicantResult = null;
-        let deliverySuccess = false;
+        let applicantDeliverySuccess = Boolean(notesObj.application_applicant_notified_at);
 
-        try {
-          // 1. Email al postulante confirmando recepción y estado de evaluación
-          applicantResult = await sendEmailViaResend({
-            apiKey: config.apiKey,
-            from: config.fromEmail,
-            to: verifiedData.email,
-            subject: `Recibimos tu postulación como prestador en EXPERIENCIAS.CLUB`,
-            html: templateProviderApplicationSubmitted(verifiedData),
-          });
-          results.push({ target: 'applicant', ...applicantResult });
-          deliverySuccess = Boolean(applicantResult && !applicantResult.simulated);
-        } catch (deliveryErr) {
-          console.warn('[Notify] Error enviando correo al postulante:', deliveryErr);
-          deliverySuccess = false;
+        if (!applicantDeliverySuccess) {
+          try {
+            // 1. Email al postulante confirmando recepción y estado de evaluación
+            applicantResult = await sendEmailViaResend({
+              apiKey: config.apiKey,
+              from: config.fromEmail,
+              to: verifiedData.email,
+              subject: `Recibimos tu postulación como prestador en EXPERIENCIAS.CLUB`,
+              html: templateProviderApplicationSubmitted(verifiedData),
+            });
+            results.push({ target: 'applicant', ...applicantResult });
+            if (applicantResult && !applicantResult.simulated) {
+              applicantDeliverySuccess = true;
+              notesObj.application_applicant_notified_at = new Date().toISOString();
+            }
+          } catch (deliveryErr) {
+            console.warn('[Notify] Error enviando correo al postulante:', deliveryErr);
+            applicantDeliverySuccess = false;
+          }
+        } else {
+          results.push({ target: 'applicant', alreadySent: true });
         }
 
         // 2. Alerta a administradores
-        if (config.adminEmails && config.adminEmails.length > 0) {
+        const hasAdminEmails = Boolean(config.adminEmails && config.adminEmails.length > 0);
+        let adminDeliverySuccess = !hasAdminEmails || Boolean(notesObj.application_admin_notified_at);
+
+        if (hasAdminEmails && applicantDeliverySuccess && !notesObj.application_admin_notified_at) {
           try {
             const adminResult = await sendEmailViaResend({
               apiKey: config.apiKey,
@@ -1356,28 +1366,48 @@ module.exports = async function handler(req, res) {
               html: templateProviderApplicationAdmin(verifiedData),
             });
             results.push({ target: 'admin', ...adminResult });
+            if (adminResult && !adminResult.simulated) {
+              adminDeliverySuccess = true;
+              notesObj.application_admin_notified_at = new Date().toISOString();
+            }
           } catch (adminErr) {
             console.warn('[Notify] Error enviando alerta a administradores:', adminErr);
             results.push({
               target: 'admin',
               error: adminErr instanceof Error ? adminErr.message : String(adminErr),
             });
+            adminDeliverySuccess = false;
           }
+        } else if (hasAdminEmails && notesObj.application_admin_notified_at) {
+          results.push({ target: 'admin', alreadySent: true });
         }
 
-        if (deliverySuccess) {
+        const bothDeliveriesSucceeded = applicantDeliverySuccess && adminDeliverySuccess;
+
+        if (bothDeliveriesSucceeded) {
           // Marcar durablemente como notificada completada
           const finalNotes = { ...notesObj };
           delete finalNotes.application_notifying_at;
           finalNotes.application_notified_at = new Date().toISOString();
-          await updateApplicationNotes(applicationRecord.id, finalNotes, config);
+          const finalNotesResult = await updateApplicationNotes(applicationRecord.id, finalNotes, config);
+          if (!finalNotesResult.success) {
+            console.error('[Notify] Error persistiendo notas finales de postulación:', finalNotesResult.error);
+          }
         } else {
-          // Si falló el envío o fue simulado, limpiar el bloqueo en curso para que quede disponible para reintento
+          // Si falló el envío o fue simulado, persistir marcadores alcanzados y limpiar el bloqueo en curso para reintento
           const retryNotes = { ...notesObj };
           delete retryNotes.application_notifying_at;
-          await updateApplicationNotes(applicationRecord.id, retryNotes, config);
+          const cleanupResult = await updateApplicationNotes(applicationRecord.id, retryNotes, config);
+          if (!cleanupResult.success) {
+            console.error('[Notify] Error limpiando bloqueo de postulación en base de datos:', cleanupResult.error);
+          }
 
-          if (!applicantResult || !applicantResult.simulated) {
+          const isSimulated = Boolean(
+            (applicantResult && applicantResult.simulated) ||
+            (!config.apiKey && !applicantDeliverySuccess),
+          );
+
+          if (!isSimulated) {
             return res.status(502).json({
               success: false,
               error: 'No se pudo entregar el correo de notificación. Queda disponible para reintento.',
@@ -1447,6 +1477,178 @@ module.exports = async function handler(req, res) {
         }
 
         return res.status(200).json({ success: true, status: 'unregistered' });
+      }
+
+      case 'GET_ADMIN_APPLICATIONS': {
+        const authHeader = req.headers.authorization || req.headers.Authorization || '';
+        const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+
+        if (!token) {
+          return res.status(401).json({
+            success: false,
+            error: 'Acceso no autorizado: se requiere token de sesión de administrador.',
+            prestadores: [],
+            fundadores: [],
+          });
+        }
+
+        const isAdmin = await verifySupabaseCallerAdmin(token, config);
+        if (!isAdmin) {
+          return res.status(403).json({
+            success: false,
+            error: 'Acceso denegado: se requieren permisos de administrador.',
+            prestadores: [],
+            fundadores: [],
+          });
+        }
+
+        const privilegedKey = config.supabaseServiceRoleKey || config.supabaseKey;
+        if (!config.supabaseUrl || !privilegedKey) {
+          return res.status(200).json({ success: false, prestadores: [], fundadores: [] });
+        }
+
+        try {
+          const fetchSupabaseRows = (endpoint) => {
+            return new Promise((resolve) => {
+              const url = new URL(`${config.supabaseUrl}${endpoint}`);
+              const req = https.request(
+                {
+                  hostname: url.hostname,
+                  port: url.port || 443,
+                  path: url.pathname + url.search,
+                  method: 'GET',
+                  headers: {
+                    apikey: privilegedKey,
+                    Authorization: `Bearer ${privilegedKey}`,
+                  },
+                },
+                (response) => {
+                  let body = '';
+                  response.on('data', (chunk) => (body += chunk));
+                  response.on('end', () => {
+                    try {
+                      if (response.statusCode >= 200 && response.statusCode < 300) {
+                        const parsed = JSON.parse(body);
+                        resolve(Array.isArray(parsed) ? parsed : []);
+                      } else {
+                        resolve([]);
+                      }
+                    } catch {
+                      resolve([]);
+                    }
+                  });
+                }
+              );
+              req.on('error', () => resolve([]));
+              req.end();
+            });
+          };
+
+          const [prestadores, fundadores] = await Promise.all([
+            fetchSupabaseRows('/rest/v1/prestadores?select=*&order=created_at.desc'),
+            fetchSupabaseRows('/rest/v1/postulaciones_fundadores?select=*&order=created_at.desc'),
+          ]);
+
+          return res.status(200).json({
+            success: true,
+            prestadores: Array.isArray(prestadores) ? prestadores : [],
+            fundadores: Array.isArray(fundadores) ? fundadores : [],
+          });
+        } catch (err) {
+          return res.status(200).json({ success: false, error: err.message, prestadores: [], fundadores: [] });
+        }
+      }
+
+      case 'GET_AUTH_AVATARS': {
+        const authHeader = req.headers.authorization || req.headers.Authorization || '';
+        const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+
+        if (!token) {
+          return res.status(401).json({
+            success: false,
+            error: 'Acceso no autorizado: se requiere token de sesión de administrador.',
+            avatars: {},
+          });
+        }
+
+        const isAdmin = await verifySupabaseCallerAdmin(token, config);
+        if (!isAdmin) {
+          return res.status(403).json({
+            success: false,
+            error: 'Acceso denegado: se requieren permisos de administrador.',
+            avatars: {},
+          });
+        }
+
+        const privilegedKey = config.supabaseServiceRoleKey || config.supabaseKey;
+        if (!config.supabaseUrl || !privilegedKey) {
+          return res.status(200).json({ success: false, avatars: {} });
+        }
+
+        try {
+          const fetchAuthUsers = () => {
+            return new Promise((resolve) => {
+              const url = new URL(`${config.supabaseUrl}/auth/v1/admin/users?per_page=1000`);
+              const req = https.request(
+                {
+                  hostname: url.hostname,
+                  port: url.port || 443,
+                  path: url.pathname + url.search,
+                  method: 'GET',
+                  headers: {
+                    apikey: privilegedKey,
+                    Authorization: `Bearer ${privilegedKey}`,
+                  },
+                },
+                (response) => {
+                  let body = '';
+                  response.on('data', (chunk) => (body += chunk));
+                  response.on('end', () => {
+                    try {
+                      if (response.statusCode >= 200 && response.statusCode < 300) {
+                        const parsed = JSON.parse(body);
+                        resolve(parsed?.users || []);
+                      } else {
+                        resolve([]);
+                      }
+                    } catch {
+                      resolve([]);
+                    }
+                  });
+                }
+              );
+              req.on('error', () => resolve([]));
+              req.end();
+            });
+          };
+
+          const users = await fetchAuthUsers();
+          const avatarMap = {};
+          if (Array.isArray(users)) {
+            for (const u of users) {
+              const meta = u.user_metadata || {};
+              const idData = u.identities?.[0]?.identity_data || {};
+              const avatar =
+                meta.avatar_url ||
+                meta.picture ||
+                idData.avatar_url ||
+                idData.picture ||
+                '';
+              if (avatar) {
+                if (u.email) {
+                  avatarMap[u.email.toLowerCase().trim()] = avatar;
+                }
+                if (u.id) {
+                  avatarMap[u.id] = avatar;
+                }
+              }
+            }
+          }
+
+          return res.status(200).json({ success: true, avatars: avatarMap });
+        } catch (err) {
+          return res.status(200).json({ success: false, avatars: {} });
+        }
       }
 
       case 'EXPERIENCE_PROPOSAL_SUBMITTED': {

@@ -198,7 +198,7 @@ import {
                 @for (sub of recentSubmissions(); track sub.id) {
                   <tr [class.row-pending]="sub.status === 'pendiente'">
                     <td>
-                      <span class="ref-tag font-mono">{{ sub.reference }}</span>
+                      <span class="ref-tag">{{ sub.reference }}</span>
                     </td>
                     <td>
                       <div class="cell-stack">
@@ -261,7 +261,7 @@ import {
                     <td>
                       <div class="cell-stack">
                         <strong class="row-name">{{ item.name }}</strong>
-                        <span class="row-email font-mono">{{ item.email }}</span>
+                        <span class="row-email">{{ item.email }}</span>
                       </div>
                     </td>
                     <td>
@@ -380,7 +380,7 @@ import {
                         />
                         <div class="exp-cell-text">
                           <strong class="exp-title-cell">{{ req.title }}</strong>
-                          <span class="exp-kicker-sub font-mono">{{ req.kicker }}</span>
+                          <span class="exp-kicker-sub">{{ req.kicker }}</span>
                         </div>
                       </div>
                     </td>
@@ -467,7 +467,7 @@ import {
                               </span>
                             }
                           </div>
-                          <span class="exp-kicker-sub font-mono">{{ exp.kicker || 'EXPEDICIÓN' }}</span>
+                          <span class="exp-kicker-sub">{{ exp.kicker || 'EXPEDICIÓN' }}</span>
                         </div>
                       </div>
                     </td>
@@ -527,54 +527,77 @@ import {
               </tbody>
             </table>
           </div>
-
-          <!-- Acciones al pie de la tabla -->
-          <div class="table-footer-actions">
-            <button
-              type="button"
-              class="btn-footer-action"
-              (click)="refreshExperiences()"
-              [disabled]="isRefreshingExperiences()"
-            >
-              {{ isRefreshingExperiences() ? 'Actualizando...' : 'Refrescar Datos' }}
-            </button>
-
-            <button type="button" class="btn-footer-action" (click)="downloadExperiencesCsv()">
-              Descargar Planilla
-            </button>
-          </div>
         }
       </section>
 
-      <!-- Modal Rápido de Revisión de Comprobante -->
+      <!-- Modal de Revisión y Validación de Comprobante (Idéntico a /comprobantes) -->
       @if (selectedSubmission(); as sub) {
         <div class="modal-backdrop" (click)="closeReceipt()">
-          <div class="quick-modal-card receipt-modal-box" (click)="$event.stopPropagation()">
-            <div class="modal-img-col">
-              <img
-                [src]="sub.receipt.url"
-                [alt]="'Comprobante de ' + sub.fullName"
-                class="receipt-img-view"
-              />
-            </div>
-            <div class="modal-info-col">
-              <div class="modal-top">
-                <div>
-                  <span class="card-kicker">COMPROBANTE · {{ sub.reference }}</span>
-                  <h3 class="modal-sub-name">{{ sub.fullName }}</h3>
+          <div
+            class="receipt-modal-card"
+            (click)="$event.stopPropagation()"
+            role="dialog"
+            aria-modal="true"
+          >
+            <!-- Columna Izquierda: Vista Previa del Archivo -->
+            <div class="receipt-modal-preview">
+              @if (isPdf(sub.receipt.mimeType)) {
+                <div class="pdf-preview-box">
+                  <mat-icon class="pdf-icon-big">picture_as_pdf</mat-icon>
+                  <strong>{{ sub.receipt.fileName }}</strong>
+                  <a [href]="sub.receipt.url" target="_blank" rel="noopener" class="open-pdf-btn">
+                    <mat-icon>open_in_new</mat-icon>
+                    <span>Abrir PDF en pestaña nueva</span>
+                  </a>
                 </div>
-                <button type="button" class="modal-x" (click)="closeReceipt()">×</button>
+              } @else {
+                <div class="img-preview-box">
+                  <img
+                    [src]="sub.receipt.url"
+                    [alt]="'Comprobante de ' + sub.fullName"
+                    class="preview-img"
+                  />
+                </div>
+              }
+            </div>
+
+            <!-- Columna Derecha: Detalle y Acciones -->
+            <div class="receipt-modal-details">
+              <div class="modal-head">
+                <div>
+                  <span class="section-kicker">DETALLE DE COMPROBANTE</span>
+                  <h2 class="modal-title font-mono">{{ sub.reference }}</h2>
+                </div>
+                <button
+                  type="button"
+                  class="modal-close-btn"
+                  (click)="closeReceipt()"
+                  aria-label="Cerrar"
+                >
+                  ×
+                </button>
               </div>
 
-              <div class="amount-banner">
-                <span class="amount-banner-lbl">Monto Transferido</span>
-                <strong class="amount-banner-val">{{ sub.amountArs | ars }}</strong>
+              <!-- Cuadro de Monto Esperado -->
+              <div class="expected-amount-card">
+                <span class="exp-lbl">Importe Transferido</span>
+                <strong class="exp-val text-green">{{ sub.amountArs | ars }}</strong>
+                <span class="exp-hint"
+                  >Verificá que el comprobante adjunto coincida con este importe.</span
+                >
               </div>
 
-              <dl class="modal-dl">
+              <!-- Lista de Datos -->
+              <dl class="meta-data-list">
+                <div>
+                  <dt>Titular:</dt>
+                  <dd>
+                    <strong>{{ sub.fullName }}</strong>
+                  </dd>
+                </div>
                 <div>
                   <dt>DNI:</dt>
-                  <dd>{{ sub.dni }}</dd>
+                  <dd class="font-mono">{{ sub.dni }}</dd>
                 </div>
                 <div>
                   <dt>Email:</dt>
@@ -582,50 +605,133 @@ import {
                 </div>
                 <div>
                   <dt>Teléfono:</dt>
-                  <dd>{{ sub.phone }}</dd>
+                  <dd class="phone-data-row">
+                    <span>{{ sub.phone || '—' }}</span>
+                    @if (getReservationWhatsappLink(sub); as waLink) {
+                      <a
+                        [href]="waLink"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="contact-whatsapp-link"
+                        title="Contactar por WhatsApp sobre esta reserva"
+                      >
+                        <mat-icon class="arrow-up-right-icon">north_east</mat-icon>
+                        <span>Contactar</span>
+                      </a>
+                    }
+                  </dd>
                 </div>
                 <div>
                   <dt>Experiencia:</dt>
                   <dd>{{ sub.experienceTitle }}</dd>
                 </div>
                 <div>
-                  <dt>Fecha:</dt>
+                  <dt>Fecha Salida:</dt>
                   <dd>{{ sub.date | fecha: 'larga' }}</dd>
                 </div>
                 <div>
                   <dt>Cupos:</dt>
-                  <dd>{{ sub.participants }}</dd>
+                  <dd>{{ sub.participants }} personas</dd>
+                </div>
+                <div>
+                  <dt>Enviado el:</dt>
+                  <dd>{{ sub.submittedAt | fecha: 'corta' }}</dd>
                 </div>
                 @if (sub.discountCode) {
                   <div>
                     <dt>Descuento:</dt>
-                    <dd>{{ sub.discountCode }}</dd>
+                    <dd>{{ sub.discountCode }} (-{{ sub.discountArs | ars }})</dd>
                   </div>
                 }
               </dl>
 
-              <div class="receipt-box-actions">
-                <a
-                  [href]="sub.receipt.url"
-                  [download]="sub.receipt.fileName"
-                  target="_blank"
-                  rel="noopener"
-                  class="btn-state btn-download-clean"
-                >
-                  <span>Descargar Comprobante</span>
-                </a>
-
-                @if (sub.phone) {
-                  <a
-                    [href]="getReceiptWhatsappLink(sub)"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="btn-state btn-whatsapp"
-                  >
-                    <span>Contactar por WhatsApp</span>
-                  </a>
-                }
+              <!-- Estado del Comprobante -->
+              <div
+                class="status-summary-box"
+                [attr.data-status]="sub.status"
+              >
+                <mat-icon>{{
+                  sub.status === 'aprobado'
+                    ? 'verified'
+                    : sub.status === 'rechazado'
+                      ? 'cancel'
+                      : 'schedule'
+                }}</mat-icon>
+                <div>
+                  <strong>
+                    @if (sub.status === 'aprobado') {
+                      Pago APROBADO
+                    } @else if (sub.status === 'rechazado') {
+                      Pago RECHAZADO
+                    } @else {
+                      Pago PENDIENTE DE REVISIÓN
+                    }
+                  </strong>
+                  @if (sub.reviewedAt) {
+                    <span> · {{ sub.reviewedAt | fecha: 'corta' }}</span>
+                  }
+                  @if (sub.status === 'rechazado' && sub.rejectionReason) {
+                    <p class="rej-text">{{ sub.rejectionReason }}</p>
+                  }
+                </div>
               </div>
+
+              <!-- Acciones de Validación / Descarga -->
+              @if (!rejecting()) {
+                <div class="modal-actions-row">
+                  @if (sub.status === 'pendiente') {
+                    <button type="button" class="btn-approve" (click)="quickApprove(sub.id)">
+                      Aprobar Pago
+                    </button>
+                  }
+                  @if (sub.status !== 'rechazado') {
+                    <button type="button" class="btn-reject" (click)="rejecting.set(true)">
+                      Rechazar Pago
+                    </button>
+                  }
+                  <a
+                    [href]="sub.receipt.url"
+                    [download]="sub.receipt.fileName"
+                    target="_blank"
+                    rel="noopener"
+                    class="btn-download-action"
+                    title="Descargar comprobante"
+                  >
+                    <span>Descargar comprobante</span>
+                  </a>
+                </div>
+              } @else {
+                <div class="reject-box">
+                  <label class="reject-label" for="rej-reason-input">Motivo del Rechazo:</label>
+                  <div class="quick-reasons-row">
+                    <button type="button" class="quick-reason-chip" (click)="rejectionReason.set('Comprobante ilegible o borroso.')">Ilegible</button>
+                    <button type="button" class="quick-reason-chip" (click)="rejectionReason.set('El monto transferido no coincide con el total de la reserva.')">Monto incorrecto</button>
+                    <button type="button" class="quick-reason-chip" (click)="rejectionReason.set('La transferencia no impactó en la cuenta bancaria.')">No acreditado</button>
+                    <button type="button" class="quick-reason-chip" (click)="rejectionReason.set('Comprobante duplicado o ya utilizado.')">Duplicado</button>
+                  </div>
+                  <textarea
+                    id="rej-reason-input"
+                    class="reject-textarea"
+                    rows="2"
+                    placeholder="Ej: El importe no coincide con el total..."
+                    [value]="rejectionReason()"
+                    (input)="rejectionReason.set($any($event.target).value)"
+                  ></textarea>
+                  <div class="reject-actions">
+                    <button type="button" class="cancel-btn" (click)="rejecting.set(false)">
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      class="confirm-reject-btn"
+                      [disabled]="rejectionReason().trim().length < 4"
+                      (click)="confirmReject(sub.id)"
+                    >
+                      Confirmar Rechazo
+                    </button>
+                  </div>
+                </div>
+              }
             </div>
           </div>
         </div>
@@ -1330,12 +1436,16 @@ import {
         color: #ffaa73;
         text-decoration: none;
         font-size: 0.82rem;
-        font-family: var(--font-mono, monospace);
+        font-family: inherit;
         background: rgba(255, 95, 0, 0.1);
         padding: 0.25rem 0.55rem;
         border-radius: 3px;
         border: 1px solid rgba(255, 95, 0, 0.25);
         transition: all 0.2s ease;
+      }
+
+      .route-link-cell code {
+        font-family: inherit;
       }
 
       .route-link-cell:hover {
@@ -1505,7 +1615,7 @@ import {
         background: rgba(255, 95, 0, 0.18);
         border: 1px solid rgba(255, 95, 0, 0.45);
         color: #ffaa73;
-        font-family: var(--font-mono, monospace);
+        font-family: inherit;
         font-weight: 700;
         font-size: 0.75rem;
         border-radius: 2px;
@@ -1530,7 +1640,9 @@ import {
         background: rgba(255, 95, 0, 0.15);
         border: 1px solid rgba(255, 95, 0, 0.35);
         color: #ffaa73;
+        font-family: inherit;
         font-weight: 700;
+        font-size: 0.75rem;
         border-radius: 2px;
         white-space: nowrap;
       }
@@ -1552,7 +1664,14 @@ import {
 
       .email-link {
         color: #ffffff !important;
-        font-family: var(--font-mono, monospace);
+        font-family: inherit;
+        font-size: 0.75rem;
+        white-space: nowrap;
+      }
+
+      .row-email {
+        color: rgba(255, 255, 255, 0.65);
+        font-family: inherit;
         font-size: 0.75rem;
         white-space: nowrap;
       }
@@ -1629,7 +1748,7 @@ import {
       }
 
       .font-mono {
-        font-family: var(--font-mono, monospace);
+        font-family: inherit;
       }
 
       .tier-pill {
@@ -1790,56 +1909,6 @@ import {
         background: #241309;
       }
 
-      .table-footer-actions {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        width: 100%;
-        margin-top: 1rem;
-        box-sizing: border-box;
-      }
-
-      .btn-footer-action {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0.6rem 1.15rem;
-        border-radius: 2px;
-        font-size: 0.82rem;
-        font-weight: 700;
-        cursor: pointer;
-        transition:
-          background 0.2s ease,
-          border-color 0.2s ease,
-          filter 0.2s ease;
-        background: rgba(30, 15, 8, 0.75);
-        border: 1px solid rgba(255, 95, 0, 0.35);
-        color: #ffffff;
-      }
-
-      .btn-footer-action:hover:not(:disabled) {
-        background: rgba(45, 22, 12, 0.85);
-        border-color: rgba(255, 95, 0, 0.5);
-        filter: brightness(1.15);
-      }
-
-      .btn-footer-action:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
-
-      @media (max-width: 768px) {
-        .table-footer-actions {
-          flex-direction: column;
-          gap: 0.75rem;
-        }
-
-        .table-footer-actions .btn-footer-action {
-          width: 100%;
-          justify-content: center;
-        }
-      }
-
       /* Modal Rápido */
       .modal-backdrop {
         position: fixed;
@@ -1865,6 +1934,324 @@ import {
         border: 1px solid rgba(255, 95, 0, 0.35);
         border-radius: 3px;
         overflow: hidden;
+      }
+
+      /* Modal de Revisión y Validación de Comprobante (Idéntico a admin-receipts) */
+      .receipt-modal-card {
+        display: grid;
+        grid-template-columns: minmax(320px, 1fr) minmax(360px, 1.2fr);
+        width: min(960px, 100%);
+        max-height: min(720px, 92vh);
+        background: rgba(20, 10, 5, 0.78);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 95, 0, 0.35);
+        border-radius: 3px;
+        box-shadow: 0 25px 70px rgba(0, 0, 0, 0.7);
+        overflow: hidden;
+      }
+
+      .receipt-modal-preview {
+        background: rgba(8, 4, 2, 0.55);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        overflow: auto;
+      }
+
+      .preview-img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+      }
+
+      .pdf-preview-box {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+        text-align: center;
+        color: #ffffff;
+      }
+
+      .pdf-icon-big {
+        font-size: 64px;
+        width: 64px;
+        height: 64px;
+        color: #ef4444;
+      }
+
+      .open-pdf-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.6rem 1rem;
+        background: #ff5f00;
+        color: #0b0704;
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 0.8rem;
+        border-radius: 2px;
+      }
+
+      .receipt-modal-details {
+        display: flex;
+        flex-direction: column;
+        padding: 1.75rem;
+        overflow-y: auto;
+        gap: 1.25rem;
+      }
+
+      .modal-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+      }
+
+      .modal-title {
+        color: #ffffff;
+        font-size: 1.4rem;
+        margin: 0;
+      }
+
+      .modal-close-btn {
+        background: transparent;
+        border: none;
+        color: #ffffff;
+        font-size: 1.75rem;
+        cursor: pointer;
+        line-height: 1;
+      }
+
+      .expected-amount-card {
+        background: rgba(30, 16, 9, 0.85);
+        border: 1px solid rgba(255, 95, 0, 0.35);
+        border-radius: 2px;
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+      }
+
+      .exp-lbl {
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: rgba(255, 255, 255, 0.65);
+        text-transform: uppercase;
+      }
+
+      .exp-val {
+        font-size: 1.75rem;
+        font-weight: 800;
+      }
+
+      .exp-hint {
+        font-size: 0.72rem;
+        color: rgba(255, 255, 255, 0.55);
+      }
+
+      .meta-data-list {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.65rem 1rem;
+        font-size: 0.82rem;
+        margin: 0;
+      }
+
+      .meta-data-list dt {
+        color: rgba(255, 255, 255, 0.5);
+      }
+
+      .meta-data-list dd {
+        margin: 0;
+        color: #ffffff;
+      }
+
+      .phone-data-row {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+
+      .contact-whatsapp-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.15rem 0.55rem;
+        font-size: 0.76rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #25d366;
+        background: rgba(37, 211, 102, 0.12);
+        border: 1px solid rgba(37, 211, 102, 0.35);
+        border-radius: 9999px;
+        text-decoration: none;
+        transition: all 0.2s ease;
+      }
+
+      .contact-whatsapp-link:hover {
+        background: rgba(37, 211, 102, 0.25);
+        border-color: #25d366;
+        color: #ffffff;
+        transform: translateY(-1px);
+      }
+
+      .arrow-up-right-icon {
+        font-size: 0.85rem !important;
+        width: 0.85rem !important;
+        height: 0.85rem !important;
+        line-height: 0.85rem !important;
+      }
+
+      .status-summary-box {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.85rem 1rem;
+        border-radius: 2px;
+      }
+
+      .status-summary-box[data-status='aprobado'] {
+        background: rgba(16, 185, 129, 0.15);
+        border: 1px solid rgba(16, 185, 129, 0.4);
+        color: #34d399;
+      }
+
+      .status-summary-box[data-status='rechazado'] {
+        background: rgba(239, 68, 68, 0.15);
+        border: 1px solid rgba(239, 68, 68, 0.4);
+        color: #fca5a5;
+      }
+
+      .rej-text {
+        font-size: 0.75rem;
+        margin: 0.25rem 0 0;
+      }
+
+      .modal-actions-row {
+        display: flex;
+        gap: 0.75rem;
+      }
+
+      .btn-reject {
+        flex: 1;
+        padding: 0.75rem 1rem;
+        background: rgba(239, 68, 68, 0.15);
+        border: 1px solid rgba(239, 68, 68, 0.6);
+        color: #fca5a5;
+        font-weight: 700;
+        font-size: 0.88rem;
+        border-radius: 2px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .btn-reject:hover {
+        background: rgba(239, 68, 68, 0.3);
+        border-color: #ef4444;
+      }
+
+      .btn-download-action {
+        flex: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.75rem 1rem;
+        background: rgba(0, 220, 130, 0.18);
+        border: 1px solid rgba(0, 220, 130, 0.45);
+        color: #00dc82;
+        font-weight: 700;
+        font-size: 0.88rem;
+        border-radius: 2px;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .btn-download-action:hover {
+        background: rgba(0, 220, 130, 0.32);
+        border-color: #00dc82;
+        color: #ffffff;
+      }
+
+      .reject-box {
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+        background: rgba(30, 10, 8, 0.7);
+        border: 1px solid rgba(239, 68, 68, 0.4);
+        padding: 1rem;
+        border-radius: 2px;
+      }
+
+      .reject-label {
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: #fca5a5;
+      }
+
+      .quick-reasons-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        margin-bottom: 0.25rem;
+      }
+
+      .quick-reason-chip {
+        padding: 0.25rem 0.55rem;
+        font-size: 0.72rem;
+        background: rgba(239, 68, 68, 0.12);
+        border: 1px solid rgba(239, 68, 68, 0.35);
+        color: #fca5a5;
+        border-radius: 2px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+
+      .quick-reason-chip:hover {
+        background: rgba(239, 68, 68, 0.28);
+        border-color: #ef4444;
+        color: #ffffff;
+      }
+
+      .reject-textarea {
+        background: #0d0604;
+        border: 1px solid rgba(239, 68, 68, 0.4);
+        color: #ffffff;
+        font-size: 0.82rem;
+        padding: 0.5rem;
+        border-radius: 2px;
+        outline: none;
+      }
+
+      .reject-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+      }
+
+      .cancel-btn {
+        padding: 0.5rem 0.85rem;
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        color: #ffffff;
+        font-size: 0.78rem;
+        cursor: pointer;
+        border-radius: 2px;
+      }
+
+      .confirm-reject-btn {
+        padding: 0.5rem 0.85rem;
+        background: #ef4444;
+        border: none;
+        color: #ffffff;
+        font-size: 0.78rem;
+        font-weight: 700;
+        cursor: pointer;
+        border-radius: 2px;
       }
 
       .receipt-modal-box {
@@ -2063,7 +2450,7 @@ import {
         color: rgba(255, 255, 255, 0.55);
         text-decoration: none;
         font-size: 0.75rem;
-        font-family: var(--font-mono, monospace);
+        font-family: inherit;
       }
 
       .contact-whatsapp:hover {
@@ -2755,7 +3142,7 @@ import {
         font-size: 0.78rem;
         font-weight: 600;
         line-height: 1;
-        font-family: var(--font-mono, monospace);
+        font-family: inherit;
       }
 
       .tariff-capacity-col {
@@ -2803,6 +3190,39 @@ import {
       @media (max-width: 768px) {
         .modal-backdrop {
           padding: 0.5rem !important;
+        }
+
+        .receipt-modal-card {
+          grid-template-columns: 1fr !important;
+          max-height: 94vh !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          overflow-y: auto !important;
+        }
+
+        .receipt-modal-preview {
+          max-height: 260px !important;
+          padding: 0.75rem !important;
+          background: rgba(8, 4, 2, 0.7) !important;
+          overflow-y: auto !important;
+          border-bottom: 1px solid rgba(255, 95, 0, 0.25) !important;
+        }
+
+        .receipt-modal-details {
+          padding: 1rem 1rem 1.25rem !important;
+          gap: 0.75rem !important;
+          overflow-y: visible !important;
+        }
+
+        .meta-data-list {
+          grid-template-columns: 1fr !important;
+          gap: 0.4rem !important;
+        }
+
+        .modal-actions-row {
+          flex-direction: column !important;
+          width: 100% !important;
+          gap: 0.5rem !important;
         }
 
         .receipt-modal-box,
@@ -2952,6 +3372,8 @@ export class AdminDashboardComponent {
   readonly admin = this.store.currentAdmin;
   readonly stats = this.store.stats;
   readonly selectedSubmission = signal<TransferSubmission | null>(null);
+  readonly rejecting = signal<boolean>(false);
+  readonly rejectionReason = signal<string>('');
   readonly selectedApplication = signal<AdminApplication | null>(null);
   readonly selectedExperienceRequest = signal<ExperienceProposalRequest | null>(null);
   readonly expPublicUrlInput = signal<string>('');
@@ -3051,6 +3473,8 @@ export class AdminDashboardComponent {
 
   async openReceipt(sub: TransferSubmission): Promise<void> {
     this.selectedSubmission.set(sub);
+    this.rejecting.set(false);
+    this.rejectionReason.set('');
     const key = sub.receipt.storageKey || sub.receipt.url;
     if (
       key &&
@@ -3070,6 +3494,44 @@ export class AdminDashboardComponent {
 
   closeReceipt(): void {
     this.selectedSubmission.set(null);
+    this.rejecting.set(false);
+    this.rejectionReason.set('');
+  }
+
+  async confirmReject(id: string): Promise<void> {
+    const reason = this.rejectionReason().trim();
+    if (reason.length < 4) return;
+    await this.store.reviewSubmission(id, 'rechazado', reason);
+    this.closeReceipt();
+  }
+
+  isPdf(mimeType?: string): boolean {
+    return (mimeType || '').toLowerCase().includes('pdf');
+  }
+
+  getReservationWhatsappLink(sub: TransferSubmission): string {
+    const raw = (sub.phone || '').replace(/\D/g, '');
+    if (!raw) return '';
+
+    let num = raw;
+    if (num.startsWith('549')) {
+      // standard Argentina format
+    } else if (num.startsWith('54')) {
+      num = '549' + num.slice(2);
+    } else if (num.startsWith('0')) {
+      num = '549' + num.replace(/^0+/, '');
+    } else if (num.length === 10) {
+      num = '549' + num;
+    } else if (!num.startsWith('549')) {
+      num = '549' + num;
+    }
+
+    const name = sub.fullName?.trim() ? ` ${sub.fullName.trim()}` : '';
+    const ref = sub.reference ? `#${sub.reference}` : '';
+    const exp = sub.experienceTitle ? `"${sub.experienceTitle}"` : 'tu reserva';
+    const msg = `Hola${name}, te contactamos desde el equipo de Club de Experiencias sobre tu reserva ${ref} para ${exp}.`.trim();
+
+    return `https://wa.me/${num}?text=${encodeURIComponent(msg)}`;
   }
 
   openApplication(app: AdminApplication): void {

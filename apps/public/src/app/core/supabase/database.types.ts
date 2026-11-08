@@ -7,7 +7,7 @@
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
-export type MembershipTier = 'emergente' | 'activo' | 'fundador' | 'waitlist';
+export type MembershipTier = 'emergente' | 'activo' | 'fundador' | 'waitlist' | 'dado_de_baja';
 
 export interface Database {
   public: {

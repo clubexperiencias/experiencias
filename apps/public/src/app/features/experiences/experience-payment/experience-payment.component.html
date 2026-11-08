@@ -191,6 +191,23 @@
                               }
                             </span>
                           </button>
+                        } @empty {
+                          <div class="pay-no-dates-card">
+                            <mat-icon class="pay-no-dates-icon" aria-hidden="true">event_busy</mat-icon>
+                            <div class="pay-no-dates-info">
+                              <strong>No hay salidas programadas en este momento</strong>
+                              <p>Podés coordinar una salida privada o consultar las próximas aperturas directamente por WhatsApp.</p>
+                            </div>
+                            <a
+                              [href]="whatsAppInquiryUrl()"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              class="pay-no-dates-wa-btn"
+                            >
+                              <mat-icon aria-hidden="true">chat</mat-icon>
+                              <span>Consultar Fechas por WhatsApp</span>
+                            </a>
+                          </div>
                         }
                       </div>
                       @if (
@@ -414,15 +431,35 @@
                       @if (receiptFile(); as file) {
                         <div class="pay-file-card">
                           @if (receiptPreview(); as preview) {
-                            <img
-                              [src]="preview"
-                              alt="Vista previa del comprobante"
-                              class="pay-file-thumb"
-                            />
+                            <div
+                              class="pay-file-thumb-wrap"
+                              (click)="openPreviewModal()"
+                              title="Hacé click para ver el comprobante ampliado"
+                              role="button"
+                              tabindex="0"
+                              (keydown.enter)="openPreviewModal()"
+                            >
+                              <img
+                                [src]="preview"
+                                alt="Vista previa del comprobante"
+                                class="pay-file-thumb"
+                              />
+                              <span class="pay-file-thumb-zoom" aria-hidden="true">
+                                <mat-icon>zoom_in</mat-icon>
+                              </span>
+                            </div>
+                          } @else {
+                            <div class="pay-file-icon pay-file-pdf" aria-hidden="true">
+                              <mat-icon>picture_as_pdf</mat-icon>
+                            </div>
                           }
                           <div class="pay-file-meta">
                             <span class="pay-file-name">{{ file.name }}</span>
                             <span class="pay-file-size">{{ formatSize(file.size) }}</span>
+                            <span class="pay-file-status">
+                              <mat-icon aria-hidden="true">check_circle</mat-icon>
+                              Listo para enviar
+                            </span>
                           </div>
                           <button type="button" class="pay-copy-btn" (click)="removeReceipt()">
                             <mat-icon aria-hidden="true">close</mat-icon>
@@ -526,6 +563,27 @@
             </div>
           </div>
         }
+      }
+
+      @if (previewModalOpen() && receiptPreview(); as preview) {
+        <div class="pay-preview-modal-backdrop" (click)="closePreviewModal()">
+          <div class="pay-preview-modal-content" (click)="$event.stopPropagation()">
+            <div class="pay-preview-modal-header">
+              <span class="pay-preview-title">Vista previa del comprobante</span>
+              <button
+                type="button"
+                class="pay-preview-close-btn"
+                (click)="closePreviewModal()"
+                aria-label="Cerrar vista previa"
+              >
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+            <div class="pay-preview-modal-body">
+              <img [src]="preview" alt="Comprobante ampliado" class="pay-preview-modal-img" />
+            </div>
+          </div>
+        </div>
       }
     </main>
   </div>

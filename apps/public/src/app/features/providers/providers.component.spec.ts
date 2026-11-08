@@ -40,8 +40,8 @@ describe('ProvidersComponent', () => {
     const newsletter = TestBed.inject(NewsletterService);
     vi.spyOn(newsletter, 'submitProviderApplication').mockResolvedValue({ success: true });
 
-    component.providerName.set('Carlos Guía');
-    component.providerEmail.set('carlos@catamarca.com');
+    component.providerName.set('Prestador Test');
+    component.providerEmail.set('prestador@experiencias.club');
     await component.submitProvider();
     fixture.detectChanges();
 

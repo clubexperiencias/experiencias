@@ -98,7 +98,7 @@
               <div class="activity-content">
                 <div class="activity-tag-row">
                   <span class="activity-status" [class]="act.status">
-                    {{ act.status === 'completada' ? 'Completada' : 'Confirmada' }}
+                    {{ act.status === 'completada' ? 'Completada' : (act.status === 'confirmada' ? 'Pago Confirmado' : (act.status === 'cancelada' ? 'Pago Rechazado' : 'En Validación')) }}
                   </span>
                   <span class="activity-region" [title]="act.region + ' (' + act.altitude + ')'"
                     >{{ act.region }} ({{ act.altitude }})</span
@@ -138,6 +138,18 @@
                   >
                     <span>Comprobante</span>
                   </button>
+                  @if (act.receipt.receiptFileUrl) {
+                    <a
+                      [href]="act.receipt.receiptFileUrl"
+                      [download]="act.receipt.receiptFileName || 'comprobante.jpg'"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="receipt-btn btn-receipt-download"
+                      title="Descargar archivo transferido"
+                    >
+                      <span>Descargar Archivo</span>
+                    </a>
+                  }
                 </div>
               </div>
             </article>

@@ -69,11 +69,10 @@ import { environment } from '../../../../environments/environment';
 
               @if (accountStatus() === 'pending') {
                 <div class="login-alert-status alert-pending" role="status">
-                  <mat-icon class="alert-icon">hourglass_top</mat-icon>
                   <div class="alert-content">
                     <strong class="alert-title">Postulación en Proceso de Revisión</strong>
                     <p class="alert-text">
-                      Tu postulación como prestador para <code>{{ unapprovedEmail() }}</code> fue recibida y se encuentra en validación por el equipo del Club. Te notificaremos por correo apenas sea aprobada.
+                      Tu postulación como prestador para <code>{{ unapprovedEmail() }}</code> fue recibida y se encuentra en validación por el equipo del Club.
                     </p>
                   </div>
                 </div>

@@ -245,6 +245,7 @@ export class ExperiencePaymentComponent implements OnInit {
   readonly receiptPreview = signal<string | null>(null);
   readonly receiptError = signal<string | null>(null);
   readonly isDragging = signal(false);
+  readonly previewModalOpen = signal(false);
 
   private readonly formStatus = toSignal(this.form.statusChanges, {
     initialValue: this.form.status,
@@ -471,6 +472,26 @@ export class ExperiencePaymentComponent implements OnInit {
       this.submitting.set(false);
     }
   }
+
+  openPreviewModal(): void {
+    if (this.receiptPreview()) {
+      this.previewModalOpen.set(true);
+    }
+  }
+
+  closePreviewModal(): void {
+    this.previewModalOpen.set(false);
+  }
+
+  readonly whatsAppInquiryUrl = computed(() => {
+    const exp = this.experience();
+    const phone = exp?.providerPhone || '+54 9 383 456-7890';
+    const cleanPhone = (phone || '').replace(/\D/g, '') || '5493834567890';
+    const msg = encodeURIComponent(
+      `Hola! Quisiera consultar por próximas fechas o salidas para la experiencia: "${exp?.title || 'Experiencia'}"`,
+    );
+    return `https://wa.me/${cleanPhone}?text=${msg}`;
+  });
 
   getWhatsAppUrl(sub: TransferSubmission): string {
     const exp = this.experience();

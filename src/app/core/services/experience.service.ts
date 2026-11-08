@@ -283,11 +283,7 @@ export const SEEDED_REMOVED_EXPERIENCE_ID = 'req-sunset-las-pirquitas';
 export const SEEDED_REMOVED_EXPERIENCE_SLUG =
   'travesia-en-kayak-nocturna-luna-llena-en-el-jumeal';
 
-export const DEFAULT_EXPERIENCES: Experience[] = [
-  KAYAK_DEFAULT_EXPERIENCE,
-  POMEZ_DEFAULT_EXPERIENCE,
-  SEISMILES_DEFAULT_EXPERIENCE,
-];
+export const DEFAULT_EXPERIENCES: Experience[] = [];
 
 @Injectable({
   providedIn: 'root',
@@ -303,7 +299,18 @@ export class ExperienceService {
   );
 
   getPublishedExperienceBySlug(slug: string): Experience | undefined {
-    return this.publishedExperiences().find((e: Experience) => e.slug === slug);
+    if (!slug) return undefined;
+    const clean = slug.trim().toLowerCase();
+    return this.publishedExperiences().find((e: Experience) => {
+      const expSlug = (e.slug || '').trim().toLowerCase();
+      const expId = (e.id || '').trim().toLowerCase();
+      return (
+        expSlug === clean ||
+        expId === clean ||
+        expId === `exp-${clean}` ||
+        clean === `exp-${expSlug}`
+      );
+    });
   }
 
   getPublishedExperienceById(id: string): Experience | undefined {
@@ -370,6 +377,9 @@ export class ExperienceService {
   constructor() {
     if (typeof window !== 'undefined') {
       this.activeAccountIdentifier = this.resolveActiveAccount();
+      window.addEventListener('online', () => {
+        void this.reloadFromSupabase();
+      });
     }
     if (isSupabaseConfigured()) {
       try {
@@ -415,17 +425,68 @@ export class ExperienceService {
     return this._experiences().find((e) => e.id === id || e.slug === id);
   }
 
+  private isCompleteExperience(exp: any): exp is Experience {
+    if (!exp || typeof exp !== 'object') return false;
+    return (
+      typeof exp.id === 'string' &&
+      exp.id.trim() !== '' &&
+      typeof exp.slug === 'string' &&
+      exp.slug.trim() !== '' &&
+      typeof exp.title === 'string' &&
+      exp.title.trim() !== '' &&
+      typeof exp.tagline === 'string' &&
+      typeof exp.description === 'string' &&
+      typeof exp.region === 'string' &&
+      typeof exp.difficulty === 'string' &&
+      typeof exp.durationLabel === 'string' &&
+      typeof exp.priceArs === 'number' &&
+      typeof exp.maxSpotsPerGroup === 'number' &&
+      typeof exp.coverImage === 'string' &&
+      exp.coverImage.trim() !== ''
+    );
+  }
+
   async updateExperience(updated: Partial<Experience> & { id: string }): Promise<void> {
     const prevList = this._experiences();
-    const index = prevList.findIndex((e) => e.id === updated.id);
+    let index = prevList.findIndex((e) => e.id === updated.id);
+    if (index === -1 && updated.slug) {
+      index = prevList.findIndex((e) => e.slug === updated.slug);
+    }
     if (index === -1) {
+      index = prevList.findIndex(
+        (e) => e.id === `exp-${updated.id}` || `exp-${e.id}` === updated.id,
+      );
+    }
+
+    if (index === -1 && !this.isCompleteExperience(updated)) {
       throw new Error(`Experiencia con ID ${updated.id} no encontrada.`);
     }
 
-    const current = prevList[index];
+    const current = (index !== -1 ? prevList[index] : (updated as Experience)) || ({} as Experience);
+    const rawCover = updated.coverImage || current.coverImage || KAYAK_IMAGE;
+    const safeCoverImage = typeof rawCover === 'string' && rawCover.startsWith('blob:')
+      ? KAYAK_IMAGE
+      : rawCover;
+
+    const rawVideo = updated.videoUrl !== undefined ? updated.videoUrl : current.videoUrl;
+    const safeVideoUrl = typeof rawVideo === 'string' && rawVideo.startsWith('blob:')
+      ? ''
+      : (rawVideo || '');
+
+    const rawAlbum = updated.albumPhotos !== undefined ? updated.albumPhotos : current.albumPhotos;
+    const safeAlbumPhotos = Array.isArray(rawAlbum)
+      ? rawAlbum.map((p) => ({
+          ...p,
+          url: typeof p.url === 'string' && p.url.startsWith('blob:') ? KAYAK_IMAGE : p.url,
+        }))
+      : rawAlbum;
+
     const merged: Experience = {
       ...current,
       ...updated,
+      coverImage: safeCoverImage,
+      videoUrl: safeVideoUrl || undefined,
+      albumPhotos: safeAlbumPhotos,
       detailRoute: updated.slug ? `/experiencias/${updated.slug}` : current.detailRoute,
       publicUrl: updated.slug
         ? `https://experiencias.club/experiencias/${updated.slug}`
@@ -433,7 +494,11 @@ export class ExperienceService {
     };
 
     const nextList = [...prevList];
-    nextList[index] = merged;
+    if (index !== -1) {
+      nextList[index] = merged;
+    } else {
+      nextList.push(merged);
+    }
     this._experiences.set(nextList);
     this.persistToLocalStorage(nextList);
 
@@ -450,8 +515,8 @@ export class ExperienceService {
           price_ars: merged.priceArs,
           price_usd: merged.priceUsd,
           capacity_per_date: merged.maxSpotsPerGroup,
-          cover_image: merged.coverImage,
-          video_url: merged.videoUrl || '',
+          cover_image: safeCoverImage,
+          video_url: safeVideoUrl,
           video_poster: merged.videoPoster || '',
           altitude_meters: merged.altitudeMeters || 0,
           dates: merged.dates || [],
@@ -495,8 +560,8 @@ export class ExperienceService {
         } else if (merged.promosAndPricing !== undefined) {
           payload['promos_and_pricing'] = merged.promosAndPricing;
         }
-        if (merged.albumPhotos) {
-          payload['album_photos'] = merged.albumPhotos;
+        if (safeAlbumPhotos) {
+          payload['album_photos'] = safeAlbumPhotos;
         }
 
         if (merged.dateSlots !== undefined) {
@@ -543,6 +608,15 @@ export class ExperienceService {
             .select()) as any);
         }
 
+        // Si no se encontró por ID, intentar por slug
+        if (!error && (!data || data.length === 0) && merged.slug) {
+          ({ data, error } = (await this.supabase
+            .from('experiencias')
+            .update(payload as any)
+            .eq('slug', merged.slug)
+            .select()) as any);
+        }
+
         if (error || !data || data.length === 0) {
           throw error || new Error(`No se encontró la experiencia remota con id ${merged.id}`);
         }
@@ -550,7 +624,7 @@ export class ExperienceService {
         const targetProviderEmail = (
           updated.providerEmail ||
           merged.providerEmail ||
-          (data[0] as any)?.provider_email ||
+          (data && (data[0] as any)?.provider_email) ||
           ''
         )
           .trim()
@@ -1308,6 +1382,21 @@ export class ExperienceService {
           delete copy.providerCuitDni;
           delete copy.providerBankName;
         }
+        if (typeof copy.coverImage === 'string' && copy.coverImage.startsWith('blob:')) {
+          copy.coverImage = KAYAK_IMAGE;
+        }
+        if (typeof copy.videoUrl === 'string' && copy.videoUrl.startsWith('blob:')) {
+          copy.videoUrl = undefined;
+        }
+        if (Array.isArray(copy.albumPhotos)) {
+          copy.albumPhotos = copy.albumPhotos.map((p) => ({
+            ...p,
+            url: typeof p.url === 'string' && p.url.startsWith('blob:') ? KAYAK_IMAGE : p.url,
+          }));
+        }
+        if (Array.isArray(copy.galleryImages)) {
+          copy.galleryImages = copy.galleryImages.map((u) => (typeof u === 'string' && u.startsWith('blob:') ? KAYAK_IMAGE : u));
+        }
         return copy;
       });
   }
@@ -1665,7 +1754,10 @@ export class ExperienceService {
 
         const clubProfile = this.getClubProfile();
         const remoteExperiences: Experience[] = data.map((exp: any) => {
-          const image = exp.cover_image || KAYAK_IMAGE;
+          const rawImage = exp.cover_image;
+          const image = (rawImage && typeof rawImage === 'string' && !rawImage.startsWith('blob:'))
+            ? rawImage
+            : KAYAK_IMAGE;
           const email = (exp.provider_email || '').trim().toLowerCase();
           const banking = providerBankingMap.get(email);
           const isClub = isClubExperience({
@@ -1708,9 +1800,12 @@ export class ExperienceService {
             galleryImages: [image],
             albumPhotos:
               Array.isArray(exp.album_photos) && exp.album_photos.length > 0
-                ? exp.album_photos
+                ? exp.album_photos.map((p: any) => ({
+                    ...p,
+                    url: (typeof p?.url === 'string' && p.url.startsWith('blob:')) ? KAYAK_IMAGE : (p?.url || KAYAK_IMAGE),
+                  }))
                 : undefined,
-            videoUrl: exp.video_url || undefined,
+            videoUrl: (typeof exp.video_url === 'string' && exp.video_url.startsWith('blob:')) ? undefined : (exp.video_url || undefined),
             videoPoster: exp.video_poster || undefined,
             highlights:
               Array.isArray(exp.highlights) && exp.highlights.length > 0 ? exp.highlights : [],

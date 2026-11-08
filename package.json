@@ -13,6 +13,7 @@
     "build": "node ./scripts/set-env.js && npm run build --workspace=apps/public && node ./scripts/post-build.js",
     "dev:public": "node ./scripts/set-env.js && npm run dev --workspace=apps/public",
     "build:public": "node ./scripts/set-env.js && npm run build --workspace=apps/public && node ./scripts/post-build.js",
+    "sync:src": "node ./scripts/sync-src.js",
     "format": "prettier --write .",
     "prepare": "husky"
   },
