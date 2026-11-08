@@ -2405,12 +2405,22 @@ export class AdminMembersComponent implements OnInit {
     try {
       const tierVal = this.editMembershipTier();
       const trimmedNotes = this.editExperiencesOther().trim();
+
+      let targetPosition = current.position;
+      if ((tierVal === 'activo' || tierVal === 'fundador') && (!targetPosition || targetPosition <= 0)) {
+        const existingPositions = this.store
+          .members()
+          .map((m) => m.position)
+          .filter((pos): pos is number => typeof pos === 'number' && pos > 0);
+        targetPosition = existingPositions.length > 0 ? Math.max(...existingPositions) + 1 : 100;
+      }
+
       const res = await this.store.updateMemberProfile(current.id, {
         fullName: this.editFullName().trim(),
         email: this.editEmail().trim().toLowerCase(),
         dni: this.editDni().trim(),
         phone: this.editPhone().trim(),
-        position: current.position,
+        position: targetPosition,
         membershipTier: tierVal,
         experiencesOther: trimmedNotes || '',
         experiencesWishlist: this.editExperiencesWishlist(),
@@ -2446,8 +2456,18 @@ export class AdminMembersComponent implements OnInit {
 
       this.saving.set(true);
       try {
+        let targetPosition = m.position;
+        if (!targetPosition || targetPosition <= 0) {
+          const existingPositions = this.store
+            .members()
+            .map((mem) => mem.position)
+            .filter((pos): pos is number => typeof pos === 'number' && pos > 0);
+          targetPosition = existingPositions.length > 0 ? Math.max(...existingPositions) + 1 : 100;
+        }
+
         const res = await this.store.updateMemberProfile(m.id, {
           membershipTier: 'activo',
+          ...(targetPosition ? { position: targetPosition } : {}),
         });
         if (res.success) {
           this.feedbackToast.set(`El socio "${memberName}" fue dado de alta correctamente.`);

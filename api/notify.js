@@ -1088,7 +1088,8 @@ module.exports = async function handler(req, res) {
     const { type, action, data } = req.body || {};
     const messageType = type || action;
 
-    if (!messageType || !data) {
+    const noDataActions = ['GET_ADMIN_APPLICATIONS', 'GET_AUTH_AVATARS'];
+    if (!messageType || (!data && !noDataActions.includes(messageType))) {
       return res.status(400).json({
         success: false,
         error: 'Cuerpo de solicitud incompleto. Se requiere type y data.',
@@ -1479,6 +1480,28 @@ module.exports = async function handler(req, res) {
       }
 
       case 'GET_ADMIN_APPLICATIONS': {
+        const authHeader = req.headers.authorization || req.headers.Authorization || '';
+        const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+
+        if (!token) {
+          return res.status(401).json({
+            success: false,
+            error: 'Acceso no autorizado: se requiere token de sesión de administrador.',
+            prestadores: [],
+            fundadores: [],
+          });
+        }
+
+        const isAdmin = await verifySupabaseCallerAdmin(token, config);
+        if (!isAdmin) {
+          return res.status(403).json({
+            success: false,
+            error: 'Acceso denegado: se requieren permisos de administrador.',
+            prestadores: [],
+            fundadores: [],
+          });
+        }
+
         const privilegedKey = config.supabaseServiceRoleKey || config.supabaseKey;
         if (!config.supabaseUrl || !privilegedKey) {
           return res.status(200).json({ success: false, prestadores: [], fundadores: [] });
@@ -1537,6 +1560,26 @@ module.exports = async function handler(req, res) {
       }
 
       case 'GET_AUTH_AVATARS': {
+        const authHeader = req.headers.authorization || req.headers.Authorization || '';
+        const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+
+        if (!token) {
+          return res.status(401).json({
+            success: false,
+            error: 'Acceso no autorizado: se requiere token de sesión de administrador.',
+            avatars: {},
+          });
+        }
+
+        const isAdmin = await verifySupabaseCallerAdmin(token, config);
+        if (!isAdmin) {
+          return res.status(403).json({
+            success: false,
+            error: 'Acceso denegado: se requieren permisos de administrador.',
+            avatars: {},
+          });
+        }
+
         const privilegedKey = config.supabaseServiceRoleKey || config.supabaseKey;
         if (!config.supabaseUrl || !privilegedKey) {
           return res.status(200).json({ success: false, avatars: {} });

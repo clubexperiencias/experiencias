@@ -29,10 +29,18 @@ describe('ProviderStoreService - Payment & Proposal Persistence', () => {
         ilike: vi.fn().mockReturnThis(),
         order: vi.fn().mockResolvedValue({ data: [], error: null }),
       }),
+      rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
       auth: {
         getSession: vi.fn().mockResolvedValue({ data: { session: null }, error: null }),
         onAuthStateChange: vi.fn().mockReturnValue({
           data: { subscription: { unsubscribe: vi.fn() } },
+        }),
+      },
+      storage: {
+        from: vi.fn().mockReturnValue({
+          upload: vi.fn().mockResolvedValue({ data: { path: 'receipts/test.jpg' }, error: null }),
+          getPublicUrl: vi.fn().mockReturnValue({ data: { publicUrl: 'https://cdn.test/receipt.jpg' } }),
+          createSignedUrl: vi.fn().mockResolvedValue({ data: { signedUrl: 'https://cdn.test/signed.jpg' }, error: null }),
         }),
       },
     };
@@ -105,6 +113,74 @@ describe('ProviderStoreService - Payment & Proposal Persistence', () => {
       expect(payment.cbu).toBe('PEDRO.PRIVADO.MP');
       expect(payment.taxId).toBe('20-11223344-5');
       expect(payment.entity).toBe('Banco Privado');
+    });
+  });
+
+  describe('TransferSubmission status handling in submitTransfer and loadStoredSubmissions', () => {
+    it('should assign pendiente status to newly created transfer payments', async () => {
+      const exp: Partial<ProviderExperience> = {
+        id: 'exp-kayak-test',
+        slug: 'kayak-en-el-jumeal',
+        title: 'Kayak en El Jumeal',
+        status: 'publicada',
+        priceArs: 15000,
+        dates: ['2026-11-20'],
+        capacityPerDate: 10,
+      };
+      (store as any)._experiences.set([exp]);
+
+      const file = new File(['dummy-content'], 'comprobante.jpg', { type: 'image/jpeg' });
+      const sub = await store.submitTransfer({
+        experienceId: 'exp-kayak-test',
+        date: '2026-11-20',
+        participants: 1,
+        fullName: 'Juan Pérez',
+        email: 'juan@test.com',
+        dni: '38123456',
+        phone: '+5493834112233',
+        receiptFile: file,
+      });
+
+      expect(sub.status).toBe('pendiente');
+    });
+
+    it('should preserve pendiente, aprobado, and rechazado statuses on loadStoredSubmissions without promoting unreviewed receipts', () => {
+      const stored = [
+        { id: 'sub-p1', amountArs: 10000, status: 'pendiente' },
+        { id: 'sub-a1', amountArs: 20000, status: 'aprobado' },
+        { id: 'sub-r1', amountArs: 30000, status: 'rechazado' },
+        { id: 'sub-u1', amountArs: 40000, status: 'otro_o_vacio' },
+      ];
+      localStorage.setItem('catamarca_provider_submissions_v5', JSON.stringify(stored));
+
+      const loaded = (store as any).loadStoredSubmissions();
+
+      expect(loaded.find((s: any) => s.id === 'sub-p1')?.status).toBe('pendiente');
+      expect(loaded.find((s: any) => s.id === 'sub-a1')?.status).toBe('aprobado');
+      expect(loaded.find((s: any) => s.id === 'sub-r1')?.status).toBe('rechazado');
+      expect(loaded.find((s: any) => s.id === 'sub-u1')?.status).toBe('pendiente');
+    });
+
+    it('should calculate confirmedRevenue using only approved submissions in providerStats', () => {
+      const mockExp: Partial<ProviderExperience> = {
+        id: 'exp-stats-1',
+        providerId: 'prov-current',
+        status: 'publicada',
+      };
+      (store as any)._experiences.set([mockExp]);
+      (store as any)._currentProvider.set({ id: 'prov-current', email: 'prov@test.com' });
+
+      (store as any)._submissions.set([
+        { id: 'sub-1', experienceId: 'exp-stats-1', amountArs: 10000, participants: 2, status: 'aprobado', submittedAt: '2026-11-08T00:00:00.000Z' },
+        { id: 'sub-2', experienceId: 'exp-stats-1', amountArs: 15000, participants: 3, status: 'pendiente', submittedAt: '2026-11-08T00:00:00.000Z' },
+        { id: 'sub-3', experienceId: 'exp-stats-1', amountArs: 20000, participants: 4, status: 'rechazado', submittedAt: '2026-11-08T00:00:00.000Z' },
+      ]);
+
+      const stats = store.providerStats();
+      expect(stats.confirmedRevenue).toBe(10000);
+      expect(stats.pendingRevenue).toBe(15000);
+      expect(stats.totalEnrolled).toBe(2);
+      expect(stats.pendingReceiptsCount).toBe(1);
     });
   });
 

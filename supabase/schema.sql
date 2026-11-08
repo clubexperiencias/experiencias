@@ -54,7 +54,7 @@ BEGIN
       experiences_other           TEXT,
       position                    INTEGER UNIQUE,
       membership_tier             TEXT NOT NULL DEFAULT 'emergente'
-                                  CHECK (membership_tier IN ('waitlist', 'emergente', 'activo', 'fundador')),
+                                  CHECK (membership_tier IN ('waitlist', 'emergente', 'activo', 'fundador', 'dado_de_baja')),
       auth_user_id                UUID REFERENCES auth.users(id) ON DELETE SET NULL,
       registration_token          UUID NOT NULL DEFAULT gen_random_uuid(),
       created_at                  TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -70,7 +70,7 @@ BEGIN
     ALTER TABLE public.socios ALTER COLUMN position DROP NOT NULL;
     ALTER TABLE public.socios DROP CONSTRAINT IF EXISTS socios_membership_tier_check;
     ALTER TABLE public.socios ADD CONSTRAINT socios_membership_tier_check
-      CHECK (membership_tier IN ('waitlist', 'emergente', 'activo', 'fundador'));
+      CHECK (membership_tier IN ('waitlist', 'emergente', 'activo', 'fundador', 'dado_de_baja'));
 
     -- Migrar prospectos de waitlist a socios
     INSERT INTO public.socios (
@@ -553,7 +553,7 @@ CREATE TABLE IF NOT EXISTS public.socios (
   experiences_other           TEXT,
   position                    INTEGER UNIQUE,
   membership_tier             TEXT NOT NULL DEFAULT 'emergente'
-                              CHECK (membership_tier IN ('waitlist', 'emergente', 'activo', 'fundador')),
+                              CHECK (membership_tier IN ('waitlist', 'emergente', 'activo', 'fundador', 'dado_de_baja')),
   auth_user_id                UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   registration_token          UUID NOT NULL DEFAULT gen_random_uuid(),
   created_at                  TIMESTAMPTZ NOT NULL DEFAULT now(),

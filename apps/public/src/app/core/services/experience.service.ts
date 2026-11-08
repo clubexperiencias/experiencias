@@ -425,6 +425,27 @@ export class ExperienceService {
     return this._experiences().find((e) => e.id === id || e.slug === id);
   }
 
+  private isCompleteExperience(exp: any): exp is Experience {
+    if (!exp || typeof exp !== 'object') return false;
+    return (
+      typeof exp.id === 'string' &&
+      exp.id.trim() !== '' &&
+      typeof exp.slug === 'string' &&
+      exp.slug.trim() !== '' &&
+      typeof exp.title === 'string' &&
+      exp.title.trim() !== '' &&
+      typeof exp.tagline === 'string' &&
+      typeof exp.description === 'string' &&
+      typeof exp.region === 'string' &&
+      typeof exp.difficulty === 'string' &&
+      typeof exp.durationLabel === 'string' &&
+      typeof exp.priceArs === 'number' &&
+      typeof exp.maxSpotsPerGroup === 'number' &&
+      typeof exp.coverImage === 'string' &&
+      exp.coverImage.trim() !== ''
+    );
+  }
+
   async updateExperience(updated: Partial<Experience> & { id: string }): Promise<void> {
     const prevList = this._experiences();
     let index = prevList.findIndex((e) => e.id === updated.id);
@@ -435,6 +456,10 @@ export class ExperienceService {
       index = prevList.findIndex(
         (e) => e.id === `exp-${updated.id}` || `exp-${e.id}` === updated.id,
       );
+    }
+
+    if (index === -1 && !this.isCompleteExperience(updated)) {
+      throw new Error(`Experiencia con ID ${updated.id} no encontrada.`);
     }
 
     const current = (index !== -1 ? prevList[index] : (updated as Experience)) || ({} as Experience);
@@ -592,24 +617,8 @@ export class ExperienceService {
             .select()) as any);
         }
 
-        // Si la experiencia no existía remotamente, insertarla para que quede registrada y visible
-        if (!error && (!data || data.length === 0)) {
-          const insertPayload = {
-            ...payload,
-            id: merged.id,
-            created_at: new Date().toISOString(),
-          };
-          const insertRes = await this.supabase
-            .from('experiencias')
-            .insert(insertPayload as any)
-            .select();
-          data = insertRes.data;
-          error = insertRes.error;
-        }
-
-        if (error) {
-          console.error('[ExperienceService] Error al persistir experiencia en Supabase:', error);
-          throw error;
+        if (error || !data || data.length === 0) {
+          throw error || new Error(`No se encontró la experiencia remota con id ${merged.id}`);
         }
 
         const targetProviderEmail = (

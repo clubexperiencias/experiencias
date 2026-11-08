@@ -478,6 +478,101 @@ describe('AdminStoreService - Provider Status Update Flow', () => {
     });
   });
 
+  describe('AdminStoreService - deleteMemberProfile', () => {
+    const memberA = {
+      id: 'usr-1111-uuid',
+      email: 'shared@club.com',
+      fullName: 'Socio A',
+      dni: '35123456',
+      phone: '+5493834111222',
+      membershipTier: 'activo' as const,
+      type: 'socio' as const,
+      position: 1,
+      googleLinked: false,
+      converted: true,
+      experiencesWishlist: [],
+      experiencesOther: '',
+      paymentsCount: 1,
+      totalSpentArs: 10000,
+      createdAt: '2026-01-01T00:00:00Z',
+    };
+
+    const memberB = {
+      id: 'usr-2222-uuid',
+      email: 'shared@club.com',
+      fullName: 'Socio B',
+      dni: '35999888',
+      phone: '+5493834333444',
+      membershipTier: 'activo' as const,
+      type: 'socio' as const,
+      position: 2,
+      googleLinked: false,
+      converted: true,
+      experiencesWishlist: [],
+      experiencesOther: '',
+      paymentsCount: 1,
+      totalSpentArs: 10000,
+      createdAt: '2026-01-02T00:00:00Z',
+    };
+
+    beforeEach(() => {
+      (adminStore as any)._members.set([memberA, memberB]);
+      localStorage.setItem('admin_members_cache', JSON.stringify([memberA, memberB]));
+    });
+
+    it('should delete only the intended member from local state when members share email', async () => {
+      const eqSpy = vi.fn().mockResolvedValue({ error: null, count: 1, data: [{ id: 'usr-1111-uuid' }] });
+      const deleteSpy = vi.fn().mockReturnValue({ eq: eqSpy, select: vi.fn().mockReturnValue({ eq: eqSpy }) });
+      mockSupabase.from.mockReturnValue({ delete: deleteSpy });
+
+      const res = await adminStore.deleteMemberProfile('usr-1111-uuid');
+
+      expect(res.success).toBe(true);
+      expect(adminStore.getMemberById('usr-1111-uuid')).toBeUndefined();
+      expect(adminStore.getMemberById('usr-2222-uuid')).toBeDefined();
+      expect(adminStore.members().length).toBe(1);
+    });
+
+    it('should rollback local state if Supabase delete returns an error', async () => {
+      const eqSpy = vi.fn().mockResolvedValue({ error: { message: 'DB constraint violation' } });
+      const deleteSpy = vi.fn().mockReturnValue({ eq: eqSpy });
+      mockSupabase.from.mockReturnValue({ delete: deleteSpy });
+
+      const res = await adminStore.deleteMemberProfile('usr-1111-uuid');
+
+      expect(res.success).toBe(false);
+      expect(res.error).toBe('DB constraint violation');
+      expect(adminStore.getMemberById('usr-1111-uuid')).toBeDefined();
+      expect(adminStore.members().length).toBe(2);
+    });
+
+    it('should rollback local state if Supabase delete deletes 0 rows', async () => {
+      const eqSpy = vi.fn().mockResolvedValue({ error: null, count: 0, data: [] });
+      const deleteSpy = vi.fn().mockReturnValue({ eq: eqSpy });
+      mockSupabase.from.mockReturnValue({ delete: deleteSpy });
+
+      const res = await adminStore.deleteMemberProfile('usr-1111-uuid');
+
+      expect(res.success).toBe(false);
+      expect(res.error).toContain('No se encontró el registro');
+      expect(adminStore.getMemberById('usr-1111-uuid')).toBeDefined();
+      expect(adminStore.members().length).toBe(2);
+    });
+
+    it('should rollback local state if Supabase delete throws an exception', async () => {
+      const eqSpy = vi.fn().mockRejectedValue(new Error('Network failure'));
+      const deleteSpy = vi.fn().mockReturnValue({ eq: eqSpy });
+      mockSupabase.from.mockReturnValue({ delete: deleteSpy });
+
+      const res = await adminStore.deleteMemberProfile('usr-1111-uuid');
+
+      expect(res.success).toBe(false);
+      expect(res.error).toBe('Network failure');
+      expect(adminStore.getMemberById('usr-1111-uuid')).toBeDefined();
+      expect(adminStore.members().length).toBe(2);
+    });
+  });
+
   describe('USD Exchange Rate Management', () => {
     it('should normalize accepted rates once and synchronize signal, localStorage, and club profile', () => {
       adminStore.setUsdExchangeRate(1450.75);

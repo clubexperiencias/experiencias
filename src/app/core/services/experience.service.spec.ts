@@ -16,6 +16,31 @@ describe('ExperienceService', () => {
   let service: ExperienceService;
   let mockSupabase: any;
 
+  const baseExp: Experience = {
+    id: 'test-123',
+    slug: 'nueva-travesia',
+    title: 'Nueva Travesía',
+    tagline: 'Una aventura única',
+    description: 'Descripción completa',
+    region: 'Valle Central',
+    difficulty: 'Moderada',
+    durationDays: 1,
+    durationLabel: '2 Horas',
+    altitudeMeters: 800,
+    priceArs: 10000,
+    priceUsd: 10,
+    maxSpotsPerGroup: 10,
+    coverImage: '/img.jpg',
+    galleryImages: [],
+    highlights: [],
+    included: [],
+    detailRoute: '',
+    publicUrl: '',
+    status: 'publicada',
+    isExclusiveClub: true,
+    isLocked: false,
+  };
+
   beforeEach(() => {
     localStorage.clear();
     localStorage.setItem('CATAMARCA_SUPABASE_URL', 'https://prod-project.supabase.co');
@@ -51,33 +76,10 @@ describe('ExperienceService', () => {
     });
 
     service = TestBed.inject(ExperienceService);
+    (service as any)._experiences.set([{ ...baseExp, id: 'exp-kayak', slug: 'kayak', title: 'Kayak Inicial' }]);
   });
 
   describe('createExperience', () => {
-    const baseExp: Experience = {
-      id: 'test-123',
-      slug: 'nueva-travesia',
-      title: 'Nueva Travesía',
-      tagline: 'Una aventura única',
-      description: 'Descripción completa',
-      region: 'Valle Central',
-      difficulty: 'Moderada',
-      durationDays: 1,
-      durationLabel: '2 Horas',
-      altitudeMeters: 800,
-      priceArs: 10000,
-      priceUsd: 10,
-      maxSpotsPerGroup: 10,
-      coverImage: '/img.jpg',
-      galleryImages: [],
-      highlights: [],
-      included: [],
-      detailRoute: '',
-      publicUrl: '',
-      status: 'publicada',
-      isExclusiveClub: true,
-      isLocked: false,
-    };
 
     it('should reject empty slugs', async () => {
       await expect(
@@ -127,6 +129,46 @@ describe('ExperienceService', () => {
 
       // Verify list rolled back
       expect(service.experiences()[0].title).toBe(targetExp.title);
+    });
+
+    it('should throw unmatched-ID error for partial updates when experience ID does not exist', async () => {
+      await expect(
+        service.updateExperience({ id: 'non-existent-id', status: 'oculta' }),
+      ).rejects.toThrow('Experiencia con ID non-existent-id no encontrada.');
+    });
+
+    it('should append merged to list when experience ID does not exist but payload is a complete Experience', async () => {
+      const updateBuilder: any = {
+        eq: vi.fn().mockReturnThis(),
+        select: vi.fn().mockResolvedValue({ data: [{ id: 'complete-new-id' }], error: null }),
+      };
+      mockSupabase.from.mockReturnValue({
+        update: vi.fn().mockReturnValue(updateBuilder),
+      });
+
+      const completeExp: Experience = {
+        id: 'complete-new-id',
+        slug: 'complete-new-slug',
+        title: 'Complete Title',
+        tagline: 'Complete Tagline',
+        description: 'Complete Description',
+        region: 'Valle Central',
+        difficulty: 'Baja',
+        durationDays: 1,
+        durationLabel: '2 Horas',
+        altitudeMeters: 500,
+        priceArs: 20000,
+        priceUsd: 20,
+        maxSpotsPerGroup: 8,
+        coverImage: '/assets/images/kayak-club-de-experiencias.jpg',
+        galleryImages: [],
+        highlights: ['H1'],
+        included: ['I1'],
+        isExclusiveClub: true,
+      };
+
+      await service.updateExperience(completeExp);
+      expect(service.experiences().some((e) => e.id === 'complete-new-id')).toBe(true);
     });
   });
 

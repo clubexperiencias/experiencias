@@ -236,13 +236,12 @@ export class AdminStoreService {
     const googleLinked = list.filter((m) => Boolean(m.googleLinked));
     const converted = list.filter((m) => m.converted);
 
-    // Los pagos se aprueban por defecto a menos que estén explícitamente rechazados
-    const approvedSubs = subs.filter((s) => s.status !== 'rechazado');
+    const approvedSubs = subs.filter((s) => s.status === 'aprobado');
     const rejectedSubs = subs.filter((s) => s.status === 'rechazado');
     const pendingSubs = subs.filter((s) => s.status === 'pendiente');
 
     const confirmedRevenue = approvedSubs.reduce((sum, s) => sum + (Number(s.amountArs) || 0), 0);
-    const pendingRevenue = 0;
+    const pendingRevenue = pendingSubs.reduce((sum, s) => sum + (Number(s.amountArs) || 0), 0);
     const totalEnrolled = approvedSubs.reduce((sum, s) => sum + (Number(s.participants) || 0), 0);
 
     const conversionRate = list.length > 0 ? Math.round((converted.length / list.length) * 100) : 0;
@@ -1050,12 +1049,28 @@ export class AdminStoreService {
     this._isLoadingMembers.set(false);
   }
 
+  private async getAdminAccessToken(): Promise<string | null> {
+    if (!isSupabaseConfigured() || !this.supabase) return null;
+    try {
+      const { data } = await this.supabase.auth.getSession();
+      return data?.session?.access_token || null;
+    } catch {
+      return null;
+    }
+  }
+
   private async enrichMembersWithAuthAvatars(members: AdminMember[]): Promise<void> {
     try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      const token = await this.getAdminAccessToken();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const avatarRes = await fetch('/api/notify', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'GET_AUTH_AVATARS' }),
+        headers,
+        body: JSON.stringify({ action: 'GET_AUTH_AVATARS', data: {} }),
       });
       if (avatarRes.ok) {
         const avatarData = await avatarRes.json();
@@ -1257,20 +1272,49 @@ export class AdminStoreService {
     }
 
     const previousMembers = this._members();
-    this._members.update((list) => list.filter((m) => m.id !== existing.id && m.email !== existing.email));
+    const rollback = () => {
+      this._members.set(previousMembers);
+      this.persistMembers(previousMembers);
+    };
+
+    this._members.update((list) => list.filter((m) => m.id !== existing.id));
     this.persistMembers(this._members());
 
     if (isSupabaseConfigured()) {
       try {
         const isIdQuery = Boolean(existing.id && existing.id.includes('-'));
-        let query = (this.supabase.from('socios') as any).delete();
+        let query = (this.supabase.from('socios') as any).delete({ count: 'exact' });
         query = isIdQuery ? query.eq('id', existing.id) : query.eq('email', existing.email);
-        const { error } = await query;
+        if (typeof query?.select === 'function') {
+          query = query.select('id');
+        }
+        const { error, count, data } = await query;
         if (error) {
+          rollback();
           console.warn('[AdminStore] Error al eliminar socio en Supabase:', error);
+          return { success: false, error: error.message };
+        }
+
+        const rowsAffected = Array.isArray(data)
+          ? data.length
+          : typeof count === 'number'
+            ? count
+            : data
+              ? 1
+              : 0;
+
+        if (rowsAffected === 0) {
+          rollback();
+          console.warn('[AdminStore] No se encontró el registro del socio en Supabase para eliminar.');
+          return {
+            success: false,
+            error: 'No se encontró el registro del socio en Supabase para eliminar.',
+          };
         }
       } catch (err: any) {
-        console.warn('[AdminStore] Excepción al eliminar socio en Supabase:', err);
+        rollback();
+        console.error('[AdminStore] Excepción al eliminar socio en Supabase:', err);
+        return { success: false, error: err?.message || 'Error de red' };
       }
     }
 
@@ -1312,7 +1356,7 @@ export class AdminStoreService {
               sizeBytes: p.receipt_size_bytes || 1,
               url: p.receipt_url || '/assets/images/comprobante-ejemplo.png',
             },
-            status: p.status === 'rechazado' ? 'rechazado' : 'aprobado',
+            status: p.status === 'aprobado' || p.status === 'rechazado' ? p.status : 'pendiente',
             rejectionReason: p.rejectionReason || p.rejection_reason,
             submittedAt: p.submittedAt || p.submitted_at || p.created_at || new Date().toISOString(),
             reviewedAt: p.reviewedAt || p.reviewed_at,
@@ -1352,7 +1396,7 @@ export class AdminStoreService {
               storageKey: p.receipt_storage_path || p.receipt_storage_key || p.receipt_url,
               provider: p.receipt_storage_provider,
             },
-            status: p.status === 'rechazado' ? 'rechazado' : 'aprobado',
+            status: p.status === 'aprobado' || p.status === 'rechazado' ? p.status : 'pendiente',
             rejectionReason: p.rejection_reason,
             submittedAt: p.created_at || p.submitted_at || p.submittedAt || new Date().toISOString(),
             reviewedAt: p.reviewed_at,
@@ -1384,7 +1428,12 @@ export class AdminStoreService {
       ...s,
       participants: Number(s.participants) || 1,
       amountArs: Number(s.amountArs) || 0,
-      status: s.status === 'rechazado' ? ('rechazado' as const) : ('aprobado' as const),
+      status:
+        s.status === 'aprobado'
+          ? ('aprobado' as const)
+          : s.status === 'rechazado'
+            ? ('rechazado' as const)
+            : ('pendiente' as const),
     }));
     this._submissions.set(providerSubs);
     this._isLoadingSubmissions.set(false);
@@ -1522,10 +1571,16 @@ export class AdminStoreService {
         // 2. Si la consulta directa a prestadores falló o vino vacía (por RLS anónima), recurrir a /api/notify con service role
         if (providerRows.length === 0) {
           try {
+            const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+            const token = await this.getAdminAccessToken();
+            if (token) {
+              headers['Authorization'] = `Bearer ${token}`;
+            }
+
             const notifyRes = await fetch('/api/notify', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ action: 'GET_ADMIN_APPLICATIONS' }),
+              headers,
+              body: JSON.stringify({ action: 'GET_ADMIN_APPLICATIONS', data: {} }),
             });
             if (notifyRes.ok) {
               const notifyData = await notifyRes.json();

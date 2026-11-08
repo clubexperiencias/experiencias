@@ -83,6 +83,14 @@ type StatusFilter = TransferStatus | 'todos';
           <button
             type="button"
             class="filter-tab"
+            [class.is-active]="statusFilter() === 'pendiente'"
+            (click)="statusFilter.set('pendiente')"
+          >
+            Pendientes ({{ store.stats().pendingReceiptsCount }})
+          </button>
+          <button
+            type="button"
+            class="filter-tab"
             [class.is-active]="statusFilter() === 'rechazado'"
             (click)="statusFilter.set('rechazado')"
           >
@@ -322,12 +330,24 @@ type StatusFilter = TransferStatus | 'todos';
               </dl>
 
               <!-- Estado del Comprobante -->
-              <div class="status-summary-box" [attr.data-status]="sub.status === 'rechazado' ? 'rechazado' : 'aprobado'">
+              <div class="status-summary-box" [attr.data-status]="sub.status">
                 <mat-icon>{{
-                  sub.status === 'rechazado' ? 'cancel' : 'verified'
+                  sub.status === 'aprobado'
+                    ? 'verified'
+                    : sub.status === 'rechazado'
+                      ? 'cancel'
+                      : 'schedule'
                 }}</mat-icon>
                 <div>
-                  <strong>Pago {{ (sub.status === 'rechazado' ? 'rechazado' : 'aprobado') | uppercase }}</strong>
+                  <strong>
+                    @if (sub.status === 'aprobado') {
+                      Pago APROBADO
+                    } @else if (sub.status === 'rechazado') {
+                      Pago RECHAZADO
+                    } @else {
+                      Pago PENDIENTE DE REVISIÓN
+                    }
+                  </strong>
                   @if (sub.reviewedAt) {
                     <span> · {{ sub.reviewedAt | fecha: 'corta' }}</span>
                   }
@@ -340,6 +360,11 @@ type StatusFilter = TransferStatus | 'todos';
               <!-- Acciones de Validación / Descarga -->
               @if (!rejecting()) {
                 <div class="modal-actions-row">
+                  @if (sub.status === 'pendiente') {
+                    <button type="button" class="btn-approve" (click)="confirmApprove(sub.id)">
+                      Aprobar Pago
+                    </button>
+                  }
                   @if (sub.status !== 'rechazado') {
                     <button type="button" class="btn-reject" (click)="rejecting.set(true)">
                       Rechazar Pago
@@ -1119,6 +1144,24 @@ type StatusFilter = TransferStatus | 'todos';
         gap: 0.75rem;
       }
 
+      .btn-approve {
+        flex: 1;
+        padding: 0.75rem 1rem;
+        background: rgba(16, 185, 129, 0.15);
+        border: 1px solid rgba(16, 185, 129, 0.6);
+        color: #34d399;
+        font-weight: 700;
+        font-size: 0.88rem;
+        border-radius: 2px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .btn-approve:hover {
+        background: rgba(16, 185, 129, 0.3);
+        border-color: #10b981;
+      }
+
       .btn-reject {
         flex: 1;
         padding: 0.75rem 1rem;
@@ -1249,6 +1292,12 @@ type StatusFilter = TransferStatus | 'todos';
         background: rgba(16, 185, 129, 0.15);
         border: 1px solid rgba(16, 185, 129, 0.4);
         color: #34d399;
+      }
+
+      .status-summary-box[data-status='pendiente'] {
+        background: rgba(245, 158, 11, 0.15);
+        border: 1px solid rgba(245, 158, 11, 0.4);
+        color: #fbbf24;
       }
 
       .status-summary-box[data-status='rechazado'] {
@@ -1421,13 +1470,7 @@ export class AdminReceiptsComponent {
     const status = this.statusFilter();
 
     if (status !== 'todos') {
-      if (status === 'aprobado') {
-        list = list.filter((s) => s.status !== 'rechazado');
-      } else if (status === 'rechazado') {
-        list = list.filter((s) => s.status === 'rechazado');
-      } else {
-        list = list.filter((s) => s.status === status);
-      }
+      list = list.filter((s) => s.status === status);
     }
 
     if (query) {

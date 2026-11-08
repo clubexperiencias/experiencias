@@ -4439,7 +4439,9 @@ export class AdminExperiencesComponent implements OnInit {
     this.editVideoUrl.set(safeVideo);
 
     this.editVideoPoster.set(exp.videoPoster || '');
-    this.editDatesRaw.set((exp.dates || []).join(', '));
+    const rawDates = (exp.dates || []).join(', ');
+    const displayDates = rawDates || (exp.status === 'pendiente' ? 'A coordinar' : '');
+    this.editDatesRaw.set(displayDates);
     this.editHighlightsRaw.set((exp.highlights || []).join('\n'));
     this.editIncludedRaw.set((exp.included || []).join('\n'));
 
@@ -4791,16 +4793,31 @@ export class AdminExperiencesComponent implements OnInit {
       return;
     }
 
-    let dates = this.editDatesRaw()
-      .split(',')
-      .map((d) => d.trim())
-      .filter((d) => d.length > 0);
-    if (dates.length === 0) {
-      const today = new Date();
-      today.setDate(today.getDate() + 7);
-      const defaultDate = today.toISOString().split('T')[0];
-      dates = [defaultDate];
-      this.editDatesRaw.set(defaultDate);
+    let datesRaw = this.editDatesRaw().trim();
+    const isUnscheduledProposal =
+      datesRaw.toLowerCase().includes('a coordinar') ||
+      (!datesRaw && (this.editingExperience()?.status === 'pendiente' || this.editStatus() === 'pendiente'));
+
+    if (isUnscheduledProposal) {
+      if (!datesRaw) {
+        datesRaw = 'A coordinar';
+        this.editDatesRaw.set('A coordinar');
+      }
+    } else if (!datesRaw) {
+      this.showToast('⚠️ Por favor definí al menos una fecha de salida para la experiencia.');
+      return;
+    }
+
+    const confirmedDates = parseConfirmedProposalDates(datesRaw);
+    const dates: string[] = isUnscheduledProposal
+      ? []
+      : (confirmedDates.length > 0
+          ? confirmedDates
+          : datesRaw.split(',').map((d) => d.trim()).filter((d) => d.length > 0));
+
+    if (!isUnscheduledProposal && dates.length === 0) {
+      this.showToast('⚠️ Por favor definí al menos una fecha de salida para la experiencia.');
+      return;
     }
 
     let highlights = this.editHighlightsRaw()
@@ -4812,13 +4829,13 @@ export class AdminExperiencesComponent implements OnInit {
       this.editHighlightsRaw.set(highlights.join('\n'));
     }
 
-    let included = this.editIncludedRaw()
+    const included = this.editIncludedRaw()
       .split('\n')
       .map((i) => i.trim())
       .filter((i) => i.length > 0);
     if (included.length === 0) {
-      included = ['Guía especializado', 'Seguro de actividad'];
-      this.editIncludedRaw.set(included.join('\n'));
+      this.showToast('⚠️ Por favor detallá los servicios incluidos (al menos un ítem).');
+      return;
     }
 
     let coverImage = this.editCoverImage().trim();
@@ -4833,19 +4850,19 @@ export class AdminExperiencesComponent implements OnInit {
     const club = this.adminStore.clubProfile();
     const resolvedProviderName = isClub
       ? (club.name || 'Club de Experiencias')
-      : (this.editProviderName().trim() || this.editingExperience()?.providerName || 'Prestador del Club');
+      : (this.editProviderName().trim() || this.editingExperience()?.providerName || undefined);
     const resolvedProviderPhone = isClub
       ? (club.phone || '')
-      : (this.editProviderPhone().trim() || this.editingExperience()?.providerPhone || '+54 9 383 400-0000');
+      : (this.editProviderPhone().trim() || this.editingExperience()?.providerPhone || undefined);
     const resolvedProviderCbu = isClub
       ? (club.cbuAlias || '')
-      : (this.editProviderCbuAlias().trim() || this.editingExperience()?.providerCbuAlias || 'EXPERIENCIAS.CLUB.MP');
+      : (this.editProviderCbuAlias().trim() || this.editingExperience()?.providerCbuAlias || undefined);
     const resolvedProviderCuit = isClub
       ? (club.cuitDni || '')
-      : (this.editProviderCuitDni().trim() || this.editingExperience()?.providerCuitDni || '20-00000000-0');
+      : (this.editProviderCuitDni().trim() || this.editingExperience()?.providerCuitDni || undefined);
     const resolvedProviderBank = isClub
       ? (club.bankName || '')
-      : (this.editProviderBankName().trim() || this.editingExperience()?.providerBankName || 'Mercado Pago');
+      : (this.editProviderBankName().trim() || this.editingExperience()?.providerBankName || undefined);
 
     const resolvedProviderSlug = isClub ? 'club-de-experiencias' : (this.editingExperience()?.providerSlug || undefined);
     const resolvedProviderEmail = isClub ? (club.email || 'admin@experiencias.club') : (this.editingExperience()?.providerEmail || undefined);
@@ -4880,18 +4897,26 @@ export class AdminExperiencesComponent implements OnInit {
         safeAlbumPhotos.length > 0
           ? safeAlbumPhotos.map((p) => p.url)
           : [coverImage],
-      providerName: resolvedProviderName,
-      providerPhone: resolvedProviderPhone,
-      providerCbuAlias: resolvedProviderCbu,
-      providerCuitDni: resolvedProviderCuit,
-      providerBankName: resolvedProviderBank,
       ...(isClub
         ? {
+          providerName: resolvedProviderName,
+          providerPhone: resolvedProviderPhone,
+          providerCbuAlias: resolvedProviderCbu,
+          providerCuitDni: resolvedProviderCuit,
+          providerBankName: resolvedProviderBank,
           providerSlug: resolvedProviderSlug,
           providerEmail: resolvedProviderEmail,
           isClubExperience: true,
         }
-        : {}),
+        : {
+          ...(resolvedProviderName ? { providerName: resolvedProviderName } : {}),
+          ...(resolvedProviderPhone ? { providerPhone: resolvedProviderPhone } : {}),
+          ...(resolvedProviderCbu ? { providerCbuAlias: resolvedProviderCbu } : {}),
+          ...(resolvedProviderCuit ? { providerCuitDni: resolvedProviderCuit } : {}),
+          ...(resolvedProviderBank ? { providerBankName: resolvedProviderBank } : {}),
+          ...(resolvedProviderSlug ? { providerSlug: resolvedProviderSlug } : {}),
+          ...(resolvedProviderEmail ? { providerEmail: resolvedProviderEmail } : {}),
+        }),
       videoUrl: safeVideoUrl,
       videoPoster: this.editVideoPoster().trim(),
       dates,
@@ -4936,9 +4961,7 @@ export class AdminExperiencesComponent implements OnInit {
 
           if (newStatus === 'publicada') {
             const confirmedDates = parseConfirmedProposalDates(this.editDatesRaw());
-            if (confirmedDates.length > 0) {
-              payload.dates = confirmedDates;
-            }
+            payload.dates = confirmedDates;
 
             if (req) {
               await this.adminStore.approveExperienceRequest(

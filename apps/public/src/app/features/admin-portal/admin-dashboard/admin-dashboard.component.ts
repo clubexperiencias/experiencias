@@ -648,13 +648,25 @@ import {
               <!-- Estado del Comprobante -->
               <div
                 class="status-summary-box"
-                [attr.data-status]="sub.status === 'rechazado' ? 'rechazado' : 'aprobado'"
+                [attr.data-status]="sub.status"
               >
                 <mat-icon>{{
-                  sub.status === 'rechazado' ? 'cancel' : 'verified'
+                  sub.status === 'aprobado'
+                    ? 'verified'
+                    : sub.status === 'rechazado'
+                      ? 'cancel'
+                      : 'schedule'
                 }}</mat-icon>
                 <div>
-                  <strong>Pago {{ (sub.status === 'rechazado' ? 'rechazado' : 'aprobado') | uppercase }}</strong>
+                  <strong>
+                    @if (sub.status === 'aprobado') {
+                      Pago APROBADO
+                    } @else if (sub.status === 'rechazado') {
+                      Pago RECHAZADO
+                    } @else {
+                      Pago PENDIENTE DE REVISIÓN
+                    }
+                  </strong>
                   @if (sub.reviewedAt) {
                     <span> · {{ sub.reviewedAt | fecha: 'corta' }}</span>
                   }
@@ -667,6 +679,11 @@ import {
               <!-- Acciones de Validación / Descarga -->
               @if (!rejecting()) {
                 <div class="modal-actions-row">
+                  @if (sub.status === 'pendiente') {
+                    <button type="button" class="btn-approve" (click)="quickApprove(sub.id)">
+                      Aprobar Pago
+                    </button>
+                  }
                   @if (sub.status !== 'rechazado') {
                     <button type="button" class="btn-reject" (click)="rejecting.set(true)">
                       Rechazar Pago

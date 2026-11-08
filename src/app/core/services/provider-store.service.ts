@@ -283,14 +283,16 @@ export class ProviderStoreService {
     const subs = this.providerSubmissions();
     const exps = this.providerExperiences();
 
-    const confirmedRevenue = subs
-      .filter((s) => s.status !== 'rechazado')
+    const approvedSubs = subs.filter((s) => s.status === 'aprobado');
+    const pendingSubs = subs.filter((s) => s.status === 'pendiente');
+
+    const confirmedRevenue = approvedSubs
       .reduce((sum, s) => sum + (Number(s.amountArs) || 0), 0);
 
-    const pendingRevenue = 0;
+    const pendingRevenue = pendingSubs
+      .reduce((sum, s) => sum + (Number(s.amountArs) || 0), 0);
 
-    const totalEnrolled = subs
-      .filter((s) => s.status !== 'rechazado')
+    const totalEnrolled = approvedSubs
       .reduce((sum, s) => sum + (Number(s.participants) || 0), 0);
 
     const publishedCount = exps.filter((e) => e.status === 'publicada').length;
@@ -308,7 +310,7 @@ export class ProviderStoreService {
       publishedCount,
       pendingModerationCount,
       totalExperiences: exps.length,
-      pendingReceiptsCount: 0,
+      pendingReceiptsCount: pendingSubs.length,
     };
   });
 
@@ -1947,7 +1949,7 @@ export class ProviderStoreService {
         storageKey,
         provider: storageProvider,
       },
-      status: 'aprobado',
+      status: 'pendiente',
       submittedAt: new Date().toISOString(),
     };
 
@@ -2127,7 +2129,12 @@ export class ProviderStoreService {
         .map((s) => ({
           ...s,
           amountArs: Number(s.amountArs) || 0,
-          status: s.status === 'rechazado' ? ('rechazado' as const) : ('aprobado' as const),
+          status:
+            s.status === 'aprobado'
+              ? ('aprobado' as const)
+              : s.status === 'rechazado'
+                ? ('rechazado' as const)
+                : ('pendiente' as const),
         }));
     } catch {
       return [];

@@ -29,8 +29,12 @@ function syncRecursive(src, dest) {
       if (fs.existsSync(destPath)) {
         const srcStat = fs.statSync(srcPath);
         const destStat = fs.statSync(destPath);
-        if (srcStat.size === destStat.size && srcStat.mtimeMs <= destStat.mtimeMs) {
-          shouldCopy = false;
+        if (srcStat.size === destStat.size) {
+          const srcBuf = fs.readFileSync(srcPath);
+          const destBuf = fs.readFileSync(destPath);
+          if (srcBuf.equals(destBuf)) {
+            shouldCopy = false;
+          }
         }
       }
       if (shouldCopy) {
