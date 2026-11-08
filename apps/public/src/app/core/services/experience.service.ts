@@ -425,6 +425,13 @@ export class ExperienceService {
     return this._experiences().find((e) => e.id === id || e.slug === id);
   }
 
+  /**
+   * Comprueba si un objeto contiene todos los campos obligatorios para constituir
+   * un registro íntegro de Experiencia.
+   *
+   * @param exp Objeto a validar.
+   * @returns `true` si el objeto es una Experiencia completa.
+   */
   private isCompleteExperience(exp: any): exp is Experience {
     if (!exp || typeof exp !== 'object') return false;
     return (
@@ -446,6 +453,13 @@ export class ExperienceService {
     );
   }
 
+  /**
+   * Actualiza una experiencia existente en el catálogo local y la sincroniza
+   * de forma persistente con Supabase. Preserva el identificador original de la
+   * experiencia en caso de coincidencias por slug o formato alternativo.
+   *
+   * @param updated Registro parcial o completo que contiene las modificaciones.
+   */
   async updateExperience(updated: Partial<Experience> & { id: string }): Promise<void> {
     const prevList = this._experiences();
     let index = prevList.findIndex((e) => e.id === updated.id);
@@ -484,6 +498,7 @@ export class ExperienceService {
     const merged: Experience = {
       ...current,
       ...updated,
+      id: index !== -1 ? current.id : updated.id,
       coverImage: safeCoverImage,
       videoUrl: safeVideoUrl || undefined,
       albumPhotos: safeAlbumPhotos,
@@ -1752,6 +1767,23 @@ export class ExperienceService {
           // Si no está autenticado o el acceso está restringido por RLS, se mantienen vacíos los datos bancarios
         }
 
+        let providerSlugMap = new Map<string, string>();
+        try {
+          const { data: publicProfiles } = await (this.supabase.from('perfiles_publicos') as any)
+            .select('email, name, agency, slug');
+          if (Array.isArray(publicProfiles)) {
+            for (const profile of publicProfiles) {
+              if (profile?.slug) {
+                if (profile.email) providerSlugMap.set(profile.email.trim().toLowerCase(), profile.slug);
+                if (profile.name) providerSlugMap.set(profile.name.trim().toLowerCase(), profile.slug);
+                if (profile.agency) providerSlugMap.set(profile.agency.trim().toLowerCase(), profile.slug);
+              }
+            }
+          }
+        } catch {
+          // ignore
+        }
+
         const clubProfile = this.getClubProfile();
         const remoteExperiences: Experience[] = data.map((exp: any) => {
           const rawImage = exp.cover_image;
@@ -1759,6 +1791,8 @@ export class ExperienceService {
             ? rawImage
             : KAYAK_IMAGE;
           const email = (exp.provider_email || '').trim().toLowerCase();
+          const name = (exp.provider_name || '').trim().toLowerCase();
+          const agency = (exp.provider_agency || '').trim().toLowerCase();
           const banking = providerBankingMap.get(email);
           const isClub = isClubExperience({
             slug: exp.slug,
@@ -1767,7 +1801,13 @@ export class ExperienceService {
             providerName: exp.provider_name,
           });
 
-          const resolvedProviderSlug = isClub ? 'club-de-experiencias' : (exp.provider_slug || undefined);
+          const mappedSlug =
+            exp.provider_slug ||
+            providerSlugMap.get(email) ||
+            providerSlugMap.get(name) ||
+            providerSlugMap.get(agency);
+
+          const resolvedProviderSlug = isClub ? 'club-de-experiencias' : (mappedSlug || undefined);
           const resolvedProviderName = isClub ? (clubProfile.name || 'Club de Experiencias') : (exp.provider_name || undefined);
           const resolvedProviderEmail = isClub ? (clubProfile.email || 'admin@experiencias.club') : (exp.provider_email || undefined);
           const resolvedProviderPhone = isClub ? (clubProfile.phone || '+54 9 383 456-7890') : (exp.provider_phone || undefined);

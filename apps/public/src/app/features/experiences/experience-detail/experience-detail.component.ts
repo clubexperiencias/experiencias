@@ -174,7 +174,13 @@ export class ExperienceDetailComponent {
       url,
     };
 
+    const isMobile =
+      typeof window !== 'undefined' &&
+      (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+        (typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 768px)').matches));
+
     if (
+      isMobile &&
       typeof navigator !== 'undefined' &&
       navigator.share &&
       typeof navigator.canShare === 'function' &&

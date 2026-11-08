@@ -106,6 +106,15 @@ export class ProviderPublicProfileComponent implements OnInit {
     return phone.replace(/[^0-9]/g, '');
   }
 
+  getWhatsAppUrl(p: any): string {
+    const clean = this.cleanWhatsApp(p?.phone);
+    if (!clean) return '#';
+    const text = encodeURIComponent(
+      'Hola! Te contacto a través de tu perfil en Experiencias.club para consultar sobre tus actividades.',
+    );
+    return `https://wa.me/${clean}?text=${text}`;
+  }
+
   getInitials(name?: string): string {
     if (!name) return 'PR';
     const parts = name.trim().split(/\s+/).filter(Boolean);

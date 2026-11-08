@@ -43,7 +43,10 @@ export interface LandscapeLocation {
   styleUrl: './waitlist.component.css',
 })
 export class WaitlistComponent {
-  readonly breadcrumbs: BreadcrumbItem[] = [{ label: 'Inicio' }];
+  readonly breadcrumbs: BreadcrumbItem[] = [
+    { label: 'Inicio', url: '/' },
+    { label: 'Experiencias', url: '/experiencias', mobileOnly: true },
+  ];
   readonly router = inject(Router);
   readonly route = inject(ActivatedRoute);
   readonly newsletter = inject(NewsletterService);

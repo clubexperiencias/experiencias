@@ -56,9 +56,6 @@
                 <span class="verified-badge">
                   Prestador Oficial Verificado
                 </span>
-                @if (p.role === 'prestador') {
-                  <span class="category-badge">Guía & Anfitrión Local</span>
-                }
               </div>
             </div>
 
@@ -82,9 +79,9 @@
 
             <!-- Botones de Acción / Contacto -->
             <div class="contact-actions-bar">
-              @if (p.phone) {
+              @if (cleanWhatsApp(p.phone)) {
                 <a
-                  [href]="'https://wa.me/' + cleanWhatsApp(p.phone)"
+                  [href]="getWhatsAppUrl(p)"
                   target="_blank"
                   rel="noopener noreferrer"
                   class="action-pill action-pill-wa"
@@ -123,11 +120,11 @@
           </div>
         </article>
 
-        <!-- Experiencias Operadas por este Prestador -->
+        <!-- Experiencias de este Prestador -->
         <section class="provider-experiences-section">
           <div class="section-title-wrap">
             <span class="section-kicker">CATÁLOGO EXCLUSIVO</span>
-            <h2 class="card-heading">Experiencias Operadas por {{ p.agency || p.name }}</h2>
+            <h2 class="card-heading">Experiencias de {{ p.agency || p.name }}</h2>
           </div>
 
           @if (providerExperiences().length > 0) {

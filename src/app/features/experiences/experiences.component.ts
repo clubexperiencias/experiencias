@@ -60,6 +60,16 @@ export class ExperiencesComponent implements AfterViewInit, OnDestroy {
         : exp.providerSlug;
     }
     if (this.isClubExperience(exp)) return DEFAULT_CLUB_PROFILE.slug;
+    const rawName = exp.providerName || exp.providerAgency || '';
+    if (rawName) {
+      const fallback = rawName
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)+/g, '');
+      if (fallback) return fallback;
+    }
     return null;
   }
 

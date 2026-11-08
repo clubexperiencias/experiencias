@@ -265,7 +265,7 @@
 /* ==========================================================================
    Responsive & Mobile Click
    ========================================================================== */
-@media (max-width: 900px) {
+@media (max-width: 768px) {
   :host {
     top: 60px;
   }
@@ -400,21 +400,45 @@
   justify-content: center;
 }
 
-/* En resoluciones menores o móviles, ambos botones flotan en la parte inferior (atrás a la izquierda, soporte a la derecha) */
+/* En resoluciones menores o móviles, ambos botones se mantienen arriba cerca del breadcrumb como en desktop */
 @media (max-width: 899px) {
   .desktop-floating-btn {
-    top: auto;
-    bottom: 1.25rem;
-    z-index: 900;
+    top: 112px;
+    bottom: auto;
+    z-index: 800;
+    width: 40px;
+    height: 40px;
   }
 
   .desktop-floating-back-btn {
-    left: 1.25rem;
+    left: 1rem;
     right: auto;
   }
 
   .desktop-floating-support-btn {
-    right: 1.25rem;
+    right: 1rem;
     left: auto;
+  }
+
+  .floating-btn-icon,
+  .floating-back-icon,
+  .floating-btn-icon-svg {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+  }
+}
+
+.bc-step-wrapper.mobile-only,
+.bc-sep.mobile-only {
+  display: none !important;
+}
+
+@media (max-width: 900px) {
+  .bc-step-wrapper.mobile-only {
+    display: flex !important;
+  }
+  .bc-sep.mobile-only {
+    display: inline-flex !important;
   }
 }

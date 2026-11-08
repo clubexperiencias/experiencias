@@ -28,13 +28,13 @@ describe('BreadcrumbComponent', () => {
     expect(bar).toBeTruthy();
 
     const links = fixture.nativeElement.querySelectorAll('.bc-link');
-    expect(links.length).toBe(2);
-    expect(links[0].getAttribute('routerlink') || links[0].getAttribute('href')).toBe('/');
-    expect(links[1].getAttribute('routerlink') || links[1].getAttribute('href')).toBe('/socios');
+    expect(links.length).toBe(1);
+    expect(links[0].getAttribute('routerlink') || links[0].getAttribute('href')).toBe('/socios');
 
-    const current = fixture.nativeElement.querySelector('.bc-current');
-    expect(current).toBeTruthy();
-    expect(current.textContent).toContain('Socios Plenos');
+    const currentElements = fixture.nativeElement.querySelectorAll('.bc-current');
+    expect(currentElements.length).toBe(2);
+    expect(currentElements[0].textContent).toContain('Inicio');
+    expect(currentElements[1].textContent).toContain('Socios Plenos');
   });
 
   it('should not render a home icon in the breadcrumb', () => {

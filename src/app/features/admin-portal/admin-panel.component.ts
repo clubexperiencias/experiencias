@@ -143,7 +143,6 @@ const ROUTE_LABELS: Record<string, string> = {
                     <mat-icon class="menu-item-icon">history</mat-icon>
                     <div class="menu-item-info">
                       <strong class="menu-item-title">Registro de Actividad</strong>
-                      <span class="menu-item-subtitle">Logs de admins y prestadores</span>
                     </div>
                   </a>
 
@@ -155,7 +154,6 @@ const ROUTE_LABELS: Record<string, string> = {
                     <mat-icon class="menu-item-icon club-icon">settings</mat-icon>
                     <div class="menu-item-info">
                       <strong class="menu-item-title">Configuración</strong>
-                      <span class="menu-item-subtitle">Perfil del Club & Cotización USD</span>
                     </div>
                   </a>
                 </div>

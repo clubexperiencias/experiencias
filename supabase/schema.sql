@@ -2671,6 +2671,8 @@ CREATE POLICY "Admins can update postulaciones_fundadores"
 -- 6.6 Política para permitir nuevas postulaciones en prestadores
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT INSERT ON TABLE public.prestadores TO anon, authenticated;
+GRANT SELECT ON public.administradores TO anon;
+GRANT SELECT ON public.experiencias TO anon;
 
 DROP POLICY IF EXISTS "Permitir postularse como prestador" ON public.prestadores;
 CREATE POLICY "Permitir postularse como prestador"
@@ -3016,23 +3018,12 @@ BEGIN
       USING (bucket_id = 'experiencias');
 
     DROP POLICY IF EXISTS "Subida de fotos de experiencias" ON storage.objects;
-    CREATE POLICY "Subida de fotos de experiencias"
+    DROP POLICY IF EXISTS "Permitir subida de fotos de experiencias" ON storage.objects;
+    CREATE POLICY "Permitir subida de fotos de experiencias"
       ON storage.objects
       FOR INSERT
-      TO authenticated
-      WITH CHECK (
-        bucket_id = 'experiencias'
-        AND (
-          EXISTS (
-            SELECT 1 FROM public.administradores
-            WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email') AND active = true
-          )
-          OR EXISTS (
-            SELECT 1 FROM public.prestadores
-            WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email') AND active = true
-          )
-        )
-      );
+      TO public, anon, authenticated
+      WITH CHECK (bucket_id = 'experiencias');
 
     DROP POLICY IF EXISTS "Actualizacion de fotos de experiencias" ON storage.objects;
     CREATE POLICY "Actualizacion de fotos de experiencias"

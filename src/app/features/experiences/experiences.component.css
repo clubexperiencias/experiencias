@@ -491,7 +491,7 @@
   box-sizing: border-box;
   padding: 0.65rem 1.1rem;
   background: #80b3ff;
-  color: #0b1120;
+  color: #ffffff;
   font-size: 0.84rem;
   font-weight: 700;
   border-radius: 2px;
@@ -505,7 +505,7 @@
 .exp-toggle-details-btn:hover {
   background: #99c2ff;
   border-color: #99c2ff;
-  color: #0b1120;
+  color: #ffffff;
   transform: translateY(-2px);
   box-shadow: 0 4px 14px rgba(128, 179, 255, 0.35);
 }
@@ -513,7 +513,7 @@
 .exp-toggle-details-btn.active {
   background: #66a3ff;
   border-color: #66a3ff;
-  color: #0b1120;
+  color: #ffffff;
 }
 
 .toggle-icon {
@@ -580,7 +580,7 @@
   box-sizing: border-box;
   padding: 0.65rem 1.1rem;
   background: #d9a300;
-  color: #0b1120;
+  color: #ffffff;
   border: 1px solid #d9a300;
   font-size: 0.84rem;
   font-weight: 700;
@@ -594,7 +594,7 @@
 .exp-locked-btn:hover {
   background: #f0b81c;
   border-color: #f0b81c;
-  color: #000000;
+  color: #ffffff;
 }
 
 .exp-locked-btn .btn-lock-icon {
@@ -608,7 +608,7 @@
 .exp-toggle-details-btn.exp-cta-link {
   text-decoration: none;
   background: #80b3ff;
-  color: #0b1120;
+  color: #ffffff;
   font-weight: 700;
   border: 1px solid #80b3ff;
 }
@@ -616,6 +616,7 @@
 .exp-toggle-details-btn.exp-cta-link:hover {
   background: #99c2ff;
   border-color: #99c2ff;
+  color: #ffffff;
   transform: translateY(-2px);
   box-shadow: 0 4px 14px rgba(128, 179, 255, 0.35);
 }

@@ -440,7 +440,7 @@
   justify-content: center;
   gap: 0.6rem;
   background: var(--color-gold);
-  color: #000000;
+  color: #ffffff;
   font-family: var(--font-sans);
   font-size: 0.95rem;
   font-weight: 800;
@@ -455,6 +455,7 @@
 
 .signup-submit-btn:hover {
   background: #ffe066;
+  color: #ffffff;
   transform: translateY(-1px);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
 }
