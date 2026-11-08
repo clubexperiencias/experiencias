@@ -4945,6 +4945,7 @@ export class AdminExperiencesComponent implements OnInit {
       dates,
       highlights,
       included,
+      notIncluded: highlights,
       status: this.editStatus(),
       publicUrl: `https://experiencias.club/experiencias/${slug}`,
       detailRoute: `/experiencias/${slug}`,

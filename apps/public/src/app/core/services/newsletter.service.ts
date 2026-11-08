@@ -11,6 +11,7 @@ const SPOTS_KEY = 'catamarca_club_reserved_spots';
 const USED_MEMBER_DISCOUNTS_KEY = 'catamarca_club_used_member_discounts';
 const PROSPECT_EMAIL_KEY = 'catamarca_club_prospect_email';
 export const AUTH_RETURN_URL_KEY = 'ce_auth_return_url';
+export const AUTH_RETURN_URL_EXPIRY_MS = 30 * 60 * 1000; // 30 minutos de vigencia para el flujo de autenticación
 export const AUTH_SUCCESS_FEEDBACK_DURATION_MS = 3000;
 
 function mapDbRowToEntry(row: any): WaitlistEntry {
@@ -182,8 +183,12 @@ export class NewsletterService {
   saveAuthReturnUrl(url: string): void {
     if (typeof window === 'undefined' || !url) return;
     try {
-      sessionStorage.setItem(AUTH_RETURN_URL_KEY, url);
-      localStorage.setItem(AUTH_RETURN_URL_KEY, url);
+      const payload = JSON.stringify({
+        url,
+        expiresAt: Date.now() + AUTH_RETURN_URL_EXPIRY_MS,
+      });
+      sessionStorage.setItem(AUTH_RETURN_URL_KEY, payload);
+      localStorage.setItem(AUTH_RETURN_URL_KEY, payload);
     } catch {
       // ignore storage access errors
     }
@@ -192,12 +197,37 @@ export class NewsletterService {
   getAuthReturnUrl(): string | null {
     if (typeof window === 'undefined') return null;
     try {
-      const val =
+      const raw =
         sessionStorage.getItem(AUTH_RETURN_URL_KEY) ||
         localStorage.getItem(AUTH_RETURN_URL_KEY);
-      if (val && val.startsWith('/') && val !== '/' && val !== '/login') {
-        return val;
+      if (!raw) return null;
+
+      let url: string | null = null;
+      let expiresAt: number | null = null;
+
+      if (raw.startsWith('{')) {
+        try {
+          const parsed = JSON.parse(raw);
+          url = parsed.url;
+          expiresAt = typeof parsed.expiresAt === 'number' ? parsed.expiresAt : null;
+        } catch {
+          url = null;
+        }
+      } else {
+        url = raw;
       }
+
+      // Descartar entradas obsoletas expiradas
+      if (expiresAt !== null && Date.now() > expiresAt) {
+        this.clearAuthReturnUrl();
+        return null;
+      }
+
+      if (url && typeof url === 'string' && url.startsWith('/') && url !== '/' && url !== '/login') {
+        return url;
+      }
+
+      this.clearAuthReturnUrl();
       return null;
     } catch {
       return null;
@@ -1010,10 +1040,9 @@ export class NewsletterService {
   }
 
   async signInWithGoogle(redirectTo?: string): Promise<{ success: boolean; message: string }> {
-    if (typeof window !== 'undefined') {
-      const target = redirectTo || window.location.href;
+    if (typeof window !== 'undefined' && redirectTo) {
       try {
-        const parsed = new URL(target, window.location.origin);
+        const parsed = new URL(redirectTo, window.location.origin);
         const returnPath = parsed.pathname + parsed.search;
         if (returnPath && returnPath !== '/' && returnPath !== '/login') {
           this.saveAuthReturnUrl(returnPath);
@@ -1047,11 +1076,14 @@ export class NewsletterService {
     }
 
     try {
+      const savedReturnUrl = typeof window !== 'undefined' ? this.getAuthReturnUrl() : null;
       const redirectUrl =
         redirectTo ||
-        (typeof window !== 'undefined'
-          ? (this.getAuthReturnUrl() ? `${window.location.origin}${this.getAuthReturnUrl()}` : `${window.location.origin}/perfil`)
-          : 'http://localhost:3000/perfil');
+        (savedReturnUrl
+          ? `${window.location.origin}${savedReturnUrl}`
+          : typeof window !== 'undefined'
+            ? `${window.location.origin}/perfil`
+            : 'http://localhost:3000/perfil');
 
       const { error } = await this.supabase.auth.signInWithOAuth({
         provider: 'google',

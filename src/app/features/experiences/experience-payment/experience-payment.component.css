@@ -571,17 +571,14 @@
   background: rgba(128, 179, 255, 0.2);
 }
 
-.pay-file-actions .pay-remove-file-btn,
-.pay-file-card .pay-copy-btn {
+.pay-file-actions .pay-remove-file-btn {
   border: 1px solid rgba(239, 68, 68, 0.4);
   color: #fca5a5;
   background: rgba(239, 68, 68, 0.06);
 }
 
 .pay-file-actions .pay-remove-file-btn:hover,
-.pay-file-actions .pay-remove-file-btn:active,
-.pay-file-card .pay-copy-btn:hover,
-.pay-file-card .pay-copy-btn:active {
+.pay-file-actions .pay-remove-file-btn:active {
   border-color: #ef4444;
   color: #ef4444;
   background: rgba(239, 68, 68, 0.15);

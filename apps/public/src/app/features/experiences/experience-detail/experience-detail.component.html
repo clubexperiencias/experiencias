@@ -192,9 +192,10 @@
         </div>
 
         <!-- ═══════════════ CARD: SERVICIOS INCLUIDOS & QUÉ LLEVAR ═══════════════ -->
+        @let itemsToBring = (item.notIncluded && item.notIncluded.length > 0) ? item.notIncluded : (item.highlights && item.highlights.length > 0 ? item.highlights : []);
         @if (
         (item.included && item.included.length > 0) ||
-        (item.notIncluded && item.notIncluded.length > 0)
+        (itemsToBring && itemsToBring.length > 0)
         ) {
         <div class="exp-detail-section-card">
           <div class="card-inner-header">
@@ -221,13 +222,13 @@
             }
 
             <!-- Columna 2: Qué Llevar / No Incluido -->
-            @if (item.notIncluded && item.notIncluded.length > 0) {
+            @if (itemsToBring && itemsToBring.length > 0) {
             <div class="simple-logistics-col traer-col">
               <div class="simple-col-title-wrap">
                 <h3 class="simple-col-title">Qué Debes Traer</h3>
               </div>
               <ul class="simple-check-list blue-checks">
-                @for (notInc of item.notIncluded; track notInc) {
+                @for (notInc of itemsToBring; track notInc) {
                 <li>{{ notInc }}</li>
                 }
               </ul>

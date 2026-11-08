@@ -92,16 +92,19 @@ export class App {
 
   private handleAuthRedirectReturn(): void {
     if (typeof window === 'undefined') return;
-    const returnUrl = this.newsletter.getAuthReturnUrl();
-    if (!returnUrl) return;
-
-    const currentPath = window.location.pathname;
-    if (currentPath === '/' || currentPath === '/perfil' || currentPath === '/login') {
-      if (returnUrl !== currentPath) {
+    // No redirigir en el inicio de la app antes de confirmar el estado autenticado
+    void this.newsletter
+      .isAuthenticated()
+      .then((authenticated) => {
+        if (authenticated) {
+          this.newsletter.checkAndNavigateReturnUrl();
+        } else {
+          this.newsletter.clearAuthReturnUrl();
+        }
+      })
+      .catch(() => {
         this.newsletter.clearAuthReturnUrl();
-        void this.router.navigateByUrl(returnUrl, { replaceUrl: true });
-      }
-    }
+      });
   }
 
   private updatePageMetadata(url: string): void {

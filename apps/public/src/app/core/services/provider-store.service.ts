@@ -2395,11 +2395,9 @@ export class ProviderStoreService {
                 ? row.included.join('\n')
                 : (row.included_services || ''),
             participantRequirements:
-              (row.participant_requirements && String(row.participant_requirements).trim().length > 0)
-                ? row.participant_requirements
-                : (Array.isArray(row.highlights) && row.highlights.length > 0
-                    ? row.highlights.join('\n')
-                    : ''),
+              Array.isArray(row.highlights) && row.highlights.length > 0
+                ? row.highlights.join('\n')
+                : (row.participant_requirements || ''),
             notes: row.notes || '',
             coverImage: row.cover_image || '/assets/images/kayak-club-de-experiencias.jpg',
             coverImageName: row.cover_image_name || '',

@@ -1,4 +1,16 @@
-import { Component, EventEmitter, Output, effect, inject, input, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  EventEmitter,
+  HostListener,
+  OnDestroy,
+  Output,
+  ViewChild,
+  effect,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FechaPipe } from '../../../shared/pipes/format.pipes';
 import {
@@ -13,8 +25,16 @@ import {
   imports: [CommonModule, FechaPipe],
   template: `
     @if (currentApp(); as app) {
-      <div class="modal-backdrop" (click)="close()">
-        <div class="quick-modal-card app-quick-modal" (click)="$event.stopPropagation()">
+      <div class="modal-backdrop" role="presentation" (click)="close()">
+        <div
+          #modalDialog
+          class="quick-modal-card app-quick-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="admin-app-modal-title"
+          tabindex="-1"
+          (click)="$event.stopPropagation()"
+        >
           <div class="modal-info-col full-app-col">
             <div class="modal-top">
               <div>
@@ -25,9 +45,15 @@ import {
                       : 'POSTULACIÓN SOCIO FUNDADOR'
                   }}
                 </span>
-                <h3 class="modal-sub-name">{{ app.fullName }}</h3>
+                <h3 id="admin-app-modal-title" class="modal-sub-name">{{ app.fullName }}</h3>
               </div>
-              <button type="button" class="modal-x" (click)="close()">×</button>
+              <button
+                type="button"
+                class="modal-x"
+                (click)="close()"
+                aria-label="Cerrar"
+                title="Cerrar"
+              >×</button>
             </div>
 
             <dl class="modal-dl">
@@ -154,6 +180,7 @@ import {
                     <button
                       type="button"
                       class="btn-state btn-approve"
+                      [disabled]="isUpdatingStatus()"
                       (click)="approveProvider()"
                     >
                       Aprobar Prestador
@@ -163,6 +190,7 @@ import {
                     <button
                       type="button"
                       class="btn-state btn-reject"
+                      [disabled]="isUpdatingStatus()"
                       (click)="darDeBajaProvider()"
                     >
                       Dar de baja
@@ -173,6 +201,7 @@ import {
                     <button
                       type="button"
                       class="btn-state btn-approve"
+                      [disabled]="isUpdatingStatus()"
                       (click)="changeApplicationStatus('aprobado')"
                     >
                       Aprobar Postulación
@@ -182,6 +211,7 @@ import {
                     <button
                       type="button"
                       class="btn-state btn-reject"
+                      [disabled]="isUpdatingStatus()"
                       (click)="changeApplicationStatus('dado_de_baja')"
                     >
                       Dar de baja
@@ -233,6 +263,11 @@ import {
         width: 100%;
         max-height: min(750px, 92vh);
         overflow-y: auto;
+        outline: none;
+      }
+
+      .app-quick-modal:focus-visible {
+        outline: 1px solid rgba(255, 95, 0, 0.5);
       }
 
       .full-app-col {
@@ -435,6 +470,12 @@ import {
         box-sizing: border-box !important;
       }
 
+      .btn-state:disabled {
+        opacity: 0.5 !important;
+        cursor: not-allowed !important;
+        pointer-events: none !important;
+      }
+
       .btn-approve {
         background: rgba(0, 204, 136, 0.16) !important;
         border: 1px solid rgba(0, 204, 136, 0.45) !important;
@@ -507,7 +548,7 @@ import {
     `,
   ],
 })
-export class AdminApplicationModalComponent {
+export class AdminApplicationModalComponent implements OnDestroy {
   private readonly store = inject(AdminStoreService);
 
   readonly application = input.required<AdminApplication>();
@@ -518,18 +559,56 @@ export class AdminApplicationModalComponent {
   }>();
 
   readonly currentApp = signal<AdminApplication | null>(null);
+  readonly isUpdatingStatus = signal(false);
+
+  @ViewChild('modalDialog') modalDialog?: ElementRef<HTMLElement>;
+  private previousActiveElement: HTMLElement | null = null;
 
   constructor() {
     effect(
       () => {
-        this.currentApp.set(this.application());
+        const app = this.application();
+        this.currentApp.set(app);
+        if (app) {
+          if (typeof document !== 'undefined' && !this.previousActiveElement) {
+            this.previousActiveElement = document.activeElement as HTMLElement | null;
+          }
+          setTimeout(() => {
+            this.focusInitialElement();
+          }, 0);
+        }
       },
       { allowSignalWrites: true },
     );
   }
 
+  ngOnDestroy(): void {
+    this.restoreFocus();
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (this.currentApp()) {
+      this.close();
+    }
+  }
+
   close(): void {
+    this.restoreFocus();
     this.closed.emit();
+  }
+
+  private focusInitialElement(): void {
+    if (this.modalDialog?.nativeElement) {
+      this.modalDialog.nativeElement.focus();
+    }
+  }
+
+  private restoreFocus(): void {
+    if (this.previousActiveElement && typeof this.previousActiveElement.focus === 'function') {
+      this.previousActiveElement.focus();
+      this.previousActiveElement = null;
+    }
   }
 
   hasPhoneDigits(phone?: string | null): boolean {
@@ -560,36 +639,29 @@ export class AdminApplicationModalComponent {
     return category ? (map[category] ?? category) : 'General';
   }
 
-  async approveProvider(): Promise<void> {
-    const current = this.currentApp();
-    if (!current) return;
-    const ok = await this.store.updateApplicationStatus(current.id, current.type, 'aprobado');
-    if (ok) {
-      const updated: AdminApplication = { ...current, status: 'aprobado' };
-      this.currentApp.set(updated);
-      this.statusChanged.emit({ application: updated, status: 'aprobado' });
-    }
+  approveProvider(): Promise<void> {
+    return this.changeApplicationStatus('aprobado');
   }
 
-  async darDeBajaProvider(): Promise<void> {
-    const current = this.currentApp();
-    if (!current) return;
-    const ok = await this.store.updateApplicationStatus(current.id, current.type, 'dado_de_baja');
-    if (ok) {
-      const updated: AdminApplication = { ...current, status: 'dado_de_baja' };
-      this.currentApp.set(updated);
-      this.statusChanged.emit({ application: updated, status: 'dado_de_baja' });
-    }
+  darDeBajaProvider(): Promise<void> {
+    return this.changeApplicationStatus('dado_de_baja');
   }
 
   async changeApplicationStatus(status: ApplicationStatus): Promise<void> {
+    if (this.isUpdatingStatus()) return;
     const current = this.currentApp();
     if (!current) return;
-    const ok = await this.store.updateApplicationStatus(current.id, current.type, status);
-    if (ok) {
-      const updated: AdminApplication = { ...current, status };
-      this.currentApp.set(updated);
-      this.statusChanged.emit({ application: updated, status });
+
+    this.isUpdatingStatus.set(true);
+    try {
+      const ok = await this.store.updateApplicationStatus(current.id, current.type, status);
+      if (ok) {
+        const updated: AdminApplication = { ...current, status };
+        this.currentApp.set(updated);
+        this.statusChanged.emit({ application: updated, status });
+      }
+    } finally {
+      this.isUpdatingStatus.set(false);
     }
   }
 }
