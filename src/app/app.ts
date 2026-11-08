@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { Meta, Title } from '@angular/platform-browser';
 import { filter } from 'rxjs';
+import { NewsletterService } from './core/services/newsletter.service';
 
 const DEFAULT_PAGE_METADATA = {
   section: 'Expediciones privadas en Catamarca',
@@ -22,8 +23,13 @@ export class App {
   private readonly router = inject(Router);
   private readonly meta = inject(Meta);
   private readonly pageTitle = inject(Title);
+  private readonly newsletter = inject(NewsletterService);
 
   constructor() {
+    if (typeof window !== 'undefined') {
+      this.handleAuthRedirectReturn();
+    }
+
     this.router.events
       .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
       .subscribe((event) => {
@@ -82,6 +88,23 @@ export class App {
       document.addEventListener('input', updateSpanishValidity, true);
       document.addEventListener('invalid', updateSpanishValidity, true);
     }
+  }
+
+  private handleAuthRedirectReturn(): void {
+    if (typeof window === 'undefined') return;
+    // No redirigir en el inicio de la app antes de confirmar el estado autenticado
+    void this.newsletter
+      .isAuthenticated()
+      .then((authenticated) => {
+        if (authenticated) {
+          this.newsletter.checkAndNavigateReturnUrl();
+        } else {
+          this.newsletter.clearAuthReturnUrl();
+        }
+      })
+      .catch(() => {
+        this.newsletter.clearAuthReturnUrl();
+      });
   }
 
   private updatePageMetadata(url: string): void {

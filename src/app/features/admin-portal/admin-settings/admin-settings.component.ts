@@ -306,7 +306,8 @@ import { ClubProfile } from '../../../core/models/club-profile.model';
       .toast-banner {
         position: fixed;
         bottom: 2rem;
-        right: 2rem;
+        left: 50%;
+        transform: translateX(-50%);
         background: #10b981;
         color: #ffffff;
         font-weight: 700;
@@ -315,8 +316,12 @@ import { ClubProfile } from '../../../core/models/club-profile.model';
         border-radius: 4px;
         box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
         z-index: 9999;
+        max-width: 90vw;
+        width: max-content;
         display: flex;
         align-items: center;
+        justify-content: center;
+        text-align: center;
         gap: 0.5rem;
         animation: fadeIn 0.25s ease-out;
       }
@@ -324,11 +329,11 @@ import { ClubProfile } from '../../../core/models/club-profile.model';
       @keyframes fadeIn {
         from {
           opacity: 0;
-          transform: translateY(8px);
+          transform: translate(-50%, 8px);
         }
         to {
           opacity: 1;
-          transform: translateY(0);
+          transform: translate(-50%, 0);
         }
       }
 
@@ -737,20 +742,20 @@ export class AdminSettingsComponent implements OnInit {
     }
     const rawRate = Number(this.usdRate());
     if (!Number.isFinite(rawRate) || rawRate < 100) {
-      this.saveError.set('⚠️ Por favor ingresá una cotización válida (mínimo $100 ARS).');
+      this.saveError.set('Por favor ingresá una cotización válida (mínimo $100 ARS).');
       return;
     }
     const rate = Math.round(rawRate);
 
     const name = this.clubName().trim();
     if (!name) {
-      this.saveError.set('⚠️ El nombre del Club es obligatorio.');
+      this.saveError.set('El nombre del Club es obligatorio.');
       return;
     }
 
     const cbu = this.clubCbuAlias().trim();
     if (!cbu) {
-      this.saveError.set('⚠️ El CBU / Alias de cobro es obligatorio.');
+      this.saveError.set('El CBU / Alias de cobro es obligatorio.');
       return;
     }
 
@@ -780,7 +785,7 @@ export class AdminSettingsComponent implements OnInit {
         return;
       }
 
-      this.showToast('✅ Configuración global y Perfil del Club actualizados con éxito.');
+      this.showToast('Configuración global y Perfil del Club actualizados con éxito.');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error inesperado';
       this.saveError.set(msg);
@@ -790,8 +795,13 @@ export class AdminSettingsComponent implements OnInit {
   }
 
   private showToast(msg: string): void {
-    this.feedbackToast.set(msg);
-    setTimeout(() => this.feedbackToast.set(null), 4500);
+    const cleanMsg = (msg || '')
+      .replace(/^[\p{Emoji_Presentation}\p{Extended_Pictographic}\u2600-\u27BF\uFE0F\s]+/u, '')
+      .trim();
+    this.feedbackToast.set(cleanMsg || msg);
+    setTimeout(() => {
+      this.feedbackToast.set(null);
+    }, 3500);
   }
 }
 

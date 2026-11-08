@@ -42,6 +42,10 @@ export class LoginComponent implements OnInit {
     }
 
     this.route.queryParams.subscribe((params) => {
+      const returnUrl = (params['returnUrl'] as string | undefined)?.trim();
+      if (returnUrl && returnUrl.startsWith('/')) {
+        this.newsletter.saveAuthReturnUrl(returnUrl);
+      }
       const paramEmail = ((params['email'] as string) || '').trim().toLowerCase();
       if (paramEmail) {
         this.email.set(paramEmail);
@@ -58,12 +62,17 @@ export class LoginComponent implements OnInit {
   async signInGoogle(): Promise<void> {
     this.isLoading.set(true);
     this.error.set(null);
-    const res = await this.newsletter.signInWithGoogle();
+    const returnUrl = this.newsletter.getAuthReturnUrl();
+    const redirectTo =
+      returnUrl && typeof window !== 'undefined'
+        ? `${window.location.origin}${returnUrl}`
+        : undefined;
+    const res = await this.newsletter.signInWithGoogle(redirectTo);
     this.isLoading.set(false);
     if (!res.success) {
       this.error.set(res.message);
     } else if (res.message?.includes('Modo desarrollo')) {
-      void this.router.navigate(['/perfil']);
+      void this.router.navigateByUrl(returnUrl || '/perfil');
     }
   }
 

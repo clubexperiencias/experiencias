@@ -2921,6 +2921,8 @@ export class ProviderExperienceProposalModalComponent {
     const meetingPointUrl = this.reqForm.meetingPointUrl?.trim();
     const isMapsValid = this.isValidGoogleMapsUrl(meetingPointUrl);
     const priceArs = Number(this.reqForm.priceArs);
+    const includedServices = this.reqForm.includedServices?.trim();
+    const participantRequirements = this.reqForm.participantRequirements?.trim();
     const hasCoverImage = Boolean(this.coverImageFile() || this.coverImagePreview());
     const hasValidDates = this.isDateFlexible() || this.scheduledDates().length > 0;
 
@@ -2933,6 +2935,8 @@ export class ProviderExperienceProposalModalComponent {
       !meetingPoint ||
       !meetingPointUrl ||
       !isMapsValid ||
+      !includedServices ||
+      !participantRequirements ||
       !Number.isFinite(priceArs) ||
       priceArs < 1 ||
       !hasCoverImage ||
@@ -2958,6 +2962,8 @@ export class ProviderExperienceProposalModalComponent {
       if (!itinerary) missing.push('Itinerario');
       if (!meetingPoint) missing.push('Punto de encuentro');
       if (!meetingPointUrl || !isMapsValid) missing.push('Ubicación (link válido de Google Maps)');
+      if (!includedServices) missing.push('Servicios Incluidos');
+      if (!participantRequirements) missing.push('Qué Debe Traer el Participante');
       if (!Number.isFinite(priceArs) || priceArs < 1) missing.push('Arancel');
       if (!hasCoverImage) missing.push('Foto de Portada');
       if (!hasValidDates) missing.push('Fechas de Salida');

@@ -1319,7 +1319,12 @@ export class ExperienceService {
                     isLocked: false,
                     albumPhotos: r.albumPhotos || [],
                     itinerary: r.itinerary,
-                    highlights: [],
+                    highlights: r.participantRequirements
+                      ? r.participantRequirements
+                          .split('\n')
+                          .map((s: string) => s.trim())
+                          .filter(Boolean)
+                      : [],
                     included: r.includedServices
                       ? r.includedServices
                           .split('\n')
@@ -1848,12 +1853,14 @@ export class ExperienceService {
             videoUrl: (typeof exp.video_url === 'string' && exp.video_url.startsWith('blob:')) ? undefined : (exp.video_url || undefined),
             videoPoster: exp.video_poster || undefined,
             highlights:
-              Array.isArray(exp.highlights) && exp.highlights.length > 0 ? exp.highlights : [],
+              Array.isArray(exp.highlights) && exp.highlights.length > 0
+                ? exp.highlights
+                : (Array.isArray(exp.not_included) && exp.not_included.length > 0 ? exp.not_included : []),
             included: Array.isArray(exp.included) && exp.included.length > 0 ? exp.included : [],
             notIncluded:
               Array.isArray(exp.not_included) && exp.not_included.length > 0
                 ? exp.not_included
-                : [],
+                : (Array.isArray(exp.highlights) && exp.highlights.length > 0 ? exp.highlights : []),
             dates: Array.isArray(exp.dates) && exp.dates.length > 0 ? exp.dates : [],
             dateSlots: Array.isArray(exp.date_slots) ? exp.date_slots : undefined,
             providerEmail: resolvedProviderEmail,

@@ -1,4 +1,5 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
+import { Router } from '@angular/router';
 import { WaitlistEntry, WaitlistSubmissionDto, WaitlistStats } from '../models/waitlist.model';
 import { DiscountCode } from '../models/bank-transfer.model';
 import { SUPABASE_CLIENT, isSupabaseConfigured } from '../supabase/supabase.client';
@@ -9,6 +10,8 @@ const SUBSCRIBED_KEY = 'catamarca_club_user_subscribed';
 const SPOTS_KEY = 'catamarca_club_reserved_spots';
 const USED_MEMBER_DISCOUNTS_KEY = 'catamarca_club_used_member_discounts';
 const PROSPECT_EMAIL_KEY = 'catamarca_club_prospect_email';
+export const AUTH_RETURN_URL_KEY = 'ce_auth_return_url';
+export const AUTH_RETURN_URL_EXPIRY_MS = 30 * 60 * 1000; // 30 minutos de vigencia para el flujo de autenticación
 export const AUTH_SUCCESS_FEEDBACK_DURATION_MS = 3000;
 
 function mapDbRowToEntry(row: any): WaitlistEntry {
@@ -43,6 +46,7 @@ function mapDbRowToEntry(row: any): WaitlistEntry {
 export class NewsletterService {
   private readonly supabase = inject(SUPABASE_CLIENT);
   private readonly notificationService = inject(NotificationService);
+  private readonly router = inject(Router, { optional: true });
   private readonly baseWaitlistCount = 100;
 
   readonly isSupabaseConnected = signal<boolean>(isSupabaseConfigured());
@@ -143,6 +147,7 @@ export class NewsletterService {
               this._currentMember.set(mapped);
               this.persistCurrentMember(mapped);
               this.setLoginSuccessFlag();
+              this.checkAndNavigateReturnUrl();
               return;
             }
 
@@ -163,6 +168,7 @@ export class NewsletterService {
               this._currentMember.set(mapped);
               this.persistCurrentMember(mapped);
               this.setLoginSuccessFlag();
+              this.checkAndNavigateReturnUrl();
             }
           } catch {
             // Manejo de error silencioso
@@ -172,6 +178,87 @@ export class NewsletterService {
     } catch {
       // Offline fallback
     }
+  }
+
+  saveAuthReturnUrl(url: string): void {
+    if (typeof window === 'undefined' || !url) return;
+    try {
+      const payload = JSON.stringify({
+        url,
+        expiresAt: Date.now() + AUTH_RETURN_URL_EXPIRY_MS,
+      });
+      sessionStorage.setItem(AUTH_RETURN_URL_KEY, payload);
+      localStorage.setItem(AUTH_RETURN_URL_KEY, payload);
+    } catch {
+      // ignore storage access errors
+    }
+  }
+
+  getAuthReturnUrl(): string | null {
+    if (typeof window === 'undefined') return null;
+    try {
+      const raw =
+        sessionStorage.getItem(AUTH_RETURN_URL_KEY) ||
+        localStorage.getItem(AUTH_RETURN_URL_KEY);
+      if (!raw) return null;
+
+      let url: string | null = null;
+      let expiresAt: number | null = null;
+
+      if (raw.startsWith('{')) {
+        try {
+          const parsed = JSON.parse(raw);
+          url = parsed.url;
+          expiresAt = typeof parsed.expiresAt === 'number' ? parsed.expiresAt : null;
+        } catch {
+          url = null;
+        }
+      } else {
+        url = raw;
+      }
+
+      // Descartar entradas obsoletas expiradas
+      if (expiresAt !== null && Date.now() > expiresAt) {
+        this.clearAuthReturnUrl();
+        return null;
+      }
+
+      if (url && typeof url === 'string' && url.startsWith('/') && url !== '/' && url !== '/login') {
+        return url;
+      }
+
+      this.clearAuthReturnUrl();
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  clearAuthReturnUrl(): void {
+    if (typeof window === 'undefined') return;
+    try {
+      sessionStorage.removeItem(AUTH_RETURN_URL_KEY);
+      localStorage.removeItem(AUTH_RETURN_URL_KEY);
+    } catch {
+      // ignore
+    }
+  }
+
+  checkAndNavigateReturnUrl(): boolean {
+    if (typeof window === 'undefined') return false;
+    const returnUrl = this.getAuthReturnUrl();
+    if (!returnUrl) return false;
+    const currentPath = window.location.pathname;
+    if (currentPath === '/' || currentPath === '/perfil' || currentPath === '/login') {
+      if (returnUrl !== currentPath) {
+        this.clearAuthReturnUrl();
+        if (this.router) {
+          void this.router.navigateByUrl(returnUrl, { replaceUrl: true });
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   setLoginSuccessFlag(): void {
@@ -953,6 +1040,18 @@ export class NewsletterService {
   }
 
   async signInWithGoogle(redirectTo?: string): Promise<{ success: boolean; message: string }> {
+    if (typeof window !== 'undefined' && redirectTo) {
+      try {
+        const parsed = new URL(redirectTo, window.location.origin);
+        const returnPath = parsed.pathname + parsed.search;
+        if (returnPath && returnPath !== '/' && returnPath !== '/login') {
+          this.saveAuthReturnUrl(returnPath);
+        }
+      } catch {
+        // fallback ignore
+      }
+    }
+
     if (!this.isSupabaseConnected()) {
       const demoSocio = {
         id: 'socio_founder_demo',
@@ -969,6 +1068,7 @@ export class NewsletterService {
       this._currentMember.set(demoSocio);
       this.persistCurrentMember(demoSocio);
       this.setLoginSuccessFlag();
+      this.checkAndNavigateReturnUrl();
       return {
         success: true,
         message: 'Modo desarrollo: Sesión local iniciada.',
@@ -976,11 +1076,14 @@ export class NewsletterService {
     }
 
     try {
+      const savedReturnUrl = typeof window !== 'undefined' ? this.getAuthReturnUrl() : null;
       const redirectUrl =
         redirectTo ||
-        (typeof window !== 'undefined'
-          ? `${window.location.origin}/perfil`
-          : 'http://localhost:3000/perfil');
+        (savedReturnUrl
+          ? `${window.location.origin}${savedReturnUrl}`
+          : typeof window !== 'undefined'
+            ? `${window.location.origin}/perfil`
+            : 'http://localhost:3000/perfil');
 
       const { error } = await this.supabase.auth.signInWithOAuth({
         provider: 'google',

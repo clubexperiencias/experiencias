@@ -509,6 +509,16 @@
   color: #34d399;
 }
 
+.share-check-icon {
+  width: 17px;
+  height: 17px;
+  stroke: #ffffff;
+  color: #ffffff;
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
 /* ═══════════════ LOADING & NOT FOUND STATE ═══════════════ */
 .loading-card {
   text-align: center;
