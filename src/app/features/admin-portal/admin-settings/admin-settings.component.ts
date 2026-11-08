@@ -155,7 +155,7 @@ import { ClubProfile } from '../../../core/models/club-profile.model';
                 <input
                   id="cfg-cbu"
                   type="text"
-                  class="form-input text-blue-input"
+                  class="form-input font-bold"
                   [(ngModel)]="clubCbuAlias"
                   placeholder="EXPERIENCIAS.CLUB.MP"
                   maxlength="22"
@@ -424,12 +424,14 @@ import { ClubProfile } from '../../../core/models/club-profile.model';
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 1.5rem;
-        align-items: center;
+        align-items: flex-end;
       }
 
       @media (max-width: 768px) {
         .usd-rate-grid {
           grid-template-columns: 1fr;
+          align-items: stretch;
+          gap: 1rem;
         }
       }
 
@@ -442,6 +444,7 @@ import { ClubProfile } from '../../../core/models/club-profile.model';
       .rate-input-wrap {
         display: flex;
         align-items: stretch;
+        height: 38px;
       }
 
       .currency-prefix {
@@ -455,41 +458,47 @@ import { ClubProfile } from '../../../core/models/club-profile.model';
         border-radius: 4px 0 0 4px;
         color: #ffaa00;
         font-weight: 800;
-        font-size: 0.85rem;
+        font-size: 0.8rem;
         white-space: nowrap;
         flex-shrink: 0;
+        box-sizing: border-box;
       }
 
       .rate-input-wrap .form-input {
         border-radius: 0 4px 4px 0;
         color: #33ffaa;
-        font-size: 1.15rem;
+        font-size: 0.95rem;
+        height: 100%;
+        box-sizing: border-box;
       }
 
       .usd-preview-box {
         background: rgba(0, 0, 0, 0.35);
         border: 1px dashed rgba(255, 255, 255, 0.2);
         border-radius: 4px;
-        padding: 0.75rem 1.25rem;
+        padding: 0 1rem;
         display: flex;
         align-items: center;
         justify-content: center;
+        height: 38px;
+        box-sizing: border-box;
       }
 
       .preview-sample {
         display: flex;
         align-items: center;
-        gap: 0.75rem;
-        font-size: 1.25rem;
-        font-weight: 800;
+        gap: 0.6rem;
+        font-size: 0.92rem;
+        font-weight: 700;
       }
 
       .sample-ars {
-        color: #80b3ff;
+        color: #ffffff;
       }
 
       .sample-arrow {
         color: rgba(255, 255, 255, 0.4);
+        font-size: 0.85rem;
       }
 
       .sample-usd {
@@ -549,6 +558,10 @@ import { ClubProfile } from '../../../core/models/club-profile.model';
         transition: border-color 0.2s ease, background 0.2s ease;
       }
 
+      .form-input {
+        height: 38px;
+      }
+
       .form-input:focus,
       .form-textarea:focus {
         border-color: #ff5f00;
@@ -556,7 +569,7 @@ import { ClubProfile } from '../../../core/models/club-profile.model';
       }
 
       .text-blue-input {
-        color: #80b3ff !important;
+        color: #ffffff !important;
         font-weight: 700 !important;
       }
 

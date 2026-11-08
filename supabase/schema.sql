@@ -2671,6 +2671,8 @@ CREATE POLICY "Admins can update postulaciones_fundadores"
 -- 6.6 Política para permitir nuevas postulaciones en prestadores
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT INSERT ON TABLE public.prestadores TO anon, authenticated;
+GRANT SELECT ON public.administradores TO anon;
+GRANT SELECT ON public.experiencias TO anon;
 
 DROP POLICY IF EXISTS "Permitir postularse como prestador" ON public.prestadores;
 CREATE POLICY "Permitir postularse como prestador"

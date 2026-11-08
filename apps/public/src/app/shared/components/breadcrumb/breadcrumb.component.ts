@@ -19,6 +19,7 @@ export interface BreadcrumbItem {
   label: string;
   url?: string;
   nextStepsData?: BreadcrumbNextStepsData;
+  mobileOnly?: boolean;
 }
 
 // Variable a nivel de módulo para persistir la supresión de hover en transiciones de Angular SPA
@@ -91,7 +92,22 @@ export class BreadcrumbComponent implements OnInit {
     }
   }
 
+  isItemCurrentPage(item: BreadcrumbItem, last: boolean): boolean {
+    if (!item.url) return last;
+    const currentPath = (this.router.url || '').split('?')[0].split('#')[0];
+    const itemPath = item.url.split('?')[0].split('#')[0];
+    return itemPath === currentPath;
+  }
+
+  isNextItemMobileOnly(idx: number): boolean {
+    const next = this.items()[idx + 1];
+    return Boolean(next?.mobileOnly);
+  }
+
   canShowNextSteps(item: BreadcrumbItem, first: boolean, last: boolean): boolean {
+    if (item.url && !this.isItemCurrentPage(item, last)) {
+      return false;
+    }
     return true;
   }
 
@@ -102,9 +118,14 @@ export class BreadcrumbComponent implements OnInit {
     last: boolean,
     event: MouseEvent,
   ): void {
-    const currentPath = (this.router.url || '').split('?')[0].split('#')[0];
-    const itemPath = item.url ? item.url.split('?')[0].split('#')[0] : null;
-    const isCurrentPage = last || (itemPath !== null && itemPath === currentPath);
+    const isCurrentPage = this.isItemCurrentPage(item, last);
+
+    // Si tiene URL y no es la página actual, navega directamente sin abrir el menú en mobile:
+    if (item.url && !isCurrentPage) {
+      this.closeMobileMenu();
+      this.onLinkClick(item.url, event);
+      return;
+    }
 
     // En mobile, si tiene menú y el menú NO está abierto todavía, lo mostramos durante 3 segundos:
     if (
@@ -318,8 +339,10 @@ export class BreadcrumbComponent implements OnInit {
     );
 
   canShowBackButton(): boolean {
-    const list = this.items();
-    return !!(list && list.length > 1);
+    const currentUrl = (this.router.url || '').split('?')[0].split('#')[0];
+    if (!currentUrl || currentUrl === '/' || currentUrl === '') return false;
+    const list = this.items().filter((item) => !item.mobileOnly);
+    return list.length > 1;
   }
 
   goBack(): void {

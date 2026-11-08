@@ -2397,6 +2397,21 @@ export class AdminMembersComponent implements OnInit {
     this.editExperiencesWishlist.set([...(m.experiencesWishlist || [])]);
   }
 
+  /**
+   * Determina la siguiente posición única disponible para un socio.
+   * Utiliza 100 como base inicial o el entero inmediatamente superior a la posición máxima registrada.
+   */
+  allocateNextPosition(): number {
+    const existingPositions = this.store
+      .members()
+      .map((m) => m.position)
+      .filter((pos): pos is number => typeof pos === 'number' && pos > 0);
+    return existingPositions.length > 0 ? Math.max(...existingPositions) + 1 : 100;
+  }
+
+  /**
+   * Guarda los cambios de edición en el perfil del socio seleccionado.
+   */
   async saveMemberChanges(): Promise<void> {
     const current = this.selectedMember();
     if (!current) return;
@@ -2408,11 +2423,7 @@ export class AdminMembersComponent implements OnInit {
 
       let targetPosition = current.position;
       if ((tierVal === 'activo' || tierVal === 'fundador') && (!targetPosition || targetPosition <= 0)) {
-        const existingPositions = this.store
-          .members()
-          .map((m) => m.position)
-          .filter((pos): pos is number => typeof pos === 'number' && pos > 0);
-        targetPosition = existingPositions.length > 0 ? Math.max(...existingPositions) + 1 : 100;
+        targetPosition = this.allocateNextPosition();
       }
 
       const res = await this.store.updateMemberProfile(current.id, {
@@ -2442,10 +2453,16 @@ export class AdminMembersComponent implements OnInit {
     }
   }
 
+  /**
+   * Comprueba si un socio se encuentra dado de baja.
+   */
   isMemberBaja(m?: AdminMember | null): boolean {
     return m?.membershipTier === 'dado_de_baja';
   }
 
+  /**
+   * Alterna el estado de baja/alta de un socio en el sistema.
+   */
   async toggleMemberBajaStatus(m: AdminMember): Promise<void> {
     const isBaja = this.isMemberBaja(m);
     const memberName = m.fullName && m.fullName.trim() !== '' ? m.fullName : m.email;
@@ -2458,11 +2475,7 @@ export class AdminMembersComponent implements OnInit {
       try {
         let targetPosition = m.position;
         if (!targetPosition || targetPosition <= 0) {
-          const existingPositions = this.store
-            .members()
-            .map((mem) => mem.position)
-            .filter((pos): pos is number => typeof pos === 'number' && pos > 0);
-          targetPosition = existingPositions.length > 0 ? Math.max(...existingPositions) + 1 : 100;
+          targetPosition = this.allocateNextPosition();
         }
 
         const res = await this.store.updateMemberProfile(m.id, {

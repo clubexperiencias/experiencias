@@ -328,7 +328,6 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                     rel="noopener noreferrer"
                     class="location-btn maps-btn"
                   >
-                    <mat-icon class="btn-icon-sm">open_in_new</mat-icon>
                     <span>Abrir en Google Maps</span>
                   </a>
                 </div>
@@ -1104,7 +1103,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                     (click)="editCoverImage.set('')"
                     title="Quitar imagen de portada"
                   >
-                    Quitar
+                    <span>Quitar</span>
                   </button>
                 }
               </div>
@@ -1134,7 +1133,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                     (click)="editVideoUrl.set('')"
                     title="Quitar video oficial"
                   >
-                    Quitar
+                    <span>Quitar</span>
                   </button>
                 }
               </div>
@@ -1164,9 +1163,6 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                     [class.is-limit-reached]="galleryPhotos().length >= 9"
                   >
                     Galería: <strong>{{ galleryPhotos().length }} / 9</strong>
-                  </span>
-                  <span class="album-counter-pill">
-                    Total Álbum: <strong>{{ editAlbumPhotos().length }} / 12</strong>
                   </span>
                 </div>
               </div>
@@ -3139,7 +3135,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         justify-content: flex-start;
       }
 
-      .form-field label {
+      .form-field label:not(.btn-upload-file) {
         font-size: 0.78rem;
         font-weight: 700;
         color: rgba(255, 255, 255, 0.85);
@@ -3231,13 +3227,24 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         height: 34px;
         min-height: 34px;
         box-sizing: border-box;
-        line-height: 1;
+        line-height: normal;
+        font-family: inherit;
         font-size: 0.78rem;
         font-weight: 700;
         padding: 0 0.95rem;
         border-radius: 4px;
         cursor: pointer;
         transition: all 0.2s ease;
+        text-align: center;
+        vertical-align: middle;
+      }
+
+      .btn-upload-file span,
+      .btn-remove-media span {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
       }
 
       .btn-upload-file {
@@ -3372,9 +3379,9 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
       }
 
       .album-counter-pill.is-gallery-pill {
-        background: rgba(0, 204, 136, 0.12);
-        border-color: rgba(0, 204, 136, 0.4);
-        color: #00cc88;
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.3);
+        color: #ffffff;
       }
 
       .album-counter-pill.is-limit-reached {
@@ -3731,7 +3738,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         .form-grid-4 {
           grid-template-columns: 1fr;
         }
-        .form-field label {
+        .form-field label:not(.btn-upload-file) {
           white-space: normal;
           min-height: auto;
         }
@@ -4712,6 +4719,11 @@ export class AdminExperiencesComponent implements OnInit {
     this.showToast('🗑️ Foto eliminada del álbum.');
   }
 
+  /**
+   * Guarda o actualiza una experiencia desde el panel de administración.
+   * Valida campos obligatorios, fechas de salida e inclusiones, y gestiona
+   * la transición de propuestas pendientes a publicadas o rechazadas.
+   */
   async saveExperience(): Promise<void> {
     const title = this.editTitle().trim();
     if (!title) {
@@ -4961,7 +4973,7 @@ export class AdminExperiencesComponent implements OnInit {
 
           if (newStatus === 'publicada') {
             const confirmedDates = parseConfirmedProposalDates(this.editDatesRaw());
-            payload.dates = confirmedDates;
+            payload.dates = confirmedDates.length > 0 ? confirmedDates : dates;
 
             if (req) {
               await this.adminStore.approveExperienceRequest(

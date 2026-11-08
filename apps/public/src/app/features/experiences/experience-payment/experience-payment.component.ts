@@ -195,8 +195,17 @@ export class ExperiencePaymentComponent implements OnInit {
       });
   });
 
+  readonly hasNoFixedDates = computed(() => {
+    const exp = this.experience();
+    return Boolean(exp && this.dateOptions().length === 0);
+  });
+
   readonly seatsForSelectedDate = computed(() => {
     const selected = this.formValue().date;
+    if (this.dateOptions().length === 0) {
+      const exp = this.experience();
+      return (exp as any)?.maxSpotsPerGroup || exp?.capacityPerDate || MAX_PARTICIPANTS_PER_BOOKING;
+    }
     return this.dateOptions().find((o) => o.date === selected)?.available ?? 0;
   });
 
@@ -282,6 +291,20 @@ export class ExperiencePaymentComponent implements OnInit {
       return [cbuVal];
     }
     return cbuVal.match(/.{1,4}/g) ?? [cbuVal];
+  }
+
+  constructor() {
+    effect(() => {
+      const noFixed = this.hasNoFixedDates();
+      const currentVal = this.form.controls.date.value;
+      if (noFixed) {
+        if (!currentVal) {
+          this.form.controls.date.setValue('A coordinar');
+        }
+      } else if (currentVal === 'A coordinar') {
+        this.form.controls.date.setValue('');
+      }
+    });
   }
 
   ngOnInit(): void {

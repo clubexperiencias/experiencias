@@ -602,6 +602,15 @@
 
 .pay-submit {
   width: 100%;
+  color: #ffffff !important;
+}
+
+.pay-submit:hover:not(:disabled) {
+  color: #ffffff !important;
+}
+
+.pay-submit:disabled {
+  color: #ffffff !important;
 }
 
 .pay-submit + .pay-hint {
@@ -706,13 +715,13 @@
   border: 1px solid #ffcc00;
   border-radius: 4px;
   background: #ffcc00;
-  color: #000000;
+  color: #ffffff;
 }
 
 .pay-discount-apply:hover {
   background: #ffdc33;
   border-color: #ffdc33;
-  color: #000000;
+  color: #ffffff;
 }
 
 .pay-discount-remove {
@@ -851,20 +860,23 @@
 .pay-no-dates-wa-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  justify-content: center;
   padding: 0.65rem 1.25rem;
-  background: #25d366;
-  color: #ffffff;
+  background: #ffffff;
+  color: #000000;
   font-size: 0.85rem;
   font-weight: 700;
   border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
   text-decoration: none;
-  transition: transform 0.15s ease, filter 0.15s ease;
+  transition: transform 0.15s ease, filter 0.15s ease, background 0.15s ease;
 }
 
 .pay-no-dates-wa-btn:hover {
+  background: #f0f0f0;
+  color: #000000;
   transform: translateY(-1px);
-  filter: brightness(1.08);
 }
 
 /* ═══════════════ MINIATURA Y PREVIEW COMPROBANTE ═══════════════ */

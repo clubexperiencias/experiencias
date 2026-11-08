@@ -1826,10 +1826,14 @@ export class ProviderStoreService {
     if (!experience || experience.status !== 'publicada') {
       throw new Error('La experiencia no está disponible.');
     }
-    if (!experience.dates.includes(input.date)) {
+    if (
+      experience.dates.length > 0 &&
+      !experience.dates.includes(input.date) &&
+      input.date !== 'A coordinar'
+    ) {
       throw new Error('La fecha elegida no está disponible.');
     }
-    if (this.isDateClosed(experience, input.date)) {
+    if (input.date !== 'A coordinar' && this.isDateClosed(experience, input.date)) {
       throw new Error('La fecha elegida se encuentra cerrada para nuevas reservas.');
     }
     if (
@@ -1839,7 +1843,11 @@ export class ProviderStoreService {
     ) {
       throw new Error('Cantidad de personas inválida.');
     }
-    if (input.participants > this.availableSeats(experience, input.date)) {
+    if (
+      experience.dates.length > 0 &&
+      input.date !== 'A coordinar' &&
+      input.participants > this.availableSeats(experience, input.date)
+    ) {
       throw new Error('No quedan cupos suficientes para esa fecha.');
     }
     const fileError = validateReceiptFile(input.receiptFile);

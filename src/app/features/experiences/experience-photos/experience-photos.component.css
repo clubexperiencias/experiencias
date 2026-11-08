@@ -591,14 +591,14 @@
 
 .cta-blue-btn {
   background: #80b3ff;
-  color: #0b1120 !important;
+  color: #ffffff !important;
   border: 1px solid rgba(255, 255, 255, 0.4);
   box-shadow: 0 4px 16px rgba(255, 255, 255, 0.4), 0 0 10px rgba(255, 255, 255, 0.2);
 }
 
 .cta-blue-btn:hover {
   background: #99c2ff;
-  color: #0b1120 !important;
+  color: #ffffff !important;
   box-shadow: 0 6px 22px rgba(255, 255, 255, 0.6), 0 0 14px rgba(255, 255, 255, 0.3);
   transform: translateY(-2px);
 }

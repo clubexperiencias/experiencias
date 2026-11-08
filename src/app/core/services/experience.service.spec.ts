@@ -170,6 +170,30 @@ describe('ExperienceService', () => {
       await service.updateExperience(completeExp);
       expect(service.experiences().some((e) => e.id === 'complete-new-id')).toBe(true);
     });
+
+    it('should preserve stored record id when lookup matches by slug or alternate id', async () => {
+      const initialExperiences = [...service.experiences()];
+      const targetExp = initialExperiences[0];
+
+      const updateBuilder: any = {
+        eq: vi.fn().mockReturnThis(),
+        select: vi.fn().mockResolvedValue({ data: [{ id: targetExp.id }], error: null }),
+      };
+      mockSupabase.from.mockReturnValue({
+        update: vi.fn().mockReturnValue(updateBuilder),
+      });
+
+      await service.updateExperience({
+        id: 'different-temporary-id',
+        slug: targetExp.slug,
+        title: 'Updated Kayak Title',
+      });
+
+      const updatedExp = service.experiences().find((e) => e.slug === targetExp.slug);
+      expect(updatedExp?.id).toBe(targetExp.id);
+      expect(updatedExp?.title).toBe('Updated Kayak Title');
+      expect(updateBuilder.eq).toHaveBeenCalledWith('id', targetExp.id);
+    });
   });
 
   describe('deleteExperience', () => {

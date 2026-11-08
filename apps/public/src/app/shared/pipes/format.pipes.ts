@@ -31,7 +31,7 @@ const dateTimeFormatter = new Intl.DateTimeFormat('es-AR', {
 @Pipe({ name: 'ars', standalone: true })
 export class ArsPipe implements PipeTransform {
   transform(value: number | null | undefined): string {
-    return arsFormatter.format(value ?? 0);
+    return arsFormatter.format(value ?? 0).replace(/\$\s+/, '$');
   }
 }
 

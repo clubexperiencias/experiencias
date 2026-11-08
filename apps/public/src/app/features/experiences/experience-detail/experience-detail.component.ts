@@ -54,6 +54,15 @@ export class ExperienceDetailComponent {
         : item.providerSlug;
     }
     if (this.isClubExperience(item)) return DEFAULT_CLUB_PROFILE.slug;
+    if (item.providerName || item.providerAgency) {
+      const fallback = (item.providerName || item.providerAgency)
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)+/g, '');
+      if (fallback) return fallback;
+    }
     return null;
   }
 
@@ -174,7 +183,13 @@ export class ExperienceDetailComponent {
       url,
     };
 
+    const isMobile =
+      typeof window !== 'undefined' &&
+      (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+        (typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 768px)').matches));
+
     if (
+      isMobile &&
       typeof navigator !== 'undefined' &&
       navigator.share &&
       typeof navigator.canShare === 'function' &&

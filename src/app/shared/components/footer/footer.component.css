@@ -24,6 +24,13 @@
   color: #ffffff;
 }
 
+/* Ocultar barra negra de sesión en desktop */
+@media (min-width: 769px) {
+  .footer-session-bar {
+    display: none !important;
+  }
+}
+
 .footer-session-container {
   width: 100%;
   max-width: 100%;
@@ -316,22 +323,9 @@
     border-top: 1px solid rgba(0, 0, 0, 0.08);
   }
 
+  /* Ocultar ubicación geográfica en mobile */
   .footer-location {
-    width: 100%;
-    justify-content: center;
-    text-align: center;
-  }
-
-  .location-place {
-    display: block;
-  }
-
-  .location-sep {
-    display: none;
-  }
-
-  .location-coords {
-    display: block;
+    display: none !important;
   }
 
   .footer-links {

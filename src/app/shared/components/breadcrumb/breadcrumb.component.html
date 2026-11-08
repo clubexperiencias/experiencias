@@ -17,8 +17,9 @@
         class="bc-step-wrapper"
         [class.has-dropdown]="canShowNextSteps(item, first, last)"
         [class.is-mobile-active]="activeMobileIndex() === idx"
+        [class.mobile-only]="item.mobileOnly"
       >
-        @if (item.url && !last) {
+        @if (item.url && !isItemCurrentPage(item, last)) {
           <a
             [routerLink]="item.url"
             class="bc-item bc-link"
@@ -83,7 +84,7 @@
       </div>
 
       @if (!last) {
-        <mat-icon class="bc-sep">chevron_right</mat-icon>
+        <mat-icon class="bc-sep" [class.mobile-only]="isNextItemMobileOnly(idx)">chevron_right</mat-icon>
       }
     }
   </div>

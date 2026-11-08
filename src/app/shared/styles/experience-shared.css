@@ -490,20 +490,21 @@
 
 .cta-primary-btn.cta-blue-btn {
   background: #80b3ff;
-  color: #0b1120;
+  color: #ffffff;
   border: 1px solid rgba(255, 255, 255, 0.4);
   box-shadow: 0 4px 16px rgba(255, 255, 255, 0.4), 0 0 10px rgba(255, 255, 255, 0.2);
 }
 
 .cta-primary-btn.cta-blue-btn:hover:not(:disabled) {
   background: #99c2ff;
+  color: #ffffff;
   box-shadow: 0 6px 22px rgba(255, 255, 255, 0.6), 0 0 14px rgba(255, 255, 255, 0.3);
 }
 
 .cta-primary-btn.is-blocked,
 .cta-primary-btn:disabled {
   background: #80b3ff !important;
-  color: #0b1120 !important;
+  color: #ffffff !important;
   border: 1px solid #80b3ff !important;
   opacity: 0.55;
   cursor: not-allowed;

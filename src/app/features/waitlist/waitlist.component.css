@@ -2247,7 +2247,7 @@ mat-icon.arrow-icon {
   border-radius: 2px;
   font-size: 0.88rem;
   font-weight: 700;
-  color: #000000;
+  color: #ffffff;
   cursor: pointer;
   transition: var(--transition-fast);
   box-shadow: 0 4px 18px rgba(128, 179, 255, 0.35);
@@ -2257,6 +2257,7 @@ mat-icon.arrow-icon {
   transform: translateY(-2px);
   box-shadow: 0 8px 26px rgba(128, 179, 255, 0.5);
   background: #99c2ff;
+  color: #ffffff;
 }
 
 .founder-submit-btn:disabled {

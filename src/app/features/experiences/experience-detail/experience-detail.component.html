@@ -110,7 +110,7 @@
         </div>
 
         <!-- ═══════════════ CARD: ARANCEL & RESERVA SUPERIOR ═══════════════ -->
-        <div class="exp-detail-section-card pricing-action-card">
+        <div class="exp-detail-section-card pricing-action-card pricing-top-card">
           <div class="pricing-card-flex">
             <div class="price-data">
               <span class="price-title">ARANCEL POR PERSONA</span>
@@ -155,14 +155,13 @@
         <div class="exp-detail-section-card no-dates-detail-card">
           <div class="card-inner-header">
             <span class="section-kicker">CALENDARIO DE SALIDAS</span>
-            <h2 class="card-heading">Fechas y Salidas Privadas</h2>
+            <h2 class="card-heading">Fechas y Salidas a Coordinar</h2>
             <p class="card-subheading">
-              Actualmente no hay salidas públicas abiertas en el calendario. Podés coordinar una salida privada a medida o consultar la próxima apertura de cupos directamente por WhatsApp.
+              Podés reservar tu experiencia ahora mismo y coordinar la fecha exacta de salida luego con el prestador, o consultar próximas aperturas por WhatsApp.
             </p>
           </div>
           <div class="no-dates-detail-action">
-            <a [href]="whatsAppInquiryUrl()" target="_blank" rel="noopener noreferrer" class="cta-primary-btn cta-blue-btn">
-              <mat-icon aria-hidden="true">chat</mat-icon>
+            <a [href]="whatsAppInquiryUrl()" target="_blank" rel="noopener noreferrer" class="cta-primary-btn cta-white-btn">
               <span>Consultar Fechas por WhatsApp</span>
             </a>
           </div>
@@ -275,8 +274,7 @@
               [class.copied]="shareCopied()"
               title="Compartir esta experiencia"
             >
-              <mat-icon class="loc-icon" aria-hidden="true">{{ shareCopied() ? 'check' : 'share' }}</mat-icon>
-              <span>{{ shareCopied() ? '¡Enlace copiado!' : 'Compartir Experiencia' }}</span>
+              <span>{{ shareCopied() ? 'Enlace copiado' : 'Compartir Experiencia' }}</span>
             </button>
           </div>
         </div>
@@ -311,7 +309,7 @@
             <span class="sticky-bar-note">por persona</span>
           </div>
           <a [routerLink]="paymentRoute()" class="sticky-bar-cta">
-            <span>Pagar Experiencia</span>
+            <span>RESERVAR AHORA</span>
           </a>
         </aside>
         } @else if (isLoading()) {
