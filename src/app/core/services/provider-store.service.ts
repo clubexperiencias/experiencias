@@ -2548,14 +2548,14 @@ export class ProviderStoreService {
         ...(resolvedProviderSlug ? { providerSlug: resolvedProviderSlug } : {}),
         ...(resolvedProviderPhone ? { providerPhone: resolvedProviderPhone } : {}),
         ...(req.providerEmail ? { providerEmail: req.providerEmail } : {}),
-        ...(req.providerCbuAlias || bankingFromPrestadores?.cbu_alias
-          ? { providerCbuAlias: req.providerCbuAlias || bankingFromPrestadores?.cbu_alias }
+        ...(bankingFromPrestadores?.cbu_alias
+          ? { providerCbuAlias: bankingFromPrestadores.cbu_alias }
           : {}),
-        ...(req.providerCuitDni || bankingFromPrestadores?.cuit_dni
-          ? { providerCuitDni: req.providerCuitDni || bankingFromPrestadores?.cuit_dni }
+        ...(bankingFromPrestadores?.cuit_dni
+          ? { providerCuitDni: bankingFromPrestadores.cuit_dni }
           : {}),
-        ...(req.providerBankName || bankingFromPrestadores?.bank_name
-          ? { providerBankName: req.providerBankName || bankingFromPrestadores?.bank_name }
+        ...(bankingFromPrestadores?.bank_name
+          ? { providerBankName: bankingFromPrestadores.bank_name }
           : {}),
         isClubExperience: false,
       });

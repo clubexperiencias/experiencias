@@ -4126,12 +4126,13 @@ mat-icon.arrow-icon {
 
   .footer-links {
     width: 100%;
-    justify-content: center;
+    display: flex;
+    justify-content: space-between;
     align-items: center;
   }
 
   .social-ig-link {
-    margin: 0 auto;
+    margin: 0;
   }
 
   .modal-card {

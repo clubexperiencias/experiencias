@@ -471,6 +471,11 @@ export class NewsletterService {
     this._isLoading.set(false);
     this.notificationService
       .notifyWaitlistConfirmation({ email: cleanEmail })
+      .then((res) => {
+        if (!res.success) {
+          console.warn('[NewsletterService] Aviso al despachar confirmación de waitlist:', res.error);
+        }
+      })
       .catch((err) => console.warn('[NewsletterService] Error enviando confirmación de waitlist:', err));
 
     return {

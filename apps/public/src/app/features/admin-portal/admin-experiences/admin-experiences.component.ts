@@ -4482,25 +4482,30 @@ export class AdminExperiencesComponent implements OnInit {
         ? proposalCreatorName
         : (rawExpProviderName || proposalCreatorName);
 
+    const expCreatorPhone = !isExpProviderClub ? (exp.providerPhone || '') : '';
+    const expCreatorCbu = !isExpProviderClub ? (exp.providerCbuAlias || '') : '';
+    const expCreatorCuit = !isExpProviderClub ? (exp.providerCuitDni || '') : '';
+    const expCreatorBank = !isExpProviderClub ? (exp.providerBankName || '') : '';
+
     const resolvedProviderPhone =
       (hasExternalProposalCreator && isExpProviderClub)
         ? (matchingProposal?.providerPhone || '')
-        : (exp.providerPhone || matchingProposal?.providerPhone || '');
+        : (expCreatorPhone || matchingProposal?.providerPhone || '');
 
     const resolvedProviderCbu =
       (hasExternalProposalCreator && isExpProviderClub)
         ? (matchingProposal?.providerCbuAlias || '')
-        : (exp.providerCbuAlias || matchingProposal?.providerCbuAlias || '');
+        : (expCreatorCbu || matchingProposal?.providerCbuAlias || '');
 
     const resolvedProviderCuit =
       (hasExternalProposalCreator && isExpProviderClub)
         ? (matchingProposal?.providerCuitDni || '')
-        : (exp.providerCuitDni || matchingProposal?.providerCuitDni || '');
+        : (expCreatorCuit || matchingProposal?.providerCuitDni || '');
 
     const resolvedProviderBank =
       (hasExternalProposalCreator && isExpProviderClub)
         ? (matchingProposal?.providerBankName || '')
-        : (exp.providerBankName || matchingProposal?.providerBankName || '');
+        : (expCreatorBank || matchingProposal?.providerBankName || '');
 
     const isExplicitClub =
       !resolvedProviderName ||
@@ -4919,33 +4924,33 @@ export class AdminExperiencesComponent implements OnInit {
 
     const resolvedProviderPhone = isClub
       ? (club.phone || '')
-      : (inputProviderPhone || currentExp?.providerPhone || matchingProposal?.providerPhone || undefined);
+      : inputProviderPhone;
 
     const resolvedProviderCbu = isClub
       ? (club.cbuAlias || '')
-      : (inputProviderCbu || currentExp?.providerCbuAlias || matchingProposal?.providerCbuAlias || undefined);
+      : inputProviderCbu;
 
     const resolvedProviderCuit = isClub
       ? (club.cuitDni || '')
-      : (inputProviderCuit || currentExp?.providerCuitDni || matchingProposal?.providerCuitDni || undefined);
+      : inputProviderCuit;
 
     const resolvedProviderBank = isClub
       ? (club.bankName || '')
-      : (inputProviderBank || currentExp?.providerBankName || matchingProposal?.providerBankName || undefined);
+      : inputProviderBank;
 
     const proposalAgency = matchingProposal?.providerAgency || matchingProposal?.providerName;
     const fallbackSlug = (proposalAgency && !isClub ? slugify(proposalAgency) : undefined) || (resolvedProviderName && !isClub ? slugify(resolvedProviderName) : undefined);
     const resolvedProviderSlug = isClub
       ? 'club-de-experiencias'
-      : (currentExp?.providerSlug && currentExp.providerSlug !== 'club-de-experiencias' && currentExp.providerSlug !== 'club'
+      : (!isExpCreatorClub && currentExp?.providerSlug && currentExp.providerSlug !== 'club-de-experiencias' && currentExp.providerSlug !== 'club'
           ? currentExp.providerSlug
-          : fallbackSlug);
+          : (fallbackSlug || ''));
 
     const resolvedProviderEmail = isClub
       ? (club.email || 'admin@experiencias.club')
-      : (currentExp?.providerEmail && currentExp.providerEmail !== 'admin@experiencias.club' && currentExp.providerEmail !== 'hola@experiencias.club'
+      : (!isExpCreatorClub && currentExp?.providerEmail && currentExp.providerEmail !== 'admin@experiencias.club' && currentExp.providerEmail !== 'hola@experiencias.club'
           ? currentExp.providerEmail
-          : (matchingProposal?.providerEmail || undefined));
+          : (matchingProposal?.providerEmail || ''));
 
     const safeAlbumPhotos = this.editAlbumPhotos().map((p) => ({
       ...p,
@@ -4977,13 +4982,13 @@ export class AdminExperiencesComponent implements OnInit {
         safeAlbumPhotos.length > 0
           ? safeAlbumPhotos.map((p) => p.url)
           : [coverImage],
-      ...(resolvedProviderName ? { providerName: resolvedProviderName } : {}),
-      ...(resolvedProviderPhone ? { providerPhone: resolvedProviderPhone } : {}),
-      ...(resolvedProviderCbu ? { providerCbuAlias: resolvedProviderCbu } : {}),
-      ...(resolvedProviderCuit ? { providerCuitDni: resolvedProviderCuit } : {}),
-      ...(resolvedProviderBank ? { providerBankName: resolvedProviderBank } : {}),
-      ...(resolvedProviderSlug ? { providerSlug: resolvedProviderSlug } : {}),
-      ...(resolvedProviderEmail ? { providerEmail: resolvedProviderEmail } : {}),
+      providerName: resolvedProviderName,
+      providerPhone: resolvedProviderPhone,
+      providerCbuAlias: resolvedProviderCbu,
+      providerCuitDni: resolvedProviderCuit,
+      providerBankName: resolvedProviderBank,
+      providerSlug: resolvedProviderSlug,
+      providerEmail: resolvedProviderEmail,
       isClubExperience: isClub,
       videoUrl: safeVideoUrl,
       videoPoster: this.editVideoPoster().trim(),
@@ -5127,21 +5132,25 @@ export class AdminExperiencesComponent implements OnInit {
       if (byPrefixed) return byPrefixed;
     }
 
-    // 5. Coincidencia por slug o título
+    // 5. Coincidencia por slug o título (únicamente si hay coincidencia unívoca)
     if (exp.slug) {
       const cleanSlug = exp.slug.toLowerCase().trim();
-      const bySlug = list.find(
+      const slugMatches = list.filter(
         (r) =>
           (r.slug && r.slug.toLowerCase().trim() === cleanSlug) ||
           (r.title && slugify(r.title) === cleanSlug),
       );
-      if (bySlug) return bySlug;
+      if (slugMatches.length === 1) {
+        return slugMatches[0];
+      }
     }
 
     if (exp.title) {
       const titleSlug = slugify(exp.title);
-      const byTitle = list.find((r) => r.title && slugify(r.title) === titleSlug);
-      if (byTitle) return byTitle;
+      const titleMatches = list.filter((r) => r.title && slugify(r.title) === titleSlug);
+      if (titleMatches.length === 1) {
+        return titleMatches[0];
+      }
     }
 
     return undefined;

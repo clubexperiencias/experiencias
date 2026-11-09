@@ -222,6 +222,70 @@ function verifyPostulacionExists(email, config) {
   });
 }
 
+function verifyWaitlistSubmission(email, config) {
+  return new Promise((resolve) => {
+    const privilegedKey = config.supabaseServiceRoleKey || config.supabaseKey;
+    if (!config.supabaseUrl || !privilegedKey || !email) {
+      // Entorno no configurado para Supabase; preservar el fallback de registro
+      return resolve({ status: 'unconfigured' });
+    }
+    try {
+      const cleanEmail = String(email).trim().toLowerCase();
+      const url = new URL(
+        `${config.supabaseUrl}/rest/v1/socios?email=eq.${encodeURIComponent(cleanEmail)}&select=id,email,membership_tier,created_at&limit=1`,
+      );
+      const req = https.request(
+        {
+          hostname: url.hostname,
+          port: url.port || 443,
+          path: url.pathname + url.search,
+          method: 'GET',
+          headers: {
+            apikey: privilegedKey,
+            Authorization: `Bearer ${privilegedKey}`,
+          },
+        },
+        (res) => {
+          if (res.statusCode < 200 || res.statusCode >= 300) {
+            return resolve({
+              status: 'error',
+              error: `Database query returned HTTP ${res.statusCode}`,
+            });
+          }
+          let data = '';
+          res.on('data', (c) => (data += c));
+          res.on('end', () => {
+            try {
+              const records = JSON.parse(data);
+              if (!Array.isArray(records) || records.length === 0) {
+                return resolve({ status: 'not_found' });
+              }
+              const record = records[0];
+              if (!record || typeof record !== 'object') {
+                return resolve({ status: 'not_found' });
+              }
+              resolve({
+                status: 'found',
+                record,
+              });
+            } catch (err) {
+              resolve({ status: 'error', error: err.message });
+            }
+          });
+        },
+      );
+      req.setTimeout(8000, () => {
+        req.destroy();
+        resolve({ status: 'error', error: 'Database request timed out' });
+      });
+      req.on('error', (err) => resolve({ status: 'error', error: err.message }));
+      req.end();
+    } catch (err) {
+      resolve({ status: 'error', error: err.message });
+    }
+  });
+}
+
 function updateApplicationNotes(recordId, notesObject, config, expectedNotes) {
   return new Promise((resolve) => {
     const privilegedKey = config.supabaseServiceRoleKey || config.supabaseKey;
@@ -1259,15 +1323,54 @@ module.exports = async function handler(req, res) {
       }
 
       case 'WAITLIST_CONFIRMATION': {
-        if (!data.email) {
+        const cleanEmail = String(data.email || '').trim().toLowerCase();
+        if (!cleanEmail) {
           return res.status(400).json({ success: false, error: 'Falta email del prospecto.' });
         }
+
+        const clientIp =
+          req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+          req.socket?.remoteAddress ||
+          'unknown';
+
+        const recipientRateLimitKey = `waitlist_rec_${cleanEmail}`;
+        const ipRateLimitKey = `waitlist_ip_${clientIp}`;
+
+        if (
+          !checkRateLimit(recipientRateLimitKey, 1, 60 * 60 * 1000) ||
+          !checkRateLimit(ipRateLimitKey, 5, 5 * 60 * 1000)
+        ) {
+          return res.status(429).json({
+            success: false,
+            error: 'Límite de confirmaciones alcanzado para este correo. Por favor aguardá unos minutos.',
+          });
+        }
+
+        const waitlistCheck = await verifyWaitlistSubmission(cleanEmail, config);
+        if (
+          waitlistCheck.status === 'not_found' ||
+          (waitlistCheck.status === 'found' && waitlistCheck.record?.membership_tier !== 'waitlist')
+        ) {
+          return res.status(404).json({
+            success: false,
+            error: 'No se encontró un registro previo de lista de espera para este correo.',
+          });
+        }
+
+        if (waitlistCheck.status === 'error') {
+          console.warn('[api/notify] Error verificando waitlist en Supabase:', waitlistCheck.error);
+          return res.status(502).json({
+            success: false,
+            error: 'Error de conexión verificando el registro de lista de espera.',
+          });
+        }
+
         const waitlistResult = await sendEmailViaResend({
           apiKey: config.apiKey,
           from: config.fromEmail,
-          to: data.email,
+          to: cleanEmail,
           subject: '¡Estás en la lista de espera oficial de EXPERIENCIAS.CLUB! 🏔️',
-          html: templateWaitlistConfirmation(data),
+          html: templateWaitlistConfirmation({ ...data, email: cleanEmail }),
         });
         results.push({ target: 'waitlist_confirmation', ...waitlistResult });
         break;

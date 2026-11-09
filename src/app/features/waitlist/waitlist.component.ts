@@ -395,9 +395,14 @@ export class WaitlistComponent {
     }
 
     const res = await this.newsletter.loginWithEmail(cleanEmail);
-    if (res.alreadyInWaitlist) {
+    if (res.alreadyInWaitlist && !res.alreadyRegisteredSocio && this.newsletter.isSupabaseConnected()) {
       this.notificationService
         .notifyWaitlistConfirmation({ email: cleanEmail })
+        .then((notifRes) => {
+          if (!notifRes.success) {
+            console.warn('[WaitlistComponent] Aviso al despachar confirmación:', notifRes.error);
+          }
+        })
         .catch((err) => console.warn('[WaitlistComponent] Error enviando confirmación:', err));
     }
 

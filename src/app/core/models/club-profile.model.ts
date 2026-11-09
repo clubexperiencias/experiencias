@@ -57,12 +57,28 @@ export function isClubExperience(exp?: {
   const providerSlug = (exp.providerSlug || '').toLowerCase().trim();
   const providerEmail = (exp.providerEmail || '').toLowerCase().trim();
 
-  // Si tiene asignado un prestador con nombre, slug o email que NO sea del Club,
-  // NO es una experiencia del Club (prevalece siempre el creador/prestador).
+  const isClubSlug =
+    providerSlug === 'club-de-experiencias' ||
+    providerSlug === 'club' ||
+    providerSlug === DEFAULT_CLUB_PROFILE.slug.toLowerCase();
+
+  const isClubEmail =
+    providerEmail === 'admin@experiencias.club' ||
+    providerEmail === 'hola@experiencias.club' ||
+    providerEmail === DEFAULT_CLUB_PROFILE.email.toLowerCase();
+
+  const isClubName =
+    providerName === 'club de experiencias' ||
+    providerName === 'club' ||
+    providerName === DEFAULT_CLUB_PROFILE.name.toLowerCase();
+
+  // Si tiene asignado un prestador externo por slug o email, prevalece siempre el prestador.
+  // Un providerName personalizado no descarta la clasificación del Club cuando el providerSlug o email
+  // identifican oficialmente al Club.
   const hasExternalProvider =
-    (providerName && providerName !== 'club de experiencias' && providerName !== 'club') ||
-    (providerSlug && providerSlug !== 'club-de-experiencias' && providerSlug !== 'club') ||
-    (providerEmail && providerEmail !== 'admin@experiencias.club' && providerEmail !== 'hola@experiencias.club');
+    (providerSlug && !isClubSlug) ||
+    (providerEmail && !isClubEmail) ||
+    (!isClubSlug && !isClubEmail && providerName && !isClubName);
 
   if (hasExternalProvider) {
     return false;
@@ -70,11 +86,7 @@ export function isClubExperience(exp?: {
 
   if (exp.isClubExperience) return true;
 
-  return (
-    providerSlug === 'club-de-experiencias' ||
-    providerSlug === 'club' ||
-    providerName === 'club de experiencias'
-  );
+  return isClubSlug || isClubName || isClubEmail;
 }
 
 /**
