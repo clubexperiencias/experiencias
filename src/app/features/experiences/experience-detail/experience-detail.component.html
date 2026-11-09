@@ -184,7 +184,9 @@
               <div class="timeline-time">{{ step.time }}</div>
               <div class="timeline-body">
                 <h4>{{ step.title }}</h4>
-                <p>{{ step.description }}</p>
+                @if (step.description && step.description !== step.title) {
+                  <p>{{ step.description }}</p>
+                }
               </div>
             </div>
             }

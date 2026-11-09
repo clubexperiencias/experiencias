@@ -12,21 +12,21 @@ describe('ClubProfile Model Helpers', () => {
       expect(isClubExperience(undefined)).toBe(false);
     });
 
-    it('preserves Club classification when providerSlug matches Club and providerName is customized', () => {
+    it('rejects Club classification when providerName is an external provider even if providerSlug was defaulted to Club', () => {
       const exp = {
         providerSlug: 'club-de-experiencias',
-        providerName: 'Experiencias de Montaña',
+        providerName: 'Alquileres de Kayak e hidropedales',
         providerEmail: 'admin@experiencias.club',
       };
-      expect(isClubExperience(exp)).toBe(true);
+      expect(isClubExperience(exp)).toBe(false);
     });
 
-    it('preserves Club classification when providerSlug is club and providerName is customized without email', () => {
+    it('rejects Club classification when providerName is customized and external without email', () => {
       const exp = {
         providerSlug: 'club',
         providerName: 'Aventuras Especiales',
       };
-      expect(isClubExperience(exp)).toBe(true);
+      expect(isClubExperience(exp)).toBe(false);
     });
 
     it('rejects Club classification when providerSlug is Club but providerEmail belongs to external provider', () => {

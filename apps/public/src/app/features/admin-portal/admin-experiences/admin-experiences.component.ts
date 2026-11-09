@@ -210,7 +210,6 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                 <h3 class="fiche-card-title">Prestador Asignado & Datos de Cobro (CBU)</h3>
                 @if (isClub(exp)) {
                   <span class="club-locked-chip">
-                    <mat-icon>verified</mat-icon>
                     Cuenta Oficial del Club
                   </span>
                 }
@@ -258,7 +257,9 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                       <div class="timeline-time">{{ step.time }}</div>
                       <div class="timeline-body">
                         <h4>{{ step.title }}</h4>
-                        <p>{{ step.description }}</p>
+                        @if (step.description && step.description !== step.title) {
+                          <p>{{ step.description }}</p>
+                        }
                       </div>
                     </div>
                   }
@@ -735,7 +736,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         @if (isCurrentExperienceClub()) {
           <div class="club-experience-banner">
             <div class="club-banner-icon">
-              <mat-icon>verified</mat-icon>
+              <mat-icon>shield</mat-icon>
             </div>
             <div class="club-banner-text">
               <div class="club-banner-header">
@@ -983,8 +984,12 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
             <h4 class="form-section-title">Prestador Asignado & Datos de Cobro (CBU)</h4>
             @if (isCurrentExperienceClub()) {
               <span class="club-locked-chip">
-                <mat-icon>verified</mat-icon>
                 Club de Experiencias
+              </span>
+            } @else {
+              <span class="provider-external-chip">
+                <mat-icon>business</mat-icon>
+                Prestador Externo
               </span>
             }
           </div>
@@ -999,6 +1004,15 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                 <a [routerLink]="getConfigRoute()" class="btn-text-edit-club">
                   Perfil del Club en Configuración &rarr;
                 </a>
+              </div>
+            </div>
+          } @else {
+            <div class="club-locked-notice external-notice">
+              <mat-icon class="locked-info-icon">info</mat-icon>
+              <div class="notice-text">
+                <span>
+                  Prestador externo asignado. Los campos de <strong>Teléfono, CBU, CUIT y Banco</strong> son obligatorios para la liquidación de cobros y contacto con exploradores.
+                </span>
               </div>
             </div>
           }
@@ -1017,48 +1031,72 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
             </div>
 
             <div class="form-field">
-              <label>Teléfono / WhatsApp de Contacto:</label>
+              <label>
+                Teléfono / WhatsApp de Contacto:
+                @if (!isCurrentExperienceClub()) {
+                  <span class="req-star">*</span>
+                }
+              </label>
               <input
                 type="tel"
                 class="form-input"
                 [(ngModel)]="editProviderPhone"
                 placeholder="Ej: +54 9 383 4567890"
                 maxlength="30"
+                [required]="!isCurrentExperienceClub()"
               />
             </div>
           </div>
 
           <div class="form-grid-3">
             <div class="form-field">
-              <label>CBU / CVU o Alias:</label>
+              <label>
+                CBU / CVU o Alias:
+                @if (!isCurrentExperienceClub()) {
+                  <span class="req-star">*</span>
+                }
+              </label>
               <input
                 type="text"
                 class="form-input text-blue-input"
                 [(ngModel)]="editProviderCbuAlias"
-                placeholder="Ej: EXPERIENCIAS.CLUB.MP"
+                placeholder="Ej: ALIAS.PROVEEDOR.MP"
                 maxlength="22"
+                [required]="!isCurrentExperienceClub()"
               />
             </div>
 
             <div class="form-field">
-              <label>CUIT / CUIL:</label>
+              <label>
+                CUIT / CUIL:
+                @if (!isCurrentExperienceClub()) {
+                  <span class="req-star">*</span>
+                }
+              </label>
               <input
                 type="text"
                 class="form-input"
                 [(ngModel)]="editProviderCuitDni"
                 placeholder="Ej: 20-33445566-7"
                 maxlength="13"
+                [required]="!isCurrentExperienceClub()"
               />
             </div>
 
             <div class="form-field">
-              <label>Banco / Entidad:</label>
+              <label>
+                Banco / Entidad:
+                @if (!isCurrentExperienceClub()) {
+                  <span class="req-star">*</span>
+                }
+              </label>
               <input
                 type="text"
                 class="form-input"
                 [(ngModel)]="editProviderBankName"
                 placeholder="Ej: Banco Nación / Mercado Pago"
                 maxlength="60"
+                [required]="!isCurrentExperienceClub()"
               />
             </div>
           </div>
@@ -3919,6 +3957,25 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         height: 14px;
       }
 
+      .provider-external-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: #80b3ff;
+        background: rgba(128, 179, 255, 0.12);
+        border: 1px solid rgba(128, 179, 255, 0.35);
+        padding: 0.2rem 0.55rem;
+        border-radius: 4px;
+      }
+
+      .provider-external-chip mat-icon {
+        font-size: 14px;
+        width: 14px;
+        height: 14px;
+      }
+
       .club-locked-notice {
         display: flex;
         align-items: flex-start;
@@ -3928,6 +3985,15 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         border-radius: 5px;
         padding: 0.65rem 0.85rem;
         margin-bottom: 1rem;
+      }
+
+      .club-locked-notice.external-notice {
+        background: rgba(128, 179, 255, 0.08);
+        border-color: rgba(128, 179, 255, 0.25);
+      }
+
+      .club-locked-notice.external-notice .locked-info-icon {
+        color: #80b3ff;
       }
 
       .locked-info-icon {
@@ -4155,64 +4221,7 @@ export class AdminExperiencesComponent implements OnInit {
     const e = this.editingExperience();
     if (!e) return [];
 
-    if (e.slug === 'campo-de-piedra-pomez') {
-      return [
-        {
-          time: '08:30 hs',
-          title: 'Punto de Encuentro & Partida 4x4',
-          description:
-            'Recepción en la Plaza Principal de El Peñón. Chequeo de equipamiento, hidratación y partida en vehículos 4x4 hacia la alta cordillera.',
-        },
-        {
-          time: '10:30 hs',
-          title: 'Laguna Blanca & Reserva de Biosfera',
-          description:
-            'Travesía por la estepa altoandina con avistaje de vicuñas silvestres y parada técnica de aclimatación a más de 3.000 msnm.',
-        },
-        {
-          time: '13:00 hs',
-          title: 'Ingreso al Campo de Piedra Pómez',
-          description:
-            'Caminata guiada e interpretación geomorfológica entre las gigantescas formaciones esculpidas de piedra pómez y médanos blancos.',
-        },
-        {
-          time: '16:30 hs',
-          title: 'Merienda de Altura & Regreso',
-          description:
-            'Pausa con productos regionales catamarqueños y regreso panorámico hacia el punto de partida en El Peñón.',
-        },
-      ];
-    }
-
-    if (e.slug === 'kayak') {
-      return [
-        {
-          time: '15:30 hs',
-          title: 'Recepción & Charla de Seguridad Lacustre',
-          description:
-            'Punto de encuentro en el Club Náutico Dique El Jumeal. Asignación de chalecos salvavidas, ajuste de remos ergonómicos y briefing de técnica básica de remada en aguas mansas.',
-        },
-        {
-          time: '16:15 hs',
-          title: 'Zarpada & Exploración de Bahías',
-          description:
-            'Navegación guiada ingresando por ensenadas y paredones de roca rojiza inaccesibles por tierra. Avistaje de fauna acuática y vegetación de yungas andinas.',
-        },
-        {
-          time: '18:15 hs',
-          title: 'Pausa Sunset en Bahía Tranquila',
-          description:
-            'Agrupamiento de embarcaciones en aguas calmas para contemplar la caída del sol reflejada en el dique y las Sierras de Ambato.',
-        },
-        {
-          time: '19:00 hs',
-          title: 'Desembarco & Brindis con Sabores Catamarqueños',
-          description:
-            'Regreso al club náutico, entrega de equipos y cierre gastronómico con degustación de productos artesanales locales.',
-        },
-      ];
-    }
-
+    // 1. Respetar siempre el itinerario real configurado y guardado en la experiencia
     if (e.itinerary && e.itinerary.trim()) {
       const lines = e.itinerary
         .split('\n')
@@ -4224,22 +4233,22 @@ export class AdminExperiencesComponent implements OnInit {
           if (matchTime) {
             const time = matchTime[1];
             const rest = matchTime[2];
-            const parts = rest.split(/\s+[-–]\s+|\s*:\s+/);
+            const parts = rest.split(/\s+[-–—]\s+|:\s+/);
             const title = parts[0] || `Etapa ${idx + 1}`;
             const description = parts.slice(1).join(' - ') || parts[0];
             return { time, title, description };
           }
-          const parts = line.split(/\s+[-–]\s+|\s*:\s+/);
+          const parts = line.split(/\s+[-–—]\s+/);
           if (parts.length > 1) {
             return {
-              time: `Etapa ${idx + 1}`,
+              time: lines.length > 1 ? `Etapa ${idx + 1}` : 'Horario',
               title: parts[0],
               description: parts.slice(1).join(' - '),
             };
           }
           return {
-            time: `Etapa ${idx + 1}`,
-            title: line,
+            time: lines.length > 1 ? `Etapa ${idx + 1}` : 'Horario & Salidas',
+            title: lines.length > 1 ? line : 'Cronograma de la Actividad',
             description: line,
           };
         });
@@ -4917,6 +4926,25 @@ export class AdminExperiencesComponent implements OnInit {
 
     const isClub = isExplicitClub && (this.isClub(currentExp) || this.isCreating());
     const club = this.adminStore.clubProfile();
+
+    if (!isClub) {
+      if (!inputProviderPhone) {
+        this.showToast('Por favor ingresá el teléfono o WhatsApp de contacto del prestador.');
+        return;
+      }
+      if (!inputProviderCbu) {
+        this.showToast('Por favor ingresá el CBU / CVU o Alias de cobro del prestador.');
+        return;
+      }
+      if (!inputProviderCuit) {
+        this.showToast('Por favor ingresá el CUIT o DNI del prestador.');
+        return;
+      }
+      if (!inputProviderBank) {
+        this.showToast('Por favor ingresá el banco o entidad financiera del prestador.');
+        return;
+      }
+    }
 
     const resolvedProviderName = isClub
       ? (club.name || 'Club de Experiencias')

@@ -229,64 +229,7 @@ export class ExperienceDetailComponent {
     const e = this.exp();
     if (!e) return [];
 
-    if (e.slug === 'campo-de-piedra-pomez') {
-      return [
-        {
-          time: '08:30 hs',
-          title: 'Punto de Encuentro & Partida 4x4',
-          description:
-            'Recepción en la Plaza Principal de El Peñón. Chequeo de equipamiento, hidratación y partida en vehículos 4x4 hacia la alta cordillera.',
-        },
-        {
-          time: '10:30 hs',
-          title: 'Laguna Blanca & Reserva de Biosfera',
-          description:
-            'Travesía por la estepa altoandina con avistaje de vicuñas silvestres y parada técnica de aclimatación a más de 3.000 msnm.',
-        },
-        {
-          time: '13:00 hs',
-          title: 'Ingreso al Campo de Piedra Pómez',
-          description:
-            'Caminata guiada e interpretación geomorfológica entre las gigantescas formaciones esculpidas de piedra pómez y médanos blancos.',
-        },
-        {
-          time: '16:30 hs',
-          title: 'Merienda de Altura & Regreso',
-          description:
-            'Pausa con productos regionales catamarqueños y regreso panorámico hacia el punto de partida en El Peñón.',
-        },
-      ];
-    }
-
-    if (e.slug === 'kayak') {
-      return [
-        {
-          time: '15:30 hs',
-          title: 'Recepción & Charla de Seguridad Lacustre',
-          description:
-            'Punto de encuentro en el Club Náutico Dique El Jumeal. Asignación de chalecos salvavidas, ajuste de remos ergonómicos y briefing de técnica básica de remada en aguas mansas.',
-        },
-        {
-          time: '16:15 hs',
-          title: 'Zarpada & Exploración de Bahías',
-          description:
-            'Navegación guiada ingresando por ensenadas y paredones de roca rojiza inaccesibles por tierra. Avistaje de fauna acuática y vegetación de yungas andinas.',
-        },
-        {
-          time: '18:15 hs',
-          title: 'Pausa Sunset en Bahía Tranquila',
-          description:
-            'Agrupamiento de embarcaciones en aguas calmas para contemplar la caída del sol reflejada en el dique y las Sierras de Ambato.',
-        },
-        {
-          time: '19:00 hs',
-          title: 'Desembarco & Brindis con Sabores Catamarqueños',
-          description:
-            'Regreso al club náutico, entrega de equipos y cierre gastronómico con degustación de productos artesanales locales.',
-        },
-      ];
-    }
-
+    // 1. Respetar siempre el itinerario real configurado en la base de datos
     if (e.itinerary && e.itinerary.trim()) {
       const lines = e.itinerary
         .split('\n')
@@ -298,22 +241,22 @@ export class ExperienceDetailComponent {
           if (matchTime) {
             const time = matchTime[1];
             const rest = matchTime[2];
-            const parts = rest.split(/\s+[-–]\s+|\s*:\s+/);
+            const parts = rest.split(/\s+[-–—]\s+|:\s+/);
             const title = parts[0] || `Etapa ${idx + 1}`;
             const description = parts.slice(1).join(' - ') || parts[0];
             return { time, title, description };
           }
-          const parts = line.split(/\s+[-–]\s+|\s*:\s+/);
+          const parts = line.split(/\s+[-–—]\s+/);
           if (parts.length > 1) {
             return {
-              time: `Etapa ${idx + 1}`,
+              time: lines.length > 1 ? `Etapa ${idx + 1}` : 'Horario',
               title: parts[0],
               description: parts.slice(1).join(' - '),
             };
           }
           return {
-            time: `Etapa ${idx + 1}`,
-            title: `Actividad ${idx + 1}`,
+            time: lines.length > 1 ? `Etapa ${idx + 1}` : 'Horario & Salidas',
+            title: lines.length > 1 ? line : 'Cronograma de la Actividad',
             description: line,
           };
         });

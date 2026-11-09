@@ -55,14 +55,15 @@ export class ProfileComponent implements OnInit {
   readonly recentActivities = () => this.activityService.activities().slice(0, 2);
 
   getExperienceRoute(experienceId: string, slug?: string): string {
-    if (experienceId === 'exp_kayak_jumeal' || slug === 'kayak') {
-      return '/experiencias/kayak';
-    }
     const exp =
+      (slug ? this.experienceService.getExperienceBySlug(slug) : undefined) ??
       this.experienceService.getPublishedExperienceById(experienceId) ??
       this.experienceService.getExperienceById(experienceId);
     if (exp?.slug) {
       return `/experiencias/${exp.slug}`;
+    }
+    if (slug) {
+      return `/experiencias/${slug}`;
     }
     const cleanId = experienceId.replace(/^exp[-_]/, '');
     return cleanId ? `/experiencias/${cleanId}` : '/experiencias';

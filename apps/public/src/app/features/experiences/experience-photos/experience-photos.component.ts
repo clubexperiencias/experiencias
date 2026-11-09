@@ -140,11 +140,6 @@ export class ExperiencePhotosComponent {
       return e.albumPhotos.slice(0, 12);
     }
 
-    // Fallback para kayak
-    if (e.slug === 'kayak') {
-      return KAYAK_ALBUM_PHOTOS;
-    }
-
     // Fallback general para cualquier otra experiencia
     const list: ExperienceAlbumPhoto[] = [];
     const coverUrl = e.coverImage || '/assets/images/catamarca_pomez.jpg';

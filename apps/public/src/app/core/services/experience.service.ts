@@ -623,12 +623,13 @@ export class ExperienceService {
             .select()) as any);
         }
 
-        // Si no se encontró por ID, intentar por slug
-        if (!error && (!data || data.length === 0) && merged.slug) {
+        // Si no se encontró por ID, intentar por el slug anterior (para permitir cambios seguros de slug) o el nuevo
+        const previousSlug = current.slug || merged.slug;
+        if (!error && (!data || data.length === 0) && previousSlug) {
           ({ data, error } = (await this.supabase
             .from('experiencias')
             .update(payload as any)
-            .eq('slug', merged.slug)
+            .eq('slug', previousSlug)
             .select()) as any);
         }
 
