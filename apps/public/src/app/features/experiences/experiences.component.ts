@@ -60,8 +60,8 @@ export class ExperiencesComponent implements AfterViewInit, OnDestroy {
         : exp.providerSlug;
     }
     if (this.isClubExperience(exp)) return DEFAULT_CLUB_PROFILE.slug;
-    const rawName = exp.providerName || exp.providerAgency || '';
-    if (rawName) {
+    const rawName = (exp.providerName || exp.providerAgency || '').trim();
+    if (rawName && rawName.toLowerCase() !== 'club de experiencias' && rawName.toLowerCase() !== 'club') {
       const fallback = rawName
         .toLowerCase()
         .normalize('NFD')

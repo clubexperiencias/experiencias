@@ -148,10 +148,10 @@ const ROUTE_LABELS: Record<string, string> = {
 
                   <a
                     [routerLink]="adminLink('/configuracion')"
-                    class="dropdown-item enlarged-item club-profile-item"
+                    class="dropdown-item enlarged-item"
                     (click)="userMenuOpen.set(false)"
                   >
-                    <mat-icon class="menu-item-icon club-icon">settings</mat-icon>
+                    <mat-icon class="menu-item-icon">settings</mat-icon>
                     <div class="menu-item-info">
                       <strong class="menu-item-title">Configuración</strong>
                     </div>

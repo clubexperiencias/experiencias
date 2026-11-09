@@ -680,7 +680,7 @@ const DEFAULT_REQ_FORM = {
                     <div class="form-group">
                       <div class="label-with-counter">
                         <label class="form-label" for="req-included"
-                          >Servicios e Indumentaria Provista *</label
+                          >Servicios e Indumentaria Provista <span class="badge-optional">(Opcional)</span></label
                         >
                         <span class="char-counter">
                           {{ (reqForm.includedServices || '').length }}/1000
@@ -694,14 +694,13 @@ const DEFAULT_REQ_FORM = {
                         placeholder="Ej: Kayaks de travesía, chalecos salvavidas, seguro..."
                         [(ngModel)]="reqForm.includedServices"
                         name="includedServices"
-                        required
                       ></textarea>
                     </div>
 
                     <div class="form-group">
                       <div class="label-with-counter">
                         <label class="form-label" for="req-requirements"
-                          >Qué Debe Traer el Participante *</label
+                          >Qué Debes Traer <span class="badge-optional">(Opcional)</span></label
                         >
                         <span class="char-counter">
                           {{ (reqForm.participantRequirements || '').length }}/1000
@@ -715,7 +714,6 @@ const DEFAULT_REQ_FORM = {
                         placeholder="Ej: Ropa de agua, toalla personal, protección solar..."
                         [(ngModel)]="reqForm.participantRequirements"
                         name="participantRequirements"
-                        required
                       ></textarea>
                     </div>
                   </div>
@@ -2935,8 +2933,6 @@ export class ProviderExperienceProposalModalComponent {
       !meetingPoint ||
       !meetingPointUrl ||
       !isMapsValid ||
-      !includedServices ||
-      !participantRequirements ||
       !Number.isFinite(priceArs) ||
       priceArs < 1 ||
       !hasCoverImage ||
@@ -2962,8 +2958,6 @@ export class ProviderExperienceProposalModalComponent {
       if (!itinerary) missing.push('Itinerario');
       if (!meetingPoint) missing.push('Punto de encuentro');
       if (!meetingPointUrl || !isMapsValid) missing.push('Ubicación (link válido de Google Maps)');
-      if (!includedServices) missing.push('Servicios Incluidos');
-      if (!participantRequirements) missing.push('Qué Debe Traer el Participante');
       if (!Number.isFinite(priceArs) || priceArs < 1) missing.push('Arancel');
       if (!hasCoverImage) missing.push('Foto de Portada');
       if (!hasValidDates) missing.push('Fechas de Salida');

@@ -64,7 +64,8 @@
               <h1 class="provider-agency-title">{{ p.agency || p.name }}</h1>
               @if (p.agency && p.name && p.agency !== p.name) {
                 <p class="operator-subtitle">
-                  Titular responsable: <strong>{{ p.name }}</strong>
+                  <span class="operator-label">Titular responsable:</span>
+                  <strong class="operator-name">{{ p.name }}</strong>
                 </p>
               }
 

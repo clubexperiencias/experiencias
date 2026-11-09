@@ -48,19 +48,32 @@ export function isClubExperience(exp?: {
   providerSlug?: string | null;
   providerEmail?: string | null;
   providerName?: string | null;
+  providerAgency?: string | null;
   isClubExperience?: boolean | null;
 } | null): boolean {
   if (!exp) return false;
-  if (exp.isClubExperience) return true;
-  const slug = (exp.slug || '').toLowerCase().trim();
+
+  const providerName = (exp.providerName || (exp as any).providerAgency || '').toLowerCase().trim();
   const providerSlug = (exp.providerSlug || '').toLowerCase().trim();
   const providerEmail = (exp.providerEmail || '').toLowerCase().trim();
+
+  // Si tiene asignado un prestador con nombre, slug o email que NO sea del Club,
+  // NO es una experiencia del Club (prevalece siempre el creador/prestador).
+  const hasExternalProvider =
+    (providerName && providerName !== 'club de experiencias' && providerName !== 'club') ||
+    (providerSlug && providerSlug !== 'club-de-experiencias' && providerSlug !== 'club') ||
+    (providerEmail && providerEmail !== 'admin@experiencias.club' && providerEmail !== 'hola@experiencias.club');
+
+  if (hasExternalProvider) {
+    return false;
+  }
+
+  if (exp.isClubExperience) return true;
+
   return (
-    slug === 'kayak' ||
-    slug === 'exp-kayak' ||
     providerSlug === 'club-de-experiencias' ||
     providerSlug === 'club' ||
-    providerEmail === 'admin@experiencias.club'
+    providerName === 'club de experiencias'
   );
 }
 

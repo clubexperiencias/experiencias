@@ -469,6 +469,10 @@ export class NewsletterService {
     this.persistProspectEmail(cleanEmail);
 
     this._isLoading.set(false);
+    this.notificationService
+      .notifyWaitlistConfirmation({ email: cleanEmail })
+      .catch((err) => console.warn('[NewsletterService] Error enviando confirmación de waitlist:', err));
+
     return {
       success: true,
       email: cleanEmail,

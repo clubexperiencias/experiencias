@@ -1,4 +1,5 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -677,6 +678,7 @@ import { ClubProfile } from '../../../core/models/club-profile.model';
 })
 export class AdminSettingsComponent implements OnInit {
   protected readonly adminStore = inject(AdminStoreService);
+  private readonly router = inject(Router);
 
   readonly usdRate = signal<number>(1400);
   readonly clubName = signal('');
@@ -732,8 +734,11 @@ export class AdminSettingsComponent implements OnInit {
 
   cancelSettings(): void {
     this.saveError.set(null);
+    this.feedbackToast.set(null);
     this.loadFromStore();
-    this.showToast('Cambios descartados.');
+    const currentUrl = this.router.url || '';
+    const dashboardRoute = currentUrl.startsWith('/admin') ? '/admin/dashboard' : '/dashboard';
+    this.router.navigateByUrl(dashboardRoute);
   }
 
   async saveAllSettings(): Promise<void> {

@@ -8,7 +8,7 @@ import { filter } from 'rxjs';
 import { ExperienceService } from '../../../core/services/experience.service';
 import { StorageService } from '../../../core/services/storage.service';
 import { AdminStoreService } from '../../../core/services/admin-store.service';
-import { ExperienceProposalRequest, parseConfirmedProposalDates } from '../../../core/services/provider-store.service';
+import { ExperienceProposalRequest, parseConfirmedProposalDates, slugify } from '../../../core/services/provider-store.service';
 import { Experience, ExperienceAlbumPhoto } from '../../../core/models/experience.model';
 import { isClubExperience } from '../../../core/models/club-profile.model';
 import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
@@ -196,7 +196,6 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                   <div class="dates-chips-grid">
                     @for (d of upcomingDates(); track d) {
                       <div class="date-chip-item">
-                        <mat-icon class="date-chip-icon">event</mat-icon>
                         <span class="date-chip-text">{{ d | fecha: 'larga' }}</span>
                       </div>
                     }
@@ -277,10 +276,10 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
               }
             </div>
 
-            <!-- 5. SERVICIOS INCLUIDOS & QUÉ LLEVAR -->
+            <!-- 5. DETALLES DE LA EXPERIENCIA -->
             @if ((exp.included && exp.included.length > 0) || (exp.highlights && exp.highlights.length > 0)) {
               <div class="fiche-section-card">
-                <h3 class="fiche-card-title">Equipamiento & Servicios</h3>
+                <h3 class="fiche-card-title">Detalles de la Experiencia</h3>
                 <div class="simple-logistics-grid">
                   <!-- Servicios Incluidos -->
                   @if (exp.included && exp.included.length > 0) {
@@ -966,15 +965,14 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
             </div>
 
             <div class="form-field field-dates-col">
-              <label>Fechas programadas (YYYY-MM-DD): <span class="req-star">*</span></label>
+              <label>Fechas programadas (YYYY-MM-DD):</label>
               <input
                 type="text"
                 class="form-input"
                 [(ngModel)]="editDatesRaw"
-                placeholder="2026-11-10, 2026-11-17, 2026-11-24"
-                required
+                placeholder="A coordinar (o ej: 2026-11-10, 2026-11-17)"
               />
-              <span class="field-hint">Separadas por coma. Habilitadas para reservar cupos.</span>
+              <span class="field-hint">Opcional. Por defecto es "A coordinar". Para fechas fijas ingresalas separadas por coma.</span>
             </div>
           </div>
         </div>
@@ -985,8 +983,8 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
             <h4 class="form-section-title">Prestador Asignado & Datos de Cobro (CBU)</h4>
             @if (isCurrentExperienceClub()) {
               <span class="club-locked-chip">
-                <mat-icon>lock</mat-icon>
-                Vinculado al Perfil del Club
+                <mat-icon>verified</mat-icon>
+                Club de Experiencias
               </span>
             }
           </div>
@@ -996,10 +994,10 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
               <mat-icon class="locked-info-icon">info</mat-icon>
               <div class="notice-text">
                 <span>
-                  Prestador fijado como <strong>Club de Experiencias</strong>. Los datos de contacto y cobro se sincronizan automáticamente con el Perfil del Club editable por los administradores desde el menú superior.
+                  Experiencia del <strong>Club de Experiencias</strong>. Si corresponde a otro prestador, podés cambiar el nombre y datos de contacto a continuación.
                 </span>
                 <a [routerLink]="getConfigRoute()" class="btn-text-edit-club">
-                  Modificar en Configuración &rarr;
+                  Perfil del Club en Configuración &rarr;
                 </a>
               </div>
             </div>
@@ -1007,74 +1005,60 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
 
           <div class="form-grid-2">
             <div class="form-field">
-              <label>Nombre / Prestador Asignado: @if (!isCurrentExperienceClub()) { <span class="req-star">*</span> }</label>
+              <label>Nombre / Prestador Asignado: <span class="req-star">*</span></label>
               <input
                 type="text"
                 class="form-input"
-                [class.input-locked]="isCurrentExperienceClub()"
-                [disabled]="isCurrentExperienceClub()"
                 [(ngModel)]="editProviderName"
-                placeholder="Ej: Gonzalo Gramaglia o Catamarca Kayak"
+                placeholder="Ej: Catamarca Kayak o Club de Experiencias"
                 maxlength="70"
-                [required]="!isCurrentExperienceClub()"
+                required
               />
             </div>
 
             <div class="form-field">
-              <label>Teléfono / WhatsApp de Contacto: @if (!isCurrentExperienceClub()) { <span class="req-star">*</span> }</label>
+              <label>Teléfono / WhatsApp de Contacto:</label>
               <input
                 type="tel"
                 class="form-input"
-                [class.input-locked]="isCurrentExperienceClub()"
-                [disabled]="isCurrentExperienceClub()"
                 [(ngModel)]="editProviderPhone"
                 placeholder="Ej: +54 9 383 4567890"
                 maxlength="30"
-                [required]="!isCurrentExperienceClub()"
               />
             </div>
           </div>
 
           <div class="form-grid-3">
             <div class="form-field">
-              <label>CBU / CVU o Alias: @if (!isCurrentExperienceClub()) { <span class="req-star">*</span> }</label>
+              <label>CBU / CVU o Alias:</label>
               <input
                 type="text"
                 class="form-input text-blue-input"
-                [class.input-locked]="isCurrentExperienceClub()"
-                [disabled]="isCurrentExperienceClub()"
                 [(ngModel)]="editProviderCbuAlias"
                 placeholder="Ej: EXPERIENCIAS.CLUB.MP"
                 maxlength="22"
-                [required]="!isCurrentExperienceClub()"
               />
             </div>
 
             <div class="form-field">
-              <label>CUIT / CUIL: @if (!isCurrentExperienceClub()) { <span class="req-star">*</span> }</label>
+              <label>CUIT / CUIL:</label>
               <input
                 type="text"
                 class="form-input"
-                [class.input-locked]="isCurrentExperienceClub()"
-                [disabled]="isCurrentExperienceClub()"
                 [(ngModel)]="editProviderCuitDni"
                 placeholder="Ej: 20-33445566-7"
                 maxlength="13"
-                [required]="!isCurrentExperienceClub()"
               />
             </div>
 
             <div class="form-field">
-              <label>Banco / Entidad: @if (!isCurrentExperienceClub()) { <span class="req-star">*</span> }</label>
+              <label>Banco / Entidad:</label>
               <input
                 type="text"
                 class="form-input"
-                [class.input-locked]="isCurrentExperienceClub()"
-                [disabled]="isCurrentExperienceClub()"
                 [(ngModel)]="editProviderBankName"
                 placeholder="Ej: Banco Nación / Mercado Pago"
                 maxlength="60"
-                [required]="!isCurrentExperienceClub()"
               />
             </div>
           </div>
@@ -1258,31 +1242,29 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
           </div>
         </div>
 
-        <!-- SECCIÓN 6: Servicios Incluidos & Qué Debes Traer (Orden invertido) -->
+        <!-- SECCIÓN 6: Detalles de la Experiencia -->
         <div class="form-section-card">
-          <h4 class="form-section-title">6. Servicios Incluidos & Qué Debes Traer</h4>
+          <h4 class="form-section-title">6. Detalles de la Experiencia</h4>
           <div class="form-grid-2">
             <div class="form-field">
-              <label>Servicios Incluidos (un ítem por línea): <span class="req-star">*</span></label>
+              <label>Servicios e Indumentaria Provista (un ítem por línea):</label>
               <textarea
                 class="form-textarea"
                 rows="4"
                 [(ngModel)]="editIncludedRaw"
                 maxlength="1000"
                 placeholder="Kayaks de travesía y remos de carbono&#10;Chaleco salvavidas reglamentario PFD&#10;Guía náutico certificado&#10;Seguro de accidentes"
-                required
               ></textarea>
             </div>
 
             <div class="form-field">
-              <label>Qué Debes Traer (un ítem por línea): <span class="req-star">*</span></label>
+              <label>Qué Debes Traer (un ítem por línea):</label>
               <textarea
                 class="form-textarea"
                 rows="4"
                 [(ngModel)]="editHighlightsRaw"
                 maxlength="1000"
                 placeholder="Muda de ropa cómoda&#10;Protector solar y gorra&#10;Botella de agua personal"
-                required
               ></textarea>
             </div>
           </div>
@@ -1949,16 +1931,12 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         gap: 0.45rem;
       }
 
-      .simple-check-list li::before {
-        content: "✓";
-        color: #00cc88;
-        font-weight: 800;
-      }
-
+      .simple-check-list li::before,
       .simple-check-list.blue-checks li::before {
-        content: "•";
-        color: #00b4d8;
-        font-size: 1.1rem;
+        content: "✓";
+        color: #ffffff;
+        font-weight: 800;
+        font-size: 0.9rem;
       }
 
       .meeting-point-desc {
@@ -4038,7 +4016,18 @@ export class AdminExperiencesComponent implements OnInit {
   }
 
   readonly isCurrentExperienceClub = computed(() => {
-    return isClubExperience(this.editingExperience());
+    const inputName = this.editProviderName().trim().toLowerCase();
+    if (inputName && inputName !== 'club de experiencias' && inputName !== 'club') {
+      return false;
+    }
+    const exp = this.editingExperience();
+    if (!exp) return false;
+    const matchingProposal = this.findMatchingProposal(exp);
+    const proposalCreator = (matchingProposal?.providerAgency || matchingProposal?.providerName || '').trim().toLowerCase();
+    if (proposalCreator && proposalCreator !== 'club de experiencias' && proposalCreator !== 'club') {
+      return false;
+    }
+    return isClubExperience(exp);
   });
 
   openClubProfileModal(): void {
@@ -4451,7 +4440,7 @@ export class AdminExperiencesComponent implements OnInit {
 
     this.editVideoPoster.set(exp.videoPoster || '');
     const rawDates = (exp.dates || []).join(', ');
-    const displayDates = rawDates || (exp.status === 'pendiente' ? 'A coordinar' : '');
+    const displayDates = rawDates || 'A coordinar';
     this.editDatesRaw.set(displayDates);
 
     const matchingProposal = this.findMatchingProposal(exp);
@@ -4475,7 +4464,50 @@ export class AdminExperiencesComponent implements OnInit {
     this.editAlbumPhotos.set(safeAlbum);
     this.editStatus.set(exp.status || 'publicada');
 
-    if (this.isClub(exp)) {
+    const proposalCreatorName = (matchingProposal?.providerAgency || matchingProposal?.providerName || '').trim();
+    const hasExternalProposalCreator =
+      proposalCreatorName !== '' &&
+      proposalCreatorName.toLowerCase() !== 'club de experiencias' &&
+      proposalCreatorName.toLowerCase() !== 'club';
+
+    const rawExpProviderName = (exp.providerName || exp.providerAgency || '').trim();
+    const isExpProviderClub =
+      !rawExpProviderName ||
+      rawExpProviderName.toLowerCase() === 'club de experiencias' ||
+      rawExpProviderName.toLowerCase() === 'club';
+
+    // Priorizar al creador original (de la propuesta o de la experiencia) si no es el Club
+    const resolvedProviderName =
+      (hasExternalProposalCreator && isExpProviderClub)
+        ? proposalCreatorName
+        : (rawExpProviderName || proposalCreatorName);
+
+    const resolvedProviderPhone =
+      (hasExternalProposalCreator && isExpProviderClub)
+        ? (matchingProposal?.providerPhone || '')
+        : (exp.providerPhone || matchingProposal?.providerPhone || '');
+
+    const resolvedProviderCbu =
+      (hasExternalProposalCreator && isExpProviderClub)
+        ? (matchingProposal?.providerCbuAlias || '')
+        : (exp.providerCbuAlias || matchingProposal?.providerCbuAlias || '');
+
+    const resolvedProviderCuit =
+      (hasExternalProposalCreator && isExpProviderClub)
+        ? (matchingProposal?.providerCuitDni || '')
+        : (exp.providerCuitDni || matchingProposal?.providerCuitDni || '');
+
+    const resolvedProviderBank =
+      (hasExternalProposalCreator && isExpProviderClub)
+        ? (matchingProposal?.providerBankName || '')
+        : (exp.providerBankName || matchingProposal?.providerBankName || '');
+
+    const isExplicitClub =
+      !resolvedProviderName ||
+      resolvedProviderName.toLowerCase() === 'club de experiencias' ||
+      resolvedProviderName.toLowerCase() === 'club';
+
+    if (this.isClub(exp) && isExplicitClub) {
       const club = this.adminStore.clubProfile();
       this.editProviderName.set(club.name || 'Club de Experiencias');
       this.editProviderPhone.set(club.phone || '');
@@ -4483,11 +4515,11 @@ export class AdminExperiencesComponent implements OnInit {
       this.editProviderCuitDni.set(club.cuitDni || '');
       this.editProviderBankName.set(club.bankName || '');
     } else {
-      this.editProviderName.set(exp.providerName || '');
-      this.editProviderPhone.set(exp.providerPhone || '');
-      this.editProviderCbuAlias.set(exp.providerCbuAlias || '');
-      this.editProviderCuitDni.set(exp.providerCuitDni || '');
-      this.editProviderBankName.set(exp.providerBankName || '');
+      this.editProviderName.set(resolvedProviderName);
+      this.editProviderPhone.set(resolvedProviderPhone);
+      this.editProviderCbuAlias.set(resolvedProviderCbu);
+      this.editProviderCuitDni.set(resolvedProviderCuit);
+      this.editProviderBankName.set(resolvedProviderBank);
     }
   }
 
@@ -4542,7 +4574,7 @@ export class AdminExperiencesComponent implements OnInit {
     this.editCoverImage.set('/assets/images/kayak-club-de-experiencias.jpg');
     this.editVideoUrl.set('');
     this.editVideoPoster.set('');
-    this.editDatesRaw.set('');
+    this.editDatesRaw.set('A coordinar');
     this.editHighlightsRaw.set('');
     this.editIncludedRaw.set('');
     this.editAlbumPhotos.set([]);
@@ -4821,25 +4853,17 @@ export class AdminExperiencesComponent implements OnInit {
     }
 
     let datesRaw = this.editDatesRaw().trim();
-    const isUnscheduledProposal =
-      datesRaw.toLowerCase().includes('a coordinar') ||
-      (!datesRaw && (this.editingExperience()?.status === 'pendiente' || this.editStatus() === 'pendiente'));
-
-    if (isUnscheduledProposal) {
-      if (!datesRaw) {
-        datesRaw = 'A coordinar';
-        this.editDatesRaw.set('A coordinar');
-      }
-    } else if (!datesRaw) {
-      this.showToast('Por favor definí al menos una fecha de salida para la experiencia.');
-      return;
+    if (!datesRaw) {
+      datesRaw = 'A coordinar';
+      this.editDatesRaw.set('A coordinar');
     }
 
-    const confirmedDates = parseConfirmedProposalDates(datesRaw);
+    const isUnscheduledProposal = datesRaw.toLowerCase().includes('a coordinar');
+    const confirmedDates = isUnscheduledProposal ? [] : parseConfirmedProposalDates(datesRaw);
     const dates: string[] = isUnscheduledProposal ? [] : confirmedDates;
 
     if (!isUnscheduledProposal && confirmedDates.length === 0) {
-      this.showToast('Por favor definí al menos una fecha válida (YYYY-MM-DD) o indicá "A coordinar".');
+      this.showToast('Por favor definí al menos una fecha válida (YYYY-MM-DD) o dejá el campo como "A coordinar".');
       return;
     }
 
@@ -4847,19 +4871,11 @@ export class AdminExperiencesComponent implements OnInit {
       .split('\n')
       .map((i) => i.trim())
       .filter((i) => i.length > 0);
-    if (included.length === 0) {
-      this.showToast('Por favor detallá los servicios incluidos (al menos un ítem).');
-      return;
-    }
 
     const highlights = this.editHighlightsRaw()
       .split('\n')
       .map((h) => h.trim())
       .filter((h) => h.length > 0);
-    if (highlights.length === 0) {
-      this.showToast('Por favor detallá qué debe traer el participante (al menos un ítem).');
-      return;
-    }
 
     let coverImage = this.editCoverImage().trim();
     if (!coverImage || coverImage.startsWith('blob:')) {
@@ -4869,26 +4885,67 @@ export class AdminExperiencesComponent implements OnInit {
 
     const priceUsd = Math.round(priceArs / (this.adminStore.usdExchangeRate() || 1400));
 
-    const isClub = this.isCurrentExperienceClub();
+    const currentExp = this.editingExperience();
+    const matchingProposal = currentExp ? this.findMatchingProposal(currentExp) : undefined;
+    const inputProviderName = this.editProviderName().trim();
+    const inputProviderPhone = this.editProviderPhone().trim();
+    const inputProviderCbu = this.editProviderCbuAlias().trim();
+    const inputProviderCuit = this.editProviderCuitDni().trim();
+    const inputProviderBank = this.editProviderBankName().trim();
+
+    const proposalCreatorName = (matchingProposal?.providerAgency || matchingProposal?.providerName || '').trim();
+    const expCreatorName = (currentExp?.providerName || currentExp?.providerAgency || '').trim();
+    const isExpCreatorClub =
+      !expCreatorName ||
+      expCreatorName.toLowerCase() === 'club de experiencias' ||
+      expCreatorName.toLowerCase() === 'club';
+
+    const fallbackCreatorName = (proposalCreatorName && isExpCreatorClub)
+      ? proposalCreatorName
+      : (expCreatorName || proposalCreatorName);
+
+    const finalProviderName = inputProviderName || fallbackCreatorName;
+    const isExplicitClub =
+      !finalProviderName ||
+      finalProviderName.toLowerCase() === 'club de experiencias' ||
+      finalProviderName.toLowerCase() === 'club';
+
+    const isClub = isExplicitClub && (this.isClub(currentExp) || this.isCreating());
     const club = this.adminStore.clubProfile();
+
     const resolvedProviderName = isClub
       ? (club.name || 'Club de Experiencias')
-      : (this.editProviderName().trim() || this.editingExperience()?.providerName || undefined);
+      : finalProviderName;
+
     const resolvedProviderPhone = isClub
       ? (club.phone || '')
-      : (this.editProviderPhone().trim() || this.editingExperience()?.providerPhone || undefined);
+      : (inputProviderPhone || currentExp?.providerPhone || matchingProposal?.providerPhone || undefined);
+
     const resolvedProviderCbu = isClub
       ? (club.cbuAlias || '')
-      : (this.editProviderCbuAlias().trim() || this.editingExperience()?.providerCbuAlias || undefined);
+      : (inputProviderCbu || currentExp?.providerCbuAlias || matchingProposal?.providerCbuAlias || undefined);
+
     const resolvedProviderCuit = isClub
       ? (club.cuitDni || '')
-      : (this.editProviderCuitDni().trim() || this.editingExperience()?.providerCuitDni || undefined);
+      : (inputProviderCuit || currentExp?.providerCuitDni || matchingProposal?.providerCuitDni || undefined);
+
     const resolvedProviderBank = isClub
       ? (club.bankName || '')
-      : (this.editProviderBankName().trim() || this.editingExperience()?.providerBankName || undefined);
+      : (inputProviderBank || currentExp?.providerBankName || matchingProposal?.providerBankName || undefined);
 
-    const resolvedProviderSlug = isClub ? 'club-de-experiencias' : (this.editingExperience()?.providerSlug || undefined);
-    const resolvedProviderEmail = isClub ? (club.email || 'admin@experiencias.club') : (this.editingExperience()?.providerEmail || undefined);
+    const proposalAgency = matchingProposal?.providerAgency || matchingProposal?.providerName;
+    const fallbackSlug = (proposalAgency && !isClub ? slugify(proposalAgency) : undefined) || (resolvedProviderName && !isClub ? slugify(resolvedProviderName) : undefined);
+    const resolvedProviderSlug = isClub
+      ? 'club-de-experiencias'
+      : (currentExp?.providerSlug && currentExp.providerSlug !== 'club-de-experiencias' && currentExp.providerSlug !== 'club'
+          ? currentExp.providerSlug
+          : fallbackSlug);
+
+    const resolvedProviderEmail = isClub
+      ? (club.email || 'admin@experiencias.club')
+      : (currentExp?.providerEmail && currentExp.providerEmail !== 'admin@experiencias.club' && currentExp.providerEmail !== 'hola@experiencias.club'
+          ? currentExp.providerEmail
+          : (matchingProposal?.providerEmail || undefined));
 
     const safeAlbumPhotos = this.editAlbumPhotos().map((p) => ({
       ...p,
@@ -4920,26 +4977,14 @@ export class AdminExperiencesComponent implements OnInit {
         safeAlbumPhotos.length > 0
           ? safeAlbumPhotos.map((p) => p.url)
           : [coverImage],
-      ...(isClub
-        ? {
-          providerName: resolvedProviderName,
-          providerPhone: resolvedProviderPhone,
-          providerCbuAlias: resolvedProviderCbu,
-          providerCuitDni: resolvedProviderCuit,
-          providerBankName: resolvedProviderBank,
-          providerSlug: resolvedProviderSlug,
-          providerEmail: resolvedProviderEmail,
-          isClubExperience: true,
-        }
-        : {
-          ...(resolvedProviderName ? { providerName: resolvedProviderName } : {}),
-          ...(resolvedProviderPhone ? { providerPhone: resolvedProviderPhone } : {}),
-          ...(resolvedProviderCbu ? { providerCbuAlias: resolvedProviderCbu } : {}),
-          ...(resolvedProviderCuit ? { providerCuitDni: resolvedProviderCuit } : {}),
-          ...(resolvedProviderBank ? { providerBankName: resolvedProviderBank } : {}),
-          ...(resolvedProviderSlug ? { providerSlug: resolvedProviderSlug } : {}),
-          ...(resolvedProviderEmail ? { providerEmail: resolvedProviderEmail } : {}),
-        }),
+      ...(resolvedProviderName ? { providerName: resolvedProviderName } : {}),
+      ...(resolvedProviderPhone ? { providerPhone: resolvedProviderPhone } : {}),
+      ...(resolvedProviderCbu ? { providerCbuAlias: resolvedProviderCbu } : {}),
+      ...(resolvedProviderCuit ? { providerCuitDni: resolvedProviderCuit } : {}),
+      ...(resolvedProviderBank ? { providerBankName: resolvedProviderBank } : {}),
+      ...(resolvedProviderSlug ? { providerSlug: resolvedProviderSlug } : {}),
+      ...(resolvedProviderEmail ? { providerEmail: resolvedProviderEmail } : {}),
+      isClubExperience: isClub,
       videoUrl: safeVideoUrl,
       videoPoster: this.editVideoPoster().trim(),
       dates,
@@ -5041,7 +5086,7 @@ export class AdminExperiencesComponent implements OnInit {
     }
   }
 
-  private findMatchingProposal(exp: { id: string; slug?: string }): ExperienceProposalRequest | undefined {
+  private findMatchingProposal(exp: { id: string; slug?: string; title?: string }): ExperienceProposalRequest | undefined {
     const list = this.adminStore.providerStore.experienceRequests();
     // 1. Coincidencia directa por id
     const direct = list.find((r) => r.id === exp.id);
@@ -5066,7 +5111,12 @@ export class AdminExperiencesComponent implements OnInit {
       }
     }
 
-    // 3. Mapeo explícito por prefijo 'exp-' en id
+    // 3. Mapeo por ID limpio ignorando prefijos 'exp-' y 'req-'
+    const cleanExpId = exp.id.replace(/^(?:exp|req)-/, '');
+    const byCleanId = list.find((r) => r.id.replace(/^(?:exp|req)-/, '') === cleanExpId);
+    if (byCleanId) return byCleanId;
+
+    // 4. Mapeo explícito por prefijo 'exp-' en id
     if (exp.id.startsWith('exp-')) {
       const stripped = exp.id.slice(4);
       const byStripped = list.find((r) => r.id === stripped);
@@ -5075,6 +5125,23 @@ export class AdminExperiencesComponent implements OnInit {
       const prefixed = `exp-${exp.id}`;
       const byPrefixed = list.find((r) => r.id === prefixed);
       if (byPrefixed) return byPrefixed;
+    }
+
+    // 5. Coincidencia por slug o título
+    if (exp.slug) {
+      const cleanSlug = exp.slug.toLowerCase().trim();
+      const bySlug = list.find(
+        (r) =>
+          (r.slug && r.slug.toLowerCase().trim() === cleanSlug) ||
+          (r.title && slugify(r.title) === cleanSlug),
+      );
+      if (bySlug) return bySlug;
+    }
+
+    if (exp.title) {
+      const titleSlug = slugify(exp.title);
+      const byTitle = list.find((r) => r.title && slugify(r.title) === titleSlug);
+      if (byTitle) return byTitle;
     }
 
     return undefined;
@@ -5101,7 +5168,7 @@ export class AdminExperiencesComponent implements OnInit {
           : req?.dates || '';
       const isUnscheduled =
         datesRaw.toLowerCase().includes('a coordinar') ||
-        (!datesRaw.trim() && exp.status === 'pendiente');
+        !datesRaw.trim();
       const confirmedDates = parseConfirmedProposalDates(datesRaw);
 
       if (!isUnscheduled && confirmedDates.length === 0) {

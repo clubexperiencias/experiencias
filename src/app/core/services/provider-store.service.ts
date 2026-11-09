@@ -2544,6 +2544,20 @@ export class ProviderStoreService {
         dates: publishedDates,
         publicUrl: resolvedUrl,
         reviewedAt: new Date().toISOString(),
+        ...(resolvedProviderName ? { providerName: resolvedProviderName } : {}),
+        ...(resolvedProviderSlug ? { providerSlug: resolvedProviderSlug } : {}),
+        ...(resolvedProviderPhone ? { providerPhone: resolvedProviderPhone } : {}),
+        ...(req.providerEmail ? { providerEmail: req.providerEmail } : {}),
+        ...(req.providerCbuAlias || bankingFromPrestadores?.cbu_alias
+          ? { providerCbuAlias: req.providerCbuAlias || bankingFromPrestadores?.cbu_alias }
+          : {}),
+        ...(req.providerCuitDni || bankingFromPrestadores?.cuit_dni
+          ? { providerCuitDni: req.providerCuitDni || bankingFromPrestadores?.cuit_dni }
+          : {}),
+        ...(req.providerBankName || bankingFromPrestadores?.bank_name
+          ? { providerBankName: req.providerBankName || bankingFromPrestadores?.bank_name }
+          : {}),
+        isClubExperience: false,
       });
     } else if (remoteRow) {
       try {
@@ -2553,6 +2567,10 @@ export class ProviderStoreService {
             slug: generatedSlug,
             public_url: resolvedUrl,
             dates: publishedDates,
+            ...(resolvedProviderName ? { provider_name: resolvedProviderName } : {}),
+            ...(resolvedProviderSlug ? { provider_slug: resolvedProviderSlug } : {}),
+            ...(resolvedProviderPhone ? { provider_phone: resolvedProviderPhone } : {}),
+            ...(req.providerEmail ? { provider_email: req.providerEmail } : {}),
             provider_cbu_alias: null,
             provider_cuit_dni: null,
             provider_bank_name: null,
