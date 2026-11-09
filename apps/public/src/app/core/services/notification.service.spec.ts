@@ -175,6 +175,25 @@ describe('NotificationService', () => {
     });
   });
 
+  describe('notifyWaitlistConfirmation', () => {
+    it('should POST WAITLIST_CONFIRMATION to /api/notify', async () => {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ success: true }),
+      } as Response);
+
+      const result = await service.notifyWaitlistConfirmation({
+        email: 'prospect@experiencias.club',
+      });
+
+      expect(result.success).toBe(true);
+      const callArgs = fetchSpy.mock.calls[0];
+      const sentBody = JSON.parse(callArgs[1]?.body as string);
+      expect(sentBody.type).toBe('WAITLIST_CONFIRMATION');
+      expect(sentBody.data.email).toBe('prospect@experiencias.club');
+    });
+  });
+
   describe('getWhatsAppNotificationUrl', () => {
     it('should generate valid WhatsApp URL with default admin phone', () => {
       const url = service.getWhatsAppNotificationUrl(mockSubmission);

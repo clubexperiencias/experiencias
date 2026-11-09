@@ -93,6 +93,16 @@ export class ExperiencePhotosComponent {
         : item.providerSlug;
     }
     if (this.isClubExperience(item)) return DEFAULT_CLUB_PROFILE.slug;
+    const rawName = (item.providerName || item.providerAgency || '').trim();
+    if (rawName && rawName.toLowerCase() !== 'club de experiencias' && rawName.toLowerCase() !== 'club') {
+      const fallback = rawName
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)+/g, '');
+      if (fallback) return fallback;
+    }
     return null;
   }
 

@@ -222,6 +222,70 @@ function verifyPostulacionExists(email, config) {
   });
 }
 
+function verifyWaitlistSubmission(email, config) {
+  return new Promise((resolve) => {
+    const privilegedKey = config.supabaseServiceRoleKey || config.supabaseKey;
+    if (!config.supabaseUrl || !privilegedKey || !email) {
+      // Entorno no configurado para Supabase; preservar el fallback de registro
+      return resolve({ status: 'unconfigured' });
+    }
+    try {
+      const cleanEmail = String(email).trim().toLowerCase();
+      const url = new URL(
+        `${config.supabaseUrl}/rest/v1/socios?email=eq.${encodeURIComponent(cleanEmail)}&select=id,email,membership_tier,created_at&limit=1`,
+      );
+      const req = https.request(
+        {
+          hostname: url.hostname,
+          port: url.port || 443,
+          path: url.pathname + url.search,
+          method: 'GET',
+          headers: {
+            apikey: privilegedKey,
+            Authorization: `Bearer ${privilegedKey}`,
+          },
+        },
+        (res) => {
+          if (res.statusCode < 200 || res.statusCode >= 300) {
+            return resolve({
+              status: 'error',
+              error: `Database query returned HTTP ${res.statusCode}`,
+            });
+          }
+          let data = '';
+          res.on('data', (c) => (data += c));
+          res.on('end', () => {
+            try {
+              const records = JSON.parse(data);
+              if (!Array.isArray(records) || records.length === 0) {
+                return resolve({ status: 'not_found' });
+              }
+              const record = records[0];
+              if (!record || typeof record !== 'object') {
+                return resolve({ status: 'not_found' });
+              }
+              resolve({
+                status: 'found',
+                record,
+              });
+            } catch (err) {
+              resolve({ status: 'error', error: err.message });
+            }
+          });
+        },
+      );
+      req.setTimeout(8000, () => {
+        req.destroy();
+        resolve({ status: 'error', error: 'Database request timed out' });
+      });
+      req.on('error', (err) => resolve({ status: 'error', error: err.message }));
+      req.end();
+    } catch (err) {
+      resolve({ status: 'error', error: err.message });
+    }
+  });
+}
+
 function updateApplicationNotes(recordId, notesObject, config, expectedNotes) {
   return new Promise((resolve) => {
     const privilegedKey = config.supabaseServiceRoleKey || config.supabaseKey;
@@ -809,6 +873,66 @@ function templateAlreadyRegisteredUser(data) {
   return renderBaseLayout(content, `Ya contás con una membresía activa en EXPERIENCIAS.CLUB`);
 }
 
+// 6b. Template: Confirmación de Lista de Espera (Waitlist) con invitación a Socio Emergente y Kayak
+function templateWaitlistConfirmation(data) {
+  const email = escapeHtml(data.email || '');
+
+  const content = `
+    <h2 class="card-title">¡Estás en la lista de espera oficial! 🏔️</h2>
+    <p class="card-lead">
+      Recibimos tu correo (<strong>${email}</strong>) con éxito. Ya tenés tu lugar reservado en la lista de espera oficial de <strong>EXPERIENCIAS.CLUB</strong>.
+    </p>
+
+    <div class="voucher-box">
+      <span class="voucher-tag">PRÓXIMO LANZAMIENTO</span>
+      <div class="voucher-code" style="font-size: 19px; line-height: 1.3;">MEMBRESÍA MENSUAL · SOCIOS PLENOS</div>
+      <p style="font-size: 13px; color: rgba(255, 255, 255, 0.8); line-height: 1.5; margin: 8px 0 0;">
+        Muy pronto abriremos los cupos para la suscripción mensual de Socios Plenos con acceso integral y beneficios premium. <strong>Te avisaremos de inmediato a este correo apenas esté disponible.</strong>
+      </p>
+    </div>
+
+    <div style="background: rgba(255, 95, 0, 0.08); border: 1px solid rgba(255, 95, 0, 0.3); border-radius: 4px; padding: 20px; margin: 24px 0;">
+      <h3 style="font-size: 15px; font-weight: 800; color: #ff9955; text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 10px;">
+        ¿No querés esperar? ¡Sumate ya como Socio Emergente!
+      </h3>
+      <p style="font-size: 14px; color: rgba(255, 255, 255, 0.85); line-height: 1.6; margin: 0 0 16px;">
+        Podés activar tu credencial digital gratuita ahora mismo completando tus datos básicos. Vas a recibir tu número oficial de socio y acceso inmediato a beneficios y tarifas especiales del Club.
+      </p>
+      <div style="text-align: center;">
+        <a href="https://www.experiencias.club/socios/emergentes?email=${encodeURIComponent(data.email || '')}&from=waitlist" class="btn-primary" target="_blank" style="margin: 4px 0;">
+          Completar mi Perfil de Socio Emergente
+        </a>
+      </div>
+    </div>
+
+    <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 4px; padding: 20px; margin: 24px 0;">
+      <h3 style="font-size: 15px; font-weight: 800; color: #ffffff; text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 10px;">
+        🛶 Experiencias disponibles para reservar hoy
+      </h3>
+      <p style="font-size: 14px; color: rgba(255, 255, 255, 0.85); line-height: 1.6; margin: 0 0 16px;">
+        Ya podés vivir una aventura inolvidable en Catamarca. Te recomendamos especialmente nuestra travesía insignia en el dique El Jumeal:
+      </p>
+      <div style="border-left: 3px solid #ff5f00; padding-left: 14px; margin-bottom: 16px;">
+        <strong style="color: #ffffff; font-size: 15px;">Travesía en Kayak & Sunset en el Dique El Jumeal</strong>
+        <p style="font-size: 13px; color: rgba(255, 255, 255, 0.7); margin: 4px 0 0;">
+          Navegación al atardecer, vistas panorámicas de la ciudad y el valle, y equipamiento completo provisto.
+        </p>
+      </div>
+      <div style="text-align: center;">
+        <a href="https://www.experiencias.club/experiencias/kayak" class="btn-secondary" target="_blank" style="margin: 4px 0; color: #ffffff !important; border-color: rgba(255,255,255,0.4);">
+          Ver y Reservar Kayak en El Jumeal &rarr;
+        </a>
+      </div>
+    </div>
+
+    <p style="text-align: center; font-size: 13px; color: rgba(255, 255, 255, 0.5); margin: 20px 0 0;">
+      Explorá todas las actividades y expediciones activas en <a href="https://www.experiencias.club" target="_blank" style="color: #ff9955;">experiencias.club</a>.
+    </p>
+  `;
+
+  return renderBaseLayout(content, 'Confirmación de lista de espera en EXPERIENCIAS.CLUB');
+}
+
 // 7. Template: Postulación de Prestador Recibida (Para el Postulante)
 function templateProviderApplicationSubmitted(data) {
   const fullName = data.fullName ? escapeHtml(data.fullName) : 'Prestador';
@@ -1195,6 +1319,60 @@ module.exports = async function handler(req, res) {
           html: templateAlreadyRegisteredUser(data),
         });
         results.push({ target: 'already_registered', ...alreadyRegisteredResult });
+        break;
+      }
+
+      case 'WAITLIST_CONFIRMATION': {
+        const cleanEmail = String(data.email || '').trim().toLowerCase();
+        if (!cleanEmail) {
+          return res.status(400).json({ success: false, error: 'Falta email del prospecto.' });
+        }
+
+        const clientIp =
+          req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+          req.socket?.remoteAddress ||
+          'unknown';
+
+        const recipientRateLimitKey = `waitlist_rec_${cleanEmail}`;
+        const ipRateLimitKey = `waitlist_ip_${clientIp}`;
+
+        if (
+          !checkRateLimit(recipientRateLimitKey, 1, 60 * 60 * 1000) ||
+          !checkRateLimit(ipRateLimitKey, 5, 5 * 60 * 1000)
+        ) {
+          return res.status(429).json({
+            success: false,
+            error: 'Límite de confirmaciones alcanzado para este correo. Por favor aguardá unos minutos.',
+          });
+        }
+
+        const waitlistCheck = await verifyWaitlistSubmission(cleanEmail, config);
+        if (
+          waitlistCheck.status === 'not_found' ||
+          (waitlistCheck.status === 'found' && waitlistCheck.record?.membership_tier !== 'waitlist')
+        ) {
+          return res.status(404).json({
+            success: false,
+            error: 'No se encontró un registro previo de lista de espera para este correo.',
+          });
+        }
+
+        if (waitlistCheck.status === 'error') {
+          console.warn('[api/notify] Error verificando waitlist en Supabase:', waitlistCheck.error);
+          return res.status(502).json({
+            success: false,
+            error: 'Error de conexión verificando el registro de lista de espera.',
+          });
+        }
+
+        const waitlistResult = await sendEmailViaResend({
+          apiKey: config.apiKey,
+          from: config.fromEmail,
+          to: cleanEmail,
+          subject: '¡Estás en la lista de espera oficial de EXPERIENCIAS.CLUB! 🏔️',
+          html: templateWaitlistConfirmation({ ...data, email: cleanEmail }),
+        });
+        results.push({ target: 'waitlist_confirmation', ...waitlistResult });
         break;
       }
 

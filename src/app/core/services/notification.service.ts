@@ -142,6 +142,22 @@ export class NotificationService {
   }
 
   /**
+   * Envía confirmación de registro en la lista de espera oficial (Waitlist),
+   * avisando del próximo lanzamiento de Socios Plenos e invitando a sumarse como
+   * Socio Emergente y reservar experiencias disponibles (Kayak).
+   */
+  async notifyWaitlistConfirmation(data: { email: string }): Promise<NotificationResult> {
+    const payload = {
+      type: 'WAITLIST_CONFIRMATION',
+      data: {
+        email: data.email,
+      },
+    };
+
+    return this.postNotify(payload, data.email);
+  }
+
+  /**
    * Envía confirmación de postulación recibida al prestador y alerta a los administradores.
    */
   async notifyProviderApplicationSubmitted(data: {

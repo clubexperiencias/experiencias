@@ -987,19 +987,6 @@
   line-height: 1.1;
 }
 
-.club-profile-item {
-  border-color: rgba(255, 149, 0, 0.3) !important;
-  background: rgba(45, 22, 10, 0.5) !important;
-}
-
-.club-profile-item:hover {
-  background: rgba(255, 95, 0, 0.25) !important;
-  border-color: #ff5f00 !important;
-}
-
-.club-profile-item .club-icon {
-  color: #ff9500 !important;
-}
 
 .club-profile-backdrop {
   position: fixed;

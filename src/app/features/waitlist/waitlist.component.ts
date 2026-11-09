@@ -1,5 +1,6 @@
 import { Component, inject, signal, computed, HostListener } from '@angular/core';
 import { NewsletterService } from '../../core/services/newsletter.service';
+import { NotificationService } from '../../core/services/notification.service';
 import { ExperienceService } from '../../core/services/experience.service';
 import { Experience } from '../../core/models/experience.model';
 
@@ -50,6 +51,7 @@ export class WaitlistComponent {
   readonly router = inject(Router);
   readonly route = inject(ActivatedRoute);
   readonly newsletter = inject(NewsletterService);
+  readonly notificationService = inject(NotificationService);
   readonly experienceService = inject(ExperienceService);
   readonly activityService = inject(ActivityHistoryService);
 
@@ -392,7 +394,17 @@ export class WaitlistComponent {
       this.newsletter.resetCurrentSubscription();
     }
 
-    await this.newsletter.loginWithEmail(cleanEmail);
+    const res = await this.newsletter.loginWithEmail(cleanEmail);
+    if (res.alreadyInWaitlist && !res.alreadyRegisteredSocio && this.newsletter.isSupabaseConnected()) {
+      this.notificationService
+        .notifyWaitlistConfirmation({ email: cleanEmail })
+        .then((notifRes) => {
+          if (!notifRes.success) {
+            console.warn('[WaitlistComponent] Aviso al despachar confirmación:', notifRes.error);
+          }
+        })
+        .catch((err) => console.warn('[WaitlistComponent] Error enviando confirmación:', err));
+    }
 
     this.email.set('');
     this.router.navigate(['/socios/emergentes'], {
