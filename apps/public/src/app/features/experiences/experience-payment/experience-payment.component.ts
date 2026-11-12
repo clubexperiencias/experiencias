@@ -21,6 +21,8 @@ import {
   validateReceiptFile,
 } from '../../../core/services/provider-store.service';
 import { ExperienceService } from '../../../core/services/experience.service';
+import { AdminStoreService } from '../../../core/services/admin-store.service';
+import { isClubExperience } from '../../../core/models/club-profile.model';
 import { NotificationService } from '../../../core/services/notification.service';
 import { isSupabaseConfigured } from '../../../core/supabase/supabase.client';
 import {
@@ -31,6 +33,7 @@ import {
   discountAmount,
   findDiscountCode,
   MAX_PARTICIPANTS_PER_BOOKING,
+  MP_TRANSFER_RECEIPT,
   RECEIPT_ACCEPTED_TYPES,
   TransferSubmission,
 } from '../../../core/models/bank-transfer.model';
@@ -59,6 +62,27 @@ export class ExperiencePaymentComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly newsletter = inject(NewsletterService);
   private readonly notificationService = inject(NotificationService);
+  private readonly adminStore = inject(AdminStoreService);
+
+  readonly paymentMethod = signal<'transfer' | 'mercadopago'>('transfer');
+
+  readonly isMercadoPagoAvailable = computed(() => {
+    const exp = this.experience();
+    if (!exp) return false;
+    if (isClubExperience(exp)) {
+      return true;
+    }
+    if (exp.mpConnected) return true;
+    const prov =
+      (exp.providerId ? this.store.getProviderById(exp.providerId) : undefined) ||
+      (exp.providerEmail ? this.store.getProviderByEmail(exp.providerEmail) : undefined) ||
+      (exp.providerSlug ? this.store.getProviderBySlug(exp.providerSlug) : undefined);
+    return Boolean(prov?.mpConnected);
+  });
+
+  readonly mercadoPagoSurchargePct = computed(() => {
+    return this.adminStore.clubProfile().mercadoPagoSurchargePercentage ?? 12;
+  });
 
   readonly acceptedTypes = RECEIPT_ACCEPTED_TYPES.join(',');
   readonly mobileMenuOpen = signal(false);
@@ -225,7 +249,15 @@ export class ExperiencePaymentComponent implements OnInit {
   readonly appliedDiscount = signal<DiscountCode | undefined>(undefined);
   readonly discountError = signal<string | null>(null);
   readonly discountArs = computed(() => discountAmount(this.subtotal(), this.appliedDiscount()));
-  readonly total = computed(() => this.subtotal() - this.discountArs());
+  readonly baseTotal = computed(() => this.subtotal() - this.discountArs());
+
+  readonly mercadoPagoSurchargeArs = computed(() => {
+    if (this.paymentMethod() !== 'mercadopago') return 0;
+    const pct = this.mercadoPagoSurchargePct();
+    return Math.round((this.baseTotal() * pct) / 100);
+  });
+
+  readonly total = computed(() => this.baseTotal() + this.mercadoPagoSurchargeArs());
 
   applyDiscount(): void {
     const raw = this.discountInput().trim();
@@ -260,7 +292,65 @@ export class ExperiencePaymentComponent implements OnInit {
     initialValue: this.form.status,
   });
 
-  readonly canSubmit = computed(() => this.formStatus() === 'VALID' && this.receiptFile() !== null);
+  readonly canSubmit = computed(() => {
+    if (this.paymentMethod() === 'mercadopago') {
+      return this.formStatus() === 'VALID';
+    }
+    return this.formStatus() === 'VALID' && this.receiptFile() !== null;
+  });
+
+  async submitMercadoPago(): Promise<void> {
+    if (this.form.invalid || this.submitting()) return;
+    this.submitting.set(true);
+    this.submitError.set(null);
+
+    const value = this.form.getRawValue();
+    const exp = this.experience();
+    if (!exp) {
+      this.submitting.set(false);
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/mercadopago', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'create-preference',
+          experienceId: exp.id,
+          experienceTitle: exp.title,
+          experienceSlug: exp.slug,
+          date: value.date,
+          participants: Number(value.participants) || 1,
+          baseAmountArs: this.baseTotal(),
+          surchargeArs: this.mercadoPagoSurchargeArs(),
+          totalAmountArs: this.total(),
+          payer: {
+            name: value.fullName,
+            email: value.email,
+            phone: value.phone,
+            dni: value.dni,
+          },
+          providerId: exp.providerId,
+          providerCollectorId: exp.mpCollectorId,
+        }),
+      });
+
+      const data = await res.json();
+      if (data && data.init_point) {
+        if (typeof window !== 'undefined') {
+          window.location.href = data.init_point;
+        }
+      } else {
+        throw new Error(data?.error || data?.message || 'No se pudo iniciar el checkout con Mercado Pago.');
+      }
+    } catch (err: unknown) {
+      this.submitError.set(
+        err instanceof Error ? err.message : 'Error al conectar con Mercado Pago. Podés abonar por transferencia.',
+      );
+      this.submitting.set(false);
+    }
+  }
 
   readonly copied = signal<'cbu' | 'monto' | null>(null);
   readonly submitting = signal(false);
@@ -322,6 +412,34 @@ export class ExperiencePaymentComponent implements OnInit {
       this.checkoutMember.set(member);
       if (member && this.newsletter.consumeLoginSuccessFlag()) {
         this.triggerAuthSuccessFeedback();
+      }
+
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        const status = params.get('status') || params.get('collection_status');
+        const collectionId = params.get('collection_id') || params.get('payment_id') || params.get('preference_id');
+        if (status === 'approved' && collectionId) {
+          const exp = this.experience();
+          const shortRef = collectionId.slice(-6).toUpperCase();
+          this.confirmation.set({
+            id: `mp-${collectionId}`,
+            reference: `MP-${shortRef}`,
+            experienceId: exp?.id || 'exp',
+            experienceTitle: exp?.title || 'Experiencia en Catamarca',
+            date: 'Fecha reservada',
+            participants: 1,
+            amountArs: exp?.priceArs || 0,
+            fullName: member?.fullName || 'Explorador',
+            email: member?.email || '',
+            dni: member?.dni || '',
+            phone: member?.phone || '',
+            receipt: MP_TRANSFER_RECEIPT,
+            paymentMethod: 'mercadopago',
+            mpPaymentId: collectionId,
+            status: 'aprobado',
+            submittedAt: new Date().toISOString(),
+          });
+        }
       }
     } catch {
       this.authError.set('No pudimos verificar tu cuenta. Intentá nuevamente.');

@@ -261,7 +261,7 @@
   justify-content: center;
   gap: 0.6rem;
   background: #80b3ff;
-  color: #070d18;
+  color: #ffffff;
   font-family: var(--font-sans);
   font-size: 0.95rem;
   font-weight: 800;
@@ -272,10 +272,12 @@
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .provider-page-submit-btn:hover:not(:disabled) {
   background: #99c2ff;
+  color: #ffffff;
   transform: translateY(-1px);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
 }

@@ -246,14 +246,53 @@
                   <section class="kayak-section-card" aria-labelledby="step-2-title">
                     <div class="pay-step-head">
                       <span class="pay-step-index" aria-hidden="true">2</span>
-                      <h2 id="step-2-title" class="pay-step-title">Monto y transferencia</h2>
+                      <h2 id="step-2-title" class="pay-step-title">
+                        {{ isMercadoPagoAvailable() ? 'Monto y medio de pago' : 'Monto y transferencia' }}
+                      </h2>
                     </div>
+
+                    @if (isMercadoPagoAvailable()) {
+                      <div class="pay-methods-tabs" role="tablist" aria-label="Elegí el medio de pago">
+                        <button
+                          type="button"
+                          class="pay-method-tab"
+                          [class.is-active]="paymentMethod() === 'transfer'"
+                          (click)="paymentMethod.set('transfer')"
+                        >
+                          <mat-icon class="tab-icon">account_balance</mat-icon>
+                          <div class="tab-meta">
+                            <span class="tab-title">Transferencia Bancaria</span>
+                            <span class="tab-badge best-badge">Mejor Precio: 0% recargo</span>
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          class="pay-method-tab"
+                          [class.is-active]="paymentMethod() === 'mercadopago'"
+                          (click)="paymentMethod.set('mercadopago')"
+                        >
+                          <mat-icon class="tab-icon">credit_card</mat-icon>
+                          <div class="tab-meta">
+                            <span class="tab-title">Mercado Pago</span>
+                            <span class="tab-badge instant-badge">Instantáneo: +{{ mercadoPagoSurchargePct() }}% recargo</span>
+                          </div>
+                        </button>
+                      </div>
+                    }
 
                     <div class="pay-transfer-box">
                       <div class="pay-transfer-row pay-amount-row">
                         <div>
-                          <span class="pay-label">Monto a pagar</span>
+                          <span class="pay-label">
+                            {{ paymentMethod() === 'mercadopago' ? 'Monto total con Mercado Pago' : 'Monto a transferir' }}
+                          </span>
                           <p class="pay-amount">{{ total() | ars }}</p>
+                          @if (paymentMethod() === 'mercadopago' && mercadoPagoSurchargeArs() > 0) {
+                            <span class="pay-surcharge-hint">
+                              Incluye {{ baseTotal() | ars }} base + {{ mercadoPagoSurchargeArs() | ars }} de gestión y procesamiento (+{{ mercadoPagoSurchargePct() }}%).
+                            </span>
+                          }
                         </div>
                       </div>
 
@@ -302,45 +341,60 @@
                         }
                       </div>
 
-                      <div class="pay-transfer-row pay-cbu-row">
-                        <span class="pay-label">CBU / CVU o Alias a transferir</span>
-                        <div class="pay-cbu-inline-wrap">
-                          <p class="pay-cbu pay-mono" [attr.aria-label]="'CBU o Alias ' + cbu">
-                            @for (group of cbuGroups; track $index) {
-                              <span>{{ group }}</span>
-                            }
-                          </p>
-                          <button
-                            type="button"
-                            class="pay-cbu-icon-btn"
-                            (click)="copy(cbu, 'cbu')"
-                            [attr.aria-label]="copied() === 'cbu' ? 'CBU o Alias copiado' : 'Copiar CBU o Alias'"
-                            [title]="copied() === 'cbu' ? '¡Copiado!' : 'Copiar CBU o Alias'"
-                          >
-                            <mat-icon aria-hidden="true">{{
-                              copied() === 'cbu' ? 'check' : 'content_copy'
-                            }}</mat-icon>
-                          </button>
+                      @if (paymentMethod() === 'transfer') {
+                        <div class="pay-transfer-row pay-cbu-row">
+                          <span class="pay-label">CBU / CVU o Alias a transferir</span>
+                          <div class="pay-cbu-inline-wrap">
+                            <p class="pay-cbu pay-mono" [attr.aria-label]="'CBU o Alias ' + cbu">
+                              @for (group of cbuGroups; track $index) {
+                                <span>{{ group }}</span>
+                              }
+                            </p>
+                            <button
+                              type="button"
+                              class="pay-cbu-icon-btn"
+                              (click)="copy(cbu, 'cbu')"
+                              [attr.aria-label]="copied() === 'cbu' ? 'CBU o Alias copiado' : 'Copiar CBU o Alias'"
+                              [title]="copied() === 'cbu' ? '¡Copiado!' : 'Copiar CBU o Alias'"
+                            >
+                              <mat-icon aria-hidden="true">{{
+                                copied() === 'cbu' ? 'check' : 'content_copy'
+                              }}</mat-icon>
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                      <div class="pay-transfer-row pay-transfer-detail">
-                        <span class="pay-label">Nombre / Titular</span>
-                        <strong>{{ transferDestination.accountHolder }}</strong>
-                      </div>
-                      <div class="pay-transfer-row pay-transfer-detail">
-                        <span class="pay-label">CUIT/CUIL</span>
-                        <strong class="pay-mono">{{ transferDestination.taxId }}</strong>
-                      </div>
-                      <div class="pay-transfer-row pay-transfer-detail">
-                        <span class="pay-label">Entidad Bancaria o Billetera</span>
-                        <strong>{{ transferDestination.entity }}</strong>
-                      </div>
+                        <div class="pay-transfer-row pay-transfer-detail">
+                          <span class="pay-label">Nombre / Titular</span>
+                          <strong>{{ transferDestination.accountHolder }}</strong>
+                        </div>
+                        <div class="pay-transfer-row pay-transfer-detail">
+                          <span class="pay-label">CUIT/CUIL</span>
+                          <strong class="pay-mono">{{ transferDestination.taxId }}</strong>
+                        </div>
+                        <div class="pay-transfer-row pay-transfer-detail">
+                          <span class="pay-label">Entidad Bancaria o Billetera</span>
+                          <strong>{{ transferDestination.entity }}</strong>
+                        </div>
+                      } @else {
+                        <div class="pay-mp-notice-box">
+                          <div class="mp-notice-icon">
+                            <mat-icon>bolt</mat-icon>
+                          </div>
+                          <div class="mp-notice-body">
+                            <strong>Acreditación Instantánea con Mercado Pago</strong>
+                            <p>
+                              Aboná con cualquier tarjeta de débito, crédito bancaria o con tu saldo en cuenta de Mercado Pago. Al completar el pago tu lugar queda confirmado en el acto sin necesidad de adjuntar comprobante.
+                            </p>
+                          </div>
+                        </div>
+                      }
                     </div>
 
-                    <p class="pay-hint">
-                      Transferí el monto exacto desde una cuenta a tu nombre. Si el monto no
-                      coincide, el prestador puede rechazar el comprobante.
-                    </p>
+                    @if (paymentMethod() === 'transfer') {
+                      <p class="pay-hint">
+                        Transferí el monto exacto desde una cuenta a tu nombre. Si el monto no coincide, la reserva no podrá confirmarse.
+                      </p>
+                    }
                   </section>
 
                   <!-- Paso 3 -->
@@ -431,85 +485,105 @@
                       </div>
                     </div>
 
-                    <div class="pay-field">
-                      <span class="pay-label" id="receipt-label"
-                        >Comprobante de transferencia
-                        <span class="pay-required" aria-hidden="true">*</span></span
-                      >
-                      @if (receiptFile(); as file) {
-                        <div class="pay-file-card">
-                          @if (receiptPreview(); as preview) {
-                            <div
-                              class="pay-file-thumb-wrap"
-                              (click)="openPreviewModal()"
-                              title="Hacé click para ver el comprobante ampliado"
-                              role="button"
-                              tabindex="0"
-                              (keydown.enter)="openPreviewModal()"
-                            >
-                              <img
-                                [src]="preview"
-                                alt="Vista previa del comprobante"
-                                class="pay-file-thumb"
-                              />
-                              <span class="pay-file-thumb-zoom" aria-hidden="true">
-                                <mat-icon>zoom_in</mat-icon>
-                              </span>
-                            </div>
-                          } @else {
-                            <div class="pay-file-icon pay-file-pdf" aria-hidden="true">
-                              <mat-icon>picture_as_pdf</mat-icon>
-                            </div>
-                          }
-                          <div class="pay-file-meta">
-                            <span class="pay-file-name">{{ file.name }}</span>
-                            <span class="pay-file-size">{{ formatSize(file.size) }}</span>
-                            <span class="pay-file-status">Listo para enviar</span>
-                          </div>
-                          <div class="pay-file-actions">
-                            <button
-                              type="button"
-                              class="pay-copy-btn pay-view-preview-btn"
-                              (click)="openPreviewModal()"
-                            >
-                              <mat-icon aria-hidden="true">visibility</mat-icon>
-                              Ver vista previa
-                            </button>
-                            <button
-                              type="button"
-                              class="pay-copy-btn pay-remove-file-btn"
-                              (click)="removeReceipt()"
-                            >
-                              <mat-icon aria-hidden="true">close</mat-icon>
-                              Quitar
-                            </button>
+                    @if (paymentMethod() === 'mercadopago') {
+                      <div class="pay-mp-step3-card">
+                        <div class="mp-step3-head">
+                          <mat-icon class="mp-shield-icon">security</mat-icon>
+                          <div>
+                            <strong>Pasarela Oficial Mercado Pago</strong>
+                            <p>
+                              Al presionar el botón <strong>Pagar con Mercado Pago</strong> en el resumen serás dirigido al checkout protegido para abonar de forma segura. Tu reserva se confirma al instante.
+                            </p>
                           </div>
                         </div>
-                      } @else {
-                        <label
-                          class="pay-dropzone"
-                          [class.is-dragging]="isDragging()"
-                          (dragover)="onDragOver($event)"
-                          (dragleave)="isDragging.set(false)"
-                          (drop)="onDrop($event)"
+                        <div class="mp-methods-chips">
+                          <span class="mp-chip-item">💳 Tarjetas de Débito</span>
+                          <span class="mp-chip-item">💳 Tarjetas de Crédito</span>
+                          <span class="mp-chip-item">📲 Dinero en Cuenta MP</span>
+                          <span class="mp-chip-item">🔢 Cuotas sin vueltas</span>
+                        </div>
+                      </div>
+                    } @else {
+                      <div class="pay-field">
+                        <span class="pay-label" id="receipt-label"
+                          >Comprobante de transferencia
+                          <span class="pay-required" aria-hidden="true">*</span></span
                         >
-                          <input
-                            type="file"
-                            class="sr-only"
-                            [accept]="acceptedTypes"
-                            (change)="onFileInput($event)"
-                            aria-labelledby="receipt-label"
-                          />
-                          <span class="pay-dropzone-title"
-                            >Arrastrá el archivo o hacé click para elegirlo</span
+                        @if (receiptFile(); as file) {
+                          <div class="pay-file-card">
+                            @if (receiptPreview(); as preview) {
+                              <div
+                                class="pay-file-thumb-wrap"
+                                (click)="openPreviewModal()"
+                                title="Hacé click para ver el comprobante ampliado"
+                                role="button"
+                                tabindex="0"
+                                (keydown.enter)="openPreviewModal()"
+                              >
+                                <img
+                                  [src]="preview"
+                                  alt="Vista previa del comprobante"
+                                  class="pay-file-thumb"
+                                />
+                                <span class="pay-file-thumb-zoom" aria-hidden="true">
+                                  <mat-icon>zoom_in</mat-icon>
+                                </span>
+                              </div>
+                            } @else {
+                              <div class="pay-file-icon pay-file-pdf" aria-hidden="true">
+                                <mat-icon>picture_as_pdf</mat-icon>
+                              </div>
+                            }
+                            <div class="pay-file-meta">
+                              <span class="pay-file-name">{{ file.name }}</span>
+                              <span class="pay-file-size">{{ formatSize(file.size) }}</span>
+                              <span class="pay-file-status">Listo para enviar</span>
+                            </div>
+                            <div class="pay-file-actions">
+                              <button
+                                type="button"
+                                class="pay-copy-btn pay-view-preview-btn"
+                                (click)="openPreviewModal()"
+                              >
+                                <mat-icon aria-hidden="true">visibility</mat-icon>
+                                Ver vista previa
+                              </button>
+                              <button
+                                type="button"
+                                class="pay-copy-btn pay-remove-file-btn"
+                                (click)="removeReceipt()"
+                              >
+                                <mat-icon aria-hidden="true">close</mat-icon>
+                                Quitar
+                              </button>
+                            </div>
+                          </div>
+                        } @else {
+                          <label
+                            class="pay-dropzone"
+                            [class.is-dragging]="isDragging()"
+                            (dragover)="onDragOver($event)"
+                            (dragleave)="isDragging.set(false)"
+                            (drop)="onDrop($event)"
                           >
-                          <span class="pay-dropzone-hint">JPG, PNG, WEBP o PDF · máximo 5 MB</span>
-                        </label>
-                      }
-                      @if (receiptError()) {
-                        <p class="pay-error" role="alert">{{ receiptError() }}</p>
-                      }
-                    </div>
+                            <input
+                              type="file"
+                              class="sr-only"
+                              [accept]="acceptedTypes"
+                              (change)="onFileInput($event)"
+                              aria-labelledby="receipt-label"
+                            />
+                            <span class="pay-dropzone-title"
+                              >Arrastrá el archivo o hacé click para elegirlo</span
+                            >
+                            <span class="pay-dropzone-hint">JPG, PNG, WEBP o PDF · máximo 5 MB</span>
+                          </label>
+                        }
+                        @if (receiptError()) {
+                          <p class="pay-error" role="alert">{{ receiptError() }}</p>
+                        }
+                      </div>
+                    }
                   </section>
                 </div>
 
@@ -550,10 +624,16 @@
                           <dd>- {{ discountArs() | ars }}</dd>
                         </div>
                       }
+                      @if (paymentMethod() === 'mercadopago' && mercadoPagoSurchargeArs() > 0) {
+                        <div class="pay-surcharge-line">
+                          <dt>Gestión y Procesamiento MP (+{{ mercadoPagoSurchargePct() }}%)</dt>
+                          <dd>+ {{ mercadoPagoSurchargeArs() | ars }}</dd>
+                        </div>
+                      }
                     </dl>
 
                     <div class="pay-total">
-                      <span>Total a transferir</span>
+                      <span>{{ paymentMethod() === 'mercadopago' ? 'Total con Mercado Pago' : 'Total a transferir' }}</span>
                       <strong>{{ total() | ars }}</strong>
                     </div>
 
@@ -561,19 +641,33 @@
                       <p class="pay-error" role="alert">{{ submitError() }}</p>
                     }
 
-                    <button
-                      type="submit"
-                      class="cta-primary-btn cta-blue-btn pay-submit"
-                      [disabled]="submitting() || !canSubmit()"
-                      aria-describedby="pay-submit-hint"
-                    >
-                      {{ submitting() ? 'Enviando...' : 'Enviar comprobante' }}
-                    </button>
+                    @if (paymentMethod() === 'mercadopago') {
+                      <button
+                        type="button"
+                        class="cta-primary-btn pay-submit pay-mp-btn"
+                        [disabled]="submitting() || form.invalid"
+                        (click)="submitMercadoPago()"
+                      >
+                        <mat-icon>credit_card</mat-icon>
+                        <span>{{ submitting() ? 'Iniciando Mercado Pago...' : 'Pagar con Mercado Pago' }}</span>
+                      </button>
+                    } @else {
+                      <button
+                        type="submit"
+                        class="cta-primary-btn cta-blue-btn pay-submit"
+                        [disabled]="submitting() || !canSubmit()"
+                        aria-describedby="pay-submit-hint"
+                      >
+                        {{ submitting() ? 'Enviando...' : 'Enviar comprobante' }}
+                      </button>
+                    }
                     <p id="pay-submit-hint" class="pay-hint">
                       {{
-                        canSubmit()
-                          ? 'Podés consultar el estado de tu reserva en cualquier momento desde tu perfil.'
-                          : 'Completá la fecha, tus datos y cargá el comprobante para habilitar el envío.'
+                        paymentMethod() === 'mercadopago'
+                          ? (form.valid ? 'Hacé clic para abonar de forma protegida en Mercado Pago.' : 'Completá la fecha y tus datos para habilitar el pago.')
+                          : (canSubmit()
+                            ? 'Podés consultar el estado de tu reserva en cualquier momento desde tu perfil.'
+                            : 'Completá la fecha, tus datos y cargá el comprobante para habilitar el envío.')
                       }}
                     </p>
                   </div>

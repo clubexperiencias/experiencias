@@ -422,6 +422,22 @@ export class ProviderStoreService {
           existing?.coverImage ||
           '/assets/images/kayak-club-de-experiencias.jpg',
         joinedAt: existing?.joinedAt ?? new Date().toISOString(),
+        mpConnected: Boolean(
+          (access as any).mp_connected ||
+          (access.notes && (() => {
+            try { return JSON.parse(access.notes)?.mp_connected; } catch { return false; }
+          })())
+        ),
+        mpCollectorId:
+          (access as any).mp_collector_id ||
+          (access.notes && (() => {
+            try { return JSON.parse(access.notes)?.mp_collector_id; } catch { return undefined; }
+          })()) || undefined,
+        mpNickname:
+          (access as any).mp_nickname ||
+          (access.notes && (() => {
+            try { return JSON.parse(access.notes)?.mp_nickname; } catch { return undefined; }
+          })()) || undefined,
       };
 
       if (!existing) this._providers.update((providers) => [...providers, provider]);
@@ -700,6 +716,33 @@ export class ProviderStoreService {
         if (updates.cbuAlias !== undefined) payload['cbu_alias'] = updates.cbuAlias.trim();
         if (updates.bankName !== undefined) payload['bank_name'] = updates.bankName.trim();
 
+        if (
+          updates.mpConnected !== undefined ||
+          updates.mpCollectorId !== undefined ||
+          updates.mpNickname !== undefined ||
+          updates.mpEmail !== undefined
+        ) {
+          let notesObj: Record<string, any> = {};
+          if (current.notes) {
+            try {
+              const parsed = JSON.parse(current.notes);
+              if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                notesObj = parsed;
+              } else {
+                notesObj = { text: current.notes };
+              }
+            } catch {
+              notesObj = { text: current.notes };
+            }
+          }
+          if (updates.mpConnected !== undefined) notesObj['mp_connected'] = updates.mpConnected;
+          if (updates.mpCollectorId !== undefined) notesObj['mp_collector_id'] = updates.mpCollectorId;
+          if (updates.mpNickname !== undefined) notesObj['mp_nickname'] = updates.mpNickname;
+          if (updates.mpEmail !== undefined) notesObj['mp_email'] = updates.mpEmail;
+          payload['notes'] = JSON.stringify(notesObj);
+          updated.notes = payload['notes'];
+        }
+
         let { error } = await (this.supabase.from('prestadores') as any)
           .update(payload)
           .eq('email', email);
@@ -718,6 +761,32 @@ export class ProviderStoreService {
             success: false,
             message: 'No se pudieron guardar los cambios en la base de datos.',
           };
+        }
+
+        // Auditar cambios de Mercado Pago en historial_mp
+        if (
+          updates.mpConnected !== undefined ||
+          updates.mpCollectorId !== undefined ||
+          updates.mpNickname !== undefined ||
+          updates.mpEmail !== undefined
+        ) {
+          const action = updates.mpConnected === false ? 'disconnect' : (updates.mpConnected === true ? 'connect' : 'update');
+          try {
+            await (this.supabase.from('historial_mp') as any).insert({
+              provider_email: email,
+              action,
+              collector_id: updates.mpCollectorId ?? current.mpCollectorId ?? null,
+              mp_nickname: updates.mpNickname ?? current.mpNickname ?? null,
+              mp_email: updates.mpEmail ?? current.mpEmail ?? null,
+              details: {
+                previous_connected: current.mpConnected ?? false,
+                new_connected: updates.mpConnected ?? current.mpConnected ?? false,
+              },
+              changed_by: email,
+            });
+          } catch (histErr) {
+            console.warn('[ProviderStore] No se pudo registrar en historial_mp:', histErr);
+          }
         }
 
         const expUpdate: Record<string, any> = {};
@@ -949,6 +1018,33 @@ export class ProviderStoreService {
         if (updates.cuitDni !== undefined) payload['cuit_dni'] = updates.cuitDni.trim();
         if (updates.cbuAlias !== undefined) payload['cbu_alias'] = updates.cbuAlias.trim();
         if (updates.bankName !== undefined) payload['bank_name'] = updates.bankName.trim();
+
+        if (
+          updates.mpConnected !== undefined ||
+          updates.mpCollectorId !== undefined ||
+          updates.mpNickname !== undefined ||
+          updates.mpEmail !== undefined
+        ) {
+          let notesObj: Record<string, any> = {};
+          if (current.notes) {
+            try {
+              const parsed = JSON.parse(current.notes);
+              if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                notesObj = parsed;
+              } else {
+                notesObj = { text: current.notes };
+              }
+            } catch {
+              notesObj = { text: current.notes };
+            }
+          }
+          if (updates.mpConnected !== undefined) notesObj['mp_connected'] = updates.mpConnected;
+          if (updates.mpCollectorId !== undefined) notesObj['mp_collector_id'] = updates.mpCollectorId;
+          if (updates.mpNickname !== undefined) notesObj['mp_nickname'] = updates.mpNickname;
+          if (updates.mpEmail !== undefined) notesObj['mp_email'] = updates.mpEmail;
+          payload['notes'] = JSON.stringify(notesObj);
+          updated.notes = payload['notes'];
+        }
         if (updates.accountHolder !== undefined) payload['account_holder'] = updates.accountHolder.trim();
         if (updates.status !== undefined) {
           payload['status'] = updates.status;
@@ -1065,6 +1161,33 @@ export class ProviderStoreService {
             success: false,
             message: 'No se encontró el registro del prestador en la base de datos remota.',
           };
+        }
+
+        // Auditar cambios de Mercado Pago en historial_mp
+        if (
+          updates.mpConnected !== undefined ||
+          updates.mpCollectorId !== undefined ||
+          updates.mpNickname !== undefined ||
+          updates.mpEmail !== undefined
+        ) {
+          const action = updates.mpConnected === false ? 'disconnect' : (updates.mpConnected === true ? 'connect' : 'update');
+          try {
+            await (this.supabase.from('historial_mp') as any).insert({
+              provider_email: email,
+              action,
+              collector_id: updates.mpCollectorId ?? current.mpCollectorId ?? null,
+              mp_nickname: updates.mpNickname ?? current.mpNickname ?? null,
+              mp_email: updates.mpEmail ?? current.mpEmail ?? null,
+              details: {
+                previous_connected: current.mpConnected ?? false,
+                new_connected: updates.mpConnected ?? current.mpConnected ?? false,
+                context: 'admin_update',
+              },
+              changed_by: 'admin',
+            });
+          } catch (histErr) {
+            console.warn('[ProviderStore] No se pudo registrar en historial_mp:', histErr);
+          }
         }
 
         // Si cambió la agencia o el slug, sincronizamos las experiencias en la base remota

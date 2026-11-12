@@ -746,6 +746,22 @@ CREATE TABLE IF NOT EXISTS public.historial_bancario (
 
 CREATE INDEX IF NOT EXISTS idx_historial_bancario_email ON public.historial_bancario(provider_email);
 
+-- 2.7.1 historial_mp (Auditoría de Vinculaciones y Modificaciones de Mercado Pago)
+CREATE TABLE IF NOT EXISTS public.historial_mp (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  provider_email  TEXT NOT NULL,
+  action          TEXT NOT NULL CHECK (action IN ('connect', 'disconnect', 'update')),
+  collector_id    TEXT,
+  mp_nickname     TEXT,
+  mp_email        TEXT,
+  details         JSONB DEFAULT '{}'::jsonb,
+  changed_by      TEXT NOT NULL,
+  changed_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_historial_mp_email ON public.historial_mp(provider_email);
+CREATE INDEX IF NOT EXISTS idx_historial_mp_changed_at ON public.historial_mp(changed_at DESC);
+
 -- 2.8 experiencias (Catálogo Oficial de Rutas y Salidas)
 CREATE TABLE IF NOT EXISTS public.experiencias (
   id                   TEXT PRIMARY KEY,
@@ -2547,6 +2563,7 @@ ALTER TABLE public.administradores ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.postulaciones_fundadores ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.prestadores ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.historial_bancario ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.historial_mp ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.experiencias ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pagos_transferencias ENABLE ROW LEVEL SECURITY;
 
@@ -2753,6 +2770,34 @@ CREATE POLICY "Admins and providers can view banking history"
   FOR SELECT
   TO authenticated
   USING (
+    LOWER(provider_email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+    OR EXISTS (
+      SELECT 1 FROM public.administradores
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+        AND active = true
+    )
+  );
+
+-- 6.8.1 Políticas en historial_mp (Privada: Solo Administradores)
+DROP POLICY IF EXISTS "Solo administradores pueden ver historial mp" ON public.historial_mp;
+CREATE POLICY "Solo administradores pueden ver historial mp"
+  ON public.historial_mp
+  FOR SELECT
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.administradores
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+        AND active = true
+    )
+  );
+
+DROP POLICY IF EXISTS "Usuarios autenticados registran eventos en historial mp" ON public.historial_mp;
+CREATE POLICY "Usuarios autenticados registran eventos en historial mp"
+  ON public.historial_mp
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (
     LOWER(provider_email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
     OR EXISTS (
       SELECT 1 FROM public.administradores

@@ -254,6 +254,44 @@ import { ClubProfile } from '../../../core/models/club-profile.model';
               </div>
             </div>
           </div>
+
+          <!-- 5. Configuración de Mercado Pago & Recargos -->
+          <div class="settings-section-card">
+            <div class="section-title-row">
+              <h3 class="settings-section-title">5. Pasarela de Pago & Comisiones de Mercado Pago</h3>
+              <p class="section-subtext">
+                Definí el recargo porcentual aplicado en el checkout a los exploradores que elijan pagar con Mercado Pago (Checkout Pro). Este porcentaje absorbe la comisión de procesamiento de la pasarela y retiene la comisión de servicio del Club.
+              </p>
+            </div>
+
+            <div class="usd-rate-grid">
+              <div class="form-field rate-field">
+                <label for="cfg-mp-surcharge">Recargo por pago con Mercado Pago (%): <span class="req-star">*</span></label>
+                <div class="rate-input-wrap">
+                  <span class="currency-prefix">%</span>
+                  <input
+                    id="cfg-mp-surcharge"
+                    type="number"
+                    class="form-input font-bold"
+                    [(ngModel)]="mercadoPagoSurcharge"
+                    placeholder="12"
+                    min="0"
+                    max="100"
+                    required
+                  />
+                </div>
+                <span class="field-hint">Por defecto 12%. Si el prestador no vinculó Mercado Pago, el checkout solo muestra transferencia tradicional al 0% de recargo.</span>
+              </div>
+
+              <div class="usd-preview-box">
+                <div class="preview-sample">
+                  <span class="sample-ars">$100.000 ARS (CBU)</span>
+                  <span class="sample-arrow">&rarr;</span>
+                  <span class="sample-usd font-bold" style="color: #60a5fa;">$ {{ sampleMpPrice() | number:'1.0-0' }} ARS (MP +{{ mercadoPagoSurcharge() }}%)</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Footer / Acciones -->
@@ -693,6 +731,7 @@ export class AdminSettingsComponent implements OnInit {
   readonly clubBio = signal('');
   readonly clubWebsite = signal('');
   readonly clubSocialMedia = signal('');
+  readonly mercadoPagoSurcharge = signal<number>(12);
 
   readonly isLoading = signal(true);
   readonly isSaving = signal(false);
@@ -702,6 +741,11 @@ export class AdminSettingsComponent implements OnInit {
   sampleUsd(): number {
     const rate = this.usdRate() || 1400;
     return Math.round(100000 / rate);
+  }
+
+  sampleMpPrice(): number {
+    const pct = Number(this.mercadoPagoSurcharge()) || 0;
+    return Math.round(100000 * (1 + pct / 100));
   }
 
   async ngOnInit(): Promise<void> {
@@ -730,6 +774,11 @@ export class AdminSettingsComponent implements OnInit {
     this.clubBio.set(profile.bio || '');
     this.clubWebsite.set(profile.website || 'https://experiencias.club');
     this.clubSocialMedia.set(profile.socialMedia || 'instagram.com/experiencias.club');
+    this.mercadoPagoSurcharge.set(
+      profile.mercadoPagoSurchargePercentage !== undefined
+        ? profile.mercadoPagoSurchargePercentage
+        : 12,
+    );
   }
 
   cancelSettings(): void {
@@ -782,6 +831,10 @@ export class AdminSettingsComponent implements OnInit {
         website: this.clubWebsite().trim(),
         socialMedia: this.clubSocialMedia().trim(),
         usdExchangeRate: rate,
+        mercadoPagoSurchargePercentage: Math.max(
+          0,
+          Math.min(100, Number(this.mercadoPagoSurcharge()) || 12),
+        ),
       };
 
       const res = await this.adminStore.updateClubProfile(profilePayload);

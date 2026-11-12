@@ -65,5 +65,7 @@ export interface Experience {
   notes?: string;
   reviewedAt?: string;
   isClubExperience?: boolean;
+  mpConnected?: boolean;
+  mpCollectorId?: string;
   pendingRemoteSync?: boolean;
 }

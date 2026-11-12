@@ -42,6 +42,10 @@ export interface ProviderUser {
   coverImage?: string;
   notes?: string;
   joinedAt: string;
+  mpConnected?: boolean;
+  mpCollectorId?: string;
+  mpNickname?: string;
+  mpEmail?: string;
 }
 
 export interface ExperienceDateSlot {
@@ -78,6 +82,8 @@ export interface ProviderExperience {
   providerCbuAlias?: string;
   providerCuitDni?: string;
   providerBankName?: string;
+  mpConnected?: boolean;
+  mpCollectorId?: string;
   coverImage?: string;
   albumPhotos?: ExperienceAlbumPhoto[];
   createdAt: string;
@@ -110,11 +116,22 @@ export interface TransferSubmission {
   dni: string;
   phone: string;
   receipt: TransferReceipt;
+  paymentMethod?: 'transfer' | 'mercadopago';
+  surchargeArs?: number;
+  mpPaymentId?: string;
   status: TransferStatus;
   rejectionReason?: string;
   submittedAt: string;
   reviewedAt?: string;
 }
+
+export const MP_TRANSFER_RECEIPT: TransferReceipt = {
+  fileName: 'comprobante-mercadopago.pdf',
+  mimeType: 'application/pdf',
+  sizeBytes: 0,
+  url: 'https://www.mercadopago.com.ar',
+  provider: 'local',
+};
 
 export interface NewTransferSubmission {
   experienceId: string;
@@ -126,6 +143,8 @@ export interface NewTransferSubmission {
   phone: string;
   discountCode?: string;
   receiptFile: File;
+  paymentMethod?: 'transfer' | 'mercadopago';
+  surchargeArs?: number;
 }
 
 export interface DiscountCode {
