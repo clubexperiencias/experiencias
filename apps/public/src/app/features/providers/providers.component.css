@@ -248,7 +248,7 @@
   line-height: 1.5;
 }
 
-/* Botón de envío en #80b3ff */
+/* Botón de envío */
 .form-submit-row {
   display: flex;
   justify-content: flex-end;
@@ -260,7 +260,7 @@
   align-items: center;
   justify-content: center;
   gap: 0.6rem;
-  background: #80b3ff;
+  background: #2563eb;
   color: #ffffff;
   font-family: var(--font-sans);
   font-size: 0.95rem;
@@ -276,7 +276,7 @@
 }
 
 .provider-page-submit-btn:hover:not(:disabled) {
-  background: #99c2ff;
+  background: #1d4ed8;
   color: #ffffff;
   transform: translateY(-1px);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);

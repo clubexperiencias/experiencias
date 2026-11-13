@@ -38,21 +38,12 @@ CREATE POLICY "Solo administradores pueden ver historial mp"
     )
   );
 
--- 2. Política INSERT: Permitida a usuarios autenticados para su propio perfil o administradores
+-- Eliminar cualquier política de inserción directa desde clientes autenticados.
+-- Las auditorías solo se crean de forma confiable a través del backend / service_role.
 DROP POLICY IF EXISTS "Usuarios autenticados registran eventos en historial mp" ON public.historial_mp;
-CREATE POLICY "Usuarios autenticados registran eventos en historial mp"
-  ON public.historial_mp
-  FOR INSERT
-  TO authenticated
-  WITH CHECK (
-    LOWER(provider_email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
-    OR EXISTS (
-      SELECT 1 FROM public.administradores
-      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
-        AND active = true
-    )
-  );
 
--- 3. Grants de seguridad (service_role y authenticated)
-GRANT SELECT, INSERT ON public.historial_mp TO authenticated;
+-- 2. Grants de seguridad (service_role y lectura exclusiva para authenticated)
+REVOKE ALL ON public.historial_mp FROM anon;
+REVOKE INSERT, UPDATE, DELETE ON public.historial_mp FROM authenticated;
+GRANT SELECT ON public.historial_mp TO authenticated;
 GRANT ALL ON public.historial_mp TO service_role;

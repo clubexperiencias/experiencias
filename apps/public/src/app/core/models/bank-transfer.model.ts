@@ -98,7 +98,7 @@ export interface TransferReceipt {
   sizeBytes: number;
   url: string;
   storageKey?: string;
-  provider?: 'supabase' | 'local';
+  provider?: 'supabase' | 'local' | 'mercadopago';
 }
 
 export interface TransferSubmission {
@@ -119,6 +119,7 @@ export interface TransferSubmission {
   paymentMethod?: 'transfer' | 'mercadopago';
   surchargeArs?: number;
   mpPaymentId?: string;
+  displayReference?: string;
   status: TransferStatus;
   rejectionReason?: string;
   submittedAt: string;
@@ -145,6 +146,23 @@ export interface NewTransferSubmission {
   receiptFile: File;
   paymentMethod?: 'transfer' | 'mercadopago';
   surchargeArs?: number;
+}
+
+export interface MercadoPagoPaymentInput {
+  experienceId: string;
+  date: string;
+  participants: number;
+  amountArs: number;
+  baseAmountArs?: number;
+  surchargeArs?: number;
+  discountCode?: string;
+  discountArs?: number;
+  fullName: string;
+  email: string;
+  dni: string;
+  phone: string;
+  collectionId: string;
+  reference?: string;
 }
 
 export interface DiscountCode {

@@ -60,15 +60,23 @@ export class ActivityHistoryService {
     this._activities.set(
       (payments ?? []).map((payment) => {
         const experience = experienceById.get(payment.experience_id);
-        const rawDate = payment.selected_date || payment.date;
-        const parsedDate = rawDate ? new Date(`${rawDate}T12:00:00`) : new Date();
-        const dateLabel = isNaN(parsedDate.getTime())
-          ? (rawDate || '')
-          : new Intl.DateTimeFormat('es-AR', {
+        const rawDate = (payment.selected_date || payment.date)?.trim();
+        let dateLabel = rawDate || 'A coordinar';
+        if (rawDate && rawDate.toLowerCase() !== 'a coordinar') {
+          const parsedDate = new Date(`${rawDate}T12:00:00`);
+          if (!isNaN(parsedDate.getTime())) {
+            dateLabel = new Intl.DateTimeFormat('es-AR', {
               day: 'numeric',
               month: 'long',
               year: 'numeric',
             }).format(parsedDate);
+          }
+        }
+
+        const isMp =
+          payment.receipt_storage_provider === 'mercadopago' ||
+          (typeof payment.reference === 'string' && payment.reference.startsWith('MP-')) ||
+          payment.receipt_file_name === 'comprobante-mercadopago.pdf';
 
         return {
           id: `act_${payment.id}`,
@@ -94,16 +102,20 @@ export class ActivityHistoryService {
           },
           receipt: {
             receiptNumber: payment.reference,
-            transactionId: payment.id,
-            gateway: 'custom',
-            gatewayDisplayName: 'Transferencia bancaria',
+            transactionId:
+              isMp && payment.receipt_storage_key ? payment.receipt_storage_key : payment.id,
+            gateway: isMp ? 'mercadopago' : 'custom',
+            gatewayDisplayName: isMp ? 'Mercado Pago' : 'Transferencia bancaria',
             amountArs: payment.amount_ars,
             amountUsd: 0,
-            paidAt: new Date(payment.submitted_at).toLocaleString('es-AR'),
-            paymentMethodSummary: 'Transferencia a CBU · comprobante en revisión',
+            paidAt: new Date(payment.reviewed_at || payment.submitted_at).toLocaleString('es-AR'),
+            paymentMethodSummary: isMp
+              ? 'Mercado Pago · Pago acreditado online'
+              : 'Transferencia a CBU · comprobante en revisión',
             payerEmail: payment.email,
             payerName: payment.full_name,
-            authCode: payment.reference,
+            authCode:
+              isMp && payment.receipt_storage_key ? payment.receipt_storage_key : payment.reference,
             status: payment.status === 'aprobado' ? 'aprobado' : 'pendiente_verificacion',
             receiptFileUrl: payment.receipt_url,
             receiptFileName: payment.receipt_file_name,

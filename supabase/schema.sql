@@ -2793,18 +2793,6 @@ CREATE POLICY "Solo administradores pueden ver historial mp"
   );
 
 DROP POLICY IF EXISTS "Usuarios autenticados registran eventos en historial mp" ON public.historial_mp;
-CREATE POLICY "Usuarios autenticados registran eventos en historial mp"
-  ON public.historial_mp
-  FOR INSERT
-  TO authenticated
-  WITH CHECK (
-    LOWER(provider_email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
-    OR EXISTS (
-      SELECT 1 FROM public.administradores
-      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
-        AND active = true
-    )
-  );
 
 -- 6.9 Políticas en experiencias
 DROP POLICY IF EXISTS "Lectura publica de experiencias publicadas" ON public.experiencias;

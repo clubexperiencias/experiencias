@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -137,6 +137,13 @@ import {
               <div class="alert-success mp-toast-alert" role="status">
                 <mat-icon>check_circle</mat-icon>
                 <span>{{ mpToast() }}</span>
+              </div>
+            }
+
+            @if (mpError()) {
+              <div class="alert-error mp-toast-alert" role="alert">
+                <mat-icon class="alert-icon">error_outline</mat-icon>
+                <span>{{ mpError() }}</span>
               </div>
             }
 
@@ -1117,7 +1124,7 @@ import {
     `,
   ],
 })
-export class ProviderProfileComponent {
+export class ProviderProfileComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly router = inject(Router);
   readonly store = inject(ProviderStoreService);
@@ -1131,14 +1138,54 @@ export class ProviderProfileComponent {
   readonly uploadAvatarError = signal<string | null>(null);
   readonly uploadCoverError = signal<string | null>(null);
   readonly mpToast = signal<string | null>(null);
+  readonly mpError = signal<string | null>(null);
   private uploadTokens = {
     avatar: 0,
     coverImage: 0,
   };
 
-  readonly isMpConnected = computed(() => Boolean(this.store.currentProvider()?.mpConnected));
-  readonly mpCollectorId = computed(() => this.store.currentProvider()?.mpCollectorId || '');
+  readonly isMpConnected = computed(() => {
+    const p = this.store.currentProvider();
+    if (!p || !p.mpConnected || !p.mpCollectorId) return false;
+    // Preservar estado conectado solo para cuentas con autorización de vendedor completada
+    if (p.mpCollectorId.startsWith('mp-col-')) return false;
+    return true;
+  });
+  readonly mpCollectorId = computed(() => {
+    const p = this.store.currentProvider();
+    if (!p?.mpCollectorId || p.mpCollectorId.startsWith('mp-col-')) return '';
+    return p.mpCollectorId;
+  });
   readonly mpNickname = computed(() => this.store.currentProvider()?.mpNickname || '');
+
+  ngOnInit(): void {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('mp_connected') === 'true') {
+        this.mpToast.set(
+          '¡Cuenta de Mercado Pago vinculada exitosamente! Tus experiencias ya aceptan cobros por MP.',
+        );
+        setTimeout(() => this.mpToast.set(null), 4500);
+        void this.store.restoreSupabaseSession(true);
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+      } else if (params.get('mp_error')) {
+        const errCode = params.get('mp_error');
+        const errMsg =
+          errCode === 'not_configured'
+            ? 'Mercado Pago no está configurado en este entorno.'
+            : errCode === 'auth_failed'
+            ? 'Falló la autorización con Mercado Pago. Intentá nuevamente.'
+            : errCode === 'save_failed'
+            ? 'No se pudo guardar la vinculación en el perfil.'
+            : 'Ocurrió un error al vincular Mercado Pago.';
+        this.mpError.set(errMsg);
+        setTimeout(() => this.mpError.set(null), 6000);
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+      }
+    }
+  }
 
   readonly currentSlug = computed(() => {
     const p = this.store.currentProvider();
@@ -1230,27 +1277,58 @@ export class ProviderProfileComponent {
     }
   }
 
-  connectMercadoPago(): void {
+  async connectMercadoPago(): Promise<void> {
     const p = this.store.currentProvider();
     if (!p) return;
-    const collectorId = p.mpCollectorId || `mp-col-${Date.now().toString(36)}`;
-    void this.store.updateProfile({
-      mpConnected: true,
-      mpCollectorId: collectorId,
-      mpNickname: p.agency || p.name,
-    });
-    this.mpToast.set('¡Cuenta de Mercado Pago vinculada exitosamente! Tus experiencias ya aceptan cobros por MP.');
-    setTimeout(() => this.mpToast.set(null), 4500);
+    this.mpToast.set(null);
+    this.mpError.set(null);
+
+    // Iniciar flujo OAuth oficial de vendedor de Mercado Pago para obtener el access token real
+    try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      const token = await this.store.getAuthToken();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const res = await fetch('/api/mercadopago', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          action: 'get-oauth-url',
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data?.url) {
+        if (typeof window !== 'undefined') {
+          window.location.href = data.url;
+        }
+      } else {
+        this.mpError.set(
+          data?.error || data?.message || 'No se pudo iniciar la autorización de Mercado Pago.',
+        );
+        setTimeout(() => this.mpError.set(null), 6000);
+      }
+    } catch (err: unknown) {
+      this.mpError.set(
+        err instanceof Error ? err.message : 'Error al conectar con el servicio de Mercado Pago.',
+      );
+      setTimeout(() => this.mpError.set(null), 6000);
+    }
   }
 
-  disconnectMercadoPago(): void {
-    void this.store.updateProfile({
-      mpConnected: false,
-      mpCollectorId: undefined,
-      mpNickname: undefined,
-    });
-    this.mpToast.set('Cuenta de Mercado Pago desvinculada. El checkout volverá a operar únicamente con transferencia bancaria.');
-    setTimeout(() => this.mpToast.set(null), 4500);
+  async disconnectMercadoPago(): Promise<void> {
+    this.mpToast.set(null);
+    this.mpError.set(null);
+    const result = await this.store.disconnectMercadoPago();
+    if (result.success) {
+      this.mpToast.set('Cuenta de Mercado Pago desvinculada. El checkout volverá a operar únicamente con transferencia bancaria.');
+      setTimeout(() => this.mpToast.set(null), 4500);
+    } else {
+      this.mpError.set(result.message || 'No se pudo desvincular la cuenta de Mercado Pago.');
+      setTimeout(() => this.mpError.set(null), 6000);
+    }
   }
 
   getPublicProfileUrl(slug?: string): string {

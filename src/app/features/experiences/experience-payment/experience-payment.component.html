@@ -32,7 +32,11 @@
             <span class="section-kicker">RESERVA CONFIRMADA</span>
             <h1 class="card-heading">¡Tu lugar está reservado!</h1>
             <p class="card-subheading">
-              Recibimos tu comprobante de pago. Tus cupos para la salida del
+              {{
+                sub.paymentMethod === 'mercadopago'
+                  ? 'Tu pago fue acreditado correctamente vía Mercado Pago.'
+                  : 'Recibimos tu comprobante de pago.'
+              }} Tus cupos para la salida del
               <strong>{{ sub.date | fecha: 'larga' }}</strong> ya se encuentran asegurados. Enviamos los detalles de la expedición a
               <strong>{{ sub.email }}</strong>.
             </p>
@@ -55,7 +59,7 @@
                 <dd>{{ sub.participants }}</dd>
               </div>
               <div>
-                <dt>Monto transferido</dt>
+                <dt>{{ sub.paymentMethod === 'mercadopago' ? 'Monto abonado' : 'Monto transferido' }}</dt>
                 <dd>{{ sub.amountArs | ars }}</dd>
               </div>
             </dl>
@@ -150,11 +154,17 @@
                 <div class="pay-steps">
                   @if (!requiresGoogle()) {
                     <header class="kayak-section-card pay-intro">
-                      <span class="section-kicker">PAGO POR TRANSFERENCIA</span>
+                      <span class="section-kicker">
+                        {{ paymentMethod() === 'mercadopago' ? 'PAGO ONLINE' : 'PAGO POR TRANSFERENCIA' }}
+                      </span>
                       <h1 class="card-heading text-balance">{{ exp.title }}</h1>
                       <p class="card-subheading">
-                        Elegí la fecha, transferí el total al CBU y subí el comprobante. El
-                        prestador lo valida y te confirmamos por email.
+                        @if (paymentMethod() === 'mercadopago') {
+                          Elegí la fecha, completá tus datos y aboná con Mercado Pago. Tu lugar queda reservado en el acto sin necesidad de adjuntar comprobante.
+                        } @else {
+                          Elegí la fecha, transferí el total al CBU y subí el comprobante. El
+                          prestador lo valida y te confirmamos por email.
+                        }
                       </p>
                     </header>
                   }
@@ -252,11 +262,12 @@
                     </div>
 
                     @if (isMercadoPagoAvailable()) {
-                      <div class="pay-methods-tabs" role="tablist" aria-label="Elegí el medio de pago">
+                      <div class="pay-methods-tabs" role="group" aria-label="Elegí el medio de pago">
                         <button
                           type="button"
                           class="pay-method-tab"
                           [class.is-active]="paymentMethod() === 'transfer'"
+                          [attr.aria-pressed]="paymentMethod() === 'transfer'"
                           (click)="paymentMethod.set('transfer')"
                         >
                           <mat-icon class="tab-icon">account_balance</mat-icon>
@@ -270,6 +281,7 @@
                           type="button"
                           class="pay-method-tab"
                           [class.is-active]="paymentMethod() === 'mercadopago'"
+                          [attr.aria-pressed]="paymentMethod() === 'mercadopago'"
                           (click)="paymentMethod.set('mercadopago')"
                         >
                           <mat-icon class="tab-icon">credit_card</mat-icon>
@@ -401,7 +413,9 @@
                   <section class="kayak-section-card" aria-labelledby="step-3-title">
                     <div class="pay-step-head">
                       <span class="pay-step-index" aria-hidden="true">3</span>
-                      <h2 id="step-3-title" class="pay-step-title">Tus datos y el comprobante</h2>
+                      <h2 id="step-3-title" class="pay-step-title">
+                        {{ paymentMethod() === 'mercadopago' ? 'Tus datos de contacto' : 'Tus datos y el comprobante' }}
+                      </h2>
                     </div>
 
                     <div class="pay-fields-grid">

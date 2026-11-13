@@ -831,10 +831,11 @@ export class AdminSettingsComponent implements OnInit {
         website: this.clubWebsite().trim(),
         socialMedia: this.clubSocialMedia().trim(),
         usdExchangeRate: rate,
-        mercadoPagoSurchargePercentage: Math.max(
-          0,
-          Math.min(100, Number(this.mercadoPagoSurcharge()) || 12),
-        ),
+        mercadoPagoSurchargePercentage: (() => {
+          const raw = this.mercadoPagoSurcharge() as unknown;
+          const num = raw !== null && raw !== undefined && raw !== '' ? Number(raw) : NaN;
+          return Number.isFinite(num) ? Math.max(0, Math.min(100, num)) : 12;
+        })(),
       };
 
       const res = await this.adminStore.updateClubProfile(profilePayload);
