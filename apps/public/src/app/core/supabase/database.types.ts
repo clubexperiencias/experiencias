@@ -175,6 +175,42 @@ export interface Database {
         };
         Relationships: [];
       };
+      historial_mp: {
+        Row: {
+          id: string;
+          provider_email: string;
+          action: 'connect' | 'disconnect' | 'update';
+          collector_id: string | null;
+          mp_nickname: string | null;
+          mp_email: string | null;
+          details: Record<string, any> | null;
+          changed_by: string;
+          changed_at: string;
+        };
+        Insert: {
+          id?: string;
+          provider_email: string;
+          action: 'connect' | 'disconnect' | 'update';
+          collector_id?: string | null;
+          mp_nickname?: string | null;
+          mp_email?: string | null;
+          details?: Record<string, any> | null;
+          changed_by: string;
+          changed_at?: string;
+        };
+        Update: {
+          id?: string;
+          provider_email?: string;
+          action?: 'connect' | 'disconnect' | 'update';
+          collector_id?: string | null;
+          mp_nickname?: string | null;
+          mp_email?: string | null;
+          details?: Record<string, any> | null;
+          changed_by?: string;
+          changed_at?: string;
+        };
+        Relationships: [];
+      };
 
       /**
        * Tabla 2: Socios Emergentes, Plenos y Fundadores

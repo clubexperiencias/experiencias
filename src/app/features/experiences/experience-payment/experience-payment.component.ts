@@ -21,6 +21,8 @@ import {
   validateReceiptFile,
 } from '../../../core/services/provider-store.service';
 import { ExperienceService } from '../../../core/services/experience.service';
+import { AdminStoreService } from '../../../core/services/admin-store.service';
+import { isClubExperience } from '../../../core/models/club-profile.model';
 import { NotificationService } from '../../../core/services/notification.service';
 import { isSupabaseConfigured } from '../../../core/supabase/supabase.client';
 import {
@@ -31,6 +33,7 @@ import {
   discountAmount,
   findDiscountCode,
   MAX_PARTICIPANTS_PER_BOOKING,
+  MP_TRANSFER_RECEIPT,
   RECEIPT_ACCEPTED_TYPES,
   TransferSubmission,
 } from '../../../core/models/bank-transfer.model';
@@ -59,6 +62,29 @@ export class ExperiencePaymentComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly newsletter = inject(NewsletterService);
   private readonly notificationService = inject(NotificationService);
+  private readonly adminStore = inject(AdminStoreService);
+
+  readonly paymentMethod = signal<'transfer' | 'mercadopago'>('transfer');
+
+  readonly isMercadoPagoAvailable = computed(() => {
+    const exp = this.experience();
+    if (!exp) return false;
+    if (isClubExperience(exp)) {
+      return true;
+    }
+    const prov =
+      (exp.providerId ? this.store.getProviderById(exp.providerId) : undefined) ||
+      (exp.providerEmail ? this.store.getProviderByEmail(exp.providerEmail) : undefined) ||
+      (exp.providerSlug ? this.store.getProviderBySlug(exp.providerSlug) : undefined);
+    if (prov) {
+      return Boolean(prov.mpConnected);
+    }
+    return Boolean(exp.mpConnected);
+  });
+
+  readonly mercadoPagoSurchargePct = computed(() => {
+    return this.adminStore.clubProfile().mercadoPagoSurchargePercentage ?? 12;
+  });
 
   readonly acceptedTypes = RECEIPT_ACCEPTED_TYPES.join(',');
   readonly mobileMenuOpen = signal(false);
@@ -225,7 +251,15 @@ export class ExperiencePaymentComponent implements OnInit {
   readonly appliedDiscount = signal<DiscountCode | undefined>(undefined);
   readonly discountError = signal<string | null>(null);
   readonly discountArs = computed(() => discountAmount(this.subtotal(), this.appliedDiscount()));
-  readonly total = computed(() => this.subtotal() - this.discountArs());
+  readonly baseTotal = computed(() => this.subtotal() - this.discountArs());
+
+  readonly mercadoPagoSurchargeArs = computed(() => {
+    if (this.paymentMethod() !== 'mercadopago') return 0;
+    const pct = this.mercadoPagoSurchargePct();
+    return Math.round((this.baseTotal() * pct) / 100);
+  });
+
+  readonly total = computed(() => this.baseTotal() + this.mercadoPagoSurchargeArs());
 
   applyDiscount(): void {
     const raw = this.discountInput().trim();
@@ -260,7 +294,219 @@ export class ExperiencePaymentComponent implements OnInit {
     initialValue: this.form.status,
   });
 
-  readonly canSubmit = computed(() => this.formStatus() === 'VALID' && this.receiptFile() !== null);
+  readonly canSubmit = computed(() => {
+    if (this.paymentMethod() === 'mercadopago') {
+      return this.formStatus() === 'VALID';
+    }
+    return this.formStatus() === 'VALID' && this.receiptFile() !== null;
+  });
+
+  async submitMercadoPago(): Promise<void> {
+    if (this.form.invalid || this.submitting()) return;
+    this.submitting.set(true);
+    this.submitError.set(null);
+
+    const value = this.form.getRawValue();
+    const exp = this.experience();
+    if (!exp) {
+      this.submitting.set(false);
+      return;
+    }
+
+    // Revalidar disponibilidad y cupos de la experiencia reutilizando las validaciones del flujo de transferencias
+    if (exp.status !== 'publicada') {
+      this.submitError.set('La experiencia no está disponible.');
+      this.submitting.set(false);
+      return;
+    }
+
+    const participants = Number(value.participants);
+    if (
+      !Number.isInteger(participants) ||
+      participants < 1 ||
+      participants > MAX_PARTICIPANTS_PER_BOOKING
+    ) {
+      this.submitError.set('Cantidad de personas inválida.');
+      this.submitting.set(false);
+      return;
+    }
+
+    if (
+      exp.dates &&
+      exp.dates.length > 0 &&
+      !exp.dates.includes(value.date) &&
+      value.date !== 'A coordinar'
+    ) {
+      this.submitError.set('La fecha elegida no está disponible.');
+      this.submitting.set(false);
+      return;
+    }
+
+    if (value.date !== 'A coordinar' && this.store.isDateClosed(exp, value.date)) {
+      this.submitError.set('La fecha elegida se encuentra cerrada para nuevas reservas.');
+      this.submitting.set(false);
+      return;
+    }
+
+    if (
+      exp.dates &&
+      exp.dates.length > 0 &&
+      value.date !== 'A coordinar' &&
+      participants > this.seatsForSelectedDate()
+    ) {
+      this.submitError.set('No quedan cupos suficientes para esa fecha.');
+      this.submitting.set(false);
+      return;
+    }
+
+    let bookingRef = '';
+    try {
+      const authenticatedMember = await this.newsletter.getAuthenticatedMember();
+      const normalizedEmail = value.email.trim().toLowerCase();
+      if (
+        isSupabaseConfigured() &&
+        (!authenticatedMember || authenticatedMember.email.toLowerCase() !== normalizedEmail)
+      ) {
+        this.submitError.set(
+          'La sesión no coincide con el email de la reserva. Volvé a vincular Google e intentá nuevamente.',
+        );
+        this.submitting.set(false);
+        return;
+      }
+      if (isSupabaseConfigured() && authenticatedMember) {
+        const profileResult = await this.newsletter.updateMemberProfile({
+          fullName: value.fullName,
+          dni: value.dni,
+          phone: value.phone,
+          experiencesWishlist: authenticatedMember.experiencesWishlist,
+          experiencesOther: authenticatedMember.experiencesOther,
+        });
+        if (!profileResult.success) {
+          this.submitError.set(
+            profileResult.message || 'No pudimos actualizar tus datos de perfil.',
+          );
+          this.submitting.set(false);
+          return;
+        }
+        if (profileResult.entry) {
+          this.checkoutMember.set(profileResult.entry);
+        }
+      }
+
+      bookingRef = this.store.buildReference(exp.slug);
+
+      // Si existía una reserva previa abandonada en la sesión actual, liberarla antes de generar una nueva
+      try {
+        const rawPrev = sessionStorage.getItem('mp_pending_booking');
+        if (rawPrev) {
+          const prevBooking = JSON.parse(rawPrev);
+          if (prevBooking?.reference && prevBooking.reference !== bookingRef) {
+            void this.store.releaseMercadoPagoPending(
+              prevBooking.reference,
+              'reemplazado_por_nuevo_checkout',
+            );
+          }
+        }
+      } catch {
+        // ignore
+      }
+
+      // 1. Crear primero la preferencia en Mercado Pago para no bloquear cupos si la pasarela falla
+      const res = await fetch('/api/mercadopago', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'create-preference',
+          experienceId: exp.id,
+          experienceTitle: exp.title,
+          experienceSlug: exp.slug,
+          date: value.date,
+          participants,
+          baseAmountArs: this.baseTotal(),
+          surchargeArs: this.mercadoPagoSurchargeArs(),
+          totalAmountArs: this.total(),
+          discountCode: this.appliedDiscount()?.code,
+          bookingReference: bookingRef,
+          payer: {
+            name: value.fullName,
+            email: value.email,
+            phone: value.phone,
+            dni: value.dni,
+          },
+          providerId: exp.providerId,
+          providerCollectorId: exp.mpCollectorId,
+        }),
+      });
+
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch {
+        data = null;
+      }
+
+      if (!res.ok || !data || !data.init_point) {
+        throw new Error(
+          data?.error || data?.message || 'No se pudo iniciar el checkout con Mercado Pago.',
+        );
+      }
+
+      // 2. Con la preferencia confirmada, persistir la reserva pendiente en el servidor antes de redirigir
+      await this.store.submitMercadoPagoPending({
+        experienceId: exp.id,
+        date: value.date,
+        participants,
+        amountArs: this.total(),
+        baseAmountArs: this.baseTotal(),
+        surchargeArs: this.mercadoPagoSurchargeArs(),
+        discountCode: this.appliedDiscount()?.code,
+        discountArs: this.discountArs(),
+        fullName: value.fullName.trim(),
+        email: (authenticatedMember?.email ?? normalizedEmail).trim().toLowerCase(),
+        dni: value.dni.trim(),
+        phone: value.phone.trim(),
+        reference: bookingRef,
+      });
+
+      // 3. Guardar en sesión y redirigir al checkout oficial de Mercado Pago
+      if (typeof window !== 'undefined') {
+        const pendingBooking = {
+          experienceId: exp.id,
+          experienceTitle: exp.title,
+          experienceSlug: exp.slug,
+          date: value.date,
+          participants,
+          baseAmountArs: this.baseTotal(),
+          surchargeArs: this.mercadoPagoSurchargeArs(),
+          totalAmountArs: this.total(),
+          discountCode: this.appliedDiscount()?.code,
+          discountArs: this.discountArs(),
+          fullName: value.fullName.trim(),
+          email: (authenticatedMember?.email ?? normalizedEmail).trim().toLowerCase(),
+          dni: value.dni.trim(),
+          phone: value.phone.trim(),
+          reference: bookingRef,
+          preferenceId: data.preference_id,
+        };
+        try {
+          sessionStorage.setItem('mp_pending_booking', JSON.stringify(pendingBooking));
+        } catch {
+          // ignore storage error
+        }
+        window.location.href = data.init_point;
+      }
+    } catch (err: unknown) {
+      if (bookingRef) {
+        void this.store.releaseMercadoPagoPending(bookingRef, 'error_inicio_checkout');
+      }
+      this.submitError.set(
+        err instanceof Error
+          ? err.message
+          : 'Error al conectar con Mercado Pago. Podés abonar por transferencia.',
+      );
+      this.submitting.set(false);
+    }
+  }
 
   readonly copied = signal<'cbu' | 'monto' | null>(null);
   readonly submitting = signal(false);
@@ -305,6 +551,25 @@ export class ExperiencePaymentComponent implements OnInit {
         this.form.controls.date.setValue('');
       }
     });
+
+    // Liberar reserva pendiente si el usuario cambia a transferencia bancaria
+    effect(() => {
+      const method = this.paymentMethod();
+      if (method === 'transfer' && typeof window !== 'undefined') {
+        try {
+          const raw = sessionStorage.getItem('mp_pending_booking');
+          if (raw) {
+            const pending = JSON.parse(raw);
+            if (pending?.reference) {
+              void this.store.releaseMercadoPagoPending(pending.reference, 'cambio_a_transferencia');
+            }
+            sessionStorage.removeItem('mp_pending_booking');
+          }
+        } catch {
+          // ignore
+        }
+      }
+    });
   }
 
   ngOnInit(): void {
@@ -314,14 +579,205 @@ export class ExperiencePaymentComponent implements OnInit {
   private async initializeCheckout(): Promise<void> {
     if (!isSupabaseConfigured()) {
       this.authReady.set(true);
-      return;
     }
+    void this.store.releaseExpiredMercadoPagoPending();
 
     try {
-      const member = await this.newsletter.getAuthenticatedMember();
-      this.checkoutMember.set(member);
-      if (member && this.newsletter.consumeLoginSuccessFlag()) {
-        this.triggerAuthSuccessFeedback();
+      let member = null;
+      if (isSupabaseConfigured()) {
+        member = await this.newsletter.getAuthenticatedMember();
+        this.checkoutMember.set(member);
+        if (member && this.newsletter.consumeLoginSuccessFlag()) {
+          this.triggerAuthSuccessFeedback();
+        }
+      }
+
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        const urlStatus = params.get('status') || params.get('collection_status');
+        const collectionId = params.get('collection_id') || params.get('payment_id');
+
+        if (urlStatus === 'rejected' || urlStatus === 'failure' || urlStatus === 'null') {
+          let pendingBooking: any = null;
+          try {
+            const raw = sessionStorage.getItem('mp_pending_booking');
+            if (raw) {
+              pendingBooking = JSON.parse(raw);
+            }
+          } catch {
+            pendingBooking = null;
+          }
+
+          if (pendingBooking?.reference) {
+            void this.store.releaseMercadoPagoPending(
+              pendingBooking.reference,
+              urlStatus === 'rejected' ? 'rechazado_por_mercadopago' : 'cancelado_por_usuario',
+            );
+            try {
+              sessionStorage.removeItem('mp_pending_booking');
+            } catch {
+              // ignore
+            }
+          }
+
+          this.submitError.set('El pago fue cancelado o rechazado en Mercado Pago.');
+          return;
+        }
+
+        if (collectionId) {
+          const exp = this.experience();
+          let pendingBooking: any = null;
+          try {
+            const raw = sessionStorage.getItem('mp_pending_booking');
+            if (raw) {
+              pendingBooking = JSON.parse(raw);
+            }
+          } catch {
+            pendingBooking = null;
+          }
+
+          const targetExpId = exp?.id || pendingBooking?.experienceId;
+          const targetExpSlug = exp?.slug || pendingBooking?.experienceSlug;
+          const buyerEmail = (pendingBooking?.email || member?.email || '').trim().toLowerCase();
+
+          // 1. Verificar el pago y su asociación a través del mecanismo del servidor
+          let verifyData: any = null;
+          try {
+            const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+            const buyerToken = await this.store.getAuthToken();
+            if (buyerToken) {
+              headers['Authorization'] = `Bearer ${buyerToken}`;
+            }
+
+            const verifyRes = await fetch('/api/mercadopago', {
+              method: 'POST',
+              headers,
+              body: JSON.stringify({
+                action: 'verify-payment',
+                paymentId: collectionId,
+                experienceId: targetExpId,
+                experienceSlug: targetExpSlug,
+                bookingReference: pendingBooking?.reference,
+                email: buyerEmail,
+              }),
+            });
+
+            verifyData = await verifyRes.json();
+            if (!verifyRes.ok || !verifyData?.verified || verifyData?.status !== 'approved') {
+              this.submitError.set(
+                verifyData?.error ||
+                  'No se pudo verificar la aprobación del pago. Si el importe fue debitado, contactanos para registrar tus cupos.',
+              );
+              return;
+            }
+          } catch (netErr) {
+            console.warn('[ExperiencePayment] Error al verificar el pago con el servidor:', netErr);
+            this.submitError.set(
+              'No pudimos verificar el pago con el servidor. Por favor, recargá la página o comunicate con el Club.',
+            );
+            return;
+          }
+
+          // 2. Con el pago verificado por el servidor, reflejar la reserva confirmada por el servidor
+          const targetDate =
+            pendingBooking?.date ||
+            (exp && exp.dates.length > 0 ? exp.dates[0] : 'A coordinar');
+          const targetParticipants =
+            Number(pendingBooking?.participants) || 1;
+          const targetTotal =
+            Number(verifyData?.amountArs) ||
+            Number(pendingBooking?.totalAmountArs) ||
+            (exp ? exp.priceArs * targetParticipants : 0);
+          const targetBase =
+            Number(pendingBooking?.baseAmountArs) || targetTotal;
+          const targetSurcharge =
+            Number(pendingBooking?.surchargeArs) || 0;
+          const targetDiscountCode =
+            pendingBooking?.discountCode;
+          const targetDiscountArs =
+            Number(pendingBooking?.discountArs) || 0;
+          const targetFullName =
+            pendingBooking?.fullName || member?.fullName || 'Explorador';
+          const targetEmail =
+            pendingBooking?.email || member?.email || '';
+          const targetDni =
+            pendingBooking?.dni || member?.dni || '';
+          const targetPhone =
+            pendingBooking?.phone || member?.phone || '';
+
+          try {
+            if (verifyData?.booking) {
+              const b = verifyData.booking;
+              const confirmedSubmission: TransferSubmission = {
+                id: b.id ? `sub-${b.id}` : `mp-${collectionId}`,
+                reference:
+                  b.reference ||
+                  pendingBooking?.reference ||
+                  `MP-${collectionId}`,
+                displayReference: `MP-${String(collectionId).slice(-6).toUpperCase()}`,
+                experienceId: b.experience_id || targetExpId || 'exp',
+                experienceTitle:
+                  b.experience_title ||
+                  exp?.title ||
+                  pendingBooking?.experienceTitle ||
+                  'Experiencia en Catamarca',
+                date: b.selected_date || b.date || targetDate,
+                participants: Number(b.participants) || targetParticipants,
+                amountArs: targetTotal,
+                discountCode: b.discount_code || targetDiscountCode,
+                discountArs:
+                  b.discount_ars !== undefined ? Number(b.discount_ars) : targetDiscountArs,
+                surchargeArs: targetSurcharge,
+                paymentMethod: 'mercadopago',
+                mpPaymentId: collectionId,
+                fullName: b.full_name || targetFullName,
+                email: b.email || targetEmail,
+                dni: b.dni || targetDni,
+                phone: b.phone || targetPhone,
+                receipt: {
+                  fileName: b.receipt_file_name || MP_TRANSFER_RECEIPT.fileName,
+                  mimeType: b.receipt_mime_type || MP_TRANSFER_RECEIPT.mimeType,
+                  sizeBytes: Number(b.receipt_size_bytes) || 0,
+                  url: b.receipt_url || MP_TRANSFER_RECEIPT.url,
+                },
+                status: 'aprobado',
+                submittedAt: b.created_at || b.submitted_at || new Date().toISOString(),
+                reviewedAt: b.reviewed_at || new Date().toISOString(),
+              };
+
+              this.store.recordConfirmedBooking(confirmedSubmission);
+              this.confirmation.set(confirmedSubmission);
+            } else {
+              const submission = await this.store.registerMercadoPagoPayment({
+                experienceId: targetExpId || 'exp',
+                date: targetDate,
+                participants: targetParticipants,
+                amountArs: targetTotal,
+                baseAmountArs: targetBase,
+                surchargeArs: targetSurcharge,
+                discountCode: targetDiscountCode,
+                discountArs: targetDiscountArs,
+                fullName: targetFullName,
+                email: targetEmail,
+                dni: targetDni,
+                phone: targetPhone,
+                collectionId,
+                reference: pendingBooking?.reference,
+              });
+              this.confirmation.set(submission);
+            }
+            try {
+              sessionStorage.removeItem('mp_pending_booking');
+            } catch {
+              // ignore
+            }
+          } catch (regErr) {
+            console.warn('[ExperiencePayment] Error registrando pago MP verificado:', regErr);
+            this.submitError.set(
+              'El pago fue verificado y aprobado por Mercado Pago pero ocurrió un error al asentar la reserva. Por favor contactanos para registrar tus cupos.',
+            );
+          }
+        }
       }
     } catch {
       this.authError.set('No pudimos verificar tu cuenta. Intentá nuevamente.');

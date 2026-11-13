@@ -15,6 +15,7 @@ export interface ClubProfile {
   address: string;
   updatedAt: string;
   usdExchangeRate?: number;
+  mercadoPagoSurchargePercentage?: number;
 }
 
 export const DEFAULT_CLUB_PROFILE: ClubProfile = {
@@ -33,6 +34,7 @@ export const DEFAULT_CLUB_PROFILE: ClubProfile = {
   address: 'San Fernando del Valle de Catamarca',
   updatedAt: '2026-01-01T00:00:00.000Z',
   usdExchangeRate: 1400,
+  mercadoPagoSurchargePercentage: 12,
 };
 
 /**

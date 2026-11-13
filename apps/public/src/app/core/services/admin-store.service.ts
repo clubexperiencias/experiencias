@@ -407,6 +407,7 @@ export class AdminStoreService {
         if (!error && data) {
           let usdRate: number | undefined;
           let parsedAddress: string | undefined;
+          let mpSurcharge: number | undefined;
           if (data.notes) {
             try {
               const parsed = JSON.parse(data.notes);
@@ -420,6 +421,14 @@ export class AdminStoreService {
                 if (rounded > 0) {
                   usdRate = rounded;
                 }
+              }
+              if (
+                parsed &&
+                typeof parsed.mercado_pago_surcharge_percentage === 'number' &&
+                Number.isFinite(parsed.mercado_pago_surcharge_percentage) &&
+                parsed.mercado_pago_surcharge_percentage >= 0
+              ) {
+                mpSurcharge = parsed.mercado_pago_surcharge_percentage;
               }
               if (parsed && typeof parsed.address === 'string' && parsed.address.trim()) {
                 parsedAddress = parsed.address.trim();
@@ -451,6 +460,8 @@ export class AdminStoreService {
             address: loadedAddress,
             updatedAt: data.updated_at || new Date().toISOString(),
             ...(usdRate !== undefined ? { usdExchangeRate: usdRate } : {}),
+            mercadoPagoSurchargePercentage:
+              mpSurcharge !== undefined ? mpSurcharge : (current.mercadoPagoSurchargePercentage ?? DEFAULT_CLUB_PROFILE.mercadoPagoSurchargePercentage ?? 12),
           };
           this._clubProfile.set(loaded);
           if (usdRate !== undefined) {
@@ -605,6 +616,19 @@ export class AdminStoreService {
           system: 'configuracion_club',
           ...(targetRate !== undefined ? { usd_exchange_rate: targetRate } : {}),
         };
+
+        if (updated.mercadoPagoSurchargePercentage !== undefined) {
+          const num = Number(updated.mercadoPagoSurchargePercentage);
+          if (Number.isFinite(num) && num >= 0) {
+            nextNotesObj['mercado_pago_surcharge_percentage'] = num;
+            merged.mercadoPagoSurchargePercentage = num;
+          }
+        } else if (existingNotesObj['mercado_pago_surcharge_percentage'] !== undefined) {
+          const remoteMp = Number(existingNotesObj['mercado_pago_surcharge_percentage']);
+          if (Number.isFinite(remoteMp) && remoteMp >= 0) {
+            merged.mercadoPagoSurchargePercentage = remoteMp;
+          }
+        }
 
         if (typeof merged.address === 'string') {
           const trimmedAddress = merged.address.trim();

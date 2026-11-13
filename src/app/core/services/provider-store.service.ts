@@ -5,6 +5,8 @@ import {
   ExperienceAlbumPhoto,
   ExperienceDateSlot,
   MAX_PARTICIPANTS_PER_BOOKING,
+  MP_TRANSFER_RECEIPT,
+  MercadoPagoPaymentInput,
   NewProviderExperience,
   NewTransferSubmission,
   ProviderExperience,
@@ -97,6 +99,9 @@ function upcomingDate(daysFromNow: number): string {
 function hoursAgo(hours: number): string {
   return new Date(Date.now() - hours * 3_600_000).toISOString();
 }
+
+export const MP_PENDING_HOLD_MINUTES = 30;
+export const MP_PENDING_HOLD_MS = MP_PENDING_HOLD_MINUTES * 60 * 1000;
 
 export function parseConfirmedProposalDates(datesStr?: string): string[] {
   if (!datesStr) return [];
@@ -422,6 +427,34 @@ export class ProviderStoreService {
           existing?.coverImage ||
           '/assets/images/kayak-club-de-experiencias.jpg',
         joinedAt: existing?.joinedAt ?? new Date().toISOString(),
+        mpConnected: Boolean(
+          (access.notes && (() => {
+            try {
+              const parsed = JSON.parse(access.notes);
+              if (parsed?.mp_collector_id && String(parsed.mp_collector_id).startsWith('mp-col-')) {
+                return false;
+              }
+              return Boolean(parsed?.mp_connected && parsed?.mp_collector_id);
+            } catch { return false; }
+          })()) ||
+          ((access as any).mp_connected && (access as any).mp_collector_id && !String((access as any).mp_collector_id).startsWith('mp-col-'))
+        ),
+        mpCollectorId:
+          (access.notes && (() => {
+            try {
+              const parsed = JSON.parse(access.notes);
+              if (parsed?.mp_collector_id && String(parsed.mp_collector_id).startsWith('mp-col-')) {
+                return undefined;
+              }
+              return parsed?.mp_collector_id || undefined;
+            } catch { return undefined; }
+          })()) ||
+          ((access as any).mp_collector_id && !String((access as any).mp_collector_id).startsWith('mp-col-') ? (access as any).mp_collector_id : undefined),
+        mpNickname:
+          (access as any).mp_nickname ||
+          (access.notes && (() => {
+            try { return JSON.parse(access.notes)?.mp_nickname; } catch { return undefined; }
+          })()) || undefined,
       };
 
       if (!existing) this._providers.update((providers) => [...providers, provider]);
@@ -649,6 +682,39 @@ export class ProviderStoreService {
     return newUser;
   }
 
+  async getAuthToken(): Promise<string | null> {
+    if (!isSupabaseConfigured()) return null;
+    try {
+      const { data } = await this.supabase.auth.getSession();
+      return data?.session?.access_token || null;
+    } catch {
+      return null;
+    }
+  }
+
+  async disconnectMercadoPago(): Promise<{ success: boolean; message?: string }> {
+    try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      const token = await this.getAuthToken();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      await fetch('/api/mercadopago', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ action: 'disconnect' }),
+      });
+    } catch (err) {
+      console.warn('[ProviderStore] Error invocando disconnect en backend MP:', err);
+    }
+
+    return this.updateProfile({
+      mpConnected: false,
+      mpCollectorId: '',
+      mpNickname: '',
+    });
+  }
+
   async logout(): Promise<void> {
     if (isSupabaseConfigured()) {
       await this.supabase.auth.signOut();
@@ -699,6 +765,69 @@ export class ProviderStoreService {
         if (updates.cuitDni !== undefined) payload['cuit_dni'] = updates.cuitDni.trim();
         if (updates.cbuAlias !== undefined) payload['cbu_alias'] = updates.cbuAlias.trim();
         if (updates.bankName !== undefined) payload['bank_name'] = updates.bankName.trim();
+
+        if (
+          updates.mpConnected !== undefined ||
+          updates.mpCollectorId !== undefined ||
+          updates.mpNickname !== undefined ||
+          updates.mpEmail !== undefined
+        ) {
+          let remoteNotes: string | null = null;
+          try {
+            const { data: remoteRow, error: fetchErr } = await (this.supabase.from('prestadores') as any)
+              .select('notes')
+              .eq('email', email)
+              .maybeSingle();
+            if (fetchErr) {
+              console.error('[ProviderStore] Error consultando notas remotas del prestador:', fetchErr);
+              return {
+                success: false,
+                message: 'No se pudieron verificar los datos actuales del prestador en el servidor. Intente nuevamente.',
+              };
+            }
+            if (remoteRow) {
+              remoteNotes = typeof remoteRow.notes === 'string' ? remoteRow.notes : '';
+            }
+          } catch (err) {
+            console.error('[ProviderStore] Excepción al consultar notas remotas del prestador:', err);
+            return {
+              success: false,
+              message: 'Error de comunicación al consultar los datos del prestador en el servidor.',
+            };
+          }
+
+          if (remoteNotes === null) {
+            return {
+              success: false,
+              message: 'No se pudo leer la configuración actual del prestador en el servidor.',
+            };
+          }
+
+          const baseNotes = remoteNotes;
+          let notesObj: Record<string, any> = {};
+          if (baseNotes) {
+            try {
+              const parsed = JSON.parse(baseNotes);
+              if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                notesObj = parsed;
+              } else {
+                notesObj = { text: baseNotes };
+              }
+            } catch {
+              notesObj = { text: baseNotes };
+            }
+          }
+          // Asegurar que nunca se conserven ni expongan tokens secretos en prestadores.notes
+          delete notesObj['mp_access_token'];
+          delete notesObj['mp_refresh_token'];
+
+          if (updates.mpConnected !== undefined) notesObj['mp_connected'] = updates.mpConnected;
+          if (updates.mpCollectorId !== undefined) notesObj['mp_collector_id'] = updates.mpCollectorId;
+          if (updates.mpNickname !== undefined) notesObj['mp_nickname'] = updates.mpNickname;
+          if (updates.mpEmail !== undefined) notesObj['mp_email'] = updates.mpEmail;
+          payload['notes'] = JSON.stringify(notesObj);
+          updated.notes = payload['notes'];
+        }
 
         let { error } = await (this.supabase.from('prestadores') as any)
           .update(payload)
@@ -949,100 +1078,95 @@ export class ProviderStoreService {
         if (updates.cuitDni !== undefined) payload['cuit_dni'] = updates.cuitDni.trim();
         if (updates.cbuAlias !== undefined) payload['cbu_alias'] = updates.cbuAlias.trim();
         if (updates.bankName !== undefined) payload['bank_name'] = updates.bankName.trim();
+
         if (updates.accountHolder !== undefined) payload['account_holder'] = updates.accountHolder.trim();
         if (updates.status !== undefined) {
           payload['status'] = updates.status;
           payload['active'] = updates.status === 'aprobado';
         }
 
-        // Cargar notas remotas actuales antes de aplicar la actualización para preservar
-        // metadatos persistidos (como pausedByBajaExpIds) si el registro local no los tenía cargados.
+        const hasMpUpdates =
+          updates.mpConnected !== undefined ||
+          updates.mpCollectorId !== undefined ||
+          updates.mpNickname !== undefined ||
+          updates.mpEmail !== undefined;
+
         let remoteNotes: string | null = null;
-        try {
-          const { data: remoteRow } = await (this.supabase.from('prestadores') as any)
-            .select('notes')
-            .eq('email', email)
-            .maybeSingle();
-          if (remoteRow && typeof remoteRow.notes === 'string') {
-            remoteNotes = remoteRow.notes;
+        if (hasMpUpdates || updates.notes !== undefined) {
+          // Cargar notas remotas actuales antes de aplicar la actualización para preservar
+          // metadatos persistidos (como pausedByBajaExpIds) si el registro local no los tenía cargados.
+          try {
+            const { data: remoteRow, error: fetchErr } = await (this.supabase.from('prestadores') as any)
+              .select('notes')
+              .eq('email', email)
+              .maybeSingle();
+            if (fetchErr) {
+              console.error('[ProviderStore] Error consultando notas remotas del prestador:', fetchErr);
+              return {
+                success: false,
+                message: 'No se pudieron verificar los datos actuales del prestador en el servidor. Intente nuevamente.',
+              };
+            }
+            if (remoteRow) {
+              remoteNotes = typeof remoteRow.notes === 'string' ? remoteRow.notes : '';
+            }
+          } catch (fetchErr) {
+            console.error('[ProviderStore] Excepción al consultar notas remotas del prestador:', fetchErr);
+            return {
+              success: false,
+              message: 'Error de comunicación al consultar los datos del prestador en el servidor.',
+            };
           }
-        } catch (fetchErr) {
-          console.warn('[ProviderStore] No se pudieron cargar las notas remotas del prestador:', fetchErr);
-        }
 
-        if (updates.notes !== undefined) {
-          let finalNotes = updates.notes;
+          if (remoteNotes === null) {
+            return {
+              success: false,
+              message: 'No se pudo leer la configuración actual del prestador en el servidor.',
+            };
+          }
 
-          if (remoteNotes) {
-            let remoteObj: Record<string, any> | null = null;
+          const baseNotes = remoteNotes;
+          let notesObj: Record<string, any> = {};
+          if (baseNotes) {
             try {
-              const parsed = JSON.parse(remoteNotes);
+              const parsed = JSON.parse(baseNotes);
               if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-                remoteObj = parsed;
+                notesObj = parsed;
+              } else {
+                notesObj = { text: baseNotes };
               }
             } catch {
-              remoteObj = null;
-            }
-
-            let localObj: Record<string, any> | null = null;
-            if (current.notes) {
-              try {
-                const parsedLocal = JSON.parse(current.notes);
-                if (parsedLocal && typeof parsedLocal === 'object' && !Array.isArray(parsedLocal)) {
-                  localObj = parsedLocal;
-                }
-              } catch {
-                localObj = null;
-              }
-            }
-
-            if (remoteObj) {
-              let updatesObj: Record<string, any> | null = null;
-              if (typeof updates.notes === 'string' && updates.notes.trim()) {
-                try {
-                  const parsedUpdates = JSON.parse(updates.notes);
-                  if (parsedUpdates && typeof parsedUpdates === 'object' && !Array.isArray(parsedUpdates)) {
-                    updatesObj = parsedUpdates;
-                  }
-                } catch {
-                  updatesObj = null;
-                }
-              }
-
-              const localHadBajaIds = !!(localObj && 'pausedByBajaExpIds' in localObj);
-              const shouldPreserveBajaIds = !localHadBajaIds && 'pausedByBajaExpIds' in remoteObj;
-
-              if (updatesObj) {
-                if (shouldPreserveBajaIds && !('pausedByBajaExpIds' in updatesObj)) {
-                  finalNotes = JSON.stringify({
-                    ...updatesObj,
-                    pausedByBajaExpIds: remoteObj['pausedByBajaExpIds'],
-                  });
-                } else {
-                  finalNotes = JSON.stringify(updatesObj);
-                }
-              } else if (typeof updates.notes === 'string') {
-                if (shouldPreserveBajaIds) {
-                  const merged: Record<string, any> = {
-                    pausedByBajaExpIds: remoteObj['pausedByBajaExpIds'],
-                  };
-                  if (updates.notes.trim()) {
-                    merged['text'] = updates.notes.trim();
-                  }
-                  finalNotes = JSON.stringify(merged);
-                } else if (!updates.notes.trim() && !localHadBajaIds && Object.keys(remoteObj).length > 0) {
-                  finalNotes = remoteNotes;
-                } else {
-                  finalNotes = updates.notes;
-                }
-              }
-            } else if (!updates.notes.trim() && (!current.notes || !current.notes.trim()) && remoteNotes.trim()) {
-              finalNotes = remoteNotes;
+              notesObj = { text: baseNotes };
             }
           }
 
-          payload['notes'] = finalNotes;
-          updated.notes = finalNotes;
+          if (updates.notes !== undefined) {
+            if (typeof updates.notes === 'string' && updates.notes.trim()) {
+              try {
+                const parsedUpdates = JSON.parse(updates.notes);
+                if (parsedUpdates && typeof parsedUpdates === 'object' && !Array.isArray(parsedUpdates)) {
+                  notesObj = {
+                    ...notesObj,
+                    ...parsedUpdates,
+                  };
+                } else {
+                  notesObj['text'] = updates.notes.trim();
+                }
+              } catch {
+                notesObj['text'] = updates.notes.trim();
+              }
+            } else if (typeof updates.notes === 'string') {
+              delete notesObj['text'];
+            }
+          }
+
+          if (updates.mpConnected !== undefined) notesObj['mp_connected'] = updates.mpConnected;
+          if (updates.mpCollectorId !== undefined) notesObj['mp_collector_id'] = updates.mpCollectorId;
+          if (updates.mpNickname !== undefined) notesObj['mp_nickname'] = updates.mpNickname;
+          if (updates.mpEmail !== undefined) notesObj['mp_email'] = updates.mpEmail;
+
+          payload['notes'] = JSON.stringify(notesObj);
+          updated.notes = payload['notes'];
         } else if (remoteNotes !== null && current.notes !== remoteNotes) {
           updated.notes = remoteNotes;
         }
@@ -1256,8 +1380,22 @@ export class ProviderStoreService {
   }
 
   reservedSeats(experienceId: string, date: string): number {
+    const cutoffIso = new Date(Date.now() - MP_PENDING_HOLD_MS).toISOString();
     return this._submissions()
-      .filter((s) => s.experienceId === experienceId && s.date === date && s.status !== 'rechazado')
+      .filter((s) => {
+        if (s.experienceId !== experienceId || s.date !== date || s.status === 'rechazado') {
+          return false;
+        }
+        // Excluir reservas pendientes de Mercado Pago expiradas (> 30 min) para no retener cupos innecesariamente
+        const isMp =
+          s.paymentMethod === 'mercadopago' ||
+          Boolean(s.mpPaymentId) ||
+          s.receipt?.provider === 'mercadopago';
+        if (s.status === 'pendiente' && isMp && s.submittedAt && s.submittedAt < cutoffIso) {
+          return false;
+        }
+        return true;
+      })
       .reduce((total, s) => total + s.participants, 0);
   }
 
@@ -1843,6 +1981,9 @@ export class ProviderStoreService {
     ) {
       throw new Error('Cantidad de personas inválida.');
     }
+    // Liberar reservas pendientes de Mercado Pago expiradas (> 30 min) antes de validar cupos disponibles
+    await this.releaseExpiredMercadoPagoPending(experience.id, input.date);
+
     if (
       experience.dates.length > 0 &&
       input.date !== 'A coordinar' &&
@@ -1988,6 +2129,628 @@ export class ProviderStoreService {
     return submission;
   }
 
+  recordConfirmedBooking(submission: TransferSubmission): void {
+    this._submissions.update((list) => {
+      const idx = list.findIndex(
+        (s) =>
+          s.reference === submission.reference ||
+          (submission.mpPaymentId && s.mpPaymentId === submission.mpPaymentId),
+      );
+      if (idx >= 0) {
+        const copy = [...list];
+        copy[idx] = submission;
+        return copy;
+      }
+      return [submission, ...list];
+    });
+    this.saveSubmissions();
+  }
+
+  /**
+   * Libera una reserva pendiente de Mercado Pago por cancelación o rechazo,
+   * actualizando tanto el estado local como la fila persistida en Supabase a 'rechazado'.
+   * Garantiza no alterar reservas que ya estén en estado pagado ('aprobado') o rechazado.
+   */
+  async releaseMercadoPagoPending(
+    reference: string,
+    reason: string = 'cancelado_checkout',
+  ): Promise<boolean> {
+    if (!reference) return false;
+
+    // 1. Actualizar el registro local en _submissions sólo si está 'pendiente'
+    let updatedLocal = false;
+    this._submissions.update((list) =>
+      list.map((s) => {
+        if (s.reference === reference && s.status === 'pendiente') {
+          updatedLocal = true;
+          return {
+            ...s,
+            status: 'rechazado',
+            rejectionReason: reason,
+          };
+        }
+        return s;
+      }),
+    );
+    if (updatedLocal) {
+      this.saveSubmissions();
+    }
+
+    // 2. Actualizar en Supabase garantizando no modificar reservas aprobadas o ya rechazadas
+    if (isSupabaseConfigured()) {
+      try {
+        const { error } = await (this.supabase.from('pagos_transferencias') as any)
+          .update({
+            status: 'rechazado',
+            rejection_reason: reason,
+            reviewed_by: 'mercadopago_checkout_release',
+            reviewed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('reference', reference)
+          .eq('status', 'pendiente');
+
+        if (error) {
+          console.warn('[ProviderStore] Error liberando reserva pendiente MP en Supabase:', error);
+          return false;
+        }
+      } catch (err) {
+        console.warn('[ProviderStore] Excepción al liberar reserva pendiente MP:', err);
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Libera reservas pendientes de Mercado Pago que hayan expirado tras superar
+   * el tiempo de retención (30 minutos) sin completarse, liberando los cupos correspondientes.
+   */
+  async releaseExpiredMercadoPagoPending(
+    experienceId?: string,
+    selectedDate?: string,
+  ): Promise<number> {
+    const cutoffIso = new Date(Date.now() - MP_PENDING_HOLD_MS).toISOString();
+
+    let releasedCount = 0;
+    this._submissions.update((list) =>
+      list.map((s) => {
+        const isMp =
+          s.paymentMethod === 'mercadopago' ||
+          Boolean(s.mpPaymentId) ||
+          s.receipt?.provider === 'mercadopago';
+        const isExpired = s.submittedAt && s.submittedAt < cutoffIso;
+        const matchesExp = !experienceId || s.experienceId === experienceId;
+        const matchesDate = !selectedDate || s.date === selectedDate;
+
+        if (s.status === 'pendiente' && isMp && isExpired && matchesExp && matchesDate) {
+          releasedCount++;
+          return {
+            ...s,
+            status: 'rechazado',
+            rejectionReason: 'expirado_checkout_abandonado',
+          };
+        }
+        return s;
+      }),
+    );
+    if (releasedCount > 0) {
+      this.saveSubmissions();
+    }
+
+    if (isSupabaseConfigured()) {
+      try {
+        let query = (this.supabase.from('pagos_transferencias') as any)
+          .update({
+            status: 'rechazado',
+            rejection_reason: 'expirado_checkout_abandonado',
+            reviewed_by: 'mercadopago_auto_expiry',
+            reviewed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('status', 'pendiente')
+          .eq('receipt_storage_provider', 'mercadopago')
+          .lt('created_at', cutoffIso);
+
+        if (experienceId) {
+          query = query.eq('experience_id', experienceId);
+        }
+        if (selectedDate && selectedDate !== 'A coordinar') {
+          query = query.eq('selected_date', selectedDate);
+        }
+
+        const { error } = await query;
+        if (error) {
+          console.warn('[ProviderStore] Error liberando reservas expiradas en Supabase:', error);
+        }
+      } catch (err) {
+        console.warn('[ProviderStore] Excepción al liberar reservas expiradas:', err);
+      }
+    }
+
+    return releasedCount;
+  }
+
+  async submitMercadoPagoPending(input: {
+    experienceId: string;
+    date: string;
+    participants: number;
+    amountArs: number;
+    baseAmountArs: number;
+    surchargeArs: number;
+    discountCode?: string;
+    discountArs?: number;
+    fullName: string;
+    email: string;
+    dni: string;
+    phone: string;
+    reference: string;
+  }): Promise<TransferSubmission> {
+    const liveRecord =
+      this.expService.getExperienceById(input.experienceId) ||
+      this.expService.getExperienceBySlug(input.experienceId);
+    let experience: ProviderExperience | undefined;
+    if (liveRecord) {
+      if (liveRecord.status === 'publicada') {
+        experience = mapLiveExperienceToProvider(liveRecord);
+      }
+    } else {
+      experience = this._experiences().find(
+        (e) => e.id === input.experienceId || e.slug === input.experienceId,
+      );
+    }
+    if (!experience || experience.status !== 'publicada') {
+      throw new Error('La experiencia no está disponible.');
+    }
+    if (
+      experience.dates.length > 0 &&
+      !experience.dates.includes(input.date) &&
+      input.date !== 'A coordinar'
+    ) {
+      throw new Error('La fecha elegida no está disponible.');
+    }
+    if (input.date !== 'A coordinar' && this.isDateClosed(experience, input.date)) {
+      throw new Error('La fecha elegida se encuentra cerrada para nuevas reservas.');
+    }
+    if (
+      !Number.isInteger(input.participants) ||
+      input.participants < 1 ||
+      input.participants > MAX_PARTICIPANTS_PER_BOOKING
+    ) {
+      throw new Error('Cantidad de personas inválida.');
+    }
+    // Liberar reservas pendientes de Mercado Pago expiradas (> 30 min) antes de validar cupos disponibles
+    await this.releaseExpiredMercadoPagoPending(experience.id, input.date);
+
+    if (
+      experience.dates.length > 0 &&
+      input.date !== 'A coordinar' &&
+      input.participants > this.availableSeats(experience, input.date)
+    ) {
+      throw new Error('No quedan cupos suficientes para esa fecha.');
+    }
+
+    const discount = input.discountCode
+      ? (findDiscountCode(input.discountCode) ??
+        this.newsletter.findMemberDiscount(input.discountCode))
+      : undefined;
+
+    if (isSupabaseConfigured()) {
+      const { data: rpcRes, error: rpcErr } = await this.supabase.rpc(
+        'submit_experience_transfer' as any,
+        {
+          p_reference: input.reference,
+          p_experience_id: experience.id,
+          p_experience_title: experience.title,
+          p_date: input.date,
+          p_participants: input.participants,
+          p_amount_ars: input.baseAmountArs,
+          p_discount_code: discount?.code || null,
+          p_discount_ars: input.discountArs || 0,
+          p_full_name: input.fullName.trim(),
+          p_email: input.email.trim().toLowerCase(),
+          p_dni: input.dni.trim(),
+          p_phone: input.phone.trim(),
+          p_receipt_file_name: MP_TRANSFER_RECEIPT.fileName,
+          p_receipt_mime_type: MP_TRANSFER_RECEIPT.mimeType,
+          p_receipt_size_bytes: 0,
+          p_receipt_url: MP_TRANSFER_RECEIPT.url,
+          p_receipt_storage_key: input.reference,
+          p_receipt_storage_provider: 'mercadopago',
+        },
+      );
+
+      if (rpcErr) {
+        console.warn('[ProviderStore] Error registrando reserva pendiente MP:', rpcErr);
+        throw new Error('No se pudo registrar la reserva pendiente en el servidor.');
+      }
+      const rpcPayload = rpcRes as any;
+      if (rpcPayload?.status === 'no_seats_available') {
+        throw new Error('No quedan cupos suficientes para esa fecha.');
+      }
+      if (rpcPayload?.status === 'invalid_date') {
+        throw new Error('La fecha elegida no está disponible.');
+      }
+      if (rpcPayload?.status === 'date_closed') {
+        throw new Error('La fecha elegida se encuentra cerrada para nuevas reservas.');
+      }
+      if (rpcPayload?.status === 'invalid_amount') {
+        throw new Error('El importe transferido no coincide con el total esperado.');
+      }
+      if (rpcPayload?.status === 'invalid_input') {
+        throw new Error('Los datos ingresados no son válidos.');
+      }
+    }
+
+    const submission: TransferSubmission = {
+      id: `sub-${crypto.randomUUID()}`,
+      reference: input.reference,
+      experienceId: experience.id,
+      experienceTitle: experience.title,
+      date: input.date,
+      participants: input.participants,
+      amountArs: input.amountArs,
+      ...(discount ? { discountCode: discount.code, discountArs: input.discountArs } : {}),
+      surchargeArs: input.surchargeArs,
+      paymentMethod: 'mercadopago',
+      fullName: input.fullName.trim(),
+      email: input.email.trim().toLowerCase(),
+      dni: input.dni.trim(),
+      phone: input.phone.trim(),
+      receipt: MP_TRANSFER_RECEIPT,
+      status: 'pendiente',
+      submittedAt: new Date().toISOString(),
+    };
+
+    this._submissions.update((list) => [submission, ...list]);
+    this.saveSubmissions();
+    return submission;
+  }
+
+  async registerMercadoPagoPayment(input: MercadoPagoPaymentInput): Promise<TransferSubmission> {
+    const liveRecord =
+      this.expService.getExperienceById(input.experienceId) ||
+      this.expService.getExperienceBySlug(input.experienceId);
+    let experience: ProviderExperience | undefined;
+    if (liveRecord) {
+      if (liveRecord.status === 'publicada') {
+        experience = mapLiveExperienceToProvider(liveRecord);
+      }
+    } else {
+      experience = this._experiences().find(
+        (e) => e.id === input.experienceId || e.slug === input.experienceId,
+      );
+    }
+
+    const pendingRef = (input.reference || '').trim();
+    const cleanCollectionId = input.collectionId.trim();
+    const shortRef = cleanCollectionId.slice(-6).toUpperCase();
+    const displayRef = `MP-${shortRef}`;
+    const ref = pendingRef || `MP-${cleanCollectionId}`;
+
+    // 1. Idempotencia: Verificar si ya existe en la lista de submissions local usando identificadores completos
+    const existing = this._submissions().find(
+      (s) =>
+        (pendingRef && s.reference === pendingRef) ||
+        s.reference === ref ||
+        (s.mpPaymentId && s.mpPaymentId === cleanCollectionId),
+    );
+    if (existing) {
+      if (existing.status === 'pendiente') {
+        // Verificar o reintentar la persistencia remota antes de confirmar la reserva en caché
+        let persistedOk = !isSupabaseConfigured();
+        if (isSupabaseConfigured()) {
+          try {
+            const { data: updatedRows, error: updateErr } = await (this.supabase.from('pagos_transferencias') as any)
+              .update({
+                status: 'aprobado',
+                receipt_storage_path: cleanCollectionId,
+                reviewed_by: 'mercadopago_checkout',
+                reviewed_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              })
+              .or(`reference.eq.${encodeURIComponent(existing.reference)},reference.eq.${encodeURIComponent(ref)},receipt_storage_path.eq.${encodeURIComponent(cleanCollectionId)}`)
+              .select('id,status');
+
+            if (!updateErr && updatedRows && updatedRows.length > 0) {
+              persistedOk = true;
+            } else {
+              console.warn('[ProviderStore] No se pudo verificar la persistencia remota para la reserva en caché:', updateErr);
+            }
+          } catch (verifyErr) {
+            console.warn('[ProviderStore] Error verificando persistencia de reserva en caché:', verifyErr);
+          }
+        }
+
+        if (!persistedOk) {
+          const reconciliationSubmission: TransferSubmission = {
+            ...existing,
+            status: 'pendiente',
+            mpPaymentId: cleanCollectionId,
+            rejectionReason: 'requiere_conciliacion',
+          };
+          this.recordConfirmedBooking(reconciliationSubmission);
+          throw new Error(
+            'El pago fue procesado pero no se pudo confirmar la persistencia de la reserva en el servidor. Requiere conciliación.',
+          );
+        }
+
+        const updated: TransferSubmission = {
+          ...existing,
+          status: 'aprobado',
+          mpPaymentId: cleanCollectionId,
+          displayReference: existing.displayReference || displayRef,
+          reviewedAt: new Date().toISOString(),
+        };
+        this.recordConfirmedBooking(updated);
+
+        if (updated.discountCode) {
+          this.newsletter.markMemberDiscountUsed(
+            updated.discountCode,
+            updated.reference,
+            updated.experienceTitle,
+          );
+        }
+        if (experience) {
+          this.recordMemberActivity(experience, updated);
+          const provider = experience.providerId
+            ? this.getProviderById(experience.providerId)
+            : undefined;
+          const targetProviderEmail = provider?.email || PROVIDER_CONTACT_EMAIL;
+          const targetProviderPhone = provider?.phone || '';
+          this.emails.notifyReceiptReceived(updated, targetProviderEmail, targetProviderPhone);
+          this.emails.notifyPaymentApproved(updated);
+        }
+        return updated;
+      }
+      return existing;
+    }
+
+    const expTitle = experience?.title || 'Experiencia en Catamarca';
+    const participants = Math.max(1, Number(input.participants) || 1);
+    const discount = input.discountCode
+      ? (findDiscountCode(input.discountCode) ??
+        this.newsletter.findMemberDiscount(input.discountCode))
+      : undefined;
+
+    const unitPrice =
+      experience?.priceArs ??
+      (input.baseAmountArs ? Math.round(input.baseAmountArs / participants) : Math.round(input.amountArs / participants));
+    const subtotal = unitPrice * participants;
+    const discountArs =
+      input.discountArs !== undefined ? input.discountArs : discountAmount(subtotal, discount);
+    const baseAmount =
+      input.baseAmountArs !== undefined
+        ? input.baseAmountArs
+        : Math.max(0, subtotal - discountArs);
+    const totalPaid =
+      input.amountArs > 0 ? input.amountArs : baseAmount + (input.surchargeArs || 0);
+
+    // 2. Persistencia en Supabase usando el flujo establecido y decremento de cupos
+    let persistenceSuccess = !isSupabaseConfigured();
+
+    if (isSupabaseConfigured()) {
+      try {
+        const filterConditions = [
+          `reference.eq.${encodeURIComponent(ref)}`,
+          `receipt_storage_path.eq.${encodeURIComponent(cleanCollectionId)}`,
+        ];
+        if (pendingRef && pendingRef !== ref) {
+          filterConditions.push(`reference.eq.${encodeURIComponent(pendingRef)}`);
+          filterConditions.push(`receipt_storage_path.eq.${encodeURIComponent(pendingRef)}`);
+        }
+
+        const { data: existingRows } = await this.supabase
+          .from('pagos_transferencias')
+          .select('*')
+          .or(filterConditions.join(','))
+          .limit(1);
+
+        if (existingRows && existingRows.length > 0) {
+          const row = existingRows[0] as any;
+
+          // Reutilizar la fila pendiente existente actualizándola a aprobado en lugar de duplicarla
+          if (row.status === 'pendiente') {
+            const { error: upErr } = await (this.supabase.from('pagos_transferencias') as any)
+              .update({
+                status: 'aprobado',
+                receipt_storage_path: cleanCollectionId,
+                reviewed_by: 'mercadopago_checkout',
+                reviewed_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', row.id);
+
+            if (upErr) {
+              console.warn('[ProviderStore] Error actualizando fila pendiente existente:', upErr);
+              throw new Error('Fallo al actualizar la reserva pendiente a aprobada en el servidor.');
+            }
+          }
+
+          persistenceSuccess = true;
+
+          const restored: TransferSubmission = {
+            id: row.id ? `sub-${row.id}` : `mp-${cleanCollectionId}`,
+            reference: row.reference || ref,
+            displayReference:
+              row.reference?.startsWith('MP-') && row.reference.length > 9
+                ? `MP-${row.reference.slice(-6).toUpperCase()}`
+                : displayRef,
+            experienceId: row.experience_id || experience?.id || input.experienceId,
+            experienceTitle: row.experience_title || expTitle,
+            date: row.selected_date || row.date || input.date,
+            participants: row.participants || participants,
+            amountArs: totalPaid,
+            discountCode: row.discount_code || discount?.code,
+            discountArs: row.discount_ars || discountArs,
+            surchargeArs: input.surchargeArs,
+            paymentMethod: 'mercadopago',
+            mpPaymentId: cleanCollectionId,
+            fullName: row.full_name || input.fullName.trim(),
+            email: row.email || input.email.trim().toLowerCase(),
+            dni: row.dni || input.dni.trim(),
+            phone: row.phone || input.phone.trim(),
+            receipt: MP_TRANSFER_RECEIPT,
+            status: 'aprobado',
+            submittedAt: row.created_at || row.submitted_at || new Date().toISOString(),
+            reviewedAt: row.reviewed_at || new Date().toISOString(),
+          };
+
+          this.recordConfirmedBooking(restored);
+
+          if (restored.discountCode) {
+            this.newsletter.markMemberDiscountUsed(
+              restored.discountCode,
+              restored.reference,
+              restored.experienceTitle,
+            );
+          }
+          if (experience) {
+            this.recordMemberActivity(experience, restored);
+            const provider = experience.providerId
+              ? this.getProviderById(experience.providerId)
+              : undefined;
+            const targetProviderEmail = provider?.email || PROVIDER_CONTACT_EMAIL;
+            const targetProviderPhone = provider?.phone || '';
+            this.emails.notifyReceiptReceived(restored, targetProviderEmail, targetProviderPhone);
+            this.emails.notifyPaymentApproved(restored);
+          }
+
+          return restored;
+        }
+
+        // Ejecutar el procedimiento almacenado submit_experience_transfer para validar y descontar cupos
+        const { data: rpcRes, error: rpcErr } = await this.supabase.rpc(
+          'submit_experience_transfer' as any,
+          {
+            p_reference: ref,
+            p_experience_id: experience?.id || input.experienceId,
+            p_experience_title: expTitle,
+            p_date: input.date,
+            p_participants: participants,
+            p_amount_ars: baseAmount,
+            p_discount_code: discount?.code || null,
+            p_discount_ars: discountArs,
+            p_full_name: input.fullName.trim(),
+            p_email: input.email.trim().toLowerCase(),
+            p_dni: input.dni.trim(),
+            p_phone: input.phone.trim(),
+            p_receipt_file_name: MP_TRANSFER_RECEIPT.fileName,
+            p_receipt_mime_type: MP_TRANSFER_RECEIPT.mimeType,
+            p_receipt_size_bytes: 0,
+            p_receipt_url: MP_TRANSFER_RECEIPT.url,
+            p_receipt_storage_key: cleanCollectionId,
+            p_receipt_storage_provider: 'mercadopago',
+          },
+        );
+
+        if (rpcErr) {
+          console.warn('[ProviderStore] Error en submit_experience_transfer para MP:', rpcErr);
+          persistenceSuccess = false;
+        } else {
+          const rpcPayload = rpcRes as any;
+          if (rpcPayload?.status && rpcPayload.status !== 'created' && rpcPayload.status !== 'ok') {
+            console.warn('[ProviderStore] Respuesta submit_experience_transfer para MP no exitosa:', rpcPayload);
+            persistenceSuccess = false;
+          } else {
+            persistenceSuccess = true;
+          }
+        }
+      } catch (dbErr) {
+        console.warn('[ProviderStore] Excepción al persistir reserva MP en Supabase:', dbErr);
+        persistenceSuccess = false;
+      }
+    }
+
+    if (!persistenceSuccess) {
+      // Dejar la reserva en estado 'pendiente' con requerimiento de conciliación sin marcar aprobada ni notificar
+      const reconciliationSubmission: TransferSubmission = {
+        id: `mp-${cleanCollectionId}`,
+        reference: ref,
+        displayReference: displayRef,
+        experienceId: experience?.id || input.experienceId,
+        experienceTitle: expTitle,
+        date: input.date,
+        participants,
+        amountArs: totalPaid,
+        ...(discount ? { discountCode: discount.code, discountArs } : {}),
+        surchargeArs: input.surchargeArs,
+        paymentMethod: 'mercadopago',
+        mpPaymentId: cleanCollectionId,
+        fullName: input.fullName.trim(),
+        email: input.email.trim().toLowerCase(),
+        dni: input.dni.trim(),
+        phone: input.phone.trim(),
+        receipt: MP_TRANSFER_RECEIPT,
+        status: 'pendiente',
+        rejectionReason: 'requiere_conciliacion',
+        submittedAt: new Date().toISOString(),
+      };
+
+      this.recordConfirmedBooking(reconciliationSubmission);
+      throw new Error(
+        'El pago fue procesado en Mercado Pago pero ocurrió un error al asentar la reserva en el servidor. La reserva requiere conciliación.',
+      );
+    }
+
+    const submission: TransferSubmission = {
+      id: `mp-${cleanCollectionId}`,
+      reference: ref,
+      displayReference: displayRef,
+      experienceId: experience?.id || input.experienceId,
+      experienceTitle: expTitle,
+      date: input.date,
+      participants,
+      amountArs: totalPaid,
+      ...(discount ? { discountCode: discount.code, discountArs } : {}),
+      surchargeArs: input.surchargeArs,
+      paymentMethod: 'mercadopago',
+      mpPaymentId: cleanCollectionId,
+      fullName: input.fullName.trim(),
+      email: input.email.trim().toLowerCase(),
+      dni: input.dni.trim(),
+      phone: input.phone.trim(),
+      receipt: MP_TRANSFER_RECEIPT,
+      status: 'aprobado',
+      submittedAt: new Date().toISOString(),
+      reviewedAt: new Date().toISOString(),
+    };
+
+    this._submissions.update((list) => {
+      const idx = list.findIndex(
+        (s) => s.reference === ref || (s.mpPaymentId && s.mpPaymentId === cleanCollectionId),
+      );
+      if (idx >= 0) {
+        const copy = [...list];
+        copy[idx] = submission;
+        return copy;
+      }
+      return [submission, ...list];
+    });
+    this.saveSubmissions();
+
+    if (submission.discountCode) {
+      this.newsletter.markMemberDiscountUsed(
+        submission.discountCode,
+        submission.reference,
+        submission.experienceTitle,
+      );
+    }
+    if (experience) {
+      this.recordMemberActivity(experience, submission);
+      const provider = experience.providerId
+        ? this.getProviderById(experience.providerId)
+        : undefined;
+      const targetProviderEmail = provider?.email || PROVIDER_CONTACT_EMAIL;
+      const targetProviderPhone = provider?.phone || '';
+      this.emails.notifyReceiptReceived(submission, targetProviderEmail, targetProviderPhone);
+      this.emails.notifyPaymentApproved(submission);
+    }
+
+    return submission;
+  }
+
   reviewSubmission(
     submissionId: string,
     status: Exclude<TransferStatus, 'pendiente'>,
@@ -2027,11 +2790,23 @@ export class ProviderStoreService {
   ): void {
     const member = this.newsletter.currentMember();
     if (!member) return;
-    const dateLabel = new Intl.DateTimeFormat('es-AR', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    }).format(new Date(`${submission.date}T12:00:00`));
+
+    const rawDate = submission.date?.trim();
+    let dateLabel = rawDate || 'A coordinar';
+    if (rawDate && rawDate.toLowerCase() !== 'a coordinar') {
+      const parsed = new Date(`${rawDate}T12:00:00`);
+      if (!isNaN(parsed.getTime())) {
+        dateLabel = new Intl.DateTimeFormat('es-AR', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+        }).format(parsed);
+      }
+    }
+
+    const isMp = submission.paymentMethod === 'mercadopago' || Boolean(submission.mpPaymentId);
+    const isApprovedMp = submission.status === 'aprobado' && isMp;
+
     this.activities.addActivity({
       id: `act_${submission.id}`,
       slug: `${experience.slug}-${submission.reference.toLowerCase()}`,
@@ -2042,25 +2817,41 @@ export class ProviderStoreService {
       altitude: experience.meetingPoint,
       coverImage: experience.coverImage || '/assets/images/laguna_blanca.jpg',
       dateLabel,
-      status: 'pendiente_pago',
+      status: isApprovedMp ? 'confirmada' : 'pendiente_pago',
       provider: {
         name: experience.shortTitle ?? experience.title,
         category: experience.difficulty,
         contactPhone: '',
       },
       receipt: {
-        receiptNumber: submission.reference,
-        transactionId: submission.id,
-        gateway: 'custom',
-        gatewayDisplayName: 'Transferencia bancaria',
+        receiptNumber: isApprovedMp
+          ? (submission.displayReference || submission.reference)
+          : submission.reference,
+        transactionId: isApprovedMp
+          ? (submission.mpPaymentId || submission.id)
+          : submission.id,
+        gateway: isApprovedMp ? 'mercadopago' : 'custom',
+        gatewayDisplayName: isApprovedMp ? 'Mercado Pago' : 'Transferencia bancaria',
         amountArs: submission.amountArs,
         amountUsd: 0,
-        paidAt: new Date(submission.submittedAt).toLocaleString('es-AR'),
-        paymentMethodSummary: 'Transferencia a CBU · comprobante en revisión',
+        paidAt: new Date(
+          isApprovedMp ? (submission.reviewedAt || submission.submittedAt) : submission.submittedAt,
+        ).toLocaleString('es-AR'),
+        paymentMethodSummary: isApprovedMp
+          ? 'Mercado Pago · Pago acreditado online'
+          : 'Transferencia a CBU · comprobante en revisión',
         payerEmail: submission.email,
         payerName: submission.fullName,
-        authCode: submission.reference,
-        status: 'pendiente_verificacion',
+        authCode: isApprovedMp
+          ? (submission.mpPaymentId || submission.reference)
+          : submission.reference,
+        status: isApprovedMp ? 'aprobado' : 'pendiente_verificacion',
+        ...(submission.receipt?.url
+          ? {
+              receiptFileUrl: submission.receipt.url,
+              receiptFileName: submission.receipt.fileName,
+            }
+          : {}),
         ...(submission.discountCode
           ? { discountCode: submission.discountCode, discountArs: submission.discountArs }
           : {}),
@@ -2070,7 +2861,7 @@ export class ProviderStoreService {
     });
   }
 
-  private buildReference(slug: string): string {
+  buildReference(slug: string): string {
     const prefix = slug.replace(/-/g, '').slice(0, 3).toUpperCase().padEnd(3, 'X');
     const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     const random = crypto.getRandomValues(new Uint32Array(4));
@@ -2166,7 +2957,24 @@ export class ProviderStoreService {
     if (typeof window === 'undefined') return;
     try {
       if (provider) {
-        localStorage.setItem(STORAGE_KEYS.session, JSON.stringify(provider));
+        const sanitized: Record<string, any> = { ...provider };
+        delete sanitized['mp_access_token'];
+        delete sanitized['mp_refresh_token'];
+        delete sanitized['mpAccessToken'];
+        delete sanitized['mpRefreshToken'];
+        if (sanitized['notes']) {
+          try {
+            const parsed = JSON.parse(sanitized['notes']);
+            if (parsed && typeof parsed === 'object') {
+              delete parsed.mp_access_token;
+              delete parsed.mp_refresh_token;
+              sanitized['notes'] = JSON.stringify(parsed);
+            }
+          } catch {
+            // ignore
+          }
+        }
+        localStorage.setItem(STORAGE_KEYS.session, JSON.stringify(sanitized));
       } else {
         localStorage.removeItem(STORAGE_KEYS.session);
       }

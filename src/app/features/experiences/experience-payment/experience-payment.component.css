@@ -1042,3 +1042,210 @@
   object-fit: contain;
   border-radius: 4px;
 }
+
+/* ==========================================================================
+   Selector de Métodos de Pago (Transferencia vs Mercado Pago)
+   ========================================================================== */
+.pay-methods-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.pay-method-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  background: rgba(14, 28, 48, 0.45);
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+  color: #ffffff;
+}
+
+.pay-method-tab:hover {
+  background: rgba(14, 28, 48, 0.7);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.pay-method-tab.is-active {
+  border-color: #009ee3;
+  background: rgba(0, 158, 227, 0.12);
+  box-shadow: 0 0 14px rgba(0, 158, 227, 0.25);
+}
+
+.pay-method-tab .tab-icon {
+  font-size: 24px;
+  width: 24px;
+  height: 24px;
+  color: #009ee3;
+  flex-shrink: 0;
+}
+
+.pay-method-tab:first-child .tab-icon {
+  color: var(--color-gold);
+}
+
+.tab-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.tab-title {
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: #ffffff;
+}
+
+.tab-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 3px;
+  width: fit-content;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.best-badge {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.instant-badge {
+  background: rgba(0, 158, 227, 0.15);
+  color: #009ee3;
+  border: 1px solid rgba(0, 158, 227, 0.35);
+}
+
+.pay-surcharge-hint {
+  display: block;
+  font-size: 0.8rem;
+  color: rgba(128, 179, 255, 0.9);
+  margin-top: 0.35rem;
+}
+
+.pay-mp-notice-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  background: rgba(0, 158, 227, 0.08);
+  border: 1px solid rgba(0, 158, 227, 0.25);
+  border-radius: 4px;
+  padding: 1rem 1.15rem;
+}
+
+.mp-notice-icon mat-icon {
+  color: #009ee3;
+  font-size: 26px;
+  width: 26px;
+  height: 26px;
+}
+
+.mp-notice-body strong {
+  display: block;
+  font-size: 0.92rem;
+  color: #ffffff;
+  margin-bottom: 0.25rem;
+}
+
+.mp-notice-body p {
+  font-size: 0.84rem;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.45;
+  margin: 0;
+}
+
+/* Paso 3 Mercado Pago */
+.pay-mp-step3-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background: rgba(0, 158, 227, 0.06);
+  border: 1px solid rgba(0, 158, 227, 0.25);
+  border-radius: 4px;
+  padding: 1.25rem;
+}
+
+.mp-step3-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+}
+
+.mp-shield-icon {
+  color: #10b981;
+  font-size: 28px;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.mp-step3-head strong {
+  display: block;
+  color: #ffffff;
+  font-size: 0.95rem;
+  margin-bottom: 0.2rem;
+}
+
+.mp-step3-head p {
+  font-size: 0.84rem;
+  color: rgba(255, 255, 255, 0.82);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.mp-methods-chips {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.mp-chip-item {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.78rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  color: #ffffff;
+}
+
+/* Botón Mercado Pago */
+.pay-mp-btn {
+  background: #009ee3 !important;
+  color: #ffffff !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgba(0, 158, 227, 0.35);
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.pay-mp-btn:hover:not(:disabled) {
+  background: #0081ba !important;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0, 158, 227, 0.45);
+}
+
+.pay-surcharge-line dt,
+.pay-surcharge-line dd {
+  color: #60a5fa !important;
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .pay-methods-tabs {
+    grid-template-columns: 1fr;
+  }
+}
