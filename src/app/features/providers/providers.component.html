@@ -47,154 +47,189 @@
           </div>
 
           @if (!providerSuccess()) {
-            <form class="provider-full-form" (submit)="$event.preventDefault(); submitProvider()">
-              <div class="provider-form-grid">
-                <label class="provider-field">
-                  <span class="field-lbl">Nombre y Apellido / Razón Social <b>*</b></span>
-                  <input
-                    id="p-page-name"
-                    type="text"
-                    class="provider-input"
-                    placeholder="Ej. Lucas Albarracín - Travesías Puna"
-                    [value]="providerName()"
-                    (input)="providerName.set($any($event.target).value)"
-                    required
-                  />
-                </label>
+            @if (requiresGoogle()) {
+              <div class="provider-google-gate">
+                <div class="google-gate-head">
+                  <span class="google-gate-kicker">PASO 1 DE 2: IDENTIDAD DEL PRESTADOR</span>
+                  <h3 class="google-gate-title">Vincular cuenta con Google</h3>
+                </div>
+                <p class="google-gate-desc">
+                  Para postularte como prestador oficial, vinculá tu cuenta de Google. Tu nombre y correo oficial quedarán asociados a la postulación de forma automática.
+                </p>
+                @if (authError()) {
+                  <p class="google-gate-error" role="alert">{{ authError() }}</p>
+                }
+                <button type="button" class="provider-google-btn" (click)="linkGoogleAccount()">
+                  <svg class="google-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                  </svg>
+                  <span>Continuar con Google</span>
+                </button>
+              </div>
+            } @else {
+              <div class="provider-account-verified-card">
+                <div class="account-verified-info">
+                  <span class="account-verified-kicker">CUENTA DE SOCIO VINCULADA</span>
+                  <div class="account-verified-row">
+                    <strong class="account-verified-name">{{ authenticatedMember()?.fullName || providerName() }}</strong>
+                    <span class="account-verified-pill">Verificado</span>
+                  </div>
+                  <span class="account-verified-email">{{ authenticatedMember()?.email || providerEmail() }}</span>
+                </div>
+              </div>
 
-                <label class="provider-field">
-                  <span class="field-lbl">Categoría Principal del Servicio <b>*</b></span>
-                  <select
-                    id="p-page-category"
-                    class="provider-select"
-                    [value]="providerCategory()"
-                    (change)="providerCategory.set($any($event.target).value)"
-                    required
-                  >
-                    <option value="guia_montaña">Guía de Alta Montaña / Trekking</option>
-                    <option value="kayak_nautica">
-                      Kayak & Travesías Náuticas (Diques y Lagunas)
-                    </option>
-                    <option value="transporte_4x4">Transporte & Expedición 4x4</option>
-                    <option value="alojamiento">Alojamiento / Refugio Puneño</option>
-                    <option value="gastronomia">Gastronomía & Vinos de Altura</option>
-                    <option value="fotografia">Fotografía / Astroturismo</option>
-                    <option value="cabalgatas">Cabalgatas & Rutas Gauchas</option>
-                    <option value="artesanias">Artesanías & Sabores Regionales</option>
-                    <option value="otro">Otro (especificar a continuación)</option>
-                  </select>
-                </label>
-
-                @if (providerCategory() === 'otro') {
-                  <label class="provider-field full-width">
-                    <span class="field-lbl">Especificá tu Categoría de Servicio <b>*</b></span>
+              <form class="provider-full-form" (submit)="$event.preventDefault(); submitProvider()">
+                <div class="provider-form-grid">
+                  <label class="provider-field">
+                    <span class="field-lbl">Agencia / Emprendimiento <b>*</b></span>
                     <input
-                      id="p-page-custom-category"
+                      id="p-page-agency"
                       type="text"
                       class="provider-input"
-                      placeholder="Ej. Cicloturismo, Buceo de altura, Guía arqueológico, etc."
-                      maxlength="80"
-                      [value]="providerCustomCategory()"
-                      (input)="providerCustomCategory.set($any($event.target).value)"
+                      placeholder="Ej. Catamarca Kayak & Aventura o Guías del Ambato"
+                      [value]="providerAgency()"
+                      (input)="providerAgency.set($any($event.target).value)"
                       required
                     />
                   </label>
+
+                  <label class="provider-field">
+                    <span class="field-lbl">Categoría Principal del Servicio <b>*</b></span>
+                    <select
+                      id="p-page-category"
+                      class="provider-select"
+                      [value]="providerCategory()"
+                      (change)="providerCategory.set($any($event.target).value)"
+                      required
+                    >
+                      <option value="guia_montaña">Guía de Alta Montaña / Trekking</option>
+                      <option value="kayak_nautica">
+                        Kayak & Travesías Náuticas (Diques y Lagunas)
+                      </option>
+                      <option value="transporte_4x4">Transporte & Expedición 4x4</option>
+                      <option value="alojamiento">Alojamiento / Refugio Puneño</option>
+                      <option value="gastronomia">Gastronomía & Vinos de Altura</option>
+                      <option value="fotografia">Fotografía / Astroturismo</option>
+                      <option value="cabalgatas">Cabalgatas & Rutas Gauchas</option>
+                      <option value="artesanias">Artesanías & Sabores Regionales</option>
+                      <option value="otro">Otro (especificar a continuación)</option>
+                    </select>
+                  </label>
+
+                  @if (providerCategory() === 'otro') {
+                    <label class="provider-field full-width">
+                      <span class="field-lbl">Especificá tu Categoría de Servicio <b>*</b></span>
+                      <input
+                        id="p-page-custom-category"
+                        type="text"
+                        class="provider-input"
+                        placeholder="Ej. Cicloturismo, Buceo de altura, Guía arqueológico, etc."
+                        maxlength="80"
+                        [value]="providerCustomCategory()"
+                        (input)="providerCustomCategory.set($any($event.target).value)"
+                        required
+                      />
+                    </label>
+                  }
+
+                  <label class="provider-field">
+                    <span class="field-lbl">Región donde se presta el servicio <b>*</b></span>
+                    <input
+                      id="p-page-region"
+                      type="text"
+                      class="provider-input"
+                      placeholder="Ej. Fiambalá, Belén, Valle Central, etc."
+                      [value]="providerRegion()"
+                      (input)="providerRegion.set($any($event.target).value)"
+                      required
+                    />
+                  </label>
+
+                  <label class="provider-field">
+                    <span class="field-lbl">Correo Electrónico <b>*</b></span>
+                    <input
+                      id="p-page-email"
+                      type="email"
+                      class="provider-input"
+                      placeholder="tu-correo@ejemplo.com"
+                      [value]="providerEmail()"
+                      readonly
+                      style="opacity: 0.85; cursor: not-allowed;"
+                    />
+                  </label>
+
+                  <label class="provider-field">
+                    <span class="field-lbl">Teléfono / WhatsApp de Contacto <b>*</b></span>
+                    <input
+                      id="p-page-phone"
+                      type="tel"
+                      class="provider-input"
+                      placeholder="Ej. +54 9 3834 123456"
+                      [value]="providerPhone()"
+                      (input)="providerPhone.set($any($event.target).value)"
+                      required
+                    />
+                  </label>
+
+                  <label class="provider-field">
+                    <span class="field-lbl">Sitio Web o Red Social Principal <b>*</b></span>
+                    <input
+                      id="p-page-website"
+                      type="text"
+                      class="provider-input"
+                      placeholder="instagram.com/mitravesia o tuweb.com"
+                      [value]="providerWebsite()"
+                      (input)="providerWebsite.set($any($event.target).value)"
+                      required
+                    />
+                  </label>
+
+                  <label class="provider-field full-width">
+                    <span class="field-lbl"
+                      >Breve Descripción de tus Salidas o Servicios <b>*</b></span
+                    >
+                    <textarea
+                      id="p-page-desc"
+                      class="provider-textarea"
+                      rows="3"
+                      placeholder="Contanos brevemente qué recorridos realizás, capacidad de grupos o equipamiento disponible..."
+                      [value]="providerDescription()"
+                      (input)="providerDescription.set($any($event.target).value)"
+                      required
+                    ></textarea>
+                  </label>
+                </div>
+
+                @if (submitError()) {
+                  <div class="provider-error-banner" role="alert" style="margin-bottom: 1.25rem; padding: 0.85rem 1rem; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 4px; color: #fca5a5; font-size: 0.88rem;">
+                    {{ submitError() }}
+                  </div>
                 }
 
-                <label class="provider-field">
-                  <span class="field-lbl">Región donde se presta el servicio <b>*</b></span>
-                  <input
-                    id="p-page-region"
-                    type="text"
-                    class="provider-input"
-                    placeholder="Ej. Fiambalá, Belén, Valle Central, etc."
-                    [value]="providerRegion()"
-                    (input)="providerRegion.set($any($event.target).value)"
-                    required
-                  />
-                </label>
-
-                <label class="provider-field">
-                  <span class="field-lbl">Correo Electrónico <b>*</b></span>
-                  <input
-                    id="p-page-email"
-                    type="email"
-                    class="provider-input"
-                    placeholder="tu-correo@ejemplo.com"
-                    [value]="providerEmail()"
-                    (input)="providerEmail.set($any($event.target).value)"
-                    required
-                  />
-                </label>
-
-                <label class="provider-field">
-                  <span class="field-lbl">Teléfono / WhatsApp de Contacto <b>*</b></span>
-                  <input
-                    id="p-page-phone"
-                    type="tel"
-                    class="provider-input"
-                    placeholder="Ej. +54 9 3834 123456"
-                    [value]="providerPhone()"
-                    (input)="providerPhone.set($any($event.target).value)"
-                    required
-                  />
-                </label>
-
-                <label class="provider-field">
-                  <span class="field-lbl">Sitio Web o Red Social <b>*</b></span>
-                  <input
-                    id="p-page-website"
-                    type="text"
-                    class="provider-input"
-                    placeholder="instagram.com/mitravesia o tuweb.com"
-                    [value]="providerWebsite()"
-                    (input)="providerWebsite.set($any($event.target).value)"
-                    required
-                  />
-                </label>
-
-                <label class="provider-field full-width">
-                  <span class="field-lbl"
-                    >Breve Descripción de tus Salidas o Servicios <b>*</b></span
+                <div class="form-submit-row">
+                  <button
+                    type="submit"
+                    class="provider-page-submit-btn"
+                    [disabled]="
+                      isSubmitting() ||
+                      !providerAgency().trim() ||
+                      !providerCategory().trim() ||
+                      (providerCategory() === 'otro' && !providerCustomCategory().trim()) ||
+                      !providerRegion().trim() ||
+                      !providerEmail().trim() ||
+                      !providerPhone().trim() ||
+                      !providerWebsite().trim() ||
+                      !providerDescription().trim()
+                    "
                   >
-                  <textarea
-                    id="p-page-desc"
-                    class="provider-textarea"
-                    rows="3"
-                    placeholder="Contanos brevemente qué recorridos realizás, capacidad de grupos o equipamiento disponible..."
-                    [value]="providerDescription()"
-                    (input)="providerDescription.set($any($event.target).value)"
-                    required
-                  ></textarea>
-                </label>
-              </div>
-
-              @if (submitError()) {
-                <div class="provider-error-banner" role="alert" style="margin-bottom: 1.25rem; padding: 0.85rem 1rem; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 4px; color: #fca5a5; font-size: 0.88rem;">
-                  {{ submitError() }}
+                    <span>{{ isSubmitting() ? 'Enviando postulación...' : 'Postularme como Prestador Emergente' }}</span>
+                  </button>
                 </div>
-              }
-
-              <div class="form-submit-row">
-                <button
-                  type="submit"
-                  class="provider-page-submit-btn"
-                  [disabled]="
-                    isSubmitting() ||
-                    !providerName().trim() ||
-                    !providerCategory().trim() ||
-                    (providerCategory() === 'otro' && !providerCustomCategory().trim()) ||
-                    !providerRegion().trim() ||
-                    !providerEmail().trim() ||
-                    !providerPhone().trim() ||
-                    !providerWebsite().trim() ||
-                    !providerDescription().trim()
-                  "
-                >
-                  <span>{{ isSubmitting() ? 'Enviando postulación...' : 'Postularme como Prestador Emergente' }}</span>
-                </button>
-              </div>
-            </form>
+              </form>
+            }
           } @else {
             <div class="provider-success-banner wide-success">
               <div class="success-content">

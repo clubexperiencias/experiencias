@@ -11,6 +11,7 @@ import {
 } from '../../../core/services/admin-store.service';
 import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
 import { ExperienceService } from '../../../core/services/experience.service';
+import { NotificationService } from '../../../core/services/notification.service';
 
 type ApplicationFilterTab =
   'todas' | 'prestadores' | 'fundadores' | 'pendientes' | 'aprobadas' | 'bajas';
@@ -424,8 +425,25 @@ type ApplicationFilterTab =
               <div class="state-buttons">
                 @if (selectedApp()!.type === 'prestador') {
                   @if (selectedApp()!.status !== 'aprobado') {
-                    <button type="button" class="btn-state btn-approve" (click)="approveProvider()">
+                    <button
+                      type="button"
+                      class="btn-state btn-approve"
+                      [disabled]="isSendingWelcomeEmail()"
+                      (click)="approveProvider()"
+                    >
                       Aprobar Prestador
+                    </button>
+                  }
+                  @if (selectedApp()!.status === 'aprobado') {
+                    <button
+                      type="button"
+                      class="btn-state btn-resend"
+                      [disabled]="isSendingWelcomeEmail()"
+                      (click)="resendWelcomeEmail()"
+                      title="Enviar o reenviar correo de bienvenida con instrucciones de acceso al portal"
+                    >
+                      <mat-icon *ngIf="isSendingWelcomeEmail()" class="btn-spin">sync</mat-icon>
+                      <span>{{ isSendingWelcomeEmail() ? 'Enviando email...' : 'Reenviar email de bienvenida' }}</span>
                     </button>
                   }
                   @if (selectedApp()!.status !== 'dado_de_baja') {
@@ -459,6 +477,17 @@ type ApplicationFilterTab =
                   }
                 }
               </div>
+
+              @if (welcomeEmailStatus(); as emailStatus) {
+                <div
+                  class="email-status-banner"
+                  [class.is-success]="emailStatus.success"
+                  [class.is-error]="!emailStatus.success"
+                >
+                  <mat-icon>{{ emailStatus.success ? 'check_circle' : 'error_outline' }}</mat-icon>
+                  <span>{{ emailStatus.message }}</span>
+                </div>
+              }
 
               <button type="button" class="btn-close" (click)="closeDetailModal()">Cerrar</button>
             </div>
@@ -1677,6 +1706,53 @@ type ApplicationFilterTab =
         color: #0b0704;
       }
 
+      .btn-resend {
+        background: rgba(128, 179, 255, 0.15);
+        border: 1px solid rgba(128, 179, 255, 0.5);
+        color: #80b3ff;
+      }
+      .btn-resend:hover:not(:disabled) {
+        background: #80b3ff;
+        color: #050a14;
+      }
+
+      .email-status-banner {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.65rem 0.95rem;
+        border-radius: 4px;
+        font-size: 0.82rem;
+        font-weight: 600;
+        width: 100%;
+        box-sizing: border-box;
+      }
+      .email-status-banner mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+      }
+      .email-status-banner.is-success {
+        background: rgba(16, 185, 129, 0.15);
+        border: 1px solid rgba(16, 185, 129, 0.4);
+        color: #6ee7b7;
+      }
+      .email-status-banner.is-error {
+        background: rgba(239, 68, 68, 0.15);
+        border: 1px solid rgba(239, 68, 68, 0.4);
+        color: #fca5a5;
+      }
+
+      .btn-spin {
+        animation: spin 1s linear infinite;
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+
       .btn-state:disabled {
         opacity: 0.5;
         cursor: not-allowed;
@@ -1783,12 +1859,15 @@ type ApplicationFilterTab =
 export class AdminApplicationsComponent implements OnInit {
   readonly store = inject(AdminStoreService);
   readonly experienceService = inject(ExperienceService);
+  readonly notificationService = inject(NotificationService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
   readonly searchQuery = signal<string>('');
   readonly activeTab = signal<ApplicationFilterTab>('todas');
   readonly selectedApp = signal<AdminApplication | null>(null);
+  readonly isSendingWelcomeEmail = signal<boolean>(false);
+  readonly welcomeEmailStatus = signal<{ success: boolean; message: string } | null>(null);
 
   readonly providerAccountHolder = signal<string>('');
   readonly providerCuitDni = signal<string>('');
@@ -1864,6 +1943,7 @@ export class AdminApplicationsComponent implements OnInit {
 
   openDetailModal(app: AdminApplication): void {
     this.selectedApp.set(app);
+    this.welcomeEmailStatus.set(null);
     this.providerAccountHolder.set(app.accountHolder || app.fullName || '');
     this.providerCuitDni.set(app.cuitDni || '');
     this.providerCbuAlias.set(app.cbuAlias || '');
@@ -1872,6 +1952,38 @@ export class AdminApplicationsComponent implements OnInit {
 
   closeDetailModal(): void {
     this.selectedApp.set(null);
+    this.welcomeEmailStatus.set(null);
+  }
+
+  async resendWelcomeEmail(): Promise<void> {
+    const current = this.selectedApp();
+    if (!current?.email) return;
+    this.isSendingWelcomeEmail.set(true);
+    this.welcomeEmailStatus.set(null);
+    try {
+      const res = await this.notificationService.notifyProviderApproved({
+        fullName: current.fullName || '',
+        email: current.email,
+      });
+      if (res.success) {
+        this.welcomeEmailStatus.set({
+          success: true,
+          message: `¡Correo de bienvenida enviado exitosamente a ${current.email}!`,
+        });
+      } else {
+        this.welcomeEmailStatus.set({
+          success: false,
+          message: `No se pudo enviar el correo: ${res.error || 'Verifique la conexión o configuración de Resend en el servidor.'}`,
+        });
+      }
+    } catch (err: any) {
+      this.welcomeEmailStatus.set({
+        success: false,
+        message: `Error al enviar correo: ${err?.message || err}`,
+      });
+    } finally {
+      this.isSendingWelcomeEmail.set(false);
+    }
   }
 
   async approveProvider(): Promise<void> {
@@ -1884,6 +1996,7 @@ export class AdminApplicationsComponent implements OnInit {
     );
     if (ok) {
       this.selectedApp.update((a) => (a ? { ...a, status: 'aprobado' } : null));
+      void this.resendWelcomeEmail();
     }
   }
 

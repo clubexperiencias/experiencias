@@ -280,7 +280,6 @@ import { ClubProfile } from '../../../core/models/club-profile.model';
                     required
                   />
                 </div>
-                <span class="field-hint">Por defecto 12%. Si el prestador no vinculó Mercado Pago, el checkout solo muestra transferencia tradicional al 0% de recargo.</span>
               </div>
 
               <div class="usd-preview-box">

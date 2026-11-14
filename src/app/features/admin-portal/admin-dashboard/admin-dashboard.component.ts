@@ -258,6 +258,7 @@ import { AdminApplicationModalComponent } from '../admin-application-modal/admin
                 <tr>
                   <th>Prestador / Guía</th>
                   <th>Agencia / Emprendimiento</th>
+                  <th>Rubro</th>
                   <th>Contacto</th>
                   <th>Estado</th>
                   <th>Fecha</th>
@@ -275,6 +276,9 @@ import { AdminApplicationModalComponent } from '../admin-application-modal/admin
                     </td>
                     <td>
                       <span class="exp-title-cell">{{ item.agency }}</span>
+                    </td>
+                    <td>
+                      <span class="exp-title-cell">{{ item.rubro || '—' }}</span>
                     </td>
                     <td>
                       @if (item.phone && item.phone !== '—') {
@@ -347,10 +351,9 @@ import { AdminApplicationModalComponent } from '../admin-application-modal/admin
             }
             <a
               routerLink="/experiencias"
-              [queryParams]="{ tab: 'postulaciones' }"
               class="view-all-link"
             >
-              <span>Ver propuestas ({{ store.experienceRequests().length }})</span>
+              <span>Ver catálogo completo ({{ webExperiences().length }})</span>
             </a>
           </div>
         </div>
@@ -466,17 +469,8 @@ import { AdminApplicationModalComponent } from '../admin-application-modal/admin
                         <div class="exp-cell-text">
                           <div class="exp-title-row">
                             <strong class="exp-title-cell">{{ exp.title }}</strong>
-                            @if (isClub(exp)) {
-                              <span class="club-chip" title="Experiencia Oficial del Club de Experiencias">
-                                Club
-                              </span>
-                            } @else if (exp.providerName) {
-                              <span class="provider-chip" title="Prestador oficial de la experiencia">
-                                {{ exp.providerName }}
-                              </span>
-                            }
                           </div>
-                          <span class="exp-kicker-sub">{{ exp.kicker || 'EXPEDICIÓN' }}</span>
+                          <span class="exp-provider-sub">{{ getExpProviderName(exp) }}</span>
                         </div>
                       </div>
                     </td>
@@ -2478,6 +2472,12 @@ import { AdminApplicationModalComponent } from '../admin-application-modal/admin
         letter-spacing: 0.04em;
         text-transform: uppercase;
       }
+      .exp-provider-sub {
+        font-size: 0.74rem;
+        color: rgba(255, 255, 255, 0.65);
+        font-weight: 500;
+        letter-spacing: 0.02em;
+      }
 
       .row-region {
         font-size: 0.82rem;
@@ -3227,6 +3227,13 @@ export class AdminDashboardComponent {
     return isClubExperience(exp);
   }
 
+  getExpProviderName(exp: Experience): string {
+    if (this.isClub(exp)) {
+      return this.store.clubProfile().name || 'Club de Experiencias';
+    }
+    return exp.providerAgency?.trim() || exp.providerName?.trim() || 'Club de Experiencias';
+  }
+
   readonly admin = this.store.currentAdmin;
   readonly stats = this.store.stats;
   readonly selectedSubmission = signal<TransferSubmission | null>(null);
@@ -3254,6 +3261,8 @@ export class AdminDashboardComponent {
     const officialProviders = this.store.providerStore.providers();
     const providerEmails = new Set<string>();
 
+    const applications = this.store.applications().filter((a) => a.type === 'prestador');
+
     for (const p of officialProviders) {
       if (!p.verified || p.status === 'dado_de_baja' || p.status === 'pendiente') {
         continue;
@@ -3261,11 +3270,18 @@ export class AdminDashboardComponent {
       const cleanEmail = p.email?.toLowerCase().trim() || '';
       if (cleanEmail) providerEmails.add(cleanEmail);
       const computedSlug = p.slug || slugify(p.agency || p.name || p.id || cleanEmail);
+
+      const matchingApp = applications.find((a) => a.email?.toLowerCase().trim() === cleanEmail);
+      const hasCategoryAgency = this.isCategoryIdentifier(p.agency);
+      const rawCategory = matchingApp?.category || (hasCategoryAgency ? p.agency : '');
+      const displayAgency = hasCategoryAgency ? '' : p.agency;
+
       list.push({
         id: p.id || `prov-${cleanEmail}`,
         origin: 'official',
         name: p.name || 'Prestador Oficial',
-        agency: p.agency || 'Prestador Independiente',
+        agency: displayAgency || '—',
+        rubro: this.formatCategory(rawCategory),
         email: p.email,
         phone: p.phone || '—',
         categoryOrBio: p.bio,
@@ -3276,17 +3292,20 @@ export class AdminDashboardComponent {
       });
     }
 
-    const applications = this.store.applications().filter((a) => a.type === 'prestador');
     for (const app of applications) {
       const cleanEmail = app.email?.toLowerCase().trim() || '';
       if (cleanEmail && providerEmails.has(cleanEmail)) {
         continue; // Ya figura como prestador oficial aprobado
       }
+      const hasCategoryAgency = this.isCategoryIdentifier(app.agency || app.description);
+      const displayAgency = hasCategoryAgency ? '' : (app.agency || app.description || '');
+
       list.push({
         id: app.id,
         origin: 'application',
         name: app.fullName || 'Postulante',
-        agency: app.category ? this.formatCategory(app.category) : 'Postulación de Prestador',
+        agency: displayAgency || '—',
+        rubro: this.formatCategory(app.category),
         email: app.email,
         phone: app.phone || '—',
         categoryOrBio: app.description || app.motivationLetter,
@@ -3474,16 +3493,90 @@ export class AdminDashboardComponent {
     }
   }
 
-  formatCategory(category?: string): string {
-    const map: Record<string, string> = {
-      alojamiento: 'Alojamiento',
-      gastronomia: 'Gastronomía',
-      guias_actividades: 'Guías & Excursiones',
-      transporte: 'Transporte & Transfers',
-      bienestar: 'Bienestar',
-      experiencias_culturales: 'Cultura & Talleres',
-    };
-    return category ? (map[category] ?? category) : 'General';
+  isCategoryIdentifier(val?: string | null): boolean {
+    if (!val) return false;
+    const v = val.toLowerCase().trim();
+    return [
+      'guia_montaña',
+      'guia_montana',
+      'kayak_nautica',
+      'transporte_4x4',
+      'alojamiento',
+      'gastronomia',
+      'fotografia',
+      'cabalgatas',
+      'artesanias',
+      'arqueologia',
+      'otro',
+      'general',
+      'trekking',
+      '4x4',
+      'kayak',
+      'cabalgata',
+      'vino_gastronomia',
+      'astro',
+      'servicios turísticos',
+      'guía de alta montaña / trekking',
+      'kayak & travesías náuticas (diques y lagunas)',
+      'transporte & expedición 4x4',
+      'alojamiento / refugio puneño',
+      'gastronomía & vinos de altura',
+      'fotografía / astroturismo',
+      'cabalgatas & rutas gauchas',
+      'artesanías & sabores regionales',
+    ].includes(v);
+  }
+
+  formatCategory(category?: string | null): string {
+    if (!category) return '—';
+    const c = category.toLowerCase().trim();
+    switch (c) {
+      case 'guia_montaña':
+      case 'guia_montana':
+      case 'trekking':
+      case 'guía de alta montaña / trekking':
+        return 'Guía de Alta Montaña';
+      case 'kayak_nautica':
+      case 'kayak':
+      case 'kayak & travesías náuticas (diques y lagunas)':
+        return 'Kayak & Náutica';
+      case 'transporte_4x4':
+      case '4x4':
+      case 'transporte & expedición 4x4':
+        return 'Transporte & 4x4';
+      case 'alojamiento':
+      case 'alojamiento / refugio puneño':
+        return 'Alojamiento';
+      case 'gastronomia':
+      case 'vino_gastronomia':
+      case 'gastronomía & vinos de altura':
+        return 'Gastronomía & Vinos';
+      case 'fotografia':
+      case 'astro':
+      case 'fotografía / astroturismo':
+        return 'Fotografía & Expedición';
+      case 'cabalgatas':
+      case 'cabalgata':
+      case 'cabalgatas & rutas gauchas':
+        return 'Cabalgatas';
+      case 'arqueologia':
+        return 'Arqueología & Patrimonio';
+      case 'artesanias':
+      case 'artesanías & sabores regionales':
+        return 'Artesanías & Sabores';
+      case 'guias_actividades':
+        return 'Guías & Excursiones';
+      case 'transporte':
+        return 'Transporte & Transfers';
+      case 'bienestar':
+        return 'Bienestar';
+      case 'experiencias_culturales':
+        return 'Cultura & Talleres';
+      case 'otro':
+        return 'Otro';
+      default:
+        return category.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+    }
   }
 
   hasPhoneDigits(phone?: string | null): boolean {

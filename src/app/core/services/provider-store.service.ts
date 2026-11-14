@@ -379,7 +379,7 @@ export class ProviderStoreService {
         (data.user as any)?.identities?.[0]?.identity_data?.['avatar_url'] ||
         (data.user as any)?.identities?.[0]?.identity_data?.['picture'] ||
         '';
-      const resolvedSlug =
+      let resolvedSlug =
         access.slug ||
         existing?.slug ||
         (access.agency
@@ -389,7 +389,11 @@ export class ProviderStoreService {
               .replace(/[\u0300-\u036f]/g, '')
               .replace(/[^a-z0-9]+/g, '-')
               .replace(/(^-|-$)+/g, '')
-          : `prov-${email.split('@')[0]}`);
+          : slugify(email.split('@')[0]));
+
+      if (resolvedSlug.startsWith('prov-') && resolvedSlug !== 'prov-club') {
+        resolvedSlug = resolvedSlug.slice(5) || slugify(email.split('@')[0]);
+      }
 
       const isClub = isClubProvider({
         id: existing?.id,
@@ -407,7 +411,10 @@ export class ProviderStoreService {
           userMeta['name'] ||
           existing?.name ||
           email,
-        agency: access.agency || existing?.agency || 'Prestador EXPERIENCIAS.CLUB',
+        agency:
+          (access.agency && access.agency !== 'Prestador EXPERIENCIAS.CLUB') ||
+          (existing?.agency && existing?.agency !== 'Prestador EXPERIENCIAS.CLUB') ||
+          'Prestador emergente del Club de Experiencias',
         slug: resolvedSlug,
         bio: access.bio || existing?.bio || '',
         phone: access.phone || existing?.phone || '',
@@ -603,7 +610,10 @@ export class ProviderStoreService {
         id: `provider-${normalized.replace(/[^a-z0-9]+/g, '-')}`,
         email: normalized,
         name: details?.name || email,
-        agency: details?.agency || 'Prestador EXPERIENCIAS.CLUB',
+        agency:
+          (details?.agency && details.agency !== 'Prestador EXPERIENCIAS.CLUB')
+            ? details.agency
+            : 'Prestador emergente del Club de Experiencias',
         slug:
           details?.slug ||
           slugify(details?.agency || details?.name || normalized.split('@')[0]),
@@ -981,6 +991,15 @@ export class ProviderStoreService {
     );
     if (exactMatch) {
       return exactMatch;
+    }
+
+    // 2do pase: coincidencia tolerante con o sin prefijo prov-
+    const altClean = clean.startsWith('prov-') ? clean.slice(5) : `prov-${clean}`;
+    const altMatch = providers.find(
+      (p) => (p.slug || '').toLowerCase() === altClean || p.id.toLowerCase() === altClean,
+    );
+    if (altMatch) {
+      return altMatch;
     }
 
     // 2do pase: fallbacks por agencia y nombre
@@ -2876,9 +2895,18 @@ export class ProviderStoreService {
     if (isClubProvider(p)) {
       return p;
     }
-    if (p.cbuAlias === 'EXPERIENCIAS.CLUB.MP' || p.cuitDni === '20-33445566-7') {
+    const updatedAgency =
+      p.agency === 'Prestador EXPERIENCIAS.CLUB'
+        ? 'Prestador emergente del Club de Experiencias'
+        : p.agency;
+    if (
+      p.cbuAlias === 'EXPERIENCIAS.CLUB.MP' ||
+      p.cuitDni === '20-33445566-7' ||
+      p.agency === 'Prestador EXPERIENCIAS.CLUB'
+    ) {
       return {
         ...p,
+        agency: updatedAgency,
         cbuAlias: p.cbuAlias === 'EXPERIENCIAS.CLUB.MP' ? '' : p.cbuAlias,
         cuitDni: p.cuitDni === '20-33445566-7' ? '' : p.cuitDni,
         bankName: p.bankName === 'Banco Nación / Mercado Pago' ? '' : p.bankName,

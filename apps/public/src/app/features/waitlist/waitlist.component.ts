@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, HostListener } from '@angular/core';
+import { Component, inject, signal, computed, HostListener, DestroyRef } from '@angular/core';
 import { NewsletterService } from '../../core/services/newsletter.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ExperienceService } from '../../core/services/experience.service';
@@ -54,8 +54,11 @@ export class WaitlistComponent {
   readonly notificationService = inject(NotificationService);
   readonly experienceService = inject(ExperienceService);
   readonly activityService = inject(ActivityHistoryService);
+  private readonly destroyRef = inject(DestroyRef);
+  private manifestoTimer: any = null;
 
   constructor() {
+    this.destroyRef.onDestroy(() => this.clearManifestoTimer());
     this.route.queryParams.subscribe((params) => {
       const modal = params['modal'] as ModalType;
       if (
@@ -78,6 +81,69 @@ export class WaitlistComponent {
   // Email de suscripción socio emergente
   readonly email = signal('');
   readonly copyStatus = signal<string | null>(null);
+
+  // Manifiesto del Club (vista desplegable en el root con auto-cierre de 11s)
+  readonly showManifesto = signal(false);
+  readonly manifestoAutoSentEmail = signal<string | null>(null);
+
+  private clearManifestoTimer(): void {
+    if (this.manifestoTimer) {
+      clearTimeout(this.manifestoTimer);
+      this.manifestoTimer = null;
+    }
+  }
+
+  toggleManifesto(focusEmail = false): void {
+    const isOpening = !this.showManifesto();
+    this.clearManifestoTimer();
+
+    if (isOpening) {
+      const cleanEmail = this.email().trim().toLowerCase();
+      if (cleanEmail && this.newsletter.isValidEmail(cleanEmail)) {
+        this.manifestoAutoSentEmail.set(cleanEmail);
+        void this.submitFromManifesto(cleanEmail);
+        this.email.set('');
+      }
+
+      // Auto-cierre del manifiesto a los 16 segundos
+      this.manifestoTimer = setTimeout(() => {
+        if (this.showManifesto()) {
+          this.closeManifesto();
+        }
+      }, 16000);
+    }
+
+    this.showManifesto.set(isOpening);
+    if (!isOpening && focusEmail && typeof document !== 'undefined') {
+      setTimeout(() => {
+        document.getElementById('waitlist-email')?.focus();
+      }, 150);
+    }
+  }
+
+  closeManifesto(focusEmail = false): void {
+    this.clearManifestoTimer();
+    this.showManifesto.set(false);
+    if (focusEmail && typeof document !== 'undefined') {
+      setTimeout(() => {
+        document.getElementById('waitlist-email')?.focus();
+      }, 150);
+    }
+  }
+
+  private async submitFromManifesto(cleanEmail: string): Promise<void> {
+    if (this.newsletter.isSubscribed()) {
+      this.newsletter.resetCurrentSubscription();
+    }
+    try {
+      await this.newsletter.loginWithEmail(cleanEmail);
+      if (this.newsletter.isSupabaseConnected()) {
+        await this.notificationService.notifyWaitlistConfirmation({ email: cleanEmail });
+      }
+    } catch (err) {
+      console.warn('[WaitlistComponent] Error enviando confirmación desde manifiesto:', err);
+    }
+  }
 
   // Iniciar Sesión
   readonly loginEmail = signal('');

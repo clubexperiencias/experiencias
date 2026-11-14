@@ -532,17 +532,8 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                       <div class="exp-cell-text">
                         <div class="exp-title-row">
                           <strong class="exp-table-title">{{ exp.title }}</strong>
-                          @if (isClub(exp)) {
-                            <span class="club-official-chip" title="Experiencia Oficial creada por el Club de Experiencias">
-                              Club
-                            </span>
-                          } @else if (exp.providerName) {
-                            <span class="provider-chip" title="Prestador oficial de la experiencia">
-                              {{ exp.providerName }}
-                            </span>
-                          }
                         </div>
-                        <span class="exp-table-sub">{{ exp.tagline }}</span>
+                        <span class="exp-table-sub">{{ getExpProviderName(exp) }}</span>
                       </div>
                     </a>
                   </td>
@@ -4079,6 +4070,14 @@ export class AdminExperiencesComponent implements OnInit {
 
   isClub(exp?: Partial<Experience> | null): boolean {
     return isClubExperience(exp);
+  }
+
+  getExpProviderName(exp?: Partial<Experience> | null): string {
+    if (!exp) return 'Club de Experiencias';
+    if (this.isClub(exp)) {
+      return this.adminStore.clubProfile().name || 'Club de Experiencias';
+    }
+    return exp.providerAgency?.trim() || exp.providerName?.trim() || 'Club de Experiencias';
   }
 
   readonly isCurrentExperienceClub = computed(() => {
