@@ -1,8 +1,8 @@
 import { Component, computed, effect, inject, signal, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
-import { ProviderStoreService } from '../../../core/services/provider-store.service';
+import { ProviderStoreService, slugify } from '../../../core/services/provider-store.service';
 import { StorageService } from '../../../core/services/storage.service';
 import {
   socialUrlValidator,
@@ -109,12 +109,9 @@ import {
           </div>
 
           <!-- SECCIÓN: Cobros con Mercado Pago -->
-          <div class="form-section mp-form-section">
+          <div id="mercadopago" class="form-section mp-form-section">
             <div class="section-title-row">
-              <h3 class="section-title">
-                <mat-icon class="mp-section-icon">credit_card</mat-icon>
-                Cobros con Mercado Pago (Acreditación Instantánea)
-              </h3>
+              <h3 class="section-title">Cobros con Mercado Pago (Acreditación Instantánea)</h3>
               @if (isMpConnected()) {
                 <span class="mp-status-pill connected">
                   <mat-icon>check_circle</mat-icon>
@@ -127,7 +124,7 @@ import {
               }
             </div>
 
-            <p class="section-desc">
+            <p class="section-desc mp-section-desc">
               Vinculá tu cuenta de Mercado Pago para permitir que los exploradores paguen tus experiencias en el checkout con
               tarjeta de crédito, débito y dinero en cuenta. Los cobros se acreditan en tu cuenta automáticamente.
               Las transferencias bancarias directas a tu CBU seguirán siempre habilitadas por defecto.
@@ -188,10 +185,9 @@ import {
                     (click)="connectMercadoPago()"
                     title="Vincular cuenta con Mercado Pago"
                   >
-                    <mat-icon>bolt</mat-icon>
                     <span>Vincular mi cuenta de Mercado Pago</span>
                   </button>
-                  <span class="mp-connect-note">Conexión directa en 1 clic. Podés desvincularla en cualquier momento.</span>
+                  <span class="mp-connect-note">Podés desvincularla en cualquier momento.</span>
                 </div>
               </div>
             }
@@ -248,7 +244,7 @@ import {
 
               <div class="form-group">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
-                  <label class="form-label">Nombre de Usuario / Enlace Público (Slug)</label>
+                  <label class="form-label">Nombre de Usuario / Enlace Público</label>
                   <a
                     [href]="getPublicProfileUrl(form.get('slug')?.value || currentSlug())"
                     target="_blank"
@@ -265,11 +261,6 @@ import {
                   class="form-input"
                   [placeholder]="currentSlug()"
                 />
-                <span class="field-hint"
-                  >experiencias.club/prestadores/{{
-                    form.get('slug')?.value || currentSlug()
-                  }}</span
-                >
               </div>
 
               <div class="form-group full-col">
@@ -310,9 +301,6 @@ import {
                       (change)="onFileSelected($event, 'avatar')"
                       [disabled]="isUploadingAvatar()"
                     />
-                    <mat-icon class="upload-icon">{{
-                      isUploadingAvatar() ? 'hourglass_empty' : 'cloud_upload'
-                    }}</mat-icon>
                     <span>{{ isUploadingAvatar() ? 'Subiendo...' : (form.get('avatar')?.value ? 'Cambiar foto' : 'Subir foto') }}</span>
                   </label>
                   @if (form.get('avatar')?.value) {
@@ -323,7 +311,6 @@ import {
                       [disabled]="isUploadingAvatar()"
                       title="Quitar foto de perfil"
                     >
-                      <mat-icon>delete_outline</mat-icon>
                       <span>Quitar</span>
                     </button>
                   }
@@ -358,9 +345,6 @@ import {
                       (change)="onFileSelected($event, 'coverImage')"
                       [disabled]="isUploadingCover()"
                     />
-                    <mat-icon class="upload-icon">{{
-                      isUploadingCover() ? 'hourglass_empty' : 'cloud_upload'
-                    }}</mat-icon>
                     <span>{{ isUploadingCover() ? 'Subiendo...' : (form.get('coverImage')?.value ? 'Cambiar portada' : 'Subir portada') }}</span>
                   </label>
                   @if (form.get('coverImage')?.value) {
@@ -371,7 +355,6 @@ import {
                       [disabled]="isUploadingCover()"
                       title="Quitar foto de portada"
                     >
-                      <mat-icon>delete_outline</mat-icon>
                       <span>Quitar</span>
                     </button>
                   }
@@ -403,7 +386,6 @@ import {
                   class="form-input"
                   placeholder="Ej. www.catamarcakayak.com"
                 />
-                <span class="field-hint">Sitio web de tu agencia o emprendimiento</span>
               </div>
 
               <div class="form-group">
@@ -892,18 +874,24 @@ import {
         justify-content: center;
         padding: 0.85rem 1.75rem;
         background: transparent;
-        border: 1.5px solid #0d1e44;
-        color: #80b3ff;
+        border: 1.5px solid #80b3ff !important;
+        color: #80b3ff !important;
         font-weight: 700;
         font-size: 0.95rem;
         border-radius: 2px;
         cursor: pointer;
         transition: all 0.2s ease;
       }
+      .btn-logout span {
+        color: #80b3ff !important;
+      }
       .btn-logout:hover {
-        background: rgba(13, 30, 68, 0.35);
-        border-color: #80b3ff;
-        color: #ffffff;
+        background: rgba(128, 179, 255, 0.15);
+        border-color: #80b3ff !important;
+        color: #ffffff !important;
+      }
+      .btn-logout:hover span {
+        color: #ffffff !important;
       }
       .btn-icon {
         font-size: 1.1rem;
@@ -915,8 +903,8 @@ import {
         align-items: center;
         justify-content: center;
         padding: 0.85rem 2.25rem;
-        background: #80b3ff;
-        color: #070d18;
+        background: #80b3ff !important;
+        color: #ffffff !important;
         font-weight: 700;
         font-size: 0.95rem;
         border-radius: 2px;
@@ -924,8 +912,15 @@ import {
         cursor: pointer;
         transition: all 0.2s ease;
       }
+      .cta-save-btn span {
+        color: #ffffff !important;
+      }
       .cta-save-btn:hover:not(:disabled) {
-        background: #a6c8ff;
+        background: #99c2ff !important;
+        color: #ffffff !important;
+      }
+      .cta-save-btn:hover:not(:disabled) span {
+        color: #ffffff !important;
       }
       .cta-save-btn:disabled {
         opacity: 0.5;
@@ -938,13 +933,17 @@ import {
         border-radius: 4px;
         padding: 1.5rem;
       }
-      .mp-section-icon {
-        color: #009ee3;
-        font-size: 1.35rem;
-        width: 1.35rem;
-        height: 1.35rem;
-        vertical-align: middle;
-        margin-right: 0.35rem;
+      .section-title-row {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        margin-bottom: 0.15rem;
+      }
+      .mp-section-desc {
+        line-height: 1.35;
+        margin-top: 0.15rem;
+        margin-bottom: 0.35rem;
       }
       .mp-status-pill {
         display: inline-flex;
@@ -984,7 +983,7 @@ import {
         border: 1px solid rgba(0, 158, 227, 0.3);
         border-radius: 4px;
         padding: 1.15rem 1.35rem;
-        margin-top: 1rem;
+        margin-top: 0.65rem;
       }
       .mp-active-left {
         display: flex;
@@ -1051,7 +1050,7 @@ import {
         border: 1px dashed rgba(0, 158, 227, 0.35);
         border-radius: 4px;
         padding: 1.25rem 1.4rem;
-        margin-top: 1rem;
+        margin-top: 0.65rem;
         display: flex;
         flex-direction: column;
         gap: 1rem;
@@ -1074,22 +1073,23 @@ import {
       .btn-connect-mp {
         display: inline-flex;
         align-items: center;
-        gap: 0.55rem;
-        padding: 0.75rem 1.5rem;
-        background: #009ee3;
+        justify-content: center;
+        padding: 0.85rem 1.65rem;
+        background: #80b3ff;
         color: #ffffff;
-        border: none;
-        border-radius: 3px;
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        box-shadow: 0 4px 16px rgba(255, 255, 255, 0.4), 0 0 10px rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
         font-size: 0.92rem;
         font-weight: 700;
         cursor: pointer;
         transition: all 0.2s ease;
-        box-shadow: 0 4px 12px rgba(0, 158, 227, 0.3);
       }
-      .btn-connect-mp:hover {
-        background: #0081ba;
-        transform: translateY(-1px);
-        box-shadow: 0 6px 16px rgba(0, 158, 227, 0.4);
+      .btn-connect-mp:hover:not(:disabled) {
+        background: #99c2ff;
+        color: #ffffff;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 22px rgba(255, 255, 255, 0.6), 0 0 14px rgba(255, 255, 255, 0.3);
       }
       .btn-connect-mp mat-icon {
         font-size: 18px;
@@ -1127,6 +1127,7 @@ import {
 export class ProviderProfileComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   readonly store = inject(ProviderStoreService);
   readonly storageService = inject(StorageService);
 
@@ -1159,6 +1160,14 @@ export class ProviderProfileComponent implements OnInit {
   readonly mpNickname = computed(() => this.store.currentProvider()?.mpNickname || '');
 
   ngOnInit(): void {
+    this.route.fragment.subscribe((frag) => {
+      if (frag === 'mercadopago' && typeof document !== 'undefined') {
+        setTimeout(() => {
+          document.getElementById('mercadopago')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 150);
+      }
+    });
+
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       if (params.get('mp_connected') === 'true') {
@@ -1175,10 +1184,10 @@ export class ProviderProfileComponent implements OnInit {
           errCode === 'not_configured'
             ? 'Mercado Pago no está configurado en este entorno.'
             : errCode === 'auth_failed'
-            ? 'Falló la autorización con Mercado Pago. Intentá nuevamente.'
-            : errCode === 'save_failed'
-            ? 'No se pudo guardar la vinculación en el perfil.'
-            : 'Ocurrió un error al vincular Mercado Pago.';
+              ? 'Falló la autorización con Mercado Pago. Intentá nuevamente.'
+              : errCode === 'save_failed'
+                ? 'No se pudo guardar la vinculación en el perfil.'
+                : 'Ocurrió un error al vincular Mercado Pago.';
         this.mpError.set(errMsg);
         setTimeout(() => this.mpError.set(null), 6000);
         const cleanUrl = window.location.pathname;
@@ -1189,14 +1198,18 @@ export class ProviderProfileComponent implements OnInit {
 
   readonly currentSlug = computed(() => {
     const p = this.store.currentProvider();
-    if (p?.slug) return p.slug;
+    if (p?.slug) {
+      if (p.slug.startsWith('prov-') && p.slug !== 'prov-club') {
+        return p.slug.slice(5) || p.slug;
+      }
+      return p.slug;
+    }
+    if (p?.email) {
+      const emailUser = p.email.split('@')[0].trim().toLowerCase();
+      if (emailUser) return slugify(emailUser);
+    }
     if (p?.agency) {
-      return p.agency
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)+/g, '');
+      return slugify(p.agency);
     }
     return 'prestador-oficial';
   });
@@ -1227,10 +1240,17 @@ export class ProviderProfileComponent implements OnInit {
     effect(() => {
       const p = this.store.currentProvider();
       if (p && !this.form.dirty) {
+        let cleanSlug = p.slug || '';
+        if (cleanSlug.startsWith('prov-') && cleanSlug !== 'prov-club') {
+          cleanSlug = cleanSlug.slice(5);
+        }
+        if (!cleanSlug && p.email) {
+          cleanSlug = slugify(p.email.split('@')[0]);
+        }
         this.form.patchValue({
           name: p.name || '',
           agency: p.agency || '',
-          slug: p.slug || '',
+          slug: cleanSlug,
           bio: p.bio || '',
           avatar: p.avatar || '',
           coverImage: p.coverImage || '',

@@ -44,6 +44,7 @@ export interface AdminApplication {
   id: string;
   type: ApplicationType;
   fullName: string;
+  agency?: string;
   email: string;
   phone: string;
   category?: string;
@@ -1635,6 +1636,7 @@ export class AdminStoreService {
             id: p.id,
             type: 'prestador' as const,
             fullName: p.name || 'Sin nombre',
+            agency: p.agency || '',
             email: p.email,
             phone: p.phone || '—',
             category: p.category || 'guia_montaña',
@@ -1698,11 +1700,14 @@ export class AdminStoreService {
       bankName?: string;
     },
   ): Promise<boolean> {
-    const app = this._applications().find((a) => a.id === id);
+    const cleanId = (id || '').trim().toLowerCase();
+    const app = this._applications().find(
+      (a) => a.id === id || a.email?.trim().toLowerCase() === cleanId,
+    );
     try {
       if (isSupabaseConfigured()) {
         if (type === 'prestador') {
-          const email = app?.email?.trim().toLowerCase();
+          const email = (app?.email || cleanId).trim().toLowerCase();
           const active = status === 'aprobado';
           const paStatus =
             status === 'aprobado'
@@ -1750,8 +1755,13 @@ export class AdminStoreService {
 
           if (status === 'aprobado' && email) {
             try {
+              let targetName = app?.fullName || '';
+              if (!targetName) {
+                const prov = this.providerStore.getProviderByEmail(email);
+                targetName = prov?.name || prov?.accountHolder || '';
+              }
               await this.notificationService.notifyProviderApproved({
-                fullName: app?.fullName || '',
+                fullName: targetName,
                 email,
               });
             } catch (notifyErr) {
@@ -1810,7 +1820,7 @@ export class AdminStoreService {
     if (type === 'prestador' && app) {
       this.providerStore.syncProviderStatusFromAdmin(app.email, status, {
         name: bankingData?.accountHolder ?? (app.accountHolder || app.fullName),
-        agency: app.description || app.category || 'Prestador Oficial',
+        agency: app.agency || app.description || 'Prestador emergente del Club de Experiencias',
         phone: app.phone,
         cuitDni: bankingData?.cuitDni ?? app.cuitDni ?? '',
         cbuAlias: bankingData?.cbuAlias ?? app.cbuAlias ?? '',

@@ -1500,6 +1500,7 @@ export class NewsletterService {
 
   async submitProviderApplication(data: {
     fullName: string;
+    agency?: string;
     category: string;
     region: string;
     email: string;
@@ -1553,6 +1554,7 @@ export class NewsletterService {
         const accessPayload = {
           email: cleanEmail,
           name: data.fullName.trim(),
+          agency: (data.agency || '').trim(),
           phone: data.phone.trim(),
           category: data.category.trim() || 'guia_montaña',
           region: data.region.trim() || 'Puna & Fiambalá',
@@ -1588,6 +1590,7 @@ export class NewsletterService {
               {
                 p_name: data.fullName.trim(),
                 p_email: cleanEmail,
+                p_agency: (data.agency || '').trim(),
                 p_phone: data.phone.trim(),
                 p_category: data.category.trim() || 'guia_montaña',
                 p_region: data.region.trim() || 'Puna & Fiambalá',
@@ -1685,9 +1688,9 @@ export class NewsletterService {
     return { success: true };
   }
 
-  // ── Helpers privados ────────────────────────────────────────────────────────
+  // ── Helpers ─────────────────────────────────────────────────────────────────
 
-  private isValidEmail(email: string): boolean {
+  isValidEmail(email: string): boolean {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   }
 

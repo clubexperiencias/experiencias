@@ -15,6 +15,7 @@ import { ExperienceService } from '../../../core/services/experience.service';
 import { Experience } from '../../../core/models/experience.model';
 import { FechaPipe, ArsPipe } from '../../../shared/pipes/format.pipes';
 import { AdminApplicationModalComponent } from '../admin-application-modal/admin-application-modal.component';
+import { NotificationService } from '../../../core/services/notification.service';
 
 export type ProviderTab = 'todos' | 'aprobados' | 'baja' | 'rechazados' | 'postulantes';
 
@@ -23,6 +24,7 @@ export interface ProviderListItem {
   origin: 'official' | 'application';
   name: string;
   agency: string;
+  rubro?: string;
   email: string;
   phone: string;
   categoryOrBio?: string;
@@ -520,6 +522,16 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
                 }
               }
               @if (hasProviderRecord(prov)) {
+                <button
+                  type="button"
+                  class="btn-action-resend-welcome"
+                  [disabled]="saving() || sendingWelcomeEmails().has(prov.email)"
+                  (click)="resendWelcomeEmail(prov)"
+                  title="Enviar o reenviar correo de bienvenida con instrucciones de acceso al portal"
+                >
+                  <mat-icon>{{ sendingWelcomeEmails().has(prov.email) ? 'sync' : 'mark_email_read' }}</mat-icon>
+                  <span>{{ sendingWelcomeEmails().has(prov.email) ? 'Enviando...' : 'Reenviar bienvenida' }}</span>
+                </button>
                 <a [routerLink]="getEditRoute(prov)" class="btn-action-edit-orange">
                   <span>Editar Prestador</span>
                 </a>
@@ -651,6 +663,7 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
                   <tr>
                     <th>Prestador / Guía</th>
                     <th>Agencia / Emprendimiento</th>
+                    <th>Rubro</th>
                     <th>Contacto</th>
                     <th>Estado</th>
                     <th>Fecha Alta</th>
@@ -680,11 +693,16 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
                       <!-- Agencia / Emprendimiento -->
                       <td>
                         <div class="cell-stack">
-                          <strong class="agency-name">{{ item.agency || 'Prestador Independiente' }}</strong>
-                          @if (item.categoryOrBio) {
+                          <strong class="agency-name">{{ item.agency }}</strong>
+                          @if (item.categoryOrBio && item.categoryOrBio !== item.agency && item.categoryOrBio !== item.rubro) {
                             <span class="agency-sub">{{ item.categoryOrBio }}</span>
                           }
                         </div>
+                      </td>
+
+                      <!-- Rubro -->
+                      <td>
+                        <span class="agency-rubro-pill">{{ item.rubro || '—' }}</span>
                       </td>
 
                       <!-- Contacto (Sin icono de chat) -->
@@ -744,6 +762,15 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
                             </a>
 
                             @if (item.rawProvider) {
+                              <button
+                                type="button"
+                                class="btn-resend-mail"
+                                [disabled]="sendingWelcomeEmails().has(item.email)"
+                                (click)="resendWelcomeEmail(item.rawProvider)"
+                                title="Reenviar correo de bienvenida con instrucciones de acceso al portal"
+                              >
+                                <span>{{ sendingWelcomeEmails().has(item.email) ? 'ENVIANDO...' : 'REPUBLICAR / MAIL' }}</span>
+                              </button>
                               <a
                                 [routerLink]="getEditRoute(item)"
                                 class="btn-edit-exp"
@@ -1145,6 +1172,13 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
         color: rgba(255, 255, 255, 0.5);
       }
 
+      .agency-rubro-pill {
+        font-size: 0.82rem;
+        color: rgba(255, 255, 255, 0.85);
+        font-weight: 600;
+        letter-spacing: 0.02em;
+      }
+
       .contact-whatsapp {
         color: #ffffff;
         text-decoration: none;
@@ -1407,6 +1441,64 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
         background: #ff5f00;
         border-color: #ff5f00;
         color: #0b0704;
+      }
+
+      .btn-action-resend-welcome {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        height: 34px;
+        padding: 0 1rem;
+        background: rgba(128, 179, 255, 0.15);
+        border: 1px solid rgba(128, 179, 255, 0.5);
+        color: #80b3ff;
+        border-radius: 3px;
+        font-size: 0.76rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .btn-action-resend-welcome:hover:not(:disabled) {
+        background: #80b3ff;
+        border-color: #80b3ff;
+        color: #050a14;
+      }
+      .btn-action-resend-welcome:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .btn-action-resend-welcome mat-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+      }
+
+      .btn-resend-mail {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 28px;
+        padding: 0 0.75rem;
+        background: rgba(128, 179, 255, 0.15);
+        border: 1px solid rgba(128, 179, 255, 0.4);
+        color: #80b3ff;
+        border-radius: 3px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .btn-resend-mail:hover:not(:disabled) {
+        background: #80b3ff;
+        border-color: #80b3ff;
+        color: #050a14;
+      }
+      .btn-resend-mail:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
       }
 
       .btn-icon-sm {
@@ -2302,6 +2394,7 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
 export class AdminProvidersComponent implements OnInit {
   readonly store = inject(AdminStoreService);
   private readonly expService = inject(ExperienceService);
+  readonly notificationService = inject(NotificationService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
@@ -2310,6 +2403,7 @@ export class AdminProvidersComponent implements OnInit {
   readonly activeTab = signal<ProviderTab>('todos');
   readonly selectedApplication = signal<AdminApplication | null>(null);
   readonly isUpdating = signal<boolean>(false);
+  readonly sendingWelcomeEmails = signal<Set<string>>(new Set());
 
   // Modos de ruta
   readonly isRouteEditMode = signal<boolean>(false);
@@ -2906,6 +3000,8 @@ export class AdminProvidersComponent implements OnInit {
     const officialProviders = this.store.providerStore.providers();
     const approvedProviderEmails = new Set<string>();
 
+    const applications = this.store.applications().filter((a) => a.type === 'prestador');
+
     for (const p of officialProviders) {
       const cleanEmail = p.email?.toLowerCase().trim() || '';
       if (cleanEmail && p.status === 'aprobado') approvedProviderEmails.add(cleanEmail);
@@ -2919,11 +3015,17 @@ export class AdminProvidersComponent implements OnInit {
               ? 'pendiente'
               : 'aprobado';
 
+      const matchingApp = applications.find((a) => a.email?.toLowerCase().trim() === cleanEmail);
+      const hasCategoryAgency = this.isCategoryIdentifier(p.agency);
+      const rawCategory = matchingApp?.category || (hasCategoryAgency ? p.agency : '');
+      const displayAgency = hasCategoryAgency ? '' : p.agency;
+
       list.push({
         id: p.id || `prov-${cleanEmail}`,
         origin: 'official',
         name: p.name || 'Prestador Oficial',
-        agency: p.agency || 'Prestador Independiente',
+        agency: displayAgency || '—',
+        rubro: this.formatCategory(rawCategory),
         email: p.email,
         phone: p.phone || '—',
         categoryOrBio: p.bio,
@@ -2934,18 +3036,21 @@ export class AdminProvidersComponent implements OnInit {
       });
     }
 
-    const applications = this.store.applications().filter((a) => a.type === 'prestador');
     for (const app of applications) {
       const cleanEmail = app.email?.toLowerCase().trim() || '';
       if (cleanEmail && approvedProviderEmails.has(cleanEmail)) {
         continue;
       }
       const appSlug = app.id;
+      const hasCategoryAgency = this.isCategoryIdentifier(app.agency || app.description);
+      const displayAgency = hasCategoryAgency ? '' : (app.agency || app.description || '');
+
       list.push({
         id: app.id,
         origin: 'application',
         name: app.fullName || 'Postulante',
-        agency: app.category ? this.formatCategory(app.category) : 'Postulación de Prestador',
+        agency: displayAgency || '—',
+        rubro: this.formatCategory(app.category),
         email: app.email,
         phone: app.phone || '—',
         categoryOrBio: app.description || app.motivationLetter,
@@ -3040,26 +3145,81 @@ export class AdminProvidersComponent implements OnInit {
     return `https://wa.me/${cleanDigits}?text=Hola%20${cleanName},%20nos%20comunicamos%20desde%20la%20administraci%C3%B3n%20de%20EXPERIENCIAS.CLUB`;
   }
 
-  formatCategory(category?: string): string {
-    switch (category) {
+  isCategoryIdentifier(val?: string | null): boolean {
+    if (!val) return false;
+    const v = val.toLowerCase().trim();
+    return [
+      'guia_montaña',
+      'guia_montana',
+      'kayak_nautica',
+      'transporte_4x4',
+      'alojamiento',
+      'gastronomia',
+      'fotografia',
+      'cabalgatas',
+      'artesanias',
+      'arqueologia',
+      'otro',
+      'general',
+      'trekking',
+      '4x4',
+      'kayak',
+      'cabalgata',
+      'vino_gastronomia',
+      'astro',
+      'servicios turísticos',
+      'guía de alta montaña / trekking',
+      'kayak & travesías náuticas (diques y lagunas)',
+      'transporte & expedición 4x4',
+      'alojamiento / refugio puneño',
+      'gastronomía & vinos de altura',
+      'fotografía / astroturismo',
+      'cabalgatas & rutas gauchas',
+      'artesanías & sabores regionales',
+    ].includes(v);
+  }
+
+  formatCategory(category?: string | null): string {
+    if (!category) return '—';
+    const c = category.toLowerCase().trim();
+    switch (c) {
+      case 'guia_montaña':
+      case 'guia_montana':
       case 'trekking':
-        return 'Trekking & Montañismo';
-      case '4x4':
-        return 'Expediciones 4x4 & Puna';
+      case 'guía de alta montaña / trekking':
+        return 'Guía de Alta Montaña';
+      case 'kayak_nautica':
       case 'kayak':
-        return 'Kayak & Deportes Náuticos';
-      case 'cabalgata':
-        return 'Cabalgatas de Altura';
-      case 'arqueologia':
-        return 'Rutas Arqueológicas';
+      case 'kayak & travesías náuticas (diques y lagunas)':
+        return 'Kayak & Náutica';
+      case 'transporte_4x4':
+      case '4x4':
+      case 'transporte & expedición 4x4':
+        return 'Transporte & 4x4';
+      case 'alojamiento':
+      case 'alojamiento / refugio puneño':
+        return 'Alojamiento';
+      case 'gastronomia':
       case 'vino_gastronomia':
-        return 'Enoturismo & Sabores';
-      case 'astro':
-        return 'Astroturismo & Cielos Limpios';
+      case 'gastronomía & vinos de altura':
+        return 'Gastronomía & Vinos';
       case 'fotografia':
-        return 'Safaris Fotográficos';
+      case 'astro':
+      case 'fotografía / astroturismo':
+        return 'Fotografía & Expedición';
+      case 'cabalgatas':
+      case 'cabalgata':
+      case 'cabalgatas & rutas gauchas':
+        return 'Cabalgatas';
+      case 'arqueologia':
+        return 'Arqueología & Patrimonio';
+      case 'artesanias':
+      case 'artesanías & sabores regionales':
+        return 'Artesanías & Sabores';
+      case 'otro':
+        return 'Otro';
       default:
-        return category || 'Guía de Expediciones';
+        return category.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
     }
   }
 
@@ -3156,6 +3316,41 @@ export class AdminProvidersComponent implements OnInit {
     this.isUpdating.set(false);
     if (ok) {
       this.closeApplication();
+    }
+  }
+
+  async resendWelcomeEmail(prov: ProviderListItem | ProviderUser): Promise<void> {
+    const email = (prov.email || '').trim().toLowerCase();
+    if (!email) {
+      this.showToast('El prestador no posee un correo electrónico válido.');
+      return;
+    }
+    this.sendingWelcomeEmails.update((s) => new Set(s).add(email));
+    try {
+      const targetName =
+        prov.name ||
+        ('accountHolder' in prov ? prov.accountHolder : '') ||
+        ('agency' in prov ? prov.agency : '') ||
+        '';
+      const res = await this.notificationService.notifyProviderApproved({
+        fullName: targetName,
+        email,
+      });
+      if (res.success) {
+        this.showToast(`¡Correo de bienvenida enviado exitosamente a ${email}!`);
+      } else {
+        this.showToast(
+          `No se pudo enviar el correo: ${res.error || 'Verifique la conexión o configuración de Resend en el servidor.'}`,
+        );
+      }
+    } catch (err: any) {
+      this.showToast(`Error al enviar correo: ${err?.message || err}`);
+    } finally {
+      this.sendingWelcomeEmails.update((s) => {
+        const next = new Set(s);
+        next.delete(email);
+        return next;
+      });
     }
   }
 }

@@ -338,6 +338,8 @@ export class BreadcrumbComponent implements OnInit {
       'Hola! Tengo una duda y necesito asistencia con el Club de Experiencias, ¿me podrían ayudar?',
     );
 
+  readonly instagramUrl = 'https://www.instagram.com/experiencias.club/';
+
   canShowBackButton(): boolean {
     const currentUrl = (this.router.url || '').split('?')[0].split('#')[0];
     if (!currentUrl || currentUrl === '/' || currentUrl === '') return false;

@@ -429,6 +429,7 @@
 
 .pay-transfer-detail strong {
   text-align: left;
+  font-family: var(--font-sans);
 }
 
 .pay-cbu {
@@ -439,6 +440,7 @@
   letter-spacing: 0.04em;
   color: var(--color-text-white);
   margin: 0;
+  font-family: var(--font-sans);
 }
 
 .pay-amount {
@@ -1073,21 +1075,27 @@
 }
 
 .pay-method-tab.is-active {
-  border-color: #009ee3;
-  background: rgba(0, 158, 227, 0.12);
-  box-shadow: 0 0 14px rgba(0, 158, 227, 0.25);
+  border-color: var(--color-gold, #ffd42a);
+  background: rgba(255, 212, 42, 0.14);
+  box-shadow: 0 0 16px rgba(255, 212, 42, 0.22);
+}
+
+.pay-method-tab.is-active:hover {
+  background: rgba(255, 212, 42, 0.18);
+  border-color: var(--color-gold, #ffd42a);
 }
 
 .pay-method-tab .tab-icon {
   font-size: 24px;
   width: 24px;
   height: 24px;
-  color: #009ee3;
+  color: #ffffff;
   flex-shrink: 0;
+  transition: color 0.2s ease;
 }
 
-.pay-method-tab:first-child .tab-icon {
-  color: var(--color-gold);
+.pay-method-tab.is-active .tab-icon {
+  color: var(--color-gold, #ffd42a);
 }
 
 .tab-meta {
@@ -1110,18 +1118,21 @@
   width: fit-content;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.25);
 }
 
 .best-badge {
-  background: rgba(16, 185, 129, 0.15);
-  color: #10b981;
-  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.25);
 }
 
 .instant-badge {
-  background: rgba(0, 158, 227, 0.15);
-  color: #009ee3;
-  border: 1px solid rgba(0, 158, 227, 0.35);
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.25);
 }
 
 .pay-surcharge-hint {
@@ -1132,33 +1143,17 @@
 }
 
 .pay-mp-notice-box {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.85rem;
   background: rgba(0, 158, 227, 0.08);
   border: 1px solid rgba(0, 158, 227, 0.25);
   border-radius: 4px;
   padding: 1rem 1.15rem;
 }
 
-.mp-notice-icon mat-icon {
-  color: #009ee3;
-  font-size: 26px;
-  width: 26px;
-  height: 26px;
-}
-
-.mp-notice-body strong {
-  display: block;
-  font-size: 0.92rem;
-  color: #ffffff;
-  margin-bottom: 0.25rem;
-}
-
-.mp-notice-body p {
-  font-size: 0.84rem;
-  color: rgba(255, 255, 255, 0.8);
-  line-height: 1.45;
+.pay-mp-notice-text,
+.pay-mp-notice-box p {
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.5;
   margin: 0;
 }
 
@@ -1187,18 +1182,17 @@
   flex-shrink: 0;
 }
 
-.mp-step3-head strong {
-  display: block;
-  color: #ffffff;
-  font-size: 0.95rem;
-  margin-bottom: 0.2rem;
+.mp-step3-head p {
+  font-size: 0.86rem;
+  color: rgba(255, 255, 255, 0.88);
+  line-height: 1.5;
+  margin: 0;
 }
 
-.mp-step3-head p {
-  font-size: 0.84rem;
-  color: rgba(255, 255, 255, 0.82);
-  line-height: 1.45;
-  margin: 0;
+.mp-step3-head p strong {
+  display: inline;
+  color: #ffffff;
+  font-weight: 700;
 }
 
 .mp-methods-chips {
@@ -1220,22 +1214,22 @@
 
 /* Botón Mercado Pago */
 .pay-mp-btn {
-  background: #009ee3 !important;
+  background: #80b3ff !important;
   color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.4) !important;
+  box-shadow: 0 4px 16px rgba(255, 255, 255, 0.4), 0 0 10px rgba(255, 255, 255, 0.2) !important;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
   font-weight: 700;
-  box-shadow: 0 4px 14px rgba(0, 158, 227, 0.35);
-  border: none;
   transition: all 0.2s ease;
 }
 
 .pay-mp-btn:hover:not(:disabled) {
-  background: #0081ba !important;
-  transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(0, 158, 227, 0.45);
+  background: #99c2ff !important;
+  color: #ffffff !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 22px rgba(255, 255, 255, 0.6), 0 0 14px rgba(255, 255, 255, 0.3) !important;
 }
 
 .pay-surcharge-line dt,

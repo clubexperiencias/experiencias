@@ -1007,7 +1007,7 @@ module.exports = async function handler(req, res) {
       if (surcharge > 0) {
         items.push({
           id: 'gestion-mercadopago',
-          title: `Gestión y Procesamiento Mercado Pago (+${clubSurchargePct}%)`,
+          title: `Costo de servicio (+${clubSurchargePct}%)`,
           quantity: 1,
           currency_id: 'ARS',
           unit_price: surcharge,
