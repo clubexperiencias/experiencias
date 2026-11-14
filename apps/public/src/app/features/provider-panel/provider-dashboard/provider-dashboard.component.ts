@@ -130,6 +130,52 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         </div>
       </section>
 
+      <!-- Box Mercado Pago -->
+      <section class="dash-card full-width-card provider-banking-card provider-mp-card">
+        <div class="banking-card-head">
+          <div class="banking-head-info">
+            <span class="banking-kicker">COBROS CON MERCADO PAGO</span>
+            <div class="mp-head-title-row">
+              <h2 class="card-title">Cuenta Vinculada de Mercado Pago</h2>
+              @if (isMpConnected()) {
+                <span class="mp-dash-pill connected">Vinculada</span>
+              } @else {
+                <span class="mp-dash-pill disconnected">No Vinculada</span>
+              }
+            </div>
+          </div>
+          <a
+            routerLink="../perfil"
+            fragment="mercadopago"
+            class="btn-edit-banking-pill"
+            [title]="isMpConnected() ? 'Administrar cuenta de Mercado Pago' : 'Vincular cuenta de Mercado Pago'"
+          >
+            <span>{{ isMpConnected() ? 'Administrar Cuenta' : 'Vincular Cuenta' }}</span>
+          </a>
+        </div>
+
+        <div class="banking-details-grid">
+          <div class="banking-col">
+            <span class="banking-col-lbl">ESTADO DE COBROS</span>
+            <strong class="banking-col-val" [class.text-blue]="isMpConnected()">
+              {{ isMpConnected() ? 'Habilitado (Checkout MP)' : 'No Vinculada' }}
+            </strong>
+          </div>
+          <div class="banking-col">
+            <span class="banking-col-lbl">ID DE COBRADOR (COLLECTOR ID)</span>
+            <strong class="banking-col-val">{{ mpCollectorId() || '-' }}</strong>
+          </div>
+          <div class="banking-col">
+            <span class="banking-col-lbl">TITULAR / CUENTA</span>
+            <strong class="banking-col-val">{{ mpNickname() || (isMpConnected() ? (provider()?.name || '-') : '-') }}</strong>
+          </div>
+          <div class="banking-col">
+            <span class="banking-col-lbl">ACREDITACIÓN</span>
+            <strong class="banking-col-val">{{ isMpConnected() ? 'Automática e Instantánea' : 'Transferencia Directa a CBU' }}</strong>
+          </div>
+        </div>
+      </section>
+
       <!-- Experiencias Activas - Box de ancho completo que ocupa las dos columnas -->
       <section class="dash-card full-width-card active-experiences-section">
         <div class="card-head">
@@ -1099,6 +1145,32 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         color: #ffffff;
         word-break: break-all;
       }
+      .mp-head-title-row {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+      }
+      .mp-dash-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.2rem 0.6rem;
+        border-radius: 999px;
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .mp-dash-pill.connected {
+        background: rgba(16, 185, 129, 0.15);
+        color: #10b981;
+        border: 1px solid rgba(16, 185, 129, 0.4);
+      }
+      .mp-dash-pill.disconnected {
+        background: rgba(255, 255, 255, 0.08);
+        color: rgba(255, 255, 255, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+      }
 
       /* Banner Invitación a Completar Perfil */
       .provider-prompt-banner {
@@ -1913,6 +1985,18 @@ export class ProviderDashboardComponent implements OnInit {
     const p = this.provider();
     return Boolean(p?.cbuAlias?.trim() && p?.cuitDni?.trim() && p?.bankName?.trim());
   });
+  readonly isMpConnected = computed(() => {
+    const p = this.provider();
+    if (!p || !p.mpConnected || !p.mpCollectorId) return false;
+    if (p.mpCollectorId.startsWith('mp-col-')) return false;
+    return true;
+  });
+  readonly mpCollectorId = computed(() => {
+    const p = this.provider();
+    if (!p?.mpCollectorId || p.mpCollectorId.startsWith('mp-col-')) return '';
+    return p.mpCollectorId;
+  });
+  readonly mpNickname = computed(() => this.provider()?.mpNickname || '');
   readonly stats = this.store.providerStats;
 
   readonly activeExperiences = computed(() =>

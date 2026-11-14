@@ -4,7 +4,7 @@ import { environment } from '../../../environments/environment';
 import { TransferSubmission, TransferStatus } from '../models/bank-transfer.model';
 import { NewsletterService } from './newsletter.service';
 import { ProviderStoreService, ExperienceProposalRequest } from './provider-store.service';
-import { NotificationService } from './notification.service';
+import { NotificationService, NotificationResult } from './notification.service';
 import { ExperienceService } from './experience.service';
 import { ClubProfile, DEFAULT_CLUB_PROFILE } from '../models/club-profile.model';
 
@@ -44,6 +44,7 @@ export interface AdminApplication {
   id: string;
   type: ApplicationType;
   fullName: string;
+  agency?: string;
   email: string;
   phone: string;
   category?: string;
@@ -99,6 +100,7 @@ export class AdminStoreService {
   private readonly _usdExchangeRate = signal<number>(this.loadStoredUsdExchangeRate());
   private readonly _isLoadingClubProfile = signal<boolean>(false);
   private readonly _clubProfileLoaded = signal<boolean>(false);
+  private readonly _lastWelcomeEmailResult = signal<NotificationResult | null>(null);
 
   readonly currentAdmin = this._currentAdmin.asReadonly();
   readonly isAuthenticated = computed(() => this._currentAdmin() !== null);
@@ -114,6 +116,7 @@ export class AdminStoreService {
   readonly clubProfile = this._clubProfile.asReadonly();
   readonly isClubProfileModalOpen = this._isClubProfileModalOpen.asReadonly();
   readonly usdExchangeRate = this._usdExchangeRate.asReadonly();
+  readonly lastWelcomeEmailResult = this._lastWelcomeEmailResult.asReadonly();
 
   private loadStoredUsdExchangeRate(): number {
     if (typeof window !== 'undefined') {
@@ -1635,6 +1638,7 @@ export class AdminStoreService {
             id: p.id,
             type: 'prestador' as const,
             fullName: p.name || 'Sin nombre',
+            agency: p.agency || '',
             email: p.email,
             phone: p.phone || '—',
             category: p.category || 'guia_montaña',
@@ -1698,11 +1702,18 @@ export class AdminStoreService {
       bankName?: string;
     },
   ): Promise<boolean> {
-    const app = this._applications().find((a) => a.id === id);
+    const cleanId = (id || '').trim().toLowerCase();
+    const app = this._applications().find(
+      (a) =>
+        a.type === type &&
+        (a.id === id || a.email?.trim().toLowerCase() === cleanId),
+    );
+    const targetId = app?.id || id;
+    this._lastWelcomeEmailResult.set(null);
     try {
       if (isSupabaseConfigured()) {
         if (type === 'prestador') {
-          const email = app?.email?.trim().toLowerCase();
+          const email = (app?.email || cleanId).trim().toLowerCase();
           const active = status === 'aprobado';
           const paStatus =
             status === 'aprobado'
@@ -1729,8 +1740,8 @@ export class AdminStoreService {
           let query = (this.supabase.from('prestadores') as any).update(updatePayload, {
             count: 'exact',
           });
-          if (id) {
-            query = query.eq('id', id);
+          if (targetId) {
+            query = query.eq('id', targetId);
           } else if (email) {
             query = query.eq('email', email);
           }
@@ -1750,12 +1761,23 @@ export class AdminStoreService {
 
           if (status === 'aprobado' && email) {
             try {
-              await this.notificationService.notifyProviderApproved({
-                fullName: app?.fullName || '',
+              let targetName = app?.fullName || '';
+              if (!targetName) {
+                const prov = this.providerStore.getProviderByEmail(email);
+                targetName = prov?.name || prov?.accountHolder || '';
+              }
+              const notifyRes = await this.notificationService.notifyProviderApproved({
+                fullName: targetName,
                 email,
               });
-            } catch (notifyErr) {
+              this._lastWelcomeEmailResult.set(notifyRes);
+            } catch (notifyErr: any) {
               console.warn('[AdminStore] Error al notificar aprobación de prestador:', notifyErr);
+              this._lastWelcomeEmailResult.set({
+                success: false,
+                type: 'PROVIDER_APPROVED',
+                error: notifyErr?.message || String(notifyErr),
+              });
             }
           }
         } else {
@@ -1774,7 +1796,7 @@ export class AdminStoreService {
               status: dbStatus,
               updated_at: new Date().toISOString(),
             })
-            .eq('id', id);
+            .eq('id', targetId);
 
           if (appErr) {
             console.warn('[AdminStore] Error al actualizar postulación en Supabase:', appErr);
@@ -1789,7 +1811,7 @@ export class AdminStoreService {
 
     this._applications.update((list) =>
       list.map((a) =>
-        a.id === id
+        a.id === targetId
           ? {
               ...a,
               status,
@@ -1810,7 +1832,7 @@ export class AdminStoreService {
     if (type === 'prestador' && app) {
       this.providerStore.syncProviderStatusFromAdmin(app.email, status, {
         name: bankingData?.accountHolder ?? (app.accountHolder || app.fullName),
-        agency: app.description || app.category || 'Prestador Oficial',
+        agency: app.agency || app.description || 'Prestador emergente del Club de Experiencias',
         phone: app.phone,
         cuitDni: bankingData?.cuitDni ?? app.cuitDni ?? '',
         cbuAlias: bankingData?.cbuAlias ?? app.cbuAlias ?? '',

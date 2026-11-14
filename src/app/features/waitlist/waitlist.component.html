@@ -10,78 +10,138 @@
     <div class="ambient-overlay"></div>
 
     <!-- Contenido Principal Centrado -->
-    <main class="hero-center">
+    <main class="hero-center" [class.manifesto-active]="showManifesto()">
       <div class="hero-content">
         <!-- Badge de Lanzamiento -->
-        <div class="badge-pill">
-          <span class="badge-main-line">
-            <strong>TEMPORADA INAUGURAL</strong>
-          </span>
-        </div>
+        @if (!showManifesto()) {
+          <div class="badge-pill">
+            <span class="badge-main-line">
+              <strong>TEMPORADA INAUGURAL</strong>
+            </span>
+          </div>
+        }
 
-        <!-- Título Editorial con Logo Oficial -->
-        <h1 class="hero-title-container">
+        <!-- Título Editorial con Logo Oficial (siempre presente, sube cuando badge se oculta) -->
+        <h1 class="hero-title-container" [class.logo-manifesto-up]="showManifesto()">
           <img src="/logo-experiencias.png" alt="Experiencias" class="hero-logo-img" />
         </h1>
 
-        <!-- Subtítulo -->
-        <p class="hero-subtitle">
-          Club privado de expediciones andinas y travesías náuticas en Catamarca. Ingresá como Socio
-          Emergente para acceder con descuento a las primeras salidas de kayak.
-        </p>
+        @if (!showManifesto()) {
+          <div class="hero-default-view hero-fade-in">
+            <!-- Subtítulo -->
+            <p class="hero-subtitle">
+              Club privado de expediciones andinas y travesías náuticas en Catamarca. Ingresá como Socio
+              Emergente para acceder con descuento a las primeras salidas de kayak.
+            </p>
 
-        <!-- ═══════════════ FORMULARIO CÁPSULA (SIEMPRE VISIBLE EN /) ═══════════════ -->
-        <div class="pill-form-container">
-          <div class="pill-form">
-            <span class="input-icon">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                class="mail-svg-icon"
-              >
-                <path
-                  d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"
+            <!-- ═══════════════ FORMULARIO CÁPSULA (SIEMPRE VISIBLE EN /) ═══════════════ -->
+            <div class="pill-form-container">
+              <div class="pill-form">
+                <span class="input-icon">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    class="mail-svg-icon"
+                  >
+                    <path
+                      d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"
+                    />
+                    <polyline points="22,6 12,13 2,6" />
+                  </svg>
+                </span>
+
+                <input
+                  type="email"
+                  class="pill-input"
+                  placeholder="Ingresá tu correo electrónico..."
+                  [value]="email()"
+                  (input)="email.set($any($event.target).value)"
+                  maxlength="254"
+                  (keyup.enter)="submit()"
+                  [disabled]="newsletter.isLoading()"
+                  autocomplete="email"
+                  id="waitlist-email"
                 />
-                <polyline points="22,6 12,13 2,6" />
-              </svg>
-            </span>
 
-            <input
-              type="email"
-              class="pill-input"
-              placeholder="Ingresá tu correo electrónico..."
-              [value]="email()"
-              (input)="email.set($any($event.target).value)"
-              maxlength="254"
-              (keyup.enter)="submit()"
-              [disabled]="newsletter.isLoading()"
-              autocomplete="email"
-              id="waitlist-email"
-            />
+                <button
+                  class="pill-submit-btn"
+                  (click)="submit()"
+                  [disabled]="newsletter.isLoading() || !email().trim()"
+                  id="waitlist-submit"
+                  aria-label="Unirme a la lista de espera"
+                >
+                  @if (newsletter.isLoading()) {
+                    <span class="spinner"></span>
+                  } @else {
+                    <mat-icon class="arrow-icon">arrow_forward</mat-icon>
+                  }
+                </button>
+              </div>
 
-            <button
-              class="pill-submit-btn"
-              (click)="submit()"
-              [disabled]="newsletter.isLoading() || !email().trim()"
-              id="waitlist-submit"
-              aria-label="Unirme a la lista de espera"
-            >
-              @if (newsletter.isLoading()) {
-                <span class="spinner"></span>
-              } @else {
-                <mat-icon class="arrow-icon">arrow_forward</mat-icon>
+              @if (newsletter.errorMessage()) {
+                <p class="error-text">{{ newsletter.errorMessage() }}</p>
               }
-            </button>
-          </div>
 
-          @if (newsletter.errorMessage()) {
-            <p class="error-text">{{ newsletter.errorMessage() }}</p>
-          }
-        </div>
+              <!-- Botón Manifiesto -->
+              <div class="manifesto-trigger-wrap">
+                <button
+                  type="button"
+                  class="manifesto-pill-btn"
+                  (click)="toggleManifesto()"
+                  title="Leer el Manifiesto del Club"
+                >
+                  <span>Manifiesto del Club</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        } @else {
+          <!-- Manifiesto del Club -->
+          <div class="manifesto-view hero-fade-in">
+            <div class="manifesto-card">
+              <!-- Barra de cuenta regresiva que se vacía en 11s -->
+              <div class="manifesto-progress-track" aria-hidden="true">
+                <div class="manifesto-progress-fill"></div>
+              </div>
+
+              @if (manifestoAutoSentEmail()) {
+                <div class="manifesto-sent-wrap">
+                  <span class="manifesto-sent-badge">
+                    <mat-icon>check_circle</mat-icon>
+                    <span>Te enviamos la invitación a {{ manifestoAutoSentEmail() }}</span>
+                  </span>
+                </div>
+              }
+
+              <h2 class="manifesto-title">Donde termina el asfalto, empieza la pertenencia.</h2>
+
+              <div class="manifesto-body">
+                <p>
+                  Catamarca no es un destino de paso ni una postal lejana. Es una geografía viva de silencios andinos, volcanes imponentes, salares infinitos y aguas calmas donde cada remada al atardecer reconecta con lo esencial.
+                </p>
+                <p>
+                  Creemos en una aventura genuina y consciente, lejos del turismo masivo. Expediciones en grupos reducidos, travesías guiadas por prestadores locales oficiales y el equilibrio justo entre adrenalina y respeto por la inmensidad del paisaje.
+                </p>
+              </div>
+
+              <div class="manifesto-foot">
+                <button
+                  type="button"
+                  class="manifesto-close-pill"
+                  (click)="closeManifesto()"
+                  title="Volver al Inicio"
+                  aria-label="Volver al Inicio"
+                >
+                  <span>Volver al Inicio</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        }
       </div>
     </main>
   </div>

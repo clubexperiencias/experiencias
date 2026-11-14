@@ -532,17 +532,8 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                       <div class="exp-cell-text">
                         <div class="exp-title-row">
                           <strong class="exp-table-title">{{ exp.title }}</strong>
-                          @if (isClub(exp)) {
-                            <span class="club-official-chip" title="Experiencia Oficial creada por el Club de Experiencias">
-                              Club
-                            </span>
-                          } @else if (exp.providerName) {
-                            <span class="provider-chip" title="Prestador oficial de la experiencia">
-                              {{ exp.providerName }}
-                            </span>
-                          }
                         </div>
-                        <span class="exp-table-sub">{{ exp.tagline }}</span>
+                        <span class="exp-table-sub">{{ getExpProviderName(exp) }}</span>
                       </div>
                     </a>
                   </td>
@@ -4081,6 +4072,37 @@ export class AdminExperiencesComponent implements OnInit {
     return isClubExperience(exp);
   }
 
+  getExpProviderName(exp?: Partial<Experience> | null): string {
+    if (!exp) return 'Club de Experiencias';
+    const rawExpProviderName = (exp.providerAgency?.trim() || exp.providerName?.trim() || '');
+    const isExplicitExternal =
+      rawExpProviderName !== '' &&
+      rawExpProviderName.toLowerCase() !== 'club de experiencias' &&
+      rawExpProviderName.toLowerCase() !== 'club';
+
+    if (isExplicitExternal) {
+      return rawExpProviderName;
+    }
+
+    if (exp.id) {
+      const matchingProposal = this.findMatchingProposal({ id: exp.id, slug: exp.slug, title: exp.title });
+      const proposalCreator = (matchingProposal?.providerAgency || matchingProposal?.providerName || '').trim();
+      if (
+        proposalCreator !== '' &&
+        proposalCreator.toLowerCase() !== 'club de experiencias' &&
+        proposalCreator.toLowerCase() !== 'club'
+      ) {
+        return proposalCreator;
+      }
+    }
+
+    if (this.isClub(exp)) {
+      return this.adminStore.clubProfile().name || 'Club de Experiencias';
+    }
+
+    return rawExpProviderName || 'Club de Experiencias';
+  }
+
   readonly isCurrentExperienceClub = computed(() => {
     const inputName = this.editProviderName().trim().toLowerCase();
     if (inputName && inputName !== 'club de experiencias' && inputName !== 'club') {
@@ -4143,6 +4165,8 @@ export class AdminExperiencesComponent implements OnInit {
           (e.slug && e.slug.toLowerCase().includes(q)) ||
           (e.region && e.region.toLowerCase().includes(q)) ||
           (e.providerName && e.providerName.toLowerCase().includes(q)) ||
+          (e.providerAgency && e.providerAgency.toLowerCase().includes(q)) ||
+          (this.getExpProviderName(e) && this.getExpProviderName(e).toLowerCase().includes(q)) ||
           (e.providerEmail && e.providerEmail.toLowerCase().includes(q)),
       );
     }

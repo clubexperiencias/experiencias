@@ -3206,7 +3206,7 @@ export class ProviderExperienceProposalModalComponent {
       await this.store.submitExperienceRequest({
         providerId,
         providerName: accountHolder || providerName,
-        providerAgency: providerAgency || 'Prestador Oficial EXPERIENCIAS.CLUB',
+        providerAgency: providerAgency || 'Prestador emergente del Club de Experiencias',
         providerEmail,
         providerPhone: providerPhone || undefined,
         providerCbuAlias: cbuAlias || currentProv?.cbuAlias,

@@ -379,7 +379,7 @@ export class ProviderStoreService {
         (data.user as any)?.identities?.[0]?.identity_data?.['avatar_url'] ||
         (data.user as any)?.identities?.[0]?.identity_data?.['picture'] ||
         '';
-      const resolvedSlug =
+      let resolvedSlug =
         access.slug ||
         existing?.slug ||
         (access.agency
@@ -389,7 +389,22 @@ export class ProviderStoreService {
               .replace(/[\u0300-\u036f]/g, '')
               .replace(/[^a-z0-9]+/g, '-')
               .replace(/(^-|-$)+/g, '')
-          : `prov-${email.split('@')[0]}`);
+          : slugify(email.split('@')[0]));
+
+      if (!access.slug && resolvedSlug.startsWith('prov-') && resolvedSlug !== 'prov-club') {
+        const candidate = resolvedSlug.slice(5);
+        const collidesWithOther =
+          Boolean(candidate) &&
+          this._providers().some(
+            (other) =>
+              other.id !== existing?.id &&
+              other.email.toLowerCase() !== email.toLowerCase() &&
+              (other.slug || '').toLowerCase() === candidate.toLowerCase(),
+          );
+        if (!collidesWithOther) {
+          resolvedSlug = candidate || slugify(email.split('@')[0]);
+        }
+      }
 
       const isClub = isClubProvider({
         id: existing?.id,
@@ -407,7 +422,14 @@ export class ProviderStoreService {
           userMeta['name'] ||
           existing?.name ||
           email,
-        agency: access.agency || existing?.agency || 'Prestador EXPERIENCIAS.CLUB',
+        agency:
+          (access.agency && access.agency !== 'Prestador EXPERIENCIAS.CLUB'
+            ? access.agency
+            : '') ||
+          (existing?.agency && existing?.agency !== 'Prestador EXPERIENCIAS.CLUB'
+            ? existing.agency
+            : '') ||
+          'Prestador emergente del Club de Experiencias',
         slug: resolvedSlug,
         bio: access.bio || existing?.bio || '',
         phone: access.phone || existing?.phone || '',
@@ -603,7 +625,10 @@ export class ProviderStoreService {
         id: `provider-${normalized.replace(/[^a-z0-9]+/g, '-')}`,
         email: normalized,
         name: details?.name || email,
-        agency: details?.agency || 'Prestador EXPERIENCIAS.CLUB',
+        agency:
+          (details?.agency && details.agency !== 'Prestador EXPERIENCIAS.CLUB')
+            ? details.agency
+            : 'Prestador emergente del Club de Experiencias',
         slug:
           details?.slug ||
           slugify(details?.agency || details?.name || normalized.split('@')[0]),
@@ -699,13 +724,27 @@ export class ProviderStoreService {
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
       }
-      await fetch('/api/mercadopago', {
+      const res = await fetch('/api/mercadopago', {
         method: 'POST',
         headers,
         body: JSON.stringify({ action: 'disconnect' }),
       });
-    } catch (err) {
+      if (!res.ok) {
+        let errorMsg = 'No se pudo desvincular la cuenta de Mercado Pago en el servidor.';
+        try {
+          const data = await res.json();
+          if (data?.error) errorMsg = data.error;
+        } catch {
+          // ignore
+        }
+        return { success: false, message: errorMsg };
+      }
+    } catch (err: any) {
       console.warn('[ProviderStore] Error invocando disconnect en backend MP:', err);
+      return {
+        success: false,
+        message: err?.message || 'Error de comunicación al desconectar Mercado Pago.',
+      };
     }
 
     return this.updateProfile({
@@ -740,6 +779,25 @@ export class ProviderStoreService {
     if (!current) return { success: false, message: 'No hay sesión de prestador activa.' };
 
     const email = current.email.trim().toLowerCase();
+
+    if (updates.slug !== undefined) {
+      const candidateSlug = updates.slug.trim().toLowerCase();
+      if (candidateSlug) {
+        const slugCollision = this._providers().find(
+          (p) =>
+            p.id !== current.id &&
+            p.email.toLowerCase() !== email &&
+            (p.slug || '').toLowerCase() === candidateSlug,
+        );
+        if (slugCollision) {
+          return {
+            success: false,
+            message: `El slug "${candidateSlug}" ya pertenece a otro prestador registrado.`,
+          };
+        }
+      }
+    }
+
     const updated: ProviderUser = { ...current, ...updates };
 
     if (isSupabaseConfigured()) {
@@ -981,6 +1039,15 @@ export class ProviderStoreService {
     );
     if (exactMatch) {
       return exactMatch;
+    }
+
+    // 2do pase: coincidencia tolerante con o sin prefijo prov-
+    const altClean = clean.startsWith('prov-') ? clean.slice(5) : `prov-${clean}`;
+    const altMatch = providers.find(
+      (p) => (p.slug || '').toLowerCase() === altClean || p.id.toLowerCase() === altClean,
+    );
+    if (altMatch) {
+      return altMatch;
     }
 
     // 2do pase: fallbacks por agencia y nombre
@@ -2876,9 +2943,18 @@ export class ProviderStoreService {
     if (isClubProvider(p)) {
       return p;
     }
-    if (p.cbuAlias === 'EXPERIENCIAS.CLUB.MP' || p.cuitDni === '20-33445566-7') {
+    const updatedAgency =
+      p.agency === 'Prestador EXPERIENCIAS.CLUB'
+        ? 'Prestador emergente del Club de Experiencias'
+        : p.agency;
+    if (
+      p.cbuAlias === 'EXPERIENCIAS.CLUB.MP' ||
+      p.cuitDni === '20-33445566-7' ||
+      p.agency === 'Prestador EXPERIENCIAS.CLUB'
+    ) {
       return {
         ...p,
+        agency: updatedAgency,
         cbuAlias: p.cbuAlias === 'EXPERIENCIAS.CLUB.MP' ? '' : p.cbuAlias,
         cuitDni: p.cuitDni === '20-33445566-7' ? '' : p.cuitDni,
         bankName: p.bankName === 'Banco Nación / Mercado Pago' ? '' : p.bankName,

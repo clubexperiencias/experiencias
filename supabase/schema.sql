@@ -1509,7 +1509,8 @@ CREATE OR REPLACE FUNCTION public.submit_provider_application(
   p_category TEXT DEFAULT 'guia_montaña',
   p_region TEXT DEFAULT 'Puna & Fiambalá',
   p_website TEXT DEFAULT '',
-  p_description TEXT DEFAULT ''
+  p_description TEXT DEFAULT '',
+  p_agency TEXT DEFAULT ''
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -1558,6 +1559,7 @@ BEGIN
   INSERT INTO public.prestadores (
     email,
     name,
+    agency,
     phone,
     category,
     region,
@@ -1569,6 +1571,7 @@ BEGIN
   VALUES (
     v_email,
     TRIM(COALESCE(p_name, '')),
+    TRIM(COALESCE(p_agency, '')),
     TRIM(COALESCE(p_phone, '')),
     COALESCE(NULLIF(TRIM(p_category), ''), 'guia_montaña'),
     COALESCE(NULLIF(TRIM(p_region), ''), 'Puna & Fiambalá'),
@@ -1593,7 +1596,7 @@ EXCEPTION
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.submit_provider_application(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.submit_provider_application(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT) TO anon, authenticated, service_role;
 
 CREATE OR REPLACE FUNCTION public.get_socio_by_session_or_token(
   p_email TEXT,
