@@ -4142,6 +4142,7 @@ export class AdminExperiencesComponent implements OnInit {
           (e.slug && e.slug.toLowerCase().includes(q)) ||
           (e.region && e.region.toLowerCase().includes(q)) ||
           (e.providerName && e.providerName.toLowerCase().includes(q)) ||
+          (e.providerAgency && e.providerAgency.toLowerCase().includes(q)) ||
           (e.providerEmail && e.providerEmail.toLowerCase().includes(q)),
       );
     }

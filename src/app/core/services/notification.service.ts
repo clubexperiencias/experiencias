@@ -5,6 +5,8 @@ import { SUPABASE_CLIENT, isSupabaseConfigured } from '../supabase/supabase.clie
 export interface NotificationResult {
   success: boolean;
   type: string;
+  simulated?: boolean;
+  delivered?: boolean;
   results?: Array<{ target: string; id?: string; simulated?: boolean }>;
   error?: string;
 }
@@ -14,6 +16,7 @@ export interface NotificationLogEntry {
   target: string;
   timestamp: string;
   success: boolean;
+  simulated?: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -64,6 +67,7 @@ export class NotificationService {
     const payload = {
       type: 'PAYMENT_APPROVED',
       data: {
+        id: submission.id,
         email: submission.email,
         fullName: submission.fullName,
         reference: submission.reference,
@@ -88,6 +92,7 @@ export class NotificationService {
     const payload = {
       type: 'PAYMENT_REJECTED',
       data: {
+        id: submission.id,
         email: submission.email,
         fullName: submission.fullName,
         reference: submission.reference,
@@ -297,19 +302,28 @@ export class NotificationService {
       });
 
       const data = await response.json().catch(() => null);
-      const success = response.ok && !!data?.success;
+      const isSimulated = Boolean(
+        data?.simulated ||
+        data?.results?.some((r: any) => r.simulated),
+      );
+      const isDelivered = response.ok && !!data?.success && !isSimulated;
+      const success = isDelivered;
 
-      this.logNotification(payload.type, targetEmail, success);
+      this.logNotification(payload.type, targetEmail, success, isSimulated);
 
       return {
         success,
+        simulated: isSimulated,
+        delivered: isDelivered,
         type: payload.type,
         results: data?.results,
-        error: data?.error,
+        error: isSimulated
+          ? (data?.error || 'Envío simulado (RESEND_API_KEY no configurada en el servidor).')
+          : data?.error,
       };
     } catch (err: any) {
       console.warn('[NotificationService] No se pudo conectar con /api/notify:', err);
-      this.logNotification(payload.type, targetEmail, false);
+      this.logNotification(payload.type, targetEmail, false, false);
       return {
         success: false,
         type: payload.type,
@@ -318,7 +332,12 @@ export class NotificationService {
     }
   }
 
-  private logNotification(type: string, target: string, success: boolean): void {
+  private logNotification(
+    type: string,
+    target: string,
+    success: boolean,
+    simulated = false,
+  ): void {
     this._notificationsLog.update((log) => [
       ...log,
       {
@@ -326,6 +345,7 @@ export class NotificationService {
         target,
         timestamp: new Date().toISOString(),
         success,
+        simulated,
       },
     ]);
   }

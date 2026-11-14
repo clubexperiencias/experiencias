@@ -127,6 +127,18 @@ function normalizeStr(val) {
     .replace(/[\u0300-\u036f]/g, '');
 }
 
+const BOOKING_REF_REGEX = /^[A-Za-z0-9_-]{3,64}$/;
+
+function isValidBookingReference(val) {
+  return typeof val === 'string' && BOOKING_REF_REGEX.test(val.trim());
+}
+
+function escapePostgrestValue(val) {
+  const str = String(val ?? '');
+  const escaped = str.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  return `"${escaped}"`;
+}
+
 function validatePaymentAgainstBooking(paymentData, bookingRow) {
   if (!bookingRow || typeof bookingRow !== 'object') {
     return {
@@ -159,23 +171,23 @@ function validatePaymentAgainstBooking(paymentData, bookingRow) {
       const itemId = normalizeStr(item?.id);
       const itemTitle = normalizeStr(item?.title);
       const idMatches = Boolean(
-        trustedExpId && (itemId === trustedExpId || itemId.includes(trustedExpId) || trustedExpId.includes(itemId))
+        trustedExpId && itemId && (itemId === trustedExpId || itemId.includes(trustedExpId) || trustedExpId.includes(itemId))
       );
       const titleMatches = Boolean(
-        trustedExpTitle && (itemTitle.includes(trustedExpTitle) || trustedExpTitle.includes(itemTitle))
+        trustedExpTitle && itemTitle && (itemTitle.includes(trustedExpTitle) || trustedExpTitle.includes(itemTitle))
       );
       return idMatches || titleMatches;
     });
 
     const paymentDesc = normalizeStr(paymentData?.description);
     const hasDescMatch = Boolean(
-      (trustedExpId && paymentDesc.includes(trustedExpId)) ||
-      (trustedExpTitle && (paymentDesc.includes(trustedExpTitle) || trustedExpTitle.includes(paymentDesc)))
+      (trustedExpId && paymentDesc && paymentDesc.includes(trustedExpId)) ||
+      (trustedExpTitle && paymentDesc && (paymentDesc.includes(trustedExpTitle) || trustedExpTitle.includes(paymentDesc)))
     );
 
     const paymentExtRef = normalizeStr(paymentData?.external_reference);
     const hasRefMatch = Boolean(
-      trustedExpId && (paymentExtRef.includes(trustedExpId) || paymentExtRef === trustedExpId)
+      trustedExpId && paymentExtRef && (paymentExtRef.includes(trustedExpId) || paymentExtRef === trustedExpId)
     );
 
     const hasPaymentMetadata = paymentItems.length > 0 || Boolean(paymentDesc) || Boolean(paymentExtRef);
@@ -458,29 +470,9 @@ module.exports = async function handler(req, res) {
               delete notesObj.mp_access_token;
               delete notesObj.mp_refresh_token;
 
-              // 3. Persistir en la tabla prestadores utilizando la clave de servicio
-              const patchRes = await requestHttps(
-                {
-                  hostname: supabaseHost,
-                  path: `/rest/v1/prestadores?email=eq.${encodeURIComponent(providerEmail)}`,
-                  method: 'PATCH',
-                  headers: {
-                    ...authHeaders,
-                    Prefer: 'return=minimal',
-                  },
-                },
-                {
-                  notes: JSON.stringify(notesObj),
-                  updated_at: new Date().toISOString(),
-                }
-              );
-
-              if (patchRes.status >= 200 && patchRes.status < 300) {
-                providerSaved = true;
-              }
-
-              // 4. Almacenar tokens sensibles EXCLUSIVAMENTE en almacenamiento protegido del servidor (historial_mp)
-              await requestHttps(
+              // 3. Almacenar tokens sensibles primero en el almacenamiento protegido del servidor (historial_mp)
+              let tokenStored = false;
+              const histRes = await requestHttps(
                 {
                   hostname: supabaseHost,
                   path: '/rest/v1/historial_mp',
@@ -497,7 +489,6 @@ module.exports = async function handler(req, res) {
                   details: {
                     live_mode: tokenRes.data.live_mode,
                     scope: tokenRes.data.scope,
-                    saved_to_prestador: providerSaved,
                     access_token: tokenRes.data.access_token || '',
                     refresh_token: tokenRes.data.refresh_token || '',
                     public_key: tokenRes.data.public_key || '',
@@ -505,6 +496,33 @@ module.exports = async function handler(req, res) {
                   changed_by: 'mercadopago_oauth',
                 }
               );
+
+              if (histRes.status >= 200 && histRes.status < 300) {
+                tokenStored = true;
+              }
+
+              // 4. Actualizar prestadores con mp_connected=true únicamente si el token se almacenó con éxito en historial_mp
+              if (tokenStored) {
+                const patchRes = await requestHttps(
+                  {
+                    hostname: supabaseHost,
+                    path: `/rest/v1/prestadores?email=eq.${encodeURIComponent(providerEmail)}`,
+                    method: 'PATCH',
+                    headers: {
+                      ...authHeaders,
+                      Prefer: 'return=minimal',
+                    },
+                  },
+                  {
+                    notes: JSON.stringify(notesObj),
+                    updated_at: new Date().toISOString(),
+                  }
+                );
+
+                if (patchRes.status >= 200 && patchRes.status < 300) {
+                  providerSaved = true;
+                }
+              }
             } catch (persistErr) {
               console.warn('[MercadoPago API] Error persistiendo autorización de vendedor:', persistErr);
             }
@@ -570,7 +588,12 @@ module.exports = async function handler(req, res) {
     }
     body = body || {};
 
-    const action = body.action || req.query?.action || 'create-preference';
+    const action =
+      body.action ||
+      req.query?.action ||
+      (req.query?.topic === 'payment' || body.type === 'payment'
+        ? 'webhook'
+        : 'create-preference');
 
     // A. OBTENER URL DE AUTORIZACIÓN OAUTH (Para conectar cuenta de vendedor prestador)
     if (action === 'get-oauth-url' || action === 'connect') {
@@ -619,41 +642,7 @@ module.exports = async function handler(req, res) {
             Authorization: `Bearer ${supabaseServiceKey}`,
           };
 
-          // 1. Eliminar tokens del almacenamiento protegido (historial_mp)
-          await requestHttps({
-            hostname: supabaseHost,
-            path: `/rest/v1/historial_mp?provider_email=eq.${encodeURIComponent(providerEmail)}`,
-            method: 'DELETE',
-            headers: {
-              ...authHeaders,
-              Prefer: 'return=minimal',
-            },
-          });
-
-          // 2. Registrar evento de desconexión sin credenciales
-          await requestHttps(
-            {
-              hostname: supabaseHost,
-              path: '/rest/v1/historial_mp',
-              method: 'POST',
-              headers: {
-                ...authHeaders,
-                Prefer: 'return=minimal',
-              },
-            },
-            {
-              provider_email: providerEmail,
-              action: 'disconnect',
-              collector_id: '',
-              details: {
-                disconnected: true,
-                tokens_purged: true,
-              },
-              changed_by: 'mercadopago_disconnect',
-            }
-          );
-
-          // 3. Limpiar prestadores.notes removiendo cualquier residuo de credenciales
+          // 1. Limpiar prestadores.notes primero (desactivar conexión antes de purgar credenciales)
           const fetchRes = await requestHttps({
             hostname: supabaseHost,
             path: `/rest/v1/prestadores?email=eq.${encodeURIComponent(providerEmail)}&select=email,notes`,
@@ -661,10 +650,13 @@ module.exports = async function handler(req, res) {
             headers: authHeaders,
           });
 
+          if (fetchRes.status < 200 || fetchRes.status >= 300) {
+            console.warn('[MercadoPago API] Error consultando notas en disconnect:', fetchRes.status);
+            return res.status(500).json({ error: 'Error al consultar perfil del prestador.' });
+          }
+
           let notesObj = {};
           if (
-            fetchRes.status >= 200 &&
-            fetchRes.status < 300 &&
             Array.isArray(fetchRes.data) &&
             fetchRes.data.length > 0
           ) {
@@ -687,7 +679,7 @@ module.exports = async function handler(req, res) {
           delete notesObj.mp_access_token;
           delete notesObj.mp_refresh_token;
 
-          await requestHttps(
+          const patchRes = await requestHttps(
             {
               hostname: supabaseHost,
               path: `/rest/v1/prestadores?email=eq.${encodeURIComponent(providerEmail)}`,
@@ -702,6 +694,55 @@ module.exports = async function handler(req, res) {
               updated_at: new Date().toISOString(),
             }
           );
+
+          if (patchRes.status < 200 || patchRes.status >= 300) {
+            console.warn('[MercadoPago API] Error actualizando notas en disconnect:', patchRes.status);
+            return res.status(500).json({ error: 'Error al desvincular notas de Mercado Pago.' });
+          }
+
+          // 2. Eliminar tokens del almacenamiento protegido (historial_mp)
+          const deleteRes = await requestHttps({
+            hostname: supabaseHost,
+            path: `/rest/v1/historial_mp?provider_email=eq.${encodeURIComponent(providerEmail)}`,
+            method: 'DELETE',
+            headers: {
+              ...authHeaders,
+              Prefer: 'return=minimal',
+            },
+          });
+
+          if (deleteRes.status < 200 || deleteRes.status >= 300) {
+            console.warn('[MercadoPago API] Error purgando tokens en disconnect:', deleteRes.status);
+            return res.status(500).json({ error: 'Error al purgar credenciales protegidas.' });
+          }
+
+          // 3. Registrar evento de desconexión sin credenciales
+          const eventRes = await requestHttps(
+            {
+              hostname: supabaseHost,
+              path: '/rest/v1/historial_mp',
+              method: 'POST',
+              headers: {
+                ...authHeaders,
+                Prefer: 'return=minimal',
+              },
+            },
+            {
+              provider_email: providerEmail,
+              action: 'disconnect',
+              collector_id: '',
+              details: {
+                disconnected: true,
+                tokens_purged: true,
+              },
+              changed_by: 'mercadopago_disconnect',
+            }
+          );
+
+          if (eventRes.status < 200 || eventRes.status >= 300) {
+            console.warn('[MercadoPago API] Error registrando evento en disconnect:', eventRes.status);
+            return res.status(500).json({ error: 'Error al registrar evento de desconexión.' });
+          }
         } catch (discErr) {
           console.warn('[MercadoPago API] Error purgando credenciales en disconnect:', discErr);
           return res.status(500).json({ error: 'Error al purgar credenciales protegidas.' });
@@ -727,10 +768,20 @@ module.exports = async function handler(req, res) {
       } = body;
 
       const requestedSlug = experienceSlug || 'experiencia';
+      const rawBookingRef = (body.bookingReference || body.reference || '').trim();
+      if (rawBookingRef && !isValidBookingReference(rawBookingRef)) {
+        return res.status(400).json({
+          error: 'Referencia de reserva inválida.',
+          message: 'El formato de la referencia de reserva no es válido.',
+        });
+      }
+      const currentBookingRef = rawBookingRef;
       let expData = null;
       let clubSurchargePct = 12;
       let resolvedSellerToken = '';
       let isAuthorizedSeller = false;
+      let sellerTokenMissing = false;
+      let targetProviderEmail = '';
 
       if (supabaseUrl && supabaseServiceKey) {
         try {
@@ -784,6 +835,7 @@ module.exports = async function handler(req, res) {
 
           // 3. Resolver prestador y su autorización de Mercado Pago
           const providerEmail = (expData?.provider_email || body.providerEmail || '').trim().toLowerCase();
+          targetProviderEmail = providerEmail;
           if (providerEmail) {
             const provRes = await requestHttps({
               hostname: supabaseHost,
@@ -830,6 +882,8 @@ module.exports = async function handler(req, res) {
                     if (sellerToken) {
                       resolvedSellerToken = sellerToken;
                       isAuthorizedSeller = true;
+                    } else {
+                      sellerTokenMissing = true;
                     }
                   }
                 } catch {
@@ -930,10 +984,9 @@ module.exports = async function handler(req, res) {
             Authorization: `Bearer ${supabaseServiceKey}`,
           };
 
-          const currentBookingRef = (body.bookingReference || body.reference || '').trim();
           let queryPath = `/rest/v1/pagos_transferencias?experience_id=eq.${encodeURIComponent(expData.id)}&selected_date=eq.${encodeURIComponent(selectedDate)}&status=neq.rechazado&select=participants`;
           if (currentBookingRef) {
-            queryPath += `&reference=neq.${encodeURIComponent(currentBookingRef)}`;
+            queryPath += `&reference=neq.${encodeURIComponent(escapePostgrestValue(currentBookingRef))}`;
           }
 
           const seatsRes = await requestHttps({
@@ -1020,6 +1073,16 @@ module.exports = async function handler(req, res) {
         pending: `${appBaseUrl}/experiencias/${slug}/pago?status=pending`,
       };
 
+      // Si el prestador tiene mp_connected=true pero no se pudo resolver su token de vendedor,
+      // no hacer fallback silencioso a la cuenta del Club (falla cerrada para evitar cobros en destino incorrecto).
+      if (sellerTokenMissing) {
+        console.warn(`[MercadoPago API] Prestador (${targetProviderEmail || 'desconocido'}) tiene mp_connected=true pero no se encontró un token válido. Rechazando fallback al Club.`);
+        return res.status(502).json({
+          error: 'Credencial de cobro del prestador no disponible',
+          message: 'La cuenta de Mercado Pago del prestador se encuentra vinculada pero no se pudo recuperar su credencial autorizada para procesar el cobro. Por favor intente más tarde o coordine con el prestador.',
+        });
+      }
+
       // Utilizar el access token del vendedor autorizado si está disponible, o el access token del Club/Marketplace
       const preferenceAccessToken = resolvedSellerToken || mpAccessToken;
 
@@ -1058,7 +1121,7 @@ module.exports = async function handler(req, res) {
           back_urls: backUrls,
           auto_return: 'approved',
           statement_descriptor: 'EXPERIENCIAS.CLUB',
-          external_reference: (body.bookingReference || body.reference || '').trim() || `exp_${experienceId || slug}_${Date.now()}`,
+          external_reference: currentBookingRef || `exp_${experienceId || slug}_${Date.now()}`,
         };
 
         if (isAuthorizedSeller && surcharge > 0) {
@@ -1106,7 +1169,15 @@ module.exports = async function handler(req, res) {
         body.paymentId || body.collectionId || req.query?.payment_id || req.query?.collection_id;
       const targetExpId = (body.experienceId || req.query?.experience_id || '').trim();
       const targetExpSlug = (body.experienceSlug || req.query?.experience_slug || '').trim();
-      const targetBookingRef = (body.bookingReference || req.query?.booking_reference || '').trim();
+      const rawBookingRef = (body.bookingReference || req.query?.booking_reference || '').trim();
+
+      if (rawBookingRef && !isValidBookingReference(rawBookingRef)) {
+        return res.status(400).json({
+          verified: false,
+          error: 'Formato de referencia de reserva inválido.',
+        });
+      }
+      const targetBookingRef = rawBookingRef;
 
       if (!rawPaymentId) {
         return res.status(400).json({
@@ -1140,6 +1211,37 @@ module.exports = async function handler(req, res) {
 
       const paymentId = paymentIdStr;
 
+      // Resolver identidad del invocador una sola vez antes de los bloques de consulta
+      const callerEmail = (
+        body.email ||
+        body.payerEmail ||
+        body.payer?.email ||
+        req.query?.email ||
+        req.query?.payer_email ||
+        ''
+      ).trim().toLowerCase();
+
+      let authenticatedUserEmail = '';
+      const authHeader = req.headers?.authorization || req.headers?.Authorization || '';
+      const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+      if (bearerToken && supabaseUrl && supabaseServiceKey) {
+        try {
+          const supabaseHost = new URL(supabaseUrl).hostname;
+          const userRes = await requestHttps({
+            hostname: supabaseHost,
+            path: '/auth/v1/user',
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${bearerToken}`,
+              apikey: supabaseServiceKey,
+            },
+          });
+          if (userRes.status >= 200 && userRes.status < 300 && userRes.data?.email) {
+            authenticatedUserEmail = String(userRes.data.email).trim().toLowerCase();
+          }
+        } catch {}
+      }
+
       // 2. Verificar si la reserva ya fue registrada y aprobada previamente en Supabase
       if (supabaseUrl && supabaseServiceKey) {
         try {
@@ -1152,41 +1254,12 @@ module.exports = async function handler(req, res) {
 
           const shortRef = String(paymentId).slice(-6).toUpperCase();
           const filterConditions = [
-            `receipt_storage_path.eq.${encodeURIComponent(paymentId)}`,
-            `reference.eq.MP-${encodeURIComponent(paymentId)}`,
-            `reference.eq.MP-${encodeURIComponent(shortRef)}`,
+            `receipt_storage_path.eq.${encodeURIComponent(escapePostgrestValue(paymentId))}`,
+            `reference.eq.${encodeURIComponent(escapePostgrestValue(`MP-${paymentId}`))}`,
+            `reference.eq.${encodeURIComponent(escapePostgrestValue(`MP-${shortRef}`))}`,
           ];
           if (targetBookingRef) {
-            filterConditions.push(`reference.eq.${encodeURIComponent(targetBookingRef)}`);
-          }
-
-          const callerEmail = (
-            body.email ||
-            body.payerEmail ||
-            body.payer?.email ||
-            req.query?.email ||
-            req.query?.payer_email ||
-            ''
-          ).trim().toLowerCase();
-
-          let authenticatedUserEmail = '';
-          const authHeader = req.headers?.authorization || req.headers?.Authorization || '';
-          const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
-          if (bearerToken) {
-            try {
-              const userRes = await requestHttps({
-                hostname: supabaseHost,
-                path: '/auth/v1/user',
-                method: 'GET',
-                headers: {
-                  Authorization: `Bearer ${bearerToken}`,
-                  apikey: supabaseServiceKey,
-                },
-              });
-              if (userRes.status >= 200 && userRes.status < 300 && userRes.data?.email) {
-                authenticatedUserEmail = String(userRes.data.email).trim().toLowerCase();
-              }
-            } catch {}
+            filterConditions.push(`reference.eq.${encodeURIComponent(escapePostgrestValue(targetBookingRef))}`);
           }
 
           const checkRes = await requestHttps({
@@ -1280,14 +1353,21 @@ module.exports = async function handler(req, res) {
               Authorization: `Bearer ${supabaseServiceKey}`,
             };
 
-            const bookingRef = (externalReference || targetBookingRef || `MP-${paymentId}`).trim();
+            const rawExtRef = String(paymentData.external_reference || '').trim();
+            let bookingRef = `MP-${paymentId}`;
+            if (rawExtRef && isValidBookingReference(rawExtRef)) {
+              bookingRef = rawExtRef;
+            } else if (targetBookingRef) {
+              bookingRef = targetBookingRef;
+            }
+
             const filterConditions = [
-              `reference.eq.${encodeURIComponent(bookingRef)}`,
-              `receipt_storage_path.eq.${encodeURIComponent(paymentId)}`,
-              `receipt_storage_path.eq.${encodeURIComponent(bookingRef)}`,
+              `reference.eq.${encodeURIComponent(escapePostgrestValue(bookingRef))}`,
+              `receipt_storage_path.eq.${encodeURIComponent(escapePostgrestValue(paymentId))}`,
+              `receipt_storage_path.eq.${encodeURIComponent(escapePostgrestValue(bookingRef))}`,
             ];
             if (targetBookingRef && targetBookingRef !== bookingRef) {
-              filterConditions.push(`reference.eq.${encodeURIComponent(targetBookingRef)}`);
+              filterConditions.push(`reference.eq.${encodeURIComponent(escapePostgrestValue(targetBookingRef))}`);
             }
 
             // Consultar la reserva registrada para validar contra sus valores confiables
@@ -1360,15 +1440,26 @@ module.exports = async function handler(req, res) {
           }
         }
 
-        return res.status(200).json({
+        const confirmedEmail = String(confirmedBooking?.email || '').trim().toLowerCase();
+        const isMatchingBuyer = Boolean(
+          (callerEmail && confirmedEmail && callerEmail === confirmedEmail) ||
+          (authenticatedUserEmail && confirmedEmail && authenticatedUserEmail === confirmedEmail)
+        );
+
+        const responsePayload = {
           verified: true,
           status: 'approved',
           paymentId: paymentData.id,
           amountArs: paymentData.transaction_amount,
           externalReference: paymentData.external_reference,
           dateApproved: paymentData.date_approved,
-          booking: sanitizeBookingForConfirmation(confirmedBooking),
-        });
+        };
+
+        if (confirmedBooking && isMatchingBuyer) {
+          responsePayload.booking = sanitizeBookingForConfirmation(confirmedBooking);
+        }
+
+        return res.status(200).json(responsePayload);
       } catch (err) {
         return res.status(500).json({
           verified: false,
@@ -1430,14 +1521,21 @@ module.exports = async function handler(req, res) {
         }
 
         const paymentData = paymentRes.data;
-        const mpStatus = paymentData.status;
+        const mpStatus = String(paymentData.status || '').toLowerCase();
         const externalReference = (paymentData.external_reference || '').trim();
-        const bookingStatus =
-          mpStatus === 'approved'
-            ? 'aprobado'
-            : mpStatus === 'rejected' || mpStatus === 'cancelled'
-            ? 'rechazado'
-            : 'pendiente';
+
+        // Mapeo explícito de estados de Mercado Pago
+        let bookingStatus;
+        if (mpStatus === 'approved') {
+          bookingStatus = 'aprobado';
+        } else if (mpStatus === 'rejected' || mpStatus === 'cancelled') {
+          bookingStatus = 'rechazado';
+        } else if (mpStatus === 'refunded' || mpStatus === 'charged_back') {
+          bookingStatus = 'rechazado';
+          console.warn(`[MercadoPago Webhook] Pago ${paymentId} en estado de contracargo o reembolso: '${mpStatus}'.`);
+        } else {
+          bookingStatus = 'pendiente';
+        }
 
         // 2. Actualizar o registrar la reserva de manera idempotente en Supabase
         if (supabaseUrl && supabaseServiceKey) {
@@ -1448,26 +1546,33 @@ module.exports = async function handler(req, res) {
             Authorization: `Bearer ${supabaseServiceKey}`,
           };
 
-          const bookingRef = externalReference || `MP-${paymentId}`;
+          const rawExtRef = (externalReference || '').trim();
+          let bookingRef = `MP-${paymentId}`;
+          if (rawExtRef && isValidBookingReference(rawExtRef)) {
+            bookingRef = rawExtRef;
+          }
 
           // Verificar si ya existe una reserva con esta referencia
           const checkRes = await requestHttps({
             hostname: supabaseHost,
-            path: `/rest/v1/pagos_transferencias?or=(reference.eq.${encodeURIComponent(bookingRef)},receipt_storage_path.eq.${encodeURIComponent(paymentId)},receipt_storage_path.eq.${encodeURIComponent(bookingRef)})&select=id,status,amount_ars,experience_id,experience_title`,
+            path: `/rest/v1/pagos_transferencias?or=(reference.eq.${encodeURIComponent(escapePostgrestValue(bookingRef))},receipt_storage_path.eq.${encodeURIComponent(escapePostgrestValue(paymentId))},receipt_storage_path.eq.${encodeURIComponent(escapePostgrestValue(bookingRef))})&select=id,status,amount_ars,experience_id,experience_title`,
             method: 'GET',
             headers: authHeaders,
           });
 
+          if (checkRes.status < 200 || checkRes.status >= 300) {
+            console.error('[MercadoPago Webhook] Error al consultar reserva en Supabase:', checkRes.status);
+            return res.status(500).json({ error: 'Error al consultar reserva existente en la base de datos.' });
+          }
+
           if (
-            checkRes.status >= 200 &&
-            checkRes.status < 300 &&
             Array.isArray(checkRes.data) &&
             checkRes.data.length > 0
           ) {
             const matchedRow = checkRes.data[0];
 
             // Validar monto y experiencia antes de aprobar
-            if (bookingStatus === 'aprobado') {
+            if (bookingStatus === 'aprobado' && matchedRow.status !== 'aprobado') {
               const validation = validatePaymentAgainstBooking(paymentData, matchedRow);
               if (!validation.valid) {
                 console.warn('[MercadoPago Webhook] Validación de pago fallida para reserva existente:', {
@@ -1482,6 +1587,15 @@ module.exports = async function handler(req, res) {
               }
             }
 
+            // Una reserva ya aprobada no debe ser degradada por notificaciones posteriores no aprobadas
+            let targetStatus = bookingStatus;
+            if (matchedRow.status === 'aprobado' && bookingStatus !== 'aprobado') {
+              console.warn(
+                `[MercadoPago Webhook] Reserva ${matchedRow.id} ya se encuentra 'aprobado'. Notificación posterior con estado MP '${mpStatus}' no degradará la reserva. Preservando estado 'aprobado'.`
+              );
+              targetStatus = 'aprobado';
+            }
+
             // Actualización idempotente de la reserva existente
             const patchRes = await requestHttps(
               {
@@ -1494,7 +1608,7 @@ module.exports = async function handler(req, res) {
                 },
               },
               {
-                status: bookingStatus,
+                status: targetStatus,
                 receipt_storage_path: String(paymentId),
                 reviewed_by: 'mercadopago_webhook',
                 reviewed_at: new Date().toISOString(),
@@ -1516,7 +1630,7 @@ module.exports = async function handler(req, res) {
             if (rawExpKey) {
               const expRes = await requestHttps({
                 hostname: supabaseHost,
-                path: `/rest/v1/experiencias?or=(id.eq.${encodeURIComponent(rawExpKey)},slug.eq.${encodeURIComponent(rawExpKey)})&select=id,title`,
+                path: `/rest/v1/experiencias?or=(id.eq.${encodeURIComponent(escapePostgrestValue(rawExpKey))},slug.eq.${encodeURIComponent(escapePostgrestValue(rawExpKey))})&select=id,title`,
                 method: 'GET',
                 headers: authHeaders,
               });
@@ -1536,7 +1650,7 @@ module.exports = async function handler(req, res) {
               if (itemCandidate && itemCandidate !== 'gestion-mercadopago') {
                 const expRes = await requestHttps({
                   hostname: supabaseHost,
-                  path: `/rest/v1/experiencias?or=(id.eq.${encodeURIComponent(itemCandidate)},slug.eq.${encodeURIComponent(itemCandidate)})&select=id,title`,
+                  path: `/rest/v1/experiencias?or=(id.eq.${encodeURIComponent(escapePostgrestValue(itemCandidate))},slug.eq.${encodeURIComponent(escapePostgrestValue(itemCandidate))})&select=id,title`,
                   method: 'GET',
                   headers: authHeaders,
                 });

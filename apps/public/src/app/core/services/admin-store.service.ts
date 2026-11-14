@@ -1704,6 +1704,7 @@ export class AdminStoreService {
     const app = this._applications().find(
       (a) => a.id === id || a.email?.trim().toLowerCase() === cleanId,
     );
+    const targetId = app?.id || id;
     try {
       if (isSupabaseConfigured()) {
         if (type === 'prestador') {
@@ -1734,8 +1735,8 @@ export class AdminStoreService {
           let query = (this.supabase.from('prestadores') as any).update(updatePayload, {
             count: 'exact',
           });
-          if (id) {
-            query = query.eq('id', id);
+          if (targetId) {
+            query = query.eq('id', targetId);
           } else if (email) {
             query = query.eq('email', email);
           }
@@ -1784,7 +1785,7 @@ export class AdminStoreService {
               status: dbStatus,
               updated_at: new Date().toISOString(),
             })
-            .eq('id', id);
+            .eq('id', targetId);
 
           if (appErr) {
             console.warn('[AdminStore] Error al actualizar postulación en Supabase:', appErr);
@@ -1799,7 +1800,7 @@ export class AdminStoreService {
 
     this._applications.update((list) =>
       list.map((a) =>
-        a.id === id
+        a.id === targetId
           ? {
               ...a,
               status,

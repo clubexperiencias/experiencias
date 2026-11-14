@@ -522,16 +522,18 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
                 }
               }
               @if (hasProviderRecord(prov)) {
-                <button
-                  type="button"
-                  class="btn-action-resend-welcome"
-                  [disabled]="saving() || sendingWelcomeEmails().has(prov.email)"
-                  (click)="resendWelcomeEmail(prov)"
-                  title="Enviar o reenviar correo de bienvenida con instrucciones de acceso al portal"
-                >
-                  <mat-icon>{{ sendingWelcomeEmails().has(prov.email) ? 'sync' : 'mark_email_read' }}</mat-icon>
-                  <span>{{ sendingWelcomeEmails().has(prov.email) ? 'Enviando...' : 'Reenviar bienvenida' }}</span>
-                </button>
+                @if (prov.status === 'aprobado') {
+                  <button
+                    type="button"
+                    class="btn-action-resend-welcome"
+                    [disabled]="saving() || sendingWelcomeEmails().has(prov.email)"
+                    (click)="resendWelcomeEmail(prov)"
+                    title="Enviar o reenviar correo de bienvenida con instrucciones de acceso al portal"
+                  >
+                    <mat-icon>{{ sendingWelcomeEmails().has(prov.email) ? 'sync' : 'mark_email_read' }}</mat-icon>
+                    <span>{{ sendingWelcomeEmails().has(prov.email) ? 'Enviando...' : 'Reenviar bienvenida' }}</span>
+                  </button>
+                }
                 <a [routerLink]="getEditRoute(prov)" class="btn-action-edit-orange">
                   <span>Editar Prestador</span>
                 </a>
@@ -3130,9 +3132,10 @@ export class AdminProvidersComponent implements OnInit {
       list = list.filter((p) => {
         const nameMatch = p.name.toLowerCase().includes(query);
         const agencyMatch = p.agency.toLowerCase().includes(query);
+        const rubroMatch = (p.rubro || '').toLowerCase().includes(query);
         const emailMatch = p.email.toLowerCase().includes(query);
         const phoneMatch = p.phone.toLowerCase().includes(query);
-        return nameMatch || agencyMatch || emailMatch || phoneMatch;
+        return nameMatch || agencyMatch || rubroMatch || emailMatch || phoneMatch;
       });
     }
 
@@ -3159,6 +3162,10 @@ export class AdminProvidersComponent implements OnInit {
       'cabalgatas',
       'artesanias',
       'arqueologia',
+      'guias_actividades',
+      'transporte',
+      'bienestar',
+      'experiencias_culturales',
       'otro',
       'general',
       'trekking',
@@ -3216,6 +3223,14 @@ export class AdminProvidersComponent implements OnInit {
       case 'artesanias':
       case 'artesanías & sabores regionales':
         return 'Artesanías & Sabores';
+      case 'guias_actividades':
+        return 'Guías & Excursiones';
+      case 'transporte':
+        return 'Transporte & Transfers';
+      case 'bienestar':
+        return 'Bienestar';
+      case 'experiencias_culturales':
+        return 'Cultura & Talleres';
       case 'otro':
         return 'Otro';
       default:
@@ -3336,8 +3351,12 @@ export class AdminProvidersComponent implements OnInit {
         fullName: targetName,
         email,
       });
-      if (res.success) {
+      if (res.success && !res.simulated) {
         this.showToast(`¡Correo de bienvenida enviado exitosamente a ${email}!`);
+      } else if (res.simulated) {
+        this.showToast(
+          `Envío simulado: ${res.error || 'RESEND_API_KEY no configurada en el servidor. No se entregó el correo.'}`,
+        );
       } else {
         this.showToast(
           `No se pudo enviar el correo: ${res.error || 'Verifique la conexión o configuración de Resend en el servidor.'}`,

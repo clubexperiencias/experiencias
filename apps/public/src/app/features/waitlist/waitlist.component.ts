@@ -96,11 +96,11 @@ export class WaitlistComponent {
   toggleManifesto(focusEmail = false): void {
     const isOpening = !this.showManifesto();
     this.clearManifestoTimer();
+    this.manifestoAutoSentEmail.set(null);
 
     if (isOpening) {
       const cleanEmail = this.email().trim().toLowerCase();
       if (cleanEmail && this.newsletter.isValidEmail(cleanEmail)) {
-        this.manifestoAutoSentEmail.set(cleanEmail);
         void this.submitFromManifesto(cleanEmail);
         this.email.set('');
       }
@@ -123,6 +123,7 @@ export class WaitlistComponent {
 
   closeManifesto(focusEmail = false): void {
     this.clearManifestoTimer();
+    this.manifestoAutoSentEmail.set(null);
     this.showManifesto.set(false);
     if (focusEmail && typeof document !== 'undefined') {
       setTimeout(() => {
@@ -132,13 +133,20 @@ export class WaitlistComponent {
   }
 
   private async submitFromManifesto(cleanEmail: string): Promise<void> {
+    this.manifestoAutoSentEmail.set(null);
     if (this.newsletter.isSubscribed()) {
       this.newsletter.resetCurrentSubscription();
     }
     try {
-      await this.newsletter.loginWithEmail(cleanEmail);
+      const loginRes = await this.newsletter.loginWithEmail(cleanEmail);
+      if (!loginRes?.success) {
+        return;
+      }
       if (this.newsletter.isSupabaseConnected()) {
-        await this.notificationService.notifyWaitlistConfirmation({ email: cleanEmail });
+        const notifRes = await this.notificationService.notifyWaitlistConfirmation({ email: cleanEmail });
+        if (notifRes?.success) {
+          this.manifestoAutoSentEmail.set(cleanEmail);
+        }
       }
     } catch (err) {
       console.warn('[WaitlistComponent] Error enviando confirmación desde manifiesto:', err);

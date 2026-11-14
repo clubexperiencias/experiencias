@@ -286,6 +286,12 @@ function verifyWaitlistSubmission(email, config) {
   });
 }
 
+function escapePostgrestValue(val) {
+  const str = String(val ?? '');
+  const escaped = str.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  return `"${escaped}"`;
+}
+
 function updateApplicationNotes(recordId, notesObject, config, expectedNotes) {
   return new Promise((resolve) => {
     const privilegedKey = config.supabaseServiceRoleKey || config.supabaseKey;
@@ -300,7 +306,7 @@ function updateApplicationNotes(recordId, notesObject, config, expectedNotes) {
         if (expectedNotes === null) {
           queryPath += '&notes=is.null';
         } else {
-          queryPath += `&notes=eq.${encodeURIComponent(String(expectedNotes))}`;
+          queryPath += `&notes=eq.${encodeURIComponent(escapePostgrestValue(expectedNotes))}`;
         }
       }
 
@@ -421,7 +427,188 @@ function verifyProviderAccess(email, config) {
   });
 }
 
-function sendEmailViaResend({ apiKey, from, to, subject, html }) {
+async function verifyDecisionMakerAndGetBooking(req, data, config) {
+  const authHeader = req.headers.authorization || req.headers.Authorization || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+
+  if (!token) {
+    return {
+      status: 401,
+      error: 'Acceso no autorizado: se requiere token de sesión.',
+    };
+  }
+
+  const caller = await getSupabaseUser(token, config);
+  if (!caller || !caller.email) {
+    return {
+      status: 401,
+      error: 'Token de sesión inválido o expirado.',
+    };
+  }
+  const callerEmail = String(caller.email).trim().toLowerCase();
+
+  const privilegedKey = config.supabaseServiceRoleKey || config.supabaseKey;
+  if (!config.supabaseUrl || !privilegedKey) {
+    return {
+      status: 503,
+      error: 'Servicio de base de datos no configurado.',
+    };
+  }
+
+  const rawRef = typeof data?.reference === 'string' ? data.reference.trim() : '';
+  const rawId = typeof data?.id === 'string' ? data.id.trim() : '';
+
+  if (!rawRef && !rawId) {
+    return {
+      status: 400,
+      error: 'Falta referencia o ID de la reserva para dictaminar el pago.',
+    };
+  }
+
+  const conditions = [];
+  if (rawId) {
+    conditions.push(`id.eq.${encodeURIComponent(escapePostgrestValue(rawId))}`);
+  }
+  if (rawRef) {
+    conditions.push(`reference.eq.${encodeURIComponent(escapePostgrestValue(rawRef))}`);
+  }
+  const filterQuery = conditions.length > 1 ? `or=(${conditions.join(',')})` : conditions[0];
+  const queryPath = `/rest/v1/pagos_transferencias?${filterQuery}&select=id,reference,experience_id,experience_title,provider_email,selected_date,date,participants,amount_ars,full_name,email,dni,phone,status,rejection_reason&limit=1`;
+
+  const lookupResult = await new Promise((resolve) => {
+    try {
+      const url = new URL(`${config.supabaseUrl}${queryPath}`);
+      const reqDb = https.request(
+        {
+          hostname: url.hostname,
+          port: url.port || 443,
+          path: url.pathname + url.search,
+          method: 'GET',
+          headers: {
+            apikey: privilegedKey,
+            Authorization: `Bearer ${privilegedKey}`,
+          },
+        },
+        (resDb) => {
+          if (resDb.statusCode < 200 || resDb.statusCode >= 300) {
+            return resolve({ status: 'db_error' });
+          }
+          let body = '';
+          resDb.on('data', (c) => (body += c));
+          resDb.on('end', () => {
+            try {
+              const rows = JSON.parse(body);
+              if (Array.isArray(rows) && rows.length > 0) {
+                resolve({ status: 'ok', booking: rows[0] });
+              } else {
+                resolve({ status: 'not_found' });
+              }
+            } catch {
+              resolve({ status: 'db_error' });
+            }
+          });
+        },
+      );
+      reqDb.setTimeout(8000, () => {
+        reqDb.destroy();
+        resolve({ status: 'db_error' });
+      });
+      reqDb.on('error', () => resolve({ status: 'db_error' }));
+      reqDb.end();
+    } catch {
+      resolve({ status: 'db_error' });
+    }
+  });
+
+  if (lookupResult.status === 'db_error') {
+    return {
+      status: 502,
+      error: 'Error de comunicación al consultar la reserva en el almacenamiento oficial.',
+    };
+  }
+  if (lookupResult.status === 'not_found' || !lookupResult.booking) {
+    return {
+      status: 404,
+      error: 'Reserva no encontrada en el almacenamiento oficial.',
+    };
+  }
+
+  const booking = lookupResult.booking;
+
+  // Autorización: debe ser administrador o el prestador asociado a la reserva
+  const isAdmin = await verifySupabaseCallerAdmin(token, config);
+  let isAuthorized = isAdmin;
+
+  if (!isAuthorized) {
+    const bookingProviderEmail = String(booking.provider_email || '').trim().toLowerCase();
+    if (bookingProviderEmail && bookingProviderEmail === callerEmail) {
+      isAuthorized = true;
+    } else if (booking.experience_id) {
+      const expProviderEmail = await new Promise((resolve) => {
+        try {
+          const expUrl = new URL(
+            `${config.supabaseUrl}/rest/v1/experiencias?id=eq.${encodeURIComponent(escapePostgrestValue(booking.experience_id))}&select=provider_email&limit=1`,
+          );
+          const expReq = https.request(
+            {
+              hostname: expUrl.hostname,
+              port: expUrl.port || 443,
+              path: expUrl.pathname + expUrl.search,
+              method: 'GET',
+              headers: {
+                apikey: privilegedKey,
+                Authorization: `Bearer ${privilegedKey}`,
+              },
+            },
+            (expRes) => {
+              if (expRes.statusCode < 200 || expRes.statusCode >= 300) return resolve(null);
+              let expBody = '';
+              expRes.on('data', (c) => (expBody += c));
+              expRes.on('end', () => {
+                try {
+                  const expRows = JSON.parse(expBody);
+                  if (Array.isArray(expRows) && expRows.length > 0 && expRows[0].provider_email) {
+                    resolve(String(expRows[0].provider_email).trim().toLowerCase());
+                  } else {
+                    resolve(null);
+                  }
+                } catch {
+                  resolve(null);
+                }
+              });
+            },
+          );
+          expReq.setTimeout(6000, () => {
+            expReq.destroy();
+            resolve(null);
+          });
+          expReq.on('error', () => resolve(null));
+          expReq.end();
+        } catch {
+          resolve(null);
+        }
+      });
+
+      if (expProviderEmail && expProviderEmail === callerEmail) {
+        isAuthorized = true;
+      }
+    }
+  }
+
+  if (!isAuthorized) {
+    return {
+      status: 403,
+      error: 'Acceso denegado: no tenés permisos para dictaminar sobre esta reserva.',
+    };
+  }
+
+  return {
+    status: 200,
+    booking,
+  };
+}
+
+function sendEmailViaResend({ apiKey, from, to, subject, html, timeoutMs = 10000 }) {
   return new Promise((resolve, reject) => {
     if (!apiKey) {
       console.warn('[api/notify] RESEND_API_KEY no configurada. Simulando envío a:', to);
@@ -447,6 +634,20 @@ function sendEmailViaResend({ apiKey, from, to, subject, html }) {
       },
     };
 
+    let settled = false;
+    const safeResolve = (val) => {
+      if (!settled) {
+        settled = true;
+        resolve(val);
+      }
+    };
+    const safeReject = (err) => {
+      if (!settled) {
+        settled = true;
+        reject(err);
+      }
+    };
+
     const req = https.request(options, (res) => {
       let data = '';
       res.on('data', (chunk) => {
@@ -456,20 +657,28 @@ function sendEmailViaResend({ apiKey, from, to, subject, html }) {
         try {
           const parsed = JSON.parse(data);
           if (res.statusCode >= 200 && res.statusCode < 300) {
-            resolve(parsed);
+            safeResolve(parsed);
           } else {
             console.error('[api/notify] Error devuelto por Resend API:', parsed);
-            reject(new Error(parsed.message || `Error HTTP ${res.statusCode} en Resend`));
+            safeReject(new Error(parsed.message || `Error HTTP ${res.statusCode} en Resend`));
           }
         } catch (err) {
-          reject(new Error(`Respuesta inválida de Resend (${res.statusCode}): ${data}`));
+          safeReject(new Error(`Respuesta inválida de Resend (${res.statusCode}): ${data}`));
         }
       });
     });
 
+    req.setTimeout(timeoutMs, () => {
+      const timeoutErr = new Error('Tiempo de espera agotado al conectar con Resend API (deadline exceeded).');
+      safeReject(timeoutErr);
+      req.destroy(timeoutErr);
+    });
+
     req.on('error', (err) => {
-      console.error('[api/notify] Error de conexión con Resend:', err);
-      reject(err);
+      if (!settled) {
+        console.error('[api/notify] Error de conexión con Resend:', err);
+        safeReject(err);
+      }
     });
 
     req.write(payload);
@@ -657,44 +866,53 @@ function templatePaymentSubmittedUser(sub) {
 
 // 2. Template: Nuevo Comprobante a Validar (Para Admin y Prestadores)
 function templatePaymentSubmittedAdmin(sub) {
+  const safeFullName = escapeHtml(sub.fullName || '-');
+  const safeTitle = escapeHtml(sub.experienceTitle);
+  const safeReference = escapeHtml(sub.reference);
+  const safeEmail = escapeHtml(sub.email || '-');
+  const safePhone = escapeHtml(sub.phone || '-');
+  const safeDni = escapeHtml(sub.dni || '-');
+  const safeDate = escapeHtml(sub.date);
+  const safeParticipants = escapeHtml(sub.participants);
+
   const content = `
     <h2 class="card-title">Nuevo Comprobante de Pago a Validar</h2>
     <p class="card-lead">
-      Se cargó una nueva transferencia para la salida <strong>${sub.experienceTitle}</strong>.
+      Se cargó una nueva transferencia para la salida <strong>${safeTitle}</strong>.
     </p>
 
     <table class="data-table">
       <tr>
         <td class="data-label">Referencia</td>
-        <td class="data-value data-mono">${sub.reference}</td>
+        <td class="data-value data-mono">${safeReference}</td>
       </tr>
       <tr>
         <td class="data-label">Socio / Pasajero</td>
-        <td class="data-value">${sub.fullName}</td>
+        <td class="data-value">${safeFullName}</td>
       </tr>
       <tr>
         <td class="data-label">Email</td>
-        <td class="data-value">${sub.email}</td>
+        <td class="data-value">${safeEmail}</td>
       </tr>
       <tr>
         <td class="data-label">Teléfono / WhatsApp</td>
-        <td class="data-value">${sub.phone || '-'}</td>
+        <td class="data-value">${safePhone}</td>
       </tr>
       <tr>
         <td class="data-label">DNI</td>
-        <td class="data-value">${sub.dni || '-'}</td>
+        <td class="data-value">${safeDni}</td>
       </tr>
       <tr>
         <td class="data-label">Experiencia</td>
-        <td class="data-value">${sub.experienceTitle}</td>
+        <td class="data-value">${safeTitle}</td>
       </tr>
       <tr>
         <td class="data-label">Fecha Programada</td>
-        <td class="data-value">${sub.date}</td>
+        <td class="data-value">${safeDate}</td>
       </tr>
       <tr>
         <td class="data-label">Cupos Solicitados</td>
-        <td class="data-value">${sub.participants} persona(s)</td>
+        <td class="data-value">${safeParticipants} persona(s)</td>
       </tr>
       <tr>
         <td class="data-label">Importe Transferido</td>
@@ -717,29 +935,37 @@ function templatePaymentSubmittedAdmin(sub) {
 
 // 3. Template: Reserva Aprobada y Voucher (Para el Usuario)
 function templatePaymentApprovedUser(sub) {
+  const safeFullName = escapeHtml(sub.fullName || 'Explorador');
+  const safeTitle = escapeHtml(sub.experienceTitle);
+  const safeReference = escapeHtml(sub.reference);
+  const safeDate = escapeHtml(sub.date);
+  const safeParticipants = escapeHtml(sub.participants);
+  const safeDni = escapeHtml(sub.dni || '-');
+  const safeMeetingPoint = escapeHtml(sub.meetingPoint || 'Club Náutico Dique El Jumeal / Coordinado por prestador');
+
   const content = `
     <h2 class="card-title" style="color: #4ade80;">¡Tu reserva está confirmada! 🎉</h2>
     <p class="card-lead">
-      Hola <strong>${sub.fullName || 'Explorador'}</strong>, tu transferencia bancaria para <strong>${sub.experienceTitle}</strong> fue verificada con éxito.
+      Hola <strong>${safeFullName}</strong>, tu transferencia bancaria para <strong>${safeTitle}</strong> fue verificada con éxito.
       ¡Ya tenés tu lugar asegurado para la expedición!
     </p>
 
     <div class="voucher-box" style="border-color: #4ade80; background: rgba(74, 222, 128, 0.08);">
       <span class="voucher-tag" style="color: #4ade80;">VOUCHER OFICIAL DE EXPEDICIÓN</span>
-      <div class="voucher-code">${sub.reference}</div>
+      <div class="voucher-code">${safeReference}</div>
       <div style="font-size: 14px; color: #ffffff; margin-top: 6px;">
-        <strong>Fecha:</strong> ${sub.date} · <strong>Pasajeros:</strong> ${sub.participants}
+        <strong>Fecha:</strong> ${safeDate} · <strong>Pasajeros:</strong> ${safeParticipants}
       </div>
     </div>
 
     <table class="data-table">
       <tr>
         <td class="data-label">Titular</td>
-        <td class="data-value">${sub.fullName} (DNI ${sub.dni || '-'})</td>
+        <td class="data-value">${safeFullName} (DNI ${safeDni})</td>
       </tr>
       <tr>
         <td class="data-label">Punto de Encuentro</td>
-        <td class="data-value">${sub.meetingPoint || 'Club Náutico Dique El Jumeal / Coordinado por prestador'}</td>
+        <td class="data-value">${safeMeetingPoint}</td>
       </tr>
       <tr>
         <td class="data-label">Monto Acreditado</td>
@@ -765,15 +991,22 @@ function templatePaymentApprovedUser(sub) {
 
 // 4. Template: Comprobante Rechazado (Para el Usuario)
 function templatePaymentRejectedUser(sub) {
+  const safeFullName = escapeHtml(sub.fullName || 'Explorador');
+  const safeTitle = escapeHtml(sub.experienceTitle);
+  const safeReference = escapeHtml(sub.reference);
+  const safeReason = escapeHtml(
+    sub.rejectionReason || 'El comprobante no es legible o el importe transferido no coincide con el total de la reserva.'
+  );
+
   const content = `
-    <h2 class="card-title" style="color: #f87171;">Aviso sobre tu reserva en ${sub.experienceTitle}</h2>
+    <h2 class="card-title" style="color: #f87171;">Aviso sobre tu reserva en ${safeTitle}</h2>
     <p class="card-lead">
-      Hola <strong>${sub.fullName || 'Explorador'}</strong>, no pudimos validar el comprobante de transferencia bancaria enviado para la reserva <strong>${sub.reference}</strong>.
+      Hola <strong>${safeFullName}</strong>, no pudimos validar el comprobante de transferencia bancaria enviado para la reserva <strong>${safeReference}</strong>.
     </p>
 
     <div class="alert-box">
       <strong>Motivo informado por el prestador:</strong><br/>
-      ${sub.rejectionReason || 'El comprobante no es legible o el importe transferido no coincide con el total de la reserva.'}
+      ${safeReason}
     </div>
 
     <p style="font-size: 14px; color: rgba(255,255,255,0.78); line-height: 1.6;">
@@ -1225,17 +1458,40 @@ module.exports = async function handler(req, res) {
 
     switch (messageType) {
       case 'PAYMENT_SUBMITTED': {
-        // 1. Email al usuario
-        if (data.email) {
-          const userResult = await sendEmailViaResend({
-            apiKey: config.apiKey,
-            from: config.fromEmail,
-            to: data.email,
-            subject: `Recibimos tu comprobante para ${data.experienceTitle} (${data.reference})`,
-            html: templatePaymentSubmittedUser(data),
-          });
-          results.push({ target: 'user', ...userResult });
+        const cleanEmail = String(data.email || '').trim().toLowerCase();
+        if (!cleanEmail) {
+          return res.status(400).json({ success: false, error: 'Falta email del socio.' });
         }
+
+        const clientIp =
+          req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+          req.socket?.remoteAddress ||
+          'unknown';
+
+        const recipientRateLimitKey = `payment_sub_rec_${cleanEmail}`;
+        const ipRateLimitKey = `payment_sub_ip_${clientIp}`;
+        const sharedRateLimitKey = `payment_sub_${cleanEmail}_${clientIp}`;
+
+        if (
+          !checkRateLimit(recipientRateLimitKey, 3, 5 * 60 * 1000) ||
+          !checkRateLimit(ipRateLimitKey, 5, 5 * 60 * 1000) ||
+          !checkRateLimit(sharedRateLimitKey, 3, 5 * 60 * 1000)
+        ) {
+          return res.status(429).json({
+            success: false,
+            error: 'Demasiadas solicitudes enviadas para este comprobante. Por favor aguardá unos minutos.',
+          });
+        }
+
+        // 1. Email al usuario
+        const userResult = await sendEmailViaResend({
+          apiKey: config.apiKey,
+          from: config.fromEmail,
+          to: cleanEmail,
+          subject: `Recibimos tu comprobante para ${data.experienceTitle} (${data.reference})`,
+          html: templatePaymentSubmittedUser({ ...data, email: cleanEmail }),
+        });
+        results.push({ target: 'user', ...userResult });
 
         // 2. Alerta a Administradores y al Prestador (restringido a destinatarios verificados)
         const recipients = [...config.adminEmails];
@@ -1263,30 +1519,77 @@ module.exports = async function handler(req, res) {
       }
 
       case 'PAYMENT_APPROVED': {
-        if (!data.email) {
-          return res.status(400).json({ success: false, error: 'Falta email del socio.' });
+        const check = await verifyDecisionMakerAndGetBooking(req, data, config);
+        if (check.status !== 200) {
+          return res.status(check.status).json({ success: false, error: check.error });
         }
+
+        const trustedBooking = check.booking;
+        const targetEmail = String(trustedBooking.email || '').trim().toLowerCase();
+        if (!targetEmail) {
+          return res.status(400).json({
+            success: false,
+            error: 'La reserva no contiene un correo electrónico registrado.',
+          });
+        }
+
+        const emailData = {
+          fullName: trustedBooking.full_name || 'Explorador',
+          experienceTitle: trustedBooking.experience_title || 'Experiencia',
+          reference: trustedBooking.reference,
+          date: trustedBooking.selected_date || trustedBooking.date || '',
+          participants: trustedBooking.participants || 1,
+          amountArs: trustedBooking.amount_ars || 0,
+          dni: trustedBooking.dni || '-',
+          meetingPoint:
+            typeof data.meetingPoint === 'string' && data.meetingPoint.trim()
+              ? data.meetingPoint.trim()
+              : '',
+        };
+
         const approvedResult = await sendEmailViaResend({
           apiKey: config.apiKey,
           from: config.fromEmail,
-          to: data.email,
-          subject: `¡Reserva Confirmada! Tu voucher para ${data.experienceTitle} (${data.reference})`,
-          html: templatePaymentApprovedUser(data),
+          to: targetEmail,
+          subject: `¡Reserva Confirmada! Tu voucher para ${emailData.experienceTitle} (${emailData.reference})`,
+          html: templatePaymentApprovedUser(emailData),
         });
         results.push({ target: 'user_approved', ...approvedResult });
         break;
       }
 
       case 'PAYMENT_REJECTED': {
-        if (!data.email) {
-          return res.status(400).json({ success: false, error: 'Falta email del socio.' });
+        const check = await verifyDecisionMakerAndGetBooking(req, data, config);
+        if (check.status !== 200) {
+          return res.status(check.status).json({ success: false, error: check.error });
         }
+
+        const trustedBooking = check.booking;
+        const targetEmail = String(trustedBooking.email || '').trim().toLowerCase();
+        if (!targetEmail) {
+          return res.status(400).json({
+            success: false,
+            error: 'La reserva no contiene un correo electrónico registrado.',
+          });
+        }
+
+        const emailData = {
+          fullName: trustedBooking.full_name || 'Explorador',
+          experienceTitle: trustedBooking.experience_title || 'Experiencia',
+          reference: trustedBooking.reference,
+          rejectionReason:
+            typeof data.rejectionReason === 'string' && data.rejectionReason.trim()
+              ? data.rejectionReason.trim()
+              : trustedBooking.rejection_reason ||
+                'El comprobante no es legible o el importe transferido no coincide con el total de la reserva.',
+        };
+
         const rejectedResult = await sendEmailViaResend({
           apiKey: config.apiKey,
           from: config.fromEmail,
-          to: data.email,
-          subject: `Aviso sobre tu reserva en ${data.experienceTitle} (${data.reference})`,
-          html: templatePaymentRejectedUser(data),
+          to: targetEmail,
+          subject: `Aviso sobre tu reserva en ${emailData.experienceTitle} (${emailData.reference})`,
+          html: templatePaymentRejectedUser(emailData),
         });
         results.push({ target: 'user_rejected', ...rejectedResult });
         break;
@@ -1466,9 +1769,10 @@ module.exports = async function handler(req, res) {
         const expectedNotes =
           applicationRecord.notes !== undefined ? applicationRecord.notes : null;
 
+        const acquiredNotesObj = { ...notesObj, application_notifying_at: new Date().toISOString() };
         const lockResult = await updateApplicationNotes(
           applicationRecord.id,
-          { ...notesObj, application_notifying_at: new Date().toISOString() },
+          acquiredNotesObj,
           config,
           expectedNotes,
         );
@@ -1487,6 +1791,11 @@ module.exports = async function handler(req, res) {
             error: 'Notificación de postulación en curso o ya modificada para esta solicitud.',
           });
         }
+
+        const acquiredNotesValue =
+          lockResult.rows && lockResult.rows[0] && typeof lockResult.rows[0].notes === 'string'
+            ? lockResult.rows[0].notes
+            : JSON.stringify(acquiredNotesObj);
 
         const verifiedData = {
           fullName:
@@ -1563,21 +1872,35 @@ module.exports = async function handler(req, res) {
         const bothDeliveriesSucceeded = applicantDeliverySuccess && adminDeliverySuccess;
 
         if (bothDeliveriesSucceeded) {
-          // Marcar durablemente como notificada completada
+          // Marcar durablemente como notificada completada verificando la titularidad del bloqueo
           const finalNotes = { ...notesObj };
           delete finalNotes.application_notifying_at;
           finalNotes.application_notified_at = new Date().toISOString();
-          const finalNotesResult = await updateApplicationNotes(applicationRecord.id, finalNotes, config);
+          const finalNotesResult = await updateApplicationNotes(
+            applicationRecord.id,
+            finalNotes,
+            config,
+            acquiredNotesValue,
+          );
           if (!finalNotesResult.success) {
             console.error('[Notify] Error persistiendo notas finales de postulación:', finalNotesResult.error);
+          } else if (!finalNotesResult.matched) {
+            console.warn('[Notify] Bloqueo de postulación expiró o fue actualizado concurrentemente; omitiendo actualización obsoleta.');
           }
         } else {
-          // Si falló el envío o fue simulado, persistir marcadores alcanzados y limpiar el bloqueo en curso para reintento
+          // Si falló el envío o fue simulado, persistir marcadores alcanzados y limpiar el bloqueo verificando la titularidad del bloqueo
           const retryNotes = { ...notesObj };
           delete retryNotes.application_notifying_at;
-          const cleanupResult = await updateApplicationNotes(applicationRecord.id, retryNotes, config);
+          const cleanupResult = await updateApplicationNotes(
+            applicationRecord.id,
+            retryNotes,
+            config,
+            acquiredNotesValue,
+          );
           if (!cleanupResult.success) {
             console.error('[Notify] Error limpiando bloqueo de postulación en base de datos:', cleanupResult.error);
+          } else if (!cleanupResult.matched) {
+            console.warn('[Notify] Bloqueo de postulación expiró o fue actualizado concurrentemente; omitiendo limpieza obsoleta.');
           }
 
           const isSimulated = Boolean(
@@ -1627,6 +1950,17 @@ module.exports = async function handler(req, res) {
           html: templateProviderApproved(data),
         });
         results.push({ target: 'provider_approved', ...approvedResult });
+
+        if (approvedResult.simulated) {
+          return res.status(200).json({
+            success: false,
+            simulated: true,
+            delivered: false,
+            type,
+            results,
+            error: 'RESEND_API_KEY no configurada. El correo de bienvenida fue simulado y no se entregó.',
+          });
+        }
         break;
       }
 

@@ -391,8 +391,19 @@ export class ProviderStoreService {
               .replace(/(^-|-$)+/g, '')
           : slugify(email.split('@')[0]));
 
-      if (resolvedSlug.startsWith('prov-') && resolvedSlug !== 'prov-club') {
-        resolvedSlug = resolvedSlug.slice(5) || slugify(email.split('@')[0]);
+      if (!access.slug && resolvedSlug.startsWith('prov-') && resolvedSlug !== 'prov-club') {
+        const candidate = resolvedSlug.slice(5);
+        const collidesWithOther =
+          Boolean(candidate) &&
+          this._providers().some(
+            (other) =>
+              other.id !== existing?.id &&
+              other.email.toLowerCase() !== email.toLowerCase() &&
+              (other.slug || '').toLowerCase() === candidate.toLowerCase(),
+          );
+        if (!collidesWithOther) {
+          resolvedSlug = candidate || slugify(email.split('@')[0]);
+        }
       }
 
       const isClub = isClubProvider({
@@ -412,8 +423,12 @@ export class ProviderStoreService {
           existing?.name ||
           email,
         agency:
-          (access.agency && access.agency !== 'Prestador EXPERIENCIAS.CLUB') ||
-          (existing?.agency && existing?.agency !== 'Prestador EXPERIENCIAS.CLUB') ||
+          (access.agency && access.agency !== 'Prestador EXPERIENCIAS.CLUB'
+            ? access.agency
+            : '') ||
+          (existing?.agency && existing?.agency !== 'Prestador EXPERIENCIAS.CLUB'
+            ? existing.agency
+            : '') ||
           'Prestador emergente del Club de Experiencias',
         slug: resolvedSlug,
         bio: access.bio || existing?.bio || '',
@@ -709,13 +724,27 @@ export class ProviderStoreService {
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
       }
-      await fetch('/api/mercadopago', {
+      const res = await fetch('/api/mercadopago', {
         method: 'POST',
         headers,
         body: JSON.stringify({ action: 'disconnect' }),
       });
-    } catch (err) {
+      if (!res.ok) {
+        let errorMsg = 'No se pudo desvincular la cuenta de Mercado Pago en el servidor.';
+        try {
+          const data = await res.json();
+          if (data?.error) errorMsg = data.error;
+        } catch {
+          // ignore
+        }
+        return { success: false, message: errorMsg };
+      }
+    } catch (err: any) {
       console.warn('[ProviderStore] Error invocando disconnect en backend MP:', err);
+      return {
+        success: false,
+        message: err?.message || 'Error de comunicación al desconectar Mercado Pago.',
+      };
     }
 
     return this.updateProfile({
@@ -750,6 +779,25 @@ export class ProviderStoreService {
     if (!current) return { success: false, message: 'No hay sesión de prestador activa.' };
 
     const email = current.email.trim().toLowerCase();
+
+    if (updates.slug !== undefined) {
+      const candidateSlug = updates.slug.trim().toLowerCase();
+      if (candidateSlug) {
+        const slugCollision = this._providers().find(
+          (p) =>
+            p.id !== current.id &&
+            p.email.toLowerCase() !== email &&
+            (p.slug || '').toLowerCase() === candidateSlug,
+        );
+        if (slugCollision) {
+          return {
+            success: false,
+            message: `El slug "${candidateSlug}" ya pertenece a otro prestador registrado.`,
+          };
+        }
+      }
+    }
+
     const updated: ProviderUser = { ...current, ...updates };
 
     if (isSupabaseConfigured()) {

@@ -904,7 +904,7 @@ import {
         justify-content: center;
         padding: 0.85rem 2.25rem;
         background: #80b3ff !important;
-        color: #ffffff !important;
+        color: #070d18 !important;
         font-weight: 700;
         font-size: 0.95rem;
         border-radius: 2px;
@@ -913,14 +913,14 @@ import {
         transition: all 0.2s ease;
       }
       .cta-save-btn span {
-        color: #ffffff !important;
+        color: #070d18 !important;
       }
       .cta-save-btn:hover:not(:disabled) {
         background: #99c2ff !important;
-        color: #ffffff !important;
+        color: #070d18 !important;
       }
       .cta-save-btn:hover:not(:disabled) span {
-        color: #ffffff !important;
+        color: #070d18 !important;
       }
       .cta-save-btn:disabled {
         opacity: 0.5;
@@ -1076,7 +1076,7 @@ import {
         justify-content: center;
         padding: 0.85rem 1.65rem;
         background: #80b3ff;
-        color: #ffffff;
+        color: #070d18;
         border: 1px solid rgba(255, 255, 255, 0.4);
         box-shadow: 0 4px 16px rgba(255, 255, 255, 0.4), 0 0 10px rgba(255, 255, 255, 0.2);
         border-radius: 4px;
@@ -1085,11 +1085,17 @@ import {
         cursor: pointer;
         transition: all 0.2s ease;
       }
+      .btn-connect-mp span {
+        color: #070d18;
+      }
       .btn-connect-mp:hover:not(:disabled) {
         background: #99c2ff;
-        color: #ffffff;
+        color: #070d18;
         transform: translateY(-2px);
         box-shadow: 0 6px 22px rgba(255, 255, 255, 0.6), 0 0 14px rgba(255, 255, 255, 0.3);
+      }
+      .btn-connect-mp:hover:not(:disabled) span {
+        color: #070d18;
       }
       .btn-connect-mp mat-icon {
         font-size: 18px;
@@ -1196,13 +1202,34 @@ export class ProviderProfileComponent implements OnInit {
     }
   }
 
+  private resolveCleanSlug(
+    slug: string | undefined,
+    currentProviderId?: string,
+    currentProviderEmail?: string,
+  ): string {
+    const raw = (slug || '').trim();
+    if (!raw) return '';
+    if (raw.startsWith('prov-') && raw !== 'prov-club') {
+      const candidate = raw.slice(5);
+      const collidesWithOther =
+        Boolean(candidate) &&
+        this.store.providers().some(
+          (other) =>
+            other.id !== currentProviderId &&
+            other.email.toLowerCase() !== (currentProviderEmail || '').toLowerCase() &&
+            (other.slug || '').toLowerCase() === candidate.toLowerCase(),
+        );
+      if (!collidesWithOther) {
+        return candidate || raw;
+      }
+    }
+    return raw;
+  }
+
   readonly currentSlug = computed(() => {
     const p = this.store.currentProvider();
     if (p?.slug) {
-      if (p.slug.startsWith('prov-') && p.slug !== 'prov-club') {
-        return p.slug.slice(5) || p.slug;
-      }
-      return p.slug;
+      return this.resolveCleanSlug(p.slug, p.id, p.email);
     }
     if (p?.email) {
       const emailUser = p.email.split('@')[0].trim().toLowerCase();
@@ -1240,10 +1267,7 @@ export class ProviderProfileComponent implements OnInit {
     effect(() => {
       const p = this.store.currentProvider();
       if (p && !this.form.dirty) {
-        let cleanSlug = p.slug || '';
-        if (cleanSlug.startsWith('prov-') && cleanSlug !== 'prov-club') {
-          cleanSlug = cleanSlug.slice(5);
-        }
+        let cleanSlug = this.resolveCleanSlug(p.slug, p.id, p.email);
         if (!cleanSlug && p.email) {
           cleanSlug = slugify(p.email.split('@')[0]);
         }

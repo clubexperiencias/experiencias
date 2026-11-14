@@ -1,4 +1,4 @@
-import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
@@ -70,9 +70,36 @@ export class ProvidersComponent implements OnInit {
   readonly isSubmitting = signal(false);
   readonly submitError = signal<string | null>(null);
 
+  constructor() {
+    effect(() => {
+      const current = this.newsletter.currentMember();
+      if (!current) {
+        if (this.authenticatedMember()) {
+          this.authenticatedMember.set(null);
+        }
+        return;
+      }
+      const existing = this.authenticatedMember();
+      if (
+        !existing ||
+        existing.authUserId !== current.authUserId ||
+        existing.email.toLowerCase() !== current.email.toLowerCase()
+      ) {
+        void this.checkAuthenticatedMember();
+      }
+    });
+  }
+
   async ngOnInit(): Promise<void> {
+    await this.checkAuthenticatedMember();
+  }
+
+  private async checkAuthenticatedMember(): Promise<void> {
     try {
-      const member = await this.newsletter.getAuthenticatedMember();
+      let member = await this.newsletter.getAuthenticatedMember();
+      if (!member && !this.newsletter.isSupabaseConnected()) {
+        member = this.newsletter.currentMember();
+      }
       if (member) {
         this.authenticatedMember.set(member);
         this.providerEmail.set(member.email);
@@ -99,15 +126,7 @@ export class ProvidersComponent implements OnInit {
     if (!result.success) {
       this.authError.set(result.message);
     } else {
-      const member = await this.newsletter.getAuthenticatedMember();
-      if (member) {
-        this.authenticatedMember.set(member);
-        this.providerEmail.set(member.email);
-        this.providerName.set(member.fullName || member.email.split('@')[0]);
-        if (member.phone) {
-          this.providerPhone.set(member.phone);
-        }
-      }
+      await this.checkAuthenticatedMember();
     }
   }
 

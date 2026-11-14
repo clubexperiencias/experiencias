@@ -1955,34 +1955,48 @@ export class AdminApplicationsComponent implements OnInit {
     this.welcomeEmailStatus.set(null);
   }
 
-  async resendWelcomeEmail(): Promise<void> {
-    const current = this.selectedApp();
+  async resendWelcomeEmail(targetApp?: AdminApplication | null): Promise<void> {
+    const current = targetApp ?? this.selectedApp();
     if (!current?.email) return;
-    this.isSendingWelcomeEmail.set(true);
-    this.welcomeEmailStatus.set(null);
+    const isCurrentModal = () => this.selectedApp()?.id === current.id;
+    if (isCurrentModal()) {
+      this.isSendingWelcomeEmail.set(true);
+      this.welcomeEmailStatus.set(null);
+    }
     try {
       const res = await this.notificationService.notifyProviderApproved({
         fullName: current.fullName || '',
         email: current.email,
       });
-      if (res.success) {
-        this.welcomeEmailStatus.set({
-          success: true,
-          message: `¡Correo de bienvenida enviado exitosamente a ${current.email}!`,
-        });
-      } else {
-        this.welcomeEmailStatus.set({
-          success: false,
-          message: `No se pudo enviar el correo: ${res.error || 'Verifique la conexión o configuración de Resend en el servidor.'}`,
-        });
+      if (isCurrentModal()) {
+        if (res.success && !res.simulated) {
+          this.welcomeEmailStatus.set({
+            success: true,
+            message: `¡Correo de bienvenida enviado exitosamente a ${current.email}!`,
+          });
+        } else if (res.simulated) {
+          this.welcomeEmailStatus.set({
+            success: false,
+            message: `Envío simulado: ${res.error || 'RESEND_API_KEY no configurada en el servidor. El correo no fue entregado.'}`,
+          });
+        } else {
+          this.welcomeEmailStatus.set({
+            success: false,
+            message: `No se pudo enviar el correo: ${res.error || 'Verifique la conexión o configuración de Resend en el servidor.'}`,
+          });
+        }
       }
     } catch (err: any) {
-      this.welcomeEmailStatus.set({
-        success: false,
-        message: `Error al enviar correo: ${err?.message || err}`,
-      });
+      if (isCurrentModal()) {
+        this.welcomeEmailStatus.set({
+          success: false,
+          message: `Error al enviar correo: ${err?.message || err}`,
+        });
+      }
     } finally {
-      this.isSendingWelcomeEmail.set(false);
+      if (isCurrentModal()) {
+        this.isSendingWelcomeEmail.set(false);
+      }
     }
   }
 
@@ -1995,8 +2009,8 @@ export class AdminApplicationsComponent implements OnInit {
       'aprobado',
     );
     if (ok) {
-      this.selectedApp.update((a) => (a ? { ...a, status: 'aprobado' } : null));
-      void this.resendWelcomeEmail();
+      this.selectedApp.update((a) => (a && a.id === current.id ? { ...a, status: 'aprobado' } : a));
+      void this.resendWelcomeEmail(current);
     }
   }
 
@@ -2009,7 +2023,7 @@ export class AdminApplicationsComponent implements OnInit {
       'dado_de_baja',
     );
     if (ok) {
-      this.selectedApp.update((a) => (a ? { ...a, status: 'dado_de_baja' } : null));
+      this.selectedApp.update((a) => (a && a.id === current.id ? { ...a, status: 'dado_de_baja' } : a));
     }
   }
 
@@ -2029,7 +2043,7 @@ export class AdminApplicationsComponent implements OnInit {
       banking,
     );
     if (ok) {
-      this.selectedApp.update((a) => (a ? { ...a, ...banking } : null));
+      this.selectedApp.update((a) => (a && a.id === current.id ? { ...a, ...banking } : a));
     }
   }
 
@@ -2047,7 +2061,7 @@ export class AdminApplicationsComponent implements OnInit {
         : undefined;
     const ok = await this.store.updateApplicationStatus(current.id, current.type, status, banking);
     if (ok) {
-      this.selectedApp.update((a) => (a ? { ...a, status, ...(banking || {}) } : null));
+      this.selectedApp.update((a) => (a && a.id === current.id ? { ...a, status, ...(banking || {}) } : a));
     }
   }
 
