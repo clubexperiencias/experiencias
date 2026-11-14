@@ -65,7 +65,7 @@ const ROUTE_LABELS: Record<string, string> = {
             >
               <div class="user-meta">
                 <strong class="user-name">{{ provider()?.name || 'Catamarca Kayak' }}</strong>
-                <span class="user-agency">{{ provider()?.agency || 'Prestador Oficial' }}</span>
+                <span class="user-agency">{{ displayAgency() }}</span>
               </div>
               <mat-icon class="user-pill-icon">{{ userMenuOpen() ? 'close' : 'menu' }}</mat-icon>
             </button>
@@ -204,7 +204,11 @@ const ROUTE_LABELS: Record<string, string> = {
           </div>
 
           <!-- Box de Asistencia y Soporte Técnico abajo de todo -->
-          <section class="support-box" aria-label="Soporte y Asistencia Técnica">
+          <section
+            class="support-box"
+            [class.is-profile-view]="isProfileRoute()"
+            aria-label="Soporte y Asistencia Técnica"
+          >
             <div class="support-box-inner">
               <div class="support-text-col">
                 <span class="support-kicker">MESA DE AYUDA & ASISTENCIA TÉCNICA</span>
@@ -249,6 +253,18 @@ export class ProviderPanelComponent {
   private readonly router = inject(Router);
 
   readonly provider = this.store.currentProvider;
+  readonly displayAgency = computed(() => {
+    const raw = this.provider()?.agency?.trim();
+    if (
+      !raw ||
+      raw === 'Prestador emergente del Club de Experiencias' ||
+      raw === 'Prestador EXPERIENCIAS.CLUB' ||
+      raw === 'Prestador Oficial'
+    ) {
+      return 'Prestador emergente del Club';
+    }
+    return raw;
+  });
   readonly userMenuOpen = signal(false);
   readonly currentUrl = signal(this.router.url);
 
@@ -259,6 +275,7 @@ export class ProviderPanelComponent {
   readonly experiencesLink = computed(() => `${this.basePath()}/experiencias`);
   readonly membersLink = computed(() => `${this.basePath()}/socios`);
   readonly profileLink = computed(() => `${this.basePath()}/perfil`);
+  readonly isProfileRoute = computed(() => this.currentUrl().includes('/perfil'));
 
   readonly breadcrumbs = computed<{ label: string; link?: string }[]>(() => {
     const rawPath = this.currentUrl().split('?')[0].split('#')[0];

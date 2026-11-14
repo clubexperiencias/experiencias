@@ -863,6 +863,7 @@ SET
 WHERE slug = 'kayak' OR slug = 'exp-kayak';
 
 ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS meeting_point_url TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS display_location TEXT NOT NULL DEFAULT 'destacada';
 
 -- 2.9 pagos_transferencias (Registro de Comprobantes de Pago)
 CREATE TABLE IF NOT EXISTS public.pagos_transferencias (

@@ -34,7 +34,7 @@
 
 .members-wrapper {
   width: 100%;
-  max-width: 880px;
+  max-width: 960px;
   display: flex;
   flex-direction: column;
   gap: 2rem;

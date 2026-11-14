@@ -480,6 +480,11 @@
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
+  transition: max-width 0.2s ease;
+}
+
+.support-box.is-profile-view {
+  max-width: 900px;
 }
 
 .support-box-inner {

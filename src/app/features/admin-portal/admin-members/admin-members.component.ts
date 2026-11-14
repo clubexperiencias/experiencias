@@ -638,7 +638,7 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
                     </td>
 
                     <!-- Titular -->
-                    <td>
+                    <td class="col-titular">
                       <div class="member-identity">
                         @if (m.fullName && m.fullName.trim() !== '' && m.fullName !== 'Lista de Espera (Email)') {
                           <a [routerLink]="getDetailRoute(m)" class="member-name-link" title="Ver ficha de {{ m.fullName }}">
@@ -709,13 +709,13 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
                           <span
                             class="converted-pill"
                             title="Pagó al menos una experiencia / envió comprobante"
-                            >Pago OK</span
+                            >PAGO OK</span
                           >
                         } @else {
                           <span
                             class="pending-conversion-pill"
                             title="Sin comprobante ni pago registrado"
-                            >Sin pago</span
+                            >SIN PAGO</span
                           >
                         }
                       </div>
@@ -1054,10 +1054,15 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
 
       .members-table {
         width: 100%;
-        min-width: 880px;
+        min-width: 1020px;
         border-collapse: collapse;
         text-align: left;
         font-size: 0.82rem;
+      }
+
+      .col-titular {
+        min-width: 240px;
+        width: 260px;
       }
 
       .members-table th {
@@ -1152,6 +1157,7 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
         display: flex;
         flex-direction: column;
         gap: 0.15rem;
+        min-width: 220px;
       }
 
       .member-name-link {
@@ -1284,6 +1290,7 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
         font-size: 0.68rem;
         font-weight: 700;
         letter-spacing: 0.04em;
+        text-transform: uppercase;
         border-radius: 2px;
         width: fit-content;
         white-space: nowrap;
@@ -1306,6 +1313,8 @@ type MemberFilterTab = 'todos' | 'socios' | 'waitlist' | 'google' | 'convertidos
         color: #34d399;
         font-size: 0.68rem;
         font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
         border-radius: 2px;
         width: fit-content;
         white-space: nowrap;
@@ -2629,7 +2638,6 @@ export class AdminMembersComponent implements OnInit {
   }
 
   isProvider(member: AdminMember): boolean {
-    if (member.isProvider) return true;
     return this.store.isProviderEmail(member.email);
   }
 

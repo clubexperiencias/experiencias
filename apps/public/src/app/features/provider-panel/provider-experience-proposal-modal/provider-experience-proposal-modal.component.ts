@@ -18,7 +18,8 @@ import { StorageService } from '../../../core/services/storage.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { SUPABASE_CLIENT, isSupabaseConfigured } from '../../../core/supabase/supabase.client';
 import { FechaPipe } from '../../../shared/pipes/format.pipes';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ProviderUser } from '../../../core/models/bank-transfer.model';
 import { ExperienceAlbumPhoto } from '../../../core/models/experience.model';
 
@@ -1067,6 +1068,70 @@ const DEFAULT_REQ_FORM = {
                         required
                       />
                     </div>
+                  </div>
+
+                  <!-- Integración con Mercado Pago -->
+                  <div class="mp-proposal-card">
+                    <div class="mp-proposal-header">
+                      <div class="mp-proposal-title-row">
+                        <strong class="mp-proposal-title">Cobros con Mercado Pago (Acreditación Instantánea)</strong>
+                        @if (isMpConnected()) {
+                          <span class="mp-status-pill connected">
+                            <mat-icon>check_circle</mat-icon>
+                            Cuenta Vinculada
+                          </span>
+                        } @else {
+                          <span class="mp-status-pill disconnected">
+                            No Vinculada
+                          </span>
+                        }
+                      </div>
+                      <p class="mp-proposal-desc">
+                        Permití que los socios abonen esta y todas tus experiencias en el checkout con tarjetas de débito, crédito o saldo en cuenta de Mercado Pago con acreditación automática. Las transferencias directas a tu CBU seguirán siempre habilitadas por defecto.
+                      </p>
+                    </div>
+
+                    @if (mpToast()) {
+                      <div class="mp-proposal-toast success">
+                        <mat-icon>check_circle</mat-icon>
+                        <span>{{ mpToast() }}</span>
+                      </div>
+                    }
+
+                    @if (mpError()) {
+                      <div class="mp-proposal-toast error">
+                        <mat-icon>error_outline</mat-icon>
+                        <span>{{ mpError() }}</span>
+                      </div>
+                    }
+
+                    @if (isMpConnected()) {
+                      <div class="mp-proposal-connected-info">
+                        <div class="mp-connected-item">
+                          <mat-icon class="mp-connected-icon">verified_user</mat-icon>
+                          <div class="mp-connected-text">
+                            <span class="mp-connected-lbl">Estado de integración:</span>
+                            <strong class="mp-connected-val">Habilitada y activa para tus experiencias</strong>
+                            @if (mpCollectorId()) {
+                              <span class="mp-collector-sub">ID de Cobrador: <code>{{ mpCollectorId() }}</code></span>
+                            }
+                          </div>
+                        </div>
+                      </div>
+                    } @else {
+                      <div class="mp-proposal-action-row">
+                        <button
+                          type="button"
+                          class="btn-connect-mp"
+                          (click)="connectMercadoPago()"
+                          [disabled]="isConnectingMp()"
+                          title="Vincular cuenta con Mercado Pago"
+                        >
+                          <span>{{ isConnectingMp() ? 'Iniciando autorización...' : 'Vincular mi cuenta de Mercado Pago' }}</span>
+                        </button>
+                        <span class="mp-connect-note">Podés desvincularla en cualquier momento desde tu perfil.</span>
+                      </div>
+                    }
                   </div>
                 </div>
 
@@ -2219,6 +2284,171 @@ const DEFAULT_REQ_FORM = {
           text-align: center;
         }
       }
+
+      /* Estilos Integración Mercado Pago en Propuesta */
+      .mp-proposal-card {
+        margin-top: 1.25rem;
+        padding: 1.25rem 1.4rem;
+        background: rgba(14, 28, 48, 0.45);
+        border: 1px solid rgba(0, 158, 227, 0.35);
+        border-radius: 4px;
+        display: flex;
+        flex-direction: column;
+        gap: 0.85rem;
+      }
+      .mp-proposal-header {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+      }
+      .mp-proposal-title-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+      }
+      .mp-proposal-title {
+        color: #80b3ff;
+        font-size: 0.95rem;
+        font-weight: 700;
+        letter-spacing: 0.01em;
+      }
+      .mp-proposal-desc {
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 0.82rem;
+        line-height: 1.35;
+        margin: 0;
+      }
+      .mp-status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.25rem 0.65rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .mp-status-pill.connected {
+        background: rgba(16, 185, 129, 0.15);
+        color: #10b981;
+        border: 1px solid rgba(16, 185, 129, 0.4);
+      }
+      .mp-status-pill.connected mat-icon {
+        font-size: 14px;
+        width: 14px;
+        height: 14px;
+      }
+      .mp-status-pill.disconnected {
+        background: rgba(255, 255, 255, 0.08);
+        color: rgba(255, 255, 255, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+      }
+      .mp-proposal-toast {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.65rem 0.9rem;
+        border-radius: 4px;
+        font-size: 0.82rem;
+        font-weight: 600;
+      }
+      .mp-proposal-toast.success {
+        background: rgba(16, 185, 129, 0.18);
+        border: 1px solid rgba(16, 185, 129, 0.4);
+        color: #34d399;
+      }
+      .mp-proposal-toast.error {
+        background: rgba(239, 68, 68, 0.18);
+        border: 1px solid rgba(239, 68, 68, 0.4);
+        color: #f87171;
+      }
+      .mp-proposal-connected-info {
+        background: rgba(0, 158, 227, 0.08);
+        border: 1px solid rgba(0, 158, 227, 0.3);
+        border-radius: 4px;
+        padding: 0.85rem 1.15rem;
+      }
+      .mp-connected-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+      .mp-connected-icon {
+        color: #10b981;
+        font-size: 24px;
+        width: 24px;
+        height: 24px;
+        flex-shrink: 0;
+      }
+      .mp-connected-text {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+      }
+      .mp-connected-lbl {
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.6);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        font-weight: 700;
+      }
+      .mp-connected-val {
+        font-size: 0.86rem;
+        color: #ffffff;
+      }
+      .mp-collector-sub {
+        font-size: 0.78rem;
+        color: rgba(255, 255, 255, 0.65);
+      }
+      .mp-collector-sub code {
+        font-family: monospace;
+        color: #80b3ff;
+      }
+      .mp-proposal-action-row {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+        margin-top: 0.25rem;
+      }
+      .btn-connect-mp {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.75rem 1.5rem;
+        background: #80b3ff;
+        color: #ffffff !important;
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        box-shadow: 0 4px 16px rgba(255, 255, 255, 0.4), 0 0 10px rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
+        font-size: 0.88rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .btn-connect-mp span {
+        color: #ffffff !important;
+      }
+      .btn-connect-mp:hover:not(:disabled) {
+        background: #99c2ff;
+        color: #ffffff !important;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 22px rgba(255, 255, 255, 0.6), 0 0 14px rgba(255, 255, 255, 0.3);
+      }
+      .btn-connect-mp:hover:not(:disabled) span {
+        color: #ffffff !important;
+      }
+      .btn-connect-mp:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      .mp-connect-note {
+        font-size: 0.8rem;
+        color: rgba(255, 255, 255, 0.65);
+      }
     `,
   ],
 })
@@ -2228,6 +2458,13 @@ export class ProviderExperienceProposalModalComponent {
   private readonly notificationService = inject(NotificationService);
   private readonly supabase = inject(SUPABASE_CLIENT);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+
+  readonly isMpConnected = computed(() => Boolean(this.store.currentProvider()?.mpConnected));
+  readonly mpCollectorId = computed(() => this.store.currentProvider()?.mpCollectorId || '');
+  readonly isConnectingMp = signal<boolean>(false);
+  readonly mpToast = signal<string | null>(null);
+  readonly mpError = signal<string | null>(null);
 
   readonly backLink = computed(() => {
     const isPanel =
@@ -2253,6 +2490,35 @@ export class ProviderExperienceProposalModalComponent {
 
   constructor() {
     this.loadDraft();
+
+    this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+      if (params.get('mp_connected') === 'true') {
+        const colId = params.get('collector_id');
+        this.mpToast.set('¡Tu cuenta de Mercado Pago fue vinculada exitosamente!');
+        void this.store.updateProfile({
+          mpConnected: true,
+          mpCollectorId: colId || undefined,
+        });
+        void this.router.navigate([], {
+          relativeTo: this.route,
+          queryParams: { mp_connected: null, collector_id: null },
+          queryParamsHandling: 'merge',
+          replaceUrl: true,
+        });
+      } else if (params.get('mp_error')) {
+        this.mpError.set(
+          'No se pudo vincular la cuenta de Mercado Pago. Podés intentarlo nuevamente.',
+        );
+        void this.router.navigate([], {
+          relativeTo: this.route,
+          queryParams: { mp_error: null },
+          queryParamsHandling: 'merge',
+          replaceUrl: true,
+        });
+        setTimeout(() => this.mpError.set(null), 6000);
+      }
+    });
+
     effect(() => {
       const prov = this.store.currentProvider();
       if (prov) {
@@ -2273,6 +2539,56 @@ export class ProviderExperienceProposalModalComponent {
         }, 0);
       }
     });
+  }
+
+  async connectMercadoPago(): Promise<void> {
+    const p = this.store.currentProvider();
+    if (!p) return;
+    this.saveDraft();
+    this.isConnectingMp.set(true);
+    this.mpToast.set(null);
+    this.mpError.set(null);
+
+    try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      const token = await this.store.getAuthToken();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const returnUrl =
+        typeof window !== 'undefined'
+          ? window.location.pathname
+          : '/prestadores/panel/experiencias/nueva';
+
+      const res = await fetch('/api/mercadopago', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          action: 'get-oauth-url',
+          returnUrl,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data?.url) {
+        if (typeof window !== 'undefined') {
+          window.location.href = data.url;
+        }
+      } else {
+        this.mpError.set(
+          data?.error || data?.message || 'No se pudo iniciar la autorización de Mercado Pago.',
+        );
+        setTimeout(() => this.mpError.set(null), 6000);
+      }
+    } catch (err: unknown) {
+      this.mpError.set(
+        err instanceof Error ? err.message : 'Error al conectar con el servicio de Mercado Pago.',
+      );
+      setTimeout(() => this.mpError.set(null), 6000);
+    } finally {
+      this.isConnectingMp.set(false);
+    }
   }
 
   private syncBankingWithProvider(): void {
@@ -3206,7 +3522,7 @@ export class ProviderExperienceProposalModalComponent {
       await this.store.submitExperienceRequest({
         providerId,
         providerName: accountHolder || providerName,
-        providerAgency: providerAgency || 'Prestador emergente del Club de Experiencias',
+        providerAgency: providerAgency || 'Prestador emergente del Club',
         providerEmail,
         providerPhone: providerPhone || undefined,
         providerCbuAlias: cbuAlias || currentProv?.cbuAlias,

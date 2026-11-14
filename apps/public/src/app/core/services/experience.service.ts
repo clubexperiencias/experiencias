@@ -603,19 +603,23 @@ export class ExperienceService {
           payload['reviewed_at'] = merged.reviewedAt;
         }
 
+        if (merged.displayLocation !== undefined) {
+          payload['display_location'] = merged.displayLocation;
+        }
+
         let { data, error } = await this.supabase
           .from('experiencias')
           .update(payload as any)
           .eq('id', merged.id)
           .select();
 
-        if (error && /meeting_point_url/.test(error.message || '')) {
-          if (updated.meetingPointUrl !== undefined && String(updated.meetingPointUrl).trim() !== '') {
+        if (error && (/meeting_point_url/.test(error.message || '') || /display_location/.test(error.message || ''))) {
+          if (updated.meetingPointUrl !== undefined && String(updated.meetingPointUrl).trim() !== '' && /meeting_point_url/.test(error.message || '')) {
             // A non-empty value was supplied: reject the update rather than committing without it
             throw error;
           }
-          // Columna aún no migrada en la base remota y el valor era vacío: reintenta sin ella
-          const { meeting_point_url: _omit, ...legacyPayload } = payload as any;
+          // Columna aún no migrada en la base remota: reintenta sin ella
+          const { meeting_point_url: _omit, display_location: _omit2, ...legacyPayload } = payload as any;
           ({ data, error } = (await this.supabase
             .from('experiencias')
             .update(legacyPayload as any)
@@ -749,6 +753,7 @@ export class ExperienceService {
           included: experience.included || [],
           not_included: experience.notIncluded || [],
           status: experience.status,
+          display_location: experience.displayLocation || 'destacada',
           public_url: experience.publicUrl,
           album_photos: experience.albumPhotos || [],
           provider_name: experience.providerName || null,
@@ -791,6 +796,7 @@ export class ExperienceService {
           'kicker',
           'best_season',
           'promos_and_pricing',
+          'display_location',
         ];
 
         let insertPayload: Record<string, any> = { ...payload };
@@ -1731,8 +1737,13 @@ export class ExperienceService {
           .order('created_at', { ascending: true }) as any;
 
       let { data, error } = await fetchExperiences(
-        `${publicColumns}, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing, provider_agency, participant_requirements, notes, reviewed_at`,
+        `${publicColumns}, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing, provider_agency, participant_requirements, notes, reviewed_at, display_location`,
       );
+      if (error) {
+        ({ data, error } = await fetchExperiences(
+          `${publicColumns}, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing, provider_agency, participant_requirements, notes, reviewed_at`,
+        ));
+      }
       if (error) {
         ({ data, error } = await fetchExperiences(
           `${publicColumns}, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing`,
@@ -1877,6 +1888,7 @@ export class ExperienceService {
             notes: exp.notes || undefined,
             reviewedAt: exp.reviewed_at || undefined,
             status: exp.status || 'publicada',
+            displayLocation: (exp.display_location as 'destacada' | 'catalogo' | 'no_listada') || 'destacada',
             publicUrl: exp.public_url || `https://experiencias.club/experiencias/${exp.slug}`,
             isExclusiveClub: true,
             isLocked: false,

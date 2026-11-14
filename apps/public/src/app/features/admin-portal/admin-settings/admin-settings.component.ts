@@ -260,7 +260,7 @@ import { ClubProfile } from '../../../core/models/club-profile.model';
             <div class="section-title-row">
               <h3 class="settings-section-title">5. Pasarela de Pago & Comisiones de Mercado Pago</h3>
               <p class="section-subtext">
-                Definí el recargo porcentual aplicado en el checkout a los exploradores que elijan pagar con Mercado Pago (Checkout Pro). Este porcentaje absorbe la comisión de procesamiento de la pasarela y retiene la comisión de servicio del Club.
+                Definí el recargo porcentual aplicado en el checkout a los socios que elijan pagar con Mercado Pago (Checkout Pro). Este porcentaje absorbe la comisión de procesamiento de la pasarela y retiene la comisión de servicio del Club.
               </p>
             </div>
 

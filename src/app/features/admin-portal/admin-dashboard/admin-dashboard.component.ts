@@ -160,10 +160,10 @@ import { AdminApplicationModalComponent } from '../admin-application-modal/admin
                         }
                         @if (m.converted) {
                           <span class="pill-converted" title="Pagó al menos una experiencia"
-                            >Pago OK</span
+                            >PAGO OK</span
                           >
                         } @else {
-                          <span class="pill-sin-pago" title="Sin pago registrado">Sin pago</span>
+                          <span class="pill-sin-pago" title="Sin pago registrado">SIN PAGO</span>
                         }
                       </div>
                     </td>
@@ -229,7 +229,7 @@ import { AdminApplicationModalComponent } from '../admin-application-modal/admin
                     </td>
                     <td class="text-right">
                       <button type="button" class="btn-review" (click)="openReceipt(sub)">
-                        Revisar
+                        REVISAR
                       </button>
                     </td>
                   </tr>
@@ -300,13 +300,13 @@ import { AdminApplicationModalComponent } from '../admin-application-modal/admin
                       <span class="status-badge" [attr.data-status]="item.status">
                         @switch (item.status) {
                           @case ('aprobado') {
-                            Aprobado
+                            APROBADO
                           }
                           @case ('rechazado') {
-                            Rechazado
+                            RECHAZADO
                           }
                           @default {
-                            Pendiente
+                            PENDIENTE
                           }
                         }
                       </span>
@@ -321,11 +321,11 @@ import { AdminApplicationModalComponent } from '../admin-application-modal/admin
                           class="btn-review"
                           title="Ver ficha del prestador"
                         >
-                          <span>Ver Ficha</span>
+                          <span>VER FICHA</span>
                         </a>
                       } @else if (item.rawApp) {
                         <button type="button" class="btn-review" (click)="openApplication(item.rawApp)">
-                          Revisar
+                          REVISAR
                         </button>
                       }
                     </td>
@@ -415,7 +415,7 @@ import { AdminApplicationModalComponent } from '../admin-application-modal/admin
                     </td>
                     <td class="text-right">
                       <button type="button" class="btn-review" (click)="openExperienceRequest(req)">
-                        Revisar
+                        REVISAR
                       </button>
                     </td>
                   </tr>
@@ -500,7 +500,7 @@ import { AdminApplicationModalComponent } from '../admin-application-modal/admin
                       </div>
                     </td>
                     <td>
-                      <span class="cupo-tag">{{ exp.maxSpotsPerGroup }} pers.</span>
+                      <span class="cupo-tag">{{ exp.maxSpotsPerGroup }} {{ exp.maxSpotsPerGroup === 1 ? 'socio' : 'socios' }}</span>
                     </td>
                     <td>
                       <span
@@ -509,20 +509,20 @@ import { AdminApplicationModalComponent } from '../admin-application-modal/admin
                       >
                         {{
                           exp.status === 'publicada'
-                            ? 'Publicada'
+                            ? 'PUBLICADA'
                             : exp.status === 'pendiente'
-                              ? 'Postulación'
+                              ? 'POSTULACIÓN'
                               : exp.status === 'oculta'
-                                ? 'Pausada'
+                                ? 'PAUSADA'
                                 : exp.status === 'rechazada'
-                                  ? 'Rechazada'
-                                  : 'Borrador'
+                                  ? 'RECHAZADA'
+                                  : 'BORRADOR'
                         }}
                       </span>
                     </td>
                     <td class="text-right">
                       <a [routerLink]="getExperienceFicheRoute(exp.slug)" class="btn-review">
-                        Ver Ficha
+                        VER FICHA
                       </a>
                     </td>
                   </tr>
@@ -1310,6 +1310,7 @@ import { AdminApplicationModalComponent } from '../admin-application-modal/admin
         color: #ffffff;
         font-size: 0.78rem;
         font-weight: 600;
+        white-space: nowrap;
       }
 
       .view-all-link {
@@ -1394,6 +1395,8 @@ import { AdminApplicationModalComponent } from '../admin-application-modal/admin
         font-weight: 800;
         border-radius: 3px;
         border: 1px solid transparent;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
       }
 
       .exp-web-table .status-badge[data-status='aprobado'] {
@@ -1654,6 +1657,8 @@ import { AdminApplicationModalComponent } from '../admin-application-modal/admin
         font-weight: 800;
         border-radius: 2px;
         white-space: nowrap;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
       }
 
       .status-badge {
@@ -1663,6 +1668,8 @@ import { AdminApplicationModalComponent } from '../admin-application-modal/admin
         font-weight: 800;
         border-radius: 2px;
         white-space: nowrap;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
       }
 
       .status-badge[data-status='aprobado'] {
@@ -1713,6 +1720,8 @@ import { AdminApplicationModalComponent } from '../admin-application-modal/admin
         cursor: pointer;
         white-space: nowrap;
         text-decoration: none;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
         transition: all 0.2s ease;
       }
 
@@ -2405,6 +2414,8 @@ import { AdminApplicationModalComponent } from '../admin-application-modal/admin
         border-radius: 2px;
         font-size: 0.68rem;
         font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
       }
 
       .status-pill[data-status='pendiente'] {
@@ -3634,7 +3645,6 @@ export class AdminDashboardComponent {
   }
 
   isProvider(member: AdminMember): boolean {
-    if (member.isProvider) return true;
     return this.store.isProviderEmail(member.email);
   }
 

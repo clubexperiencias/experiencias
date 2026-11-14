@@ -198,7 +198,7 @@ import {
 
             <div class="form-grid">
               <div class="form-group">
-                <label class="form-label">Prestador Asociado a la Cuenta</label>
+                <label class="form-label">Prestador Asociado a la Cuenta <span class="req-star">*</span></label>
                 <div class="locked-input-wrapper">
                   <input
                     type="text"
@@ -213,7 +213,7 @@ import {
               </div>
 
               <div class="form-group">
-                <label class="form-label">Email Asociado a la Cuenta</label>
+                <label class="form-label">Email Asociado a la Cuenta <span class="req-star">*</span></label>
                 <div class="locked-input-wrapper">
                   <input
                     type="email"
@@ -244,7 +244,7 @@ import {
 
               <div class="form-group">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
-                  <label class="form-label">Nombre de Usuario / Enlace Público</label>
+                  <label class="form-label">Nombre de Usuario / Enlace Público <span class="req-star">*</span></label>
                   <a
                     [href]="getPublicProfileUrl(form.get('slug')?.value || currentSlug())"
                     target="_blank"
@@ -260,16 +260,18 @@ import {
                   formControlName="slug"
                   class="form-input"
                   [placeholder]="currentSlug()"
+                  required
                 />
               </div>
 
               <div class="form-group full-col">
-                <label class="form-label">Descripción Atractiva del Emprendimiento</label>
+                <label class="form-label">Descripción Atractiva del Emprendimiento <span class="req-star">*</span></label>
                 <textarea
                   formControlName="bio"
                   class="form-input form-textarea"
                   rows="3"
                   placeholder="Contá a los exploradores sobre tu trayectoria, guías certificados y qué hace únicas a tus salidas..."
+                  required
                 ></textarea>
                 <span class="field-hint"
                   >Esta descripción se presentará en tu ficha técnica y en tu perfil público
@@ -389,18 +391,23 @@ import {
               </div>
 
               <div class="form-group">
-                <label class="form-label">Red Social Principal</label>
+                <label class="form-label">Red Social Principal <span class="req-star">*</span></label>
                 <input
                   type="url"
                   formControlName="socialMedia"
                   class="form-input"
                   maxlength="200"
                   placeholder="Ej. https://instagram.com/catamarcakayak"
+                  required
                 />
                 @if (form.controls.socialMedia.invalid && form.controls.socialMedia.touched) {
-                  <span class="field-error-text"
-                    >Ingresá la URL completa del perfil (ej. https://instagram.com/usuario).</span
-                  >
+                  <span class="field-error-text">
+                    @if (form.controls.socialMedia.hasError('required')) {
+                      La red social principal es obligatoria.
+                    } @else {
+                      Ingresá la URL completa del perfil (ej. https://instagram.com/usuario).
+                    }
+                  </span>
                 } @else {
                   <span class="field-hint"
                     >URL de tu perfil de Instagram, Facebook u otra red social.
@@ -548,29 +555,28 @@ import {
       }
       .audit-notice-card {
         display: flex;
-        align-items: flex-start;
-        padding: 1.15rem 1.35rem;
-        background: rgba(13, 30, 68, 0.55);
-        border: 1px solid rgba(128, 179, 255, 0.35);
-        border-radius: 2px;
-        backdrop-filter: blur(10px);
+        flex-direction: column;
+        padding: 1.25rem 1.4rem;
+        background: rgba(14, 28, 48, 0.45);
+        border: 1px solid rgba(0, 158, 227, 0.35);
+        border-radius: 4px;
         margin-top: 1.25rem;
       }
       .audit-text {
         display: flex;
         flex-direction: column;
-        gap: 0.3rem;
+        gap: 0.35rem;
       }
       .audit-title {
         color: #80b3ff;
-        font-size: 0.88rem;
+        font-size: 0.95rem;
         font-weight: 700;
-        letter-spacing: 0.02em;
+        letter-spacing: 0.01em;
       }
       .audit-desc {
-        color: rgba(255, 255, 255, 0.78);
+        color: rgba(255, 255, 255, 0.7);
         font-size: 0.82rem;
-        line-height: 1.5;
+        line-height: 1.35;
         margin: 0;
       }
       .profile-card {
@@ -733,16 +739,22 @@ import {
         background: rgba(239, 68, 68, 0.12);
         border: 1px solid rgba(239, 68, 68, 0.35);
         border-radius: 2px;
-        color: #f87171;
+        color: #ffffff !important;
         font-size: 0.8rem;
         font-weight: 600;
         cursor: pointer;
         transition: all 0.2s ease;
       }
+      .btn-remove-media span {
+        color: #ffffff !important;
+      }
       .btn-remove-media:hover:not(:disabled) {
         background: rgba(239, 68, 68, 0.24);
         border-color: #ef4444;
-        color: #ffffff;
+        color: #ffffff !important;
+      }
+      .btn-remove-media:hover:not(:disabled) span {
+        color: #ffffff !important;
       }
       .btn-remove-media:disabled {
         opacity: 0.45;
@@ -753,6 +765,7 @@ import {
         font-size: 16px;
         width: 16px;
         height: 16px;
+        color: #ffffff !important;
       }
       .btn-file-upload {
         display: inline-flex;
@@ -764,7 +777,7 @@ import {
         background: rgba(128, 179, 255, 0.15);
         border: 1px solid rgba(128, 179, 255, 0.4);
         border-radius: 2px;
-        color: #80b3ff;
+        color: #ffffff !important;
         font-size: 0.8rem;
         font-weight: 600;
         cursor: pointer;
@@ -773,10 +786,16 @@ import {
         user-select: none;
         flex-shrink: 0;
       }
+      .btn-file-upload span {
+        color: #ffffff !important;
+      }
       .btn-file-upload:hover {
         background: rgba(128, 179, 255, 0.28);
         border-color: #80b3ff;
-        color: #ffffff;
+        color: #ffffff !important;
+      }
+      .btn-file-upload:hover span {
+        color: #ffffff !important;
       }
       .btn-file-upload.is-loading {
         opacity: 0.65;
@@ -904,7 +923,7 @@ import {
         justify-content: center;
         padding: 0.85rem 2.25rem;
         background: #80b3ff !important;
-        color: #070d18 !important;
+        color: #ffffff !important;
         font-weight: 700;
         font-size: 0.95rem;
         border-radius: 2px;
@@ -913,14 +932,14 @@ import {
         transition: all 0.2s ease;
       }
       .cta-save-btn span {
-        color: #070d18 !important;
+        color: #ffffff !important;
       }
       .cta-save-btn:hover:not(:disabled) {
         background: #99c2ff !important;
-        color: #070d18 !important;
+        color: #ffffff !important;
       }
       .cta-save-btn:hover:not(:disabled) span {
-        color: #070d18 !important;
+        color: #ffffff !important;
       }
       .cta-save-btn:disabled {
         opacity: 0.5;
@@ -941,9 +960,9 @@ import {
         margin-bottom: 0.15rem;
       }
       .mp-section-desc {
-        line-height: 1.35;
+        line-height: 1.25;
         margin-top: 0.15rem;
-        margin-bottom: 0.35rem;
+        margin-bottom: 0.25rem;
       }
       .mp-status-pill {
         display: inline-flex;
@@ -983,7 +1002,7 @@ import {
         border: 1px solid rgba(0, 158, 227, 0.3);
         border-radius: 4px;
         padding: 1.15rem 1.35rem;
-        margin-top: 0.65rem;
+        margin-top: 0.5rem;
       }
       .mp-active-left {
         display: flex;
@@ -1050,7 +1069,7 @@ import {
         border: 1px dashed rgba(0, 158, 227, 0.35);
         border-radius: 4px;
         padding: 1.25rem 1.4rem;
-        margin-top: 0.65rem;
+        margin-top: 0.5rem;
         display: flex;
         flex-direction: column;
         gap: 1rem;
@@ -1066,9 +1085,9 @@ import {
       }
       .mp-connect-action-row {
         display: flex;
-        align-items: center;
-        gap: 1rem;
-        flex-wrap: wrap;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
       }
       .btn-connect-mp {
         display: inline-flex;
@@ -1076,7 +1095,7 @@ import {
         justify-content: center;
         padding: 0.85rem 1.65rem;
         background: #80b3ff;
-        color: #070d18;
+        color: #ffffff;
         border: 1px solid rgba(255, 255, 255, 0.4);
         box-shadow: 0 4px 16px rgba(255, 255, 255, 0.4), 0 0 10px rgba(255, 255, 255, 0.2);
         border-radius: 4px;
@@ -1086,16 +1105,16 @@ import {
         transition: all 0.2s ease;
       }
       .btn-connect-mp span {
-        color: #070d18;
+        color: #ffffff;
       }
       .btn-connect-mp:hover:not(:disabled) {
         background: #99c2ff;
-        color: #070d18;
+        color: #ffffff;
         transform: translateY(-2px);
         box-shadow: 0 6px 22px rgba(255, 255, 255, 0.6), 0 0 14px rgba(255, 255, 255, 0.3);
       }
       .btn-connect-mp:hover:not(:disabled) span {
-        color: #070d18;
+        color: #ffffff;
       }
       .btn-connect-mp mat-icon {
         font-size: 18px;
@@ -1103,8 +1122,8 @@ import {
         height: 18px;
       }
       .mp-connect-note {
-        font-size: 0.78rem;
-        color: rgba(255, 255, 255, 0.6);
+        font-size: 0.8rem;
+        color: rgba(255, 255, 255, 0.65);
       }
       @media (max-width: 768px) {
         .mp-active-card {
@@ -1244,8 +1263,8 @@ export class ProviderProfileComponent implements OnInit {
   readonly form = this.fb.nonNullable.group({
     name: [this.store.currentProvider()?.name || '', Validators.required],
     agency: [this.store.currentProvider()?.agency || '', Validators.required],
-    slug: [this.store.currentProvider()?.slug || ''],
-    bio: [this.store.currentProvider()?.bio || ''],
+    slug: [this.store.currentProvider()?.slug || '', Validators.required],
+    bio: [this.store.currentProvider()?.bio || '', Validators.required],
     avatar: [this.store.currentProvider()?.avatar || ''],
     coverImage: [this.store.currentProvider()?.coverImage || ''],
     cuitDni: [this.store.currentProvider()?.cuitDni || '', Validators.required],
@@ -1253,7 +1272,7 @@ export class ProviderProfileComponent implements OnInit {
     website: [this.store.currentProvider()?.website || ''],
     socialMedia: [
       migrateLegacySocialHandle(this.store.currentProvider()?.socialMedia),
-      [socialUrlValidator],
+      [Validators.required, socialUrlValidator],
     ],
     socialMediaSecondary: [
       migrateLegacySocialHandle(this.store.currentProvider()?.socialMediaSecondary),

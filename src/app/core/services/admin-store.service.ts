@@ -166,20 +166,27 @@ export class AdminStoreService {
   readonly providerEmailsSet = computed<Set<string>>(() => {
     const set = new Set<string>();
     for (const p of this.providerStore.allProviders() || []) {
-      if (p.verified && p.status !== 'dado_de_baja' && p.status !== 'pendiente' && p.status !== 'rechazado') {
+      if (
+        (p.status === 'aprobado' || p.verified) &&
+        p.status !== 'dado_de_baja' &&
+        p.status !== 'pendiente' &&
+        p.status !== 'rechazado'
+      ) {
         const email = p.email?.toLowerCase().trim();
         if (email) set.add(email);
       }
     }
     for (const a of this.applications() || []) {
-      if (a.type === 'prestador' && (a.status === 'aprobado' || a.status === 'pendiente')) {
+      if (a.type === 'prestador' && a.status === 'aprobado') {
         const email = a.email?.toLowerCase().trim();
         if (email) set.add(email);
       }
     }
     for (const r of this.providerStore.experienceRequests() || []) {
-      const email = r.providerEmail?.toLowerCase().trim();
-      if (email) set.add(email);
+      if (r.status === 'aprobada' || (r as any).status === 'aprobado') {
+        const email = r.providerEmail?.toLowerCase().trim();
+        if (email) set.add(email);
+      }
     }
     return set;
   });
@@ -933,7 +940,7 @@ export class AdminStoreService {
             // Convertido = pagó al menos una experiencia / envió comprobante
             converted: typeof s.paymentsCount === 'number' ? s.paymentsCount > 0 : Boolean(s.converted),
             avatarUrl: s.avatarUrl || s.avatar_url || s.picture || s.avatar || undefined,
-            isProvider: providerEmails.has(s.email?.toLowerCase().trim()) || Boolean(s.isProvider || s.is_provider),
+            isProvider: providerEmails.has(s.email?.toLowerCase().trim()),
             experiencesWishlist: Array.isArray(s.experiencesWishlist) ? s.experiencesWishlist : [],
             experiencesOther: s.experiencesOther || s.experiences_other,
             createdAt: s.createdAt || s.created_at || new Date().toISOString(),
@@ -955,7 +962,7 @@ export class AdminStoreService {
             // Convertido = pagó al menos una experiencia / envió comprobante
             converted: typeof w.paymentsCount === 'number' ? w.paymentsCount > 0 : Boolean(w.converted),
             avatarUrl: w.avatarUrl || w.avatar_url || w.picture || w.avatar || undefined,
-            isProvider: providerEmails.has(w.email?.toLowerCase().trim()) || Boolean(w.isProvider || w.is_provider),
+            isProvider: providerEmails.has(w.email?.toLowerCase().trim()),
             experiencesWishlist: Array.isArray(w.experiencesWishlist)
               ? w.experiencesWishlist
               : Array.isArray(w.experiences_wishlist)
@@ -1004,7 +1011,7 @@ export class AdminStoreService {
               googleLinked: Boolean(s.auth_user_id),
               converted: hasPayment,
               avatarUrl: s.avatar_url || s.avatar || s.picture || undefined,
-              isProvider: providerEmails.has(cleanEmail) || Boolean(s.is_provider),
+              isProvider: providerEmails.has(cleanEmail),
               experiencesWishlist: Array.isArray(s.experiences_wishlist)
                 ? s.experiences_wishlist
                 : [],
@@ -1034,7 +1041,7 @@ export class AdminStoreService {
               googleLinked: isGoogle,
               converted: hasPayment,
               avatarUrl: w.avatar_url || w.avatar || w.picture || undefined,
-              isProvider: providerEmails.has(cleanEmail) || Boolean(w.is_provider),
+              isProvider: providerEmails.has(cleanEmail),
               experiencesWishlist: Array.isArray(w.experiences_wishlist)
                 ? w.experiences_wishlist
                 : [],
@@ -1832,7 +1839,7 @@ export class AdminStoreService {
     if (type === 'prestador' && app) {
       this.providerStore.syncProviderStatusFromAdmin(app.email, status, {
         name: bankingData?.accountHolder ?? (app.accountHolder || app.fullName),
-        agency: app.agency || app.description || 'Prestador emergente del Club de Experiencias',
+        agency: app.agency || app.description || 'Prestador emergente del Club',
         phone: app.phone,
         cuitDni: bankingData?.cuitDni ?? app.cuitDni ?? '',
         cbuAlias: bankingData?.cbuAlias ?? app.cbuAlias ?? '',

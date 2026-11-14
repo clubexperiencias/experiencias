@@ -127,17 +127,10 @@ export class ExperiencesComponent implements AfterViewInit, OnDestroy {
   };
 
   readonly featuredExperiences = () => {
-    const list = this.experienceService.publishedExperiences();
-    if (list.length >= 3) {
-      return [...list, this.comingSoonExperience];
-    }
-    if (list.length === 2) {
-      return [...list, this.comingSoonExperience];
-    }
-    if (list.length === 1) {
-      return [list[0], this.comingSoonExperience];
-    }
-    return [this.comingSoonExperience];
+    const list = this.experienceService
+      .publishedExperiences()
+      .filter((e) => !e.displayLocation || e.displayLocation === 'destacada');
+    return [...list, this.comingSoonExperience];
   };
 
   readonly infiniteFeaturedExperiences = computed<CarouselExperienceItem[]>(() => {
@@ -157,9 +150,9 @@ export class ExperiencesComponent implements AfterViewInit, OnDestroy {
   });
 
   readonly otherExperiences = () => {
-    const all = this.experienceService.publishedExperiences();
-    const other = all.slice(this.featuredExperiences().length);
-    return other;
+    return this.experienceService
+      .publishedExperiences()
+      .filter((e) => e.displayLocation === 'catalogo');
   };
 
   ngAfterViewInit(): void {

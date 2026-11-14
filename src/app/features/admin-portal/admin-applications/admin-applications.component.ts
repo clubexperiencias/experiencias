@@ -224,16 +224,16 @@ type ApplicationFilterTab =
                     <span class="status-badge" [attr.data-status]="app.status">
                       @switch (app.status) {
                         @case ('aprobado') {
-                          Aprobado
+                          APROBADO
                         }
                         @case ('rechazado') {
-                          Rechazado
+                          RECHAZADO
                         }
                         @case ('dado_de_baja') {
-                          Dado de baja
+                          DADO DE BAJA
                         }
                         @default {
-                          Pendiente
+                          PENDIENTE
                         }
                       }
                     </span>
@@ -915,6 +915,8 @@ type ApplicationFilterTab =
         font-weight: 700;
         border-radius: 2px;
         white-space: nowrap;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
       }
 
       .status-badge[data-status='pendiente'] {

@@ -46,6 +46,7 @@ export interface Experience {
     note?: string;
   }[];
   status?: 'publicada' | 'borrador' | 'oculta' | 'pendiente' | 'rechazada';
+  displayLocation?: 'destacada' | 'catalogo' | 'no_listada';
   publicUrl?: string;
   isExclusiveClub: boolean;
   isLocked?: boolean;
