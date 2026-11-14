@@ -3274,7 +3274,11 @@ export class AdminDashboardComponent {
       const matchingApp = applications.find((a) => a.email?.toLowerCase().trim() === cleanEmail);
       const hasCategoryAgency = this.isCategoryIdentifier(p.agency);
       const rawCategory = matchingApp?.category || (hasCategoryAgency ? p.agency : '');
-      const displayAgency = hasCategoryAgency ? '' : p.agency;
+      const nonCategoryAppAgency =
+        matchingApp?.agency && !this.isCategoryIdentifier(matchingApp.agency)
+          ? matchingApp.agency
+          : '';
+      const displayAgency = hasCategoryAgency ? nonCategoryAppAgency : p.agency;
 
       list.push({
         id: p.id || `prov-${cleanEmail}`,

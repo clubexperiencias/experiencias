@@ -1866,7 +1866,11 @@ export class AdminApplicationsComponent implements OnInit {
   readonly searchQuery = signal<string>('');
   readonly activeTab = signal<ApplicationFilterTab>('todas');
   readonly selectedApp = signal<AdminApplication | null>(null);
-  readonly isSendingWelcomeEmail = signal<boolean>(false);
+  readonly sendingAppIds = signal<Set<string>>(new Set());
+  readonly isSendingWelcomeEmail = computed(() => {
+    const currentId = this.selectedApp()?.id;
+    return Boolean(currentId && this.sendingAppIds().has(currentId));
+  });
   readonly welcomeEmailStatus = signal<{ success: boolean; message: string } | null>(null);
 
   readonly providerAccountHolder = signal<string>('');
@@ -1955,12 +1959,34 @@ export class AdminApplicationsComponent implements OnInit {
     this.welcomeEmailStatus.set(null);
   }
 
+  private setWelcomeEmailBanner(
+    res: { success: boolean; simulated?: boolean; error?: string },
+    email: string,
+  ): void {
+    if (res.success && !res.simulated) {
+      this.welcomeEmailStatus.set({
+        success: true,
+        message: `¡Correo de bienvenida enviado exitosamente a ${email}!`,
+      });
+    } else if (res.simulated) {
+      this.welcomeEmailStatus.set({
+        success: false,
+        message: `Envío simulado: ${res.error || 'RESEND_API_KEY no configurada en el servidor. El correo no fue entregado.'}`,
+      });
+    } else {
+      this.welcomeEmailStatus.set({
+        success: false,
+        message: `No se pudo enviar el correo: ${res.error || 'Verifique la conexión o configuración de Resend en el servidor.'}`,
+      });
+    }
+  }
+
   async resendWelcomeEmail(targetApp?: AdminApplication | null): Promise<void> {
     const current = targetApp ?? this.selectedApp();
     if (!current?.email) return;
+    this.sendingAppIds.update((ids) => new Set(ids).add(current.id));
     const isCurrentModal = () => this.selectedApp()?.id === current.id;
     if (isCurrentModal()) {
-      this.isSendingWelcomeEmail.set(true);
       this.welcomeEmailStatus.set(null);
     }
     try {
@@ -1969,22 +1995,7 @@ export class AdminApplicationsComponent implements OnInit {
         email: current.email,
       });
       if (isCurrentModal()) {
-        if (res.success && !res.simulated) {
-          this.welcomeEmailStatus.set({
-            success: true,
-            message: `¡Correo de bienvenida enviado exitosamente a ${current.email}!`,
-          });
-        } else if (res.simulated) {
-          this.welcomeEmailStatus.set({
-            success: false,
-            message: `Envío simulado: ${res.error || 'RESEND_API_KEY no configurada en el servidor. El correo no fue entregado.'}`,
-          });
-        } else {
-          this.welcomeEmailStatus.set({
-            success: false,
-            message: `No se pudo enviar el correo: ${res.error || 'Verifique la conexión o configuración de Resend en el servidor.'}`,
-          });
-        }
+        this.setWelcomeEmailBanner(res, current.email);
       }
     } catch (err: any) {
       if (isCurrentModal()) {
@@ -1994,23 +2005,38 @@ export class AdminApplicationsComponent implements OnInit {
         });
       }
     } finally {
-      if (isCurrentModal()) {
-        this.isSendingWelcomeEmail.set(false);
-      }
+      this.sendingAppIds.update((ids) => {
+        const next = new Set(ids);
+        next.delete(current.id);
+        return next;
+      });
     }
   }
 
   async approveProvider(): Promise<void> {
     const current = this.selectedApp();
     if (!current) return;
-    const ok = await this.store.updateApplicationStatus(
-      current.id,
-      current.type,
-      'aprobado',
-    );
-    if (ok) {
-      this.selectedApp.update((a) => (a && a.id === current.id ? { ...a, status: 'aprobado' } : a));
-      void this.resendWelcomeEmail(current);
+    this.sendingAppIds.update((ids) => new Set(ids).add(current.id));
+    this.welcomeEmailStatus.set(null);
+    try {
+      const ok = await this.store.updateApplicationStatus(
+        current.id,
+        current.type,
+        'aprobado',
+      );
+      if (ok) {
+        this.selectedApp.update((a) => (a && a.id === current.id ? { ...a, status: 'aprobado' } : a));
+        const res = this.store.lastWelcomeEmailResult();
+        if (res && this.selectedApp()?.id === current.id) {
+          this.setWelcomeEmailBanner(res, current.email);
+        }
+      }
+    } finally {
+      this.sendingAppIds.update((ids) => {
+        const next = new Set(ids);
+        next.delete(current.id);
+        return next;
+      });
     }
   }
 

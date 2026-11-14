@@ -4,7 +4,7 @@ import { environment } from '../../../environments/environment';
 import { TransferSubmission, TransferStatus } from '../models/bank-transfer.model';
 import { NewsletterService } from './newsletter.service';
 import { ProviderStoreService, ExperienceProposalRequest } from './provider-store.service';
-import { NotificationService } from './notification.service';
+import { NotificationService, NotificationResult } from './notification.service';
 import { ExperienceService } from './experience.service';
 import { ClubProfile, DEFAULT_CLUB_PROFILE } from '../models/club-profile.model';
 
@@ -100,6 +100,7 @@ export class AdminStoreService {
   private readonly _usdExchangeRate = signal<number>(this.loadStoredUsdExchangeRate());
   private readonly _isLoadingClubProfile = signal<boolean>(false);
   private readonly _clubProfileLoaded = signal<boolean>(false);
+  private readonly _lastWelcomeEmailResult = signal<NotificationResult | null>(null);
 
   readonly currentAdmin = this._currentAdmin.asReadonly();
   readonly isAuthenticated = computed(() => this._currentAdmin() !== null);
@@ -115,6 +116,7 @@ export class AdminStoreService {
   readonly clubProfile = this._clubProfile.asReadonly();
   readonly isClubProfileModalOpen = this._isClubProfileModalOpen.asReadonly();
   readonly usdExchangeRate = this._usdExchangeRate.asReadonly();
+  readonly lastWelcomeEmailResult = this._lastWelcomeEmailResult.asReadonly();
 
   private loadStoredUsdExchangeRate(): number {
     if (typeof window !== 'undefined') {
@@ -1702,9 +1704,12 @@ export class AdminStoreService {
   ): Promise<boolean> {
     const cleanId = (id || '').trim().toLowerCase();
     const app = this._applications().find(
-      (a) => a.id === id || a.email?.trim().toLowerCase() === cleanId,
+      (a) =>
+        a.type === type &&
+        (a.id === id || a.email?.trim().toLowerCase() === cleanId),
     );
     const targetId = app?.id || id;
+    this._lastWelcomeEmailResult.set(null);
     try {
       if (isSupabaseConfigured()) {
         if (type === 'prestador') {
@@ -1761,12 +1766,18 @@ export class AdminStoreService {
                 const prov = this.providerStore.getProviderByEmail(email);
                 targetName = prov?.name || prov?.accountHolder || '';
               }
-              await this.notificationService.notifyProviderApproved({
+              const notifyRes = await this.notificationService.notifyProviderApproved({
                 fullName: targetName,
                 email,
               });
-            } catch (notifyErr) {
+              this._lastWelcomeEmailResult.set(notifyRes);
+            } catch (notifyErr: any) {
               console.warn('[AdminStore] Error al notificar aprobación de prestador:', notifyErr);
+              this._lastWelcomeEmailResult.set({
+                success: false,
+                type: 'PROVIDER_APPROVED',
+                error: notifyErr?.message || String(notifyErr),
+              });
             }
           }
         } else {

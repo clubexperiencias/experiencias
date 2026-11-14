@@ -80,18 +80,52 @@ export class ProvidersComponent implements OnInit {
         return;
       }
       const existing = this.authenticatedMember();
-      if (
+      const isDifferentIdentity =
         !existing ||
         existing.authUserId !== current.authUserId ||
-        existing.email.toLowerCase() !== current.email.toLowerCase()
-      ) {
+        existing.email.toLowerCase() !== current.email.toLowerCase();
+
+      if (isDifferentIdentity) {
         void this.checkAuthenticatedMember();
+      } else {
+        this.applyMemberProfile(current);
       }
     });
   }
 
   async ngOnInit(): Promise<void> {
     await this.checkAuthenticatedMember();
+  }
+
+  private applyMemberProfile(member: WaitlistEntry): void {
+    const prevMember = this.authenticatedMember();
+    const identityChanged =
+      !prevMember ||
+      prevMember.authUserId !== member.authUserId ||
+      prevMember.email.toLowerCase() !== member.email.toLowerCase();
+
+    this.authenticatedMember.set(member);
+    if (member.email) {
+      this.providerEmail.set(member.email);
+    }
+
+    const trimmedName = member.fullName?.trim();
+    const emailPrefix = member.email ? member.email.split('@')[0] : '';
+    const currentName = this.providerName();
+    const hadEmailPrefix = Boolean(
+      prevMember?.email &&
+      currentName === prevMember.email.split('@')[0],
+    );
+
+    if (trimmedName) {
+      this.providerName.set(trimmedName);
+    } else if (identityChanged || !currentName || hadEmailPrefix) {
+      this.providerName.set(emailPrefix);
+    }
+
+    if (member.phone) {
+      this.providerPhone.set(member.phone);
+    }
   }
 
   private async checkAuthenticatedMember(): Promise<void> {
@@ -101,12 +135,7 @@ export class ProvidersComponent implements OnInit {
         member = this.newsletter.currentMember();
       }
       if (member) {
-        this.authenticatedMember.set(member);
-        this.providerEmail.set(member.email);
-        this.providerName.set(member.fullName || member.email.split('@')[0]);
-        if (member.phone) {
-          this.providerPhone.set(member.phone);
-        }
+        this.applyMemberProfile(member);
       }
     } catch {
       // non-blocking

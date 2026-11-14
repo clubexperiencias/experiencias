@@ -4074,10 +4074,33 @@ export class AdminExperiencesComponent implements OnInit {
 
   getExpProviderName(exp?: Partial<Experience> | null): string {
     if (!exp) return 'Club de Experiencias';
+    const rawExpProviderName = (exp.providerAgency?.trim() || exp.providerName?.trim() || '');
+    const isExplicitExternal =
+      rawExpProviderName !== '' &&
+      rawExpProviderName.toLowerCase() !== 'club de experiencias' &&
+      rawExpProviderName.toLowerCase() !== 'club';
+
+    if (isExplicitExternal) {
+      return rawExpProviderName;
+    }
+
+    if (exp.id) {
+      const matchingProposal = this.findMatchingProposal({ id: exp.id, slug: exp.slug, title: exp.title });
+      const proposalCreator = (matchingProposal?.providerAgency || matchingProposal?.providerName || '').trim();
+      if (
+        proposalCreator !== '' &&
+        proposalCreator.toLowerCase() !== 'club de experiencias' &&
+        proposalCreator.toLowerCase() !== 'club'
+      ) {
+        return proposalCreator;
+      }
+    }
+
     if (this.isClub(exp)) {
       return this.adminStore.clubProfile().name || 'Club de Experiencias';
     }
-    return exp.providerAgency?.trim() || exp.providerName?.trim() || 'Club de Experiencias';
+
+    return rawExpProviderName || 'Club de Experiencias';
   }
 
   readonly isCurrentExperienceClub = computed(() => {
@@ -4143,6 +4166,7 @@ export class AdminExperiencesComponent implements OnInit {
           (e.region && e.region.toLowerCase().includes(q)) ||
           (e.providerName && e.providerName.toLowerCase().includes(q)) ||
           (e.providerAgency && e.providerAgency.toLowerCase().includes(q)) ||
+          (this.getExpProviderName(e) && this.getExpProviderName(e).toLowerCase().includes(q)) ||
           (e.providerEmail && e.providerEmail.toLowerCase().includes(q)),
       );
     }

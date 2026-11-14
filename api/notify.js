@@ -467,12 +467,24 @@ async function verifyDecisionMakerAndGetBooking(req, data, config) {
 
   const conditions = [];
   if (rawId) {
-    conditions.push(`id.eq.${encodeURIComponent(escapePostgrestValue(rawId))}`);
+    conditions.push({
+      column: 'id',
+      operator: 'eq',
+      value: encodeURIComponent(escapePostgrestValue(rawId)),
+    });
   }
   if (rawRef) {
-    conditions.push(`reference.eq.${encodeURIComponent(escapePostgrestValue(rawRef))}`);
+    conditions.push({
+      column: 'reference',
+      operator: 'eq',
+      value: encodeURIComponent(escapePostgrestValue(rawRef)),
+    });
   }
-  const filterQuery = conditions.length > 1 ? `or=(${conditions.join(',')})` : conditions[0];
+
+  const filterQuery =
+    conditions.length > 1
+      ? `or=(${conditions.map((c) => `${c.column}.${c.operator}.${c.value}`).join(',')})`
+      : `${conditions[0].column}=${conditions[0].operator}.${conditions[0].value}`;
   const queryPath = `/rest/v1/pagos_transferencias?${filterQuery}&select=id,reference,experience_id,experience_title,provider_email,selected_date,date,participants,amount_ars,full_name,email,dni,phone,status,rejection_reason&limit=1`;
 
   const lookupResult = await new Promise((resolve) => {

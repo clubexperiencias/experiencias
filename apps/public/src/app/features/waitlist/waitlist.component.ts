@@ -139,7 +139,7 @@ export class WaitlistComponent {
     }
     try {
       const loginRes = await this.newsletter.loginWithEmail(cleanEmail);
-      if (!loginRes?.success) {
+      if ((!loginRes?.success && !loginRes?.isWaitlistOnly) || loginRes?.alreadyRegisteredSocio) {
         return;
       }
       if (this.newsletter.isSupabaseConnected()) {
