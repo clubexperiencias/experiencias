@@ -24,13 +24,15 @@ function getEnvConfig() {
     process.env.SUPABASE_URL ||
     process.env.SUPABASE_PROD_URL ||
     process.env.PUBLIC_SUPABASE_URL ||
-    ''
+    'https://pgdtjfcngadesifsqwms.supabase.co'
   ).trim();
 
   const supabaseServiceKey = (
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
     process.env.SUPABASE_SERVICE_KEY ||
-    ''
+    process.env.SUPABASE_ANON_KEY ||
+    process.env.PUBLIC_SUPABASE_ANON_KEY ||
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnZHRqZmNuZ2FkZXNpZnNxd21zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMyMTkyNjcsImV4cCI6MjEwODc5NTI2N30.Mx0zKpQLIVAYI9tXTbM9gNhUoioQ2ICbqeJcA0Fzd88'
   ).trim();
 
   const appBaseUrl = (
@@ -324,7 +326,7 @@ async function authenticateProvider(req, supabaseUrl, supabaseServiceKey, isTest
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${supabaseServiceKey}`,
+        Authorization: `Bearer ${token || supabaseServiceKey}`,
         apikey: supabaseServiceKey,
       },
     });

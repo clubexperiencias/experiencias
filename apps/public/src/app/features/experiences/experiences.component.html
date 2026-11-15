@@ -97,16 +97,16 @@
                         <span class="price-usd">o ${{ exp.priceUsd }} USD</span>
                       </div>
                       @if (exp.detailRoute) {
-                      <a [routerLink]="exp.detailRoute" class="exp-toggle-details-btn exp-cta-link">
-                        <span>Saber Más</span>
+                      <a [routerLink]="exp.detailRoute" class="exp-toggle-details-btn exp-cta-link" style="color: #ffffff !important;">
+                        <span style="color: #ffffff !important;">Saber Más</span>
                       </a>
                       } @else {
                       <button class="exp-toggle-details-btn" [class.active]="selectedExperience()?.id === exp.id"
-                        (click)="toggleExperienceDetails(exp)">
+                        (click)="toggleExperienceDetails(exp)" style="color: #ffffff !important;">
                         @if (selectedExperience()?.id === exp.id) {
-                        <span>Ocultar detalles</span>
+                        <span style="color: #ffffff !important;">Ocultar detalles</span>
                         } @else {
-                        <span>Saber Más</span>
+                        <span style="color: #ffffff !important;">Saber Más</span>
                         }
                       </button>
                       }
@@ -443,16 +443,16 @@
                             <span class="price-usd">o ${{ exp.priceUsd }} USD</span>
                           </div>
                           @if (exp.detailRoute) {
-                          <a [routerLink]="exp.detailRoute" class="exp-toggle-details-btn exp-cta-link">
-                            <span>Saber Más</span>
+                          <a [routerLink]="exp.detailRoute" class="exp-toggle-details-btn exp-cta-link" style="color: #ffffff !important;">
+                            <span style="color: #ffffff !important;">Saber Más</span>
                           </a>
                           } @else {
                           <button class="exp-toggle-details-btn" [class.active]="selectedExperience()?.id === exp.id"
-                            (click)="toggleExperienceDetails(exp)">
+                            (click)="toggleExperienceDetails(exp)" style="color: #ffffff !important;">
                             @if (selectedExperience()?.id === exp.id) {
-                            <span>Ocultar detalles</span>
+                            <span style="color: #ffffff !important;">Ocultar detalles</span>
                             } @else {
-                            <span>Saber Más</span>
+                            <span style="color: #ffffff !important;">Saber Más</span>
                             }
                           </button>
                           }
@@ -587,16 +587,16 @@
                             <span class="price-usd">o ${{ exp.priceUsd }} USD</span>
                           </div>
                           @if (exp.detailRoute) {
-                          <a [routerLink]="exp.detailRoute" class="exp-toggle-details-btn exp-cta-link">
-                            <span>Saber Más</span>
+                          <a [routerLink]="exp.detailRoute" class="exp-toggle-details-btn exp-cta-link" style="color: #ffffff !important;">
+                            <span style="color: #ffffff !important;">Saber Más</span>
                           </a>
                           } @else {
                           <button class="exp-toggle-details-btn" [class.active]="selectedExperience()?.id === exp.id"
-                            (click)="toggleExperienceDetails(exp)">
+                            (click)="toggleExperienceDetails(exp)" style="color: #ffffff !important;">
                             @if (selectedExperience()?.id === exp.id) {
-                            <span>Ocultar detalles</span>
+                            <span style="color: #ffffff !important;">Ocultar detalles</span>
                             } @else {
-                            <span>Saber Más</span>
+                            <span style="color: #ffffff !important;">Saber Más</span>
                             }
                           </button>
                           }

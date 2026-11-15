@@ -184,8 +184,9 @@ import {
                     class="btn-connect-mp"
                     (click)="connectMercadoPago()"
                     title="Vincular cuenta con Mercado Pago"
+                    style="color: #ffffff !important;"
                   >
-                    <span>Vincular mi cuenta de Mercado Pago</span>
+                    <span style="color: #ffffff !important;">Vincular mi cuenta de Mercado Pago</span>
                   </button>
                   <span class="mp-connect-note">Podés desvincularla en cualquier momento.</span>
                 </div>
@@ -465,11 +466,12 @@ import {
               type="submit"
               class="cta-save-btn"
               [disabled]="form.invalid || isSaving() || isUploadingAvatar() || isUploadingCover()"
+              style="color: #ffffff !important;"
             >
               @if (isSaving()) {
-                <span>Guardando...</span>
+                <span style="color: #ffffff !important;">Guardando...</span>
               } @else {
-                <span>Guardar Cambios</span>
+                <span style="color: #ffffff !important;">Guardar Cambios</span>
               }
             </button>
           </div>
@@ -922,8 +924,8 @@ import {
         align-items: center;
         justify-content: center;
         padding: 0.85rem 2.25rem;
-        background: #80b3ff !important;
-        color: #0b1120 !important;
+        background: #2563eb !important;
+        color: #ffffff !important;
         font-weight: 700;
         font-size: 0.95rem;
         border-radius: 2px;
@@ -932,14 +934,14 @@ import {
         transition: all 0.2s ease;
       }
       .cta-save-btn span {
-        color: #0b1120 !important;
+        color: #ffffff !important;
       }
       .cta-save-btn:hover:not(:disabled) {
-        background: #99c2ff !important;
-        color: #0b1120 !important;
+        background: #1d4ed8 !important;
+        color: #ffffff !important;
       }
       .cta-save-btn:hover:not(:disabled) span {
-        color: #0b1120 !important;
+        color: #ffffff !important;
       }
       .cta-save-btn:disabled {
         opacity: 0.5;
@@ -1094,10 +1096,10 @@ import {
         align-items: center;
         justify-content: center;
         padding: 0.85rem 1.65rem;
-        background: #80b3ff;
-        color: #0b1120 !important;
+        background: #0082c3;
+        color: #ffffff !important;
         border: 1px solid rgba(255, 255, 255, 0.4);
-        box-shadow: 0 4px 16px rgba(255, 255, 255, 0.4), 0 0 10px rgba(255, 255, 255, 0.2);
+        box-shadow: 0 4px 16px rgba(0, 130, 195, 0.4), 0 0 10px rgba(0, 130, 195, 0.2);
         border-radius: 4px;
         font-size: 0.92rem;
         font-weight: 700;
@@ -1105,16 +1107,16 @@ import {
         transition: all 0.2s ease;
       }
       .btn-connect-mp span {
-        color: #0b1120 !important;
+        color: #ffffff !important;
       }
       .btn-connect-mp:hover:not(:disabled) {
-        background: #99c2ff;
-        color: #0b1120 !important;
+        background: #0072b2;
+        color: #ffffff !important;
         transform: translateY(-2px);
-        box-shadow: 0 6px 22px rgba(255, 255, 255, 0.6), 0 0 14px rgba(255, 255, 255, 0.3);
+        box-shadow: 0 6px 22px rgba(0, 114, 178, 0.6), 0 0 14px rgba(0, 114, 178, 0.3);
       }
       .btn-connect-mp:hover:not(:disabled) span {
-        color: #0b1120 !important;
+        color: #ffffff !important;
       }
       .btn-connect-mp mat-icon {
         font-size: 18px;
@@ -1348,17 +1350,25 @@ export class ProviderProfileComponent implements OnInit {
 
     // Iniciar flujo OAuth oficial de vendedor de Mercado Pago para obtener el access token real
     try {
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       const token = await this.store.getAuthToken();
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+      if (!token) {
+        this.mpError.set('No se detectó una sesión activa de Google / Supabase. Por favor, iniciá sesión nuevamente desde el botón de Google en el portal.');
+        setTimeout(() => this.mpError.set(null), 7000);
+        return;
       }
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      };
 
       const res = await fetch('/api/mercadopago', {
         method: 'POST',
         headers,
         body: JSON.stringify({
           action: 'get-oauth-url',
+          authToken: token,
+          providerId: p.id,
         }),
       });
 

@@ -314,8 +314,9 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
               [routerLink]="newProposalLink()"
               class="request-form-btn"
               (click)="$event.stopPropagation()"
+              style="color: #ffffff !important;"
             >
-              <span>Cargar Propuesta</span>
+              <span style="color: #ffffff !important;">Cargar Propuesta</span>
             </a>
           </div>
         </div>
@@ -1096,25 +1097,25 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         align-items: center;
         gap: 0.4rem;
         padding: 0.4rem 0.85rem;
-        background: #80b3ff;
-        border: 1px solid #80b3ff;
+        background: #2563eb;
+        border: 1px solid #2563eb;
         border-radius: 2px;
-        color: #0b1120 !important;
+        color: #ffffff !important;
         font-size: 0.78rem;
         font-weight: 700;
         text-decoration: none;
         transition: all 0.2s ease;
       }
       .btn-edit-banking-pill span {
-        color: #0b1120 !important;
+        color: #ffffff !important;
       }
       .btn-edit-banking-pill:hover {
-        background: #a3c9ff;
-        border-color: #a3c9ff;
-        color: #0b1120 !important;
+        background: #1d4ed8;
+        border-color: #1d4ed8;
+        color: #ffffff !important;
       }
       .btn-edit-banking-pill:hover span {
-        color: #0b1120 !important;
+        color: #ffffff !important;
       }
       .banking-details-grid {
         display: grid;
@@ -1628,7 +1629,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         padding: 0.75rem 1.4rem;
         background: #ffcc00;
         border: 1px solid #ffcc00;
-        color: #0b1120 !important;
+        color: #ffffff !important;
         font-size: 0.88rem;
         font-weight: 700;
         border-radius: 2px;
@@ -1639,17 +1640,17 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         box-shadow: 0 4px 15px rgba(255, 204, 0, 0.3);
       }
       .request-form-btn span {
-        color: #0b1120 !important;
+        color: #ffffff !important;
       }
       .request-form-btn:hover {
         background: #ffd633;
         border-color: #ffd633;
-        color: #0b1120 !important;
+        color: #ffffff !important;
         box-shadow: 0 6px 20px rgba(255, 204, 0, 0.45);
         transform: translateY(-1px);
       }
       .request-form-btn:hover span {
-        color: #0b1120 !important;
+        color: #ffffff !important;
       }
 
       /* Postulation Status Pills */

@@ -505,8 +505,9 @@
 
                 @if (paymentMethod() === 'mercadopago') {
                 <button type="button" class="cta-primary-btn pay-submit pay-mp-btn"
-                  [disabled]="submitting() || form.invalid" (click)="submitMercadoPago()">
-                  <span>{{ submitting() ? 'Iniciando Mercado Pago...' : 'Pagar con Mercado Pago' }}</span>
+                  [disabled]="submitting() || form.invalid" (click)="submitMercadoPago()"
+                  style="color: #ffffff !important;">
+                  <span style="color: #ffffff !important;">{{ submitting() ? 'Iniciando Mercado Pago...' : 'Pagar con Mercado Pago' }}</span>
                 </button>
                 } @else {
                 <button type="submit" class="cta-primary-btn cta-blue-btn pay-submit"
