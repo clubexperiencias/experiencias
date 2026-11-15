@@ -4837,6 +4837,11 @@ export class AdminExperiencesComponent implements OnInit {
       return;
     }
 
+    if (slug.length > 40) {
+      this.showToast(`La ruta o slug oficial no puede superar los 40 caracteres (longitud actual: ${slug.length}).`);
+      return;
+    }
+
     const tagline = this.editTagline().trim();
     if (!tagline) {
       this.showToast('Por favor ingresá un subtítulo o bajada destacada (tagline).');

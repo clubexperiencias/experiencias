@@ -607,22 +607,41 @@ export class ExperienceService {
           payload['display_location'] = merged.displayLocation;
         }
 
+        let payloadToUse: Record<string, any> = { ...payload };
+
         let { data, error } = await this.supabase
           .from('experiencias')
-          .update(payload as any)
+          .update(payloadToUse as any)
           .eq('id', merged.id)
           .select();
 
         if (error && (/meeting_point_url/.test(error.message || '') || /display_location/.test(error.message || ''))) {
-          if (updated.meetingPointUrl !== undefined && String(updated.meetingPointUrl).trim() !== '' && /meeting_point_url/.test(error.message || '')) {
+          const hasMeetingPointUrlErr = /meeting_point_url/.test(error.message || '');
+          const hasDisplayLocationErr = /display_location/.test(error.message || '');
+
+          if (hasMeetingPointUrlErr && updated.meetingPointUrl !== undefined && String(updated.meetingPointUrl).trim() !== '') {
             // A non-empty value was supplied: reject the update rather than committing without it
             throw error;
           }
-          // Columna aún no migrada en la base remota: reintenta sin ella
-          const { meeting_point_url: _omit, display_location: _omit2, ...legacyPayload } = payload as any;
+
+          if (hasDisplayLocationErr && updated.displayLocation !== undefined) {
+            // The selected placement cannot be persisted because display_location is not supported in remote DB
+            throw new Error(
+              'No se pudo persistir la ubicación en catálogo: la columna display_location no está disponible en la base de datos remota.',
+            );
+          }
+
+          // Columna aún no migrada en la base remota: reintenta omitiendo solo el campo rechazado
+          if (hasMeetingPointUrlErr) {
+            delete payloadToUse['meeting_point_url'];
+          }
+          if (hasDisplayLocationErr) {
+            delete payloadToUse['display_location'];
+          }
+
           ({ data, error } = (await this.supabase
             .from('experiencias')
-            .update(legacyPayload as any)
+            .update(payloadToUse as any)
             .eq('id', merged.id)
             .select()) as any);
         }
@@ -632,7 +651,7 @@ export class ExperienceService {
         if (!error && (!data || data.length === 0) && previousSlug) {
           ({ data, error } = (await this.supabase
             .from('experiencias')
-            .update(payload as any)
+            .update(payloadToUse as any)
             .eq('slug', previousSlug)
             .select()) as any);
         }
@@ -835,6 +854,17 @@ export class ExperienceService {
           );
 
           if (missingCol) {
+            if (missingCol === 'display_location') {
+              const hasExplicitNonDefaultPlacement =
+                experience.displayLocation !== undefined && experience.displayLocation !== 'destacada';
+              if (hasExplicitNonDefaultPlacement) {
+                error = err;
+                break;
+              }
+              delete insertPayload['display_location'];
+              continue;
+            }
+
             const isNonEmpty = Boolean(
               insertPayload[missingCol] && String(insertPayload[missingCol]).trim(),
             );
@@ -1740,9 +1770,18 @@ export class ExperienceService {
         `${publicColumns}, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing, provider_agency, participant_requirements, notes, reviewed_at, display_location`,
       );
       if (error) {
-        ({ data, error } = await fetchExperiences(
-          `${publicColumns}, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing, provider_agency, participant_requirements, notes, reviewed_at`,
-        ));
+        const isDisplayLocationErr = /display_location/.test(error.message || '');
+        if (isDisplayLocationErr) {
+          // Si falló por display_location, reintentar preservando las demás columnas opcionales
+          ({ data, error } = await fetchExperiences(
+            `${publicColumns}, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing, provider_agency, participant_requirements, notes, reviewed_at`,
+          ));
+        } else {
+          // Si falló por otra columna opcional (ej: reviewed_at), preservar display_location
+          ({ data, error } = await fetchExperiences(
+            `${publicColumns}, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing, display_location`,
+          ));
+        }
       }
       if (error) {
         ({ data, error } = await fetchExperiences(

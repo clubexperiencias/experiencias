@@ -2420,7 +2420,7 @@ const DEFAULT_REQ_FORM = {
         justify-content: center;
         padding: 0.75rem 1.5rem;
         background: #80b3ff;
-        color: #ffffff !important;
+        color: #070d18 !important;
         border: 1px solid rgba(255, 255, 255, 0.4);
         box-shadow: 0 4px 16px rgba(255, 255, 255, 0.4), 0 0 10px rgba(255, 255, 255, 0.2);
         border-radius: 4px;
@@ -2430,16 +2430,16 @@ const DEFAULT_REQ_FORM = {
         transition: all 0.2s ease;
       }
       .btn-connect-mp span {
-        color: #ffffff !important;
+        color: #070d18 !important;
       }
       .btn-connect-mp:hover:not(:disabled) {
         background: #99c2ff;
-        color: #ffffff !important;
+        color: #070d18 !important;
         transform: translateY(-2px);
         box-shadow: 0 6px 22px rgba(255, 255, 255, 0.6), 0 0 14px rgba(255, 255, 255, 0.3);
       }
       .btn-connect-mp:hover:not(:disabled) span {
-        color: #ffffff !important;
+        color: #070d18 !important;
       }
       .btn-connect-mp:disabled {
         opacity: 0.6;
@@ -2486,19 +2486,24 @@ export class ProviderExperienceProposalModalComponent {
   private previousActiveElement: HTMLElement | null = null;
 
   static readonly DRAFT_STORAGE_KEY = 'experiencias_provider_proposal_draft';
+  static readonly MEDIA_STORAGE_KEY = 'experiencias_provider_proposal_media';
   readonly hasDraft = signal<boolean>(false);
 
   constructor() {
     this.loadDraft();
 
+    if (typeof window !== 'undefined') {
+      window.addEventListener('focus', () => {
+        if (this.isOpen()) {
+          void this.store.restoreSupabaseSession(true);
+        }
+      });
+    }
+
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
       if (params.get('mp_connected') === 'true') {
-        const colId = params.get('collector_id');
         this.mpToast.set('¡Tu cuenta de Mercado Pago fue vinculada exitosamente!');
-        void this.store.updateProfile({
-          mpConnected: true,
-          mpCollectorId: colId || undefined,
-        });
+        void this.store.restoreSupabaseSession(true);
         void this.router.navigate([], {
           relativeTo: this.route,
           queryParams: { mp_connected: null, collector_id: null },
@@ -2573,7 +2578,20 @@ export class ProviderExperienceProposalModalComponent {
       const data = await res.json();
       if (res.ok && data?.url) {
         if (typeof window !== 'undefined') {
-          window.location.href = data.url;
+          this.persistMediaDraft();
+          // Abrir en ventana emergente o nueva pestaña para mantener el formulario y medios intactos
+          const authWindow = window.open(data.url, '_blank', 'width=650,height=750');
+          if (!authWindow || authWindow.closed || typeof authWindow.closed === 'undefined') {
+            window.location.href = data.url;
+          } else {
+            authWindow.focus();
+            const pollTimer = setInterval(() => {
+              if (authWindow.closed) {
+                clearInterval(pollTimer);
+                void this.store.restoreSupabaseSession(true);
+              }
+            }, 1000);
+          }
         }
       } else {
         this.mpError.set(
@@ -3097,10 +3115,83 @@ export class ProviderExperienceProposalModalComponent {
         this.coverImagePreview.set(data.coverImageDataUrl);
         this.finalSuccessCoverUrl.set(data.coverImageDataUrl);
       }
+      this.restoreMediaDraft();
       this.hasDraft.set(true);
     } catch (err) {
       console.warn('[ProposalModal] Error al cargar borrador:', err);
       this.hasDraft.set(false);
+    }
+  }
+
+  private persistMediaDraft(): void {
+    if (typeof sessionStorage === 'undefined') return;
+    try {
+      const mediaPayload = {
+        coverImageDataUrl:
+          this.coverImageDataUrl() ||
+          (this.coverImagePreview() && !this.coverImagePreview()!.startsWith('blob:')
+            ? this.coverImagePreview()
+            : null),
+        featuredPhoto1DataUrl:
+          this.featuredPhoto1DataUrl() ||
+          (this.featuredPhoto1Preview() && !this.featuredPhoto1Preview()!.startsWith('blob:')
+            ? this.featuredPhoto1Preview()
+            : null),
+        featuredPhoto2DataUrl:
+          this.featuredPhoto2DataUrl() ||
+          (this.featuredPhoto2Preview() && !this.featuredPhoto2Preview()!.startsWith('blob:')
+            ? this.featuredPhoto2Preview()
+            : null),
+        galleryPhotos: this.galleryPhotos()
+          .map((p) => ({
+            id: p.id,
+            name: p.name,
+            dataUrl:
+              p.dataUrl || (!p.previewUrl.startsWith('blob:') ? p.previewUrl : undefined),
+          }))
+          .filter((p) => p.dataUrl),
+      };
+      sessionStorage.setItem(
+        ProviderExperienceProposalModalComponent.MEDIA_STORAGE_KEY,
+        JSON.stringify(mediaPayload),
+      );
+    } catch (err) {
+      console.warn('[ProposalModal] No se pudieron persistir medios en sessionStorage:', err);
+    }
+  }
+
+  private restoreMediaDraft(): void {
+    if (typeof sessionStorage === 'undefined') return;
+    try {
+      const raw = sessionStorage.getItem(
+        ProviderExperienceProposalModalComponent.MEDIA_STORAGE_KEY,
+      );
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      if (data?.coverImageDataUrl && !this.coverImagePreview()) {
+        this.coverImageDataUrl.set(data.coverImageDataUrl);
+        this.coverImagePreview.set(data.coverImageDataUrl);
+        this.finalSuccessCoverUrl.set(data.coverImageDataUrl);
+      }
+      if (data?.featuredPhoto1DataUrl && !this.featuredPhoto1Preview()) {
+        this.featuredPhoto1DataUrl.set(data.featuredPhoto1DataUrl);
+        this.featuredPhoto1Preview.set(data.featuredPhoto1DataUrl);
+      }
+      if (data?.featuredPhoto2DataUrl && !this.featuredPhoto2Preview()) {
+        this.featuredPhoto2DataUrl.set(data.featuredPhoto2DataUrl);
+        this.featuredPhoto2Preview.set(data.featuredPhoto2DataUrl);
+      }
+      if (Array.isArray(data?.galleryPhotos) && this.galleryPhotos().length === 0) {
+        const restored = data.galleryPhotos.map((p: any) => ({
+          id: p.id || `gal_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          previewUrl: p.dataUrl,
+          dataUrl: p.dataUrl,
+          name: p.name || 'foto.jpg',
+        }));
+        this.galleryPhotos.set(restored);
+      }
+    } catch (err) {
+      console.warn('[ProposalModal] Error al restaurar medios de sessionStorage:', err);
     }
   }
 
@@ -3158,6 +3249,13 @@ export class ProviderExperienceProposalModalComponent {
     if (typeof localStorage !== 'undefined') {
       try {
         localStorage.removeItem(ProviderExperienceProposalModalComponent.DRAFT_STORAGE_KEY);
+      } catch {
+        // ignore
+      }
+    }
+    if (typeof sessionStorage !== 'undefined') {
+      try {
+        sessionStorage.removeItem(ProviderExperienceProposalModalComponent.MEDIA_STORAGE_KEY);
       } catch {
         // ignore
       }

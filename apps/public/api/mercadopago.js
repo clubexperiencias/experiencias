@@ -582,7 +582,7 @@ module.exports = async function handler(req, res) {
         });
       }
 
-      const returnUrl = body?.returnUrl || req.query?.returnUrl;
+      const returnUrl = req.query?.returnUrl;
       const hmacSecret = getHmacSecret({ mpClientSecret, supabaseServiceKey, mpAccessToken });
       const state = generateOAuthState(auth.email, hmacSecret, returnUrl);
       const redirectUri = `${appBaseUrl}/api/mercadopago?action=oauth-callback`;
