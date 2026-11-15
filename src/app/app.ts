@@ -131,8 +131,9 @@ export class App {
     const isProviderHost =
       host.startsWith('prestadores.') ||
       host.includes('prestadores.experiencias') ||
-      url.startsWith('/prestadores') ||
-      (isLocalHost && (search.includes('portal=prestador') || search.includes('prestador=true') || storedPortal === 'prestador'));
+      url.startsWith('/prestadores/panel') ||
+      url.startsWith('/prestadores/login') ||
+      (isLocalHost && (search.includes('portal=prestador') || search.includes('prestador=true')));
 
     const metadata = this.getPageMetadata(url);
     let title = `Club de Experiencias | ${metadata.section}`;

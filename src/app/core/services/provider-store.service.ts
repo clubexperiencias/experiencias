@@ -1374,6 +1374,12 @@ export class ProviderStoreService {
           .normalize('NFD')
           .replace(/[\u0300-\u036f]/g, '')
           .replace(/[^a-z0-9]+/g, '-')
+          .replace(/(^-|-$)+/g, '') === clean ||
+        (p.name || '')
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]+/g, '-')
           .replace(/(^-|-$)+/g, '') === clean,
     );
 
@@ -1388,12 +1394,27 @@ export class ProviderStoreService {
         const queryEmail = (found.email || clean).trim().toLowerCase();
         const remoteData = await queryRemotePublicProfile(querySlug, queryEmail);
 
-        if (remoteData && remoteData.active === true && remoteData.status === 'aprobado') {
-          return mapRemoteToPublicProvider(remoteData, found.slug || clean);
+        if (remoteData) {
+          if (remoteData.active !== true || remoteData.status !== 'aprobado') {
+            return null;
+          }
+          const provider = mapRemoteToPublicProvider(remoteData, found.slug || clean);
+          if (!remoteData.slug && provider.slug && remoteData.email && isSupabaseConfigured()) {
+            void (this.supabase.from('prestadores') as any)
+              .update({ slug: provider.slug })
+              .eq('email', remoteData.email)
+              .then(({ error: slugError }: { error: unknown }) => {
+                if (slugError) console.warn('[ProviderStore] No se pudo persistir slug derivado:', slugError);
+              });
+          }
+          return provider;
         }
         return null;
-      } catch {
-        return null;
+      } catch (err) {
+        console.warn('[ProviderStore] Error consultando perfil público remoto:', err);
+        return found.status === 'aprobado' && (found.active ?? true)
+          ? { ...found, cuitDni: '', cbuAlias: '', bankName: '' }
+          : null;
       }
     }
 
@@ -1401,7 +1422,41 @@ export class ProviderStoreService {
       try {
         const remoteData = await queryRemotePublicProfile(clean, clean);
         if (remoteData && remoteData.active === true && remoteData.status === 'aprobado') {
-          return mapRemoteToPublicProvider(remoteData, clean);
+          const provider = mapRemoteToPublicProvider(remoteData, clean);
+          if (!remoteData.slug && provider.slug && remoteData.email && isSupabaseConfigured()) {
+            void (this.supabase.from('prestadores') as any)
+              .update({ slug: provider.slug })
+              .eq('email', remoteData.email)
+              .then(({ error: slugError }: { error: unknown }) => {
+                if (slugError) console.warn('[ProviderStore] No se pudo persistir slug derivado:', slugError);
+              });
+          }
+          return provider;
+        }
+
+        // Si la consulta directa por slug/email no arrojó resultados (ej: slug en BD es null y la URL contiene el slug derivado),
+        // resolvemos a través de la lista pública para que el perfil cargue correctamente.
+        const allProviders = await this.getPublicProviders();
+        const matched = allProviders.find(
+          (p) =>
+            (p.slug || '').toLowerCase() === clean ||
+            p.id.toLowerCase() === clean ||
+            p.email.toLowerCase() === clean ||
+            (p.agency || '')
+              .toLowerCase()
+              .normalize('NFD')
+              .replace(/[\u0300-\u036f]/g, '')
+              .replace(/[^a-z0-9]+/g, '-')
+              .replace(/(^-|-$)+/g, '') === clean ||
+            (p.name || '')
+              .toLowerCase()
+              .normalize('NFD')
+              .replace(/[\u0300-\u036f]/g, '')
+              .replace(/[^a-z0-9]+/g, '-')
+              .replace(/(^-|-$)+/g, '') === clean,
+        );
+        if (matched) {
+          return matched;
         }
       } catch (err) {
         console.warn('[ProviderStore] Error consultando perfil público:', err);
@@ -1409,6 +1464,132 @@ export class ProviderStoreService {
     }
 
     return null;
+  }
+
+  async getPublicProviders(): Promise<ProviderUser[]> {
+    const mapRemoteToPublic = (remoteData: any): ProviderUser => {
+      const email = remoteData.email || '';
+      const slug =
+        remoteData.slug ||
+        (remoteData.agency || remoteData.name || email)
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/(^-|-$)+/g, '');
+
+      if (!remoteData.slug && slug && email && isSupabaseConfigured()) {
+        void (this.supabase.from('prestadores') as any)
+          .update({ slug })
+          .eq('email', email)
+          .then(({ error: slugError }: { error: unknown }) => {
+            if (slugError) console.warn('[ProviderStore] No se pudo persistir slug derivado:', slugError);
+          });
+      }
+      return {
+        id: `prov-${email.replace(/[^a-z0-9]+/g, '-')}`,
+        email,
+        name: remoteData.name || remoteData.agency || email,
+        agency: remoteData.agency || 'Prestador Catamarca',
+        slug,
+        bio: remoteData.bio || '',
+        phone: remoteData.phone || '',
+        website: remoteData.website || '',
+        socialMedia: remoteData.social_media || '',
+        socialMediaSecondary: remoteData.social_media_secondary || '',
+        cuitDni: '',
+        cbuAlias: '',
+        bankName: '',
+        verified: true,
+        status: remoteData.status || 'aprobado',
+        role: 'prestador',
+        avatar: remoteData.avatar_url || '',
+        coverImage: remoteData.cover_url || '/assets/images/portada.jpg',
+        joinedAt: remoteData.created_at || new Date().toISOString(),
+      };
+    };
+
+    let remoteQuerySucceeded = false;
+    let remoteList: ProviderUser[] = [];
+    if (isSupabaseConfigured()) {
+      try {
+        const { data, error } = await (this.supabase as any)
+          .from('perfiles_publicos')
+          .select('*');
+
+        if (!error && Array.isArray(data)) {
+          remoteQuerySucceeded = true;
+          remoteList = data
+            .filter((d: any) => (d.active ?? true) && d.status === 'aprobado')
+            .map(mapRemoteToPublic);
+        } else {
+          const { data: fallbackData, error: fallbackError } = await (this.supabase.from('prestadores') as any)
+            .select(
+              'email, name, agency, active, status, phone, website, social_media, social_media_secondary, slug, bio, avatar_url, cover_url',
+            )
+            .eq('active', true)
+            .eq('status', 'aprobado');
+
+          if (!fallbackError && Array.isArray(fallbackData)) {
+            remoteQuerySucceeded = true;
+            remoteList = fallbackData.map(mapRemoteToPublic);
+          }
+        }
+      } catch (err) {
+        console.warn('[ProviderStore] Error consultando lista de perfiles públicos:', err);
+      }
+    }
+
+    if (remoteQuerySucceeded) {
+      // Cuando la consulta remota es exitosa, los resultados remotos determinan la elegibilidad de los prestadores.
+      // Se enriquecen los datos remotos con campos locales si existen, pero NO se incluyen entradas locales
+      // que estén ausentes o revocadas/inactivas en la base remota.
+      const localMap = new Map<string, ProviderUser>();
+      for (const p of this._providers()) {
+        const emailKey = p.email?.trim().toLowerCase();
+        const idKey = p.id?.trim().toLowerCase();
+        const slugKey = p.slug?.trim().toLowerCase();
+        if (emailKey) localMap.set(emailKey, p);
+        if (idKey && !localMap.has(idKey)) localMap.set(idKey, p);
+        if (slugKey && !localMap.has(slugKey)) localMap.set(slugKey, p);
+      }
+
+      // Unificar usando identificador estable (email o id) con precedencia sobre el slug mutable
+      const mergedRemotes = new Map<string, ProviderUser>();
+      for (const remoteProvider of remoteList) {
+        const emailKey = remoteProvider.email?.trim().toLowerCase();
+        const idKey = remoteProvider.id?.trim().toLowerCase();
+        const slugKey = remoteProvider.slug?.trim().toLowerCase();
+        const stableKey = emailKey || idKey || slugKey;
+        if (!stableKey) continue;
+
+        const localMatch =
+          (emailKey ? localMap.get(emailKey) : undefined) ||
+          (idKey ? localMap.get(idKey) : undefined) ||
+          (slugKey ? localMap.get(slugKey) : undefined);
+
+        const unified: ProviderUser = localMatch
+          ? { ...localMatch, ...remoteProvider, cuitDni: '', cbuAlias: '', bankName: '' }
+          : remoteProvider;
+
+        mergedRemotes.set(stableKey, { ...mergedRemotes.get(stableKey), ...unified });
+      }
+
+      return Array.from(mergedRemotes.values());
+    }
+
+    // Fallback local únicamente cuando la consulta remota falla o Supabase no está configurado
+    const localVerified = this._providers()
+      .filter((p) => p.verified === true && p.status === 'aprobado' && (p.active ?? true))
+      .map((p) => ({ ...p, cuitDni: '', cbuAlias: '', bankName: '' }));
+
+    const mergedLocal = new Map<string, ProviderUser>();
+    for (const p of localVerified) {
+      const stableKey = (p.email || p.id || p.slug || '').trim().toLowerCase();
+      if (!stableKey) continue;
+      mergedLocal.set(stableKey, p);
+    }
+    return Array.from(mergedLocal.values());
   }
 
   getExperienceById(id: string): ProviderExperience | undefined {
@@ -2970,7 +3151,20 @@ export class ProviderStoreService {
       if (!raw) return SEED_PROVIDERS;
       const list = JSON.parse(raw);
       if (!Array.isArray(list)) return SEED_PROVIDERS;
-      return list.map((p) => this.sanitizeProvider(p));
+      const sanitized = list
+        .map((p) => this.sanitizeProvider(p))
+        .filter(
+          (p) =>
+            p.slug !== 'catamarca-expediciones' &&
+            p.id !== 'prov-catamarca-expediciones' &&
+            p.email?.toLowerCase() !== 'vegvarel@gmail.com'
+        );
+      for (const seed of SEED_PROVIDERS) {
+        if (!sanitized.some((p) => p.email.toLowerCase() === seed.email.toLowerCase() || (p.slug && p.slug === seed.slug))) {
+          sanitized.push(seed);
+        }
+      }
+      return sanitized;
     } catch {
       return SEED_PROVIDERS;
     }

@@ -38,6 +38,11 @@
       <span>Experiencias</span>
     </a>
 
+    <a routerLink="/prestadores" class="nav-pill-btn prestadores-nav-btn" routerLinkActive="active-route">
+      <mat-icon class="btn-icon">verified_user</mat-icon>
+      <span>Prestadores</span>
+    </a>
+
     <a routerLink="/socios" class="nav-pill-btn socios-nav-btn" routerLinkActive="active-route">
       <mat-icon class="btn-icon">military_tech</mat-icon>
       <span>Niveles de Socio</span>
@@ -89,6 +94,11 @@
 
         <a routerLink="/experiencias" class="mobile-nav-row" (click)="closeMobileMenu()">
           <span class="row-title">Experiencias</span>
+          <mat-icon class="row-arrow">chevron_right</mat-icon>
+        </a>
+
+        <a routerLink="/prestadores" class="mobile-nav-row" (click)="closeMobileMenu()">
+          <span class="row-title">Prestadores</span>
           <mat-icon class="row-arrow">chevron_right</mat-icon>
         </a>
 

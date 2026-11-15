@@ -117,15 +117,15 @@ import { environment } from '../../../../environments/environment';
 
               <div class="admin-perks-box">
                 <div class="perk-item">
-                  <mat-icon>check_circle</mat-icon>
+                  <mat-icon>check</mat-icon>
                   <span>Nómina completa unificada: socios oficiales y lista de espera</span>
                 </div>
                 <div class="perk-item">
-                  <mat-icon>check_circle</mat-icon>
+                  <mat-icon>check</mat-icon>
                   <span>Cuentas con Google vinculado marcadas como convertidas</span>
                 </div>
                 <div class="perk-item">
-                  <mat-icon>check_circle</mat-icon>
+                  <mat-icon>check</mat-icon>
                   <span>Revisión y validación de todos los comprobantes de pago enviados</span>
                 </div>
               </div>
@@ -617,7 +617,7 @@ import { environment } from '../../../../environments/environment';
         font-size: 16px;
         width: 16px;
         height: 16px;
-        color: #ff5f00;
+        color: #ffffff;
         margin-top: 1px;
         flex-shrink: 0;
       }

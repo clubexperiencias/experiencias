@@ -1,0 +1,193 @@
+<div class="providers-catalog-page-container">
+  <!-- Barra Superior Unificada -->
+  <app-header [(mobileMenuOpen)]="mobileMenuOpen"></app-header>
+
+  <!-- Breadcrumb -->
+  <app-breadcrumb [items]="breadcrumbs"></app-breadcrumb>
+
+  <!-- Contenedor Principal con Fondo Wallpaper -->
+  <div class="providers-wallpaper-body app-wallpaper-body">
+    <div class="ambient-overlay"></div>
+
+    <main class="providers-main-content">
+      <div class="providers-wrapper">
+
+        <!-- ═══════════════ CARD 1: HERO / INTRODUCCIÓN ═══════════════ -->
+        <section class="section-card hero-catalog-card">
+          <div class="section-card-header">
+            <span class="section-kicker">RED ANDINA DE PROFESIONALES</span>
+            <h1 class="section-main-title">Prestadores Oficiales Verificados</h1>
+          </div>
+
+          <p class="section-lead-text">
+            Conocé a los guías de montaña habilitados, operadores de turismo aventura y baqueanos locales
+            que coordinan y ejecutan las salidas oficiales del Club de Experiencias en Catamarca.
+            Cada prestador cuenta con verificación de estándares técnicos, equipamiento homologado y compromiso
+            ambiental.
+          </p>
+
+          <div class="hero-callout-strip">
+            <div class="callout-text">
+              <span>¿Tenés agencia, empresa de aventura o sos guía matriculado en Catamarca?</span>
+            </div>
+            <a routerLink="/prestadores/emergentes" class="strip-cta-btn">
+              <span>Sumate como Prestador</span>
+            </a>
+          </div>
+        </section>
+
+        <!-- ═══════════════ CARD 2: FILTROS & GRILLA DE PRESTADORES ═══════════════ -->
+        <section class="section-card catalog-section-card">
+          <div class="catalog-header-row">
+            <div>
+              <span class="section-kicker">DIRECTORIO PÚBLICO</span>
+              <h2 class="card-heading">Operadores y Guías de la Red</h2>
+            </div>
+
+            <!-- Buscador en tiempo real -->
+            <div class="search-box-wrap">
+              <mat-icon class="search-icon">search</mat-icon>
+              <input type="text" [(ngModel)]="searchQuery" placeholder="Buscar por nombre, agencia o especialidad..."
+                class="search-input" aria-label="Buscar prestador" />
+              @if (searchQuery()) {
+              <button class="clear-search-btn" (click)="resetSearch()" aria-label="Limpiar búsqueda">
+                <mat-icon>close</mat-icon>
+              </button>
+              }
+            </div>
+          </div>
+
+
+          <!-- Estado de carga -->
+          @if (loading()) {
+          <div class="loading-state-box">
+            <div class="loading-spinner"></div>
+            <p>Cargando prestadores oficiales verificados...</p>
+          </div>
+          } @else {
+          @if (filteredProviders().length > 0) {
+          <!-- ─── GRILLA CUADRICULADA DE PRESTADORES ─── -->
+          <div class="providers-grid">
+            @for (p of filteredProviders(); track p.id) {
+            <article class="provider-card">
+              <!-- Portada de la Card -->
+              <div class="card-cover-wrap">
+                <img [src]="p.coverImage || '/assets/images/portada.jpg'" [alt]="p.agency || p.name"
+                  class="card-cover-img" loading="lazy" />
+                <div class="cover-gradient"></div>
+
+                <!-- Badge Oficial Verificado -->
+                <div class="verified-badge">
+                  <span>OFICIAL VERIFICADO</span>
+                </div>
+              </div>
+
+              <!-- Cuerpo de la Card -->
+              <div class="card-body">
+                <!-- Fila de Avatar e Identidad -->
+                <div class="identity-header">
+                  <div class="avatar-holder">
+                    @if (p.avatar) {
+                    <img [src]="p.avatar" [alt]="p.name" class="provider-avatar-img" />
+                    } @else {
+                    <div class="avatar-placeholder">
+                      <span>{{ (p.agency || p.name).charAt(0).toUpperCase() }}</span>
+                    </div>
+                    }
+                  </div>
+
+                  <div class="identity-text">
+                    <h3 class="provider-name">
+                      <a [routerLink]="['/prestadores', getProviderSlug(p)]" class="provider-name-link">
+                        {{ p.agency || p.name }}
+                      </a>
+                    </h3>
+                    @if (p.agency && p.agency !== p.name) {
+                    <span class="provider-contact-name">{{ p.name }}</span>
+                    }
+                  </div>
+                </div>
+
+                <!-- Bio / Descripción Breve -->
+                <p class="provider-bio-text">
+                  {{ p.bio || 'Prestador oficial verificado por el Club de Experiencias para salidas guiadas y
+                  expediciones en territorio andino.' }}
+                </p>
+
+                <!-- Meta / Salidas activas -->
+                <div class="card-stats-row">
+                  <div class="stat-item">
+                    <span>
+                      @let count = getExperiencesCount(p);
+                      {{ count }} @if (count === 1) { salida activa } @else { salidas activas }
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Redes o Web (si están disponibles) -->
+                @if (p.socialMedia || p.website) {
+                <div class="card-social-strip">
+                  @if (p.socialMedia) {
+                  <a [href]="cleanSocialUrl(p.socialMedia)" target="_blank" rel="noopener noreferrer"
+                    class="social-pill" [title]="'Abrir ' + p.socialMedia">
+                    <span>{{ socialHandle(p.socialMedia) }}</span>
+                  </a>
+                  }
+                  @if (p.website) {
+                  <a [href]="cleanSocialUrl(p.website)" target="_blank" rel="noopener noreferrer" class="social-pill"
+                    [title]="'Sitio Web oficial ' + p.website">
+                    <span>Sitio Web</span>
+                  </a>
+                  }
+                </div>
+                }
+
+                <!-- Botón de acción al Perfil Público -->
+                <div class="card-footer-action">
+                  <a [routerLink]="['/prestadores', getProviderSlug(p)]" class="btn-view-profile">
+                    <span>Ver Perfil</span>
+                  </a>
+                </div>
+              </div>
+            </article>
+            }
+          </div>
+          } @else {
+          <!-- Estado sin resultados -->
+          <div class="empty-results-box">
+            <h3>No se encontraron prestadores</h3>
+            <p>No hay prestadores oficiales verificados que coincidan con "{{ searchQuery() }}".</p>
+            <button class="btn-reset-search" (click)="resetSearch()">
+              <span>Mostrar todos los prestadores</span>
+            </button>
+          </div>
+          }
+          }
+        </section>
+
+        <!-- ═══════════════ CARD 3: CALLOUT CONVOCATORIA ABIERTA ═══════════════ -->
+        <section class="section-card join-provider-card">
+          <div class="join-card-content">
+            <div class="join-text-wrap">
+              <span class="section-kicker">CONVOCATORIA ABIERTA</span>
+              <h3 class="join-title">¿Sos operador turístico en Catamarca?</h3>
+              <p class="join-description">
+                Sumate a nuestra red oficial de prestadores. Publicá tus salidas para socios exclusivos
+                y optimizá tu temporada con el respaldo de EXPERIENCIAS.CLUB.
+              </p>
+            </div>
+            <a routerLink="/prestadores/emergentes" class="join-cta-btn">
+              <span>Sumate como Prestador</span>
+            </a>
+          </div>
+        </section>
+
+        <!-- Ad Sumate al Club de Experiencias -->
+        <app-founder-ad />
+
+      </div>
+    </main>
+  </div>
+
+  <app-footer></app-footer>
+</div>

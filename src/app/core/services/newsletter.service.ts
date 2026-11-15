@@ -114,10 +114,15 @@ export class NewsletterService {
       }
 
       // Escuchar cambios de sesión en Supabase Auth (ej. Login con Google)
-      this.supabase.auth.onAuthStateChange(async (_event, session) => {
+      this.supabase.auth.onAuthStateChange(async (event, session) => {
         if (session?.user?.email) {
           const authEmail = session.user.email.toLowerCase();
           const authId = session.user.id;
+          // Solo activar la notificación de ingreso exitoso si el usuario acaba de ingresar con Google
+          // por primera vez (evento SIGNED_IN tras OAuth flow). Nunca si ya tenía la sesión
+          // previamente iniciada (INITIAL_SESSION) o por refresco/navegación común.
+          const isFreshGoogleLogin =
+            event === 'SIGNED_IN' && this.consumeGoogleLoginPendingFlag();
 
           try {
             // 1. Asegurar registro en socios con tier waitlist y auth_user_id
@@ -146,7 +151,9 @@ export class NewsletterService {
               const mapped = mapDbRowToEntry(rpcPayload.socio);
               this._currentMember.set(mapped);
               this.persistCurrentMember(mapped);
-              this.setLoginSuccessFlag();
+              if (isFreshGoogleLogin) {
+                this.setLoginSuccessFlag();
+              }
               this.checkAndNavigateReturnUrl();
               return;
             }
@@ -167,7 +174,9 @@ export class NewsletterService {
               const mapped = mapDbRowToEntry(remoteSocio);
               this._currentMember.set(mapped);
               this.persistCurrentMember(mapped);
-              this.setLoginSuccessFlag();
+              if (isFreshGoogleLogin) {
+                this.setLoginSuccessFlag();
+              }
               this.checkAndNavigateReturnUrl();
             }
           } catch {
@@ -257,6 +266,41 @@ export class NewsletterService {
           return true;
         }
       }
+    }
+    return false;
+  }
+
+  private static readonly GOOGLE_LOGIN_PENDING_KEY = 'experiencias_google_login_pending';
+
+  markGoogleLoginPending(): void {
+    if (typeof window === 'undefined') return;
+    try {
+      sessionStorage.setItem(NewsletterService.GOOGLE_LOGIN_PENDING_KEY, 'true');
+    } catch {
+      // ignore
+    }
+  }
+
+  private consumeGoogleLoginPendingFlag(): boolean {
+    if (typeof window === 'undefined') return false;
+    try {
+      const isPending =
+        sessionStorage.getItem(NewsletterService.GOOGLE_LOGIN_PENDING_KEY) === 'true';
+      if (isPending) {
+        sessionStorage.removeItem(NewsletterService.GOOGLE_LOGIN_PENDING_KEY);
+        return true;
+      }
+      const hash = window.location.hash || '';
+      const search = window.location.search || '';
+      if (hash.includes('access_token=') || search.includes('code=')) {
+        const callbackProcessedKey = 'experiencias_oauth_processed';
+        if (!sessionStorage.getItem(callbackProcessedKey)) {
+          sessionStorage.setItem(callbackProcessedKey, 'true');
+          return true;
+        }
+      }
+    } catch {
+      // ignore
     }
     return false;
   }
@@ -1049,6 +1093,7 @@ export class NewsletterService {
   }
 
   async signInWithGoogle(redirectTo?: string): Promise<{ success: boolean; message: string }> {
+    this.markGoogleLoginPending();
     if (typeof window !== 'undefined' && redirectTo) {
       try {
         const parsed = new URL(redirectTo, window.location.origin);
@@ -1335,6 +1380,8 @@ export class NewsletterService {
     this._currentMember.set(null);
     try {
       localStorage.removeItem(SUBSCRIBED_KEY);
+      sessionStorage.removeItem(NewsletterService.GOOGLE_LOGIN_PENDING_KEY);
+      sessionStorage.removeItem('experiencias_oauth_processed');
     } catch {
       /* ignore */
     }

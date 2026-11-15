@@ -39,8 +39,8 @@ export class ProvidersComponent implements OnInit {
 
   readonly breadcrumbs: BreadcrumbItem[] = [
     { label: 'Inicio', url: '/' },
-    { label: 'Experiencias', url: '/experiencias' },
-    { label: 'Prestadores & Guías' },
+    { label: 'Prestadores', url: '/prestadores' },
+    { label: 'Prestadores Emergentes' },
   ];
 
   // Menús de navegación idénticos a los de /perfil y /
@@ -144,7 +144,7 @@ export class ProvidersComponent implements OnInit {
 
   async linkGoogleAccount(): Promise<void> {
     this.authError.set(null);
-    const currentPath = '/prestadores';
+    const currentPath = '/prestadores/emergentes';
     this.newsletter.saveAuthReturnUrl(currentPath);
     const redirectTo =
       typeof window !== 'undefined'

@@ -86,6 +86,7 @@ export const KAYAK_DEFAULT_EXPERIENCE: Experience = {
   durationDays: 1,
   durationLabel: '4 Horas (Media Jornada)',
   altitudeMeters: 850,
+  bestSeason: 'Octubre a Mayo (Primavera / Verano)',
   priceArs: 65000,
   priceUsd: 70,
   maxSpotsPerGroup: 12,
@@ -167,6 +168,7 @@ export const POMEZ_DEFAULT_EXPERIENCE: Experience = {
   durationDays: 1,
   durationLabel: 'Día completo (10 h)',
   altitudeMeters: 3300,
+  bestSeason: 'Todo el año',
   priceArs: 145000,
   priceUsd: 155,
   maxSpotsPerGroup: 8,
@@ -196,9 +198,10 @@ export const POMEZ_DEFAULT_EXPERIENCE: Experience = {
   isExclusiveClub: true,
   isLocked: false,
   detailRoute: '/experiencias/campo-de-piedra-pomez',
-  providerEmail: 'vegvarel@gmail.com',
-  providerName: 'Catamarca Expediciones & Trekking',
-  providerSlug: 'catamarca-expediciones',
+  providerEmail: 'admin@experiencias.club',
+  providerName: 'Club de Experiencias',
+  providerSlug: 'club-de-experiencias',
+  isClubExperience: true,
 };
 
 export const SEISMILES_ALBUM_PHOTOS: ExperienceAlbumPhoto[] = [
@@ -245,6 +248,7 @@ export const SEISMILES_DEFAULT_EXPERIENCE: Experience = {
   durationDays: 1,
   durationLabel: 'Día completo (9 h)',
   altitudeMeters: 4100,
+  bestSeason: 'Noviembre a Abril',
   priceArs: 160000,
   priceUsd: 170,
   maxSpotsPerGroup: 10,
@@ -274,9 +278,10 @@ export const SEISMILES_DEFAULT_EXPERIENCE: Experience = {
   isExclusiveClub: true,
   isLocked: false,
   detailRoute: '/experiencias/ruta-de-los-seismiles',
-  providerEmail: 'vegvarel@gmail.com',
-  providerName: 'Catamarca Expediciones & Trekking',
-  providerSlug: 'catamarca-expediciones',
+  providerEmail: 'admin@experiencias.club',
+  providerName: 'Club de Experiencias',
+  providerSlug: 'club-de-experiencias',
+  isClubExperience: true,
 };
 
 export const SEEDED_REMOVED_EXPERIENCE_ID = 'req-sunset-las-pirquitas';

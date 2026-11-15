@@ -29,10 +29,19 @@ export function socialUrlValidator(control: AbstractControl): ValidationErrors |
   return parseSocialUrl(value) ? null : { socialUrl: true };
 }
 
-/** Extrae el usuario de la URL (ej. https://instagram.com/foo -> @foo). */
+/** Extrae el usuario de la URL (ej. https://instagram.com/foo -> Instagram: @foo). */
 export function getSocialHandle(raw: string | undefined | null): string {
   const url = parseSocialUrl(raw);
-  if (!url) return (raw || '').trim();
+  if (!url) {
+    const clean = (raw || '').trim();
+    if (clean.toLowerCase() === '@share' || clean.toLowerCase() === 'share') {
+      return 'Red Social Secundaria';
+    }
+    if (clean.startsWith('@')) {
+      return `Instagram: ${clean}`;
+    }
+    return clean;
+  }
   const segment = url.pathname.split('/').filter(Boolean)[0];
   if (segment && !/\.php$/i.test(segment)) {
     let decoded = segment;
@@ -41,7 +50,15 @@ export function getSocialHandle(raw: string | undefined | null): string {
     } catch {
       // se conserva el segmento sin decodificar
     }
-    return `@${decoded.replace(/^@/, '')}`;
+    const clean = decoded.replace(/^@/, '');
+    if (clean.toLowerCase() === 'share') {
+      return 'Red Social Secundaria';
+    }
+    const isInstagram = url.hostname.includes('instagram.com');
+    if (isInstagram) {
+      return `Instagram: @${clean}`;
+    }
+    return `@${clean}`;
   }
   return url.hostname.replace(/^www\./i, '');
 }

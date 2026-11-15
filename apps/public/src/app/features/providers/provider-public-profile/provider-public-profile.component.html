@@ -7,182 +7,229 @@
 
     <main class="provider-main-container">
       @if (loading()) {
-        <div class="loading-state-card">
-          <div class="loading-spinner"></div>
-          <p class="loading-text">Cargando perfil del prestador...</p>
-        </div>
-      } @else if (notFound() || !provider()) {
-        <div class="not-found-card">
-          <h1 class="card-heading">Prestador no encontrado</h1>
-          <p class="card-subheading">
-            El perfil que buscás no existe o ha sido modificado.
-          </p>
-          <div class="actions-row">
-            <a routerLink="/prestadores" class="btn-primary">Convertirme en Prestador</a>
-            <a routerLink="/experiencias" class="btn-primary">Explorar Catálogo de Experiencias</a>
-          </div>
-        </div>
-      } @else {
-        @let p = provider()!;
-
-        <!-- Header Hero con Portada y Avatar -->
-        <article class="provider-hero-card">
-          <div class="cover-image-container">
-            <img
-              [src]="p.coverImage || '/assets/images/laguna_blanca.jpg'"
-              [alt]="p.agency || p.name"
-              class="cover-image"
-            />
-            <div class="cover-gradient-overlay"></div>
-          </div>
-
-          <div class="profile-header-content">
-            <div class="avatar-row">
-              <div class="avatar-wrap">
-                @if (p.avatar) {
-                  <img
-                    [src]="p.avatar"
-                    [alt]="p.name"
-                    class="avatar-img"
-                  />
-                } @else {
-                  <div class="avatar-placeholder" [attr.aria-label]="p.agency || p.name">
-                    {{ getInitials(p.agency || p.name) }}
-                  </div>
-                }
+      <div class="provider-loading-state" aria-busy="true" aria-live="polite">
+        <!-- Skeleton estructural con efecto Shimmer: Perfil -->
+        <div class="skeleton-profile-preview" aria-hidden="true">
+          <div class="skeleton-hero-card">
+            <div class="skeleton-cover shimmer-wave"></div>
+            <div class="skeleton-content">
+              <div class="skeleton-avatar-row">
+                <div class="skeleton-avatar shimmer-wave"></div>
+                <div class="skeleton-pill shimmer-wave"></div>
               </div>
-
-              <div class="badges-row">
-                <span class="verified-badge">
-                  Prestador Oficial Verificado
-                </span>
+              <div class="skeleton-lines">
+                <div class="skeleton-line skeleton-title shimmer-wave"></div>
+                <div class="skeleton-line skeleton-sub shimmer-wave"></div>
               </div>
             </div>
+          </div>
+        </div>
 
-            <div class="provider-identity">
-              <span class="section-kicker">FICHA DE PRESTADOR & AGENCIA</span>
-              <h1 class="provider-agency-title">{{ p.agency || p.name }}</h1>
-              @if (p.agency && p.name && p.agency !== p.name) {
-                <p class="operator-subtitle">
-                  <span class="operator-label">Titular responsable:</span>
-                  <strong class="operator-name">{{ p.name }}</strong>
-                </p>
-              }
-
-              @if (p.bio) {
-                <p class="provider-bio-text">{{ p.bio }}</p>
-              } @else {
-                <p class="provider-bio-text">
-                  Prestador oficial habilitado por el Club de Experiencias. Brinda salidas guiadas con guías matriculados, seguros al día y los más altos estándares de calidad y sustentabilidad andina.
-                </p>
-              }
+        <!-- Skeleton estructural con efecto Shimmer: Experiencias del Prestador -->
+        <div class="skeleton-experiences-preview" aria-hidden="true">
+          <div class="skeleton-experiences-section">
+            <div class="skeleton-title-wrap">
+              <div class="skeleton-line skeleton-kicker shimmer-wave"></div>
+              <div class="skeleton-line skeleton-heading shimmer-wave"></div>
             </div>
 
-            <!-- Botones de Acción / Contacto -->
-            <div class="contact-actions-bar">
-              @if (cleanWhatsApp(p.phone)) {
-                <a
-                  [href]="getWhatsAppUrl(p)"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="action-pill action-pill-wa"
-                  title="Contactar al prestador por WhatsApp"
-                >
-                  <span>Contactar por WhatsApp</span>
-                </a>
-              }
-
-              @if (p.website) {
-                <a
-                  [href]="formatWebsiteUrl(p.website)"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="action-pill"
-                  title="Visitar sitio web oficial"
-                >
-                  <span>Sitio Web Oficial</span>
-                </a>
-              }
-
-              @for (social of [p.socialMedia, p.socialMediaSecondary]; track $index) {
-                @if (social) {
-                  <a
-                    [href]="formatSocialUrl(social)"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="action-pill"
-                    [title]="'Abrir perfil ' + socialHandle(social) + ' en otra pestaña'"
-                  >
-                    <span>{{ socialHandle(social) }}</span>
-                  </a>
-                }
-              }
-            </div>
-          </div>
-        </article>
-
-        <!-- Experiencias de este Prestador -->
-        <section class="provider-experiences-section">
-          <div class="section-title-wrap">
-            <span class="section-kicker">CATÁLOGO EXCLUSIVO</span>
-            <h2 class="card-heading">Experiencias de {{ p.agency || p.name }}</h2>
-          </div>
-
-          @if (providerExperiences().length > 0) {
-            <div class="experiences-catalog-grid">
-              @for (exp of providerExperiences(); track exp.id) {
-                <div class="exp-card">
-                  <div class="exp-media">
-                    <img [src]="exp.coverImage" [alt]="exp.title" class="exp-img" />
-                    <span class="region-badge">{{ exp.region }}</span>
-                  </div>
-
-                  <div class="exp-body">
-                    <h3 class="exp-card-title">{{ exp.title }}</h3>
-                    <p class="exp-card-tagline">{{ exp.tagline }}</p>
-
-                    <div class="exp-specs-line">
-                      <span>{{ exp.durationLabel }}</span>
-                      <span>{{ exp.difficulty }}</span>
-                      <span>Hasta {{ exp.maxSpotsPerGroup }} socios</span>
-                    </div>
-
-                    <div class="exp-card-footer">
-                      <div class="price-wrap">
-                        <span class="price-val">{{ exp.priceArs | ars }}</span>
-                        @if (exp.priceUsd) {
-                          <span class="price-usd">o ${{ exp.priceUsd }} USD</span>
-                        }
-                      </div>
-
-                      <a
-                        [routerLink]="exp.detailRoute || ['/experiencias', exp.slug]"
-                        class="btn-exp-cta"
-                      >
-                        <span>Ver Experiencia</span>
-                      </a>
-                    </div>
+            <div class="skeleton-experiences-grid">
+              <div class="skeleton-exp-card">
+                <div class="skeleton-exp-media shimmer-wave"></div>
+                <div class="skeleton-exp-body">
+                  <div class="skeleton-line skeleton-exp-title shimmer-wave"></div>
+                  <div class="skeleton-line skeleton-exp-desc shimmer-wave"></div>
+                  <div class="skeleton-line skeleton-exp-specs shimmer-wave"></div>
+                  <div class="skeleton-exp-footer">
+                    <div class="skeleton-line skeleton-exp-price shimmer-wave"></div>
+                    <div class="skeleton-line skeleton-exp-btn shimmer-wave"></div>
                   </div>
                 </div>
+              </div>
+              <div class="skeleton-exp-card">
+                <div class="skeleton-exp-media shimmer-wave"></div>
+                <div class="skeleton-exp-body">
+                  <div class="skeleton-line skeleton-exp-title shimmer-wave"></div>
+                  <div class="skeleton-line skeleton-exp-desc shimmer-wave"></div>
+                  <div class="skeleton-line skeleton-exp-specs shimmer-wave"></div>
+                  <div class="skeleton-exp-footer">
+                    <div class="skeleton-line skeleton-exp-price shimmer-wave"></div>
+                    <div class="skeleton-line skeleton-exp-btn shimmer-wave"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="skeleton-exp-card">
+                <div class="skeleton-exp-media shimmer-wave"></div>
+                <div class="skeleton-exp-body">
+                  <div class="skeleton-line skeleton-exp-title shimmer-wave"></div>
+                  <div class="skeleton-line skeleton-exp-desc shimmer-wave"></div>
+                  <div class="skeleton-line skeleton-exp-specs shimmer-wave"></div>
+                  <div class="skeleton-exp-footer">
+                    <div class="skeleton-line skeleton-exp-price shimmer-wave"></div>
+                    <div class="skeleton-line skeleton-exp-btn shimmer-wave"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      } @else if (notFound() || !provider()) {
+      <div class="not-found-card">
+        <h1 class="card-heading">Prestador no encontrado</h1>
+        <p class="card-subheading">
+          El perfil que buscás no existe o ha sido modificado.
+        </p>
+        <div class="actions-row">
+          <a routerLink="/prestadores/emergentes" class="btn-primary">Convertirme en
+            Prestador</a>
+          <a routerLink="/experiencias" class="btn-primary">Explorar Catálogo de
+            Experiencias</a>
+        </div>
+      </div>
+      } @else {
+      @let p = provider()!;
+
+      <!-- Header Hero con Portada y Avatar -->
+      <article class="provider-hero-card">
+        <div class="cover-image-container">
+          <img [src]="p.coverImage || '/assets/images/laguna_blanca.jpg'" [alt]="p.agency || p.name"
+            class="cover-image" />
+          <div class="cover-gradient-overlay"></div>
+        </div>
+
+        <div class="profile-header-content">
+          <div class="avatar-row">
+            <div class="avatar-wrap">
+              @if (p.avatar) {
+              <img [src]="p.avatar" [alt]="p.name" class="avatar-img" />
+              } @else {
+              <div class="avatar-placeholder" [attr.aria-label]="p.agency || p.name">
+                {{ getInitials(p.agency || p.name) }}
+              </div>
               }
             </div>
-          } @else {
-            <div class="empty-exp-box">
-              <h3>Próximamente más experiencias</h3>
-              <p>Este prestador está preparando nuevas fechas y salidas para la temporada.</p>
-              <a routerLink="/experiencias" class="btn-primary" style="margin-top: 1rem; display: inline-flex;">
-                Ver Todas las Experiencias del Club
-              </a>
-            </div>
-          }
-        </section>
 
-        <!-- Ad Sumate al Club de Experiencias -->
-        <app-founder-ad />
+            <div class="badges-row">
+              <span class="verified-badge">
+                Prestador Oficial Verificado
+              </span>
+            </div>
+          </div>
+
+          <div class="provider-identity">
+            <span class="section-kicker">FICHA DE PRESTADOR & AGENCIA</span>
+            <h1 class="provider-agency-title">{{ p.agency || p.name }}</h1>
+            @if (p.agency && p.name && p.agency !== p.name) {
+            <p class="operator-subtitle">
+              <span class="operator-label">Titular responsable:</span>
+              <strong class="operator-name">{{ p.name }}</strong>
+            </p>
+            }
+
+            @if (p.bio) {
+            <p class="provider-bio-text">{{ p.bio }}</p>
+            } @else {
+            <p class="provider-bio-text">
+              Prestador oficial habilitado por el Club de Experiencias. Brinda salidas guiadas con guías matriculados,
+              seguros al día y los más altos estándares de calidad y sustentabilidad andina.
+            </p>
+            }
+          </div>
+
+          <!-- Botones de Acción / Contacto -->
+          <div class="contact-actions-bar">
+            @if (cleanWhatsApp(p.phone)) {
+            <a [href]="getWhatsAppUrl(p)" target="_blank" rel="noopener noreferrer" class="action-pill action-pill-wa"
+              title="Contactar al prestador por WhatsApp">
+              <span>Contactar por WhatsApp</span>
+            </a>
+            }
+
+            @if (p.website) {
+            <a [href]="formatWebsiteUrl(p.website)" target="_blank" rel="noopener noreferrer" class="action-pill"
+              title="Visitar sitio web oficial">
+              <span>Sitio Web Oficial</span>
+            </a>
+            }
+
+            @for (social of [p.socialMedia, p.socialMediaSecondary]; track $index) {
+            @if (social) {
+            <a [href]="formatSocialUrl(social)" target="_blank" rel="noopener noreferrer" class="action-pill"
+              [title]="'Abrir perfil ' + socialHandle(social, $index === 1) + ' en otra pestaña'">
+              <span>{{ socialHandle(social, $index === 1) }}</span>
+            </a>
+            }
+            }
+          </div>
+        </div>
+      </article>
+
+      <!-- Experiencias de este Prestador -->
+      <section class="provider-experiences-section">
+        <div class="section-title-wrap">
+          <span class="section-kicker">CATÁLOGO EXCLUSIVO</span>
+          <h2 class="card-heading">Experiencias de {{ p.agency || p.name }}</h2>
+        </div>
+
+        @if (providerExperiences().length > 0) {
+        <div class="experiences-catalog-grid">
+          @for (exp of providerExperiences(); track exp.id) {
+          <div class="exp-card">
+            <div class="exp-media">
+              <img [src]="exp.coverImage" [alt]="exp.title" class="exp-img" />
+              <span class="region-badge exp-region-tag"
+                style="position: absolute !important; top: 12px !important; bottom: auto !important; left: 12px !important; right: auto !important; background: #ffd42a !important; color: #0b1120 !important; font-weight: 700 !important; border: 1px solid #ffd42a !important; z-index: 5 !important;">{{
+                exp.region }}</span>
+            </div>
+
+            <div class="exp-body">
+              <h3 class="exp-card-title">
+                <a [routerLink]="exp.detailRoute || ['/experiencias', exp.slug]" class="exp-title-link">
+                  {{ exp.title }}
+                </a>
+              </h3>
+              <p class="exp-card-tagline">{{ exp.tagline }}</p>
+
+              <div class="exp-specs-line">
+                <span>{{ exp.durationLabel }}</span>
+                <span>{{ exp.difficulty }}</span>
+                <span>Hasta {{ exp.maxSpotsPerGroup }} socios</span>
+              </div>
+
+              <div class="exp-card-footer">
+                <div class="price-wrap">
+                  <span class="price-val">{{ exp.priceArs | ars }}</span>
+                  @if (exp.priceUsd) {
+                  <span class="price-usd">o ${{ exp.priceUsd }} USD</span>
+                  }
+                </div>
+
+                <a [routerLink]="exp.detailRoute || ['/experiencias', exp.slug]" class="btn-exp-cta">
+                  <span>Ver Experiencia</span>
+                </a>
+              </div>
+            </div>
+          </div>
+          }
+        </div>
+        } @else {
+        <div class="empty-exp-box">
+          <h3>Próximamente más experiencias</h3>
+          <p>Este prestador está preparando nuevas fechas y salidas para la temporada.</p>
+          <a routerLink="/experiencias" class="btn-primary"
+            style="margin-top: 1rem; display: inline-flex;">
+            Ver Todas las Experiencias del Club
+          </a>
+        </div>
+        }
+      </section>
+
+      <!-- Ad Sumate al Club de Experiencias -->
+      <app-founder-ad />
       }
     </main>
   </div>
 
   <app-footer></app-footer>
 </div>
-

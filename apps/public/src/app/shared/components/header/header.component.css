@@ -490,18 +490,6 @@ mat-icon.btn-icon {
   }
 }
 
-.prestadores-nav-btn {
-  color: #1a4fa0 !important;
-  font-weight: 800 !important;
-}
-
-.prestadores-nav-btn:hover {
-  color: #0b2559 !important;
-}
-
-.prestadores-nav-btn::after {
-  background: #80b3ff !important;
-}
 
 /* ==========================================================================
    Modal de Confirmación de Cerrar Sesión
