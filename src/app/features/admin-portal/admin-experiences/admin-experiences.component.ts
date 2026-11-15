@@ -3276,20 +3276,20 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         white-space: nowrap;
         background: rgba(255, 95, 0, 0.2);
         border: 1px solid rgba(255, 95, 0, 0.45);
-        color: #ffffff;
+        color: #ffffff !important;
       }
 
       .btn-upload-file span {
-        color: #ffffff;
+        color: #ffffff !important;
       }
 
       .btn-upload-file:hover {
         background: rgba(255, 95, 0, 0.35);
-        color: #ffffff;
+        color: #ffffff !important;
       }
 
       .btn-upload-file:hover span {
-        color: #ffffff;
+        color: #ffffff !important;
       }
 
       .btn-upload-file.is-uploading {
@@ -3301,21 +3301,21 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         white-space: nowrap;
         background: transparent;
         border: 1px solid rgba(255, 95, 95, 0.4);
-        color: #ffffff;
+        color: #ffffff !important;
       }
 
       .btn-remove-media span {
-        color: #ffffff;
+        color: #ffffff !important;
       }
 
       .btn-remove-media:hover {
         background: rgba(255, 95, 95, 0.15);
-        color: #ffffff;
+        color: #ffffff !important;
         border-color: #ff5f5f;
       }
 
       .btn-remove-media:hover span {
-        color: #ffffff;
+        color: #ffffff !important;
       }
 
       .media-preview-box {
