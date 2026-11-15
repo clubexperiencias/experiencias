@@ -429,7 +429,7 @@ export class ProviderStoreService {
           (existing?.agency && existing?.agency !== 'Prestador EXPERIENCIAS.CLUB'
             ? existing.agency
             : '') ||
-          'Prestador emergente del Club de Experiencias',
+          'Prestador emergente del Club',
         slug: resolvedSlug,
         bio: access.bio || existing?.bio || '',
         phone: access.phone || existing?.phone || '',
@@ -628,7 +628,7 @@ export class ProviderStoreService {
         agency:
           (details?.agency && details.agency !== 'Prestador EXPERIENCIAS.CLUB')
             ? details.agency
-            : 'Prestador emergente del Club de Experiencias',
+            : 'Prestador emergente del Club',
         slug:
           details?.slug ||
           slugify(details?.agency || details?.name || normalized.split('@')[0]),
@@ -2945,7 +2945,7 @@ export class ProviderStoreService {
     }
     const updatedAgency =
       p.agency === 'Prestador EXPERIENCIAS.CLUB'
-        ? 'Prestador emergente del Club de Experiencias'
+        ? 'Prestador emergente del Club'
         : p.agency;
     if (
       p.cbuAlias === 'EXPERIENCIAS.CLUB.MP' ||

@@ -51,8 +51,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                 <h1 class="card-heading">Editar Experiencia: {{ editTitle() }}</h1>
               </div>
               <p class="card-subheading">
-                Ruta web oficial: <code>/experiencias/{{ editSlug() }}</code>.
-                Como administrador, podés actualizar el slug de publicación oficial, tarifas, cupos y contenidos de la ficha.
+                Como administrador, podés actualizar el slug de publicación oficial, tarifas, cupos y contenidos de la experiencia.
               </p>
             </div>
           </div>
@@ -79,7 +78,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
           <!-- Contenido de la Ficha (Estilo Web Pública) -->
           <div class="fiche-body">
             <!-- 1. HERO CARD: Título, Kicker, Bajada y Badges Oficiales -->
-            <div class="fiche-section-card hero-fiche-card">
+            <div class="fiche-section-card hero-fiche-card" [class.is-club-card]="isClub(exp)">
               <div class="fiche-hero-header">
                 <div class="hero-kicker-row">
                   <span class="hero-kicker">{{ exp.kicker || 'EXPEDICIÓN OFICIAL DEL CLUB' }}</span>
@@ -174,7 +173,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
             </div>
 
             <!-- 2. ARANCEL OFICIAL & SALIDAS PROGRAMADAS -->
-            <div class="fiche-section-card pricing-fiche-card">
+            <div class="fiche-section-card pricing-fiche-card" [class.is-club-card]="isClub(exp)">
               <div class="pricing-card-flex">
                 <div class="price-data">
                   <span class="price-title">ARANCEL OFICIAL DE PUBLICACIÓN</span>
@@ -240,7 +239,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
             </div>
 
             <!-- 4. CRONOGRAMA E ITINERARIO DE LA JORNADA -->
-            <div class="fiche-section-card">
+            <div class="fiche-section-card" [class.is-club-card]="isClub(exp)">
               <div class="section-title-row">
                 <div>
                   <h3 class="fiche-card-title">Cronograma e Itinerario de la Jornada</h3>
@@ -279,7 +278,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
 
             <!-- 5. DETALLES DE LA EXPERIENCIA -->
             @if ((exp.included && exp.included.length > 0) || (exp.highlights && exp.highlights.length > 0)) {
-              <div class="fiche-section-card">
+              <div class="fiche-section-card" [class.is-club-card]="isClub(exp)">
                 <h3 class="fiche-card-title">Detalles de la Experiencia</h3>
                 <div class="simple-logistics-grid">
                   <!-- Servicios Incluidos -->
@@ -314,7 +313,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
             }
 
             <!-- 6. PUNTO DE ENCUENTRO & UBICACIÓN -->
-            <div class="fiche-section-card">
+            <div class="fiche-section-card" [class.is-club-card]="isClub(exp)">
               <h3 class="fiche-card-title">Logística & Punto de Encuentro</h3>
               <p class="meeting-point-desc">
                 {{ exp.meetingPoint || 'Lugar a coordinar con los exploradores inscriptos' }} ({{ exp.region }})
@@ -336,7 +335,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
 
             <!-- 7. ÁLBUM & GALERÍA DE FOTOS -->
             @if (exp.albumPhotos && exp.albumPhotos.length > 0) {
-              <div class="fiche-section-card">
+              <div class="fiche-section-card" [class.is-club-card]="isClub(exp)">
                 <div class="section-title-row">
                   <div>
                     <h3 class="fiche-card-title">Álbum Oficial</h3>
@@ -351,12 +350,14 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                     <div class="fiche-album-card" [class.is-featured-card]="photo.isFeatured" [class.is-cover-card]="photo.isCover">
                       <div class="thumb-wrap">
                         <img [src]="photo.url" [alt]="photo.caption || photo.title || 'Foto de álbum'" class="fiche-album-img" />
-                        @if (photo.isCover) {
-                          <span class="photo-badge badge-cover">Portada</span>
-                        }
-                        @if (photo.isFeatured) {
-                          <span class="photo-badge badge-featured">Destacada</span>
-                        }
+                        <div class="photo-badge-overlay">
+                          @if (photo.isCover) {
+                            <span class="photo-badge badge-cover">Portada</span>
+                          }
+                          @if (photo.isFeatured) {
+                            <span class="photo-badge badge-featured">Destacada</span>
+                          }
+                        </div>
                       </div>
                       @if (photo.caption || photo.title) {
                         <span class="fiche-album-caption">{{ photo.caption || photo.title }}</span>
@@ -368,10 +369,18 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
             }
 
             <!-- 8. PIE DE ACCIONES: Volver, Pausar/Activar, Editar -->
-            <div class="fiche-bottom-cta-bar">
+            <div class="fiche-bottom-cta-bar" [class.is-club-card]="isClub(exp)">
               <div class="cta-bar-left">
                 <span class="cta-exp-title">{{ exp.title }}</span>
-                <span class="cta-exp-route">experiencias.club/experiencias/{{ exp.slug }}</span>
+                @if (exp.slug) {
+                  <a
+                    [href]="getPublicExperienceUrl(exp)"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="cta-exp-route"
+                    title="Abrir página pública de la experiencia en una nueva pestaña"
+                  >experiencias.club/experiencias/{{ exp.slug }}</a>
+                }
               </div>
               <div class="cta-bar-right">
                 <a [routerLink]="getEditRoute(exp)" class="btn-action-edit-orange">
@@ -572,21 +581,21 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
 
                   <!-- Columna Cupo -->
                   <td class="col-cupo">
-                    <span class="cupo-badge">{{ exp.maxSpotsPerGroup }} pers.</span>
+                    <span class="cupo-badge">{{ exp.maxSpotsPerGroup }} {{ exp.maxSpotsPerGroup === 1 ? 'socio' : 'socios' }}</span>
                   </td>
 
                   <!-- Columna Estado -->
                   <td>
                     @if (exp.status === 'publicada') {
-                      <span class="status-pill is-published">Publicada</span>
+                      <span class="status-pill is-published">PUBLICADA</span>
                     } @else if (exp.status === 'pendiente') {
-                      <span class="status-pill is-pending">Postulación</span>
+                      <span class="status-pill is-pending">POSTULACIÓN</span>
                     } @else if (exp.status === 'oculta') {
-                      <span class="status-pill is-hidden">Pausada</span>
+                      <span class="status-pill is-hidden">PAUSADA</span>
                     } @else if (exp.status === 'rechazada') {
-                      <span class="status-pill is-rejected">Rechazada</span>
+                      <span class="status-pill is-rejected">RECHAZADA</span>
                     } @else {
-                      <span class="status-pill is-draft">Borrador</span>
+                      <span class="status-pill is-draft">BORRADOR</span>
                     }
                   </td>
 
@@ -753,37 +762,44 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         <!-- SECCIÓN 1: Identificación y Rutas -->
         <div class="form-section-card">
           <h4 class="form-section-title">1. Identificación & Ruta Pública</h4>
-          <div class="form-field">
-            <label>Ruta / Slug oficial (URL final en la web pública): <span class="req-star">*</span></label>
-            <div class="slug-input-wrap">
-              <span class="slug-prefix">https://experiencias.club/experiencias/</span>
+          <div class="form-grid-2">
+            <!-- Título principal a la izquierda -->
+            <div class="form-field">
+              <div class="field-label-row">
+                <label>Título principal de la Experiencia: <span class="req-star">*</span></label>
+                <span class="char-counter">{{ editTitle().length }}/70</span>
+              </div>
               <input
                 type="text"
-                class="form-input slug-field"
-                [(ngModel)]="editSlug"
-                placeholder="ej: kayak, trekking-el-jumeal"
+                class="form-input"
+                [(ngModel)]="editTitle"
+                placeholder="Ej: Travesía en Kayak & Sunset en el Dique El Jumeal"
                 maxlength="70"
                 required
               />
             </div>
-            <span class="field-hint">
-              Control exclusivo del administrador para actualizar la ruta web pública oficial de la experiencia.
-            </span>
-          </div>
 
-          <div class="form-field">
-            <div class="field-label-row">
-              <label>Título principal de la Experiencia: <span class="req-star">*</span></label>
-              <span class="char-counter">{{ editTitle().length }}/70</span>
+            <!-- Slug oficial a la derecha -->
+            <div class="form-field">
+              <div class="field-label-row">
+                <label>Ruta / Slug oficial (URL final en la web pública): <span class="req-star">*</span></label>
+                <span class="char-counter">{{ editSlug().length }}/40</span>
+              </div>
+              <div class="slug-input-wrap">
+                <span class="slug-prefix">https://experiencias.club/experiencias/</span>
+                <input
+                  type="text"
+                  class="form-input slug-field"
+                  [(ngModel)]="editSlug"
+                  placeholder="ej: kayak"
+                  maxlength="40"
+                  required
+                />
+              </div>
+              <span class="field-hint">
+                Control exclusivo del administrador para actualizar la ruta web pública oficial de la experiencia.
+              </span>
             </div>
-            <input
-              type="text"
-              class="form-input"
-              [(ngModel)]="editTitle"
-              placeholder="Ej: Travesía en Kayak & Sunset en el Dique El Jumeal"
-              maxlength="70"
-              required
-            />
           </div>
 
           <div class="form-field">
@@ -856,7 +872,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                 maxlength="160"
                 required
               />
-              <span class="field-hint">Lugar o referencia física de encuentro para los exploradores.</span>
+              <span class="field-hint">Lugar o referencia física de encuentro para los socios.</span>
             </div>
 
             <div class="form-field">
@@ -953,7 +969,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                 max="200"
                 required
               />
-              <span class="field-hint">Capacidad de personas por fecha.</span>
+              <span class="field-hint">Capacidad de socios por fecha.</span>
             </div>
 
             <div class="form-field field-dates-col">
@@ -979,8 +995,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
               </span>
             } @else {
               <span class="provider-external-chip">
-                <mat-icon>business</mat-icon>
-                Prestador Externo
+                Prestador Emergente
               </span>
             }
           </div>
@@ -995,15 +1010,6 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                 <a [routerLink]="getConfigRoute()" class="btn-text-edit-club">
                   Perfil del Club en Configuración &rarr;
                 </a>
-              </div>
-            </div>
-          } @else {
-            <div class="club-locked-notice external-notice">
-              <mat-icon class="locked-info-icon">info</mat-icon>
-              <div class="notice-text">
-                <span>
-                  Prestador externo asignado. Los campos de <strong>Teléfono, CBU, CUIT y Banco</strong> son obligatorios para la liquidación de cobros y contacto con exploradores.
-                </span>
               </div>
             </div>
           }
@@ -1165,7 +1171,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
               <div>
                 <label class="album-section-label">Álbum Oficial de Fotos</label>
                 <span class="field-hint">
-                  Configurá las 2 fotos destacadas y hasta 9 fotos para la galería (máximo 12 fotos totales).
+                  Configurá hasta 2 fotos destacadas y hasta 9 fotos para la galería.
                 </span>
                 <div class="album-counters-bar">
                   <span class="album-counter-pill is-featured-pill">
@@ -1212,12 +1218,8 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                   <div
                     class="album-photo-item"
                     [class.is-featured-item]="photo.isFeatured"
-                    [class.is-cover-item]="photo.isCover"
                   >
                     <div class="photo-badge-overlay">
-                      @if (photo.isCover) {
-                        <span class="photo-badge badge-cover">Portada</span>
-                      }
                       @if (photo.isFeatured) {
                         <span class="photo-badge badge-featured">Destacada</span>
                       }
@@ -1249,15 +1251,6 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                         [title]="photo.isFeatured ? 'Quitar condición de destacada' : 'Fijar como foto destacada (máx 2)'"
                       >
                         {{ photo.isFeatured ? 'Destacada' : 'Destacar' }}
-                      </button>
-                      <button
-                        type="button"
-                        class="btn-photo-action btn-action-cover"
-                        [class.is-active-cover]="photo.isCover"
-                        (click)="setCoverPhoto(idx)"
-                        title="Definir como foto de portada principal"
-                      >
-                        {{ photo.isCover ? 'Portada' : 'Hacer Portada' }}
                       </button>
                     </div>
                   </div>
@@ -1302,15 +1295,28 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         <!-- SECCIÓN 7: Estado de Publicación -->
         <div class="form-section-card">
           <h4 class="form-section-title">7. Estado de Publicación</h4>
-          <div class="form-field">
-            <label>Estado en experiencias.club: <span class="req-star">*</span></label>
-            <select class="form-select" [(ngModel)]="editStatus" required>
-              <option value="publicada">Publicada (Visible a todos los exploradores)</option>
-              <option value="oculta">Oculta / Pausada (Dada de baja temporalmente)</option>
-              <option value="borrador">Borrador (En edición interna)</option>
-              <option value="pendiente">Pendiente (Propuesta / Postulación a evaluar)</option>
-              <option value="rechazada">Rechazada (No aprobada)</option>
-            </select>
+          <div [class.form-grid-2]="editStatus() === 'publicada'">
+            <div class="form-field">
+              <label>Estado en experiencias.club: <span class="req-star">*</span></label>
+              <select class="form-select" [(ngModel)]="editStatus" required>
+                <option value="publicada">Publicada (Visible a todos los exploradores)</option>
+                <option value="oculta">Oculta / Pausada (Dada de baja temporalmente)</option>
+                <option value="borrador">Borrador (En edición interna)</option>
+                <option value="pendiente">Pendiente (Propuesta / Postulación a evaluar)</option>
+                <option value="rechazada">Rechazada (No aprobada)</option>
+              </select>
+            </div>
+
+            @if (editStatus() === 'publicada') {
+              <div class="form-field">
+                <label>Ubicación en experiencias.club/experiencias: <span class="req-star">*</span></label>
+                <select class="form-select" [(ngModel)]="editDisplayLocation">
+                  <option value="destacada">Destacada (Carrusel superior)</option>
+                  <option value="catalogo">Abajo de destacadas (Box siguiente)</option>
+                  <option value="no_listada">No listada (Solo con enlace directo)</option>
+                </select>
+              </div>
+            }
           </div>
         </div>
       </ng-template>
@@ -1565,9 +1571,11 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
       }
 
-      .fiche-section-card.is-club-card {
-        border-color: rgba(0, 204, 136, 0.35);
-        background: linear-gradient(180deg, rgba(18, 10, 5, 0.98) 0%, rgba(5, 25, 18, 0.7) 100%);
+      .fiche-section-card.is-club-card,
+      .pricing-fiche-card.is-club-card,
+      .fiche-bottom-cta-bar.is-club-card {
+        border-color: rgba(0, 204, 136, 0.35) !important;
+        background: linear-gradient(180deg, rgba(18, 10, 5, 0.98) 0%, rgba(5, 25, 18, 0.7) 100%) !important;
       }
 
       .hero-fiche-card {
@@ -2088,7 +2096,13 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
       .cta-exp-route {
         font-size: 0.78rem;
         color: rgba(255, 255, 255, 0.55);
-        font-family: var(--font-mono, monospace);
+        font-family: 'Geist', var(--font-sans), sans-serif;
+        text-decoration: none;
+        transition: color 0.2s ease;
+      }
+      .cta-exp-route:hover {
+        color: #ff5f00;
+        text-decoration: underline;
       }
 
       .cta-bar-right {
@@ -3262,12 +3276,20 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         white-space: nowrap;
         background: rgba(255, 95, 0, 0.2);
         border: 1px solid rgba(255, 95, 0, 0.45);
-        color: #ffaa00;
+        color: #ffffff !important;
+      }
+
+      .btn-upload-file span {
+        color: #ffffff !important;
       }
 
       .btn-upload-file:hover {
         background: rgba(255, 95, 0, 0.35);
-        color: #ffffff;
+        color: #ffffff !important;
+      }
+
+      .btn-upload-file:hover span {
+        color: #ffffff !important;
       }
 
       .btn-upload-file.is-uploading {
@@ -3279,13 +3301,21 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         white-space: nowrap;
         background: transparent;
         border: 1px solid rgba(255, 95, 95, 0.4);
-        color: #ff7777;
+        color: #ffffff !important;
+      }
+
+      .btn-remove-media span {
+        color: #ffffff !important;
       }
 
       .btn-remove-media:hover {
         background: rgba(255, 95, 95, 0.15);
-        color: #ff9999;
+        color: #ffffff !important;
         border-color: #ff5f5f;
+      }
+
+      .btn-remove-media:hover span {
+        color: #ffffff !important;
       }
 
       .media-preview-box {
@@ -3430,21 +3460,24 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
 
       .photo-badge-overlay {
         position: absolute;
-        top: 4px;
-        left: 4px;
+        top: 6px;
+        left: 6px;
         display: flex;
         flex-direction: column;
-        gap: 3px;
+        gap: 4px;
         z-index: 2;
       }
 
       .photo-badge {
-        padding: 2px 5px;
+        display: inline-block;
+        padding: 2.5px 6px;
         border-radius: 3px;
         font-size: 0.65rem;
-        font-weight: 700;
+        font-weight: 800;
         text-transform: uppercase;
-        letter-spacing: 0.3px;
+        letter-spacing: 0.04em;
+        line-height: 1;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
       }
 
       .photo-badge.badge-cover {
@@ -3618,11 +3651,14 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         font-weight: 700;
         border-right: 1px solid rgba(255, 95, 0, 0.35);
         white-space: nowrap;
+        flex-shrink: 0;
       }
 
       .slug-field {
         border: none !important;
         background: transparent !important;
+        flex: 1;
+        min-width: 0;
       }
 
       @media (max-width: 600px) {
@@ -4392,9 +4428,8 @@ export class AdminExperiencesComponent implements OnInit {
 
   readonly featuredPhotos = computed(() => this.editAlbumPhotos().filter((p) => p.isFeatured));
   readonly galleryPhotos = computed(() =>
-    this.editAlbumPhotos().filter((p) => !p.isFeatured && !p.isCover),
+    this.editAlbumPhotos().filter((p) => !p.isFeatured),
   );
-  readonly coverPhoto = computed(() => this.editAlbumPhotos().find((p) => p.isCover));
 
   isValidGoogleMapsUrl(url?: string): boolean {
     if (!url) return false;
@@ -4439,6 +4474,7 @@ export class AdminExperiencesComponent implements OnInit {
   readonly editHighlightsRaw = signal('');
   readonly editIncludedRaw = signal('');
   readonly editStatus = signal<'publicada' | 'oculta' | 'borrador' | 'pendiente' | 'rechazada'>('publicada');
+  readonly editDisplayLocation = signal<'destacada' | 'catalogo' | 'no_listada'>('destacada');
   readonly editProviderName = signal('');
   readonly editProviderPhone = signal('');
   readonly editProviderCbuAlias = signal('');
@@ -4490,12 +4526,16 @@ export class AdminExperiencesComponent implements OnInit {
     this.editIncludedRaw.set(resolvedIncluded);
 
     const rawAlbum = exp.albumPhotos || [];
-    const safeAlbum = rawAlbum.map((p) => ({
-      ...p,
-      url: p.url?.startsWith('blob:') ? '/assets/images/kayak-club-de-experiencias.jpg' : p.url,
-    }));
+    const safeAlbum = rawAlbum
+      .filter((p) => !p.isCover && p.url !== safeCover)
+      .map((p) => ({
+        ...p,
+        isCover: false,
+        url: p.url?.startsWith('blob:') ? '/assets/images/kayak-club-de-experiencias.jpg' : p.url,
+      }));
     this.editAlbumPhotos.set(safeAlbum);
     this.editStatus.set(exp.status || 'publicada');
+    this.editDisplayLocation.set(exp.displayLocation || 'destacada');
 
     const proposalCreatorName = (matchingProposal?.providerAgency || matchingProposal?.providerName || '').trim();
     const hasExternalProposalCreator =
@@ -4617,6 +4657,7 @@ export class AdminExperiencesComponent implements OnInit {
     this.editIncludedRaw.set('');
     this.editAlbumPhotos.set([]);
     this.editStatus.set('publicada');
+    this.editDisplayLocation.set('destacada');
     this.editProviderName.set('');
     this.editProviderPhone.set('');
     this.editProviderCbuAlias.set('');
@@ -4741,11 +4782,6 @@ export class AdminExperiencesComponent implements OnInit {
       return;
     }
 
-    if (photo.isCover) {
-      this.showToast('La foto de portada no puede ser destacada simultáneamente.');
-      return;
-    }
-
     if (this.featuredPhotos().length >= 2) {
       this.showToast('Ya tenés 2 fotos seleccionadas como destacadas. Desmarcá una primero.');
       return;
@@ -4755,29 +4791,6 @@ export class AdminExperiencesComponent implements OnInit {
       photos.map((p, i) => (i === index ? { ...p, isFeatured: true } : p)),
     );
     this.showToast('Foto marcada como destacada (máx 2).');
-  }
-
-  setCoverPhoto(index: number): void {
-    const photo = this.editAlbumPhotos()[index];
-    if (!photo) return;
-
-    const prevCover = this.coverPhoto();
-    const wouldIncreaseGallery = Boolean(prevCover && prevCover !== photo && photo.isFeatured);
-    if (wouldIncreaseGallery && this.galleryPhotos().length >= 9) {
-      this.showToast('No se puede asignar como portada: la foto anterior pasaría a la galería y se superaría el límite de 9 fotos.');
-      return;
-    }
-
-    this.editAlbumPhotos.update((photos) =>
-      photos.map((p, i) => {
-        if (i === index) {
-          return { ...p, isCover: true, isFeatured: false };
-        }
-        return { ...p, isCover: false };
-      }),
-    );
-    this.editCoverImage.set(photo.url);
-    this.showToast('Foto fijada como Portada Principal.');
   }
 
   updatePhotoCaption(index: number, caption: string): void {
@@ -4791,16 +4804,7 @@ export class AdminExperiencesComponent implements OnInit {
   }
 
   removeAlbumPhoto(index: number): void {
-    const photo = this.editAlbumPhotos()[index];
     this.editAlbumPhotos.update((photos) => photos.filter((_, i) => i !== index));
-    if (photo?.isCover) {
-      const remaining = this.editAlbumPhotos();
-      if (remaining.length > 0) {
-        this.setCoverPhoto(0);
-      } else {
-        this.editCoverImage.set('');
-      }
-    }
     this.showToast('Foto eliminada del álbum.');
   }
 
@@ -4830,6 +4834,11 @@ export class AdminExperiencesComponent implements OnInit {
 
     if (!slug) {
       this.showToast('La ruta o slug oficial no puede estar vacía.');
+      return;
+    }
+
+    if (slug.length > 40) {
+      this.showToast(`La ruta o slug oficial no puede superar los 40 caracteres (longitud actual: ${slug.length}).`);
       return;
     }
 
@@ -4995,14 +5004,14 @@ export class AdminExperiencesComponent implements OnInit {
     const resolvedProviderSlug = isClub
       ? 'club-de-experiencias'
       : (!isExpCreatorClub && currentExp?.providerSlug && currentExp.providerSlug !== 'club-de-experiencias' && currentExp.providerSlug !== 'club'
-          ? currentExp.providerSlug
-          : (fallbackSlug || ''));
+        ? currentExp.providerSlug
+        : (fallbackSlug || ''));
 
     const resolvedProviderEmail = isClub
       ? (club.email || 'admin@experiencias.club')
       : (!isExpCreatorClub && currentExp?.providerEmail && currentExp.providerEmail !== 'admin@experiencias.club' && currentExp.providerEmail !== 'hola@experiencias.club'
-          ? currentExp.providerEmail
-          : (matchingProposal?.providerEmail || ''));
+        ? currentExp.providerEmail
+        : (matchingProposal?.providerEmail || ''));
 
     const safeAlbumPhotos = this.editAlbumPhotos().map((p) => ({
       ...p,
@@ -5049,6 +5058,7 @@ export class AdminExperiencesComponent implements OnInit {
       included,
       notIncluded: highlights,
       status: this.editStatus(),
+      displayLocation: this.editStatus() === 'publicada' ? this.editDisplayLocation() : (this.editDisplayLocation() || 'destacada'),
       publicUrl: `https://experiencias.club/experiencias/${slug}`,
       detailRoute: `/experiencias/${slug}`,
     };

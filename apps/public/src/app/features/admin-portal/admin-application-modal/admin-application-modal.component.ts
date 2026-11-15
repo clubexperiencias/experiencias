@@ -337,7 +337,8 @@ import {
         border-radius: 2px;
         font-size: 0.72rem;
         font-weight: 700;
-        text-transform: capitalize;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
       }
 
       .status-badge[data-status='pendiente'] {

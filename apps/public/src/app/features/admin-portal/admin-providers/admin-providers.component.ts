@@ -494,7 +494,13 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
             <div class="cta-bar-left">
               <span class="cta-prov-name">{{ prov.agency || prov.name }}</span>
               @if (prov.slug) {
-                <span class="cta-prov-route">experiencias.club/prestadores/{{ prov.slug }}</span>
+                <a
+                  [href]="getPublicProviderUrl(prov.slug)"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="cta-prov-route"
+                  title="Abrir perfil público del prestador en una nueva pestaña"
+                >experiencias.club/prestadores/{{ prov.slug }}</a>
               }
             </div>
             <div class="cta-bar-right">
@@ -530,7 +536,6 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
                     (click)="resendWelcomeEmail(prov)"
                     title="Enviar o reenviar correo de bienvenida con instrucciones de acceso al portal"
                   >
-                    <mat-icon>{{ sendingWelcomeEmails().has(prov.email) ? 'sync' : 'mark_email_read' }}</mat-icon>
                     <span>{{ sendingWelcomeEmails().has(prov.email) ? 'Enviando...' : 'Reenviar bienvenida' }}</span>
                   </button>
                 }
@@ -731,16 +736,16 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
                         <span class="status-pill" [attr.data-status]="item.status">
                           @switch (item.status) {
                             @case ('aprobado') {
-                              Aprobado
+                              APROBADO
                             }
                             @case ('rechazado') {
-                              Rechazado
+                              RECHAZADO
                             }
                             @case ('dado_de_baja') {
-                              Dado de baja
+                              DADO DE BAJA
                             }
                             @default {
-                              Pendiente
+                              PENDIENTE
                             }
                           }
                         </span>
@@ -764,15 +769,6 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
                             </a>
 
                             @if (item.rawProvider) {
-                              <button
-                                type="button"
-                                class="btn-resend-mail"
-                                [disabled]="sendingWelcomeEmails().has(item.email)"
-                                (click)="resendWelcomeEmail(item.rawProvider)"
-                                title="Reenviar correo de bienvenida con instrucciones de acceso al portal"
-                              >
-                                <span>{{ sendingWelcomeEmails().has(item.email) ? 'ENVIANDO...' : 'REPUBLICAR / MAIL' }}</span>
-                              </button>
                               <a
                                 [routerLink]="getEditRoute(item)"
                                 class="btn-edit-exp"
@@ -1448,17 +1444,20 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
       .btn-action-resend-welcome {
         display: inline-flex;
         align-items: center;
+        justify-content: center;
         gap: 0.4rem;
-        height: 34px;
-        padding: 0 1rem;
+        height: 42px;
+        min-height: 42px;
+        padding: 0 1.35rem;
         background: rgba(128, 179, 255, 0.15);
         border: 1px solid rgba(128, 179, 255, 0.5);
         color: #80b3ff;
-        border-radius: 3px;
-        font-size: 0.76rem;
-        font-weight: 700;
+        border-radius: 4px;
+        font-size: 0.82rem;
+        font-weight: 800;
         letter-spacing: 0.04em;
         text-transform: uppercase;
+        box-sizing: border-box;
         cursor: pointer;
         transition: all 0.2s ease;
       }
@@ -1732,7 +1731,13 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
       .cta-prov-route {
         font-size: 0.78rem;
         color: rgba(255, 255, 255, 0.55);
-        font-family: var(--font-mono, monospace);
+        font-family: 'Geist', var(--font-sans), sans-serif;
+        text-decoration: none;
+        transition: color 0.2s ease;
+      }
+      .cta-prov-route:hover {
+        color: #ff5f00;
+        text-decoration: underline;
       }
 
       .cta-bar-right {
@@ -1744,6 +1749,7 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
 
       .cta-bar-right .btn-cancel-edit,
       .cta-bar-right .btn-action-edit-orange,
+      .cta-bar-right .btn-action-resend-welcome,
       .cta-bar-right .btn-hero-public-web,
       .cta-bar-right .btn-hero-edit,
       .cta-bar-right .btn-pause-exp-bottom,

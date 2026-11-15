@@ -213,12 +213,15 @@ function getHmacSecret(config) {
   );
 }
 
-function generateOAuthState(providerEmail, secret) {
+function generateOAuthState(providerEmail, secret, returnUrl) {
   const payload = {
     email: providerEmail.trim().toLowerCase(),
     ts: Date.now(),
     nonce: crypto.randomBytes(16).toString('hex'),
   };
+  if (returnUrl && typeof returnUrl === 'string') {
+    payload.returnUrl = returnUrl;
+  }
   const json = JSON.stringify(payload);
   const dataB64 = Buffer.from(json, 'utf8').toString('base64url');
   const hmac = crypto.createHmac('sha256', secret).update(dataB64).digest('base64url');
@@ -377,22 +380,28 @@ module.exports = async function handler(req, res) {
 
       const hmacSecret = getHmacSecret({ mpClientSecret, supabaseServiceKey, mpAccessToken });
       const statePayload = verifyOAuthState(state, hmacSecret, isTestEnv);
+      const targetBase =
+        statePayload?.returnUrl && typeof statePayload.returnUrl === 'string' && statePayload.returnUrl.startsWith('/')
+          ? `${appBaseUrl}${statePayload.returnUrl}`
+          : `${appBaseUrl}/prestadores/perfil`;
+      const sep = targetBase.includes('?') ? '&' : '?';
+
       if (!statePayload || !statePayload.email) {
         console.warn('[MercadoPago OAuth] State de autenticación inválido, manipulado o expirado.');
-        return res.redirect(302, `${appBaseUrl}/prestadores/perfil?mp_error=invalid_state`);
+        return res.redirect(302, `${targetBase}${sep}mp_error=invalid_state`);
       }
 
       const providerEmail = statePayload.email.trim().toLowerCase();
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(providerEmail)) {
-        return res.redirect(302, `${appBaseUrl}/prestadores/perfil?mp_error=invalid_provider`);
+        return res.redirect(302, `${targetBase}${sep}mp_error=invalid_provider`);
       }
 
       if (!mpClientId || !mpClientSecret) {
         if (isTestEnv) {
-          const redirectUrl = `${appBaseUrl}/prestadores/perfil?mp_connected=simulated&code=${encodeURIComponent(code)}`;
+          const redirectUrl = `${targetBase}${sep}mp_connected=simulated&code=${encodeURIComponent(code)}`;
           return res.redirect(302, redirectUrl);
         }
-        return res.redirect(302, `${appBaseUrl}/prestadores/perfil?mp_error=not_configured`);
+        return res.redirect(302, `${targetBase}${sep}mp_error=not_configured`);
       }
 
       try {
@@ -551,17 +560,17 @@ module.exports = async function handler(req, res) {
 
             // Si no se pudo guardar la conexión en Supabase, no redirigir como exitoso
             if (!providerSaved) {
-              return res.redirect(302, `${appBaseUrl}/prestadores/perfil?mp_error=save_failed`);
+              return res.redirect(302, `${targetBase}${sep}mp_error=save_failed`);
             }
           }
 
-          const redirectUrl = `${appBaseUrl}/prestadores/perfil?mp_connected=true&collector_id=${encodeURIComponent(collectorId)}`;
+          const redirectUrl = `${targetBase}${sep}mp_connected=true&collector_id=${encodeURIComponent(collectorId)}`;
           return res.redirect(302, redirectUrl);
         }
 
-        return res.redirect(302, `${appBaseUrl}/prestadores/perfil?mp_error=auth_failed`);
+        return res.redirect(302, `${targetBase}${sep}mp_error=auth_failed`);
       } catch (err) {
-        return res.redirect(302, `${appBaseUrl}/prestadores/perfil?mp_error=server_error`);
+        return res.redirect(302, `${targetBase}${sep}mp_error=server_error`);
       }
     }
 
@@ -573,8 +582,9 @@ module.exports = async function handler(req, res) {
         });
       }
 
+      const returnUrl = req.query?.returnUrl;
       const hmacSecret = getHmacSecret({ mpClientSecret, supabaseServiceKey, mpAccessToken });
-      const state = generateOAuthState(auth.email, hmacSecret);
+      const state = generateOAuthState(auth.email, hmacSecret, returnUrl);
       const redirectUri = `${appBaseUrl}/api/mercadopago?action=oauth-callback`;
 
       if (!mpClientId) {
@@ -626,8 +636,9 @@ module.exports = async function handler(req, res) {
         });
       }
 
+      const returnUrl = body?.returnUrl || req.query?.returnUrl;
       const hmacSecret = getHmacSecret({ mpClientSecret, supabaseServiceKey, mpAccessToken });
-      const state = generateOAuthState(auth.email, hmacSecret);
+      const state = generateOAuthState(auth.email, hmacSecret, returnUrl);
       const redirectUri = `${appBaseUrl}/api/mercadopago?action=oauth-callback`;
 
       if (!mpClientId) {

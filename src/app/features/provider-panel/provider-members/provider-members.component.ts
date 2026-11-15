@@ -240,10 +240,10 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                       >
                         {{
                           sub.status === 'aprobado'
-                            ? 'Aprobado'
+                            ? 'APROBADO'
                             : sub.status === 'rechazado'
-                              ? 'Rechazado'
-                              : 'Pendiente'
+                              ? 'RECHAZADO'
+                              : 'PENDIENTE'
                         }}
                       </span>
                     </td>

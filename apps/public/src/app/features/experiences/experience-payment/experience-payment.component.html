@@ -226,7 +226,6 @@
                 <div class="pay-methods-tabs" role="group" aria-label="Elegí el medio de pago">
                   <button type="button" class="pay-method-tab" [class.is-active]="paymentMethod() === 'transfer'"
                     [attr.aria-pressed]="paymentMethod() === 'transfer'" (click)="paymentMethod.set('transfer')">
-                    <mat-icon class="tab-icon">account_balance</mat-icon>
                     <div class="tab-meta">
                       <span class="tab-title">Transferencia Bancaria</span>
                       <span class="tab-badge best-badge">Mejor Precio: 0% recargo</span>
@@ -235,7 +234,6 @@
 
                   <button type="button" class="pay-method-tab" [class.is-active]="paymentMethod() === 'mercadopago'"
                     [attr.aria-pressed]="paymentMethod() === 'mercadopago'" (click)="paymentMethod.set('mercadopago')">
-                    <mat-icon class="tab-icon">credit_card</mat-icon>
                     <div class="tab-meta">
                       <span class="tab-title">Mercado Pago</span>
                       <span class="tab-badge instant-badge">Instantáneo: +{{ mercadoPagoSurchargePct() }}%
@@ -254,7 +252,8 @@
                       <p class="pay-amount">{{ total() | ars }}</p>
                       @if (paymentMethod() === 'mercadopago' && mercadoPagoSurchargeArs() > 0) {
                       <span class="pay-surcharge-hint">
-                        Incluye {{ baseTotal() | ars }} base + {{ mercadoPagoSurchargePct() }}% de costo de servicio ({{ mercadoPagoSurchargeArs() | ars }})
+                        Incluye {{ baseTotal() | ars }} base + {{ mercadoPagoSurchargePct() }}% de costo de servicio ({{
+                        mercadoPagoSurchargeArs() | ars }})
                       </span>
                       }
                     </div>
@@ -317,13 +316,6 @@
                   <div class="pay-transfer-row pay-transfer-detail">
                     <span class="pay-label">Entidad Bancaria o Billetera</span>
                     <strong>{{ transferDestination.entity }}</strong>
-                  </div>
-                  } @else {
-                  <div class="pay-mp-notice-box">
-                    <p class="pay-mp-notice-text">
-                      Aboná con cualquier tarjeta de débito, crédito bancaria o con tu saldo en cuenta de Mercado Pago.
-                      Al completar el pago tu lugar queda confirmado en el acto.
-                    </p>
                   </div>
                   }
                 </div>
@@ -394,10 +386,9 @@
                 @if (paymentMethod() === 'mercadopago') {
                 <div class="pay-mp-step3-card">
                   <div class="mp-step3-head">
-                    <mat-icon class="mp-shield-icon">security</mat-icon>
                     <p>
-                      Al presionar el botón <strong>Pagar con Mercado Pago</strong> en el resumen serás dirigido al
-                      checkout protegido para abonar de forma segura. Tu reserva se confirma al instante.
+                      Al presionar el botón <strong>Pagar con Mercado Pago</strong> serás dirigido al
+                      checkout protegido para abonar de forma segura. Al completar el pago tu lugar queda confirmado en el acto.
                     </p>
                   </div>
                   <div class="mp-methods-chips">

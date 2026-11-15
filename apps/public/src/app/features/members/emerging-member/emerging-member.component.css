@@ -535,7 +535,16 @@
   transition: all 0.2s ease;
 }
 
+.emerging-profile-btn span {
+  color: #000000;
+}
+
 .emerging-profile-btn:hover {
   background: #ffe066;
+  color: #000000;
   transform: translateY(-1px);
+}
+
+.emerging-profile-btn:hover span {
+  color: #000000;
 }

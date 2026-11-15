@@ -913,6 +913,8 @@ type StatusFilter = TransferStatus | 'todos';
         border-radius: 2px;
         font-size: 0.72rem;
         font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
       }
 
       .status-badge mat-icon {

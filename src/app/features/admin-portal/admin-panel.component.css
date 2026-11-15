@@ -945,9 +945,20 @@
   left: 1.85rem;
 }
 
+.desktop-floating-provider-portal-btn {
+  right: 1.85rem;
+  color: #000000;
+}
+
+.desktop-floating-provider-portal-btn .floating-btn-icon,
+.desktop-floating-provider-portal-btn mat-icon {
+  color: #000000;
+}
+
 .desktop-floating-btn:hover {
   background: #f2f2f2;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  color: #000000;
 }
 
 .desktop-floating-btn:active {
@@ -974,6 +985,11 @@
   .desktop-floating-back-btn {
     left: 1.25rem;
     right: auto;
+  }
+
+  .desktop-floating-provider-portal-btn {
+    right: 1.25rem;
+    left: auto;
   }
 }
 

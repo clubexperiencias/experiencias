@@ -209,6 +209,18 @@ const ROUTE_LABELS: Record<string, string> = {
           </button>
         }
 
+        <!-- Botón Flotante Portal de Prestadores (réplica lateral derecha) -->
+        <a
+          [href]="providerPortalUrl()"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="desktop-floating-btn desktop-floating-provider-portal-btn"
+          aria-label="Ir al Portal de Prestadores"
+          title="Ir al Portal de Prestadores en otra pestaña"
+        >
+          <mat-icon class="floating-btn-icon">badge</mat-icon>
+        </a>
+
         <!-- Contenedor principal -->
         <main class="portal-main">
           <div class="portal-content-container">
@@ -524,6 +536,16 @@ export class AdminPanelComponent {
   readonly currentUrl = signal(this.router.url);
   readonly supportWhatsappUrl =
     'https://wa.me/5493515490431?text=Hola!%20Tengo%20una%20duda%20y%20necesito%20asistencia%20con%20el%20Panel%20de%20Administraci%C3%B3n%2C%20%C2%BFme%20podr%C3%ADan%20ayudar%3F';
+
+  readonly providerPortalUrl = computed(() => {
+    if (typeof window !== 'undefined') {
+      const host = window.location.hostname.toLowerCase();
+      if (host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local')) {
+        return `${window.location.protocol}//${window.location.host}/?portal=prestador`;
+      }
+    }
+    return 'https://prestadores.experiencias.club';
+  });
 
   readonly basePath = computed(() => {
     const rawPath = this.currentUrl().split('?')[0].split('#')[0];
