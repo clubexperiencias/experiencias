@@ -401,7 +401,7 @@
   padding: 0.48rem 0.95rem;
   background: #80b3ff;
   border: 1px solid #80b3ff;
-  color: #ffffff !important;
+  color: #0b1120 !important;
   border-radius: 2px;
   font-size: 0.82rem;
   font-weight: 700;
@@ -411,13 +411,13 @@
 
 .btn-exp-cta span,
 .btn-exp-cta mat-icon {
-  color: #ffffff !important;
+  color: #0b1120 !important;
 }
 
 .btn-exp-cta:hover {
   background: #9cc4ff;
   border-color: #9cc4ff;
-  color: #ffffff !important;
+  color: #0b1120 !important;
   transform: translateY(-1px);
 }
 
@@ -427,7 +427,7 @@
 .btn-exp-cta:focus span,
 .btn-exp-cta:active,
 .btn-exp-cta:active span {
-  color: #ffffff !important;
+  color: #0b1120 !important;
 }
 
 .arrow-icon {
@@ -790,7 +790,7 @@
   justify-content: center;
   padding: 0.65rem 1.5rem;
   background: #80b3ff !important;
-  color: #ffffff !important;
+  color: #0b1120 !important;
   border-radius: 2px;
   font-weight: 700;
   font-size: 0.9rem;
@@ -806,7 +806,7 @@
 .empty-exp-box a:hover,
 .btn-primary:hover {
   background: #a6c8ff !important;
-  color: #ffffff !important;
+  color: #0b1120 !important;
   transform: translateY(-1px);
 }
 

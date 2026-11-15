@@ -91,6 +91,7 @@ export class ProvidersCatalogComponent implements OnInit {
     if (!social) return '#';
     const s = social.trim();
     if (s.startsWith('http://') || s.startsWith('https://')) return s;
+    if (s.startsWith('@')) return `https://instagram.com/${s.slice(1)}`;
     return `https://${s}`;
   }
 

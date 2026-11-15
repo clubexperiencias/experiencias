@@ -144,7 +144,7 @@ export class ProvidersComponent implements OnInit {
 
   async linkGoogleAccount(): Promise<void> {
     this.authError.set(null);
-    const currentPath = '/prestadores';
+    const currentPath = '/prestadores/emergentes';
     this.newsletter.saveAuthReturnUrl(currentPath);
     const redirectTo =
       typeof window !== 'undefined'

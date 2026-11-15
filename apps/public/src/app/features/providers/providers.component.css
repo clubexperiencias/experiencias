@@ -394,7 +394,7 @@
   justify-content: center;
   gap: 0.6rem;
   background: #80b3ff;
-  color: #ffffff !important;
+  color: #0b1120 !important;
   font-family: var(--font-sans);
   font-size: 0.95rem;
   font-weight: 800;
@@ -408,18 +408,18 @@
 }
 
 .provider-page-submit-btn span {
-  color: #ffffff !important;
+  color: #0b1120 !important;
 }
 
 .provider-page-submit-btn:hover:not(:disabled) {
   background: #99c2ff;
-  color: #ffffff !important;
+  color: #0b1120 !important;
   transform: translateY(-2px);
   box-shadow: 0 6px 22px rgba(128, 179, 255, 0.55);
 }
 
 .provider-page-submit-btn:hover:not(:disabled) span {
-  color: #ffffff !important;
+  color: #0b1120 !important;
 }
 
 .provider-page-submit-btn:active:not(:disabled) {

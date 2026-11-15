@@ -477,7 +477,7 @@
   background: var(--color-gold);
   border: none;
   border-radius: 2px;
-  color: #ffffff !important;
+  color: #1a1a1a !important;
   font-size: 0.88rem;
   font-weight: 700;
   letter-spacing: 0.05em;
@@ -487,17 +487,17 @@
 }
 
 .save-profile-btn span {
-  color: #ffffff !important;
+  color: #1a1a1a !important;
 }
 
 .save-profile-btn:hover:not(:disabled) {
   background: var(--color-gold-hover);
-  color: #ffffff !important;
+  color: #1a1a1a !important;
   box-shadow: 0 6px 20px rgba(255, 212, 42, 0.35);
 }
 
 .save-profile-btn:hover:not(:disabled) span {
-  color: #ffffff !important;
+  color: #1a1a1a !important;
 }
 
 .save-profile-btn.saved-success,
@@ -505,6 +505,11 @@
   background: #059669 !important;
   color: #ffffff !important;
   box-shadow: 0 6px 20px rgba(5, 150, 105, 0.35);
+}
+
+.save-profile-btn.saved-success span,
+.save-profile-btn.saved-success:hover:not(:disabled) span {
+  color: #ffffff !important;
 }
 
 .save-profile-btn:disabled {
@@ -1238,7 +1243,7 @@
   background: var(--color-gold);
   border: none;
   border-radius: 2px;
-  color: #ffffff !important;
+  color: #1a1a1a !important;
   font-size: 0.88rem;
   font-weight: 700;
   letter-spacing: 0.05em;
@@ -1250,17 +1255,17 @@
 }
 
 .btn-view-all-activities span {
-  color: #ffffff !important;
+  color: #1a1a1a !important;
 }
 
 .btn-view-all-activities:hover:not(:disabled) {
   background: var(--color-gold-hover);
-  color: #ffffff !important;
+  color: #1a1a1a !important;
   box-shadow: 0 6px 20px rgba(255, 212, 42, 0.35);
 }
 
 .btn-view-all-activities:hover:not(:disabled) span {
-  color: #ffffff !important;
+  color: #1a1a1a !important;
 }
 
 .btn-view-all-activities:active:not(:disabled) {

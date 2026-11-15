@@ -191,11 +191,7 @@ export class ExperiencesComponent implements AfterViewInit, OnDestroy {
   // Catálogo completo: experiencias no destacadas primero (incluyendo la nueva experiencia en Catamarca), y destacadas al fondo
   readonly allCatalogExperiences = computed<Experience[]>(() => {
     const all = this.experienceService.publishedExperiences();
-    const nonFeatured = all.filter(
-      (e) =>
-        e.displayLocation === 'catalogo' ||
-        (e.displayLocation && e.displayLocation !== 'destacada'),
-    );
+    const nonFeatured = all.filter((e) => e.displayLocation === 'catalogo');
     const featured = all.filter((e) => !e.displayLocation || e.displayLocation === 'destacada');
     return [this.comingSoonCatalogExperience, ...nonFeatured, ...featured];
   });
@@ -269,16 +265,29 @@ export class ExperiencesComponent implements AfterViewInit, OnDestroy {
       if (dur !== 'todas') {
         const dLabel = (exp.durationLabel || '').toLowerCase();
         const dDays = exp.durationDays || 1;
-        if (dur === 'medio-dia') {
-          const isHalf =
-            dLabel.includes('hora') ||
+        const hourMatch = dLabel.match(/\b(\d+(?:[.,]\d+)?)\s*(?:h|hs|horas?)\b/);
+        const explicitHours = hourMatch ? parseFloat(hourMatch[1].replace(',', '.')) : null;
+
+        const isFullDay =
+          dLabel.includes('completo') ||
+          dLabel.includes('jornada completa') ||
+          dLabel.includes('dia entero') ||
+          (explicitHours !== null && explicitHours >= 7);
+
+        const isHalfDay =
+          dDays <= 1 &&
+          !isFullDay &&
+          (dLabel.includes('medio') ||
             dLabel.includes('media') ||
-            (dDays <= 1 && dLabel.includes('h'));
-          if (!isHalf) return false;
+            (explicitHours !== null && explicitHours <= 6) ||
+            (explicitHours === null && (dLabel.includes('hora') || /\b[1-6]\s*(?:h|hs)\b/.test(dLabel))));
+
+        if (dur === 'medio-dia') {
+          if (!isHalfDay) return false;
         } else if (dur === 'dia-completo') {
           const isFull =
-            (dDays === 1 && !dLabel.includes('media') && !dLabel.includes('4 hora')) ||
-            dLabel.includes('completo');
+            dLabel.includes('completo') ||
+            (dDays === 1 && !isHalfDay);
           if (!isFull) return false;
         } else if (dur === 'varios-dias') {
           if (dDays < 2) return false;

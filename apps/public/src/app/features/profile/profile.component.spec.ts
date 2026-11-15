@@ -37,23 +37,59 @@ describe('ProfileComponent', () => {
     expect(breadcrumb).toBeTruthy();
   });
 
-  it('should only show the last 2 activities in profile preview and link to full history', () => {
+  it('should only show the last 2 activities in profile preview and link to full history when activities exist', () => {
+    component.activityService.addActivity({
+      id: 'act-1',
+      title: 'Trekking Laguna Blanca',
+      category: 'Aventura',
+      date: '2026-11-15',
+      location: 'Catamarca',
+      status: 'confirmada',
+      receipt: {
+        receiptNumber: 'REC-001',
+        paymentMethod: 'transferencia',
+        amount: 50000,
+        currency: 'ARS',
+        paymentDate: '2026-11-15',
+        payerEmail: 'test@gmail.com',
+        payerName: 'Test User',
+        authCode: 'AUTH-1',
+        status: 'aprobado',
+      },
+      memoriesCount: 0,
+      memoryPhotos: [],
+    });
+    fixture.detectChanges();
+
     const cards = fixture.nativeElement.querySelectorAll('.activities-list .activity-card');
     expect(cards.length).toBeLessThanOrEqual(2);
 
     const viewAllBtn = fixture.nativeElement.querySelector('.btn-view-all-activities');
     expect(viewAllBtn).toBeTruthy();
+    expect(viewAllBtn.tagName.toLowerCase()).toBe('a');
     expect(viewAllBtn.getAttribute('routerlink')).toBe('/perfil/actividades');
+    expect(viewAllBtn.textContent).toContain('Ver actividades reservadas (1 experiencia)');
   });
 
-  it('should display the membership info box with updated cupo text', () => {
+  it('should display disabled button with zero-count label and no routerlink when there are no activities', () => {
+    // When activityService has no activities
+    fixture.detectChanges();
+
+    const viewAllBtn = fixture.nativeElement.querySelector('.btn-view-all-activities');
+    expect(viewAllBtn).toBeTruthy();
+    expect(viewAllBtn.tagName.toLowerCase()).toBe('button');
+    expect(viewAllBtn.hasAttribute('disabled')).toBe(true);
+    expect(viewAllBtn.getAttribute('routerlink')).toBeNull();
+    expect(viewAllBtn.textContent).toContain('Ver actividades reservadas (0 experiencias)');
+  });
+
+  it('should display the membership info box with updated copy', () => {
     const card = fixture.nativeElement.querySelector('.profile-completion-card');
     expect(card).toBeTruthy();
     expect(card.textContent).toContain('DATOS DE MEMBRESÍA');
     expect(card.textContent).toContain('Socio Emergente');
-    expect(card.textContent).toContain(
-      'Priorizaremos tu cupo según qué expediciones realices y qué tan completo tengas tu perfil.',
-    );
+    expect(card.textContent).toContain('Registramos tu suscripción con');
+    expect(card.textContent).toContain('Ya formás parte del club como');
   });
 
   it('should link back to root / from the header logo', () => {

@@ -105,9 +105,8 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
             routerLink="../perfil"
             class="btn-edit-banking-pill"
             [title]="isBankingComplete() ? 'Editar datos bancarios' : 'Completar datos bancarios'"
-            style="color: #ffffff !important;"
           >
-            <span style="color: #ffffff !important;">{{ isBankingComplete() ? 'Editar Datos' : 'Completar Datos' }}</span>
+            <span>{{ isBankingComplete() ? 'Editar Datos' : 'Completar Datos' }}</span>
           </a>
         </div>
 
@@ -150,9 +149,8 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
             fragment="mercadopago"
             class="btn-edit-banking-pill"
             [title]="isMpConnected() ? 'Administrar cuenta de Mercado Pago' : 'Vincular cuenta de Mercado Pago'"
-            style="color: #ffffff !important;"
           >
-            <span style="color: #ffffff !important;">{{ isMpConnected() ? 'Administrar Cuenta' : 'Vincular Cuenta' }}</span>
+            <span>{{ isMpConnected() ? 'Administrar Cuenta' : 'Vincular Cuenta' }}</span>
           </a>
         </div>
 
@@ -316,9 +314,8 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
               [routerLink]="newProposalLink()"
               class="request-form-btn"
               (click)="$event.stopPropagation()"
-              style="color: #ffffff !important;"
             >
-              <span style="color: #ffffff !important;">Cargar Propuesta</span>
+              <span>Cargar Propuesta</span>
             </a>
           </div>
         </div>
@@ -1102,22 +1099,22 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         background: #80b3ff;
         border: 1px solid #80b3ff;
         border-radius: 2px;
-        color: #ffffff !important;
+        color: #0b1120 !important;
         font-size: 0.78rem;
         font-weight: 700;
         text-decoration: none;
         transition: all 0.2s ease;
       }
       .btn-edit-banking-pill span {
-        color: #ffffff !important;
+        color: #0b1120 !important;
       }
       .btn-edit-banking-pill:hover {
         background: #a3c9ff;
         border-color: #a3c9ff;
-        color: #ffffff !important;
+        color: #0b1120 !important;
       }
       .btn-edit-banking-pill:hover span {
-        color: #ffffff !important;
+        color: #0b1120 !important;
       }
       .banking-details-grid {
         display: grid;
@@ -1631,7 +1628,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         padding: 0.75rem 1.4rem;
         background: #ffcc00;
         border: 1px solid #ffcc00;
-        color: #ffffff !important;
+        color: #0b1120 !important;
         font-size: 0.88rem;
         font-weight: 700;
         border-radius: 2px;
@@ -1642,17 +1639,17 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         box-shadow: 0 4px 15px rgba(255, 204, 0, 0.3);
       }
       .request-form-btn span {
-        color: #ffffff !important;
+        color: #0b1120 !important;
       }
       .request-form-btn:hover {
         background: #ffd633;
         border-color: #ffd633;
-        color: #ffffff !important;
+        color: #0b1120 !important;
         box-shadow: 0 6px 20px rgba(255, 204, 0, 0.45);
         transform: translateY(-1px);
       }
       .request-form-btn:hover span {
-        color: #ffffff !important;
+        color: #0b1120 !important;
       }
 
       /* Postulation Status Pills */

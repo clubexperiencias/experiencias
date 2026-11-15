@@ -162,7 +162,7 @@
   gap: 0.5rem;
   padding: 0.75rem 1.35rem;
   background: #80b3ff;
-  color: #ffffff !important;
+  color: #0b1120 !important;
   font-size: 0.85rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -175,12 +175,12 @@
 
 .strip-cta-btn span,
 .strip-cta-btn mat-icon {
-  color: #ffffff !important;
+  color: #0b1120 !important;
 }
 
 .strip-cta-btn:hover {
   background: #a6c8ff;
-  color: #ffffff !important;
+  color: #0b1120 !important;
   transform: translateY(-2px);
 }
 
@@ -190,7 +190,7 @@
 .strip-cta-btn:focus span,
 .strip-cta-btn:active,
 .strip-cta-btn:active span {
-  color: #ffffff !important;
+  color: #0b1120 !important;
 }
 
 .strip-cta-btn mat-icon {
@@ -549,7 +549,7 @@
   width: 100%;
   padding: 0.58rem 0.85rem;
   background: #80b3ff;
-  color: #ffffff !important;
+  color: #0b1120 !important;
   font-weight: 700;
   font-size: 0.8rem;
   text-transform: uppercase;
@@ -562,13 +562,13 @@
 
 .btn-view-profile span,
 .btn-view-profile mat-icon {
-  color: #ffffff !important;
+  color: #0b1120 !important;
 }
 
 .btn-view-profile:hover {
   background: #a6c8ff;
   transform: translateY(-1px);
-  color: #ffffff !important;
+  color: #0b1120 !important;
 }
 
 .btn-view-profile:hover span,
@@ -577,7 +577,7 @@
 .btn-view-profile:focus span,
 .btn-view-profile:active,
 .btn-view-profile:active span {
-  color: #ffffff !important;
+  color: #0b1120 !important;
 }
 
 .btn-arrow {
@@ -585,7 +585,7 @@
   width: 1.05rem;
   height: 1.05rem;
   transition: transform 0.2s ease;
-  color: #ffffff !important;
+  color: #0b1120 !important;
 }
 
 .btn-view-profile:hover .btn-arrow {
@@ -644,7 +644,7 @@
   margin-top: 0.5rem;
   padding: 0.65rem 1.4rem;
   background: #80b3ff;
-  color: #ffffff !important;
+  color: #0b1120 !important;
   font-weight: 700;
   font-size: 0.84rem;
   text-transform: uppercase;
@@ -657,18 +657,18 @@
 
 .btn-reset-search span,
 .btn-reset-search mat-icon {
-  color: #ffffff !important;
+  color: #0b1120 !important;
 }
 
 .btn-reset-search:hover {
   background: #a6c8ff;
-  color: #ffffff !important;
+  color: #0b1120 !important;
   transform: translateY(-1px);
 }
 
 .btn-reset-search:hover span,
 .btn-reset-search:hover mat-icon {
-  color: #ffffff !important;
+  color: #0b1120 !important;
 }
 
 /* ═══════════════ CARD 3: CALLOUT CONVOCATORIA ═══════════════ */
@@ -711,7 +711,7 @@
   gap: 0.5rem;
   padding: 0.8rem 1.6rem;
   background: #80b3ff;
-  color: #ffffff !important;
+  color: #0b1120 !important;
   font-weight: 700;
   font-size: 0.88rem;
   text-transform: uppercase;
@@ -724,12 +724,12 @@
 
 .join-cta-btn span,
 .join-cta-btn mat-icon {
-  color: #ffffff !important;
+  color: #0b1120 !important;
 }
 
 .join-cta-btn:hover {
   background: #a6c8ff;
-  color: #ffffff !important;
+  color: #0b1120 !important;
   transform: translateY(-2px);
   box-shadow: 0 4px 16px rgba(128, 179, 255, 0.35);
 }
@@ -740,7 +740,7 @@
 .join-cta-btn:focus span,
 .join-cta-btn:active,
 .join-cta-btn:active span {
-  color: #ffffff !important;
+  color: #0b1120 !important;
 }
 
 .join-cta-btn mat-icon {

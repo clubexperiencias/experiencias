@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Title } from '@angular/platform-browser';
@@ -33,12 +33,14 @@ import { getSocialHandle } from '../../../shared/utils/social-url.util';
   templateUrl: './provider-public-profile.component.html',
   styleUrl: './provider-public-profile.component.css',
 })
-export class ProviderPublicProfileComponent implements OnInit {
+export class ProviderPublicProfileComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly titleService = inject(Title);
   readonly providerStore = inject(ProviderStoreService);
   readonly expService = inject(ExperienceService);
+
+  private isDestroyed = false;
 
   readonly mobileMenuOpen = signal(false);
   readonly provider = signal<ProviderUser | null>(null);
@@ -77,6 +79,10 @@ export class ProviderPublicProfileComponent implements OnInit {
 
     await this.expService.remoteLoadPromise;
     const found = await this.providerStore.getPublicProvider(slug);
+    if (this.isDestroyed) {
+      return;
+    }
+
     if (found) {
       this.provider.set(found);
       this.titleService.setTitle(`${found.agency || found.name} - Experiencias Club`);
@@ -85,6 +91,10 @@ export class ProviderPublicProfileComponent implements OnInit {
       this.titleService.setTitle('Prestador no encontrado - Experiencias Club');
     }
     this.loading.set(false);
+  }
+
+  ngOnDestroy(): void {
+    this.isDestroyed = true;
   }
 
   formatSocialUrl(social: string | undefined): string {
@@ -98,14 +108,23 @@ export class ProviderPublicProfileComponent implements OnInit {
 
   socialHandle(social: string | undefined, isSecondary = false): string {
     if (!social) return '';
-    const handle = getSocialHandle(this.formatSocialUrl(social));
+    const formatted = this.formatSocialUrl(social);
+    const handle = getSocialHandle(formatted);
     if (
       handle === '@share' ||
       handle.toLowerCase() === 'share' ||
-      handle.toLowerCase() === '@share' ||
-      (isSecondary && (handle.toLowerCase().includes('share') || handle === '@share'))
+      handle === 'Red Social Secundaria'
     ) {
       return 'Red Social Secundaria';
+    }
+    try {
+      const parsed = new URL(formatted);
+      const segments = parsed.pathname.toLowerCase().split('/').filter(Boolean);
+      if (segments.includes('share')) {
+        return 'Red Social Secundaria';
+      }
+    } catch {
+      // not a parseable URL
     }
     return handle;
   }
