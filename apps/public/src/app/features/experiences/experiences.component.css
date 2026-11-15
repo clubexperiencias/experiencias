@@ -501,12 +501,12 @@
   height: 42px;
   box-sizing: border-box;
   padding: 0.65rem 1.1rem;
-  background: #2563eb;
+  background: #80b3ff;
   color: #ffffff !important;
   font-size: 0.84rem;
   font-weight: 700;
   border-radius: 2px;
-  border: 1px solid #2563eb;
+  border: 1px solid #80b3ff;
   cursor: pointer;
   transition: all 0.2s ease;
   font-family: inherit;
@@ -519,11 +519,11 @@
 }
 
 .exp-toggle-details-btn:hover {
-  background: #1d4ed8;
-  border-color: #1d4ed8;
+  background: #99c2ff;
+  border-color: #99c2ff;
   color: #ffffff !important;
   transform: translateY(-2px);
-  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+  box-shadow: 0 4px 14px rgba(128, 179, 255, 0.4);
 }
 
 .exp-toggle-details-btn:hover span,
@@ -536,8 +536,8 @@
 }
 
 .exp-toggle-details-btn.active {
-  background: #1e40af;
-  border-color: #1e40af;
+  background: #66a3ff;
+  border-color: #66a3ff;
   color: #ffffff !important;
 }
 
@@ -641,10 +641,10 @@
 
 .exp-toggle-details-btn.exp-cta-link {
   text-decoration: none;
-  background: #2563eb;
+  background: #80b3ff;
   color: #ffffff !important;
   font-weight: 700;
-  border: 1px solid #2563eb;
+  border: 1px solid #80b3ff;
 }
 
 .exp-toggle-details-btn.exp-cta-link span,
@@ -653,11 +653,11 @@
 }
 
 .exp-toggle-details-btn.exp-cta-link:hover {
-  background: #1d4ed8;
-  border-color: #1d4ed8;
+  background: #99c2ff;
+  border-color: #99c2ff;
   color: #ffffff !important;
   transform: translateY(-2px);
-  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+  box-shadow: 0 4px 14px rgba(128, 179, 255, 0.4);
 }
 
 .exp-toggle-details-btn.exp-cta-link:hover span,
@@ -1057,7 +1057,7 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.8rem 1.4rem;
-  background: #2563eb;
+  background: #80b3ff;
   color: #ffffff !important;
   font-weight: 700;
   font-size: 0.88rem;
@@ -1073,7 +1073,7 @@
 }
 
 .callout-btn:hover {
-  background: #1d4ed8;
+  background: #99c2ff;
   color: #ffffff !important;
   transform: translateY(-2px);
 }

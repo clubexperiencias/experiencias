@@ -1097,8 +1097,8 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         align-items: center;
         gap: 0.4rem;
         padding: 0.4rem 0.85rem;
-        background: #2563eb;
-        border: 1px solid #2563eb;
+        background: #80b3ff;
+        border: 1px solid #80b3ff;
         border-radius: 2px;
         color: #ffffff !important;
         font-size: 0.78rem;
@@ -1110,8 +1110,8 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         color: #ffffff !important;
       }
       .btn-edit-banking-pill:hover {
-        background: #1d4ed8;
-        border-color: #1d4ed8;
+        background: #99c2ff;
+        border-color: #99c2ff;
         color: #ffffff !important;
       }
       .btn-edit-banking-pill:hover span {

@@ -399,8 +399,8 @@
   align-items: center;
   gap: 0.35rem;
   padding: 0.48rem 0.95rem;
-  background: #2563eb;
-  border: 1px solid #2563eb;
+  background: #80b3ff;
+  border: 1px solid #80b3ff;
   color: #ffffff !important;
   border-radius: 2px;
   font-size: 0.82rem;
@@ -415,8 +415,8 @@
 }
 
 .btn-exp-cta:hover {
-  background: #1d4ed8;
-  border-color: #1d4ed8;
+  background: #99c2ff;
+  border-color: #99c2ff;
   color: #ffffff !important;
   transform: translateY(-1px);
 }
@@ -789,7 +789,7 @@
   align-items: center;
   justify-content: center;
   padding: 0.65rem 1.5rem;
-  background: #2563eb !important;
+  background: #80b3ff !important;
   color: #ffffff !important;
   border-radius: 2px;
   font-weight: 700;
@@ -805,7 +805,7 @@
 .empty-exp-box .btn-primary:hover,
 .empty-exp-box a:hover,
 .btn-primary:hover {
-  background: #1d4ed8 !important;
+  background: #99c2ff !important;
   color: #ffffff !important;
   transform: translateY(-1px);
 }

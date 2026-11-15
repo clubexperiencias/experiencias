@@ -161,7 +161,7 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1.35rem;
-  background: #2563eb;
+  background: #80b3ff;
   color: #ffffff !important;
   font-size: 0.85rem;
   font-weight: 700;
@@ -179,7 +179,7 @@
 }
 
 .strip-cta-btn:hover {
-  background: #1d4ed8;
+  background: #99c2ff;
   color: #ffffff !important;
   transform: translateY(-2px);
 }
@@ -548,7 +548,7 @@
   gap: 0.5rem;
   width: 100%;
   padding: 0.58rem 0.85rem;
-  background: #2563eb;
+  background: #80b3ff;
   color: #ffffff !important;
   font-weight: 700;
   font-size: 0.8rem;
@@ -566,7 +566,7 @@
 }
 
 .btn-view-profile:hover {
-  background: #1d4ed8;
+  background: #99c2ff;
   transform: translateY(-1px);
   color: #ffffff !important;
 }
@@ -643,7 +643,7 @@
 .btn-reset-search {
   margin-top: 0.5rem;
   padding: 0.65rem 1.4rem;
-  background: #2563eb;
+  background: #80b3ff;
   color: #ffffff !important;
   font-weight: 700;
   font-size: 0.84rem;
@@ -661,7 +661,7 @@
 }
 
 .btn-reset-search:hover {
-  background: #1d4ed8;
+  background: #99c2ff;
   color: #ffffff !important;
   transform: translateY(-1px);
 }
@@ -710,7 +710,7 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.8rem 1.6rem;
-  background: #2563eb;
+  background: #80b3ff;
   color: #ffffff !important;
   font-weight: 700;
   font-size: 0.88rem;
@@ -728,10 +728,10 @@
 }
 
 .join-cta-btn:hover {
-  background: #1d4ed8;
+  background: #99c2ff;
   color: #ffffff !important;
   transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.35);
+  box-shadow: 0 4px 16px rgba(128, 179, 255, 0.4);
 }
 
 .join-cta-btn:hover span,

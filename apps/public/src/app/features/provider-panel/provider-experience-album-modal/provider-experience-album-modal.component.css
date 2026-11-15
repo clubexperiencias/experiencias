@@ -350,9 +350,9 @@
 }
 
 .btn-add-url {
-  background: #2563eb;
+  background: #80b3ff;
   border: none;
-  color: #ffffff;
+  color: #ffffff !important;
   padding: 0.55rem 1rem;
   border-radius: 4px;
   font-size: 0.84rem;
@@ -366,7 +366,8 @@
 }
 
 .btn-add-url:hover:not(:disabled) {
-  background: #1d4ed8;
+  background: #99c2ff;
+  color: #ffffff !important;
 }
 
 .btn-add-url:disabled {

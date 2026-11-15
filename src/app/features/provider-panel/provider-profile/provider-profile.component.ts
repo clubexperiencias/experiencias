@@ -924,7 +924,7 @@ import {
         align-items: center;
         justify-content: center;
         padding: 0.85rem 2.25rem;
-        background: #2563eb !important;
+        background: #80b3ff !important;
         color: #ffffff !important;
         font-weight: 700;
         font-size: 0.95rem;
@@ -937,7 +937,10 @@ import {
         color: #ffffff !important;
       }
       .cta-save-btn:hover:not(:disabled) {
-        background: #1d4ed8 !important;
+        background: #99c2ff !important;
+        color: #ffffff !important;
+        box-shadow: 0 4px 14px rgba(128, 179, 255, 0.4);
+      }
         color: #ffffff !important;
       }
       .cta-save-btn:hover:not(:disabled) span {
@@ -1096,10 +1099,10 @@ import {
         align-items: center;
         justify-content: center;
         padding: 0.85rem 1.65rem;
-        background: #0082c3;
+        background: #80b3ff;
         color: #ffffff !important;
         border: 1px solid rgba(255, 255, 255, 0.4);
-        box-shadow: 0 4px 16px rgba(0, 130, 195, 0.4), 0 0 10px rgba(0, 130, 195, 0.2);
+        box-shadow: 0 4px 16px rgba(128, 179, 255, 0.4), 0 0 10px rgba(128, 179, 255, 0.2);
         border-radius: 4px;
         font-size: 0.92rem;
         font-weight: 700;
@@ -1110,9 +1113,11 @@ import {
         color: #ffffff !important;
       }
       .btn-connect-mp:hover:not(:disabled) {
-        background: #0072b2;
+        background: #99c2ff;
         color: #ffffff !important;
         transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(128, 179, 255, 0.5);
+      }
         box-shadow: 0 6px 22px rgba(0, 114, 178, 0.6), 0 0 14px rgba(0, 114, 178, 0.3);
       }
       .btn-connect-mp:hover:not(:disabled) span {
@@ -1369,6 +1374,7 @@ export class ProviderProfileComponent implements OnInit {
           action: 'get-oauth-url',
           authToken: token,
           providerId: p.id,
+          returnUrl: '/perfil',
         }),
       });
 

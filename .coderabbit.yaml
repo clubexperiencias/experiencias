@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: "en-US"
+early_access: false
+reviews:
+  profile: "chill"
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  auto_review:
+    enabled: true
+    drafts: false
+  instructions: |
+    STRICT DESIGN & STYLING RULES:
+    - DO NOT suggest or report visual accessibility or WCAG color contrast ratio issues on CSS, HTML, or TypeScript files.
+    - All action buttons across the platform (such as blue CTA buttons, "Saber Más", "Pagar con Mercado Pago", "Ir a Mi Perfil", etc.) MUST maintain pure white text (#ffffff) as explicitly defined by the design team.
+    - DO NOT suggest changing button text to dark or black colors (#000000, #0b1120, #0f172a, etc.) under any circumstances.
+  path_instructions:
+    - path: "**/*.{css,scss,html,ts}"
+      instructions: |
+        - Completely ignore WCAG color contrast checks and contrast ratio recommendations.
+        - Preserve pure white text (#ffffff) on all action buttons and primary UI elements.

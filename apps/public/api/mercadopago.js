@@ -516,44 +516,42 @@ module.exports = async function handler(req, res) {
                 }
               }
 
-              // 4. Actualizar prestadores con mp_connected=true y referencia explícita al token únicamente si se almacenó en historial_mp
-              if (tokenStored) {
-                if (connectionTokenId) {
-                  notesObj.mp_token_id = connectionTokenId;
+              // 4. Actualizar prestadores con mp_connected=true y referencia al token
+              if (connectionTokenId) {
+                notesObj.mp_token_id = connectionTokenId;
+              }
+              const patchRes = await requestHttps(
+                {
+                  hostname: supabaseHost,
+                  path: `/rest/v1/prestadores?email=eq.${encodeURIComponent(providerEmail)}`,
+                  method: 'PATCH',
+                  headers: {
+                    ...authHeaders,
+                    Prefer: 'return=minimal',
+                  },
+                },
+                {
+                  notes: JSON.stringify(notesObj),
+                  updated_at: new Date().toISOString(),
                 }
-                const patchRes = await requestHttps(
-                  {
+              );
+
+              if (patchRes.status >= 200 && patchRes.status < 300) {
+                providerSaved = true;
+              } else if (connectionTokenId) {
+                // Si falló actualizar prestadores, revertir el token en historial_mp para no dejarlo huérfano ni seleccionable
+                try {
+                  await requestHttps({
                     hostname: supabaseHost,
-                    path: `/rest/v1/prestadores?email=eq.${encodeURIComponent(providerEmail)}`,
-                    method: 'PATCH',
+                    path: `/rest/v1/historial_mp?id=eq.${encodeURIComponent(connectionTokenId)}`,
+                    method: 'DELETE',
                     headers: {
                       ...authHeaders,
                       Prefer: 'return=minimal',
                     },
-                  },
-                  {
-                    notes: JSON.stringify(notesObj),
-                    updated_at: new Date().toISOString(),
-                  }
-                );
-
-                if (patchRes.status >= 200 && patchRes.status < 300) {
-                  providerSaved = true;
-                } else if (connectionTokenId) {
-                  // Si falló actualizar prestadores, revertir el token en historial_mp para no dejarlo huérfano ni seleccionable
-                  try {
-                    await requestHttps({
-                      hostname: supabaseHost,
-                      path: `/rest/v1/historial_mp?id=eq.${encodeURIComponent(connectionTokenId)}`,
-                      method: 'DELETE',
-                      headers: {
-                        ...authHeaders,
-                        Prefer: 'return=minimal',
-                      },
-                    });
-                  } catch (rollbackErr) {
-                    console.warn('[MercadoPago API] Error revirtiendo token huérfano en historial_mp:', rollbackErr);
-                  }
+                  });
+                } catch (rollbackErr) {
+                  console.warn('[MercadoPago API] Error revirtiendo token huérfano en historial_mp:', rollbackErr);
                 }
               }
             } catch (persistErr) {
