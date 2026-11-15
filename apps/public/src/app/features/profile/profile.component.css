@@ -477,7 +477,7 @@
   background: var(--color-gold);
   border: none;
   border-radius: 2px;
-  color: #1a1a1a !important;
+  color: #ffffff !important;
   font-size: 0.88rem;
   font-weight: 700;
   letter-spacing: 0.05em;
@@ -487,17 +487,17 @@
 }
 
 .save-profile-btn span {
-  color: #1a1a1a !important;
+  color: #ffffff !important;
 }
 
 .save-profile-btn:hover:not(:disabled) {
   background: var(--color-gold-hover);
-  color: #1a1a1a !important;
+  color: #ffffff !important;
   box-shadow: 0 6px 20px rgba(255, 212, 42, 0.35);
 }
 
 .save-profile-btn:hover:not(:disabled) span {
-  color: #1a1a1a !important;
+  color: #ffffff !important;
 }
 
 .save-profile-btn.saved-success,
@@ -1243,7 +1243,7 @@
   background: var(--color-gold);
   border: none;
   border-radius: 2px;
-  color: #1a1a1a !important;
+  color: #ffffff !important;
   font-size: 0.88rem;
   font-weight: 700;
   letter-spacing: 0.05em;
@@ -1255,17 +1255,17 @@
 }
 
 .btn-view-all-activities span {
-  color: #1a1a1a !important;
+  color: #ffffff !important;
 }
 
 .btn-view-all-activities:hover:not(:disabled) {
   background: var(--color-gold-hover);
-  color: #1a1a1a !important;
+  color: #ffffff !important;
   box-shadow: 0 6px 20px rgba(255, 212, 42, 0.35);
 }
 
 .btn-view-all-activities:hover:not(:disabled) span {
-  color: #1a1a1a !important;
+  color: #ffffff !important;
 }
 
 .btn-view-all-activities:active:not(:disabled) {
@@ -1279,6 +1279,12 @@
   pointer-events: none;
   box-shadow: none;
   filter: grayscale(0.5);
+  color: #ffffff !important;
+}
+
+.btn-view-all-activities:disabled span,
+.btn-view-all-activities.disabled-activities-btn span {
+  color: #ffffff !important;
 }
 
 .view-all-arrow-icon {

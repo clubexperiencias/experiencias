@@ -165,7 +165,7 @@
             }
 
             <div class="form-submit-row">
-              <button type="submit" class="provider-page-submit-btn" [disabled]="
+              <button type="submit" class="provider-page-submit-btn" style="color: #ffffff !important;" [disabled]="
                       isSubmitting() ||
                       !providerAgency().trim() ||
                       !providerCategory().trim() ||
@@ -176,7 +176,7 @@
                       !providerWebsite().trim() ||
                       !providerDescription().trim()
                     ">
-                <span>{{ isSubmitting() ? 'Enviando postulación...' : 'Postularme
+                <span style="color: #ffffff !important;">{{ isSubmitting() ? 'Enviando postulación...' : 'Postularme
                   como Prestador Emergente' }}</span>
               </button>
             </div>
