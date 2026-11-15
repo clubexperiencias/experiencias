@@ -42,15 +42,13 @@
             <div class="tier-card" [class.user-current-tier]="newsletter.isSubscribed()">
               <div class="tier-card-header">
                 @if (newsletter.isSubscribed()) {
-                  <span class="tier-level-badge current">✓ TU NIVEL ACTUAL</span>
+                <span class="tier-level-badge current">NIVEL 1: ACTUAL</span>
                 } @else {
-                  <span class="tier-level-badge initial">NIVEL 1: PUNTO DE PARTIDA</span>
+                <span class="tier-level-badge initial">NIVEL 1: PUNTO DE PARTIDA</span>
                 }
                 <h4 class="tier-name">Socio Emergente</h4>
                 <div class="tier-price-wrap">
-                  <span class="tier-price tier-price-free" style="color: #ffffff !important"
-                    >$0</span
-                  >
+                  <span class="tier-price tier-price-free" style="color: #ffffff !important">$0</span>
                   <span class="tier-period">ARS / mes</span>
                 </div>
               </div>
@@ -66,27 +64,34 @@
               </ul>
 
               <div class="tier-card-footer">
-                <a routerLink="/socios/emergentes" class="tier-cta-btn default-action">
-                  <span class="cta-title-row">
-                    <span>Unirme Gratis</span>
-                    <mat-icon class="btn-icon">arrow_forward</mat-icon>
-                  </span>
-                  <span class="cta-sub-text">Pre-registro en lista de espera</span>
-                </a>
+                @if (newsletter.isSubscribed()) {
+                  <a routerLink="/perfil" class="tier-cta-btn current-achieved" title="Ir a tu perfil de socio">
+                    <span class="cta-title-row">
+                      <span>Ir a Mi Perfil</span>
+                      <mat-icon class="btn-icon">arrow_forward</mat-icon>
+                    </span>
+                    <span class="cta-sub-text" style="font-weight: 400 !important;">Socio registrado en la plataforma</span>
+                  </a>
+                } @else {
+                  <a routerLink="/socios/emergentes" class="tier-cta-btn default-action">
+                    <span class="cta-title-row">
+                      <span>Unirme Gratis</span>
+                      <mat-icon class="btn-icon">arrow_forward</mat-icon>
+                    </span>
+                    <span class="cta-sub-text" style="font-weight: 400 !important;">Socio registrado en la plataforma</span>
+                  </a>
+                }
               </div>
             </div>
 
             <!-- 2. Socio Pleno -->
-            <div
-              class="tier-card featured-tier"
-              [class.tier-card-locked]="!newsletter.isMonthlyActive()"
-            >
+            <div class="tier-card featured-tier" [class.tier-card-locked]="!newsletter.isMonthlyActive()">
               <div class="tier-featured-glow"></div>
               <div class="tier-card-header">
                 @if (newsletter.isMonthlyActive()) {
-                  <span class="tier-level-badge current">✓ TU NIVEL ACTUAL</span>
+                <span class="tier-level-badge current">NIVEL 2: ACTUAL</span>
                 } @else {
-                  <span class="tier-level-badge locked-badge">NIVEL 2: PRÓXIMAMENTE</span>
+                <span class="tier-level-badge locked-badge">NIVEL 2: PRÓXIMAMENTE</span>
                 }
                 <h4 class="tier-name">Socio Pleno</h4>
                 <div class="tier-price-wrap">
@@ -98,7 +103,7 @@
               <div class="tier-jump-card">
                 <span class="jump-tag">CÓMO ACCEDER</span>
                 <p>
-                  Suscripción mensual recurrente.
+                  Suscripción mensual cancelable en cualquier momento.
                 </p>
               </div>
 
@@ -110,21 +115,21 @@
 
               <div class="tier-card-footer">
                 @if (newsletter.isMonthlyActive()) {
-                  <a routerLink="/socios/plenos" class="tier-cta-btn current-achieved">
-                    <span class="cta-title-row">
-                      <mat-icon class="btn-icon">check</mat-icon>
-                      <span>Membresía Activa</span>
-                    </span>
-                    <span class="cta-sub-text">Gestionar suscripción</span>
-                  </a>
+                <a routerLink="/socios/plenos" class="tier-cta-btn current-achieved">
+                  <span class="cta-title-row">
+                    <mat-icon class="btn-icon">check</mat-icon>
+                    <span>Membresía Activa</span>
+                  </span>
+                  <span class="cta-sub-text">Gestionar suscripción</span>
+                </a>
                 } @else {
-                  <button type="button" class="tier-cta-btn locked-cta" disabled>
-                    <span class="cta-title-row">
-                      <span>Membresía en Proceso</span>
-                      <mat-icon class="btn-icon">lock</mat-icon>
-                    </span>
-                    <span class="cta-sub-text">Se habilitará a inicios de 2027</span>
-                  </button>
+                <button type="button" class="tier-cta-btn locked-cta" disabled>
+                  <span class="cta-title-row">
+                    <span>Membresía en Proceso</span>
+                    <mat-icon class="btn-icon">lock</mat-icon>
+                  </span>
+                  <span class="cta-sub-text">Se habilitará a inicios de 2027</span>
+                </button>
                 }
               </div>
             </div>
@@ -161,7 +166,7 @@
                     <span>Postularme como Fundador</span>
                     <mat-icon class="btn-icon">arrow_forward</mat-icon>
                   </span>
-                  <span class="cta-sub-text">Carta de admisión confidencial</span>
+                  <span class="cta-sub-text" style="font-weight: 400 !important;">Carta de admisión confidencial</span>
                 </a>
               </div>
             </div>
@@ -178,31 +183,31 @@
 
   <!-- Modal: Iniciar Sesión (si se abre desde el header) -->
   @if (activeModal() === 'login') {
-    <div class="modal-backdrop" (click)="closeModal()">
-      <div class="modal-card" (click)="$event.stopPropagation()">
-        <div class="modal-header">
-          <div>
-            <span class="modal-kicker">ACCESO DE SOCIOS</span>
-            <h3 class="modal-heading">Iniciar Sesión</h3>
-          </div>
-          <button class="modal-close-btn" (click)="closeModal()" aria-label="Cerrar modal">
-            <mat-icon>close</mat-icon>
-          </button>
+  <div class="modal-backdrop" (click)="closeModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <span class="modal-kicker">ACCESO DE SOCIOS</span>
+          <h3 class="modal-heading">Iniciar Sesión</h3>
         </div>
+        <button class="modal-close-btn" (click)="closeModal()" aria-label="Cerrar modal">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
 
-        <p class="modal-lead">
-          Iniciá sesión con Google para acceder a tu perfil de socio y comprobantes:
-        </p>
+      <p class="modal-lead">
+        Iniciá sesión con Google para acceder a tu perfil de socio y comprobantes:
+      </p>
 
-        <div class="login-modal-box">
-          <div class="modal-footer" style="margin-top: 1.4rem">
-            <button class="pill-action-btn secondary" (click)="closeModal()">Cancelar</button>
-            <a routerLink="/ingresar" class="pill-action-btn" (click)="closeModal()">
-              Iniciar sesión con Google
-            </a>
-          </div>
+      <div class="login-modal-box">
+        <div class="modal-footer" style="margin-top: 1.4rem">
+          <button class="pill-action-btn secondary" (click)="closeModal()">Cancelar</button>
+          <a routerLink="/ingresar" class="pill-action-btn" (click)="closeModal()">
+            Iniciar sesión con Google
+          </a>
         </div>
       </div>
     </div>
+  </div>
   }
 </div>

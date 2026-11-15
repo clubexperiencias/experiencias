@@ -1,6 +1,7 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { Title } from '@angular/platform-browser';
 import { MatIconModule } from '@angular/material/icon';
 import { ProviderStoreService } from '../../../core/services/provider-store.service';
 import { ExperienceService } from '../../../core/services/experience.service';
@@ -35,6 +36,7 @@ import { getSocialHandle } from '../../../shared/utils/social-url.util';
 export class ProviderPublicProfileComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly titleService = inject(Title);
   readonly providerStore = inject(ProviderStoreService);
   readonly expService = inject(ExperienceService);
 
@@ -45,11 +47,11 @@ export class ProviderPublicProfileComponent implements OnInit {
 
   readonly breadcrumbs = computed<BreadcrumbItem[]>(() => {
     const p = this.provider();
+    const isLoad = this.loading();
     return [
       { label: 'Inicio', url: '/' },
-      { label: 'Experiencias', url: '/experiencias' },
       { label: 'Prestadores', url: '/prestadores' },
-      { label: p ? p.agency || p.name : 'Prestador' },
+      { label: p ? p.agency || p.name : (isLoad ? 'Cargando...' : 'Prestador') },
     ];
   });
 
@@ -64,10 +66,12 @@ export class ProviderPublicProfileComponent implements OnInit {
   });
 
   async ngOnInit(): Promise<void> {
+    this.titleService.setTitle('Cargando... - Experiencias Club');
     const slug = this.route.snapshot.paramMap.get('slug');
     if (!slug) {
       this.notFound.set(true);
       this.loading.set(false);
+      this.titleService.setTitle('Prestador no encontrado - Experiencias Club');
       return;
     }
 
@@ -75,8 +79,10 @@ export class ProviderPublicProfileComponent implements OnInit {
     const found = await this.providerStore.getPublicProvider(slug);
     if (found) {
       this.provider.set(found);
+      this.titleService.setTitle(`${found.agency || found.name} - Experiencias Club`);
     } else {
       this.notFound.set(true);
+      this.titleService.setTitle('Prestador no encontrado - Experiencias Club');
     }
     this.loading.set(false);
   }
@@ -90,8 +96,18 @@ export class ProviderPublicProfileComponent implements OnInit {
     return `https://${s}`;
   }
 
-  socialHandle(social: string | undefined): string {
-    return getSocialHandle(this.formatSocialUrl(social));
+  socialHandle(social: string | undefined, isSecondary = false): string {
+    if (!social) return '';
+    const handle = getSocialHandle(this.formatSocialUrl(social));
+    if (
+      handle === '@share' ||
+      handle.toLowerCase() === 'share' ||
+      handle.toLowerCase() === '@share' ||
+      (isSecondary && (handle.toLowerCase().includes('share') || handle === '@share'))
+    ) {
+      return 'Red Social Secundaria';
+    }
+    return handle;
   }
 
   formatWebsiteUrl(url: string | undefined): string {

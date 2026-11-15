@@ -40,10 +40,9 @@
               <p class="completion-membership-desc">
                 Registramos tu suscripción con
                 <strong>{{ newsletter.currentMember()?.email || 'test@gmail.com' }}</strong
-                >. Ya formás parte de la lista de espera oficial del club como
+                >. Ya formás parte del club como
                 <strong>{{ newsletter.isMonthlyActive() ? 'Socio Pleno' : 'Socio Emergente' }}</strong
-                >. Priorizaremos tu cupo según qué expediciones realices y qué tan completo tengas tu
-                perfil.
+                >.
               </p>
             </div>
 
@@ -181,8 +180,9 @@
               [class.saved-success]="profileJustSaved()"
               (click)="saveMemberProfile()"
               [disabled]="!memberFullName().trim() || !memberDni() || !memberPhone().trim()"
+              style="color: #ffffff !important;"
             >
-              <span>{{ profileJustSaved() ? 'Perfil guardado con éxito' : 'Guardar Perfil' }}</span>
+              <span style="color: #ffffff !important;">{{ profileJustSaved() ? 'Perfil guardado con éxito' : 'Guardar Perfil' }}</span>
             </button>
 
             @if (
@@ -289,14 +289,36 @@
 
           <!-- Botón de Actividades Completas con más presencia abajo -->
           <div class="view-all-activities-action">
-            <a routerLink="/perfil/actividades" class="btn-view-all-activities">
-              <span
-                >Ver actividades completas ({{
-                  activityService.activities().length
-                }}
-                expediciones)</span
+            @if (activityService.activities().length > 0) {
+              <a
+                routerLink="/perfil/actividades"
+                class="btn-view-all-activities"
+                style="color: #ffffff !important;"
               >
-            </a>
+                <span style="color: #ffffff !important;"
+                  >Ver actividades reservadas ({{
+                    activityService.activities().length
+                  }}
+                  {{
+                    activityService.activities().length === 1
+                      ? 'experiencia'
+                      : 'experiencias'
+                  }})</span
+                >
+              </a>
+            } @else {
+              <button
+                type="button"
+                class="btn-view-all-activities disabled-activities-btn"
+                disabled
+                style="color: #ffffff !important;"
+                title="Aún no tenés actividades reservadas"
+              >
+                <span style="color: #ffffff !important;"
+                  >Ver actividades reservadas (0 experiencias)</span
+                >
+              </button>
+            }
           </div>
         </div>
 
@@ -386,7 +408,7 @@
             <div class="tier-card" [class.user-current-tier]="newsletter.isSubscribed()">
               <div class="tier-card-header">
                 @if (newsletter.isSubscribed()) {
-                  <span class="tier-level-badge current">✓ TU NIVEL ACTUAL</span>
+                  <span class="tier-level-badge current">NIVEL 1: ACTUAL</span>
                 } @else {
                   <span class="tier-level-badge initial">NIVEL 1: PUNTO DE PARTIDA</span>
                 }
@@ -432,7 +454,7 @@
               <div class="tier-jump-card highlight">
                 <span class="jump-tag">CÓMO ACCEDER</span>
                 <p>
-                  Suscripción mensual recurrente.
+                  Suscripción mensual recurrente cancelable en cualquier momento.
                 </p>
               </div>
 

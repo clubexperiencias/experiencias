@@ -461,9 +461,20 @@ const publicRoutes: Routes = [
     redirectTo: 'experiencias/:slug',
   },
 
-  // "La web de antes" para prestadores y convocatoria abierta
+  // Directorio y catálogo de prestadores oficiales verificados
   {
     path: 'prestadores',
+    title: 'Prestadores Oficiales Verificados - Experiencias Club',
+    loadComponent: () =>
+      import('./features/providers/providers-catalog/providers-catalog.component').then(
+        (m) => m.ProvidersCatalogComponent,
+      ),
+  },
+
+  // "La web de antes" para prestadores y convocatoria abierta -> ahora /prestadores/emergentes
+  {
+    path: 'prestadores/emergentes',
+    title: 'Convertite en Prestador Oficial - Experiencias Club',
     loadComponent: () =>
       import('./features/providers/providers.component').then((m) => m.ProvidersComponent),
   },

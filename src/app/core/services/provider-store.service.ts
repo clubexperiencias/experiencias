@@ -1411,6 +1411,85 @@ export class ProviderStoreService {
     return null;
   }
 
+  async getPublicProviders(): Promise<ProviderUser[]> {
+    const mapRemoteToPublic = (remoteData: any): ProviderUser => {
+      const email = remoteData.email || '';
+      const slug =
+        remoteData.slug ||
+        (remoteData.agency || remoteData.name || email)
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/(^-|-$)+/g, '');
+      return {
+        id: `prov-${email.replace(/[^a-z0-9]+/g, '-')}`,
+        email,
+        name: remoteData.name || remoteData.agency || email,
+        agency: remoteData.agency || 'Prestador Catamarca',
+        slug,
+        bio: remoteData.bio || '',
+        phone: remoteData.phone || '',
+        website: remoteData.website || '',
+        socialMedia: remoteData.social_media || '',
+        socialMediaSecondary: remoteData.social_media_secondary || '',
+        cuitDni: '',
+        cbuAlias: '',
+        bankName: '',
+        verified: true,
+        status: remoteData.status || 'aprobado',
+        role: 'prestador',
+        avatar: remoteData.avatar_url || '',
+        coverImage: remoteData.cover_url || '/assets/images/portada.jpg',
+        joinedAt: remoteData.created_at || new Date().toISOString(),
+      };
+    };
+
+    let remoteList: ProviderUser[] = [];
+    if (isSupabaseConfigured()) {
+      try {
+        const { data, error } = await (this.supabase as any)
+          .from('perfiles_publicos')
+          .select('*');
+
+        if (!error && Array.isArray(data) && data.length > 0) {
+          remoteList = data
+            .filter((d: any) => (d.active ?? true) && d.status === 'aprobado')
+            .map(mapRemoteToPublic);
+        } else {
+          const { data: fallbackData } = await (this.supabase.from('prestadores') as any)
+            .select(
+              'email, name, agency, active, status, phone, website, social_media, social_media_secondary, slug, bio, avatar_url, cover_url',
+            )
+            .eq('active', true)
+            .eq('status', 'aprobado');
+
+          if (Array.isArray(fallbackData) && fallbackData.length > 0) {
+            remoteList = fallbackData.map(mapRemoteToPublic);
+          }
+        }
+      } catch (err) {
+        console.warn('[ProviderStore] Error consultando lista de perfiles públicos:', err);
+      }
+    }
+
+    const localVerified = this._providers()
+      .filter((p) => p.verified === true && p.status === 'aprobado' && (p.active ?? true))
+      .map((p) => ({ ...p, cuitDni: '', cbuAlias: '', bankName: '' }));
+
+    const merged = new Map<string, ProviderUser>();
+    for (const p of localVerified) {
+      const key = (p.slug || p.email || p.id).toLowerCase();
+      merged.set(key, p);
+    }
+    for (const p of remoteList) {
+      const key = (p.slug || p.email || p.id).toLowerCase();
+      merged.set(key, { ...merged.get(key), ...p });
+    }
+
+    return Array.from(merged.values());
+  }
+
   getExperienceById(id: string): ProviderExperience | undefined {
     const fromStore = this._experiences().find((e) => e.id === id || e.slug === id);
     if (fromStore) return fromStore;
@@ -2970,7 +3049,20 @@ export class ProviderStoreService {
       if (!raw) return SEED_PROVIDERS;
       const list = JSON.parse(raw);
       if (!Array.isArray(list)) return SEED_PROVIDERS;
-      return list.map((p) => this.sanitizeProvider(p));
+      const sanitized = list
+        .map((p) => this.sanitizeProvider(p))
+        .filter(
+          (p) =>
+            p.slug !== 'catamarca-expediciones' &&
+            p.id !== 'prov-catamarca-expediciones' &&
+            p.email?.toLowerCase() !== 'vegvarel@gmail.com'
+        );
+      for (const seed of SEED_PROVIDERS) {
+        if (!sanitized.some((p) => p.email.toLowerCase() === seed.email.toLowerCase() || (p.slug && p.slug === seed.slug))) {
+          sanitized.push(seed);
+        }
+      }
+      return sanitized;
     } catch {
       return SEED_PROVIDERS;
     }

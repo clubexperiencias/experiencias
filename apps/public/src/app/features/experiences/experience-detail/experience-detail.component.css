@@ -222,7 +222,7 @@
 }
 
 .ars-price {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 2.1rem;
   font-weight: 700;
   color: #80b3ff;
@@ -263,6 +263,12 @@
   transition: all 0.25s ease;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  color: #ffffff !important;
+}
+
+.cta-primary-btn span,
+.cta-primary-btn mat-icon {
+  color: #ffffff !important;
 }
 
 .cta-blue-btn {
@@ -272,6 +278,11 @@
   box-shadow: 0 4px 16px rgba(255, 255, 255, 0.4), 0 0 10px rgba(255, 255, 255, 0.2);
 }
 
+.cta-blue-btn span,
+.cta-blue-btn mat-icon {
+  color: #ffffff !important;
+}
+
 .cta-blue-btn:hover {
   background: #99c2ff;
   color: #ffffff !important;
@@ -279,18 +290,34 @@
   transform: translateY(-2px);
 }
 
+.cta-blue-btn:hover span,
+.cta-blue-btn:hover mat-icon {
+  color: #ffffff !important;
+}
+
 .cta-white-btn {
-  background: #ffffff;
-  color: #000000 !important;
-  border: 1px solid rgba(0, 0, 0, 0.15);
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.35);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
 }
 
+.cta-white-btn span,
+.cta-white-btn mat-icon {
+  color: #ffffff !important;
+}
+
 .cta-white-btn:hover {
-  background: #f0f0f0;
-  color: #000000 !important;
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.6);
+  color: #ffffff !important;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
   transform: translateY(-2px);
+}
+
+.cta-white-btn:hover span,
+.cta-white-btn:hover mat-icon {
+  color: #ffffff !important;
 }
 
 /* ═══════════════ FECHAS CHIPS GRID ═══════════════ */

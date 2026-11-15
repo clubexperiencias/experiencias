@@ -165,7 +165,7 @@ export const MEMBERSHIP_TIERS: MembershipTierInfo[] = [
     description:
       'Miembro activo del club con capacidad de reserva inmediata y descuentos directos con prestadores.',
     howToReach:
-      'Suscripción mensual recurrente.',
+      'Suscripción mensual cancelable en cualquier momento.',
     benefits: [
       'Todos los beneficios de Socio Emergente',
       '10% OFF directo en todas las expediciones y salidas',

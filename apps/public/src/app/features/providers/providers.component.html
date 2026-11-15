@@ -47,172 +47,125 @@
           </div>
 
           @if (!providerSuccess()) {
-            @if (requiresGoogle()) {
-              <div class="provider-google-gate">
-                <div class="google-gate-head">
-                  <span class="google-gate-kicker">PASO 1 DE 2: IDENTIDAD DEL PRESTADOR</span>
-                  <h3 class="google-gate-title">Vincular cuenta con Google</h3>
-                </div>
-                <p class="google-gate-desc">
-                  Para postularte como prestador oficial, vinculá tu cuenta de Google. Tu nombre y correo oficial quedarán asociados a la postulación de forma automática.
-                </p>
-                @if (authError()) {
-                  <p class="google-gate-error" role="alert">{{ authError() }}</p>
-                }
-                <button type="button" class="provider-google-btn" (click)="linkGoogleAccount()">
-                  <svg class="google-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                  </svg>
-                  <span>Continuar con Google</span>
-                </button>
+          @if (requiresGoogle()) {
+          <div class="provider-google-gate">
+            <div class="google-gate-head">
+              <span class="google-gate-kicker">PASO 1 DE 2: IDENTIDAD DEL PRESTADOR</span>
+              <h3 class="google-gate-title">Vincular cuenta con Google</h3>
+            </div>
+            <p class="google-gate-desc">
+              Para postularte como prestador oficial, vinculá tu cuenta de Google. Tu nombre y correo oficial quedarán
+              asociados a la postulación de forma automática.
+            </p>
+            @if (authError()) {
+            <p class="google-gate-error" role="alert">{{ authError() }}</p>
+            }
+            <button type="button" class="provider-google-btn" (click)="linkGoogleAccount()">
+              <svg class="google-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                <path fill="#4285F4"
+                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path fill="#34A853"
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path fill="#FBBC05"
+                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                <path fill="#EA4335"
+                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+              </svg>
+              <span>Continuar con Google</span>
+            </button>
+          </div>
+          } @else {
+          <div class="provider-account-verified-card">
+            <div class="account-verified-info">
+              <span class="account-verified-kicker">CUENTA DE SOCIO VINCULADA</span>
+              <div class="account-verified-row">
+                <strong class="account-verified-name">{{ authenticatedMember()?.fullName || providerName() }}</strong>
+                <span class="account-verified-pill">Verificado</span>
               </div>
-            } @else {
-              <div class="provider-account-verified-card">
-                <div class="account-verified-info">
-                  <span class="account-verified-kicker">CUENTA DE SOCIO VINCULADA</span>
-                  <div class="account-verified-row">
-                    <strong class="account-verified-name">{{ authenticatedMember()?.fullName || providerName() }}</strong>
-                    <span class="account-verified-pill">Verificado</span>
-                  </div>
-                </div>
-              </div>
+            </div>
+          </div>
 
-              <form class="provider-full-form" (submit)="$event.preventDefault(); submitProvider()">
-                <div class="provider-form-grid">
-                  <label class="provider-field">
-                    <span class="field-lbl">Agencia / Emprendimiento <b>*</b></span>
-                    <input
-                      id="p-page-agency"
-                      type="text"
-                      class="provider-input"
-                      placeholder="Ej. Catamarca Kayak & Aventura o Guías del Ambato"
-                      [value]="providerAgency()"
-                      (input)="providerAgency.set($any($event.target).value)"
-                      required
-                    />
-                  </label>
+          <form class="provider-full-form" (submit)="$event.preventDefault(); submitProvider()">
+            <div class="provider-form-grid">
+              <label class="provider-field">
+                <span class="field-lbl">Agencia / Emprendimiento <b>*</b></span>
+                <input id="p-page-agency" type="text" class="provider-input"
+                  placeholder="Ej. Catamarca Kayak & Aventura o Guías del Ambato" [value]="providerAgency()"
+                  (input)="providerAgency.set($any($event.target).value)" required />
+              </label>
 
-                  <label class="provider-field">
-                    <span class="field-lbl">Categoría Principal del Servicio <b>*</b></span>
-                    <select
-                      id="p-page-category"
-                      class="provider-select"
-                      [value]="providerCategory()"
-                      (change)="providerCategory.set($any($event.target).value)"
-                      required
-                    >
-                      <option value="guia_montaña">Guía de Alta Montaña / Trekking</option>
-                      <option value="kayak_nautica">
-                        Kayak & Travesías Náuticas (Diques y Lagunas)
-                      </option>
-                      <option value="transporte_4x4">Transporte & Expedición 4x4</option>
-                      <option value="alojamiento">Alojamiento / Refugio Puneño</option>
-                      <option value="gastronomia">Gastronomía & Vinos de Altura</option>
-                      <option value="fotografia">Fotografía / Astroturismo</option>
-                      <option value="cabalgatas">Cabalgatas & Rutas Gauchas</option>
-                      <option value="artesanias">Artesanías & Sabores Regionales</option>
-                      <option value="otro">Otro (especificar a continuación)</option>
-                    </select>
-                  </label>
+              <label class="provider-field">
+                <span class="field-lbl">Categoría Principal del Servicio <b>*</b></span>
+                <select id="p-page-category" class="provider-select" [value]="providerCategory()"
+                  (change)="providerCategory.set($any($event.target).value)" required>
+                  <option value="guia_montaña">Guía de Alta Montaña / Trekking</option>
+                  <option value="kayak_nautica">
+                    Kayak & Travesías Náuticas (Diques y Lagunas)
+                  </option>
+                  <option value="transporte_4x4">Transporte & Expedición 4x4</option>
+                  <option value="alojamiento">Alojamiento / Refugio Puneño</option>
+                  <option value="gastronomia">Gastronomía & Vinos de Altura</option>
+                  <option value="fotografia">Fotografía / Astroturismo</option>
+                  <option value="cabalgatas">Cabalgatas & Rutas Gauchas</option>
+                  <option value="artesanias">Artesanías & Sabores Regionales</option>
+                  <option value="otro">Otro (especificar a continuación)</option>
+                </select>
+              </label>
 
-                  @if (providerCategory() === 'otro') {
-                    <label class="provider-field full-width">
-                      <span class="field-lbl">Especificá tu Categoría de Servicio <b>*</b></span>
-                      <input
-                        id="p-page-custom-category"
-                        type="text"
-                        class="provider-input"
-                        placeholder="Ej. Cicloturismo, Buceo de altura, Guía arqueológico, etc."
-                        maxlength="80"
-                        [value]="providerCustomCategory()"
-                        (input)="providerCustomCategory.set($any($event.target).value)"
-                        required
-                      />
-                    </label>
-                  }
+              @if (providerCategory() === 'otro') {
+              <label class="provider-field full-width">
+                <span class="field-lbl">Especificá tu Categoría de Servicio <b>*</b></span>
+                <input id="p-page-custom-category" type="text" class="provider-input"
+                  placeholder="Ej. Cicloturismo, Buceo de altura, Guía arqueológico, etc." maxlength="80"
+                  [value]="providerCustomCategory()" (input)="providerCustomCategory.set($any($event.target).value)"
+                  required />
+              </label>
+              }
 
-                  <label class="provider-field">
-                    <span class="field-lbl">Región donde se presta el servicio <b>*</b></span>
-                    <input
-                      id="p-page-region"
-                      type="text"
-                      class="provider-input"
-                      placeholder="Ej. Fiambalá, Belén, Valle Central, etc."
-                      [value]="providerRegion()"
-                      (input)="providerRegion.set($any($event.target).value)"
-                      required
-                    />
-                  </label>
+              <label class="provider-field">
+                <span class="field-lbl">Región donde se presta el servicio <b>*</b></span>
+                <input id="p-page-region" type="text" class="provider-input"
+                  placeholder="Ej. Fiambalá, Belén, Valle Central, etc." [value]="providerRegion()"
+                  (input)="providerRegion.set($any($event.target).value)" required />
+              </label>
 
-                  <label class="provider-field">
-                    <span class="field-lbl">Correo Electrónico <b>*</b></span>
-                    <input
-                      id="p-page-email"
-                      type="email"
-                      class="provider-input"
-                      placeholder="tu-correo@ejemplo.com"
-                      [value]="providerEmail()"
-                      readonly
-                      style="opacity: 0.85; cursor: not-allowed;"
-                    />
-                  </label>
+              <label class="provider-field">
+                <span class="field-lbl">Correo Electrónico <b>*</b></span>
+                <input id="p-page-email" type="email" class="provider-input" placeholder="tu-correo@ejemplo.com"
+                  [value]="providerEmail()" readonly style="opacity: 0.85; cursor: not-allowed;" />
+              </label>
 
-                  <label class="provider-field">
-                    <span class="field-lbl">Teléfono / WhatsApp de Contacto <b>*</b></span>
-                    <input
-                      id="p-page-phone"
-                      type="tel"
-                      class="provider-input"
-                      placeholder="Ej. +54 9 3834 123456"
-                      [value]="providerPhone()"
-                      (input)="providerPhone.set($any($event.target).value)"
-                      required
-                    />
-                  </label>
+              <label class="provider-field">
+                <span class="field-lbl">Teléfono / WhatsApp de Contacto <b>*</b></span>
+                <input id="p-page-phone" type="tel" class="provider-input" placeholder="Ej. +54 9 3834 123456"
+                  [value]="providerPhone()" (input)="providerPhone.set($any($event.target).value)" required />
+              </label>
 
-                  <label class="provider-field">
-                    <span class="field-lbl">Sitio Web o Red Social Principal <b>*</b></span>
-                    <input
-                      id="p-page-website"
-                      type="text"
-                      class="provider-input"
-                      placeholder="instagram.com/mitravesia o tuweb.com"
-                      [value]="providerWebsite()"
-                      (input)="providerWebsite.set($any($event.target).value)"
-                      required
-                    />
-                  </label>
+              <label class="provider-field">
+                <span class="field-lbl">Sitio Web o Red Social Principal <b>*</b></span>
+                <input id="p-page-website" type="text" class="provider-input"
+                  placeholder="instagram.com/mitravesia o tuweb.com" [value]="providerWebsite()"
+                  (input)="providerWebsite.set($any($event.target).value)" required />
+              </label>
 
-                  <label class="provider-field full-width">
-                    <span class="field-lbl"
-                      >Breve Descripción de tus Salidas o Servicios <b>*</b></span
-                    >
-                    <textarea
-                      id="p-page-desc"
-                      class="provider-textarea"
-                      rows="3"
-                      placeholder="Contanos brevemente qué recorridos realizás, capacidad de grupos o equipamiento disponible..."
-                      [value]="providerDescription()"
-                      (input)="providerDescription.set($any($event.target).value)"
-                      required
-                    ></textarea>
-                  </label>
-                </div>
+              <label class="provider-field full-width">
+                <span class="field-lbl">Breve Descripción de tus Salidas o Servicios <b>*</b></span>
+                <textarea id="p-page-desc" class="provider-textarea" rows="3"
+                  placeholder="Contanos brevemente qué recorridos realizás, capacidad de grupos o equipamiento disponible..."
+                  [value]="providerDescription()" (input)="providerDescription.set($any($event.target).value)"
+                  required></textarea>
+              </label>
+            </div>
 
-                @if (submitError()) {
-                  <div class="provider-error-banner" role="alert" style="margin-bottom: 1.25rem; padding: 0.85rem 1rem; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 4px; color: #fca5a5; font-size: 0.88rem;">
-                    {{ submitError() }}
-                  </div>
-                }
+            @if (submitError()) {
+            <div class="provider-error-banner" role="alert"
+              style="margin-bottom: 1.25rem; padding: 0.85rem 1rem; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 4px; color: #fca5a5; font-size: 0.88rem;">
+              {{ submitError() }}
+            </div>
+            }
 
-                <div class="form-submit-row">
-                  <button
-                    type="submit"
-                    class="provider-page-submit-btn"
-                    [disabled]="
+            <div class="form-submit-row">
+              <button type="submit" class="provider-page-submit-btn" [disabled]="
                       isSubmitting() ||
                       !providerAgency().trim() ||
                       !providerCategory().trim() ||
@@ -222,27 +175,27 @@
                       !providerPhone().trim() ||
                       !providerWebsite().trim() ||
                       !providerDescription().trim()
-                    "
-                  >
-                    <span>{{ isSubmitting() ? 'Enviando postulación...' : 'Postularme como Prestador Emergente' }}</span>
-                  </button>
-                </div>
-              </form>
-            }
-          } @else {
-            <div class="provider-success-banner wide-success">
-              <div class="success-content">
-                <span class="success-kicker">POSTULACIÓN RECIBIDA</span>
-                <h3>¡Gracias por sumarte, {{ providerName() }}!</h3>
-                <p>
-                  Recibimos tu postulación asociada a <strong>{{ providerEmail() }}</strong> correctamente.
-                  Nuestro equipo ya la está analizando y te avisaremos por email cuando se habilite tu perfil oficial.
-                </p>
-                <button type="button" class="secondary-btn" (click)="resetForm()">
-                  Enviar otra postulación
-                </button>
-              </div>
+                    ">
+                <span style="color: #ffffff !important;">{{ isSubmitting() ? 'Enviando postulación...' : 'Postularme
+                  como Prestador Emergente' }}</span>
+              </button>
             </div>
+          </form>
+          }
+          } @else {
+          <div class="provider-success-banner wide-success">
+            <div class="success-content">
+              <span class="success-kicker">POSTULACIÓN RECIBIDA</span>
+              <h3>¡Gracias por sumarte, {{ providerName() }}!</h3>
+              <p>
+                Recibimos tu postulación asociada a <strong>{{ providerEmail() }}</strong> correctamente.
+                Nuestro equipo ya la está analizando y te avisaremos por email cuando se habilite tu perfil oficial.
+              </p>
+              <button type="button" class="secondary-btn" (click)="resetForm()">
+                Enviar otra postulación
+              </button>
+            </div>
+          </div>
           }
         </section>
 
@@ -256,244 +209,207 @@
 
   <!-- Modales Compartidos (Niveles de Socio, Experiencias, Login) -->
   @if (activeModal()) {
-    <div class="modal-backdrop" (click)="closeModal()">
-      <!-- Modal: Niveles de Socio y Membresías -->
-      @if (activeModal() === 'tiers') {
-        <div class="modal-card wide tiers-modal-card" (click)="$event.stopPropagation()">
-          <div class="modal-header">
-            <div>
-              <span class="modal-kicker">PLAN DE MEMBRESÍAS Y EVOLUCIÓN</span>
-              <h3 class="modal-heading">Niveles de Socio del Club</h3>
-            </div>
-            <button class="modal-close-btn" (click)="closeModal()" aria-label="Cerrar modal">
-              <mat-icon>close</mat-icon>
-            </button>
-          </div>
-
-          <div class="tiers-grid">
-            <!-- 1. Socio Emergente -->
-            <div class="tier-card" [class.user-current-tier]="newsletter.isSubscribed()">
-              <div class="tier-card-header">
-                @if (newsletter.isSubscribed()) {
-                  <span class="tier-level-badge current">✓ TU NIVEL ACTUAL</span>
-                } @else {
-                  <span class="tier-level-badge initial">NIVEL 1: PUNTO DE PARTIDA</span>
-                }
-                <h4 class="tier-name">Socio Emergente</h4>
-              </div>
-
-              <div class="tier-jump-card">
-                <span class="jump-tag">CÓMO ACCEDER</span>
-                <p>Creando tu perfil al vincular tu cuenta de Google.</p>
-              </div>
-
-              <ul class="tier-benefits">
-                <li>Enterarse de las nuevas experiencias y descuentos antes que nadie</li>
-                <li>Cupo asegurado prioritario en fechas de alta demanda</li>
-              </ul>
-
-              <div class="tier-card-footer">
-                @if (newsletter.isSubscribed()) {
-                  <button class="tier-cta-btn current-achieved" disabled>
-                    <span class="cta-title-row">
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2.5"
-                        class="btn-icon"
-                      >
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                      Nivel alcanzado
-                    </span>
-                    <span class="cta-sub-text">Suscripción confirmada</span>
-                  </button>
-                } @else {
-                  <button class="tier-cta-btn cta-emergent" (click)="goToHomeSubscribe()">
-                    <span class="cta-title-row">
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        class="btn-icon"
-                      >
-                        <path d="M5 12h14" />
-                        <path d="m12 5 7 7-7 7" />
-                      </svg>
-                      Suscribirme gratis
-                    </span>
-                    <span class="cta-sub-text">Unirme a la lista de espera</span>
-                  </button>
-                }
-              </div>
-            </div>
-
-            <!-- 2. Socio Pleno -->
-            <div class="tier-card highlight" [class.user-next-tier]="newsletter.isSubscribed()">
-              <div class="tier-card-header">
-                @if (newsletter.isSubscribed()) {
-                  <span class="tier-level-badge next">NIVEL 2: PRÓXIMAMENTE</span>
-                } @else {
-                  <span class="tier-level-badge">NIVEL 2: PRÓXIMAMENTE</span>
-                }
-                <h4 class="tier-name">Socio Pleno</h4>
-              </div>
-
-              <div class="tier-jump-card highlight">
-                <span class="jump-tag">CÓMO ACCEDER</span>
-                <p>
-                  Suscripción mensual recurrente.
-                </p>
-              </div>
-
-              <ul class="tier-benefits">
-                <li>Todos los beneficios de Socio Emergente</li>
-                <li><strong>10% OFF directo</strong> en todas las expediciones y salidas</li>
-                <li>Asistencia personalizada de viaje con guías locales</li>
-              </ul>
-
-              <div class="tier-card-footer">
-                <a
-                  routerLink="/socios/plenos"
-                  class="tier-cta-btn cta-active"
-                  (click)="closeModal()"
-                  style="text-decoration: none"
-                >
-                  <span class="cta-title-row">
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      class="btn-icon"
-                    >
-                      <polygon
-                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
-                      />
-                    </svg>
-                    Activar Membresía Mensual
-                  </span>
-                  <span class="cta-sub-text">Tarifa a definir · Temporada 2027</span>
-                </a>
-              </div>
-            </div>
-
-            <!-- 3. Socio Fundador -->
-            <div class="tier-card founder-card">
-              <div class="tier-card-header">
-                <span class="tier-level-badge founder">NIVEL 3: VITALICIO</span>
-                <h4 class="tier-name">Socio Fundador</h4>
-              </div>
-
-              <div class="tier-jump-card founder">
-                <span class="jump-tag">CÓMO ACCEDER</span>
-                <p>Aporte patrimonial único evaluado por el Comité del Club.</p>
-              </div>
-
-              <ul class="tier-benefits">
-                <li>Todos los beneficios de Socio Emergente y Socio Pleno</li>
-                <li>
-                  <strong>20% OFF permanente</strong> en todas las expediciones para titular y
-                  acompañante
-                </li>
-                <li>Participación formal en el Consejo Consultivo del Club</li>
-                <li>Acceso prioritario a experiencias privadas de lujo del Club</li>
-              </ul>
-
-              <div class="tier-card-footer">
-                <button class="tier-cta-btn cta-founder" (click)="openFounderApplication()">
-                  <span class="cta-title-row">
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      class="btn-icon"
-                    >
-                      <path d="M6 3h12l4 6-10 12L2 9z" />
-                      <path d="M11 3 8 9l4 12 4-12-3-6" />
-                      <path d="M2 9h20" />
-                    </svg>
-                    Postular a Fundador
-                  </span>
-                  <span class="cta-sub-text">Carta de admisión · Sin cuotas</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div class="modal-footer">
-            <button class="pill-action-btn" (click)="closeModal()">Entendido</button>
-          </div>
+  <div class="modal-backdrop" (click)="closeModal()">
+    <!-- Modal: Niveles de Socio y Membresías -->
+    @if (activeModal() === 'tiers') {
+    <div class="modal-card wide tiers-modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <span class="modal-kicker">PLAN DE MEMBRESÍAS Y EVOLUCIÓN</span>
+          <h3 class="modal-heading">Niveles de Socio del Club</h3>
         </div>
-      }
+        <button class="modal-close-btn" (click)="closeModal()" aria-label="Cerrar modal">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
 
-      <!-- Modal: Experiencias -->
-      @if (activeModal() === 'experiences') {
-        <div class="modal-card wide experiences-modal-card" (click)="$event.stopPropagation()">
-          <div class="modal-header">
-            <div>
-              <span class="modal-kicker">CATÁLOGO DE SALIDAS</span>
-              <h3 class="modal-heading">Expediciones Destacadas</h3>
-            </div>
-            <button class="modal-close-btn" (click)="closeModal()" aria-label="Cerrar modal">
-              <mat-icon>close</mat-icon>
-            </button>
+      <div class="tiers-grid">
+        <!-- 1. Socio Emergente -->
+        <div class="tier-card" [class.user-current-tier]="newsletter.isSubscribed()">
+          <div class="tier-card-header">
+            @if (newsletter.isSubscribed()) {
+            <span class="tier-level-badge current">NIVEL 1: ACTUAL</span>
+            } @else {
+            <span class="tier-level-badge initial">NIVEL 1: PUNTO DE PARTIDA</span>
+            }
+            <h4 class="tier-name">Socio Emergente</h4>
           </div>
-          <p class="modal-lead">
-            Todas nuestras actividades son guiadas por prestadores locales matriculados con
-            estándares de seguridad internacional.
-          </p>
-          <div class="cards-grid">
-            @for (exp of experienceService.experiences(); track exp.id) {
-              <div class="exp-card">
-                <div
-                  class="exp-card-media"
-                  [style.background-image]="'url(' + exp.coverImage + ')'"
-                >
-                  <span class="exp-region-tag"
-                    >{{ exp.region }} ({{ exp.altitudeMeters }} msnm)</span
-                  >
-                </div>
-                <div class="exp-card-content">
-                  <h4 class="exp-title">{{ exp.title }}</h4>
-                  <p class="exp-tagline">{{ exp.tagline }}</p>
-                </div>
-              </div>
+
+          <div class="tier-jump-card">
+            <span class="jump-tag">CÓMO ACCEDER</span>
+            <p>Creando tu perfil al vincular tu cuenta de Google.</p>
+          </div>
+
+          <ul class="tier-benefits">
+            <li>Enterarse de las nuevas experiencias y descuentos antes que nadie</li>
+            <li>Cupo asegurado prioritario en fechas de alta demanda</li>
+          </ul>
+
+          <div class="tier-card-footer">
+            @if (newsletter.isSubscribed()) {
+            <a routerLink="/perfil" class="tier-cta-btn current-achieved" title="Ir a tu perfil de socio">
+              <span class="cta-title-row">
+                <span>Ir a Mi Perfil</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="btn-icon">
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                  <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+              </span>
+              <span class="cta-sub-text">Socio registrado en la plataforma</span>
+            </a>
+            } @else {
+            <button class="tier-cta-btn cta-emergent" (click)="goToHomeSubscribe()">
+              <span class="cta-title-row">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
+                  <path d="M5 12h14" />
+                  <path d="m12 5 7 7-7 7" />
+                </svg>
+                Suscribirme gratis
+              </span>
+              <span class="cta-sub-text">Unirme a la lista de espera</span>
+            </button>
             }
           </div>
         </div>
-      }
 
-      <!-- Modal: Iniciar Sesión -->
-      @if (activeModal() === 'login') {
-        <div class="modal-card" (click)="$event.stopPropagation()">
-          <div class="modal-header">
-            <div>
-              <span class="modal-kicker">ACCESO DE SOCIOS</span>
-              <h3 class="modal-heading">Iniciar Sesión</h3>
-            </div>
-            <button class="modal-close-btn" (click)="closeModal()" aria-label="Cerrar modal">
-              <mat-icon>close</mat-icon>
-            </button>
+        <!-- 2. Socio Pleno -->
+        <div class="tier-card highlight" [class.user-next-tier]="newsletter.isSubscribed()">
+          <div class="tier-card-header">
+            @if (newsletter.isSubscribed()) {
+            <span class="tier-level-badge next">NIVEL 2: PRÓXIMAMENTE</span>
+            } @else {
+            <span class="tier-level-badge">NIVEL 2: PRÓXIMAMENTE</span>
+            }
+            <h4 class="tier-name">Socio Pleno</h4>
           </div>
-          <p class="modal-lead">
-            Ingresá con tu correo electrónico registrado para acceder a tu perfil y beneficios.
-          </p>
-          <div class="modal-body-content">
-            <a
-              routerLink="/"
-              class="pill-action-btn"
-              (click)="closeModal()"
-              style="display: block; text-align: center; text-decoration: none"
-            >
-              Ir a Portada para Ingresar
+
+          <div class="tier-jump-card highlight">
+            <span class="jump-tag">CÓMO ACCEDER</span>
+            <p>
+              Suscripción mensual cancelable en cualquier momento.
+            </p>
+          </div>
+
+          <ul class="tier-benefits">
+            <li>Todos los beneficios de Socio Emergente</li>
+            <li><strong>10% OFF directo</strong> en todas las expediciones y salidas</li>
+            <li>Asistencia personalizada de viaje con guías locales</li>
+          </ul>
+
+          <div class="tier-card-footer">
+            <a routerLink="/socios/plenos" class="tier-cta-btn cta-active" (click)="closeModal()"
+              style="text-decoration: none">
+              <span class="cta-title-row">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
+                  <polygon
+                    points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                </svg>
+                Activar Membresía Mensual
+              </span>
+              <span class="cta-sub-text">Tarifa a definir · Temporada 2027</span>
             </a>
           </div>
         </div>
-      }
+
+        <!-- 3. Socio Fundador -->
+        <div class="tier-card founder-card">
+          <div class="tier-card-header">
+            <span class="tier-level-badge founder">NIVEL 3: VITALICIO</span>
+            <h4 class="tier-name">Socio Fundador</h4>
+          </div>
+
+          <div class="tier-jump-card founder">
+            <span class="jump-tag">CÓMO ACCEDER</span>
+            <p>Aporte patrimonial único evaluado por el Comité del Club.</p>
+          </div>
+
+          <ul class="tier-benefits">
+            <li>Todos los beneficios de Socio Emergente y Socio Pleno</li>
+            <li>
+              <strong>20% OFF permanente</strong> en todas las expediciones para titular y
+              acompañante
+            </li>
+            <li>Participación formal en el Consejo Consultivo del Club</li>
+            <li>Acceso prioritario a experiencias privadas de lujo del Club</li>
+          </ul>
+
+          <div class="tier-card-footer">
+            <button class="tier-cta-btn cta-founder" (click)="openFounderApplication()">
+              <span class="cta-title-row">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
+                  <path d="M6 3h12l4 6-10 12L2 9z" />
+                  <path d="M11 3 8 9l4 12 4-12-3-6" />
+                  <path d="M2 9h20" />
+                </svg>
+                Postular a Fundador
+              </span>
+              <span class="cta-sub-text">Carta de admisión · Sin cuotas</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="pill-action-btn" (click)="closeModal()">Entendido</button>
+      </div>
     </div>
+    }
+
+    <!-- Modal: Experiencias -->
+    @if (activeModal() === 'experiences') {
+    <div class="modal-card wide experiences-modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <span class="modal-kicker">CATÁLOGO DE SALIDAS</span>
+          <h3 class="modal-heading">Expediciones Destacadas</h3>
+        </div>
+        <button class="modal-close-btn" (click)="closeModal()" aria-label="Cerrar modal">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+      <p class="modal-lead">
+        Todas nuestras actividades son guiadas por prestadores locales matriculados con
+        estándares de seguridad internacional.
+      </p>
+      <div class="cards-grid">
+        @for (exp of experienceService.experiences(); track exp.id) {
+        <div class="exp-card">
+          <div class="exp-card-media" [style.background-image]="'url(' + exp.coverImage + ')'">
+            <span class="exp-region-tag">{{ exp.region }} ({{ exp.altitudeMeters }} msnm)</span>
+          </div>
+          <div class="exp-card-content">
+            <h4 class="exp-title">{{ exp.title }}</h4>
+            <p class="exp-tagline">{{ exp.tagline }}</p>
+          </div>
+        </div>
+        }
+      </div>
+    </div>
+    }
+
+    <!-- Modal: Iniciar Sesión -->
+    @if (activeModal() === 'login') {
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <span class="modal-kicker">ACCESO DE SOCIOS</span>
+          <h3 class="modal-heading">Iniciar Sesión</h3>
+        </div>
+        <button class="modal-close-btn" (click)="closeModal()" aria-label="Cerrar modal">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+      <p class="modal-lead">
+        Ingresá con tu correo electrónico registrado para acceder a tu perfil y beneficios.
+      </p>
+      <div class="modal-body-content">
+        <a routerLink="/" class="pill-action-btn" (click)="closeModal()"
+          style="display: block; text-align: center; text-decoration: none">
+          Ir a Portada para Ingresar
+        </a>
+      </div>
+    </div>
+    }
+  </div>
   }
 </div>

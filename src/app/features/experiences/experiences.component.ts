@@ -126,6 +126,36 @@ export class ExperiencesComponent implements AfterViewInit, OnDestroy {
     isLocked: true,
   };
 
+  private readonly comingSoonCatalogExperience: Experience = {
+    id: 'exp-coming-soon-catalog',
+    slug: 'proximamente-valle-catamarca',
+    title: 'Nueva experiencia en Catamarca',
+    tagline: 'Estamos preparando una nueva salida para compartir con el Club.',
+    description:
+      'Muy pronto vas a poder conocer todos los detalles de esta experiencia exclusiva en Catamarca con guías habilitados y cupos reservados para socios.',
+    region: 'Valle Central y Ambato',
+    difficulty: 'Moderada',
+    durationDays: 1,
+    durationLabel: 'Próximamente',
+    altitudeMeters: 1200,
+    bestSeason: 'Todo el año',
+    priceArs: 0,
+    priceUsd: 0,
+    maxSpotsPerGroup: 8,
+    coverImage: '/assets/images/laguna_blanca.jpg',
+    galleryImages: ['/assets/images/laguna_blanca.jpg'],
+    highlights: [
+      'Salida exclusiva en fase final de curaduría y relevamiento técnico',
+      'Protocolo estricto de seguridad andina e impacto ambiental cero',
+      'Cupos prioritarios para socios registrados del Club de Experiencias',
+    ],
+    included: ['Guías matriculados', 'Seguro de accidentes personales', 'Kit de bienvenida'],
+    isExclusiveClub: true,
+    isLocked: true,
+    displayLocation: 'catalogo',
+    providerName: 'Club de Experiencias',
+  };
+
   readonly featuredExperiences = () => {
     const list = this.experienceService
       .publishedExperiences()
@@ -149,11 +179,171 @@ export class ExperiencesComponent implements AfterViewInit, OnDestroy {
     return items;
   });
 
-  readonly otherExperiences = () => {
-    return this.experienceService
-      .publishedExperiences()
-      .filter((e) => e.displayLocation === 'catalogo');
-  };
+  // Filtros del catálogo completo
+  readonly searchTerm = signal('');
+  readonly filterDifficulty = signal('todas');
+  readonly filterDuration = signal('todas');
+  readonly filterAltitude = signal('todas');
+  readonly filterRegion = signal('todas');
+  readonly filterMaxSpots = signal('todos');
+  readonly filterSeason = signal('todas');
+
+  // Catálogo completo: experiencias no destacadas primero (incluyendo la nueva experiencia en Catamarca), y destacadas al fondo
+  readonly allCatalogExperiences = computed<Experience[]>(() => {
+    const all = this.experienceService.publishedExperiences();
+    const nonFeatured = all.filter(
+      (e) =>
+        e.displayLocation === 'catalogo' ||
+        (e.displayLocation && e.displayLocation !== 'destacada'),
+    );
+    const featured = all.filter((e) => !e.displayLocation || e.displayLocation === 'destacada');
+    return [this.comingSoonCatalogExperience, ...nonFeatured, ...featured];
+  });
+
+  readonly availableRegions = computed<string[]>(() => {
+    const set = new Set<string>();
+    for (const exp of this.allCatalogExperiences()) {
+      if (exp.region?.trim()) {
+        set.add(exp.region.trim());
+      }
+    }
+    return Array.from(set).sort();
+  });
+
+  readonly availableSeasons = computed<string[]>(() => {
+    const set = new Set<string>();
+    for (const exp of this.allCatalogExperiences()) {
+      if (exp.bestSeason?.trim()) {
+        set.add(exp.bestSeason.trim());
+      }
+    }
+    if (set.size === 0) {
+      set.add('Todo el año');
+    }
+    return Array.from(set).sort();
+  });
+
+  private normalizeText(text: string | null | undefined): string {
+    if (!text) return '';
+    return text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
+  }
+
+  readonly filteredExperiences = computed<Experience[]>(() => {
+    const list = this.allCatalogExperiences();
+    const query = this.normalizeText(this.searchTerm());
+    const diff = this.filterDifficulty();
+    const dur = this.filterDuration();
+    const alt = this.filterAltitude();
+    const reg = this.filterRegion();
+    const spots = this.filterMaxSpots();
+    const season = this.filterSeason();
+
+    return list.filter((exp) => {
+      // 1. Filtro de Texto (título, subtítulo, prestador, punto de encuentro o descripción)
+      if (query) {
+        const titleMatch = this.normalizeText(exp.title).includes(query);
+        const taglineMatch = this.normalizeText(exp.tagline).includes(query);
+        const providerMatch =
+          this.normalizeText(exp.providerName).includes(query) ||
+          this.normalizeText(exp.providerAgency).includes(query);
+        const meetingMatch = this.normalizeText(exp.meetingPoint).includes(query);
+        const descMatch = this.normalizeText(exp.description).includes(query);
+
+        if (!titleMatch && !taglineMatch && !providerMatch && !meetingMatch && !descMatch) {
+          return false;
+        }
+      }
+
+      // 2. DIFICULTAD
+      if (diff !== 'todas') {
+        if (exp.difficulty?.toLowerCase() !== diff.toLowerCase()) {
+          return false;
+        }
+      }
+
+      // 3. DURACIÓN
+      if (dur !== 'todas') {
+        const dLabel = (exp.durationLabel || '').toLowerCase();
+        const dDays = exp.durationDays || 1;
+        if (dur === 'medio-dia') {
+          const isHalf =
+            dLabel.includes('hora') ||
+            dLabel.includes('media') ||
+            (dDays <= 1 && dLabel.includes('h'));
+          if (!isHalf) return false;
+        } else if (dur === 'dia-completo') {
+          const isFull =
+            (dDays === 1 && !dLabel.includes('media') && !dLabel.includes('4 hora')) ||
+            dLabel.includes('completo');
+          if (!isFull) return false;
+        } else if (dur === 'varios-dias') {
+          if (dDays < 2) return false;
+        }
+      }
+
+      // 4. ALTITUD
+      if (alt !== 'todas') {
+        const meters = exp.altitudeMeters || 0;
+        if (alt === 'baja' && meters > 1500) return false;
+        if (alt === 'media' && (meters <= 1500 || meters > 3000)) return false;
+        if (alt === 'alta' && meters <= 3000) return false;
+      }
+
+      // 5. REGIÓN
+      if (reg !== 'todas') {
+        if (this.normalizeText(exp.region) !== this.normalizeText(reg)) {
+          return false;
+        }
+      }
+
+      // 6. CUPO MÁXIMO
+      if (spots !== 'todos') {
+        const max = exp.maxSpotsPerGroup || 0;
+        if (spots === 'hasta-6' && max > 6) return false;
+        if (spots === 'hasta-10' && max > 10) return false;
+        if (spots === 'mas-10' && max <= 10) return false;
+      }
+
+      // 7. TEMPORADA
+      if (season !== 'todas') {
+        const expSeason = this.normalizeText(exp.bestSeason || 'Todo el año');
+        const querySeason = this.normalizeText(season);
+        if (!expSeason.includes(querySeason)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  });
+
+  readonly hasActiveFilters = computed(() => {
+    return (
+      Boolean(this.searchTerm().trim()) ||
+      this.filterDifficulty() !== 'todas' ||
+      this.filterDuration() !== 'todas' ||
+      this.filterAltitude() !== 'todas' ||
+      this.filterRegion() !== 'todas' ||
+      this.filterMaxSpots() !== 'todos' ||
+      this.filterSeason() !== 'todas'
+    );
+  });
+
+  resetFilters(): void {
+    this.searchTerm.set('');
+    this.filterDifficulty.set('todas');
+    this.filterDuration.set('todas');
+    this.filterAltitude.set('todas');
+    this.filterRegion.set('todas');
+    this.filterMaxSpots.set('todos');
+    this.filterSeason.set('todas');
+  }
+
+  readonly otherExperiences = () => this.filteredExperiences();
 
   ngAfterViewInit(): void {
     setTimeout(() => {

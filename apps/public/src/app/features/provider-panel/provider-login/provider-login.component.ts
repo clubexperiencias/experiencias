@@ -167,15 +167,15 @@ import { environment } from '../../../../environments/environment';
 
               <div class="provider-perks-box">
                 <div class="perk-item">
-                  <mat-icon>check_circle</mat-icon>
+                  <mat-icon>check</mat-icon>
                   <span>Gestión integral de expediciones, cupos y convocatorias</span>
                 </div>
                 <div class="perk-item">
-                  <mat-icon>check_circle</mat-icon>
+                  <mat-icon>check</mat-icon>
                   <span>Conciliación directa de transferencias y comprobantes de socios</span>
                 </div>
                 <div class="perk-item">
-                  <mat-icon>check_circle</mat-icon>
+                  <mat-icon>check</mat-icon>
                   <span>Subida de fotos y videos en alta resolución con enlace directo</span>
                 </div>
               </div>
@@ -784,7 +784,7 @@ import { environment } from '../../../../environments/environment';
         font-size: 16px;
         width: 16px;
         height: 16px;
-        color: #80b3ff;
+        color: #ffffff;
         margin-top: 1px;
         flex-shrink: 0;
       }

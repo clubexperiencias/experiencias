@@ -184,8 +184,9 @@ import {
                     class="btn-connect-mp"
                     (click)="connectMercadoPago()"
                     title="Vincular cuenta con Mercado Pago"
+                    style="color: #ffffff !important;"
                   >
-                    <span>Vincular mi cuenta de Mercado Pago</span>
+                    <span style="color: #ffffff !important;">Vincular mi cuenta de Mercado Pago</span>
                   </button>
                   <span class="mp-connect-note">Podés desvincularla en cualquier momento.</span>
                 </div>
@@ -465,11 +466,12 @@ import {
               type="submit"
               class="cta-save-btn"
               [disabled]="form.invalid || isSaving() || isUploadingAvatar() || isUploadingCover()"
+              style="color: #ffffff !important;"
             >
               @if (isSaving()) {
-                <span>Guardando...</span>
+                <span style="color: #ffffff !important;">Guardando...</span>
               } @else {
-                <span>Guardar Cambios</span>
+                <span style="color: #ffffff !important;">Guardar Cambios</span>
               }
             </button>
           </div>
@@ -923,7 +925,7 @@ import {
         justify-content: center;
         padding: 0.85rem 2.25rem;
         background: #80b3ff !important;
-        color: #070d18 !important;
+        color: #ffffff !important;
         font-weight: 700;
         font-size: 0.95rem;
         border-radius: 2px;
@@ -932,14 +934,14 @@ import {
         transition: all 0.2s ease;
       }
       .cta-save-btn span {
-        color: #070d18 !important;
+        color: #ffffff !important;
       }
       .cta-save-btn:hover:not(:disabled) {
         background: #99c2ff !important;
-        color: #070d18 !important;
+        color: #ffffff !important;
       }
       .cta-save-btn:hover:not(:disabled) span {
-        color: #070d18 !important;
+        color: #ffffff !important;
       }
       .cta-save-btn:disabled {
         opacity: 0.5;
@@ -1095,7 +1097,7 @@ import {
         justify-content: center;
         padding: 0.85rem 1.65rem;
         background: #80b3ff;
-        color: #070d18;
+        color: #ffffff !important;
         border: 1px solid rgba(255, 255, 255, 0.4);
         box-shadow: 0 4px 16px rgba(255, 255, 255, 0.4), 0 0 10px rgba(255, 255, 255, 0.2);
         border-radius: 4px;
@@ -1105,16 +1107,16 @@ import {
         transition: all 0.2s ease;
       }
       .btn-connect-mp span {
-        color: #070d18;
+        color: #ffffff !important;
       }
       .btn-connect-mp:hover:not(:disabled) {
         background: #99c2ff;
-        color: #070d18;
+        color: #ffffff !important;
         transform: translateY(-2px);
         box-shadow: 0 6px 22px rgba(255, 255, 255, 0.6), 0 0 14px rgba(255, 255, 255, 0.3);
       }
       .btn-connect-mp:hover:not(:disabled) span {
-        color: #070d18;
+        color: #ffffff !important;
       }
       .btn-connect-mp mat-icon {
         font-size: 18px;
