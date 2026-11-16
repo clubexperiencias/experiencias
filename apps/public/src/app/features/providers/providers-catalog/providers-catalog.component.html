@@ -20,148 +20,393 @@
           </div>
 
           <p class="section-lead-text">
-            Conocé a los guías de montaña habilitados, operadores de turismo aventura y baqueanos locales
-            que coordinan y ejecutan las salidas oficiales del Club de Experiencias en Catamarca.
-            Cada prestador cuenta con verificación de estándares técnicos, equipamiento homologado y compromiso
-            ambiental.
+            Conocé a los guías habilitados, operadores de aventura y baqueanos locales que coordinan las salidas
+            oficiales del Club en Catamarca. Cada prestador cuenta con estándares verificados, equipamiento homologado
+            y compromiso ambiental.
           </p>
+        </section>
 
-          <div class="hero-callout-strip">
-            <div class="callout-text">
-              <span>¿Tenés agencia, empresa de aventura o sos guía matriculado en Catamarca?</span>
+        <!-- ═══════════════ CONVOCATORIA ABIERTA (ARRIBA DE DIRECTORIO PÚBLICO) ═══════════════ -->
+        <section class="section-card join-provider-card">
+          <div class="join-card-content">
+            <div class="join-text-wrap">
+              <span class="section-kicker">CONVOCATORIA ABIERTA</span>
+              <h3 class="join-title">¿Sos operador turístico en Catamarca?</h3>
+              <p class="join-description">
+                Sumate a nuestra red oficial de prestadores. Publicá tus salidas para socios exclusivos
+                y optimizá tu temporada con el respaldo de EXPERIENCIAS.CLUB.
+              </p>
             </div>
-            <a routerLink="/prestadores/emergentes" class="strip-cta-btn">
+            <a routerLink="/prestadores/emergentes" class="join-cta-btn">
               <span>Sumate como Prestador</span>
             </a>
           </div>
         </section>
 
-        <!-- ═══════════════ CARD 2: FILTROS & GRILLA DE PRESTADORES ═══════════════ -->
-        <section class="section-card catalog-section-card">
-          <div class="catalog-header-row">
+        <!-- ═══════════════ CARD 2: DIRECTORIO PÚBLICO / PRESTADORES DESTACADOS (CARRUSEL CON FLECHITAS) ═══════════════ -->
+        <section class="section-card featured-section-card">
+          <div class="featured-header-flex">
             <div>
-              <span class="section-kicker">DIRECTORIO PÚBLICO</span>
-              <h2 class="card-heading">Operadores y Guías de la Red</h2>
+              <span class="section-kicker">CUPO PRIORITARIOS</span>
+              <h2 class="card-heading">Prestadores Destacados</h2>
             </div>
 
-            <!-- Buscador en tiempo real -->
-            <div class="search-box-wrap">
-              <mat-icon class="search-icon">search</mat-icon>
-              <input type="text" [(ngModel)]="searchQuery" placeholder="Buscar por nombre, agencia o especialidad..."
-                class="search-input" aria-label="Buscar prestador" />
-              @if (searchQuery()) {
-              <button class="clear-search-btn" (click)="resetSearch()" aria-label="Limpiar búsqueda">
-                <mat-icon>close</mat-icon>
+            <!-- Flechitas como en las experiencias destacadas -->
+            <div class="carousel-nav-arrows">
+              <button
+                type="button"
+                class="carousel-nav-btn"
+                (click)="onUserNav('prev')"
+                aria-label="Prestador anterior"
+                title="Prestador anterior"
+              >
+                <mat-icon>chevron_left</mat-icon>
               </button>
+              <button
+                type="button"
+                class="carousel-nav-btn"
+                (click)="onUserNav('next')"
+                aria-label="Prestador siguiente"
+                title="Prestador siguiente"
+              >
+                <mat-icon>chevron_right</mat-icon>
+              </button>
+            </div>
+          </div>
+
+          <!-- Carrusel de Prestadores Destacados -->
+          @if (loading()) {
+            <div class="loading-state-box">
+              <div class="loading-spinner"></div>
+              <p>Cargando prestadores destacados...</p>
+            </div>
+          } @else {
+            <div
+              class="featured-carousel-wrap"
+              (mouseenter)="onCarouselMouseEnter()"
+              (mouseleave)="onCarouselMouseLeave()"
+              (touchstart)="onCarouselMouseEnter()"
+              (touchend)="onCarouselMouseLeave()"
+            >
+              <div class="featured-carousel-track" #carouselRef (scroll)="onCarouselScroll()">
+                @for (item of infiniteFeaturedProviders(); track item.key) {
+                  @let p = item.provider;
+                  <article class="provider-card carousel-provider-item">
+                    <!-- Portada de la Card -->
+                    <div class="card-cover-wrap">
+                      <img
+                        [src]="getProviderCover(p)"
+                        [alt]="p.agency || p.name"
+                        class="card-cover-img"
+                        loading="lazy"
+                        (error)="onCoverError($event)"
+                      />
+                      <div class="cover-gradient"></div>
+
+                      <!-- Badges Superiores -->
+                      <div class="card-badges-row">
+                        <span class="provider-tier-badge" [ngClass]="'tier-' + getProviderTier(p)">
+                          {{ getProviderTierLabel(p) }}
+                        </span>
+                        <div class="card-rating-badge">
+                          <span>{{ getProviderRating(p).score.toFixed(1) }} ★</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Cuerpo de la Card -->
+                    <div class="card-body">
+                      <!-- Fila de Avatar e Identidad -->
+                      <div class="identity-header">
+                        <div class="avatar-holder">
+                          @if (p.avatar) {
+                            <img [src]="p.avatar" [alt]="p.name" class="provider-avatar-img" />
+                          } @else {
+                            <div class="avatar-placeholder">
+                              <span>{{ (p.agency || p.name).charAt(0).toUpperCase() }}</span>
+                            </div>
+                          }
+                        </div>
+
+                        <div class="identity-text">
+                          <h3 class="provider-name">
+                            <a [routerLink]="['/prestadores', getProviderSlug(p)]" class="provider-name-link">
+                              {{ p.agency || p.name }}
+                            </a>
+                          </h3>
+                          <span class="provider-contact-name">{{ p.name || p.agency }}</span>
+                        </div>
+                      </div>
+
+                      <!-- Bio / Descripción Breve -->
+                      <p class="provider-bio-text">
+                        {{ p.bio || 'Prestador oficial verificado por el Club de Experiencias para salidas guiadas y expediciones en territorio andino.' }}
+                      </p>
+
+                      <!-- Meta / Salidas activas -->
+                      <div class="card-stats-row">
+                        <span class="stat-pill-info">
+                          @let count = getExperiencesCount(p);
+                          {{ count }} {{ count === 1 ? 'salida activa' : 'salidas activas' }}
+                        </span>
+                        <span class="rubro-pill-tag">
+                          {{ getProviderRubro(p) }}
+                        </span>
+                      </div>
+
+                      <!-- Redes o Web (si están disponibles) -->
+                      @if (p.socialMedia || p.website) {
+                        <div class="card-social-strip">
+                          @if (p.socialMedia) {
+                            <a
+                              [href]="cleanSocialUrl(p.socialMedia)"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              class="social-pill"
+                              [title]="'Abrir ' + p.socialMedia"
+                            >
+                              <span>{{ socialHandle(p.socialMedia) }}</span>
+                            </a>
+                          }
+                          @if (p.website) {
+                            <a
+                              [href]="cleanSocialUrl(p.website)"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              class="social-pill"
+                              [title]="'Sitio Web oficial ' + p.website"
+                            >
+                              <span>Sitio Web</span>
+                            </a>
+                          }
+                        </div>
+                      }
+
+                      <!-- Botón de acción al Perfil Público -->
+                      <div class="card-footer-action">
+                        <a [routerLink]="['/prestadores', getProviderSlug(p)]" class="btn-view-profile">
+                          <span>Ver Perfil</span>
+                        </a>
+                      </div>
+                    </div>
+                  </article>
+                }
+              </div>
+            </div>
+          }
+        </section>
+
+        <!-- ═══════════════ CARD 3: CATÁLOGO DE TODOS LOS PRESTADORES (CARDS HORIZONTALES) ═══════════════ -->
+        <section class="section-card catalog-section-card">
+          <div class="catalog-header-block">
+            <span class="section-kicker">CATÁLOGO COMPLETO</span>
+            <h2 class="card-heading">Explorá Todos los Prestadores en Catamarca</h2>
+          </div>
+
+          <!-- Barra de Filtros y Búsqueda -->
+          <div class="catalog-filters-container">
+            <!-- 1. Búsqueda por Texto -->
+            <div class="filter-search-box">
+              <mat-icon class="search-box-icon">search</mat-icon>
+              <input
+                type="text"
+                class="filter-search-input"
+                placeholder="Buscar por nombre, agencia, especialidad o biografía..."
+                [value]="searchQuery()"
+                (input)="searchQuery.set($any($event.target).value)"
+              />
+              @if (searchQuery()) {
+                <button
+                  type="button"
+                  class="search-clear-btn"
+                  (click)="searchQuery.set('')"
+                  aria-label="Borrar búsqueda"
+                >
+                  <mat-icon>close</mat-icon>
+                </button>
               }
             </div>
+
+            <!-- 2. Grid de Filtros de Selección (CATEGORÍA / NIVEL, RUBRO / ESPECIALIDAD, ORDENAR POR) -->
+            <div class="filter-stats-grid">
+              <!-- CATEGORÍA / NIVEL -->
+              <div class="filter-field-col">
+                <label class="filter-field-lbl" for="filter-tier">CATEGORÍA / NIVEL</label>
+                <div class="filter-select-wrap">
+                  <select
+                    id="filter-tier"
+                    class="filter-select"
+                    [value]="selectedTierFilter()"
+                    (change)="selectedTierFilter.set($any($event.target).value)"
+                  >
+                    <option value="todos">Todas las categorías</option>
+                    <option value="fundador">Prestadores Fundadores</option>
+                    <option value="pleno">Prestadores Plenos</option>
+                    <option value="emergente">Prestadores Emergentes</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- RUBRO / ESPECIALIDAD -->
+              <div class="filter-field-col">
+                <label class="filter-field-lbl" for="filter-rubro">RUBRO / ESPECIALIDAD</label>
+                <div class="filter-select-wrap">
+                  <select
+                    id="filter-rubro"
+                    class="filter-select"
+                    [value]="selectedCategoryFilter()"
+                    (change)="selectedCategoryFilter.set($any($event.target).value)"
+                  >
+                    <option value="todos">Todos los rubros</option>
+                    <option value="Alta Montaña">Alta Montaña & Trekking</option>
+                    <option value="4x4">Travesías 4x4 & Puna</option>
+                    <option value="Kayak">Kayak & Náutica</option>
+                    <option value="Cabalgatas">Cabalgatas & Rutas Gauchas</option>
+                    <option value="Cultura">Cultura & Sabores</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- ORDENAR POR -->
+              <div class="filter-field-col">
+                <label class="filter-field-lbl" for="filter-sort">ORDENAR POR</label>
+                <div class="filter-select-wrap">
+                  <select
+                    id="filter-sort"
+                    class="filter-select"
+                    [value]="selectedSortOrder()"
+                    (change)="selectedSortOrder.set($any($event.target).value)"
+                  >
+                    <option value="rating">Mayor Puntuación</option>
+                    <option value="experiences">Más Salidas Activas</option>
+                    <option value="name">Nombre (A - Z)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
           </div>
 
-
-          <!-- Estado de carga -->
+          <!-- Listado Horizontal de Prestadores -->
           @if (loading()) {
-          <div class="loading-state-box">
-            <div class="loading-spinner"></div>
-            <p>Cargando prestadores oficiales verificados...</p>
-          </div>
+            <div class="loading-state-box">
+              <div class="loading-spinner"></div>
+              <p>Cargando prestadores...</p>
+            </div>
           } @else {
-          @if (filteredProviders().length > 0) {
-          <!-- ─── GRILLA CUADRICULADA DE PRESTADORES ─── -->
-          <div class="providers-grid">
-            @for (p of filteredProviders(); track p.id) {
-            <article class="provider-card">
-              <!-- Portada de la Card -->
-              <div class="card-cover-wrap">
-                <img [src]="p.coverImage || '/assets/images/portada.jpg'" [alt]="p.agency || p.name"
-                  class="card-cover-img" loading="lazy" />
-                <div class="cover-gradient"></div>
+            @if (filteredAllProviders().length > 0) {
+              <div class="providers-horizontal-list">
+                @for (p of filteredAllProviders(); track p.id) {
+                  <article class="provider-item-horizontal">
+                    <!-- Columna Izquierda: Media / Portada -->
+                    <div class="horizontal-media">
+                      <img
+                        [src]="getProviderCover(p)"
+                        [alt]="p.agency || p.name"
+                        class="horizontal-cover-img"
+                        loading="lazy"
+                        (error)="onCoverError($event)"
+                      />
+                      <div class="horizontal-media-gradient"></div>
 
-                <!-- Badge Oficial Verificado -->
-                <div class="verified-badge">
-                  <span>OFICIAL VERIFICADO</span>
-                </div>
-              </div>
-
-              <!-- Cuerpo de la Card -->
-              <div class="card-body">
-                <!-- Fila de Avatar e Identidad -->
-                <div class="identity-header">
-                  <div class="avatar-holder">
-                    @if (p.avatar) {
-                    <img [src]="p.avatar" [alt]="p.name" class="provider-avatar-img" />
-                    } @else {
-                    <div class="avatar-placeholder">
-                      <span>{{ (p.agency || p.name).charAt(0).toUpperCase() }}</span>
+                      <!-- Badges sobre la foto -->
+                      <div class="horizontal-badges-overlay">
+                        <span class="horizontal-tier-badge" [ngClass]="'tier-' + getProviderTier(p)">
+                          {{ getProviderTierLabel(p) }}
+                        </span>
+                        <div class="horizontal-rating-badge">
+                          <span>{{ getProviderRating(p).score.toFixed(1) }} ★</span>
+                        </div>
+                      </div>
                     </div>
-                    }
-                  </div>
 
-                  <div class="identity-text">
-                    <h3 class="provider-name">
-                      <a [routerLink]="['/prestadores', getProviderSlug(p)]" class="provider-name-link">
-                        {{ p.agency || p.name }}
-                      </a>
-                    </h3>
-                    @if (p.agency && p.agency !== p.name) {
-                    <span class="provider-contact-name">{{ p.name }}</span>
-                    }
-                  </div>
-                </div>
+                    <!-- Columna Derecha: Contenido e Información -->
+                    <div class="horizontal-content">
+                      <div class="horizontal-header-row">
+                        <div class="horizontal-avatar-holder">
+                          @if (p.avatar) {
+                            <img [src]="p.avatar" [alt]="p.name" class="provider-avatar-img" />
+                          } @else {
+                            <div class="avatar-placeholder">
+                              <span>{{ (p.agency || p.name).charAt(0).toUpperCase() }}</span>
+                            </div>
+                          }
+                        </div>
 
-                <!-- Bio / Descripción Breve -->
-                <p class="provider-bio-text">
-                  {{ p.bio || 'Prestador oficial verificado por el Club de Experiencias para salidas guiadas y
-                  expediciones en territorio andino.' }}
-                </p>
+                        <div class="horizontal-title-group">
+                          <h3 class="horizontal-provider-name">
+                            <a [routerLink]="['/prestadores', getProviderSlug(p)]" class="provider-name-link">
+                              {{ p.agency || p.name }}
+                            </a>
+                          </h3>
+                          <span class="horizontal-contact-name">{{ p.name || p.agency }}</span>
+                        </div>
+                      </div>
 
-                <!-- Meta / Salidas activas -->
-                <div class="card-stats-row">
-                  <div class="stat-item">
-                    <span>
-                      @let count = getExperiencesCount(p);
-                      {{ count }} @if (count === 1) { salida activa } @else { salidas activas }
-                    </span>
-                  </div>
-                </div>
+                      <!-- Biografía descriptiva -->
+                      <p class="horizontal-bio-text">
+                        {{ p.bio || 'Prestador oficial verificado por el Club de Experiencias para salidas guiadas y expediciones en territorio andino.' }}
+                      </p>
 
-                <!-- Redes o Web (si están disponibles) -->
-                @if (p.socialMedia || p.website) {
-                <div class="card-social-strip">
-                  @if (p.socialMedia) {
-                  <a [href]="cleanSocialUrl(p.socialMedia)" target="_blank" rel="noopener noreferrer"
-                    class="social-pill" [title]="'Abrir ' + p.socialMedia">
-                    <span>{{ socialHandle(p.socialMedia) }}</span>
-                  </a>
-                  }
-                  @if (p.website) {
-                  <a [href]="cleanSocialUrl(p.website)" target="_blank" rel="noopener noreferrer" class="social-pill"
-                    [title]="'Sitio Web oficial ' + p.website">
-                    <span>Sitio Web</span>
-                  </a>
-                  }
-                </div>
+                      <!-- Metadata y Rubro -->
+                      <div class="horizontal-meta-row">
+                        <span class="meta-tag-rubro">
+                          {{ getProviderRubro(p) }}
+                        </span>
+                        <span class="meta-tag-count">
+                          @let count = getExperiencesCount(p);
+                          {{ count }} {{ count === 1 ? 'salida activa' : 'salidas activas' }}
+                        </span>
+                        <span class="meta-tag-rating">
+                          {{ getProviderRating(p).count }} {{ getProviderRating(p).count === 1 ? 'voto' : 'votos' }}
+                        </span>
+                      </div>
+
+                      <!-- Fila inferior: Redes Sociales y Botón de Acción -->
+                      <div class="horizontal-actions-row">
+                        <div class="horizontal-social-strip">
+                          @if (p.socialMedia) {
+                            <a
+                              [href]="cleanSocialUrl(p.socialMedia)"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              class="social-pill"
+                              [title]="'Abrir ' + p.socialMedia"
+                            >
+                              <span>{{ socialHandle(p.socialMedia) }}</span>
+                            </a>
+                          }
+                          @if (p.website) {
+                            <a
+                              [href]="cleanSocialUrl(p.website)"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              class="social-pill"
+                              [title]="'Sitio Web oficial ' + p.website"
+                            >
+                              <span>Sitio Web</span>
+                            </a>
+                          }
+                        </div>
+
+                        <a [routerLink]="['/prestadores', getProviderSlug(p)]" class="btn-view-profile-horizontal">
+                          <span>Ver Perfil</span>
+                        </a>
+                      </div>
+                    </div>
+                  </article>
                 }
-
-                <!-- Botón de acción al Perfil Público -->
-                <div class="card-footer-action">
-                  <a [routerLink]="['/prestadores', getProviderSlug(p)]" class="btn-view-profile">
-                    <span>Ver Perfil</span>
-                  </a>
-                </div>
               </div>
-            </article>
+            } @else {
+              <!-- Estado sin resultados -->
+              <div class="empty-results-box">
+                <mat-icon class="empty-icon">search_off</mat-icon>
+                <h3>No se encontraron prestadores</h3>
+                <p>No hay prestadores verificados que coincidan con los criterios seleccionados.</p>
+                <button class="btn-reset-search" (click)="resetAllFilters()">
+                  <span>Restablecer Filtros</span>
+                </button>
+              </div>
             }
-          </div>
-          } @else {
-          <!-- Estado sin resultados -->
-          <div class="empty-results-box">
-            <h3>No se encontraron prestadores</h3>
-            <p>No hay prestadores oficiales verificados que coincidan con "{{ searchQuery() }}".</p>
-            <button class="btn-reset-search" (click)="resetSearch()">
-              <span>Mostrar todos los prestadores</span>
-            </button>
-          </div>
-          }
           }
         </section>
 

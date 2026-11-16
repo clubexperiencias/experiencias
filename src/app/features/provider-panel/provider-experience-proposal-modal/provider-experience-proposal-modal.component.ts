@@ -106,35 +106,16 @@ const DEFAULT_REQ_FORM = {
                   <strong>"{{ reqForm.title || 'tu propuesta' }}"</strong>. Revisarán el itinerario,
                   logística y tarifas para darla de alta en el catálogo oficial de Experiencias.
                 </p>
-                @if (finalSuccessCoverUrl() || coverImagePreview()) {
-                  <div class="request-success-media-preview">
-                    <img
-                      [src]="finalSuccessCoverUrl() || coverImagePreview()"
-                      alt="Portada cargada"
-                      class="success-thumb-img"
-                      referrerpolicy="no-referrer"
-                    />
-                    <div class="success-thumb-info">
-                      <span class="success-thumb-title">Foto de portada adjuntada</span>
-                      <span class="success-thumb-name">{{ coverImageFile()?.name || 'portada.jpg' }}</span>
-                      @if (coverVideoFile()) {
-                        <span class="success-thumb-video"
-                          >+ Video de portada: {{ coverVideoFile()?.name }}</span
-                        >
-                      }
-                    </div>
-                  </div>
-                }
                 <div class="request-success-actions">
+                  <a [routerLink]="dashboardLink()" class="modal-btn-dashboard">
+                    Volver al Panel
+                  </a>
                   <a
                     [routerLink]="backLink()"
                     [queryParams]="{ tab: 'solicitudes' }"
-                    class="modal-btn-submit return-to-panel-btn"
+                    class="modal-btn-dashboard"
                   >
                     Ver mis solicitudes
-                  </a>
-                  <a [routerLink]="dashboardLink()" class="modal-btn-dashboard">
-                    Volver al Panel
                   </a>
                 </div>
               </div>
@@ -210,7 +191,7 @@ const DEFAULT_REQ_FORM = {
                   <div class="form-group">
                     <div class="label-with-counter">
                       <label class="form-label" for="req-subheading"
-                        >Síntesis Atractiva *</label
+                        >Subtítulo / Bajada destacada (Tagline) *</label
                       >
                       <span class="char-counter">
                         {{ (reqForm.subheading || '').length }}/500
@@ -428,16 +409,21 @@ const DEFAULT_REQ_FORM = {
 
                   <div class="form-row">
                     <div class="form-group">
-                      <label class="form-label" for="req-altitude">Altitud</label>
+                      <label class="form-label" for="req-altitude">Altitud (msnm)</label>
                       <input
                         id="req-altitude"
-                        type="text"
-                        maxlength="30"
+                        type="number"
+                        inputmode="numeric"
+                        min="0"
+                        max="9999"
+                        maxlength="4"
                         class="form-input"
-                        placeholder="Ej: 850 msnm"
+                        placeholder="Ej: 850"
                         [(ngModel)]="reqForm.altitude"
+                        (input)="onAltitudeInput($event)"
                         name="altitude"
                       />
+                      <span class="field-hint">Metros sobre el nivel del mar (solo números, hasta 4 dígitos).</span>
                     </div>
 
                     <div class="form-group">
@@ -446,10 +432,12 @@ const DEFAULT_REQ_FORM = {
                         id="req-capacity"
                         type="number"
                         min="1"
-                        max="200"
+                        max="999"
+                        maxlength="3"
                         class="form-input"
                         placeholder="Ej: 12"
                         [(ngModel)]="reqForm.capacity"
+                        (input)="onCapacityInput($event)"
                         name="capacity"
                         required
                       />
@@ -549,18 +537,6 @@ const DEFAULT_REQ_FORM = {
                   <div class="form-group dates-picker-group">
                     <label class="form-label" for="scheduled-date-picker">Fechas Programadas o Disponibilidad</label>
 
-                    <!-- Opción flexible: A coordinar -->
-                    <label class="flexible-dates-checkbox-label">
-                      <input
-                        type="checkbox"
-                        [ngModel]="isDateFlexible()"
-                        (ngModelChange)="toggleFlexibleDates($event)"
-                        name="flexibleDates"
-                        class="custom-checkbox"
-                      />
-                      <span>Salidas a coordinar / Todo el año (disponibilidad a convenir con el explorador)</span>
-                    </label>
-
                     <!-- Selector visual de fechas fijas -->
                     <div class="dates-add-controls">
                       <div class="dates-input-row">
@@ -609,12 +585,12 @@ const DEFAULT_REQ_FORM = {
                       </div>
                     }
 
-                    @if (!isDateFlexible() && scheduledDates().length === 0) {
-                      <span class="field-error">Agregá al menos una fecha programada o marcá la opción "Salidas a coordinar".</span>
-                    }
-
                     <span class="field-hint">
-                      Resumen guardado: <strong>{{ reqForm.dates || 'A coordinar' }}</strong>
+                      @if (scheduledDates().length === 0) {
+                        Sin fechas fijas programadas (Salidas a coordinar / Todo el año).
+                      } @else {
+                        Resumen guardado: <strong>{{ reqForm.dates }}</strong>
+                      }
                     </span>
                   </div>
                 </div>
@@ -652,9 +628,20 @@ const DEFAULT_REQ_FORM = {
                     </div>
 
                     <div class="form-group">
-                      <label class="form-label" for="req-meeting-url"
-                        >Ubicación (Link de Google Maps) *</label
-                      >
+                      <div class="label-with-counter">
+                        <label class="form-label" for="req-meeting-url"
+                          >Ubicación (Link de Google Maps) *</label
+                        >
+                        <a
+                          [href]="isValidGoogleMapsUrl(reqForm.meetingPointUrl) ? reqForm.meetingPointUrl : 'https://www.google.com/maps'"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="maps-helper-link"
+                          title="Abrir Google Maps en otra pestaña"
+                        >
+                          Ir a Google Maps ↗
+                        </a>
+                      </div>
                       <input
                         id="req-meeting-url"
                         type="url"
@@ -734,15 +721,12 @@ const DEFAULT_REQ_FORM = {
                   <!-- Resumen visual de estado -->
                   <div class="album-counters-bar">
                     <div class="counter-badge" [class.is-valid]="!!(coverImagePreview() || coverImageFile())">
-                      <span class="badge-dot"></span>
                       <span>Portada: <strong>{{ (coverImagePreview() || coverImageFile()) ? '1 / 1' : '0 / 1' }}</strong></span>
                     </div>
                     <div class="counter-badge" [class.is-valid]="featuredCount() === 2">
-                      <span class="badge-dot"></span>
                       <span>Destacadas: <strong>{{ featuredCount() }} / 2</strong></span>
                     </div>
                     <div class="counter-badge" [class.is-valid]="galleryPhotos().length > 0">
-                      <span class="badge-dot"></span>
                       <span>Galería común: <strong>{{ galleryPhotos().length }} / 9</strong></span>
                     </div>
                   </div>
@@ -1077,7 +1061,6 @@ const DEFAULT_REQ_FORM = {
                         <strong class="mp-proposal-title">Cobros con Mercado Pago (Acreditación Instantánea)</strong>
                         @if (isMpConnected()) {
                           <span class="mp-status-pill connected">
-                            <mat-icon>check_circle</mat-icon>
                             Cuenta Vinculada
                           </span>
                         } @else {
@@ -1108,7 +1091,6 @@ const DEFAULT_REQ_FORM = {
                     @if (isMpConnected()) {
                       <div class="mp-proposal-connected-info">
                         <div class="mp-connected-item">
-                          <mat-icon class="mp-connected-icon">verified_user</mat-icon>
                           <div class="mp-connected-text">
                             <span class="mp-connected-lbl">Estado de integración:</span>
                             <strong class="mp-connected-val">Habilitada y activa para tus experiencias</strong>
@@ -1116,6 +1098,15 @@ const DEFAULT_REQ_FORM = {
                               <span class="mp-collector-sub">ID de Cobrador: <code>{{ mpCollectorId() }}</code></span>
                             }
                           </div>
+                          <button
+                            type="button"
+                            class="btn-disconnect-mp"
+                            (click)="disconnectMercadoPago()"
+                            [disabled]="isDisconnectingMp()"
+                            title="Desvincular cuenta de Mercado Pago"
+                          >
+                            <span>{{ isDisconnectingMp() ? 'Desvinculando...' : 'Desvincular' }}</span>
+                          </button>
                         </div>
                       </div>
                     } @else {
@@ -1146,11 +1137,11 @@ const DEFAULT_REQ_FORM = {
                   <a [routerLink]="backLink()" class="modal-btn-cancel">
                     Cancelar
                   </a>
-                  <button type="submit" class="modal-btn-submit" [disabled]="submittingRequest()">
+                  <button type="submit" class="modal-btn-submit" [disabled]="submittingRequest()" style="color: #ffffff !important;">
                     @if (submittingRequest()) {
-                      Enviando...
+                      <span style="color: #ffffff !important;">Enviando...</span>
                     } @else {
-                      Enviar Propuesta a Administradores
+                      <span style="color: #ffffff !important;">Enviar Propuesta a Administradores</span>
                     }
                   </button>
                 </div>
@@ -1482,6 +1473,17 @@ const DEFAULT_REQ_FORM = {
         font-size: 0.72rem;
         color: rgba(255, 255, 255, 0.5);
       }
+      .maps-helper-link {
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: #80b3ff;
+        text-decoration: none;
+        transition: color 0.15s ease, text-decoration 0.15s ease;
+      }
+      .maps-helper-link:hover {
+        color: #99c2ff;
+        text-decoration: underline;
+      }
       .field-hint {
         font-size: 0.72rem;
         color: rgba(255, 255, 255, 0.45);
@@ -1605,8 +1607,8 @@ const DEFAULT_REQ_FORM = {
         white-space: nowrap;
       }
       .btn-add-date-chip:hover:not(:disabled) {
-        background: #80b3ff;
-        color: #070d18;
+        background: #99c2ff;
+        color: #ffffff !important;
       }
       .btn-add-date-chip:disabled {
         opacity: 0.4;
@@ -1850,15 +1852,22 @@ const DEFAULT_REQ_FORM = {
         background: #80b3ff;
         border: 1px solid #80b3ff;
         border-radius: 2px;
-        color: #070d18;
+        color: #ffffff !important;
         font-size: 0.82rem;
         font-weight: 800;
         cursor: pointer;
         transition: all 0.2s ease;
       }
+      .modal-btn-submit span {
+        color: #ffffff !important;
+      }
       .modal-btn-submit:hover:not(:disabled) {
-        background: #a3c9ff;
+        background: #99c2ff;
+        color: #ffffff !important;
         box-shadow: 0 4px 15px rgba(128, 179, 255, 0.4);
+      }
+      .modal-btn-submit:hover:not(:disabled) span {
+        color: #ffffff !important;
       }
       .modal-btn-submit:disabled {
         opacity: 0.6;
@@ -1967,7 +1976,7 @@ const DEFAULT_REQ_FORM = {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        padding: 0.75rem 1.5rem;
+        padding: 0.58rem 1.4rem;
         background: rgba(128, 179, 255, 0.15);
         color: #ffffff !important;
         border: 1px solid rgba(128, 179, 255, 0.35);
@@ -1980,6 +1989,7 @@ const DEFAULT_REQ_FORM = {
       .modal-btn-dashboard:hover {
         background: rgba(128, 179, 255, 0.28);
         border-color: rgba(128, 179, 255, 0.6);
+        color: #ffffff !important;
       }
       /* Álbum de Fotos de la Experiencia */
       .album-counters-bar {
@@ -2374,7 +2384,31 @@ const DEFAULT_REQ_FORM = {
       .mp-connected-item {
         display: flex;
         align-items: center;
+        justify-content: space-between;
         gap: 0.75rem;
+      }
+      .btn-disconnect-mp {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.45rem 0.85rem;
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        border-radius: 3px;
+        color: #fca5a5;
+        font-size: 0.82rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        flex-shrink: 0;
+      }
+      .btn-disconnect-mp:hover:not(:disabled) {
+        background: rgba(239, 68, 68, 0.2);
+        border-color: #ef4444;
+      }
+      .btn-disconnect-mp:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
       }
       .mp-connected-icon {
         color: #10b981;
@@ -2420,9 +2454,9 @@ const DEFAULT_REQ_FORM = {
         justify-content: center;
         padding: 0.75rem 1.5rem;
         background: #80b3ff;
-        color: #070d18 !important;
+        color: #ffffff !important;
         border: 1px solid rgba(255, 255, 255, 0.4);
-        box-shadow: 0 4px 16px rgba(255, 255, 255, 0.4), 0 0 10px rgba(255, 255, 255, 0.2);
+        box-shadow: 0 4px 16px rgba(128, 179, 255, 0.4), 0 0 10px rgba(128, 179, 255, 0.2);
         border-radius: 4px;
         font-size: 0.88rem;
         font-weight: 700;
@@ -2430,16 +2464,16 @@ const DEFAULT_REQ_FORM = {
         transition: all 0.2s ease;
       }
       .btn-connect-mp span {
-        color: #070d18 !important;
+        color: #ffffff !important;
       }
       .btn-connect-mp:hover:not(:disabled) {
         background: #99c2ff;
-        color: #070d18 !important;
+        color: #ffffff !important;
         transform: translateY(-2px);
-        box-shadow: 0 6px 22px rgba(255, 255, 255, 0.6), 0 0 14px rgba(255, 255, 255, 0.3);
+        box-shadow: 0 6px 22px rgba(128, 179, 255, 0.6), 0 0 14px rgba(128, 179, 255, 0.3);
       }
       .btn-connect-mp:hover:not(:disabled) span {
-        color: #070d18 !important;
+        color: #ffffff !important;
       }
       .btn-connect-mp:disabled {
         opacity: 0.6;
@@ -2463,6 +2497,7 @@ export class ProviderExperienceProposalModalComponent {
   readonly isMpConnected = computed(() => Boolean(this.store.currentProvider()?.mpConnected));
   readonly mpCollectorId = computed(() => this.store.currentProvider()?.mpCollectorId || '');
   readonly isConnectingMp = signal<boolean>(false);
+  readonly isDisconnectingMp = signal<boolean>(false);
   readonly mpToast = signal<string | null>(null);
   readonly mpError = signal<string | null>(null);
 
@@ -2555,11 +2590,17 @@ export class ProviderExperienceProposalModalComponent {
     this.mpError.set(null);
 
     try {
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       const token = await this.store.getAuthToken();
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+      if (!token) {
+        this.mpError.set('No se detectó una sesión activa de Google / Supabase. Por favor, iniciá sesión nuevamente desde el botón de Google en el portal.');
+        setTimeout(() => this.mpError.set(null), 7000);
+        return;
       }
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      };
 
       const returnUrl =
         typeof window !== 'undefined'
@@ -2571,6 +2612,8 @@ export class ProviderExperienceProposalModalComponent {
         headers,
         body: JSON.stringify({
           action: 'get-oauth-url',
+          authToken: token,
+          providerId: p.id,
           returnUrl,
         }),
       });
@@ -2606,6 +2649,24 @@ export class ProviderExperienceProposalModalComponent {
       setTimeout(() => this.mpError.set(null), 6000);
     } finally {
       this.isConnectingMp.set(false);
+    }
+  }
+
+  async disconnectMercadoPago(): Promise<void> {
+    this.mpToast.set(null);
+    this.mpError.set(null);
+    this.isDisconnectingMp.set(true);
+    try {
+      const result = await this.store.disconnectMercadoPago();
+      if (result.success) {
+        this.mpToast.set('Cuenta de Mercado Pago desvinculada. Tus cobros volverán a operar únicamente por transferencia bancaria.');
+        setTimeout(() => this.mpToast.set(null), 4500);
+      } else {
+        this.mpError.set(result.message || 'No se pudo desvincular la cuenta de Mercado Pago.');
+        setTimeout(() => this.mpError.set(null), 6000);
+      }
+    } finally {
+      this.isDisconnectingMp.set(false);
     }
   }
 
@@ -2737,6 +2798,30 @@ export class ProviderExperienceProposalModalComponent {
     } else {
       this.meetingPointError.set(null);
     }
+    this.saveDraft();
+  }
+
+  onCapacityInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input || input.value === null || input.value === undefined) return;
+    const raw = String(input.value);
+    if (raw.length > 3) {
+      const truncated = raw.slice(0, 3);
+      input.value = truncated;
+      this.reqForm.capacity = Number(truncated);
+      this.saveDraft();
+    }
+  }
+
+  onAltitudeInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input || input.value === null || input.value === undefined) return;
+    const digitsOnly = String(input.value).replace(/\D/g, '');
+    const truncated = digitsOnly.slice(0, 4);
+    if (input.value !== truncated) {
+      input.value = truncated;
+    }
+    this.reqForm.altitude = truncated;
     this.saveDraft();
   }
 
@@ -3034,12 +3119,7 @@ export class ProviderExperienceProposalModalComponent {
 
   syncDatesForm(): void {
     const list = [...this.scheduledDates()];
-    if (this.isDateFlexible()) {
-      if (!list.includes('A coordinar')) {
-        list.unshift('A coordinar');
-      }
-    }
-    this.reqForm.dates = list.length > 0 ? list.join(', ') : (this.isDateFlexible() ? 'A coordinar' : '');
+    this.reqForm.dates = list.length > 0 ? list.join(', ') : 'A coordinar';
     this.formValidationError.set(null);
     this.saveDraft();
   }
@@ -3094,6 +3174,9 @@ export class ProviderExperienceProposalModalComponent {
         if (!this.reqForm.meetingPointUrl && this.isValidGoogleMapsUrl(this.reqForm.meetingPoint)) {
           this.reqForm.meetingPointUrl = this.reqForm.meetingPoint;
           this.reqForm.meetingPoint = '';
+        }
+        if (this.reqForm.altitude) {
+          this.reqForm.altitude = String(this.reqForm.altitude).replace(/\D/g, '').slice(0, 4);
         }
       }
       this.syncBankingWithProvider();
@@ -3336,7 +3419,7 @@ export class ProviderExperienceProposalModalComponent {
     const includedServices = this.reqForm.includedServices?.trim();
     const participantRequirements = this.reqForm.participantRequirements?.trim();
     const hasCoverImage = Boolean(this.coverImageFile() || this.coverImagePreview());
-    const hasValidDates = this.isDateFlexible() || this.scheduledDates().length > 0;
+    const hasValidDates = true;
 
     const isInvalid = Boolean(
       (form && form.invalid) ||
@@ -3632,7 +3715,9 @@ export class ProviderExperienceProposalModalComponent {
         region,
         difficulty: this.reqForm.difficulty,
         duration: this.reqForm.duration,
-        altitude: this.reqForm.altitude || '850 msnm',
+        altitude: this.reqForm.altitude?.trim()
+          ? `${String(this.reqForm.altitude).replace(/\D/g, '')} msnm`
+          : '850 msnm',
         capacity: Number(this.reqForm.capacity) || 12,
         season: this.reqForm.season || 'Todo el año',
         dates: this.reqForm.dates?.trim() || 'A coordinar',

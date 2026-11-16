@@ -182,3 +182,44 @@
     </div>
   </div>
 }
+
+<!-- Notificación Toast Flotante: Experiencia Agregada a Favoritos / Requiere Socio -->
+@if (favoritesService.lastFavoritedToast(); as toast) {
+  <aside class="fav-toast-banner" [class.is-auth-toast]="toast.requireAuth" role="status" aria-live="polite">
+    <div class="fav-toast-progress-track" aria-hidden="true">
+      <div class="fav-toast-progress-fill"></div>
+    </div>
+    <div class="fav-toast-left">
+      <div class="fav-toast-icon-circle" [class.is-auth-circle]="toast.requireAuth">
+        <mat-icon>{{ toast.requireAuth ? 'lock' : 'favorite' }}</mat-icon>
+      </div>
+      <div class="fav-toast-info">
+        @if (toast.requireAuth) {
+          <strong class="fav-toast-heading">¡Exclusivo para Socios!</strong>
+          <p class="fav-toast-text">
+            Tenés que ser socio e iniciar sesión para guardar tus favoritos.
+          </p>
+        } @else {
+          <strong class="fav-toast-heading">¡Guardada en tus favoritos!</strong>
+          <p class="fav-toast-text">
+            Agregaste <strong>"{{ toast.title }}"</strong> a tus actividades preferidas.
+          </p>
+        }
+      </div>
+    </div>
+
+    @if (!toast.requireAuth) {
+      <div class="fav-toast-actions">
+        <a
+          routerLink="/perfil"
+          fragment="favoritos"
+          class="fav-toast-btn"
+          (click)="favoritesService.dismissToast()"
+          title="Ver mis experiencias favoritas en mi perfil"
+        >
+          <span>Ver Favoritos</span>
+        </a>
+      </div>
+    }
+  </aside>
+}

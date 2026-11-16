@@ -1780,7 +1780,7 @@ export class NewsletterService {
     }
   }
 
-  private persistCurrentMember(entry: WaitlistEntry): void {
+  persistCurrentMember(entry: WaitlistEntry): void {
     try {
       localStorage.setItem(SUBSCRIBED_KEY, JSON.stringify(entry));
     } catch {

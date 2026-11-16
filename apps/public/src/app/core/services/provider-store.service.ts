@@ -190,6 +190,10 @@ export const CLUB_OFFICIAL_PROVIDER: ProviderUser = {
   avatar: '/assets/images/kayak-video.png',
   coverImage: '/assets/images/kayak-club-de-experiencias.jpg',
   joinedAt: '2024-01-01T00:00:00Z',
+  tier: 'fundador',
+  rubro: 'Operador Oficial del Club',
+  ratingScore: 5.0,
+  ratingCount: 1,
 };
 
 export const SEED_PROVIDERS: ProviderUser[] = [
@@ -1352,7 +1356,7 @@ export class ProviderStoreService {
       } else if (error) {
         const { data: fallbackData } = await (this.supabase.from('prestadores') as any)
           .select(
-            'email, name, agency, active, status, phone, website, social_media, social_media_secondary, slug, bio, avatar_url, cover_url',
+            'email, name, agency, active, status, phone, website, social_media, social_media_secondary, slug, bio, avatar_url, cover_url, tier, rubro, verified, rating_score, rating_count',
           )
           .eq('active', true)
           .eq('status', 'aprobado')
@@ -1500,12 +1504,16 @@ export class ProviderStoreService {
         cuitDni: '',
         cbuAlias: '',
         bankName: '',
-        verified: true,
+        verified: remoteData.verified ?? true,
         status: remoteData.status || 'aprobado',
         role: 'prestador',
         avatar: remoteData.avatar_url || '',
         coverImage: remoteData.cover_url || '/assets/images/portada.jpg',
         joinedAt: remoteData.created_at || new Date().toISOString(),
+        tier: remoteData.tier || 'emergente',
+        rubro: remoteData.rubro || '',
+        ratingScore: remoteData.rating_score !== undefined && remoteData.rating_score !== null ? Number(remoteData.rating_score) : 5.0,
+        ratingCount: remoteData.rating_count !== undefined && remoteData.rating_count !== null ? Number(remoteData.rating_count) : 0,
       };
     };
 
@@ -1525,7 +1533,7 @@ export class ProviderStoreService {
         } else {
           const { data: fallbackData, error: fallbackError } = await (this.supabase.from('prestadores') as any)
             .select(
-              'email, name, agency, active, status, phone, website, social_media, social_media_secondary, slug, bio, avatar_url, cover_url',
+              'email, name, agency, active, status, phone, website, social_media, social_media_secondary, slug, bio, avatar_url, cover_url, tier, rubro, verified, rating_score, rating_count',
             )
             .eq('active', true)
             .eq('status', 'aprobado');
@@ -3730,6 +3738,8 @@ export class ProviderStoreService {
           bankingFromPrestadores?.cuit_dni || req.providerCuitDni || existingProvider?.cuitDni,
         providerBankName:
           bankingFromPrestadores?.bank_name || req.providerBankName || existingProvider?.bankName,
+        mpConnected: Boolean(existingProvider?.mpConnected),
+        mpCollectorId: existingProvider?.mpCollectorId,
       };
 
       try {

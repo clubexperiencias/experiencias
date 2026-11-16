@@ -595,3 +595,214 @@ mat-icon.btn-icon {
   transform: translateY(-1px);
   box-shadow: 0 4px 14px rgba(255, 95, 0, 0.35);
 }
+
+/* Toast de Favoritos */
+.fav-toast-banner {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding: 0.95rem 1.35rem;
+  background: rgba(15, 23, 42, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 8px;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.5), 0 0 20px rgba(239, 68, 68, 0.2);
+  animation: slideUpFavToast 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  max-width: 520px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* Variante de notificación: Requiere inicio de sesión / membresía */
+.fav-toast-banner.is-auth-toast {
+  border-color: rgba(255, 170, 0, 0.45);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.5), 0 0 20px rgba(255, 170, 0, 0.2);
+}
+
+.fav-toast-banner.is-auth-toast .fav-toast-progress-fill {
+  background: linear-gradient(90deg, #ffaa00, #ffffff, #ffaa00);
+  box-shadow: 0 0 10px rgba(255, 170, 0, 0.7);
+}
+
+.fav-toast-banner.is-auth-toast .fav-toast-text {
+  max-width: 380px;
+  white-space: normal;
+}
+
+/* Barra de progreso de cuenta regresiva estilo Manifiesto (drena hacia el centro en 6s) */
+.fav-toast-progress-track {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: hsla(0, 0%, 100%, 0.1);
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  z-index: 10;
+}
+
+.fav-toast-progress-fill {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, #ef4444, #ffffff, #ef4444);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.7);
+  border-radius: 999px;
+  animation: favToastDrainCenter 6s linear forwards;
+}
+
+@keyframes favToastDrainCenter {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+@keyframes slideUpFavToast {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fav-toast-left {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.fav-toast-icon-circle {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.16);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.fav-toast-icon-circle.is-auth-circle {
+  background: rgba(255, 170, 0, 0.16);
+  border-color: rgba(255, 170, 0, 0.35);
+}
+
+.fav-toast-icon-circle mat-icon {
+  color: #ef4444;
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+}
+
+.fav-toast-icon-circle.is-auth-circle mat-icon {
+  color: #ffaa00;
+}
+
+.fav-toast-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.fav-toast-heading {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1.2;
+}
+
+.fav-toast-text {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.75);
+  margin: 0;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 260px;
+}
+
+.fav-toast-text strong {
+  color: #ffffff;
+}
+
+.fav-toast-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-shrink: 0;
+}
+
+.fav-toast-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.48rem 0.95rem;
+  background: #ff5f00;
+  border: 1px solid #ff5f00;
+  border-radius: 4px;
+  color: #ffffff !important;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: all 0.18s ease;
+  box-shadow: 0 2px 10px rgba(255, 95, 0, 0.35);
+}
+
+.fav-toast-btn span {
+  color: #ffffff !important;
+}
+
+.fav-toast-btn mat-icon {
+  font-size: 15px;
+  width: 15px;
+  height: 15px;
+  color: #ffffff;
+}
+
+.fav-toast-btn:hover {
+  background: #ff7722;
+  border-color: #ff7722;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(255, 95, 0, 0.45);
+}
+
+@media (max-width: 640px) {
+  .fav-toast-banner {
+    left: 1rem;
+    right: 1rem;
+    bottom: 1rem;
+    max-width: none;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+  .fav-toast-actions {
+    justify-content: stretch;
+  }
+  .fav-toast-btn {
+    flex: 1;
+    justify-content: center;
+  }
+  .fav-toast-text {
+    max-width: none;
+    white-space: normal;
+  }
+}

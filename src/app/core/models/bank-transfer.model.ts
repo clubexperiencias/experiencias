@@ -42,6 +42,10 @@ export interface ProviderUser {
   coverImage?: string;
   notes?: string;
   joinedAt: string;
+  tier?: 'emergente' | 'pleno' | 'fundador';
+  rubro?: string;
+  ratingScore?: number;
+  ratingCount?: number;
   mpConnected?: boolean;
   mpCollectorId?: string;
   mpNickname?: string;

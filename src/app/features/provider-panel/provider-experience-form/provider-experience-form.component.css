@@ -24,7 +24,7 @@
   padding: 0.48rem 1.05rem;
   background: #80b3ff;
   border: 1px solid #80b3ff;
-  color: #070d18;
+  color: #ffffff !important;
   border-radius: 4px;
   font-size: 0.8125rem;
   font-weight: 700;
@@ -42,7 +42,7 @@
 .btn-back-panel:hover {
   background: #9cc4ff;
   border-color: #9cc4ff;
-  color: #070d18;
+  color: #ffffff !important;
   transform: translateY(-2px);
   box-shadow: 0 6px 18px rgba(128, 179, 255, 0.4);
 }
@@ -356,7 +356,7 @@
   align-items: center;
   padding: 0.85rem 1.6rem;
   background: #80b3ff;
-  color: #070d18;
+  color: #ffffff !important;
   border: none;
   border-radius: 2px;
   font-weight: 700;
@@ -366,7 +366,8 @@
 }
 
 .publish-request-btn:hover {
-  background: #a6c8ff;
+  background: #99c2ff;
+  color: #ffffff !important;
 }
 
 @media (max-width: 680px) {

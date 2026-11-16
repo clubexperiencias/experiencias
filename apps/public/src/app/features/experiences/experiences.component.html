@@ -58,6 +58,20 @@
                   <div class="exp-card-media">
                     <img [src]="exp.coverImage" [alt]="exp.title" class="exp-card-img" loading="lazy" decoding="async" />
                     <span class="exp-region-tag" [class.is-enabled-tag]="!exp.isLocked">{{ exp.region }}</span>
+                    <button
+                      type="button"
+                      class="fav-btn-circle"
+                      [class.is-favorited]="isFavorite(exp)"
+                      [class.is-disabled-fav]="exp.isLocked"
+                      [disabled]="exp.isLocked"
+                      (click)="exp.isLocked ? $event.stopPropagation() : toggleFavorite(exp, $event)"
+                      [attr.aria-label]="exp.isLocked ? 'Próximamente disponible' : (isFavorite(exp) ? 'Quitar de favoritos' : 'Agregar a favoritos')"
+                      [title]="exp.isLocked ? 'Próximamente disponible' : (isFavorite(exp) ? 'Quitar de favoritos' : 'Agregar a favoritos')"
+                    >
+                      <mat-icon class="fav-icon" [class.is-favorited]="isFavorite(exp)">
+                        {{ isFavorite(exp) ? 'favorite' : 'favorite_border' }}
+                      </mat-icon>
+                    </button>
                   </div>
 
                   <div class="exp-card-content">
@@ -86,11 +100,11 @@
                     </div>
                     }
 
-                    <div class="exp-price-action-row">
+                    <div class="exp-price-action-row" [class.is-locked-footer]="exp.isLocked">
                       @if (exp.isLocked) {
-                      <a routerLink="/socios/plenos" class="exp-locked-btn">
+                      <button type="button" disabled class="exp-locked-btn is-blocked-btn" title="Próximamente disponible">
                         <span>Próximamente</span>
-                      </a>
+                      </button>
                       } @else {
                       <div class="price-box">
                         <span class="price-val">${{ exp.priceArs.toLocaleString('es-AR') }} ARS</span>
@@ -365,10 +379,10 @@
             <!-- Barra de Estado de Filtros (Resultados & Reset) -->
             <div class="filter-meta-bar">
               <span class="filter-results-counter">
-                Mostrando <strong>{{ filteredExperiences().length }}</strong>
-                {{ filteredExperiences().length === 1 ? 'experiencia' : 'experiencias' }}
+                Mostrando <strong>{{ activeCatalogCount() }}</strong>
+                {{ activeCatalogCount() === 1 ? 'experiencia' : 'experiencias' }}
                 @if (hasActiveFilters()) {
-                  <span class="filter-total-ref">(de {{ allCatalogExperiences().length }})</span>
+                  <span class="filter-total-ref">(de {{ totalActiveCatalogCount() }})</span>
                 }
               </span>
 
@@ -394,6 +408,22 @@
                   <!-- ─── CARD ACTUAL PARA EXPERIENCIAS DESTACADAS (AL FONDO) ─── -->
                   <div class="exp-catalog-item exp-item-horizontal exp-item-destacada"
                     [class.is-expanded]="selectedExperience()?.id === exp.id" [class.is-locked-card]="exp.isLocked">
+                    <!-- Botón de Favorito en la esquina superior derecha de la card general -->
+                    <button
+                      type="button"
+                      class="fav-btn-circle"
+                      [class.is-favorited]="isFavorite(exp)"
+                      [class.is-disabled-fav]="exp.isLocked"
+                      [disabled]="exp.isLocked"
+                      (click)="exp.isLocked ? $event.stopPropagation() : toggleFavorite(exp, $event)"
+                      [attr.aria-label]="exp.isLocked ? 'Próximamente disponible' : (isFavorite(exp) ? 'Quitar de favoritos' : 'Agregar a favoritos')"
+                      [title]="exp.isLocked ? 'Próximamente disponible' : (isFavorite(exp) ? 'Quitar de favoritos' : 'Agregar a favoritos')"
+                    >
+                      <mat-icon class="fav-icon" [class.is-favorited]="isFavorite(exp)">
+                        {{ isFavorite(exp) ? 'favorite' : 'favorite_border' }}
+                      </mat-icon>
+                    </button>
+
                     <div class="exp-card-main">
                       <div class="exp-card-media horizontal-media">
                         <img [src]="exp.coverImage" [alt]="exp.title" class="exp-card-img" loading="lazy" decoding="async" />
@@ -432,11 +462,11 @@
                         </div>
                         }
 
-                        <div class="exp-price-action-row">
+                        <div class="exp-price-action-row" [class.is-locked-footer]="exp.isLocked">
                           @if (exp.isLocked) {
-                          <a routerLink="/socios/plenos" class="exp-locked-btn">
+                          <button type="button" disabled class="exp-locked-btn is-blocked-btn" title="Próximamente disponible">
                             <span>Próximamente</span>
-                          </a>
+                          </button>
                           } @else {
                           <div class="price-box">
                             <span class="price-val">${{ exp.priceArs.toLocaleString('es-AR') }} ARS</span>
@@ -534,6 +564,22 @@
                   <!-- ─── NUEVO ESTILO DE CARD PARA NO DESTACADAS (IMAGEN A LA IZQUIERDA) ─── -->
                   <div class="exp-catalog-item exp-item-standard"
                     [class.is-expanded]="selectedExperience()?.id === exp.id" [class.is-locked-card]="exp.isLocked">
+                    <!-- Botón de Favorito en la esquina superior derecha de la card general -->
+                    <button
+                      type="button"
+                      class="fav-btn-circle"
+                      [class.is-favorited]="isFavorite(exp)"
+                      [class.is-disabled-fav]="exp.isLocked"
+                      [disabled]="exp.isLocked"
+                      (click)="exp.isLocked ? $event.stopPropagation() : toggleFavorite(exp, $event)"
+                      [attr.aria-label]="exp.isLocked ? 'Próximamente disponible' : (isFavorite(exp) ? 'Quitar de favoritos' : 'Agregar a favoritos')"
+                      [title]="exp.isLocked ? 'Próximamente disponible' : (isFavorite(exp) ? 'Quitar de favoritos' : 'Agregar a favoritos')"
+                    >
+                      <mat-icon class="fav-icon" [class.is-favorited]="isFavorite(exp)">
+                        {{ isFavorite(exp) ? 'favorite' : 'favorite_border' }}
+                      </mat-icon>
+                    </button>
+
                     <div class="exp-card-main standard-card-main">
                       <!-- Imagen de la experiencia a la izquierda -->
                       <div class="exp-card-media standard-media">
@@ -578,9 +624,9 @@
 
                         <div class="exp-price-action-row standard-footer-row" [class.is-locked-footer]="exp.isLocked">
                           @if (exp.isLocked) {
-                          <a routerLink="/socios/plenos" class="exp-locked-btn">
+                          <button type="button" disabled class="exp-locked-btn is-blocked-btn" title="Próximamente disponible">
                             <span>Próximamente</span>
-                          </a>
+                          </button>
                           } @else {
                           <div class="price-box">
                             <span class="price-val">${{ exp.priceArs.toLocaleString('es-AR') }} ARS</span>

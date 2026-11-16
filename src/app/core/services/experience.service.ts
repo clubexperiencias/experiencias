@@ -612,6 +612,18 @@ export class ExperienceService {
           payload['display_location'] = merged.displayLocation;
         }
 
+        if (merged.mpCollectorId !== undefined || merged.mpConnected !== undefined) {
+          let notesObj: Record<string, any> = {};
+          try {
+            notesObj = typeof merged.notes === 'string' && merged.notes.startsWith('{') ? JSON.parse(merged.notes) : {};
+          } catch {
+            notesObj = {};
+          }
+          if (merged.mpCollectorId !== undefined) notesObj['mp_collector_id'] = merged.mpCollectorId;
+          if (merged.mpConnected !== undefined) notesObj['mp_connected'] = merged.mpConnected;
+          payload['notes'] = JSON.stringify(notesObj);
+        }
+
         let payloadToUse: Record<string, any> = { ...payload };
 
         let { data, error } = await this.supabase
@@ -954,9 +966,22 @@ export class ExperienceService {
 
     if (isSupabaseConfigured()) {
       try {
-        const { data, error } = await this.supabase
-          .from('experiencias')
-          .delete()
+        let notesObj: Record<string, any> = {};
+        try {
+          if (expToDelete?.notes && expToDelete.notes.startsWith('{')) {
+            notesObj = JSON.parse(expToDelete.notes);
+          }
+        } catch {}
+        notesObj['deleted'] = true;
+        notesObj['deleted_at'] = new Date().toISOString();
+        notesObj['deleted_by'] = 'admin_portal';
+
+        const { data, error } = await (this.supabase.from('experiencias') as any)
+          .update({
+            status: 'oculta',
+            display_location: 'no_listada',
+            notes: JSON.stringify(notesObj),
+          })
           .eq('id', targetId)
           .select('id');
 
@@ -964,7 +989,7 @@ export class ExperienceService {
           throw error || new Error(`No se encontró la experiencia remota con id ${targetId}`);
         }
       } catch (err) {
-        console.warn('[ExperienceService] Fallo al eliminar en Supabase:', err);
+        console.warn('[ExperienceService] Fallo al marcar como eliminada en Supabase:', err);
         this.removeDeletedId(targetId, expToDelete?.slug);
         this._experiences.set(prevList);
         this.persistToLocalStorage(prevList);
@@ -1846,7 +1871,7 @@ export class ExperienceService {
         }
 
         const clubProfile = this.getClubProfile();
-        const remoteExperiences: Experience[] = data.map((exp: any) => {
+        const remoteExperiences: Experience[] = (data.map((exp: any) => {
           const rawImage = exp.cover_image;
           const image = (rawImage && typeof rawImage === 'string' && !rawImage.startsWith('blob:'))
             ? rawImage
@@ -1875,6 +1900,21 @@ export class ExperienceService {
           const resolvedCbuAlias = isClub ? (clubProfile.cbuAlias || 'EXPERIENCIAS.CLUB.MP') : (banking?.cbu_alias || undefined);
           const resolvedCuitDni = isClub ? (clubProfile.cuitDni || '30-71829401-4') : (banking?.cuit_dni || undefined);
           const resolvedBankName = isClub ? (clubProfile.bankName || 'Mercado Pago / Banco Nación') : (banking?.bank_name || undefined);
+
+          // Omitir experiencias marcadas como borradas (soft delete)
+          let isSoftDeleted = false;
+          try {
+            if (exp.notes && typeof exp.notes === 'string' && exp.notes.startsWith('{')) {
+              const parsedNotes = JSON.parse(exp.notes);
+              if (parsedNotes?.deleted === true) {
+                isSoftDeleted = true;
+              }
+            }
+          } catch {}
+
+          if (isSoftDeleted) {
+            return null;
+          }
 
           return {
             id: exp.id,
@@ -1930,6 +1970,24 @@ export class ExperienceService {
             providerAgency: exp.provider_agency || undefined,
             participantRequirements: exp.participant_requirements || undefined,
             notes: exp.notes || undefined,
+            mpConnected: (() => {
+              try {
+                if (exp.notes && exp.notes.startsWith('{')) {
+                  const p = JSON.parse(exp.notes);
+                  if (p.mp_connected !== undefined) return Boolean(p.mp_connected);
+                }
+              } catch {}
+              return undefined;
+            })(),
+            mpCollectorId: (() => {
+              try {
+                if (exp.notes && exp.notes.startsWith('{')) {
+                  const p = JSON.parse(exp.notes);
+                  if (p.mp_collector_id) return String(p.mp_collector_id);
+                }
+              } catch {}
+              return undefined;
+            })(),
             reviewedAt: exp.reviewed_at || undefined,
             status: exp.status || 'publicada',
             displayLocation: (exp.display_location as 'destacada' | 'catalogo' | 'no_listada') || 'destacada',
@@ -1938,7 +1996,7 @@ export class ExperienceService {
             isLocked: false,
             detailRoute: `/experiencias/${exp.slug}`,
           };
-        });
+        }) as (Experience | null)[]).filter((e): e is Experience => e !== null);
 
         // Fin procesamiento de experiencias remotas
 

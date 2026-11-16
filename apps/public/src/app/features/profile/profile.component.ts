@@ -1,6 +1,6 @@
 import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import {
   AUTH_SUCCESS_FEEDBACK_DURATION_MS,
@@ -9,6 +9,7 @@ import {
 import { ActivityHistoryService } from '../../core/services/activity-history.service';
 import { PaymentReceipt } from '../../core/models/activity-history.model';
 import { ExperienceService } from '../../core/services/experience.service';
+import { FavoritesService } from '../../core/services/favorites.service';
 import { Experience } from '../../core/models/experience.model';
 import { ModalType } from '../waitlist/waitlist.component';
 import { FooterComponent } from '../../shared/components/footer/footer.component';
@@ -35,10 +36,18 @@ import { ReceiptModalComponent } from '../../shared/components/receipt-modal/rec
   styleUrl: './profile.component.css',
 })
 export class ProfileComponent implements OnInit {
+  private readonly route = inject(ActivatedRoute);
   readonly newsletter = inject(NewsletterService);
   readonly activityService = inject(ActivityHistoryService);
   readonly experienceService = inject(ExperienceService);
+  readonly favoritesService = inject(FavoritesService);
   readonly router = inject(Router);
+
+  readonly favoriteExperiences = this.favoritesService.favoriteExperiences;
+
+  removeFavorite(exp: Experience, event?: Event): void {
+    this.favoritesService.removeFavorite(exp, event);
+  }
 
   readonly breadcrumbs: BreadcrumbItem[] = [{ label: 'Inicio', url: '/' }, { label: 'Mi Perfil' }];
 
@@ -94,6 +103,17 @@ export class ProfileComponent implements OnInit {
     if (this.newsletter.consumeLoginSuccessFlag()) {
       this.triggerProfileSuccessFeedback(false);
     }
+
+    this.route.fragment.subscribe((frag) => {
+      if (frag === 'favoritos') {
+        setTimeout(() => {
+          const el = document.getElementById('favoritos');
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }, 350);
+      }
+    });
   }
 
   private async loadAuthenticatedEmail(): Promise<void> {

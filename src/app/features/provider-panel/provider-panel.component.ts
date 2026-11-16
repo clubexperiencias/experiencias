@@ -86,6 +86,17 @@ const ROUTE_LABELS: Record<string, string> = {
                   </a>
 
                   <a
+                    [routerLink]="newExperienceLink()"
+                    class="dropdown-item enlarged-item"
+                    (click)="userMenuOpen.set(false)"
+                  >
+                    <mat-icon class="menu-item-icon">add</mat-icon>
+                    <div class="menu-item-info">
+                      <strong class="menu-item-title">Cargar Experiencia</strong>
+                    </div>
+                  </a>
+
+                  <a
                     [routerLink]="experiencesLink()"
                     class="dropdown-item enlarged-item"
                     (click)="userMenuOpen.set(false)"
@@ -168,6 +179,16 @@ const ROUTE_LABELS: Record<string, string> = {
           >
             <mat-icon class="floating-btn-icon">arrow_back</mat-icon>
           </button>
+        } @else {
+          <!-- Botón Amarillo (+) donde normalmente va el botón de Instagram en el dashboard -->
+          <a
+            [routerLink]="newExperienceLink()"
+            class="desktop-floating-btn desktop-floating-add-exp-btn"
+            aria-label="Cargar Nueva Experiencia"
+            title="Cargar Nueva Experiencia"
+          >
+            <mat-icon class="floating-btn-icon add-icon-white">add</mat-icon>
+          </a>
         }
 
         <!-- Botón Flotante WhatsApp Asistencia Técnica (réplica de la web principal) -->
@@ -272,6 +293,7 @@ export class ProviderPanelComponent {
     this.currentUrl().includes('/prestadores/panel') ? '/prestadores/panel' : '',
   );
   readonly dashboardLink = computed(() => `${this.basePath()}/dashboard`);
+  readonly newExperienceLink = computed(() => `${this.basePath()}/experiencias/nueva`);
   readonly experiencesLink = computed(() => `${this.basePath()}/experiencias`);
   readonly membersLink = computed(() => `${this.basePath()}/socios`);
   readonly profileLink = computed(() => `${this.basePath()}/perfil`);

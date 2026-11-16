@@ -39,6 +39,16 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
             </p>
           </div>
         </div>
+
+        <div class="welcome-action">
+          <a
+            [routerLink]="newProposalLink()"
+            class="request-form-btn"
+          >
+            <mat-icon class="btn-add-icon">add</mat-icon>
+            <span>Cargar Nueva Experiencia</span>
+          </a>
+        </div>
       </section>
 
       <!-- KPI Metrics Grid - Boxes rectangulares sobrias sin iconos -->
@@ -293,33 +303,6 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
             }
           </div>
         }
-
-        <!-- Box: Solicitar a los administradores que carguen una nueva experiencia -->
-        <div class="request-new-exp-card" (click)="goToNewProposal()">
-          <div class="request-new-exp-content">
-            <div class="request-new-exp-info">
-              <span class="request-new-exp-kicker">NUEVA EXPERIENCIA</span>
-              <h3 class="request-new-exp-title">
-                Sumá una nueva propuesta
-              </h3>
-              <p class="request-new-exp-desc">
-                Completá los detalles técnicos, fotos y tarifas de tu salida para que el equipo de
-                administración la revise y publique en el catálogo.
-              </p>
-            </div>
-          </div>
-
-          <div class="request-new-exp-action">
-            <a
-              [routerLink]="newProposalLink()"
-              class="request-form-btn"
-              (click)="$event.stopPropagation()"
-              style="color: #ffffff !important;"
-            >
-              <span style="color: #ffffff !important;">Cargar Propuesta</span>
-            </a>
-          </div>
-        </div>
       </section>
 
       <!-- Finanzas y Conciliación de Pagos - Expanded Full Width Section -->
@@ -1068,7 +1051,9 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         flex-direction: column;
         gap: 1.15rem;
         padding: 1.4rem 1.6rem;
-        background: #141f31;
+        background: rgba(20, 31, 49, 0.65);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
         border: 1px solid rgba(128, 179, 255, 0.25);
         border-radius: 4px;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
@@ -1622,10 +1607,14 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
       .request-new-exp-action {
         flex-shrink: 0;
       }
+      .welcome-action {
+        flex-shrink: 0;
+      }
       .request-form-btn {
         display: inline-flex;
         align-items: center;
         justify-content: center;
+        gap: 0.45rem;
         padding: 0.75rem 1.4rem;
         background: #ffcc00;
         border: 1px solid #ffcc00;
@@ -1638,8 +1627,16 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         white-space: nowrap;
         letter-spacing: 0.02em;
         box-shadow: 0 4px 15px rgba(255, 204, 0, 0.3);
+        text-decoration: none;
       }
-      .request-form-btn span {
+      .request-form-btn span,
+      .request-form-btn mat-icon {
+        color: #ffffff !important;
+      }
+      .btn-add-icon {
+        font-size: 20px;
+        width: 20px;
+        height: 20px;
         color: #ffffff !important;
       }
       .request-form-btn:hover {
@@ -1649,7 +1646,8 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         box-shadow: 0 6px 20px rgba(255, 204, 0, 0.45);
         transform: translateY(-1px);
       }
-      .request-form-btn:hover span {
+      .request-form-btn:hover span,
+      .request-form-btn:hover mat-icon {
         color: #ffffff !important;
       }
 
@@ -1714,6 +1712,8 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         .welcome-agency {
           font-size: 0.85rem;
         }
+        .welcome-card .welcome-action,
+        .welcome-card .request-form-btn,
         .welcome-card .new-proposal-btn {
           width: 100%;
           justify-content: center;
