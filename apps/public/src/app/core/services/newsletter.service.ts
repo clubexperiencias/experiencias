@@ -1788,6 +1788,17 @@ export class NewsletterService {
     }
   }
 
+  updateCurrentMemberWishlist(wishlist: string[]): void {
+    const current = this._currentMember();
+    if (!current) return;
+    const updated: WaitlistEntry = {
+      ...current,
+      experiencesWishlist: [...wishlist],
+    };
+    this._currentMember.set(updated);
+    this.persistCurrentMember(updated);
+  }
+
   private loadUsedMemberDiscounts(): string[] {
     try {
       const stored = localStorage.getItem(USED_MEMBER_DISCOUNTS_KEY);

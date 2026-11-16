@@ -943,7 +943,7 @@ describe('ProviderStoreService - Payment & Proposal Persistence', () => {
       expect(preservedOther).toBeTruthy();
     });
 
-    it('should include "publicada" and "oculta" in statusFilter during global query so approved proposals remain in _experienceRequests', async () => {
+    it('should include "publicada" and exclude "oculta" in statusFilter during global query so deleted/oculta rows are not loaded into _experienceRequests', async () => {
       let capturedStatuses: string[] = [];
       mockSupabase.from = vi.fn().mockImplementation((table: string) => {
         if (table === 'experiencias') {
@@ -1007,14 +1007,13 @@ describe('ProviderStoreService - Payment & Proposal Persistence', () => {
 
       await store.loadProposalsFromSupabase();
 
-      expect(capturedStatuses).toEqual(['pendiente', 'rechazada', 'publicada', 'oculta']);
+      expect(capturedStatuses).toEqual(['pendiente', 'rechazada', 'publicada']);
       const requests = store.experienceRequests();
       const approved = requests.find((r) => r.id === 'global-pub-1');
       expect(approved).toBeTruthy();
       expect(approved?.status).toBe('aprobada');
       const pausedApproved = requests.find((r) => r.id === 'global-paused-1');
-      expect(pausedApproved).toBeTruthy();
-      expect(pausedApproved?.status).toBe('aprobada');
+      expect(pausedApproved).toBeUndefined();
       const direct1 = requests.find((r) => r.id === 'direct-created-1');
       expect(direct1).toBeUndefined();
       const directPaused = requests.find((r) => r.id === 'direct-created-paused');

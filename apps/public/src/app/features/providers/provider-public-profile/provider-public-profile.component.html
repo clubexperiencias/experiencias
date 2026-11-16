@@ -123,13 +123,15 @@
                     @for (star of [1, 2, 3, 4, 5]; track star) {
                       <button
                         type="button"
+                        role="radio"
                         class="star-vote-btn"
                         [class.is-filled]="star <= (hoveredStar() || userVote(p))"
+                        [attr.aria-checked]="userVote(p) === star"
                         (mouseenter)="hoveredStar.set(star)"
                         (mouseleave)="hoveredStar.set(0)"
                         (click)="rateProvider(p, star)"
                         [title]="'Calificar con ' + star + ' estrella' + (star > 1 ? 's' : '')"
-                        [attr.aria-label]="star + ' estrellas'"
+                        [attr.aria-label]="'Calificar con ' + star + ' estrella' + (star > 1 ? 's' : '')"
                       >
                         ★
                       </button>
@@ -272,7 +274,11 @@
   </div>
 
   @if (ratingToast()) {
-    <div class="rating-feedback-toast">
+    <div
+      class="rating-feedback-toast"
+      [attr.role]="isRatingToastError(ratingToast()) ? 'alert' : 'status'"
+      aria-live="polite"
+    >
       <span>{{ ratingToast() }}</span>
     </div>
   }

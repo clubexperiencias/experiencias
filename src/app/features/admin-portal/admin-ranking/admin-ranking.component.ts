@@ -952,7 +952,7 @@ export class AdminRankingComponent {
 
       const countFromSlug = countsMap.get(slugKey) || 0;
       const countFromId = countsMap.get(idKey) || 0;
-      const favCount = Math.max(countFromSlug, countFromId);
+      const favCount = Math.max(countFromSlug, countFromId, exp.favoritesCount || 0);
 
       return {
         rank: 0,

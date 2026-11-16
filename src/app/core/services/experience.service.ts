@@ -458,6 +458,19 @@ export class ExperienceService {
     );
   }
 
+  updateFavoritesCount(experienceIdOrSlug: string, count: number): void {
+    const norm = (experienceIdOrSlug || '').trim().toLowerCase();
+    if (!norm) return;
+    this._experiences.update((list) =>
+      list.map((exp) => {
+        if ((exp.id || '').toLowerCase() === norm || (exp.slug || '').toLowerCase() === norm) {
+          return { ...exp, favoritesCount: count };
+        }
+        return exp;
+      })
+    );
+  }
+
   /**
    * Actualiza una experiencia existente en el catálogo local y la sincroniza
    * de forma persistente con Supabase. Preserva el identificador original de la
@@ -614,14 +627,51 @@ export class ExperienceService {
 
         if (merged.mpCollectorId !== undefined || merged.mpConnected !== undefined) {
           let notesObj: Record<string, any> = {};
-          try {
-            notesObj = typeof merged.notes === 'string' && merged.notes.startsWith('{') ? JSON.parse(merged.notes) : {};
-          } catch {
-            notesObj = {};
+          if (merged.notes && typeof merged.notes === 'object' && !Array.isArray(merged.notes)) {
+            notesObj = { ...(merged.notes as Record<string, any>) };
+          } else if (typeof merged.notes === 'string') {
+            const rawNotes = merged.notes.trim();
+            if (rawNotes) {
+              try {
+                const parsed = JSON.parse(rawNotes);
+                if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                  notesObj = { ...parsed };
+                } else {
+                  notesObj = { text: rawNotes };
+                }
+              } catch {
+                notesObj = { text: rawNotes };
+              }
+            }
           }
+
+          if (updated.notes !== undefined) {
+            if (typeof updated.notes === 'object' && updated.notes !== null && !Array.isArray(updated.notes)) {
+              notesObj = { ...notesObj, ...(updated.notes as Record<string, any>) };
+            } else if (typeof updated.notes === 'string') {
+              const cleanUpdatedNotes = updated.notes.trim();
+              if (cleanUpdatedNotes) {
+                try {
+                  const parsedUpdates = JSON.parse(cleanUpdatedNotes);
+                  if (parsedUpdates && typeof parsedUpdates === 'object' && !Array.isArray(parsedUpdates)) {
+                    notesObj = { ...notesObj, ...parsedUpdates };
+                  } else {
+                    notesObj['text'] = cleanUpdatedNotes;
+                  }
+                } catch {
+                  notesObj['text'] = cleanUpdatedNotes;
+                }
+              } else {
+                delete notesObj['text'];
+              }
+            }
+          }
+
           if (merged.mpCollectorId !== undefined) notesObj['mp_collector_id'] = merged.mpCollectorId;
           if (merged.mpConnected !== undefined) notesObj['mp_connected'] = merged.mpConnected;
           payload['notes'] = JSON.stringify(notesObj);
+        } else if (updated.notes !== undefined) {
+          payload['notes'] = updated.notes;
         }
 
         let payloadToUse: Record<string, any> = { ...payload };
@@ -744,8 +794,34 @@ export class ExperienceService {
       slug = `${baseSlug}-${suffix++}`;
     }
 
+    let initialNotes = newExp.notes;
+    if (newExp.mpCollectorId !== undefined || newExp.mpConnected !== undefined) {
+      let notesObj: Record<string, any> = {};
+      if (newExp.notes && typeof newExp.notes === 'object' && !Array.isArray(newExp.notes)) {
+        notesObj = { ...(newExp.notes as Record<string, any>) };
+      } else if (typeof newExp.notes === 'string') {
+        const rawNotes = newExp.notes.trim();
+        if (rawNotes) {
+          try {
+            const parsed = JSON.parse(rawNotes);
+            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+              notesObj = { ...parsed };
+            } else {
+              notesObj = { text: rawNotes };
+            }
+          } catch {
+            notesObj = { text: rawNotes };
+          }
+        }
+      }
+      if (newExp.mpCollectorId !== undefined) notesObj['mp_collector_id'] = newExp.mpCollectorId;
+      if (newExp.mpConnected !== undefined) notesObj['mp_connected'] = newExp.mpConnected;
+      initialNotes = JSON.stringify(notesObj);
+    }
+
     const experience: Experience = {
       ...newExp,
+      notes: initialNotes,
       slug,
       detailRoute: `/experiencias/${slug}`,
       publicUrl: `https://experiencias.club/experiencias/${slug}`,
@@ -797,6 +873,10 @@ export class ExperienceService {
           provider_email: experience.providerEmail || null,
           provider_slug: experience.providerSlug || null,
         };
+
+        if (experience.notes !== undefined) {
+          payload['notes'] = experience.notes;
+        }
 
         // Asegurar que el prestador exista en prestadores para evitar fallos de clave foránea
         const targetEmail = (experience.providerEmail || '').trim().toLowerCase();
@@ -967,11 +1047,23 @@ export class ExperienceService {
     if (isSupabaseConfigured()) {
       try {
         let notesObj: Record<string, any> = {};
-        try {
-          if (expToDelete?.notes && expToDelete.notes.startsWith('{')) {
-            notesObj = JSON.parse(expToDelete.notes);
+        const rawNotes = (expToDelete?.notes || '').trim();
+        if (rawNotes) {
+          if (rawNotes.startsWith('{')) {
+            try {
+              const parsed = JSON.parse(rawNotes);
+              if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                notesObj = { ...parsed };
+              } else {
+                notesObj = { text: rawNotes };
+              }
+            } catch {
+              notesObj = { text: rawNotes };
+            }
+          } else {
+            notesObj = { text: rawNotes };
           }
-        } catch {}
+        }
         notesObj['deleted'] = true;
         notesObj['deleted_at'] = new Date().toISOString();
         notesObj['deleted_by'] = 'admin_portal';
@@ -1788,7 +1880,7 @@ export class ExperienceService {
         'duration_label, price_ars, price_usd, capacity_per_date, cover_image, ' +
         'video_url, video_poster, altitude_meters, dates, highlights, included, ' +
         'not_included, status, public_url, album_photos, provider_name, provider_phone, ' +
-        'provider_email, provider_slug, date_slots, created_at';
+        'provider_email, provider_slug, date_slots, favorites_count, created_at';
 
       const fetchExperiences = (columns: string): Promise<{ data: any[] | null; error: any }> =>
         this.supabase
@@ -1807,19 +1899,26 @@ export class ExperienceService {
             `${publicColumns}, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing, provider_agency, participant_requirements, notes, reviewed_at`,
           ));
         } else {
-          // Si falló por otra columna opcional (ej: reviewed_at), preservar display_location
+          // Si falló por otra columna opcional (ej: reviewed_at), preservar display_location y notes
           ({ data, error } = await fetchExperiences(
-            `${publicColumns}, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing, display_location`,
+            `${publicColumns}, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing, notes, display_location`,
           ));
         }
       }
       if (error) {
         ({ data, error } = await fetchExperiences(
-          `${publicColumns}, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing`,
+          `${publicColumns}, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing, notes`,
         ));
       }
       if (error) {
         // Reintento con fallback progresivo si alguna columna nueva no existe aún
+        ({ data, error } = await fetchExperiences(`${publicColumns}, meeting_point_url, notes`));
+        if (error && /meeting_point_url/.test(error.message || '')) {
+          ({ data, error } = await fetchExperiences(`${publicColumns}, notes`));
+        }
+      }
+      if (error && /notes/.test(error.message || '')) {
+        // Último recurso solo si la columna notes no estuviera disponible en el esquema remoto
         ({ data, error } = await fetchExperiences(`${publicColumns}, meeting_point_url`));
         if (error && /meeting_point_url/.test(error.message || '')) {
           ({ data, error } = await fetchExperiences(publicColumns));
@@ -1871,6 +1970,9 @@ export class ExperienceService {
         }
 
         const clubProfile = this.getClubProfile();
+        const deletedRemoteIds = new Set<string>();
+        const deletedRemoteSlugs = new Set<string>();
+
         const remoteExperiences: Experience[] = (data.map((exp: any) => {
           const rawImage = exp.cover_image;
           const image = (rawImage && typeof rawImage === 'string' && !rawImage.startsWith('blob:'))
@@ -1913,6 +2015,13 @@ export class ExperienceService {
           } catch {}
 
           if (isSoftDeleted) {
+            if (exp.id) {
+              deletedRemoteIds.add(String(exp.id).toLowerCase().trim());
+              this.recordDeletedId(exp.id, exp.slug);
+            }
+            if (exp.slug) {
+              deletedRemoteSlugs.add(String(exp.slug).toLowerCase().trim());
+            }
             return null;
           }
 
@@ -1969,21 +2078,58 @@ export class ExperienceService {
             isClubExperience: isClub,
             providerAgency: exp.provider_agency || undefined,
             participantRequirements: exp.participant_requirements || undefined,
-            notes: exp.notes || undefined,
+            favoritesCount: typeof exp.favorites_count === 'number' ? exp.favorites_count : 0,
+            notes: (() => {
+              if (!exp.notes) return undefined;
+              if (typeof exp.notes === 'object' && !Array.isArray(exp.notes)) {
+                if (typeof (exp.notes as any).text === 'string') return (exp.notes as any).text || undefined;
+                return undefined;
+              }
+              if (typeof exp.notes === 'string') {
+                const trimmed = exp.notes.trim();
+                if (trimmed.startsWith('{')) {
+                  try {
+                    const p = JSON.parse(trimmed);
+                    if (p && typeof p === 'object' && !Array.isArray(p)) {
+                      if (typeof p.text === 'string') {
+                        return p.text || undefined;
+                      }
+                      if (p.mp_connected !== undefined || p.mp_collector_id !== undefined || p.deleted !== undefined) {
+                        return undefined;
+                      }
+                    }
+                  } catch {}
+                }
+                return exp.notes || undefined;
+              }
+              return undefined;
+            })(),
             mpConnected: (() => {
               try {
-                if (exp.notes && exp.notes.startsWith('{')) {
-                  const p = JSON.parse(exp.notes);
-                  if (p.mp_connected !== undefined) return Boolean(p.mp_connected);
+                if (exp.notes && typeof exp.notes === 'object' && !Array.isArray(exp.notes)) {
+                  if ((exp.notes as any).mp_connected !== undefined) return Boolean((exp.notes as any).mp_connected);
+                }
+                if (typeof exp.notes === 'string') {
+                  const trimmed = exp.notes.trim();
+                  if (trimmed.startsWith('{')) {
+                    const p = JSON.parse(trimmed);
+                    if (p.mp_connected !== undefined) return Boolean(p.mp_connected);
+                  }
                 }
               } catch {}
               return undefined;
             })(),
             mpCollectorId: (() => {
               try {
-                if (exp.notes && exp.notes.startsWith('{')) {
-                  const p = JSON.parse(exp.notes);
-                  if (p.mp_collector_id) return String(p.mp_collector_id);
+                if (exp.notes && typeof exp.notes === 'object' && !Array.isArray(exp.notes)) {
+                  if ((exp.notes as any).mp_collector_id) return String((exp.notes as any).mp_collector_id);
+                }
+                if (typeof exp.notes === 'string') {
+                  const trimmed = exp.notes.trim();
+                  if (trimmed.startsWith('{')) {
+                    const p = JSON.parse(trimmed);
+                    if (p.mp_collector_id) return String(p.mp_collector_id);
+                  }
                 }
               } catch {}
               return undefined;
@@ -2005,15 +2151,20 @@ export class ExperienceService {
         const remoteSlugs = new Set(remoteExperiences.map((e) => e.slug.toLowerCase()));
         const deletedIds = this.getDeletedIds();
 
-        // Preservar experiencias locales (pendientes de sincronización no presentes en remoto)
-        const localOnly = currentLocal.filter(
-          (e) =>
+        // Preservar experiencias locales (pendientes de sincronización no presentes en remoto ni borradas remotamente)
+        const localOnly = currentLocal.filter((e) => {
+          const eId = (e.id || '').toLowerCase().trim();
+          const eSlug = (e.slug || '').toLowerCase().trim();
+          return (
             Boolean(e.pendingRemoteSync) &&
-            !remoteIds.has(e.id.toLowerCase()) &&
-            !remoteSlugs.has(e.slug.toLowerCase()) &&
+            !remoteIds.has(eId) &&
+            !remoteSlugs.has(eSlug) &&
+            !deletedRemoteIds.has(eId) &&
+            !deletedRemoteSlugs.has(eSlug) &&
             !deletedIds.has(e.id) &&
-            !deletedIds.has(e.slug),
-        );
+            !deletedIds.has(e.slug)
+          );
+        });
 
         const mergedExperiences = [...remoteExperiences, ...localOnly];
         this._hasRemoteExperiences.set(true);

@@ -47,6 +47,16 @@ export class ProfileComponent implements OnInit {
 
   removeFavorite(exp: Experience, event?: Event): void {
     this.favoritesService.removeFavorite(exp, event);
+
+    const targets = new Set<string>();
+    if (exp.id) targets.add(exp.id.trim().toLowerCase());
+    if (exp.slug) targets.add(exp.slug.trim().toLowerCase());
+
+    if (targets.size > 0) {
+      this.selectedExperiences.update((current) =>
+        current.filter((item) => !targets.has(item.trim().toLowerCase())),
+      );
+    }
   }
 
   readonly breadcrumbs: BreadcrumbItem[] = [{ label: 'Inicio', url: '/' }, { label: 'Mi Perfil' }];

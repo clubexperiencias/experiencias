@@ -277,7 +277,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                 </div>
                 <div class="info-item">
                   <span class="info-label">DESTINO DE FONDOS</span>
-                  <span class="info-value">{{ getExpMpConnected(exp) ? 'Acreditación instantánea a la cuenta del prestador' : 'Transferencia bancaria directa por CBU' }}</span>
+                  <span class="info-value">{{ getExpMpConnected(exp) ? (isClub(exp) ? 'Acreditación instantánea a la cuenta oficial del Club' : 'Acreditación instantánea a la cuenta del prestador') : 'Transferencia bancaria directa por CBU' }}</span>
                 </div>
               </div>
             </div>
@@ -5151,6 +5151,10 @@ export class AdminExperiencesComponent implements OnInit {
       const byEmail = providers.find((p) => p.email?.toLowerCase() === exp.providerEmail?.toLowerCase());
       if (byEmail) return byEmail;
     }
+    if (exp.providerSlug) {
+      const bySlug = providers.find((p) => p.slug === exp.providerSlug);
+      if (bySlug) return bySlug;
+    }
     if (exp.providerName) {
       const name = exp.providerName.trim().toLowerCase();
       const byName = providers.find((p) => p.name?.toLowerCase() === name || p.agency?.toLowerCase() === name);
@@ -5161,13 +5165,21 @@ export class AdminExperiencesComponent implements OnInit {
 
   getExpMpConnected(exp: Experience | null): boolean {
     if (!exp) return false;
-    if (exp.mpConnected !== undefined) return Boolean(exp.mpConnected);
+    if (this.isClub(exp)) {
+      return exp.mpConnected !== false;
+    }
     const prov = this.getProviderForExperience(exp);
-    return Boolean(prov?.mpConnected);
+    if (prov) {
+      return Boolean(prov.mpConnected && exp.mpConnected !== false);
+    }
+    return Boolean(exp.mpConnected);
   }
 
   getExpMpCollectorId(exp: Experience | null): string {
     if (!exp) return '';
+    if (this.isClub(exp)) {
+      return exp.mpCollectorId || 'CLUB-OFICIAL';
+    }
     if (exp.mpCollectorId) return exp.mpCollectorId;
     const prov = this.getProviderForExperience(exp);
     return prov?.mpCollectorId || '';
@@ -5175,6 +5187,9 @@ export class AdminExperiencesComponent implements OnInit {
 
   getExpMpNickname(exp: Experience | null): string {
     if (!exp) return '';
+    if (this.isClub(exp)) {
+      return 'Club de Experiencias';
+    }
     const prov = this.getProviderForExperience(exp);
     return prov?.mpNickname || '';
   }
@@ -5215,10 +5230,14 @@ export class AdminExperiencesComponent implements OnInit {
     this.editVideoUrl.set(safeVideo);
 
     this.editVideoPoster.set(exp.videoPoster || '');
-    const rawDates = (exp.dates || []);
-    const isoDates = rawDates
-      .map((d) => d.trim())
-      .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d));
+    const rawDates = Array.isArray(exp.dates)
+      ? exp.dates
+      : typeof exp.dates === 'string'
+        ? [exp.dates]
+        : [];
+    const isoDates = Array.from(
+      new Set(rawDates.flatMap((d) => parseConfirmedProposalDates(d))),
+    ).sort();
     this.editScheduledDates.set(isoDates);
     const displayDates = isoDates.length > 0 ? isoDates.join(', ') : 'A coordinar';
     this.editDatesRaw.set(displayDates);
@@ -5313,10 +5332,9 @@ export class AdminExperiencesComponent implements OnInit {
       this.editProviderBankName.set(resolvedProviderBank);
     }
 
-    const prov = this.getProviderForExperience(exp);
-    const hasMp = Boolean(exp.mpConnected ?? prov?.mpConnected);
-    const colId = exp.mpCollectorId || prov?.mpCollectorId || '';
-    const nickname = prov?.mpNickname || '';
+    const hasMp = this.getExpMpConnected(exp);
+    const colId = this.getExpMpCollectorId(exp);
+    const nickname = this.getExpMpNickname(exp);
     this.editMpConnected.set(hasMp);
     this.editMpCollectorId.set(colId);
     this.editMpNickname.set(nickname);
@@ -5795,8 +5813,19 @@ export class AdminExperiencesComponent implements OnInit {
     this.saving.set(true);
     try {
       if (this.isCreating()) {
+        let serializedNotes: string | undefined = undefined;
+        const rawCollectorId = payload.mpCollectorId?.trim();
+        const isMpConn = payload.mpConnected;
+        if (rawCollectorId || isMpConn !== undefined) {
+          const notesObj: Record<string, any> = {};
+          if (rawCollectorId) notesObj['mp_collector_id'] = rawCollectorId;
+          if (isMpConn !== undefined) notesObj['mp_connected'] = isMpConn;
+          serializedNotes = JSON.stringify(notesObj);
+        }
+
         const fullNewExp: Experience = {
           ...payload,
+          notes: serializedNotes,
           kicker: '',
           bestSeason: '',
           durationDays: 1,

@@ -108,6 +108,78 @@ describe('ExperienceService', () => {
       expect(service.experiences().length).toBe(initialCount + 1);
       expect(service.experiences()[0].slug).toBe('nueva-aventura-unica');
     });
+
+    it('should serialize mpConnected and mpCollectorId into notes upon creation', async () => {
+      let insertedPayload: any = null;
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === 'experiencias') {
+          return {
+            insert: vi.fn().mockImplementation((payload) => {
+              insertedPayload = payload;
+              return Promise.resolve({ data: [payload], error: null });
+            }),
+          };
+        }
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          maybeSingle: vi.fn().mockResolvedValue({ data: null }),
+          insert: vi.fn().mockResolvedValue({ error: null }),
+        };
+      });
+
+      await service.createExperience({
+        ...baseExp,
+        slug: 'exp-with-mp',
+        mpConnected: true,
+        mpCollectorId: '987654321',
+      });
+
+      const created = service.experiences().find((e) => e.slug === 'exp-with-mp');
+      expect(created).toBeDefined();
+      expect(created?.notes).toBeDefined();
+      const parsedNotes = JSON.parse(created!.notes!);
+      expect(parsedNotes.mp_connected).toBe(true);
+      expect(parsedNotes.mp_collector_id).toBe('987654321');
+      expect(insertedPayload?.notes).toBe(created!.notes);
+    });
+
+    it('should preserve existing notes text while serializing mpConnected and mpCollectorId in createExperience', async () => {
+      let insertedPayload: any = null;
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === 'experiencias') {
+          return {
+            insert: vi.fn().mockImplementation((payload: any) => {
+              insertedPayload = payload;
+              return Promise.resolve({ error: null });
+            }),
+          };
+        }
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          maybeSingle: vi.fn().mockResolvedValue({ data: null }),
+          insert: vi.fn().mockResolvedValue({ error: null }),
+        };
+      });
+
+      await service.createExperience({
+        ...baseExp,
+        slug: 'exp-with-notes-and-mp',
+        notes: 'Nota importante del prestador',
+        mpConnected: true,
+        mpCollectorId: '123456789',
+      });
+
+      const created = service.experiences().find((e) => e.slug === 'exp-with-notes-and-mp');
+      expect(created).toBeDefined();
+      expect(created?.notes).toBeDefined();
+      const parsedNotes = JSON.parse(created!.notes!);
+      expect(parsedNotes.text).toBe('Nota importante del prestador');
+      expect(parsedNotes.mp_connected).toBe(true);
+      expect(parsedNotes.mp_collector_id).toBe('123456789');
+      expect(insertedPayload?.notes).toBe(created!.notes);
+    });
   });
 
   describe('updateExperience', () => {
@@ -194,6 +266,109 @@ describe('ExperienceService', () => {
       expect(updatedExp?.title).toBe('Updated Kayak Title');
       expect(updateBuilder.eq).toHaveBeenCalledWith('id', targetExp.id);
     });
+
+    it('should preserve existing plain-text notes when adding payment fields', async () => {
+      const initialExperiences = [...service.experiences()];
+      const targetExp = initialExperiences[0];
+
+      let capturedPayload: any = null;
+      const updateBuilder: any = {
+        eq: vi.fn().mockReturnThis(),
+        select: vi.fn().mockResolvedValue({ data: [{ id: targetExp.id }], error: null }),
+      };
+      mockSupabase.from.mockReturnValue({
+        update: vi.fn().mockImplementation((payload) => {
+          capturedPayload = payload;
+          return updateBuilder;
+        }),
+      });
+
+      // Update experience with plain-text notes and payment fields
+      await service.updateExperience({
+        id: targetExp.id,
+        notes: 'Llevar documentación',
+        mpCollectorId: 'mp-col-12345',
+        mpConnected: true,
+      });
+
+      expect(capturedPayload).toBeDefined();
+      expect(capturedPayload.notes).toBeDefined();
+      const parsed = JSON.parse(capturedPayload.notes);
+      expect(parsed.text).toBe('Llevar documentación');
+      expect(parsed.mp_collector_id).toBe('mp-col-12345');
+      expect(parsed.mp_connected).toBe(true);
+    });
+
+    it('should parse JSON notes with leading whitespace and preserve existing properties when adding payment fields', async () => {
+      const initialExperiences = [...service.experiences()];
+      const targetExp = initialExperiences[0];
+      (service as any)._experiences.set([
+        {
+          ...targetExp,
+          notes: '   \n\t  {"legacy_field": "val123", "text": "Nota previa"}   ',
+        },
+      ]);
+
+      let capturedPayload: any = null;
+      const updateBuilder: any = {
+        eq: vi.fn().mockReturnThis(),
+        select: vi.fn().mockResolvedValue({ data: [{ id: targetExp.id }], error: null }),
+      };
+      mockSupabase.from.mockReturnValue({
+        update: vi.fn().mockImplementation((payload) => {
+          capturedPayload = payload;
+          return updateBuilder;
+        }),
+      });
+
+      await service.updateExperience({
+        id: targetExp.id,
+        mpCollectorId: 'mp-col-999',
+        mpConnected: true,
+      });
+
+      expect(capturedPayload).toBeDefined();
+      const parsed = JSON.parse(capturedPayload.notes);
+      expect(parsed.legacy_field).toBe('val123');
+      expect(parsed.text).toBe('Nota previa');
+      expect(parsed.mp_collector_id).toBe('mp-col-999');
+      expect(parsed.mp_connected).toBe(true);
+    });
+
+    it('should preserve non-JSON plain text with leading whitespace in text property when adding payment fields', async () => {
+      const initialExperiences = [...service.experiences()];
+      const targetExp = initialExperiences[0];
+      (service as any)._experiences.set([
+        {
+          ...targetExp,
+          notes: '   Texto plano con espacios   ',
+        },
+      ]);
+
+      let capturedPayload: any = null;
+      const updateBuilder: any = {
+        eq: vi.fn().mockReturnThis(),
+        select: vi.fn().mockResolvedValue({ data: [{ id: targetExp.id }], error: null }),
+      };
+      mockSupabase.from.mockReturnValue({
+        update: vi.fn().mockImplementation((payload) => {
+          capturedPayload = payload;
+          return updateBuilder;
+        }),
+      });
+
+      await service.updateExperience({
+        id: targetExp.id,
+        mpCollectorId: 'mp-col-888',
+        mpConnected: false,
+      });
+
+      expect(capturedPayload).toBeDefined();
+      const parsed = JSON.parse(capturedPayload.notes);
+      expect(parsed.text).toBe('Texto plano con espacios');
+      expect(parsed.mp_collector_id).toBe('mp-col-888');
+      expect(parsed.mp_connected).toBe(false);
+    });
   });
 
   describe('deleteExperience', () => {
@@ -206,6 +381,7 @@ describe('ExperienceService', () => {
         select: vi.fn().mockResolvedValue({ data: [], error: null }),
       };
       mockSupabase.from.mockReturnValue({
+        update: vi.fn().mockReturnValue(deleteBuilder),
         delete: vi.fn().mockReturnValue(deleteBuilder),
       });
 
@@ -462,6 +638,48 @@ describe('ExperienceService', () => {
       const experiences = service.experiences();
       expect(experiences.some((e) => e.id === 'exp-sync-1')).toBe(true);
       expect(experiences.some((e) => e.id === 'exp-no-sync-2')).toBe(false);
+    });
+
+    it('should exclude soft-deleted remote rows and not resurrect them from local pendingRemoteSync', async () => {
+      const deletedLocal: Partial<Experience> = {
+        id: 'exp-soft-deleted-1',
+        slug: 'exp-soft-deleted-1',
+        title: 'Soft Deleted Local',
+        pendingRemoteSync: true,
+      };
+
+      (service as any)._experiences.set([deletedLocal]);
+
+      const selectQuery: any = {
+        order: vi.fn().mockResolvedValue({
+          data: [
+            {
+              id: 'exp-soft-deleted-1',
+              slug: 'exp-soft-deleted-1',
+              title: 'Soft Deleted Remote',
+              price_ars: 1000,
+              notes: JSON.stringify({ deleted: true, deleted_by: 'admin_portal' }),
+            },
+            {
+              id: 'exp-active-remote',
+              slug: 'exp-active-remote',
+              title: 'Active Remote Exp',
+              price_ars: 2000,
+            },
+          ],
+          error: null,
+        }),
+      };
+      mockSupabase.from.mockReturnValue({
+        select: vi.fn().mockReturnValue(selectQuery),
+      });
+
+      await service.reloadFromSupabase();
+
+      const experiences = service.experiences();
+      expect(experiences.some((e) => e.id === 'exp-soft-deleted-1')).toBe(false);
+      expect(experiences.some((e) => e.slug === 'exp-soft-deleted-1')).toBe(false);
+      expect(experiences.some((e) => e.id === 'exp-active-remote')).toBe(true);
     });
 
     it('should not contain the seeded sunset pending experience in DEFAULT_EXPERIENCES', () => {

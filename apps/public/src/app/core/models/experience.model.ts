@@ -69,4 +69,5 @@ export interface Experience {
   mpConnected?: boolean;
   mpCollectorId?: string;
   pendingRemoteSync?: boolean;
+  favoritesCount?: number;
 }

@@ -1099,8 +1099,8 @@ EXCEPTION
   WHEN OTHERS THEN NULL;
 END $$;
 
--- 2.11 experiencias_favoritos (Favoritos y Wishlist de Socios)
-CREATE TABLE IF NOT EXISTS public.experiencias_favoritos (
+-- 2.11 experiencias_favoritas (Favoritos y Wishlist de Socios)
+CREATE TABLE IF NOT EXISTS public.experiencias_favoritas (
   id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   socio_id       UUID REFERENCES public.socios(id) ON DELETE CASCADE,
   socio_email    TEXT NOT NULL,
@@ -1108,22 +1108,40 @@ CREATE TABLE IF NOT EXISTS public.experiencias_favoritos (
   created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_exp_fav_socio_email   ON public.experiencias_favoritos(socio_email);
-CREATE INDEX IF NOT EXISTS idx_exp_fav_experience_id ON public.experiencias_favoritos(experience_id);
-CREATE INDEX IF NOT EXISTS idx_exp_fav_socio_id      ON public.experiencias_favoritos(socio_id);
+-- Migración segura si la tabla fue creada previamente como experiencias_favoritos
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables 
+    WHERE table_schema = 'public' AND table_name = 'experiencias_favoritos'
+  ) AND NOT EXISTS (
+    SELECT 1 FROM information_schema.tables 
+    WHERE table_schema = 'public' AND table_name = 'experiencias_favoritas'
+  ) THEN
+    ALTER TABLE public.experiencias_favoritos RENAME TO experiencias_favoritas;
+  END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_exp_fav_socio_email   ON public.experiencias_favoritas(socio_email);
+CREATE INDEX IF NOT EXISTS idx_exp_fav_experience_id ON public.experiencias_favoritas(experience_id);
+CREATE INDEX IF NOT EXISTS idx_exp_fav_socio_id      ON public.experiencias_favoritas(socio_id);
 
 DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.table_constraints
-    WHERE constraint_name = 'uq_experiencias_favoritos_socio_exp' AND table_name = 'experiencias_favoritos'
+    WHERE constraint_name = 'uq_experiencias_favoritas_socio_exp' AND table_name = 'experiencias_favoritas'
   ) THEN
-    ALTER TABLE public.experiencias_favoritos
-      ADD CONSTRAINT uq_experiencias_favoritos_socio_exp UNIQUE (socio_email, experience_id);
+    ALTER TABLE public.experiencias_favoritas
+      ADD CONSTRAINT uq_experiencias_favoritas_socio_exp UNIQUE (socio_email, experience_id);
   END IF;
 EXCEPTION
   WHEN OTHERS THEN NULL;
 END $$;
+
+-- Vista retrocompatible para referencias heredadas
+CREATE OR REPLACE VIEW public.experiencias_favoritos AS
+  SELECT * FROM public.experiencias_favoritas;
 
 -- ==============================================================================
 -- 3. VISTAS
@@ -1610,19 +1628,26 @@ BEGIN
     v_prestador_id := NEW.prestador_id;
   END IF;
 
-  SELECT
-    COALESCE(ROUND(AVG(score)::numeric, 2), 5.00),
-    COUNT(*)::INTEGER
-  INTO v_score, v_count
-  FROM public.calificaciones_prestadores
-  WHERE prestador_id = v_prestador_id;
+  IF v_prestador_id IS NOT NULL THEN
+    PERFORM 1
+    FROM public.prestadores
+    WHERE id = v_prestador_id
+    FOR UPDATE;
 
-  UPDATE public.prestadores
-  SET
-    rating_score = CASE WHEN v_count = 0 THEN 5.00 ELSE v_score END,
-    rating_count = v_count,
-    updated_at = now()
-  WHERE id = v_prestador_id;
+    SELECT
+      COALESCE(ROUND(AVG(score)::numeric, 2), 5.00),
+      COUNT(*)::INTEGER
+    INTO v_score, v_count
+    FROM public.calificaciones_prestadores
+    WHERE prestador_id = v_prestador_id;
+
+    UPDATE public.prestadores
+    SET
+      rating_score = CASE WHEN v_count = 0 THEN 5.00 ELSE v_score END,
+      rating_count = v_count,
+      updated_at = now()
+    WHERE id = v_prestador_id;
+  END IF;
 
   RETURN NULL;
 END;
@@ -1633,8 +1658,8 @@ CREATE TRIGGER trg_calificaciones_prestadores_rating
   AFTER INSERT OR UPDATE OR DELETE ON public.calificaciones_prestadores
   FOR EACH ROW EXECUTE FUNCTION public.recalculate_prestador_rating();
 
--- 4.9 Contador de favoritos en catálogo de experiencias
-CREATE OR REPLACE FUNCTION public.sync_experiencias_favorites_count()
+-- 4.9 Contador de favoritas en catálogo de experiencias
+CREATE OR REPLACE FUNCTION public.sync_experiencias_favoritas_count()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -1650,22 +1675,42 @@ BEGIN
     v_exp_id := NEW.experience_id;
   END IF;
 
-  SELECT COUNT(*)::INTEGER INTO v_count
-  FROM public.experiencias_favoritos
-  WHERE experience_id = v_exp_id;
+  IF v_exp_id IS NOT NULL THEN
+    PERFORM 1
+    FROM public.experiencias
+    WHERE id = v_exp_id
+    FOR UPDATE;
 
-  UPDATE public.experiencias
-  SET favorites_count = v_count
-  WHERE id = v_exp_id;
+    SELECT COUNT(*)::INTEGER INTO v_count
+    FROM public.experiencias_favoritas
+    WHERE experience_id = v_exp_id;
+
+    UPDATE public.experiencias
+    SET favorites_count = v_count
+    WHERE id = v_exp_id;
+  END IF;
 
   RETURN NULL;
 END;
 $$;
 
-DROP TRIGGER IF EXISTS trg_experiencias_favorites_count ON public.experiencias_favoritos;
-CREATE TRIGGER trg_experiencias_favorites_count
-  AFTER INSERT OR DELETE ON public.experiencias_favoritos
-  FOR EACH ROW EXECUTE FUNCTION public.sync_experiencias_favorites_count();
+-- Compatibilidad retroactiva
+CREATE OR REPLACE FUNCTION public.sync_experiencias_favorites_count()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  RETURN public.sync_experiencias_favoritas_count();
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_experiencias_favorites_count ON public.experiencias_favoritas;
+DROP TRIGGER IF EXISTS trg_experiencias_favoritas_count ON public.experiencias_favoritas;
+CREATE TRIGGER trg_experiencias_favoritas_count
+  AFTER INSERT OR DELETE ON public.experiencias_favoritas
+  FOR EACH ROW EXECUTE FUNCTION public.sync_experiencias_favoritas_count();
 
 -- ==============================================================================
 -- 5. FUNCIONES RPC DE APLICACIÓN
@@ -2837,9 +2882,9 @@ END;
 $$;
 
 -- 5.15 can_socio_rate_provider (Verificación de elegibilidad para calificar prestador)
+DROP FUNCTION IF EXISTS public.can_socio_rate_provider(UUID, TEXT);
 CREATE OR REPLACE FUNCTION public.can_socio_rate_provider(
-  p_provider_id UUID,
-  p_socio_email TEXT DEFAULT NULL
+  p_provider_id UUID
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -2847,7 +2892,7 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 DECLARE
-  v_socio_email TEXT := LOWER(TRIM(COALESCE(auth.jwt() ->> 'email', p_socio_email, '')));
+  v_socio_email TEXT := LOWER(TRIM(COALESCE(auth.jwt() ->> 'email', '')));
   v_socio_id UUID;
   v_prestador_email TEXT;
   v_has_approved_payment BOOLEAN := false;
@@ -2927,12 +2972,12 @@ END;
 $$;
 
 -- 5.16 submit_prestador_rating (Registro atómico y seguro de calificación)
+DROP FUNCTION IF EXISTS public.submit_prestador_rating(UUID, INTEGER, TEXT, TEXT, TEXT);
 CREATE OR REPLACE FUNCTION public.submit_prestador_rating(
   p_provider_id UUID,
   p_score INTEGER,
   p_comentario TEXT DEFAULT '',
-  p_experience_id TEXT DEFAULT NULL,
-  p_socio_email TEXT DEFAULT NULL
+  p_experience_id TEXT DEFAULT NULL
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -2944,7 +2989,7 @@ DECLARE
   v_socio_id UUID;
   v_eligibility JSONB;
 BEGIN
-  v_caller_email := LOWER(TRIM(COALESCE(auth.jwt() ->> 'email', p_socio_email, '')));
+  v_caller_email := LOWER(TRIM(COALESCE(auth.jwt() ->> 'email', '')));
   IF v_caller_email = '' THEN
     RAISE EXCEPTION 'Acceso no autenticado: Debes iniciar sesión como socio para calificar.';
   END IF;
@@ -2954,7 +2999,7 @@ BEGIN
   END IF;
 
   -- Comprobar elegibilidad obligatoria
-  v_eligibility := public.can_socio_rate_provider(p_provider_id, v_caller_email);
+  v_eligibility := public.can_socio_rate_provider(p_provider_id);
   IF NOT (v_eligibility ->> 'can_vote')::boolean THEN
     RAISE EXCEPTION '%', (v_eligibility ->> 'reason');
   END IF;
@@ -2993,10 +3038,13 @@ BEGIN
 END;
 $$;
 
--- 5.17 toggle_experiencia_favorito (Gestión atómica de favoritos de socios)
-CREATE OR REPLACE FUNCTION public.toggle_experiencia_favorito(
-  p_experience_id TEXT,
-  p_socio_email TEXT DEFAULT NULL
+-- 5.17 toggle_experiencia_favorita (Gestión atómica de experiencias favoritas de socios)
+DROP FUNCTION IF EXISTS public.toggle_experiencia_favorita(TEXT);
+DROP FUNCTION IF EXISTS public.toggle_experiencia_favorito(TEXT);
+DROP FUNCTION IF EXISTS public.toggle_experiencia_favorito(TEXT, TEXT);
+
+CREATE OR REPLACE FUNCTION public.toggle_experiencia_favorita(
+  p_experience_id TEXT
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -3008,36 +3056,85 @@ DECLARE
   v_socio_id UUID;
   v_is_fav BOOLEAN;
   v_total_favs INTEGER;
+  v_resolved_exp_id TEXT;
 BEGIN
-  v_caller_email := LOWER(TRIM(COALESCE(auth.jwt() ->> 'email', p_socio_email, '')));
+  v_caller_email := LOWER(TRIM(COALESCE(auth.jwt() ->> 'email', '')));
   IF v_caller_email = '' THEN
     RAISE EXCEPTION 'Debes ser socio e iniciar sesión para marcar favoritos.';
+  END IF;
+
+  -- Resolver id real de la experiencia en public.experiencias
+  SELECT id INTO v_resolved_exp_id
+  FROM public.experiencias
+  WHERE id = p_experience_id OR LOWER(slug) = LOWER(p_experience_id)
+  LIMIT 1;
+
+  IF v_resolved_exp_id IS NULL THEN
+    v_resolved_exp_id := p_experience_id;
   END IF;
 
   SELECT id INTO v_socio_id FROM public.socios WHERE LOWER(email) = v_caller_email;
 
   SELECT EXISTS (
-    SELECT 1 FROM public.experiencias_favoritos
-    WHERE LOWER(socio_email) = v_caller_email AND experience_id = p_experience_id
+    SELECT 1 FROM public.experiencias_favoritas
+    WHERE LOWER(socio_email) = v_caller_email AND experience_id = v_resolved_exp_id
   ) INTO v_is_fav;
 
   IF v_is_fav THEN
-    DELETE FROM public.experiencias_favoritos
-    WHERE LOWER(socio_email) = v_caller_email AND experience_id = p_experience_id;
+    DELETE FROM public.experiencias_favoritas
+    WHERE LOWER(socio_email) = v_caller_email AND experience_id = v_resolved_exp_id;
     v_is_fav := false;
   ELSE
-    INSERT INTO public.experiencias_favoritos (socio_id, socio_email, experience_id)
-    VALUES (v_socio_id, v_caller_email, p_experience_id)
+    INSERT INTO public.experiencias_favoritas (socio_id, socio_email, experience_id)
+    VALUES (v_socio_id, v_caller_email, v_resolved_exp_id)
     ON CONFLICT (socio_email, experience_id) DO NOTHING;
     v_is_fav := true;
   END IF;
 
-  SELECT favorites_count INTO v_total_favs FROM public.experiencias WHERE id = p_experience_id;
+  SELECT favorites_count INTO v_total_favs FROM public.experiencias WHERE id = v_resolved_exp_id;
 
   RETURN jsonb_build_object(
     'is_favorite', v_is_fav,
     'favorites_count', COALESCE(v_total_favs, 0)
   );
+END;
+$$;
+
+-- Alias retrocompatible
+CREATE OR REPLACE FUNCTION public.toggle_experiencia_favorito(
+  p_experience_id TEXT
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  RETURN public.toggle_experiencia_favorita(p_experience_id);
+END;
+$$;
+
+-- 5.18 get_my_provider_ratings (Lectura segura de calificaciones propias del socio autenticado)
+CREATE OR REPLACE FUNCTION public.get_my_provider_ratings()
+RETURNS TABLE (
+  prestador_id UUID,
+  score INTEGER
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_caller_email TEXT := LOWER(TRIM(COALESCE(auth.jwt() ->> 'email', '')));
+BEGIN
+  IF v_caller_email = '' THEN
+    RETURN;
+  END IF;
+
+  RETURN QUERY
+  SELECT cp.prestador_id, cp.score
+  FROM public.calificaciones_prestadores cp
+  WHERE LOWER(cp.socio_email) = v_caller_email;
 END;
 $$;
 
@@ -3056,9 +3153,20 @@ GRANT EXECUTE ON FUNCTION public.list_provider_transfer_submissions TO authentic
 GRANT EXECUTE ON FUNCTION public.review_transfer_submission TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_admin_all_members TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_admin_all_submissions TO authenticated;
-GRANT EXECUTE ON FUNCTION public.can_socio_rate_provider TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.submit_prestador_rating TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.toggle_experiencia_favorito TO anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.can_socio_rate_provider(UUID) FROM anon;
+GRANT EXECUTE ON FUNCTION public.can_socio_rate_provider(UUID) TO authenticated;
+
+REVOKE EXECUTE ON FUNCTION public.submit_prestador_rating(UUID, INTEGER, TEXT, TEXT) FROM anon;
+GRANT EXECUTE ON FUNCTION public.submit_prestador_rating(UUID, INTEGER, TEXT, TEXT) TO authenticated;
+
+REVOKE EXECUTE ON FUNCTION public.toggle_experiencia_favorita(TEXT) FROM anon;
+GRANT EXECUTE ON FUNCTION public.toggle_experiencia_favorita(TEXT) TO authenticated;
+
+REVOKE EXECUTE ON FUNCTION public.toggle_experiencia_favorito(TEXT) FROM anon;
+GRANT EXECUTE ON FUNCTION public.toggle_experiencia_favorito(TEXT) TO authenticated;
+
+REVOKE EXECUTE ON FUNCTION public.get_my_provider_ratings() FROM anon;
+GRANT EXECUTE ON FUNCTION public.get_my_provider_ratings() TO authenticated;
 
 -- ==============================================================================
 -- 6. ROW LEVEL SECURITY (RLS) Y POLÍTICAS
@@ -3074,7 +3182,7 @@ ALTER TABLE public.historial_mp ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.experiencias ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pagos_transferencias ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.calificaciones_prestadores ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.experiencias_favoritos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.experiencias_favoritas ENABLE ROW LEVEL SECURITY;
 
 -- 6.3 Políticas en socios
 DROP POLICY IF EXISTS "Socios can read own profile by auth_user_id" ON public.socios;
@@ -3449,8 +3557,9 @@ CREATE POLICY "Gestion de comprobantes para admins y prestadores"
   );
 
 -- 6.11 Políticas en calificaciones_prestadores
-GRANT SELECT ON public.calificaciones_prestadores TO anon, authenticated;
-GRANT INSERT, UPDATE, DELETE ON public.calificaciones_prestadores TO authenticated;
+REVOKE SELECT, INSERT, UPDATE, DELETE ON public.calificaciones_prestadores FROM anon, authenticated;
+GRANT SELECT (id, prestador_id, score, comentario, experience_id, created_at, updated_at)
+  ON public.calificaciones_prestadores TO anon, authenticated;
 
 DROP POLICY IF EXISTS "Lectura publica de calificaciones de prestadores" ON public.calificaciones_prestadores;
 CREATE POLICY "Lectura publica de calificaciones de prestadores"
@@ -3460,13 +3569,13 @@ CREATE POLICY "Lectura publica de calificaciones de prestadores"
   USING (true);
 
 DROP POLICY IF EXISTS "Socios pueden registrar sus calificaciones" ON public.calificaciones_prestadores;
-CREATE POLICY "Socios pueden registrar sus calificaciones"
+DROP POLICY IF EXISTS "Admins pueden registrar calificaciones" ON public.calificaciones_prestadores;
+CREATE POLICY "Admins pueden registrar calificaciones"
   ON public.calificaciones_prestadores
   FOR INSERT
   TO authenticated
   WITH CHECK (
-    LOWER(socio_email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
-    OR EXISTS (
+    EXISTS (
       SELECT 1 FROM public.administradores
       WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
         AND active = true
@@ -3474,21 +3583,20 @@ CREATE POLICY "Socios pueden registrar sus calificaciones"
   );
 
 DROP POLICY IF EXISTS "Socios pueden actualizar sus propias calificaciones" ON public.calificaciones_prestadores;
-CREATE POLICY "Socios pueden actualizar sus propias calificaciones"
+DROP POLICY IF EXISTS "Admins pueden actualizar calificaciones" ON public.calificaciones_prestadores;
+CREATE POLICY "Admins pueden actualizar calificaciones"
   ON public.calificaciones_prestadores
   FOR UPDATE
   TO authenticated
   USING (
-    LOWER(socio_email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
-    OR EXISTS (
+    EXISTS (
       SELECT 1 FROM public.administradores
       WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
         AND active = true
     )
   )
   WITH CHECK (
-    LOWER(socio_email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
-    OR EXISTS (
+    EXISTS (
       SELECT 1 FROM public.administradores
       WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
         AND active = true
@@ -3501,20 +3609,21 @@ CREATE POLICY "Admins pueden eliminar calificaciones"
   FOR DELETE
   TO authenticated
   USING (
-    LOWER(socio_email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
-    OR EXISTS (
+    EXISTS (
       SELECT 1 FROM public.administradores
       WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
         AND active = true
     )
   );
 
--- 6.12 Políticas en experiencias_favoritos
-GRANT SELECT, INSERT, DELETE ON public.experiencias_favoritos TO authenticated;
+-- 6.12 Políticas en experiencias_favoritas
+GRANT SELECT, INSERT, DELETE ON public.experiencias_favoritas TO authenticated;
+GRANT SELECT ON public.experiencias_favoritos TO authenticated;
 
-DROP POLICY IF EXISTS "Socios leen sus propios favoritos" ON public.experiencias_favoritos;
-CREATE POLICY "Socios leen sus propios favoritos"
-  ON public.experiencias_favoritos
+DROP POLICY IF EXISTS "Socios leen sus propios favoritos" ON public.experiencias_favoritas;
+DROP POLICY IF EXISTS "Socios leen sus propias experiencias favoritas" ON public.experiencias_favoritas;
+CREATE POLICY "Socios leen sus propias experiencias favoritas"
+  ON public.experiencias_favoritas
   FOR SELECT
   TO authenticated
   USING (
@@ -3526,9 +3635,10 @@ CREATE POLICY "Socios leen sus propios favoritos"
     )
   );
 
-DROP POLICY IF EXISTS "Socios agregan sus propios favoritos" ON public.experiencias_favoritos;
-CREATE POLICY "Socios agregan sus propios favoritos"
-  ON public.experiencias_favoritos
+DROP POLICY IF EXISTS "Socios agregan sus propios favoritos" ON public.experiencias_favoritas;
+DROP POLICY IF EXISTS "Socios agregan sus propias experiencias favoritas" ON public.experiencias_favoritas;
+CREATE POLICY "Socios agregan sus propias experiencias favoritas"
+  ON public.experiencias_favoritas
   FOR INSERT
   TO authenticated
   WITH CHECK (
@@ -3540,9 +3650,10 @@ CREATE POLICY "Socios agregan sus propios favoritos"
     )
   );
 
-DROP POLICY IF EXISTS "Socios eliminan sus propios favoritos" ON public.experiencias_favoritos;
-CREATE POLICY "Socios eliminan sus propios favoritos"
-  ON public.experiencias_favoritos
+DROP POLICY IF EXISTS "Socios eliminan sus propios favoritos" ON public.experiencias_favoritas;
+DROP POLICY IF EXISTS "Socios eliminan sus propias experiencias favoritas" ON public.experiencias_favoritas;
+CREATE POLICY "Socios eliminan sus propias experiencias favoritas"
+  ON public.experiencias_favoritas
   FOR DELETE
   TO authenticated
   USING (

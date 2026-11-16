@@ -417,7 +417,7 @@ export class ProviderStoreService {
       });
 
       const provider: ProviderUser = {
-        id: existing?.id ?? `provider-${email.replace(/[^a-z0-9]+/g, '-')}`,
+        id: access.id || existing?.id || `provider-${email.replace(/[^a-z0-9]+/g, '-')}`,
         email,
         name:
           access.account_holder ||
@@ -1321,7 +1321,7 @@ export class ProviderStoreService {
     if (!clean) return null;
 
     const mapRemoteToPublicProvider = (remoteData: any, fallbackSlug: string): ProviderUser => ({
-      id: `prov-${remoteData.email.replace(/[^a-z0-9]+/g, '-')}`,
+      id: remoteData.id || `prov-${remoteData.email.replace(/[^a-z0-9]+/g, '-')}`,
       email: remoteData.email,
       name: remoteData.name || remoteData.agency || remoteData.email,
       agency: remoteData.agency || 'Prestador Catamarca',
@@ -1356,7 +1356,7 @@ export class ProviderStoreService {
       } else if (error) {
         const { data: fallbackData } = await (this.supabase.from('prestadores') as any)
           .select(
-            'email, name, agency, active, status, phone, website, social_media, social_media_secondary, slug, bio, avatar_url, cover_url, tier, rubro, verified, rating_score, rating_count',
+            'id, email, name, agency, active, status, phone, website, social_media, social_media_secondary, slug, bio, avatar_url, cover_url, tier, rubro, verified, rating_score, rating_count',
           )
           .eq('active', true)
           .eq('status', 'aprobado')
@@ -1491,7 +1491,7 @@ export class ProviderStoreService {
           });
       }
       return {
-        id: `prov-${email.replace(/[^a-z0-9]+/g, '-')}`,
+        id: remoteData.id || `prov-${email.replace(/[^a-z0-9]+/g, '-')}`,
         email,
         name: remoteData.name || remoteData.agency || email,
         agency: remoteData.agency || 'Prestador Catamarca',
@@ -1533,7 +1533,7 @@ export class ProviderStoreService {
         } else {
           const { data: fallbackData, error: fallbackError } = await (this.supabase.from('prestadores') as any)
             .select(
-              'email, name, agency, active, status, phone, website, social_media, social_media_secondary, slug, bio, avatar_url, cover_url, tier, rubro, verified, rating_score, rating_count',
+              'id, email, name, agency, active, status, phone, website, social_media, social_media_secondary, slug, bio, avatar_url, cover_url, tier, rubro, verified, rating_score, rating_count',
             )
             .eq('active', true)
             .eq('status', 'aprobado');
@@ -3403,7 +3403,7 @@ export class ProviderStoreService {
   async loadProposalsFromSupabase(providerEmail?: string): Promise<void> {
     if (!isSupabaseConfigured()) return;
     try {
-      const statusFilter = ['pendiente', 'rechazada', 'publicada', 'oculta'];
+      const statusFilter = ['pendiente', 'rechazada', 'publicada'];
       let expQuery = (this.supabase.from('experiencias') as any)
         .select('*')
         .in('status', statusFilter);
@@ -3440,7 +3440,10 @@ export class ProviderStoreService {
         }
 
         const validRows = expData.filter((row: any) => {
-          if (row.status === 'publicada' || row.status === 'oculta') {
+          if (row.status === 'oculta') {
+            return false;
+          }
+          if (row.status === 'publicada') {
             return typeof row.provider_email === 'string' && row.provider_email.trim().length > 0;
           }
           return true;
@@ -3490,7 +3493,7 @@ export class ProviderStoreService {
             coverVideoUrl: row.video_url || '',
             coverVideoName: row.cover_video_name || '',
             albumPhotos: Array.isArray(row.album_photos) ? row.album_photos : [],
-            status: (row.status === 'publicada' || row.status === 'oculta' ? 'aprobada' : row.status) as
+            status: (row.status === 'publicada' ? 'aprobada' : row.status) as
               | 'pendiente'
               | 'aprobada'
               | 'rechazada',
@@ -3510,7 +3513,8 @@ export class ProviderStoreService {
             (r) =>
               r.id !== 'req-sunset-las-pirquitas' &&
               r.providerEmail?.toLowerCase() === providerEmail.toLowerCase() &&
-              (r.status === 'aprobada' || (r.status as string) === 'publicada' || (r.status as string) === 'oculta') &&
+              (r.status === 'aprobada' || (r.status as string) === 'publicada') &&
+              (r.status as string) !== 'oculta' &&
               !mappedIds.has(r.id),
           );
           const others = this._experienceRequests().filter(
@@ -3587,6 +3591,31 @@ export class ProviderStoreService {
         ? confirmedDates
         : parseConfirmedProposalDates(req.dates);
 
+    let serializedProposalNotes = req.notes;
+    if (existingProvider?.mpConnected !== undefined || existingProvider?.mpCollectorId !== undefined) {
+      let notesObj: Record<string, any> = {};
+      const rawNotes = typeof req.notes === 'string' ? req.notes.trim() : '';
+      if (rawNotes) {
+        if (rawNotes.startsWith('{')) {
+          try {
+            const parsed = JSON.parse(rawNotes);
+            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+              notesObj = { ...parsed };
+            } else {
+              notesObj = { text: rawNotes };
+            }
+          } catch {
+            notesObj = { text: rawNotes };
+          }
+        } else {
+          notesObj = { text: rawNotes };
+        }
+      }
+      if (existingProvider?.mpCollectorId !== undefined) notesObj['mp_collector_id'] = existingProvider.mpCollectorId;
+      if (existingProvider?.mpConnected !== undefined) notesObj['mp_connected'] = Boolean(existingProvider.mpConnected);
+      serializedProposalNotes = JSON.stringify(notesObj);
+    }
+
     let bankingFromPrestadores: { cbu_alias?: string; cuit_dni?: string; bank_name?: string } | null = null;
     if (isSupabaseConfigured() && normalizedEmail) {
       try {
@@ -3644,6 +3673,9 @@ export class ProviderStoreService {
           ? { providerBankName: bankingFromPrestadores.bank_name }
           : {}),
         isClubExperience: false,
+        mpConnected: Boolean(existingProvider?.mpConnected),
+        mpCollectorId: existingProvider?.mpCollectorId,
+        ...(serializedProposalNotes ? { notes: serializedProposalNotes } : {}),
       });
     } else if (remoteRow) {
       try {
@@ -3662,6 +3694,7 @@ export class ProviderStoreService {
             provider_bank_name: null,
             reviewed_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
+            ...(serializedProposalNotes ? { notes: serializedProposalNotes } : {}),
           })
           .eq('id', requestId);
 
@@ -3738,6 +3771,7 @@ export class ProviderStoreService {
           bankingFromPrestadores?.cuit_dni || req.providerCuitDni || existingProvider?.cuitDni,
         providerBankName:
           bankingFromPrestadores?.bank_name || req.providerBankName || existingProvider?.bankName,
+        notes: serializedProposalNotes || req.notes,
         mpConnected: Boolean(existingProvider?.mpConnected),
         mpCollectorId: existingProvider?.mpCollectorId,
       };
@@ -3753,7 +3787,13 @@ export class ProviderStoreService {
     this._experienceRequests.update((list) =>
       list.map((r) =>
         r.id === requestId
-          ? { ...r, slug: generatedSlug, status: 'aprobada' as const, reviewedAt: new Date().toISOString() }
+          ? {
+              ...r,
+              slug: generatedSlug,
+              status: 'aprobada' as const,
+              reviewedAt: new Date().toISOString(),
+              ...(serializedProposalNotes ? { notes: serializedProposalNotes } : {}),
+            }
           : r,
       ),
     );
@@ -3772,6 +3812,7 @@ export class ProviderStoreService {
             provider_bank_name: null,
             reviewed_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
+            ...(serializedProposalNotes ? { notes: serializedProposalNotes } : {}),
           })
           .eq('id', publishedId);
 

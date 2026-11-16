@@ -615,6 +615,30 @@ export interface Database {
         Relationships: [];
       };
 
+      experiencias_favoritas: {
+        Row: {
+          id: string;
+          socio_id: string | null;
+          socio_email: string;
+          experience_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          socio_id?: string | null;
+          socio_email: string;
+          experience_id: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          socio_id?: string | null;
+          socio_email?: string;
+          experience_id?: string;
+        };
+        Relationships: [];
+      };
+
       experiencias_favoritos: {
         Row: {
           id: string;
@@ -656,6 +680,7 @@ export interface Database {
       };
       perfiles_publicos: {
         Row: {
+          id?: string;
           email: string;
           name: string;
           agency: string;
@@ -813,6 +838,18 @@ export interface Database {
       is_active_admin: {
         Args: Record<string, never>;
         Returns: boolean;
+      };
+      toggle_experiencia_favorita: {
+        Args: {
+          p_experience_id: string;
+        };
+        Returns: Json;
+      };
+      toggle_experiencia_favorito: {
+        Args: {
+          p_experience_id: string;
+        };
+        Returns: Json;
       };
     };
     Enums: {

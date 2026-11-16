@@ -47,6 +47,8 @@ export class ProvidersCatalogComponent implements OnInit, AfterViewInit, OnDestr
   readonly newsletter = inject(NewsletterService);
 
   private scrollDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private carouselInitTimer: ReturnType<typeof setTimeout> | null = null;
+  private isDestroyed = false;
   private readonly cycleRepetitions = 5;
   private readonly onScrollEndBound = () => this.normalizeScroll();
   private autoplayTimer: ReturnType<typeof setInterval> | null = null;
@@ -75,19 +77,27 @@ export class ProvidersCatalogComponent implements OnInit, AfterViewInit, OnDestr
   }
 
   getProviderTier(p: ProviderUser): ProviderTier {
+    // 1. Identity checks primero
     if (
       p.slug === 'club-de-experiencias' ||
       p.id === 'prov-club-oficial' ||
-      p.agency?.toLowerCase().includes('club de experiencias') ||
-      (p as any).tier === 'fundador' ||
-      p.notes?.toLowerCase().includes('fundador')
+      p.agency?.toLowerCase().includes('club de experiencias')
     ) {
+      return 'fundador';
+    }
+
+    // 2. Si p.tier es uno de los niveles soportados, retornarlo directamente antes de reglas de fallback
+    if (p.tier === 'fundador' || p.tier === 'pleno' || p.tier === 'emergente') {
+      return p.tier;
+    }
+
+    // 3. Reglas de fallback existentes
+    if (p.notes?.toLowerCase().includes('fundador')) {
       return 'fundador';
     }
 
     const count = this.getExperiencesCount(p);
     if (
-      (p as any).tier === 'pleno' ||
       p.notes?.toLowerCase().includes('pleno') ||
       count > 0 ||
       p.verified
@@ -111,6 +121,9 @@ export class ProvidersCatalogComponent implements OnInit, AfterViewInit, OnDestr
   }
 
   getProviderRubro(p: ProviderUser): string {
+    if (p.rubro && p.rubro.trim()) {
+      return p.rubro.trim();
+    }
     const bio = (p.bio || '').toLowerCase();
     const agency = (p.agency || '').toLowerCase();
     if (
@@ -220,9 +233,20 @@ export class ProvidersCatalogComponent implements OnInit, AfterViewInit, OnDestr
 
     return list.sort((a, b) => {
       if (sort === 'rating') {
-        const scoreA = this.getProviderRating(a).score;
-        const scoreB = this.getProviderRating(b).score;
-        if (scoreB !== scoreA) return scoreB - scoreA;
+        const ratingA = this.getProviderRating(a);
+        const ratingB = this.getProviderRating(b);
+        const hasVotesA = ratingA.count > 0;
+        const hasVotesB = ratingB.count > 0;
+
+        if (hasVotesA && !hasVotesB) return -1;
+        if (!hasVotesA && hasVotesB) return 1;
+
+        if (hasVotesA && hasVotesB) {
+          if (ratingB.score !== ratingA.score) {
+            return ratingB.score - ratingA.score;
+          }
+        }
+
         return this.getExperiencesCount(b) - this.getExperiencesCount(a);
       }
       if (sort === 'experiences') {
@@ -237,8 +261,12 @@ export class ProvidersCatalogComponent implements OnInit, AfterViewInit, OnDestr
   readonly filteredProviders = this.filteredAllProviders;
 
   ngAfterViewInit(): void {
+    if (this.isDestroyed) return;
     if (!this.loading()) {
-      setTimeout(() => {
+      if (this.carouselInitTimer) clearTimeout(this.carouselInitTimer);
+      this.carouselInitTimer = setTimeout(() => {
+        this.carouselInitTimer = null;
+        if (this.isDestroyed) return;
         this.initCarouselPosition();
         this.startAutoplay();
         this.attachCarouselListeners();
@@ -247,9 +275,15 @@ export class ProvidersCatalogComponent implements OnInit, AfterViewInit, OnDestr
   }
 
   ngOnDestroy(): void {
+    this.isDestroyed = true;
+    if (this.carouselInitTimer) {
+      clearTimeout(this.carouselInitTimer);
+      this.carouselInitTimer = null;
+    }
     this.stopAutoplay();
     if (this.scrollDebounceTimer) {
       clearTimeout(this.scrollDebounceTimer);
+      this.scrollDebounceTimer = null;
     }
     const container = this.carouselRef?.nativeElement;
     if (container) {
@@ -259,8 +293,13 @@ export class ProvidersCatalogComponent implements OnInit, AfterViewInit, OnDestr
   }
 
   startAutoplay(): void {
+    if (this.isDestroyed) return;
     this.stopAutoplay();
     this.autoplayTimer = setInterval(() => {
+      if (this.isDestroyed) {
+        this.stopAutoplay();
+        return;
+      }
       if (!this.isUserHovering && !document.hidden) {
         this.scrollCarousel('next');
       }
@@ -368,6 +407,7 @@ export class ProvidersCatalogComponent implements OnInit, AfterViewInit, OnDestr
   }
 
   private attachCarouselListeners(): void {
+    if (this.isDestroyed) return;
     const container = this.carouselRef?.nativeElement;
     if (container) {
       container.removeEventListener('scrollend', this.onScrollEndBound);
@@ -393,16 +433,23 @@ export class ProvidersCatalogComponent implements OnInit, AfterViewInit, OnDestr
 
     try {
       const list = await this.providerStore.getPublicProviders();
-      this.providers.set(list);
+      if (!this.isDestroyed) {
+        this.providers.set(list);
+      }
     } catch (err) {
       console.warn('[ProvidersCatalog] Error cargando prestadores públicos:', err);
     } finally {
-      this.loading.set(false);
-      setTimeout(() => {
-        this.initCarouselPosition();
-        this.startAutoplay();
-        this.attachCarouselListeners();
-      }, 80);
+      if (!this.isDestroyed) {
+        this.loading.set(false);
+        if (this.carouselInitTimer) clearTimeout(this.carouselInitTimer);
+        this.carouselInitTimer = setTimeout(() => {
+          this.carouselInitTimer = null;
+          if (this.isDestroyed) return;
+          this.initCarouselPosition();
+          this.startAutoplay();
+          this.attachCarouselListeners();
+        }, 80);
+      }
     }
   }
 

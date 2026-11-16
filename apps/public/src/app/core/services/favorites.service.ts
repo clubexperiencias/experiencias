@@ -1,9 +1,11 @@
-import { Injectable, computed, effect, inject, signal } from '@angular/core';
+import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { ExperienceService } from './experience.service';
 import { NewsletterService } from './newsletter.service';
 import { Experience } from '../models/experience.model';
+import { SUPABASE_CLIENT } from '../supabase/supabase.client';
 
-const FAVORITES_STORAGE_KEY = 'catamarca_user_favorites_v1';
+export const FAVORITES_STORAGE_KEY = 'catamarca_user_favorites_v1';
+export const FAVORITES_REMOVED_STORAGE_KEY = 'catamarca_user_favorites_removed_v1';
 
 export interface FavoriteToastInfo {
   title: string;
@@ -17,27 +19,90 @@ export interface FavoriteToastInfo {
 export class FavoritesService {
   private readonly experienceService = inject(ExperienceService);
   private readonly newsletter = inject(NewsletterService);
+  private readonly supabase = inject(SUPABASE_CLIENT, { optional: true });
 
-  private readonly _favoriteSlugs = signal<string[]>(this.loadStoredFavorites());
+  private activeMemberIdentity: string | null = (() => {
+    const member = this.newsletter.currentMember();
+    return member ? (member.email || member.id || '').trim().toLowerCase() : null;
+  })();
+
+  private readonly _favoriteSlugs = signal<string[]>(
+    this.activeMemberIdentity ? this.loadStoredFavorites(this.activeMemberIdentity) : [],
+  );
   readonly favoriteSlugs = this._favoriteSlugs.asReadonly();
+
+  private readonly _removedSlugs = signal<Set<string>>(
+    this.activeMemberIdentity ? this.loadStoredRemoved(this.activeMemberIdentity) : new Set(),
+  );
 
   readonly lastFavoritedToast = signal<FavoriteToastInfo | null>(null);
   private toastTimer: ReturnType<typeof setTimeout> | null = null;
+  private lastMergedMemberIdentity: string | null = null;
 
   constructor() {
-    // Sincronizar automáticamente con el perfil del socio cuando esté autenticado
+    // Sincronizar automáticamente con el perfil del socio cuando esté autenticado.
+    // Se ejecuta una sola vez por identidad de socio para preservar el comportamiento
+    // de inicialización sin re-agregar favoritos eliminados ante cambios posteriores.
     effect(() => {
       const member = this.newsletter.currentMember();
-      if (member && Array.isArray(member.experiencesWishlist) && member.experiencesWishlist.length > 0) {
-        this.mergeMemberWishlist(member.experiencesWishlist);
+      const memberIdentity = member ? (member.email || member.id || '').trim().toLowerCase() : null;
+
+      // Si no hay socio autenticado, limpiar la lista en memoria
+      if (!member || !memberIdentity) {
+        if (this.activeMemberIdentity !== null || this._favoriteSlugs().length > 0) {
+          this.activeMemberIdentity = null;
+          this.lastMergedMemberIdentity = null;
+          untracked(() => {
+            this._favoriteSlugs.set([]);
+            this._removedSlugs.set(new Set());
+          });
+        }
+        return;
+      }
+
+      // Si cambió el socio autenticado, recargar la lista en memoria para el nuevo socio
+      if (memberIdentity !== this.activeMemberIdentity) {
+        this.activeMemberIdentity = memberIdentity;
+        this.lastMergedMemberIdentity = null;
+        untracked(() => {
+          const stored = this.loadStoredFavorites(memberIdentity);
+          const removed = this.loadStoredRemoved(memberIdentity);
+          this._favoriteSlugs.set(stored);
+          this._removedSlugs.set(removed);
+        });
+      }
+
+      // Fusionar una sola vez la wishlist remota del socio con sus favoritos locales
+      if (memberIdentity !== this.lastMergedMemberIdentity) {
+        this.lastMergedMemberIdentity = memberIdentity;
+        const wishlist = member.experiencesWishlist;
+        if (Array.isArray(wishlist) && wishlist.length > 0) {
+          untracked(() => {
+            this.mergeMemberWishlist(wishlist, memberIdentity);
+          });
+        }
       }
     });
   }
 
-  private loadStoredFavorites(): string[] {
+  private getFavoritesStorageKey(identity?: string | null): string | null {
+    const target = identity !== undefined ? identity : this.activeMemberIdentity;
+    const norm = (target || '').trim().toLowerCase();
+    return norm ? `${FAVORITES_STORAGE_KEY}_${norm}` : null;
+  }
+
+  private getRemovedStorageKey(identity?: string | null): string | null {
+    const target = identity !== undefined ? identity : this.activeMemberIdentity;
+    const norm = (target || '').trim().toLowerCase();
+    return norm ? `${FAVORITES_REMOVED_STORAGE_KEY}_${norm}` : null;
+  }
+
+  private loadStoredFavorites(identity?: string | null): string[] {
     if (typeof localStorage === 'undefined') return [];
     try {
-      const raw = localStorage.getItem(FAVORITES_STORAGE_KEY);
+      const key = this.getFavoritesStorageKey(identity);
+      if (!key) return [];
+      const raw = localStorage.getItem(key);
       if (!raw) return [];
       const parsed = JSON.parse(raw);
       if (!Array.isArray(parsed)) return [];
@@ -46,7 +111,7 @@ export class FavoritesService {
         .map((s) => String(s).trim())
         .filter((s) => Boolean(s) && !blocked.has(s.toLowerCase()));
       if (filtered.length !== parsed.length) {
-        this.persistFavorites(filtered);
+        this.persistFavorites(filtered, identity);
       }
       return filtered;
     } catch {
@@ -54,33 +119,89 @@ export class FavoritesService {
     }
   }
 
-  private persistFavorites(slugs: string[]): void {
+  private persistFavorites(slugs: string[], identity?: string | null): void {
     if (typeof localStorage === 'undefined') return;
     try {
-      localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(slugs));
+      const key = this.getFavoritesStorageKey(identity);
+      if (!key) return;
+      localStorage.setItem(key, JSON.stringify(slugs));
     } catch {
       // ignore
     }
   }
 
-  private mergeMemberWishlist(wishlist: string[]): void {
+  private loadStoredRemoved(identity?: string | null): Set<string> {
+    if (typeof localStorage === 'undefined') return new Set();
+    try {
+      const key = this.getRemovedStorageKey(identity);
+      if (!key) return new Set();
+      const raw = localStorage.getItem(key);
+      if (!raw) return new Set();
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return new Set();
+      return new Set(parsed.map((s) => String(s).trim().toLowerCase()).filter(Boolean));
+    } catch {
+      return new Set();
+    }
+  }
+
+  private persistRemoved(set: Set<string>, identity?: string | null): void {
+    if (typeof localStorage === 'undefined') return;
+    try {
+      const key = this.getRemovedStorageKey(identity);
+      if (!key) return;
+      localStorage.setItem(key, JSON.stringify(Array.from(set)));
+    } catch {
+      // ignore
+    }
+  }
+
+  private recordRemoval(slugOrId: string): void {
+    const norm = (slugOrId || '').trim().toLowerCase();
+    if (!norm) return;
+    const set = new Set(this._removedSlugs());
+    set.add(norm);
+    this._removedSlugs.set(set);
+    this.persistRemoved(set, this.activeMemberIdentity);
+  }
+
+  private clearRemoval(slugOrId: string): void {
+    const norm = (slugOrId || '').trim().toLowerCase();
+    if (!norm) return;
+    const set = new Set(this._removedSlugs());
+    if (set.delete(norm)) {
+      this._removedSlugs.set(set);
+      this.persistRemoved(set, this.activeMemberIdentity);
+    }
+  }
+
+  private mergeMemberWishlist(wishlist: string[], identity?: string | null): void {
     const current = this._favoriteSlugs();
     const currentLower = new Set(current.map((s) => s.toLowerCase()));
+    const removed = this._removedSlugs();
     let changed = false;
     const merged = [...current];
 
     for (const item of wishlist) {
       const norm = (item || '').trim();
-      if (norm && !currentLower.has(norm.toLowerCase())) {
+      const normLower = norm.toLowerCase();
+      if (!norm) continue;
+
+      // Si el socio eliminó explícitamente esta experiencia de favoritos, no re-agregarla
+      if (removed.has(normLower)) {
+        continue;
+      }
+
+      if (!currentLower.has(normLower)) {
         merged.push(norm);
-        currentLower.add(norm.toLowerCase());
+        currentLower.add(normLower);
         changed = true;
       }
     }
 
     if (changed) {
       this._favoriteSlugs.set(merged);
-      this.persistFavorites(merged);
+      this.persistFavorites(merged, identity !== undefined ? identity : this.activeMemberIdentity);
     }
   }
 
@@ -88,12 +209,14 @@ export class FavoritesService {
     const member = this.newsletter.currentMember();
     if (!member) return;
 
-    // Actualiza localmente de inmediato para que no haya latencia
-    const updatedMember = {
-      ...member,
-      experiencesWishlist: [...slugs],
-    };
-    this.newsletter.persistCurrentMember(updatedMember);
+    const currentIdentity = (member.email || member.id || '').trim().toLowerCase();
+    // Prevenir escribir los favoritos de un socio anterior al perfil de un nuevo socio
+    if (!currentIdentity || currentIdentity !== (this.activeMemberIdentity || '')) {
+      return;
+    }
+
+    // Actualiza el perfil en memoria y en localStorage sincrónicamente
+    this.newsletter.updateCurrentMemberWishlist([...slugs]);
 
     // Si tiene DNI o teléfono guardados, sincroniza remotamente con Supabase
     if (member.email && (member.dni || member.documentNumber || member.phone)) {
@@ -142,6 +265,9 @@ export class FavoritesService {
 
     if (isFav) {
       // Quitar de favoritos
+      this.recordRemoval(slug);
+      if (exp.id && exp.id !== slug) this.recordRemoval(exp.id);
+
       updated = current.filter(
         (s) =>
           s.toLowerCase() !== slug.toLowerCase() &&
@@ -151,14 +277,19 @@ export class FavoritesService {
       this._favoriteSlugs.set(updated);
       this.persistFavorites(updated);
       this.syncWithMemberProfile(updated);
+      this.callToggleRemoteFavorite(this.resolveExperienceId(exp));
       this.dismissToast();
       return false;
     } else {
       // Agregar a favoritos
+      this.clearRemoval(slug);
+      if (exp.id && exp.id !== slug) this.clearRemoval(exp.id);
+
       updated = [...current, slug];
       this._favoriteSlugs.set(updated);
       this.persistFavorites(updated);
       this.syncWithMemberProfile(updated);
+      this.callToggleRemoteFavorite(this.resolveExperienceId(exp));
 
       this.showToast({
         title: exp.title || 'Experiencia',
@@ -176,6 +307,9 @@ export class FavoritesService {
     }
     const slug = (exp.slug || exp.id || '').trim();
     if (!slug) return;
+    this.recordRemoval(slug);
+    if (exp.id && exp.id !== slug) this.recordRemoval(exp.id);
+
     const current = this._favoriteSlugs();
     const updated = current.filter(
       (s) =>
@@ -186,6 +320,39 @@ export class FavoritesService {
     this._favoriteSlugs.set(updated);
     this.persistFavorites(updated);
     this.syncWithMemberProfile(updated);
+    this.callToggleRemoteFavorite(this.resolveExperienceId(exp));
+  }
+
+  private resolveExperienceId(exp: Experience | string): string {
+    const rawSlugOrId = typeof exp === 'string' ? exp.trim() : (exp.slug || exp.id || '').trim();
+    const rawLower = rawSlugOrId.toLowerCase();
+    const match = this.experienceService.experiences().find(
+      (e) => (e.slug || '').toLowerCase() === rawLower || (e.id || '').toLowerCase() === rawLower,
+    );
+    if (match?.id) {
+      return match.id.trim();
+    }
+    if (typeof exp === 'object' && exp?.id) {
+      return exp.id.trim();
+    }
+    return rawSlugOrId;
+  }
+
+  private callToggleRemoteFavorite(targetId: string): void {
+    if (!this.supabase || !this.newsletter.isSubscribed() || !targetId) return;
+
+    void (async () => {
+      try {
+        const { data, error } = await (this.supabase as any).rpc('toggle_experiencia_favorita', {
+          p_experience_id: targetId,
+        });
+        if (!error && data && typeof data.favorites_count === 'number') {
+          this.experienceService.updateFavoritesCount(targetId, data.favorites_count);
+        }
+      } catch (err) {
+        console.warn('[FavoritesService] Error calling toggle_experiencia_favorita:', err);
+      }
+    })();
   }
 
   showToast(info: FavoriteToastInfo): void {

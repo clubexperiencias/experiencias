@@ -3596,7 +3596,11 @@ export class AdminDashboardComponent {
     return exps
       .filter((e) => e.status !== 'oculta')
       .map((e) => {
-        const count = favCountMap.get(e.slug) || 0;
+        const count = Math.max(
+          favCountMap.get(e.slug) || 0,
+          favCountMap.get(e.id) || 0,
+          e.favoritesCount || 0,
+        );
         return {
           experience: e,
           title: e.shortTitle || e.title,
