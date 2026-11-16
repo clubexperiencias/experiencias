@@ -173,7 +173,6 @@ mat-icon.btn-icon {
 /* Botón CTA • Idéntico al botón 'Subscribe' de National Geographic */
 .nav-pill-btn.profile-btn,
 .login-nav-btn {
-  display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
   height: 38px !important;
@@ -191,10 +190,44 @@ mat-icon.btn-icon {
   text-transform: uppercase !important;
   box-shadow: none !important;
   cursor: pointer !important;
+  box-sizing: border-box !important;
   transition:
     background-color 0.2s ease,
     color 0.2s ease,
     border-color 0.2s ease !important;
+}
+
+.login-nav-btn {
+  display: inline-flex !important;
+}
+
+/* El botón Mi Perfil iguala exactamente el ancho de cuando dice CERRAR SESIÓN para evitar layout shift en el header */
+.nav-pill-btn.profile-btn {
+  display: inline-grid !important;
+  grid-template-columns: 1fr;
+  justify-items: center !important;
+  text-align: center;
+}
+
+.nav-pill-btn.profile-btn::before {
+  content: 'Cerrar Sesión';
+  grid-area: 1 / 1;
+  visibility: hidden;
+  height: 0;
+  line-height: 0;
+  pointer-events: none;
+  user-select: none;
+  overflow: hidden;
+  font: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+
+.nav-pill-btn.profile-btn span {
+  grid-area: 1 / 1;
+  white-space: nowrap;
 }
 
 .nav-pill-btn.profile-btn::after,

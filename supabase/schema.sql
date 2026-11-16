@@ -3558,7 +3558,7 @@ CREATE POLICY "Gestion de comprobantes para admins y prestadores"
 
 -- 6.11 Políticas en calificaciones_prestadores
 REVOKE SELECT, INSERT, UPDATE, DELETE ON public.calificaciones_prestadores FROM anon, authenticated;
-GRANT SELECT (id, prestador_id, score, comentario, experience_id, created_at, updated_at)
+GRANT SELECT (id, prestador_id, socio_id, socio_email, score, comentario, experience_id, created_at, updated_at)
   ON public.calificaciones_prestadores TO anon, authenticated;
 
 DROP POLICY IF EXISTS "Lectura publica de calificaciones de prestadores" ON public.calificaciones_prestadores;

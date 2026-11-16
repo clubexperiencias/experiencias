@@ -192,6 +192,7 @@ export const CLUB_OFFICIAL_PROVIDER: ProviderUser = {
   joinedAt: '2024-01-01T00:00:00Z',
   tier: 'fundador',
   rubro: 'Operador Oficial del Club',
+  region: 'Valle Central y Ambato',
   ratingScore: 5.0,
   ratingCount: 1,
 };
@@ -1512,6 +1513,7 @@ export class ProviderStoreService {
         joinedAt: remoteData.created_at || new Date().toISOString(),
         tier: remoteData.tier || 'emergente',
         rubro: remoteData.rubro || '',
+        region: remoteData.region || '',
         ratingScore: remoteData.rating_score !== undefined && remoteData.rating_score !== null ? Number(remoteData.rating_score) : 5.0,
         ratingCount: remoteData.rating_count !== undefined && remoteData.rating_count !== null ? Number(remoteData.rating_count) : 0,
       };
@@ -1533,7 +1535,7 @@ export class ProviderStoreService {
         } else {
           const { data: fallbackData, error: fallbackError } = await (this.supabase.from('prestadores') as any)
             .select(
-              'id, email, name, agency, active, status, phone, website, social_media, social_media_secondary, slug, bio, avatar_url, cover_url, tier, rubro, verified, rating_score, rating_count',
+              'id, email, name, agency, active, status, phone, website, social_media, social_media_secondary, slug, bio, avatar_url, cover_url, tier, rubro, region, verified, rating_score, rating_count',
             )
             .eq('active', true)
             .eq('status', 'aprobado');

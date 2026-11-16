@@ -1,4 +1,15 @@
-import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
+import {
+  AfterViewInit,
+  Component,
+  ElementRef,
+  HostListener,
+  OnDestroy,
+  OnInit,
+  ViewChild,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
@@ -20,6 +31,11 @@ import {
 } from '../../shared/components/breadcrumb/breadcrumb.component';
 import { ReceiptModalComponent } from '../../shared/components/receipt-modal/receipt-modal.component';
 
+export interface CarouselExperienceItem {
+  key: string;
+  exp: Experience;
+}
+
 @Component({
   selector: 'app-profile',
   standalone: true,
@@ -35,7 +51,9 @@ import { ReceiptModalComponent } from '../../shared/components/receipt-modal/rec
   templateUrl: './profile.component.html',
   styleUrl: './profile.component.css',
 })
-export class ProfileComponent implements OnInit {
+export class ProfileComponent implements OnInit, AfterViewInit, OnDestroy {
+  @ViewChild('carouselRef') carouselRef?: ElementRef<HTMLDivElement>;
+
   private readonly route = inject(ActivatedRoute);
   readonly newsletter = inject(NewsletterService);
   readonly activityService = inject(ActivityHistoryService);
@@ -44,6 +62,43 @@ export class ProfileComponent implements OnInit {
   readonly router = inject(Router);
 
   readonly favoriteExperiences = this.favoritesService.favoriteExperiences;
+
+  private scrollDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private carouselInitTimer: ReturnType<typeof setTimeout> | null = null;
+  private isDestroyed = false;
+  private readonly cycleRepetitions = 5;
+  private readonly onScrollEndBound = () => this.normalizeScroll();
+  private autoplayTimer: ReturnType<typeof setInterval> | null = null;
+  private readonly autoplayIntervalMs = 3200;
+  private isUserHovering = false;
+  private readonly onVisibilityChangeBound = () => {
+    if (document.hidden) {
+      this.stopAutoplay();
+    } else if (!this.isUserHovering) {
+      this.startAutoplay();
+    }
+  };
+
+  readonly carouselFavoriteExperiences = computed<CarouselExperienceItem[]>(() => {
+    const base = this.favoriteExperiences();
+    if (base.length === 0) return [];
+    if (base.length >= 3) {
+      const items: CarouselExperienceItem[] = [];
+      for (let c = 0; c < this.cycleRepetitions; c++) {
+        for (let i = 0; i < base.length; i++) {
+          items.push({
+            key: `cycle_${c}_${base[i].id}_${i}`,
+            exp: base[i],
+          });
+        }
+      }
+      return items;
+    }
+    return base.map((exp, i) => ({
+      key: `single_${exp.id}_${i}`,
+      exp,
+    }));
+  });
 
   removeFavorite(exp: Experience, event?: Event): void {
     this.favoritesService.removeFavorite(exp, event);
@@ -57,6 +112,8 @@ export class ProfileComponent implements OnInit {
         current.filter((item) => !targets.has(item.trim().toLowerCase())),
       );
     }
+
+    this.scheduleCarouselInit();
   }
 
   readonly breadcrumbs: BreadcrumbItem[] = [{ label: 'Inicio', url: '/' }, { label: 'Mi Perfil' }];
@@ -124,6 +181,195 @@ export class ProfileComponent implements OnInit {
         }, 350);
       }
     });
+  }
+
+  ngAfterViewInit(): void {
+    if (this.isDestroyed) return;
+    this.scheduleCarouselInit();
+  }
+
+  ngOnDestroy(): void {
+    this.isDestroyed = true;
+    if (this.carouselInitTimer) {
+      clearTimeout(this.carouselInitTimer);
+      this.carouselInitTimer = null;
+    }
+    this.stopAutoplay();
+    if (this.scrollDebounceTimer) {
+      clearTimeout(this.scrollDebounceTimer);
+      this.scrollDebounceTimer = null;
+    }
+    if (this.successTimer) {
+      clearTimeout(this.successTimer);
+      this.successTimer = null;
+    }
+    const container = this.carouselRef?.nativeElement;
+    if (container) {
+      container.removeEventListener('scrollend', this.onScrollEndBound);
+    }
+    document.removeEventListener('visibilitychange', this.onVisibilityChangeBound);
+  }
+
+  startAutoplay(): void {
+    if (this.isDestroyed) return;
+    this.stopAutoplay();
+    if (this.favoriteExperiences().length <= 1) return;
+    this.autoplayTimer = setInterval(() => {
+      if (this.isDestroyed) {
+        this.stopAutoplay();
+        return;
+      }
+      if (!this.isUserHovering && !document.hidden) {
+        this.scrollCarousel('next');
+      }
+    }, this.autoplayIntervalMs);
+  }
+
+  stopAutoplay(): void {
+    if (this.autoplayTimer) {
+      clearInterval(this.autoplayTimer);
+      this.autoplayTimer = null;
+    }
+  }
+
+  onCarouselMouseEnter(): void {
+    this.isUserHovering = true;
+    this.stopAutoplay();
+  }
+
+  onCarouselMouseLeave(): void {
+    this.isUserHovering = false;
+    this.startAutoplay();
+  }
+
+  onCarouselNav(direction: 'prev' | 'next'): void {
+    this.scrollCarousel(direction);
+    if (!this.isUserHovering) {
+      this.startAutoplay();
+    }
+  }
+
+  private initCarouselPosition(): void {
+    if (!this.carouselRef?.nativeElement) return;
+    const container = this.carouselRef.nativeElement;
+    const items = container.querySelectorAll<HTMLElement>('.carousel-item');
+    const baseCount = this.favoriteExperiences().length;
+    if (baseCount < 3 || items.length < baseCount * 3) {
+      container.scrollLeft = 0;
+      return;
+    }
+
+    const targetItem = items[2 * baseCount];
+    if (targetItem) {
+      container.scrollLeft = targetItem.offsetLeft;
+    }
+  }
+
+  private getSingleCycleWidth(): number {
+    if (!this.carouselRef?.nativeElement) return 0;
+    const container = this.carouselRef.nativeElement;
+    const items = container.querySelectorAll<HTMLElement>('.carousel-item');
+    const baseCount = this.favoriteExperiences().length;
+    if (baseCount < 3 || items.length < baseCount * 2) return 0;
+
+    const diff = items[baseCount].offsetLeft - items[0].offsetLeft;
+    return diff > 0 ? diff : 0;
+  }
+
+  scrollCarousel(direction: 'prev' | 'next'): void {
+    if (!this.carouselRef?.nativeElement) return;
+    const container = this.carouselRef.nativeElement;
+    const items = container.querySelectorAll<HTMLElement>('.carousel-item');
+    const baseCount = this.favoriteExperiences().length;
+    if (items.length === 0 || baseCount === 0) return;
+
+    if (baseCount >= 3) {
+      const singleCycleWidth = this.getSingleCycleWidth();
+      if (singleCycleWidth > 0) {
+        if (direction === 'next' && container.scrollLeft >= singleCycleWidth * 3.2) {
+          container.scrollLeft -= singleCycleWidth;
+        } else if (direction === 'prev' && container.scrollLeft <= singleCycleWidth * 0.8) {
+          container.scrollLeft += singleCycleWidth;
+        }
+      }
+    }
+
+    const step = items[1]
+      ? items[1].offsetLeft - items[0].offsetLeft
+      : container.clientWidth * 0.45;
+
+    if (baseCount < 3) {
+      const maxScroll = container.scrollWidth - container.clientWidth;
+      if (maxScroll > 10) {
+        if (direction === 'next' && container.scrollLeft >= maxScroll - 10) {
+          container.scrollTo({ left: 0, behavior: 'smooth' });
+          return;
+        }
+        if (direction === 'prev' && container.scrollLeft <= 10) {
+          container.scrollTo({ left: maxScroll, behavior: 'smooth' });
+          return;
+        }
+      }
+    }
+
+    container.scrollBy({
+      left: direction === 'next' ? step : -step,
+      behavior: 'smooth',
+    });
+  }
+
+  onCarouselScroll(): void {
+    if (this.scrollDebounceTimer) {
+      clearTimeout(this.scrollDebounceTimer);
+    }
+    this.scrollDebounceTimer = setTimeout(() => {
+      this.normalizeScroll();
+    }, 120);
+  }
+
+  private normalizeScroll(): void {
+    if (!this.carouselRef?.nativeElement) return;
+    const baseCount = this.favoriteExperiences().length;
+    if (baseCount < 3) return;
+
+    const container = this.carouselRef.nativeElement;
+    const singleCycleWidth = this.getSingleCycleWidth();
+    if (singleCycleWidth <= 0) return;
+
+    while (container.scrollLeft > singleCycleWidth * 2.8) {
+      container.scrollLeft -= singleCycleWidth;
+    }
+    while (container.scrollLeft < singleCycleWidth * 1.2) {
+      container.scrollLeft += singleCycleWidth;
+    }
+  }
+
+  private scheduleCarouselInit(): void {
+    if (this.isDestroyed) return;
+    if (this.carouselInitTimer) clearTimeout(this.carouselInitTimer);
+    this.carouselInitTimer = setTimeout(() => {
+      this.carouselInitTimer = null;
+      if (this.isDestroyed) return;
+      this.initCarouselPosition();
+      this.startAutoplay();
+      this.attachCarouselListeners();
+    }, 80);
+  }
+
+  private attachCarouselListeners(): void {
+    if (this.isDestroyed) return;
+    const container = this.carouselRef?.nativeElement;
+    if (container) {
+      container.removeEventListener('scrollend', this.onScrollEndBound);
+      container.addEventListener('scrollend', this.onScrollEndBound);
+    }
+    document.removeEventListener('visibilitychange', this.onVisibilityChangeBound);
+    document.addEventListener('visibilitychange', this.onVisibilityChangeBound);
+  }
+
+  @HostListener('window:resize')
+  onResize(): void {
+    this.normalizeScroll();
   }
 
   private async loadAuthenticatedEmail(): Promise<void> {

@@ -167,6 +167,60 @@ export class ProvidersCatalogComponent implements OnInit, AfterViewInit, OnDestr
     return 'Turismo Aventura';
   }
 
+  getProviderRegion(p: ProviderUser): string {
+    if (p.region && p.region.trim()) {
+      return p.region.trim();
+    }
+    const exps = this.expService.getExperiencesByProvider({
+      slug: p.slug,
+      email: p.email,
+      agency: p.agency,
+    });
+    const expWithRegion = exps.find((e) => e.region && e.region.trim());
+    if (expWithRegion && expWithRegion.region.trim()) {
+      return expWithRegion.region.trim();
+    }
+    const bio = (p.bio || '').toLowerCase();
+    const agency = (p.agency || '').toLowerCase();
+    const notes = (p.notes || '').toLowerCase();
+    const combined = `${bio} ${agency} ${notes}`;
+    if (
+      combined.includes('puna') ||
+      combined.includes('fiambal') ||
+      combined.includes('atacama') ||
+      combined.includes('antofagasta')
+    ) {
+      return 'Puna & Fiambalá';
+    }
+    if (combined.includes('belen') || combined.includes('belén')) {
+      return 'Belén & Ruta 40';
+    }
+    if (combined.includes('tinogasta')) {
+      return 'Tinogasta & Fiambalá';
+    }
+    if (combined.includes('andalgal')) {
+      return 'Andalgalá';
+    }
+    if (
+      combined.includes('valle central') ||
+      combined.includes('jumeal') ||
+      combined.includes('ambato') ||
+      combined.includes('capital') ||
+      combined.includes('san fernando')
+    ) {
+      return 'Valle Central y Ambato';
+    }
+    if (
+      p.slug === 'club-de-experiencias' ||
+      p.id === 'prov-club' ||
+      p.id === 'prov-club-oficial' ||
+      agency.includes('club de experiencias')
+    ) {
+      return 'Valle Central y Ambato';
+    }
+    return 'Catamarca';
+  }
+
   readonly breadcrumbs: BreadcrumbItem[] = [
     { label: 'Inicio', url: '/' },
     { label: 'Prestadores' },
@@ -199,20 +253,39 @@ export class ProvidersCatalogComponent implements OnInit, AfterViewInit, OnDestr
     return items;
   });
 
+  private normalizeText(text: string | null | undefined): string {
+    if (!text) return '';
+    return text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
+  }
+
   // Prestadores filtrados para el catálogo general inferior
   readonly filteredAllProviders = computed(() => {
-    const q = this.searchQuery().trim().toLowerCase();
+    const q = this.searchQuery().trim();
     const tier = this.selectedTierFilter();
     const cat = this.selectedCategoryFilter();
     const sort = this.selectedSortOrder();
 
     const list = this.providers().filter((p) => {
       if (q) {
-        const name = (p.name || '').toLowerCase();
-        const agency = (p.agency || '').toLowerCase();
-        const bio = (p.bio || '').toLowerCase();
-        const slug = (p.slug || '').toLowerCase();
-        if (!name.includes(q) && !agency.includes(q) && !bio.includes(q) && !slug.includes(q)) {
+        const queryNorm = this.normalizeText(q);
+        const name = this.normalizeText(p.name);
+        const agency = this.normalizeText(p.agency);
+        const bio = this.normalizeText(p.bio);
+        const slug = this.normalizeText(p.slug);
+        const region = this.normalizeText(this.getProviderRegion(p));
+        const rubro = this.normalizeText(this.getProviderRubro(p));
+        if (
+          !name.includes(queryNorm) &&
+          !agency.includes(queryNorm) &&
+          !bio.includes(queryNorm) &&
+          !slug.includes(queryNorm) &&
+          !region.includes(queryNorm) &&
+          !rubro.includes(queryNorm)
+        ) {
           return false;
         }
       }
@@ -222,8 +295,9 @@ export class ProvidersCatalogComponent implements OnInit, AfterViewInit, OnDestr
       }
 
       if (cat !== 'todos') {
-        const rubro = this.getProviderRubro(p).toLowerCase();
-        if (!rubro.includes(cat.toLowerCase())) {
+        const rubro = this.normalizeText(this.getProviderRubro(p));
+        const catNorm = this.normalizeText(cat);
+        if (!rubro.includes(catNorm)) {
           return false;
         }
       }
@@ -232,6 +306,15 @@ export class ProvidersCatalogComponent implements OnInit, AfterViewInit, OnDestr
     });
 
     return list.sort((a, b) => {
+      // Los prestadores fundadores aparecen abajo de los emergentes o plenos en el catálogo completo
+      // para compensar su presencia destacada en la sección superior
+      const isFounderA = this.getProviderTier(a) === 'fundador';
+      const isFounderB = this.getProviderTier(b) === 'fundador';
+
+      if (isFounderA !== isFounderB) {
+        return isFounderA ? 1 : -1;
+      }
+
       if (sort === 'rating') {
         const ratingA = this.getProviderRating(a);
         const ratingB = this.getProviderRating(b);

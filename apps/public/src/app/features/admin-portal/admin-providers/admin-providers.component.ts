@@ -16,8 +16,24 @@ import { Experience } from '../../../core/models/experience.model';
 import { FechaPipe, ArsPipe } from '../../../shared/pipes/format.pipes';
 import { AdminApplicationModalComponent } from '../admin-application-modal/admin-application-modal.component';
 import { NotificationService } from '../../../core/services/notification.service';
+import {
+  ProviderRatingService,
+  ProviderRatingData,
+} from '../../../core/services/provider-rating.service';
 
 export type ProviderTab = 'todos' | 'aprobados' | 'baja' | 'rechazados' | 'postulantes';
+export type ProviderSortOrder = 'ranking' | 'votos' | 'recientes' | 'antiguos' | 'nombre';
+
+export interface ProviderVoteDetail {
+  socioEmail: string;
+  socioName: string;
+  socioTier: string;
+  socioPosition?: number | null;
+  socioAvatar?: string;
+  score: number;
+  comment?: string;
+  createdAt?: string;
+}
 
 export interface ProviderListItem {
   id: string;
@@ -33,6 +49,8 @@ export interface ProviderListItem {
   createdAt: string;
   rawApp?: AdminApplication;
   rawProvider?: ProviderUser;
+  ratingScore?: number;
+  ratingCount?: number;
 }
 
 const CLUB_PROVIDER_SLUGS = new Set(['club-de-experiencias', 'club']);
@@ -487,6 +505,93 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
                 </div>
               }
             </div>
+
+            <!-- 5. Calificaciones y Votos de Socios -->
+            <div class="fiche-section-card full-width provider-votes-card">
+              <div class="section-title-row">
+                <div class="section-title-left">
+                  <h3 class="fiche-card-title">
+                    Votación y Calificaciones de Socios ({{ providerRatingData()?.count || 0 }})
+                  </h3>
+                  <div class="votes-score-badge">
+                    <span class="star-gold">★</span>
+                    <strong>{{ (providerRatingData()?.score || 5.0).toFixed(1) }}</strong>
+                    <span class="votes-score-sub">/ 5.0</span>
+                  </div>
+                </div>
+              </div>
+
+              @if (isLoadingVotes()) {
+                <div class="loading-votes-box">
+                  <p class="empty-text">Cargando valoraciones de socios...</p>
+                </div>
+              } @else if (providerVotes().length === 0) {
+                <div class="empty-votes-box">
+                  <p class="empty-text">Aún no hay votos registrados de socios para este prestador.</p>
+                </div>
+              } @else {
+                <div class="table-responsive">
+                  <table class="providers-table votes-table">
+                    <thead>
+                      <tr>
+                        <th>Socio</th>
+                        <th>Nivel de Socio</th>
+                        <th>Votación</th>
+                        <th>Comentario / Reseña</th>
+                        <th class="text-right">Fecha</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (v of providerVotes(); track v.socioEmail + (v.createdAt || '')) {
+                        <tr>
+                          <!-- Socio -->
+                          <td>
+                            <div class="provider-identity">
+                              <div class="provider-avatar socio-avatar">
+                                @if (v.socioAvatar) {
+                                  <img [src]="v.socioAvatar" [alt]="v.socioName" class="provider-table-avatar-img" />
+                                } @else {
+                                  <span>{{ (v.socioName || v.socioEmail).charAt(0).toUpperCase() }}</span>
+                                }
+                              </div>
+                              <div class="identity-text">
+                                <strong class="provider-name">{{ v.socioName }}</strong>
+                                <span class="provider-email font-mono">{{ v.socioEmail }}</span>
+                              </div>
+                            </div>
+                          </td>
+
+                          <!-- Nivel de Socio -->
+                          <td>
+                            <span class="socio-tier-badge" [attr.data-tier]="v.socioTier">
+                              {{ getSocioTierLabel(v.socioTier, v.socioPosition) }}
+                            </span>
+                          </td>
+
+                          <!-- Votación -->
+                          <td>
+                            <div class="vote-stars-pill">
+                              <span class="vote-stars-display">{{ getStarsDisplay(v.score) }}</span>
+                              <strong class="vote-score-num">{{ v.score }} ★</strong>
+                            </div>
+                          </td>
+
+                          <!-- Comentario -->
+                          <td>
+                            <span class="vote-comment-text">{{ v.comment || '—' }}</span>
+                          </td>
+
+                          <!-- Fecha -->
+                          <td class="text-right">
+                            <span class="date-cell font-mono">{{ v.createdAt ? (v.createdAt | fecha: 'corta') : 'Reciente' }}</span>
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              }
+            </div>
           </div>
 
           <!-- Pie de acciones del Prestador -->
@@ -590,68 +695,115 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
 
         <!-- Barra de Filtros y Búsqueda -->
         <div class="filters-bar">
-          <div class="search-box">
-            <mat-icon class="search-icon">search</mat-icon>
-            <input
-              type="text"
-              placeholder="Buscar por prestador, agencia, email o teléfono..."
-              [ngModel]="searchQuery()"
-              (ngModelChange)="searchQuery.set($event)"
-              class="search-input"
-            />
-            @if (searchQuery()) {
+          <div class="filters-primary-row">
+            <div class="search-box">
+              <mat-icon class="search-icon">search</mat-icon>
+              <input
+                type="text"
+                placeholder="Buscar por prestador, agencia, email o teléfono..."
+                [ngModel]="searchQuery()"
+                (ngModelChange)="searchQuery.set($event)"
+                class="search-input"
+              />
+              @if (searchQuery()) {
+                <button
+                  type="button"
+                  class="clear-search-btn"
+                  (click)="searchQuery.set('')"
+                  aria-label="Limpiar búsqueda"
+                >
+                  ×
+                </button>
+              }
+            </div>
+
+            <div class="tabs-group">
               <button
                 type="button"
-                class="clear-search-btn"
-                (click)="searchQuery.set('')"
-                aria-label="Limpiar búsqueda"
+                class="filter-tab"
+                [class.is-active]="activeTab() === 'todos'"
+                (click)="activeTab.set('todos')"
               >
-                ×
+                Todos ({{ allProviders().length }})
               </button>
-            }
+              <button
+                type="button"
+                class="filter-tab"
+                [class.is-active]="activeTab() === 'aprobados'"
+                (click)="activeTab.set('aprobados')"
+              >
+                Aprobados ({{ approvedProvidersCount() }})
+              </button>
+              <button
+                type="button"
+                class="filter-tab"
+                [class.is-active]="activeTab() === 'baja'"
+                (click)="activeTab.set('baja')"
+              >
+                De baja ({{ bajaProvidersCount() }})
+              </button>
+              <button
+                type="button"
+                class="filter-tab"
+                [class.is-active]="activeTab() === 'rechazados'"
+                (click)="activeTab.set('rechazados')"
+              >
+                Rechazados ({{ rejectedProvidersCount() }})
+              </button>
+              <button
+                type="button"
+                class="filter-tab"
+                [class.is-active]="activeTab() === 'postulantes'"
+                (click)="activeTab.set('postulantes')"
+              >
+                Postulantes ({{ applicantsCount() }})
+              </button>
+            </div>
           </div>
 
-          <div class="tabs-group">
-            <button
-              type="button"
-              class="filter-tab"
-              [class.is-active]="activeTab() === 'todos'"
-              (click)="activeTab.set('todos')"
-            >
-              Todos ({{ allProviders().length }})
-            </button>
-            <button
-              type="button"
-              class="filter-tab"
-              [class.is-active]="activeTab() === 'aprobados'"
-              (click)="activeTab.set('aprobados')"
-            >
-              Aprobados ({{ approvedProvidersCount() }})
-            </button>
-            <button
-              type="button"
-              class="filter-tab"
-              [class.is-active]="activeTab() === 'baja'"
-              (click)="activeTab.set('baja')"
-            >
-              De baja ({{ bajaProvidersCount() }})
-            </button>
-            <button
-              type="button"
-              class="filter-tab"
-              [class.is-active]="activeTab() === 'rechazados'"
-              (click)="activeTab.set('rechazados')"
-            >
-              Rechazados ({{ rejectedProvidersCount() }})
-            </button>
-            <button
-              type="button"
-              class="filter-tab"
-              [class.is-active]="activeTab() === 'postulantes'"
-              (click)="activeTab.set('postulantes')"
-            >
-              Postulantes ({{ applicantsCount() }})
-            </button>
+          <div class="filters-secondary-row">
+            <!-- Filtro por Rubro -->
+            <div class="filter-select-group">
+              <label class="filter-group-lbl">RUBRO / ACTIVIDAD:</label>
+              <select
+                class="filter-select-input"
+                [ngModel]="selectedRubroFilter()"
+                (ngModelChange)="selectedRubroFilter.set($event)"
+              >
+                <option value="todos">Todos los rubros ({{ allProviders().length }})</option>
+                @for (r of availableRubros(); track r.name) {
+                  <option [value]="r.name">{{ r.name }} ({{ r.count }})</option>
+                }
+              </select>
+            </div>
+
+            <!-- Ordenar por -->
+            <div class="filter-select-group">
+              <label class="filter-group-lbl">ORDENAR POR:</label>
+              <select
+                class="filter-select-input"
+                [ngModel]="selectedSortOrder()"
+                (ngModelChange)="selectedSortOrder.set($event)"
+              >
+                <option value="ranking">Ranking / Puntaje (Mayor puntuación)</option>
+                <option value="votos">Más Votados (Cantidad de votos)</option>
+                <option value="recientes">Antigüedad (Más recientes primero)</option>
+                <option value="antiguos">Antigüedad (Más antiguos primero)</option>
+                <option value="nombre">Nombre (A - Z)</option>
+              </select>
+            </div>
+
+            @if (selectedRubroFilter() !== 'todos' || selectedSortOrder() !== 'ranking' || searchQuery() || activeTab() !== 'todos') {
+              <button
+                type="button"
+                class="btn-reset-filters"
+                (click)="resetFilters()"
+                title="Restablecer todos los filtros"
+              >
+                <mat-icon class="btn-icon-xs">filter_alt_off</mat-icon>
+                <span>Restablecer Filtros</span>
+              </button>
+            }
           </div>
         </div>
 
@@ -671,6 +823,7 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
                     <th>Prestador / Guía</th>
                     <th>Agencia / Emprendimiento</th>
                     <th>Rubro</th>
+                    <th>Puntaje</th>
                     <th>Contacto</th>
                     <th>Estado</th>
                     <th>Fecha Alta</th>
@@ -710,6 +863,19 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
                       <!-- Rubro -->
                       <td>
                         <span class="agency-rubro-pill">{{ item.rubro || '—' }}</span>
+                      </td>
+
+                      <!-- Puntaje -->
+                      <td>
+                        <div class="rating-cell">
+                          <span class="rating-stars-pill">
+                            <span class="star-icon">★</span>
+                            <strong class="rating-val">{{ (item.ratingScore ?? 5.0).toFixed(1) }}</strong>
+                          </span>
+                          <span class="rating-count-sub">
+                            {{ item.ratingCount || 0 }} {{ (item.ratingCount || 0) === 1 ? 'voto' : 'votos' }}
+                          </span>
+                        </div>
                       </td>
 
                       <!-- Contacto (Sin icono de chat) -->
@@ -912,15 +1078,132 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
       /* Filters & Search */
       .filters-bar {
         display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 1rem;
-        flex-wrap: wrap;
+        flex-direction: column;
+        gap: 0.85rem;
         background: rgba(22, 12, 6, 0.85);
         border: 1px solid rgba(255, 95, 0, 0.35);
         border-radius: 2px;
         padding: 0.85rem 1rem;
         backdrop-filter: blur(12px);
+      }
+
+      .filters-primary-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+      }
+
+      .filters-secondary-row {
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+        flex-wrap: wrap;
+        padding-top: 0.75rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .filter-select-group {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.55rem;
+      }
+
+      .filter-group-lbl {
+        font-size: 0.68rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        color: rgba(255, 255, 255, 0.6);
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+
+      .filter-select-input {
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: #ffffff;
+        font-size: 0.78rem;
+        font-weight: 600;
+        padding: 0.4rem 0.75rem;
+        border-radius: 2px;
+        outline: none;
+        cursor: pointer;
+        transition: border-color 0.2s ease, background 0.2s ease;
+      }
+
+      .filter-select-input:focus,
+      .filter-select-input:hover {
+        border-color: #ff5f00;
+        background: rgba(0, 0, 0, 0.6);
+      }
+
+      .filter-select-input option {
+        background: #1a0d05;
+        color: #ffffff;
+      }
+
+      .btn-reset-filters {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        background: transparent;
+        border: 1px dashed rgba(255, 95, 0, 0.4);
+        color: #ff8533;
+        font-size: 0.72rem;
+        font-weight: 700;
+        padding: 0.35rem 0.65rem;
+        border-radius: 2px;
+        cursor: pointer;
+        margin-left: auto;
+        transition: all 0.2s ease;
+      }
+
+      .btn-reset-filters:hover {
+        background: rgba(255, 95, 0, 0.15);
+        color: #ffffff;
+        border-color: #ff5f00;
+      }
+
+      .btn-icon-xs {
+        font-size: 14px;
+        width: 14px;
+        height: 14px;
+      }
+
+      /* Rating Cell en Tabla */
+      .rating-cell {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.18rem;
+      }
+
+      .rating-stars-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.28rem;
+        background: rgba(255, 170, 0, 0.12);
+        border: 1px solid rgba(255, 170, 0, 0.35);
+        padding: 0.2rem 0.5rem;
+        border-radius: 2px;
+        color: #ffaa00;
+      }
+
+      .star-icon {
+        font-size: 0.82rem;
+        line-height: 1;
+      }
+
+      .rating-val {
+        font-size: 0.8rem;
+        font-weight: 800;
+        color: #ffffff;
+      }
+
+      .rating-count-sub {
+        font-size: 0.7rem;
+        color: rgba(255, 255, 255, 0.5);
       }
 
       .search-box {
@@ -1886,6 +2169,99 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
         font-size: 0.88rem;
       }
 
+      /* Votos en Ficha del Prestador */
+      .provider-votes-card {
+        margin-top: 0.5rem;
+      }
+
+      .section-title-left {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+      }
+
+      .votes-score-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        background: rgba(255, 170, 0, 0.15);
+        border: 1px solid rgba(255, 170, 0, 0.4);
+        padding: 0.25rem 0.7rem;
+        border-radius: 2px;
+        font-size: 0.88rem;
+        color: #ffffff;
+      }
+
+      .star-gold {
+        color: #ffaa00;
+        font-size: 1rem;
+      }
+
+      .votes-score-sub {
+        color: rgba(255, 255, 255, 0.5);
+        font-size: 0.72rem;
+      }
+
+      .socio-avatar {
+        background: rgba(255, 95, 0, 0.2);
+        border: 1px solid rgba(255, 95, 0, 0.4);
+      }
+
+      .socio-tier-badge {
+        display: inline-block;
+        padding: 0.2rem 0.55rem;
+        border-radius: 2px;
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        background: rgba(128, 179, 255, 0.15);
+        border: 1px solid rgba(128, 179, 255, 0.35);
+        color: #80b3ff;
+      }
+
+      .socio-tier-badge[data-tier='fundador'] {
+        background: rgba(255, 215, 0, 0.15);
+        border-color: rgba(255, 215, 0, 0.4);
+        color: #ffd700;
+      }
+
+      .socio-tier-badge[data-tier='activo'] {
+        background: rgba(0, 200, 115, 0.15);
+        border-color: rgba(0, 200, 115, 0.4);
+        color: #00e680;
+      }
+
+      .vote-stars-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+      }
+
+      .vote-stars-display {
+        color: #ffaa00;
+        letter-spacing: 0.1em;
+        font-size: 0.88rem;
+      }
+
+      .vote-score-num {
+        font-size: 0.78rem;
+        color: #ffffff;
+      }
+
+      .vote-comment-text {
+        font-size: 0.82rem;
+        color: rgba(255, 255, 255, 0.75);
+        line-height: 1.4;
+      }
+
+      .loading-votes-box,
+      .empty-votes-box {
+        text-align: center;
+        padding: 2rem 0;
+      }
+
       /* Edit Page */
       .edit-page-card {
         display: flex;
@@ -2402,6 +2778,7 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
 export class AdminProvidersComponent implements OnInit {
   readonly store = inject(AdminStoreService);
   private readonly expService = inject(ExperienceService);
+  private readonly ratingService = inject(ProviderRatingService);
   readonly notificationService = inject(NotificationService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
@@ -2409,9 +2786,15 @@ export class AdminProvidersComponent implements OnInit {
 
   readonly searchQuery = signal<string>('');
   readonly activeTab = signal<ProviderTab>('todos');
+  readonly selectedRubroFilter = signal<string>('todos');
+  readonly selectedSortOrder = signal<ProviderSortOrder>('ranking');
   readonly selectedApplication = signal<AdminApplication | null>(null);
   readonly isUpdating = signal<boolean>(false);
   readonly sendingWelcomeEmails = signal<Set<string>>(new Set());
+
+  // Votos detallados del prestador en modo ficha
+  readonly providerVotes = signal<ProviderVoteDetail[]>([]);
+  readonly isLoadingVotes = signal<boolean>(false);
 
   // Modos de ruta
   readonly isRouteEditMode = signal<boolean>(false);
@@ -2451,7 +2834,15 @@ export class AdminProvidersComponent implements OnInit {
 
   ngOnInit(): void {
     void this.store.loadAllApplications();
+    void this.store.loadAllMembers();
     void this.resolveRouteState();
+  }
+
+  resetFilters(): void {
+    this.searchQuery.set('');
+    this.activeTab.set('todos');
+    this.selectedRubroFilter.set('todos');
+    this.selectedSortOrder.set('ranking');
   }
 
   private async resolveRouteState(): Promise<void> {
@@ -2465,6 +2856,7 @@ export class AdminProvidersComponent implements OnInit {
       this.isRouteDetailMode.set(false);
       this.notFound.set(false);
       this.selectedProvider.set(null);
+      this.providerVotes.set([]);
       return;
     }
 
@@ -2476,6 +2868,7 @@ export class AdminProvidersComponent implements OnInit {
     if (!provider) {
       await Promise.allSettled([
         this.store.loadAllApplications(),
+        this.store.loadAllMembers(),
         this.store.providerStore.loadProposalsFromSupabase(),
       ]);
       provider = this.lookupProvider(slug);
@@ -2486,6 +2879,7 @@ export class AdminProvidersComponent implements OnInit {
       this.isRouteEditMode.set(false);
       this.isRouteDetailMode.set(false);
       this.selectedProvider.set(null);
+      this.providerVotes.set([]);
       return;
     }
 
@@ -2495,10 +2889,12 @@ export class AdminProvidersComponent implements OnInit {
     if (isEdit) {
       this.isRouteEditMode.set(true);
       this.isRouteDetailMode.set(false);
+      this.providerVotes.set([]);
       this.populateEditForm(provider);
     } else {
       this.isRouteEditMode.set(false);
       this.isRouteDetailMode.set(true);
+      void this.loadProviderVotes(provider);
     }
   }
 
@@ -3032,6 +3428,8 @@ export class AdminProvidersComponent implements OnInit {
           : '';
       const displayAgency = hasCategoryAgency ? nonCategoryAppAgency : p.agency;
 
+      const rating = this.ratingService.getRating(p);
+
       list.push({
         id: p.id || `prov-${cleanEmail}`,
         origin: 'official',
@@ -3045,6 +3443,8 @@ export class AdminProvidersComponent implements OnInit {
         status: itemStatus,
         createdAt: p.joinedAt || '2024-01-01T00:00:00Z',
         rawProvider: p,
+        ratingScore: rating.score,
+        ratingCount: rating.count,
       });
     }
 
@@ -3056,6 +3456,12 @@ export class AdminProvidersComponent implements OnInit {
       const appSlug = app.id;
       const hasCategoryAgency = this.isCategoryIdentifier(app.agency || app.description);
       const displayAgency = hasCategoryAgency ? '' : (app.agency || app.description || '');
+
+      const rating = this.ratingService.getRating({
+        slug: appSlug,
+        id: app.id,
+        email: app.email,
+      });
 
       list.push({
         id: app.id,
@@ -3077,10 +3483,32 @@ export class AdminProvidersComponent implements OnInit {
                 : 'pendiente',
         createdAt: app.createdAt,
         rawApp: app,
+        ratingScore: rating.score,
+        ratingCount: rating.count,
       });
     }
 
     return list;
+  });
+
+  readonly providerRatingData = computed<ProviderRatingData | null>(() => {
+    const prov = this.selectedProvider();
+    if (!prov) return null;
+    return this.ratingService.getRating(prov);
+  });
+
+  readonly availableRubros = computed(() => {
+    const list = this.allProviders();
+    const map = new Map<string, number>();
+    for (const p of list) {
+      const rubro = (p.rubro || '').trim();
+      if (rubro && rubro !== '—') {
+        map.set(rubro, (map.get(rubro) || 0) + 1);
+      }
+    }
+    return Array.from(map.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
   });
 
   readonly approvedProvidersCount = computed(
@@ -3127,7 +3555,10 @@ export class AdminProvidersComponent implements OnInit {
     let list = this.allProviders();
     const tab = this.activeTab();
     const query = this.searchQuery().trim().toLowerCase();
+    const rubroFilter = this.selectedRubroFilter();
+    const sort = this.selectedSortOrder();
 
+    // 1. Filtro por pestaña de estado
     if (tab === 'aprobados') {
       list = list.filter((p) => p.status === 'aprobado');
     } else if (tab === 'baja') {
@@ -3138,6 +3569,12 @@ export class AdminProvidersComponent implements OnInit {
       list = list.filter((p) => p.status === 'pendiente');
     }
 
+    // 2. Filtro por rubro
+    if (rubroFilter && rubroFilter !== 'todos') {
+      list = list.filter((p) => (p.rubro || '').toLowerCase() === rubroFilter.toLowerCase());
+    }
+
+    // 3. Filtro por texto de búsqueda
     if (query) {
       list = list.filter((p) => {
         const nameMatch = p.name.toLowerCase().includes(query);
@@ -3149,8 +3586,86 @@ export class AdminProvidersComponent implements OnInit {
       });
     }
 
-    return list;
+    // 4. Ordenamiento configurable
+    return [...list].sort((a, b) => {
+      const aScore = a.ratingScore ?? 5.0;
+      const bScore = b.ratingScore ?? 5.0;
+      const aCount = a.ratingCount ?? 0;
+      const bCount = b.ratingCount ?? 0;
+      if (sort === 'ranking') {
+        if (bScore !== aScore) return bScore - aScore;
+        if (bCount !== aCount) return bCount - aCount;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+      if (sort === 'votos') {
+        if (bCount !== aCount) return bCount - aCount;
+        if (bScore !== aScore) return bScore - aScore;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+      if (sort === 'recientes') {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+      if (sort === 'antiguos') {
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      }
+      if (sort === 'nombre') {
+        return a.name.localeCompare(b.name);
+      }
+      return 0;
+    });
   });
+
+  async loadProviderVotes(provider: ProviderUser): Promise<void> {
+    this.isLoadingVotes.set(true);
+    try {
+      if (this.store.members().length === 0) {
+        await this.store.loadAllMembers();
+      }
+      const rawVotes = await this.ratingService.getProviderVotes(provider);
+      const members = this.store.members();
+      const enriched: ProviderVoteDetail[] = rawVotes.map((v) => {
+        const cleanEmail = v.socioEmail.toLowerCase().trim();
+        const member = members.find((m) => m.email.toLowerCase().trim() === cleanEmail);
+        return {
+          socioEmail: v.socioEmail,
+          socioName: member?.fullName || cleanEmail.split('@')[0],
+          socioTier: member?.membershipTier || 'socio',
+          socioPosition: member?.position,
+          socioAvatar: member?.avatarUrl,
+          score: v.score,
+          comment: v.comment,
+          createdAt: v.createdAt,
+        };
+      });
+      this.providerVotes.set(enriched);
+    } catch (err) {
+      console.warn('[AdminProviders] Error cargando votos:', err);
+      this.providerVotes.set([]);
+    } finally {
+      this.isLoadingVotes.set(false);
+    }
+  }
+
+  getSocioTierLabel(tier?: string, position?: number | null): string {
+    const posStr = position ? ` #${position}` : '';
+    switch (tier) {
+      case 'fundador':
+        return `Socio Fundador${posStr}`;
+      case 'activo':
+        return 'Socio Pleno';
+      case 'emergente':
+        return 'Socio Emergente';
+      case 'waitlist':
+        return 'Lista de Espera';
+      default:
+        return 'Socio del Club';
+    }
+  }
+
+  getStarsDisplay(score: number): string {
+    const full = Math.min(5, Math.max(0, Math.round(score)));
+    return '★'.repeat(full) + '☆'.repeat(5 - full);
+  }
 
   getWhatsappLink(phone?: string, name?: string): string {
     const cleanDigits = (phone || '').replace(/\D/g, '');

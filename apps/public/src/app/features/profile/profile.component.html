@@ -332,59 +332,89 @@
           <div class="section-header-row">
             <div>
               <span class="section-kicker">CURADURÍA PERSONAL</span>
-              <h3 class="section-title">Mis Experiencias Favoritas</h3>
+              <h3 class="section-title">Mis Experiencias Favoritas ({{ favoriteExperiences().length }})</h3>
             </div>
             @if (favoriteExperiences().length > 0) {
-              <span class="fav-count-pill">
-                {{ favoriteExperiences().length }} {{ favoriteExperiences().length === 1 ? 'experiencia' : 'experiencias' }}
-              </span>
+              <div class="carousel-nav-arrows">
+                <button
+                  type="button"
+                  class="carousel-nav-btn"
+                  (click)="onCarouselNav('prev')"
+                  aria-label="Experiencia anterior"
+                  title="Experiencia anterior"
+                  [disabled]="favoriteExperiences().length <= 1"
+                  [class.is-disabled-nav]="favoriteExperiences().length <= 1"
+                >
+                  <mat-icon>chevron_left</mat-icon>
+                </button>
+                <button
+                  type="button"
+                  class="carousel-nav-btn"
+                  (click)="onCarouselNav('next')"
+                  aria-label="Experiencia siguiente"
+                  title="Experiencia siguiente"
+                  [disabled]="favoriteExperiences().length <= 1"
+                  [class.is-disabled-nav]="favoriteExperiences().length <= 1"
+                >
+                  <mat-icon>chevron_right</mat-icon>
+                </button>
+              </div>
             }
           </div>
 
           @if (favoriteExperiences().length > 0) {
-            <div class="favorites-grid">
-              @for (exp of favoriteExperiences(); track exp.id) {
-                <div class="fav-card-item">
-                  <div class="fav-card-media" [style.background-image]="'url(' + exp.coverImage + ')'">
-                    <span class="fav-region-badge">{{ exp.region }}</span>
-                    <button
-                      type="button"
-                      class="fav-remove-icon-btn"
-                      (click)="removeFavorite(exp, $event)"
-                      title="Quitar de favoritos"
-                      aria-label="Quitar de favoritos"
-                    >
-                      <mat-icon>favorite</mat-icon>
-                    </button>
-                  </div>
+            <div
+              class="featured-carousel-wrap fav-carousel-wrap"
+              (mouseenter)="onCarouselMouseEnter()"
+              (mouseleave)="onCarouselMouseLeave()"
+              (touchstart)="onCarouselMouseEnter()"
+              (touchend)="onCarouselMouseLeave()"
+            >
+              <div class="featured-carousel-track fav-carousel-track" #carouselRef (scroll)="onCarouselScroll()">
+                @for (item of carouselFavoriteExperiences(); track item.key) {
+                  @let exp = item.exp;
+                  <div class="fav-card-item carousel-item">
+                    <div class="fav-card-media" [style.background-image]="'url(' + exp.coverImage + ')'">
+                      <span class="fav-region-badge">{{ exp.region }}</span>
+                      <button
+                        type="button"
+                        class="fav-remove-icon-btn"
+                        (click)="removeFavorite(exp, $event)"
+                        title="Quitar de favoritos"
+                        aria-label="Quitar de favoritos"
+                      >
+                        <mat-icon>favorite</mat-icon>
+                      </button>
+                    </div>
 
-                  <div class="fav-card-content">
-                    <h4 class="fav-card-title">
-                      <a [routerLink]="['/experiencias', exp.slug || exp.id]" class="fav-card-title-link">
-                        {{ exp.title }}
-                      </a>
-                    </h4>
-                    <p class="fav-card-tagline">{{ exp.tagline || exp.description }}</p>
+                    <div class="fav-card-content">
+                      <h4 class="fav-card-title">
+                        <a [routerLink]="['/experiencias', exp.slug || exp.id]" class="fav-card-title-link">
+                          {{ exp.title }}
+                        </a>
+                      </h4>
+                      <p class="fav-card-tagline">{{ exp.tagline || exp.description }}</p>
 
-                    <div class="fav-card-specs">
-                      <span>{{ exp.durationLabel }}</span>
-                      <span>·</span>
-                      <span>{{ exp.difficulty }}</span>
-                      @if (exp.priceArs) {
+                      <div class="fav-card-specs">
+                        <span>{{ exp.durationLabel }}</span>
                         <span>·</span>
-                        <strong class="fav-price-highlight">${{ exp.priceArs.toLocaleString('es-AR') }} ARS</strong>
-                      }
+                        <span>{{ exp.difficulty }}</span>
+                        @if (exp.priceArs) {
+                          <span>·</span>
+                          <strong class="fav-price-highlight">${{ exp.priceArs.toLocaleString('es-AR') }} ARS</strong>
+                        }
+                      </div>
+                    </div>
+
+                    <div class="fav-card-actions">
+                      <a [routerLink]="['/experiencias', exp.slug || exp.id]" class="btn-fav-detail" style="color: #ffffff !important;">
+                        <span style="color: #ffffff !important;">Ver Experiencia</span>
+                        <mat-icon>arrow_forward</mat-icon>
+                      </a>
                     </div>
                   </div>
-
-                  <div class="fav-card-actions">
-                    <a [routerLink]="['/experiencias', exp.slug || exp.id]" class="btn-fav-detail" style="color: #ffffff !important;">
-                      <span style="color: #ffffff !important;">Ver Experiencia</span>
-                      <mat-icon>arrow_forward</mat-icon>
-                    </a>
-                  </div>
-                </div>
-              }
+                }
+              </div>
             </div>
           } @else {
             <div class="empty-favs-view">

@@ -205,5 +205,22 @@ describe('FavoritesService', () => {
     await new Promise((r) => setTimeout(r, 20));
     expect(mockExperienceService.updateFavoritesCount).toHaveBeenCalledWith('exp-kayak-1', 5);
   });
+
+  it('should show removed toast notification when untoggling or removing a favorite', () => {
+    TestBed.flushEffects();
+    expect(service.isFavorite(mockExp)).toBe(true);
+
+    service.toggleFavorite(mockExp);
+    expect(service.isFavorite(mockExp)).toBe(false);
+
+    const toast = service.lastFavoritedToast();
+    expect(toast).toBeTruthy();
+    expect(toast?.action).toBe('removed');
+    expect(toast?.title).toBe(mockExp.title);
+
+    // Test explicit removeFavorite
+    service.removeFavorite(mockExp);
+    expect(service.lastFavoritedToast()?.action).toBe('removed');
+  });
 });
 

@@ -142,4 +142,65 @@ describe('ProfileComponent', () => {
 
     expect(component.selectedExperiences()).toEqual(['trekking-antofagasta', 'otra-exp']);
   });
+
+  it('should display favorite count in title parentheses and not show fav-count-pill', () => {
+    const titleEl = fixture.nativeElement.querySelector('#favoritos .section-title');
+    expect(titleEl).toBeTruthy();
+    expect(titleEl.textContent).toContain('Mis Experiencias Favoritas (0)');
+
+    const pill = fixture.nativeElement.querySelector('.fav-count-pill');
+    expect(pill).toBeFalsy();
+
+    const mockExp: any = {
+      id: 'exp-1',
+      slug: 'kayak-las-jumeal',
+      title: 'Kayak en Las Jumeal',
+      region: 'Catamarca',
+      difficulty: 'Baja',
+      durationLabel: '2 horas',
+      priceArs: 15000,
+      coverImage: '/assets/images/kayak.jpg',
+    };
+    component.favoritesService.toggleFavorite(mockExp);
+    fixture.detectChanges();
+
+    expect(titleEl.textContent).toContain('Mis Experiencias Favoritas (1)');
+    expect(fixture.nativeElement.querySelector('.fav-count-pill')).toBeFalsy();
+    expect(fixture.nativeElement.querySelector('.fav-carousel-wrap')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.fav-carousel-track')).toBeTruthy();
+  });
+
+  it('should navigate carousel on prev and next without error', () => {
+    const mockExp1: any = {
+      id: 'exp-1',
+      slug: 'kayak-1',
+      title: 'Kayak 1',
+      region: 'Catamarca',
+      difficulty: 'Baja',
+      durationLabel: '2 horas',
+      priceArs: 15000,
+      coverImage: '/assets/images/kayak.jpg',
+    };
+    const mockExp2: any = {
+      id: 'exp-2',
+      slug: 'kayak-2',
+      title: 'Kayak 2',
+      region: 'Catamarca',
+      difficulty: 'Media',
+      durationLabel: '3 horas',
+      priceArs: 20000,
+      coverImage: '/assets/images/kayak2.jpg',
+    };
+    component.favoritesService.toggleFavorite(mockExp1);
+    component.favoritesService.toggleFavorite(mockExp2);
+    fixture.detectChanges();
+
+    expect(() => {
+      component.onCarouselNav('next');
+      component.onCarouselNav('prev');
+      component.onCarouselMouseEnter();
+      component.onCarouselMouseLeave();
+      component.onCarouselScroll();
+    }).not.toThrow();
+  });
 });

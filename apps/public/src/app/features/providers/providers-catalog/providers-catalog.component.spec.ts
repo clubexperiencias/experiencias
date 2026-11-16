@@ -132,6 +132,31 @@ describe('ProvidersCatalogComponent - Rating Sorting', () => {
     expect(sorted[1].id).toBe('unvoted-1');
   });
 
+  it('should rank founder providers below emerging or full providers in the complete catalog', () => {
+    const founderProvider: ProviderUser = {
+      id: 'prov-founder',
+      slug: 'prov-founder',
+      name: 'Prestador Fundador',
+      tier: 'fundador',
+      active: true,
+    } as ProviderUser;
+
+    const emergingProvider: ProviderUser = {
+      id: 'prov-emerging',
+      slug: 'prov-emerging',
+      name: 'Prestador Emergente',
+      tier: 'emergente',
+      active: true,
+    } as ProviderUser;
+
+    mockProviders.set([founderProvider, emergingProvider]);
+    component.selectedSort.set('name');
+
+    const sorted = component.filteredAllProviders();
+    expect(sorted[0].id).toBe('prov-emerging');
+    expect(sorted[1].id).toBe('prov-founder');
+  });
+
   it('should cancel delayed carousel callbacks and avoid starting autoplay or attaching listeners after destruction', () => {
     vi.useFakeTimers();
 
@@ -234,6 +259,81 @@ describe('ProvidersCatalogComponent - Rating Sorting', () => {
       } as ProviderUser;
 
       expect(component.getProviderRubro(providerKeywordMatching)).toBe('Kayak & Náutica');
+    });
+
+    it('should return p.region when defined and non-empty', () => {
+      const provWithRegion: ProviderUser = {
+        id: 'prov-reg-1',
+        region: 'Tinogasta & Fiambalá',
+      } as ProviderUser;
+
+      expect(component.getProviderRegion(provWithRegion)).toBe('Tinogasta & Fiambalá');
+    });
+
+    it('should obtain region from provider experiences if p.region is not set', () => {
+      const provFromExp: ProviderUser = {
+        id: 'prov-exp-reg',
+        slug: 'guia-puna',
+      } as ProviderUser;
+
+      mockExpService.getExperiencesByProvider.mockReturnValueOnce([
+        { id: 'exp-1', title: 'Salida Puna', region: 'Puna de Atacama' },
+      ]);
+
+      expect(component.getProviderRegion(provFromExp)).toBe('Puna de Atacama');
+    });
+
+    it('should fall back to keyword matching or default for provider region', () => {
+      const provKeywords: ProviderUser = {
+        id: 'prov-belen',
+        bio: 'Operador en Belén y la Ruta 40',
+      } as ProviderUser;
+      expect(component.getProviderRegion(provKeywords)).toBe('Belén & Ruta 40');
+
+      const provClub: ProviderUser = {
+        id: 'prov-club',
+        slug: 'club-de-experiencias',
+      } as ProviderUser;
+      expect(component.getProviderRegion(provClub)).toBe('Valle Central y Ambato');
+
+      const provUnknown: ProviderUser = {
+        id: 'prov-unknown',
+        bio: '',
+        agency: '',
+      } as ProviderUser;
+      expect(component.getProviderRegion(provUnknown)).toBe('Catamarca');
+    });
+
+    it('should filter providers by operating region ignoring accents and casing', () => {
+      const fiambalaProv: ProviderUser = {
+        id: 'prov-fiambala',
+        name: 'Guía Cordillera',
+        agency: 'Aventura Los Andes',
+        region: 'Tinogasta & Fiambalá',
+        active: true,
+      } as ProviderUser;
+
+      const valleProv: ProviderUser = {
+        id: 'prov-valle',
+        name: 'Náutica Dique',
+        agency: 'Club Jumeal',
+        region: 'Valle Central',
+        active: true,
+      } as ProviderUser;
+
+      mockProviders.set([fiambalaProv, valleProv]);
+
+      // Search without accent "fiambala"
+      component.searchQuery.set('fiambala');
+      let filtered = component.filteredAllProviders();
+      expect(filtered.length).toBe(1);
+      expect(filtered[0].id).toBe('prov-fiambala');
+
+      // Search "valle"
+      component.searchQuery.set('valle');
+      filtered = component.filteredAllProviders();
+      expect(filtered.length).toBe(1);
+      expect(filtered[0].id).toBe('prov-valle');
     });
   });
 });
