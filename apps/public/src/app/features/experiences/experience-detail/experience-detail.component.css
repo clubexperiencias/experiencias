@@ -67,7 +67,64 @@
 }
 
 .hero-detail-card {
+  position: relative;
   border-color: rgba(255, 212, 42, 0.45);
+}
+
+/* Botón de Favorito en Hero Card de /experiencias/:slug */
+.fav-btn-hero {
+  position: absolute;
+  top: 1.75rem;
+  right: 1.75rem;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  z-index: 10;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.fav-btn-hero:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+.fav-btn-hero:active {
+  transform: scale(0.95);
+}
+
+.fav-btn-hero .fav-icon {
+  font-size: 22px;
+  width: 22px;
+  height: 22px;
+  color: #0f172a;
+  line-height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.fav-btn-hero.is-favorited .fav-icon,
+.fav-btn-hero .fav-icon.is-favorited {
+  color: #ef4444;
+}
+
+@media (max-width: 640px) {
+  .fav-btn-hero {
+    top: 1.25rem;
+    right: 1.25rem;
+    width: 38px;
+    height: 38px;
+  }
 }
 
 .card-inner-header {

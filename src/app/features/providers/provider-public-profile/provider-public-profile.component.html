@@ -114,12 +114,46 @@
               <span class="verified-badge">
                 Prestador Oficial Verificado
               </span>
+
+              <!-- Tag de Calificación de 1 a 5 Estrellas (solo si el socio abonó una experiencia del prestador) -->
+              @if (canRateProvider()) {
+                <div class="rating-vote-tag" [class.has-voted]="userVote(p) > 0">
+                  <span class="vote-tag-label">{{ userVote(p) > 0 ? 'Tu voto:' : 'Calificar:' }}</span>
+                  <div class="stars-picker-wrap" role="radiogroup" aria-label="Calificar con estrellas">
+                    @for (star of [1, 2, 3, 4, 5]; track star) {
+                      <button
+                        type="button"
+                        role="radio"
+                        class="star-vote-btn"
+                        [class.is-filled]="star <= (hoveredStar() || userVote(p))"
+                        [attr.aria-checked]="userVote(p) === star"
+                        (mouseenter)="hoveredStar.set(star)"
+                        (mouseleave)="hoveredStar.set(0)"
+                        (click)="rateProvider(p, star)"
+                        [title]="'Calificar con ' + star + ' estrella' + (star > 1 ? 's' : '')"
+                        [attr.aria-label]="'Calificar con ' + star + ' estrella' + (star > 1 ? 's' : '')"
+                      >
+                        ★
+                      </button>
+                    }
+                  </div>
+                  @if (userVote(p) > 0) {
+                    <span class="vote-tag-score">{{ userVote(p) }}/5</span>
+                  }
+                </div>
+              }
             </div>
           </div>
 
           <div class="provider-identity">
             <span class="section-kicker">FICHA DE PRESTADOR & AGENCIA</span>
-            <h1 class="provider-agency-title">{{ p.agency || p.name }}</h1>
+            <h1 class="provider-agency-title">
+              {{ p.agency || p.name }}
+              <span class="provider-score-pill">
+                {{ currentRating().score.toFixed(1) }} ★
+                <span class="score-votes">({{ currentRating().count }} {{ currentRating().count === 1 ? 'voto' : 'votos' }})</span>
+              </span>
+            </h1>
             @if (p.agency && p.name && p.agency !== p.name) {
             <p class="operator-subtitle">
               <span class="operator-label">Titular responsable:</span>
@@ -181,6 +215,18 @@
               <span class="region-badge exp-region-tag"
                 style="position: absolute !important; top: 12px !important; bottom: auto !important; left: 12px !important; right: auto !important; background: #ffd42a !important; color: #0b1120 !important; font-weight: 700 !important; border: 1px solid #ffd42a !important; z-index: 5 !important;">{{
                 exp.region }}</span>
+              <button
+                type="button"
+                class="fav-btn-circle"
+                [class.is-favorited]="isFavorite(exp)"
+                (click)="toggleFavorite(exp, $event)"
+                [attr.aria-label]="isFavorite(exp) ? 'Quitar de favoritos' : 'Agregar a favoritos'"
+                [title]="isFavorite(exp) ? 'Quitar de favoritos' : 'Agregar a favoritos'"
+              >
+                <mat-icon class="fav-icon" [class.is-favorited]="isFavorite(exp)">
+                  {{ isFavorite(exp) ? 'favorite' : 'favorite_border' }}
+                </mat-icon>
+              </button>
             </div>
 
             <div class="exp-body">
@@ -217,10 +263,6 @@
         <div class="empty-exp-box">
           <h3>Próximamente más experiencias</h3>
           <p>Este prestador está preparando nuevas fechas y salidas para la temporada.</p>
-          <a routerLink="/experiencias" class="btn-primary"
-            style="margin-top: 1rem; display: inline-flex;">
-            Ver Todas las Experiencias del Club
-          </a>
         </div>
         }
       </section>
@@ -230,6 +272,16 @@
       }
     </main>
   </div>
+
+  @if (ratingToast()) {
+    <div
+      class="rating-feedback-toast"
+      [attr.role]="isRatingToastError(ratingToast()) ? 'alert' : 'status'"
+      aria-live="polite"
+    >
+      <span>{{ ratingToast() }}</span>
+    </div>
+  }
 
   <app-footer></app-footer>
 </div>

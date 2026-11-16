@@ -80,7 +80,7 @@ export class ProviderExperienceFormComponent implements OnInit {
     ),
     durationLabel: ['', [Validators.required, Validators.maxLength(50)]],
     priceArs: [65000, [Validators.required, Validators.min(1000), Validators.max(20_000_000)]],
-    capacityPerDate: [12, [Validators.required, Validators.min(1), Validators.max(200)]],
+    capacityPerDate: [12, [Validators.required, Validators.min(1), Validators.max(999)]],
   });
 
   readonly dates = signal<string[]>([]);

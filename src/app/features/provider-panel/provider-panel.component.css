@@ -732,6 +732,35 @@
   left: 1.85rem;
 }
 
+.desktop-floating-add-exp-btn {
+  left: 1.85rem;
+  background: #ffcc00 !important;
+  border: 1px solid rgba(255, 204, 0, 0.6) !important;
+  box-shadow: 0 4px 14px rgba(255, 204, 0, 0.45);
+  text-decoration: none;
+}
+
+.desktop-floating-add-exp-btn:hover {
+  background: #ffd633 !important;
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 8px 24px rgba(255, 204, 0, 0.6);
+}
+
+.desktop-floating-add-exp-btn:active {
+  transform: scale(0.96);
+}
+
+.desktop-floating-add-exp-btn .add-icon-white {
+  color: #ffffff !important;
+  font-size: 26px;
+  width: 26px;
+  height: 26px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* Soporte técnico posicionado a la derecha */
 .desktop-floating-support-btn {
   right: 1.85rem;
@@ -772,7 +801,8 @@
     z-index: 900;
   }
 
-  .desktop-floating-back-btn {
+  .desktop-floating-back-btn,
+  .desktop-floating-add-exp-btn {
     left: 1.25rem;
     right: auto;
   }

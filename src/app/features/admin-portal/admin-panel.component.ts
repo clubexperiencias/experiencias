@@ -15,6 +15,7 @@ const ROUTE_LABELS: Record<string, string> = {
   prestadores: 'PRESTADORES',
   comprobantes: 'COMPROBANTES',
   experiencias: 'EXPERIENCIAS',
+  ranking: 'RANKING & PUNTUACIONES',
   nueva: 'NUEVA',
   editar: 'EDITAR',
   perfil: 'PERFIL',
@@ -132,6 +133,17 @@ const ROUTE_LABELS: Record<string, string> = {
                     <mat-icon class="menu-item-icon">travel_explore</mat-icon>
                     <div class="menu-item-info">
                       <strong class="menu-item-title">Ver Experiencias</strong>
+                    </div>
+                  </a>
+
+                  <a
+                    [routerLink]="adminLink('/ranking')"
+                    class="dropdown-item enlarged-item"
+                    (click)="userMenuOpen.set(false)"
+                  >
+                    <mat-icon class="menu-item-icon">leaderboard</mat-icon>
+                    <div class="menu-item-info">
+                      <strong class="menu-item-title">Ranking & Puntuaciones</strong>
                     </div>
                   </a>
 

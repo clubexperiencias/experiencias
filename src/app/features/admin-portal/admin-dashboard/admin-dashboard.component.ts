@@ -22,6 +22,8 @@ import {
   getPublicExperienceUrl,
 } from '../../../shared/utils/csv.util';
 import { AdminApplicationModalComponent } from '../admin-application-modal/admin-application-modal.component';
+import { ProviderRatingService } from '../../../core/services/provider-rating.service';
+import { FavoritesService } from '../../../core/services/favorites.service';
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -531,6 +533,129 @@ import { AdminApplicationModalComponent } from '../admin-application-modal/admin
             </table>
           </div>
         }
+      </section>
+
+      <!-- Sección 6: Ranking & Puntuaciones de la Plataforma -->
+      <section class="dash-card">
+        <div class="card-head">
+          <div>
+            <span class="card-kicker">MÉTRICAS & REPUTACIÓN</span>
+            <h2 class="card-title">Ranking de Prestadores & Favoritos</h2>
+            <span class="card-sub-info">
+              Top de prestadores mejor calificados y experiencias más guardadas por los socios.
+            </span>
+          </div>
+          <a [routerLink]="getAdminRankingRoute()" class="view-all-link">
+            <span>Ver Ranking Completo</span>
+            <mat-icon class="icon-inline">arrow_forward</mat-icon>
+          </a>
+        </div>
+
+        <div class="ranking-dash-grid">
+          <!-- Columna Izquierda: Top Prestadores -->
+          <div class="ranking-dash-col">
+            <div class="ranking-col-header">
+              <div class="col-title-wrap">
+                <mat-icon class="col-icon">star</mat-icon>
+                <h3 class="col-title">Prestadores Mejor Calificados</h3>
+              </div>
+              <span class="col-badge">TOP 5</span>
+            </div>
+
+            <div class="table-wrap">
+              <table class="dash-table">
+                <thead>
+                  <tr>
+                    <th style="width: 48px;">#</th>
+                    <th>Prestador Oficial</th>
+                    <th class="text-right">Calificación</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (prov of topRatedProviders(); track prov.slug; let idx = $index) {
+                    <tr>
+                      <td>
+                        <span class="rank-pos-pill" [class.gold]="idx === 0" [class.silver]="idx === 1" [class.bronze]="idx === 2">
+                          {{ idx + 1 }}
+                        </span>
+                      </td>
+                      <td>
+                        <div class="rank-entity-info">
+                          <strong class="rank-entity-name">{{ prov.name }}</strong>
+                          <span class="rank-entity-sub">{{ prov.rating.count }} valoraciones</span>
+                        </div>
+                      </td>
+                      <td class="text-right">
+                        <span class="rank-score-pill">
+                          {{ prov.rating.score.toFixed(1) }} ★
+                        </span>
+                      </td>
+                    </tr>
+                  }
+                  @if (topRatedProviders().length === 0) {
+                    <tr>
+                      <td colspan="3" class="empty-cell">Sin prestadores verificados aún</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Columna Derecha: Top Experiencias Más Favoritas -->
+          <div class="ranking-dash-col">
+            <div class="ranking-col-header">
+              <div class="col-title-wrap">
+                <mat-icon class="col-icon">favorite</mat-icon>
+                <h3 class="col-title">Experiencias Más Guardadas en Favoritos</h3>
+              </div>
+              <span class="col-badge">TOP 5</span>
+            </div>
+
+            <div class="table-wrap">
+              <table class="dash-table">
+                <thead>
+                  <tr>
+                    <th style="width: 48px;">#</th>
+                    <th>Experiencia</th>
+                    <th class="text-right">Favoritos</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (exp of topFavoritedExperiences(); track exp.slug; let idx = $index) {
+                    <tr>
+                      <td>
+                        <span class="rank-pos-pill" [class.gold]="idx === 0" [class.silver]="idx === 1" [class.bronze]="idx === 2">
+                          {{ idx + 1 }}
+                        </span>
+                      </td>
+                      <td>
+                        <div class="rank-exp-cell">
+                          <img [src]="exp.coverImage" [alt]="exp.title" class="rank-exp-thumb" />
+                          <div class="rank-entity-info">
+                            <strong class="rank-entity-name">{{ exp.title }}</strong>
+                            <span class="rank-entity-sub">{{ exp.providerName }}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td class="text-right">
+                        <span class="rank-fav-pill">
+                          <mat-icon class="fav-heart-icon">favorite</mat-icon>
+                          {{ exp.favoritesCount }}
+                        </span>
+                      </td>
+                    </tr>
+                  }
+                  @if (topFavoritedExperiences().length === 0) {
+                    <tr>
+                      <td colspan="3" class="empty-cell">Sin experiencias registradas aún</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       </section>
 
       <!-- Modal de Revisión y Validación de Comprobante (Idéntico a /comprobantes) -->
@@ -3225,6 +3350,164 @@ import { AdminApplicationModalComponent } from '../admin-application-modal/admin
           box-sizing: border-box !important;
         }
       }
+
+      /* Estilos Sección Ranking & Puntuaciones */
+      .ranking-dash-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+        margin-top: 1.25rem;
+      }
+
+      @media (max-width: 900px) {
+        .ranking-dash-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .ranking-dash-col {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 4px;
+        padding: 1.25rem;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .ranking-col-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      }
+
+      .col-title-wrap {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .col-icon {
+        font-size: 1.25rem;
+        width: 1.25rem;
+        height: 1.25rem;
+        color: #ffaa73;
+      }
+
+      .col-title {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #ffffff;
+        margin: 0;
+      }
+
+      .col-badge {
+        font-size: 0.68rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        padding: 0.2rem 0.5rem;
+        border-radius: 3px;
+        background: rgba(255, 95, 0, 0.15);
+        color: #ffaa73;
+        border: 1px solid rgba(255, 95, 0, 0.3);
+      }
+
+      .rank-pos-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        font-size: 0.75rem;
+        font-weight: 800;
+        background: rgba(255, 255, 255, 0.06);
+        color: rgba(255, 255, 255, 0.8);
+      }
+
+      .rank-pos-pill.gold {
+        background: rgba(250, 204, 21, 0.2);
+        color: #fde047;
+        border: 1px solid rgba(250, 204, 21, 0.4);
+      }
+
+      .rank-pos-pill.silver {
+        background: rgba(226, 232, 240, 0.2);
+        color: #f8fafc;
+        border: 1px solid rgba(226, 232, 240, 0.4);
+      }
+
+      .rank-pos-pill.bronze {
+        background: rgba(217, 119, 6, 0.2);
+        color: #fdba74;
+        border: 1px solid rgba(217, 119, 6, 0.4);
+      }
+
+      .rank-entity-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+      }
+
+      .rank-entity-name {
+        font-size: 0.88rem;
+        font-weight: 600;
+        color: #ffffff;
+      }
+
+      .rank-entity-sub {
+        font-size: 0.72rem;
+        color: rgba(255, 255, 255, 0.5);
+      }
+
+      .rank-score-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.2rem;
+        padding: 0.25rem 0.6rem;
+        border-radius: 9999px;
+        font-size: 0.82rem;
+        font-weight: 800;
+        background: rgba(250, 204, 21, 0.15);
+        color: #fde047;
+        border: 1px solid rgba(250, 204, 21, 0.3);
+      }
+
+      .rank-exp-cell {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .rank-exp-thumb {
+        width: 36px;
+        height: 36px;
+        border-radius: 4px;
+        object-fit: cover;
+        background: #111;
+      }
+
+      .rank-fav-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        padding: 0.25rem 0.6rem;
+        border-radius: 9999px;
+        font-size: 0.82rem;
+        font-weight: 800;
+        background: rgba(244, 63, 94, 0.15);
+        color: #fda4af;
+        border: 1px solid rgba(244, 63, 94, 0.3);
+      }
+
+      .fav-heart-icon {
+        font-size: 14px;
+        width: 14px;
+        height: 14px;
+        color: #fb7185;
+      }
     `,
   ],
 })
@@ -3232,6 +3515,8 @@ export class AdminDashboardComponent {
   readonly store = inject(AdminStoreService);
   private readonly experienceService = inject(ExperienceService);
   private readonly router = inject(Router);
+  private readonly ratingService = inject(ProviderRatingService);
+  private readonly favoritesService = inject(FavoritesService);
   readonly webExperiences = this.experienceService.experiences;
 
   isClub(exp?: Partial<Experience> | null): boolean {
@@ -3265,6 +3550,71 @@ export class AdminDashboardComponent {
   readonly pendingExperienceRequests = computed(() =>
     this.store.experienceRequests().filter((r) => r.status === 'pendiente'),
   );
+
+  readonly topRatedProviders = computed(() => {
+    const officialProviders = this.store.providerStore.providers();
+    const rows = officialProviders
+      .filter((p) => p.verified && p.status !== 'dado_de_baja' && p.status !== 'pendiente')
+      .map((p) => {
+        const rating = this.ratingService.getRating(p);
+        return {
+          provider: p,
+          name: p.agency?.trim() || p.name?.trim() || 'Prestador Oficial',
+          slug: p.slug || slugify(p.agency || p.name || p.id),
+          rating,
+        };
+      });
+    return rows
+      .sort((a, b) => {
+        if (b.rating.score !== a.rating.score) {
+          return b.rating.score - a.rating.score;
+        }
+        return b.rating.count - a.rating.count;
+      })
+      .slice(0, 5);
+  });
+
+  readonly topFavoritedExperiences = computed(() => {
+    const exps = this.webExperiences();
+    const members = this.store.members();
+    const favCountMap = new Map<string, number>();
+
+    for (const m of members) {
+      const list = (m as any).experiencesWishlist || (m as any).favoriteExperiences || [];
+      if (Array.isArray(list)) {
+        for (const slug of list) {
+          favCountMap.set(slug, (favCountMap.get(slug) || 0) + 1);
+        }
+      }
+    }
+
+    const localFavs = this.favoritesService.favoriteSlugs();
+    for (const slug of localFavs) {
+      favCountMap.set(slug, Math.max(favCountMap.get(slug) || 0, 1));
+    }
+
+    return exps
+      .filter((e) => e.status !== 'oculta')
+      .map((e) => {
+        const count = Math.max(
+          favCountMap.get(e.slug) || 0,
+          favCountMap.get(e.id) || 0,
+          e.favoritesCount || 0,
+        );
+        return {
+          experience: e,
+          title: e.shortTitle || e.title,
+          slug: e.slug,
+          coverImage: e.coverImage || e.galleryImages?.[0] || '/assets/images/hero-home.jpg',
+          region: e.region,
+          providerName: this.getExpProviderName(e),
+          priceArs: e.priceArs,
+          favoritesCount: count,
+        };
+      })
+      .sort((a, b) => b.favoritesCount - a.favoritesCount)
+      .slice(0, 5);
+  });
 
   // Padrón consolidado de Prestadores Oficiales + Postulaciones de Nuevos Prestadores
   readonly dashboardProviders = computed<ProviderListItem[]>(() => {
@@ -3666,6 +4016,12 @@ export class AdminDashboardComponent {
     } catch (err) {
       console.error('[AdminDashboard] Error al aprobar propuesta de experiencia:', err);
     }
+  }
+
+  getAdminRankingRoute(): string {
+    const rawPath = this.router.url.split('?')[0].split('#')[0];
+    const segments = rawPath.split('/').filter(Boolean);
+    return segments[0] === 'admin' ? '/admin/ranking' : '/ranking';
   }
 
   getExperienceFicheRoute(slug?: string): string {

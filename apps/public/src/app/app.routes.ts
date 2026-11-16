@@ -149,6 +149,14 @@ const adminRoutes: Routes = [
           ),
       },
       {
+        path: 'ranking',
+        title: 'Ranking de Prestadores & Favoritos - Portal de Admin',
+        loadComponent: () =>
+          import('./features/admin-portal/admin-ranking/admin-ranking.component').then(
+            (m) => m.AdminRankingComponent,
+          ),
+      },
+      {
         path: 'logs',
         title: 'Registro de Actividad - Portal de Admin',
         loadComponent: () =>
@@ -596,6 +604,14 @@ const publicRoutes: Routes = [
           ),
       },
       {
+        path: 'ranking',
+        title: 'Ranking de Prestadores & Favoritos - Portal de Admin',
+        loadComponent: () =>
+          import('./features/admin-portal/admin-ranking/admin-ranking.component').then(
+            (m) => m.AdminRankingComponent,
+          ),
+      },
+      {
         path: 'logs',
         title: 'Registro de Actividad - Portal de Admin',
         loadComponent: () =>
@@ -727,6 +743,12 @@ const publicRoutes: Routes = [
   {
     path: 'prestador/:slug',
     redirectTo: 'prestadores/:slug',
+  },
+
+  {
+    path: 'ranking',
+    redirectTo: 'admin/ranking',
+    pathMatch: 'full',
   },
 
   {

@@ -10,6 +10,7 @@ import { StorageService } from '../../../core/services/storage.service';
 import { AdminStoreService } from '../../../core/services/admin-store.service';
 import { ExperienceProposalRequest, parseConfirmedProposalDates, slugify } from '../../../core/services/provider-store.service';
 import { Experience, ExperienceAlbumPhoto } from '../../../core/models/experience.model';
+import { ProviderUser } from '../../../core/models/bank-transfer.model';
 import { isClubExperience } from '../../../core/models/club-profile.model';
 import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
 import {
@@ -238,6 +239,49 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
               </div>
             </div>
 
+            <!-- 3.1 COBROS CON MERCADO PAGO -->
+            <div class="fiche-section-card" [class.is-club-card]="isClub(exp)">
+              <div class="section-title-row">
+                <h3 class="fiche-card-title">Cobros con Mercado Pago (Acreditación Instantánea)</h3>
+                @if (getExpMpConnected(exp)) {
+                  <span class="mp-status-pill connected">
+                    Cuenta Vinculada
+                  </span>
+                } @else {
+                  <span class="mp-status-pill disconnected">
+                    No Vinculada
+                  </span>
+                }
+              </div>
+
+              <div class="provider-info-grid">
+                <div class="info-item">
+                  <span class="info-label">ESTADO DE INTEGRACIÓN</span>
+                  <strong class="info-value" [class.text-green]="getExpMpConnected(exp)">
+                    {{ getExpMpConnected(exp) ? 'Habilitada y activa en checkout' : 'Deshabilitada (Solo CBU)' }}
+                  </strong>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">ID DE COBRADOR (COLLECTOR ID)</span>
+                  <span class="info-value">
+                    @if (getExpMpCollectorId(exp)) {
+                      <code class="mp-code-badge">{{ getExpMpCollectorId(exp) }}</code>
+                    } @else {
+                      <span class="text-muted">No asignado</span>
+                    }
+                  </span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">TITULAR REGISTRADO</span>
+                  <span class="info-value">{{ getExpMpNickname(exp) || '—' }}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">DESTINO DE FONDOS</span>
+                  <span class="info-value">{{ getExpMpConnected(exp) ? (isClub(exp) ? 'Acreditación instantánea a la cuenta oficial del Club' : 'Acreditación instantánea a la cuenta del prestador') : 'Transferencia bancaria directa por CBU' }}</span>
+                </div>
+              </div>
+            </div>
+
             <!-- 4. CRONOGRAMA E ITINERARIO DE LA JORNADA -->
             <div class="fiche-section-card" [class.is-club-card]="isClub(exp)">
               <div class="section-title-row">
@@ -405,6 +449,14 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                     <span>Activar</span>
                   </button>
                 }
+                <button
+                  type="button"
+                  class="btn-delete-exp-bottom"
+                  (click)="openDeleteModal(exp)"
+                  title="Eliminar experiencia del catálogo"
+                >
+                  <span>Borrar</span>
+                </button>
               </div>
             </div>
           </div>
@@ -668,6 +720,14 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                           PUBLICAR
                         </button>
                       }
+                      <button
+                        type="button"
+                        class="btn-delete-exp-table"
+                        (click)="openDeleteModal(exp)"
+                        title="Eliminar experiencia del catálogo"
+                      >
+                        BORRAR
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -724,6 +784,65 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                   (click)="saveExperience()"
                 >
                   {{ saving() ? 'Guardando cambios...' : 'Crear Experiencia' }}
+                </button>
+              </div>
+            </div>
+          </div>
+        }
+
+        <!-- MODAL DE CONFIRMACIÓN DE BORRADO -->
+        @if (experienceToDelete()) {
+          <div class="confirm-delete-modal-backdrop" (click)="closeDeleteModal()">
+            <div class="confirm-delete-modal-dialog" (click)="$event.stopPropagation()">
+              <div class="delete-modal-header">
+                <div class="delete-modal-icon-wrap">
+                  <mat-icon>warning</mat-icon>
+                </div>
+                <div class="delete-modal-title-col">
+                  <h3 class="delete-modal-title">¿Eliminar Experiencia?</h3>
+                  <span class="delete-modal-sub">Esta acción dará de baja la experiencia del catálogo</span>
+                </div>
+              </div>
+
+              <div class="delete-modal-body">
+                <div class="delete-target-card">
+                  <span class="target-label">EXPERIENCIA SELECCIONADA:</span>
+                  <strong class="target-title">{{ experienceToDelete()?.title }}</strong>
+                  <span class="target-id">ID: <code>{{ experienceToDelete()?.id }}</code></span>
+                </div>
+
+                <div class="delete-consequences-list">
+                  <div class="consequence-item">
+                    <span class="bullet">•</span>
+                    <span><strong>Trazabilidad y registro protegidos:</strong> La experiencia no se borra físicamente de la base de datos para preservar los registros operativos.</span>
+                  </div>
+                  <div class="consequence-item">
+                    <span class="bullet">•</span>
+                    <span><strong>Historial de compras de socios intacto:</strong> Los socios que ya hayan comprado esta experiencia mantendrán sus recibos, historial de actividad y comprobantes.</span>
+                  </div>
+                  <div class="consequence-item">
+                    <span class="bullet">•</span>
+                    <span><strong>No reversible desde los paneles:</strong> La experiencia desaparecerá del catálogo y paneles, y no podrá ser reactivada desde ningún panel (solo manualmente desde la base de datos de Supabase).</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="delete-modal-actions">
+                <button
+                  type="button"
+                  class="btn-cancel-delete"
+                  (click)="closeDeleteModal()"
+                  [disabled]="isDeletingExp()"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  class="btn-confirm-delete"
+                  (click)="confirmDeleteExperience()"
+                  [disabled]="isDeletingExp()"
+                >
+                  <span>{{ isDeletingExp() ? 'Eliminando...' : 'Eliminar Experiencia' }}</span>
                 </button>
               </div>
             </div>
@@ -966,21 +1085,67 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                 [(ngModel)]="editCapacity"
                 placeholder="12"
                 min="1"
-                max="200"
+                max="999"
+                maxlength="3"
                 required
               />
               <span class="field-hint">Capacidad de socios por fecha.</span>
             </div>
 
             <div class="form-field field-dates-col">
-              <label>Fechas programadas (YYYY-MM-DD):</label>
-              <input
-                type="text"
-                class="form-input"
-                [(ngModel)]="editDatesRaw"
-                placeholder="A coordinar (o ej: 2026-11-10, 2026-11-17)"
-              />
-              <span class="field-hint">Opcional. Por defecto es "A coordinar". Para fechas fijas ingresalas separadas por coma.</span>
+              <label>Fechas programadas o disponibilidad:</label>
+              <div class="dates-add-controls">
+                <div class="dates-input-row">
+                  <input
+                    type="date"
+                    [min]="todayIso"
+                    [ngModel]="newAdminScheduledDate()"
+                    (ngModelChange)="newAdminScheduledDate.set($event)"
+                    name="newAdminScheduledDate"
+                    class="form-input datepicker-input"
+                  />
+                  <button
+                    type="button"
+                    class="btn-add-date-chip"
+                    (click)="addAdminScheduledDate()"
+                    [disabled]="!newAdminScheduledDate()"
+                  >
+                    + Agregar Fecha
+                  </button>
+                </div>
+                @if (adminScheduledDateError()) {
+                  <span class="field-error-text">{{ adminScheduledDateError() }}</span>
+                }
+              </div>
+
+              @if (editScheduledDates().length > 0) {
+                <div class="scheduled-chips-container">
+                  <span class="chips-title">Fechas fijas programadas ({{ editScheduledDates().length }}):</span>
+                  <div class="chips-list">
+                    @for (date of editScheduledDates(); track date) {
+                      <div class="date-chip">
+                        <span>{{ date | fecha }}</span>
+                        <button
+                          type="button"
+                          class="chip-remove"
+                          (click)="removeAdminScheduledDate(date)"
+                          title="Quitar fecha"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+
+              <span class="field-hint">
+                @if (editScheduledDates().length === 0) {
+                  Sin fechas fijas programadas (Salidas a coordinar / Todo el año).
+                } @else {
+                  Resumen guardado: <strong>{{ editDatesRaw() }}</strong>
+                }
+              </span>
             </div>
           </div>
         </div>
@@ -1097,6 +1262,75 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
               />
             </div>
           </div>
+        </div>
+
+        <!-- SECCIÓN: Integración con Mercado Pago -->
+        <div class="form-section-card" [class.is-club-section]="isCurrentExperienceClub()">
+          <div class="section-title-row">
+            <h4 class="form-section-title">Cobros con Mercado Pago (Acreditación Instantánea)</h4>
+            @if (editMpConnected()) {
+              <span class="mp-status-pill connected">
+                Cuenta Vinculada
+              </span>
+            } @else {
+              <span class="mp-status-pill disconnected">
+                No Vinculada
+              </span>
+            }
+          </div>
+
+          <div class="form-grid-3">
+            <div class="form-field">
+              <label>Estado de Integración MP:</label>
+              <select
+                class="form-select"
+                [ngModel]="editMpConnected()"
+                (ngModelChange)="editMpConnected.set($event)"
+              >
+                <option [ngValue]="true">Habilitada (Acreditación instantánea)</option>
+                <option [ngValue]="false">Deshabilitada (Solo transferencias CBU)</option>
+              </select>
+            </div>
+
+            <div class="form-field">
+              <label>ID de Cobrador (Collector ID):</label>
+              <input
+                type="text"
+                class="form-input text-blue-input"
+                [(ngModel)]="editMpCollectorId"
+                placeholder="Ej: 438943731"
+                maxlength="30"
+              />
+              <span class="field-hint">Identificador de cuenta de Mercado Pago del prestador.</span>
+            </div>
+
+            <div class="form-field">
+              <label>Titular / Nickname de MP:</label>
+              <input
+                type="text"
+                class="form-input"
+                [(ngModel)]="editMpNickname"
+                placeholder="Ej: JUAN_PEREZ_MP"
+                maxlength="70"
+              />
+              <span class="field-hint">Nombre de usuario o titular asociado en Mercado Pago.</span>
+            </div>
+          </div>
+
+          @if (currentEditingProvider()?.mpConnected && !editMpConnected()) {
+            <div class="mp-sync-hint-row">
+              <span class="hint-text">
+                El prestador asignado (<strong>{{ currentEditingProvider()?.name }}</strong>) tiene una cuenta de Mercado Pago vinculada (ID: <code>{{ currentEditingProvider()?.mpCollectorId }}</code>).
+              </span>
+              <button
+                type="button"
+                class="btn-sync-mp-provider"
+                (click)="syncMpFromProvider()"
+              >
+                Cargar datos del prestador
+              </button>
+            </div>
+          }
         </div>
 
         <!-- SECCIÓN 5: Multimedia, Video & Portada (con subida a Supabase Storage y Álbum) -->
@@ -2156,6 +2390,49 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         color: #ffffff;
       }
 
+      .cta-bar-right .btn-delete-exp-bottom {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 34px;
+        min-height: 34px;
+        padding: 0 1.15rem;
+        font-size: 0.8rem;
+        font-weight: 800;
+        border-radius: 4px;
+        box-sizing: border-box;
+        line-height: 1;
+        transition: all 0.2s ease;
+        background: rgba(239, 68, 68, 0.16);
+        border: 1px solid rgba(239, 68, 68, 0.45);
+        color: #fca5a5;
+        cursor: pointer;
+      }
+      .cta-bar-right .btn-delete-exp-bottom:hover {
+        background: #dc2626;
+        border-color: #dc2626;
+        color: #ffffff !important;
+        box-shadow: 0 2px 10px rgba(220, 38, 38, 0.4);
+      }
+      .cta-bar-right .btn-delete-exp-bottom:hover span {
+        color: #ffffff !important;
+      }
+
+      .badge-exp-deleted {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.35rem 0.85rem;
+        background: rgba(239, 68, 68, 0.15);
+        border: 1px solid rgba(239, 68, 68, 0.4);
+        color: #fca5a5;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
       .btn-view-fiche {
         display: inline-flex;
         align-items: center;
@@ -2937,10 +3214,37 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
       }
 
       .btn-activate-exp:disabled,
-      .btn-pause-exp:disabled {
+      .btn-pause-exp:disabled,
+      .btn-delete-exp-table:disabled {
         opacity: 0.45;
         cursor: not-allowed;
         pointer-events: none;
+      }
+
+      .btn-delete-exp-table {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 0.75rem;
+        height: 32px;
+        min-height: 32px;
+        box-sizing: border-box;
+        background: rgba(239, 68, 68, 0.12);
+        border: 1px solid rgba(239, 68, 68, 0.38);
+        border-radius: 3px;
+        color: #fca5a5;
+        font-size: 0.75rem;
+        font-weight: 700;
+        cursor: pointer;
+        white-space: nowrap !important;
+        letter-spacing: 0.04em;
+        transition: all 0.2s ease;
+      }
+
+      .btn-delete-exp-table:hover {
+        background: #dc2626;
+        border-color: #dc2626;
+        color: #ffffff !important;
       }
 
       .btn-view-web {
@@ -3003,6 +3307,169 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         font-size: 16px;
         width: 16px;
         height: 16px;
+      }
+
+      /* Delete Confirmation Modal */
+      .confirm-delete-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.85);
+        backdrop-filter: blur(12px);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+      }
+      .confirm-delete-modal-dialog {
+        width: 100%;
+        max-width: 520px;
+        background: #0f172a;
+        border: 1px solid rgba(239, 68, 68, 0.4);
+        border-radius: 8px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7), 0 0 20px rgba(239, 68, 68, 0.2);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .delete-modal-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.25rem 1.5rem;
+        background: rgba(239, 68, 68, 0.1);
+        border-bottom: 1px solid rgba(239, 68, 68, 0.2);
+      }
+      .delete-modal-icon-wrap {
+        width: 44px;
+        height: 44px;
+        border-radius: 8px;
+        background: rgba(239, 68, 68, 0.2);
+        color: #ef4444;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .delete-modal-icon-wrap mat-icon {
+        font-size: 26px;
+        width: 26px;
+        height: 26px;
+      }
+      .delete-modal-title-col {
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+      }
+      .delete-modal-title {
+        margin: 0;
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: #ffffff;
+      }
+      .delete-modal-sub {
+        font-size: 0.8rem;
+        color: #fca5a5;
+      }
+      .delete-modal-body {
+        padding: 1.35rem 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+      .delete-target-card {
+        padding: 0.85rem 1rem;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 6px;
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+      }
+      .target-label {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: rgba(255, 255, 255, 0.5);
+        font-weight: 700;
+      }
+      .target-title {
+        font-size: 0.95rem;
+        color: #ffffff;
+      }
+      .target-id {
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.45);
+      }
+      .target-id code {
+        color: #80b3ff;
+      }
+      .delete-consequences-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.65rem;
+      }
+      .consequence-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+        font-size: 0.82rem;
+        line-height: 1.45;
+        color: rgba(255, 255, 255, 0.75);
+      }
+      .consequence-item .bullet {
+        color: #ef4444;
+        font-weight: 900;
+      }
+      .consequence-item strong {
+        color: #ffffff;
+      }
+      .delete-modal-actions {
+        padding: 1rem 1.5rem;
+        background: rgba(0, 0, 0, 0.25);
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.85rem;
+      }
+      .btn-cancel-delete {
+        padding: 0.6rem 1.25rem;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: #ffffff;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      .btn-cancel-delete:hover:not(:disabled) {
+        background: rgba(255, 255, 255, 0.15);
+      }
+      .btn-confirm-delete {
+        padding: 0.6rem 1.35rem;
+        background: #dc2626;
+        border: 1px solid #ef4444;
+        color: #ffffff !important;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        font-weight: 800;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        box-shadow: 0 4px 14px rgba(220, 38, 38, 0.35);
+      }
+      .btn-confirm-delete span {
+        color: #ffffff !important;
+      }
+      .btn-confirm-delete:hover:not(:disabled) {
+        background: #b91c1c;
+        border-color: #dc2626;
+        box-shadow: 0 6px 18px rgba(220, 38, 38, 0.5);
+      }
+      .btn-confirm-delete:disabled,
+      .btn-cancel-delete:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
       }
 
       /* Modal */
@@ -3158,6 +3625,154 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         flex-direction: column;
         gap: 0.35rem;
         justify-content: flex-start;
+      }
+      .dates-add-controls {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+      }
+      .dates-input-row {
+        display: flex;
+        gap: 0.65rem;
+        align-items: center;
+      }
+      .datepicker-input {
+        max-width: 210px;
+        color-scheme: dark;
+      }
+      .btn-add-date-chip {
+        padding: 0.52rem 0.95rem;
+        background: rgba(128, 179, 255, 0.16);
+        border: 1px solid rgba(128, 179, 255, 0.4);
+        color: #80b3ff;
+        border-radius: 4px;
+        font-size: 0.8125rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+      }
+      .btn-add-date-chip:hover:not(:disabled) {
+        background: #99c2ff;
+        color: #ffffff !important;
+      }
+      .btn-add-date-chip:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+      .scheduled-chips-container {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        margin-top: 0.25rem;
+      }
+      .chips-title {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: rgba(255, 255, 255, 0.6);
+        font-weight: 600;
+      }
+      .chips-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+      }
+      .date-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.35rem 0.75rem;
+        background: rgba(128, 179, 255, 0.12);
+        border: 1px solid rgba(128, 179, 255, 0.3);
+        border-radius: 4px;
+        color: #ffffff;
+        font-size: 0.8125rem;
+        font-weight: 600;
+      }
+      .chip-remove {
+        background: transparent;
+        border: none;
+        color: rgba(255, 255, 255, 0.6);
+        cursor: pointer;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.85rem;
+        transition: color 0.15s ease;
+      }
+      .chip-remove:hover {
+        color: #ff6666;
+      }
+      .mp-status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.25rem 0.65rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .mp-status-pill.connected {
+        background: rgba(16, 185, 129, 0.15);
+        color: #10b981;
+        border: 1px solid rgba(16, 185, 129, 0.4);
+      }
+      .mp-status-pill.disconnected {
+        background: rgba(255, 255, 255, 0.08);
+        color: rgba(255, 255, 255, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+      }
+      .mp-code-badge {
+        display: inline-block;
+        padding: 0.15rem 0.45rem;
+        background: rgba(128, 179, 255, 0.12);
+        border: 1px solid rgba(128, 179, 255, 0.3);
+        border-radius: 3px;
+        color: #80b3ff;
+        font-family: monospace;
+        font-size: 0.85rem;
+        font-weight: 700;
+      }
+      .text-green {
+        color: #10b981 !important;
+      }
+      .mp-sync-hint-row {
+        margin-top: 0.85rem;
+        padding: 0.65rem 0.85rem;
+        background: rgba(128, 179, 255, 0.08);
+        border: 1px dashed rgba(128, 179, 255, 0.3);
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+      }
+      .mp-sync-hint-row .hint-text {
+        font-size: 0.8rem;
+        color: rgba(255, 255, 255, 0.8);
+      }
+      .mp-sync-hint-row .hint-text code {
+        color: #80b3ff;
+        font-weight: 700;
+      }
+      .btn-sync-mp-provider {
+        padding: 0.35rem 0.75rem;
+        background: #80b3ff;
+        color: #ffffff !important;
+        border: 1px solid #80b3ff;
+        border-radius: 3px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      .btn-sync-mp-provider:hover {
+        background: #99c2ff;
       }
 
       .form-field label:not(.btn-upload-file) {
@@ -4470,7 +5085,31 @@ export class AdminExperiencesComponent implements OnInit {
   readonly editCoverImage = signal('');
   readonly editVideoUrl = signal('');
   readonly editVideoPoster = signal('');
+  readonly todayIso = new Date().toISOString().slice(0, 10);
+  readonly editScheduledDates = signal<string[]>([]);
+  readonly newAdminScheduledDate = signal<string>('');
+  readonly adminScheduledDateError = signal<string | null>(null);
   readonly editDatesRaw = signal('');
+
+  addAdminScheduledDate(): void {
+    const val = this.newAdminScheduledDate();
+    if (!val) return;
+    if (this.editScheduledDates().includes(val)) {
+      this.adminScheduledDateError.set('Esta fecha ya está cargada.');
+      return;
+    }
+    const updated = [...this.editScheduledDates(), val].sort();
+    this.editScheduledDates.set(updated);
+    this.editDatesRaw.set(updated.join(', '));
+    this.newAdminScheduledDate.set('');
+    this.adminScheduledDateError.set(null);
+  }
+
+  removeAdminScheduledDate(dateToRemove: string): void {
+    const updated = this.editScheduledDates().filter((d) => d !== dateToRemove);
+    this.editScheduledDates.set(updated);
+    this.editDatesRaw.set(updated.length > 0 ? updated.join(', ') : 'A coordinar');
+  }
   readonly editHighlightsRaw = signal('');
   readonly editIncludedRaw = signal('');
   readonly editStatus = signal<'publicada' | 'oculta' | 'borrador' | 'pendiente' | 'rechazada'>('publicada');
@@ -4480,6 +5119,89 @@ export class AdminExperiencesComponent implements OnInit {
   readonly editProviderCbuAlias = signal('');
   readonly editProviderCuitDni = signal('');
   readonly editProviderBankName = signal('');
+  readonly editMpConnected = signal<boolean>(false);
+  readonly editMpCollectorId = signal<string>('');
+  readonly editMpNickname = signal<string>('');
+
+  readonly currentEditingProvider = computed<ProviderUser | undefined>(() => {
+    const exp = this.editingExperience();
+    const name = this.editProviderName().trim().toLowerCase();
+    const providers = this.adminStore.providerStore.providers();
+    if (exp?.providerId) {
+      const byId = providers.find((p) => p.id === exp.providerId);
+      if (byId) return byId;
+    }
+    if (name) {
+      const byName = providers.find(
+        (p) => p.name?.toLowerCase() === name || p.agency?.toLowerCase() === name,
+      );
+      if (byName) return byName;
+    }
+    return undefined;
+  });
+
+  getProviderForExperience(exp: Experience | null): ProviderUser | undefined {
+    if (!exp) return undefined;
+    const providers = this.adminStore.providerStore.providers();
+    if (exp.providerId) {
+      const byId = providers.find((p) => p.id === exp.providerId);
+      if (byId) return byId;
+    }
+    if (exp.providerEmail) {
+      const byEmail = providers.find((p) => p.email?.toLowerCase() === exp.providerEmail?.toLowerCase());
+      if (byEmail) return byEmail;
+    }
+    if (exp.providerSlug) {
+      const bySlug = providers.find((p) => p.slug === exp.providerSlug);
+      if (bySlug) return bySlug;
+    }
+    if (exp.providerName) {
+      const name = exp.providerName.trim().toLowerCase();
+      const byName = providers.find((p) => p.name?.toLowerCase() === name || p.agency?.toLowerCase() === name);
+      if (byName) return byName;
+    }
+    return undefined;
+  }
+
+  getExpMpConnected(exp: Experience | null): boolean {
+    if (!exp) return false;
+    if (this.isClub(exp)) {
+      return exp.mpConnected !== false;
+    }
+    const prov = this.getProviderForExperience(exp);
+    if (prov) {
+      return Boolean(prov.mpConnected && exp.mpConnected !== false);
+    }
+    return Boolean(exp.mpConnected);
+  }
+
+  getExpMpCollectorId(exp: Experience | null): string {
+    if (!exp) return '';
+    if (this.isClub(exp)) {
+      return exp.mpCollectorId || 'CLUB-OFICIAL';
+    }
+    if (exp.mpCollectorId) return exp.mpCollectorId;
+    const prov = this.getProviderForExperience(exp);
+    return prov?.mpCollectorId || '';
+  }
+
+  getExpMpNickname(exp: Experience | null): string {
+    if (!exp) return '';
+    if (this.isClub(exp)) {
+      return 'Club de Experiencias';
+    }
+    const prov = this.getProviderForExperience(exp);
+    return prov?.mpNickname || '';
+  }
+
+  syncMpFromProvider(): void {
+    const prov = this.currentEditingProvider();
+    if (!prov) return;
+    this.editMpConnected.set(Boolean(prov.mpConnected));
+    this.editMpCollectorId.set(prov.mpCollectorId || '');
+    this.editMpNickname.set(prov.mpNickname || '');
+    this.showToast(`Datos de Mercado Pago cargados desde el perfil de ${prov.name}.`);
+  }
 
   openEditModal(exp: Experience): void {
     this.isCreating.set(false);
@@ -4508,9 +5230,19 @@ export class AdminExperiencesComponent implements OnInit {
     this.editVideoUrl.set(safeVideo);
 
     this.editVideoPoster.set(exp.videoPoster || '');
-    const rawDates = (exp.dates || []).join(', ');
-    const displayDates = rawDates || 'A coordinar';
+    const rawDates = Array.isArray(exp.dates)
+      ? exp.dates
+      : typeof exp.dates === 'string'
+        ? [exp.dates]
+        : [];
+    const isoDates = Array.from(
+      new Set(rawDates.flatMap((d) => parseConfirmedProposalDates(d))),
+    ).sort();
+    this.editScheduledDates.set(isoDates);
+    const displayDates = isoDates.length > 0 ? isoDates.join(', ') : 'A coordinar';
     this.editDatesRaw.set(displayDates);
+    this.newAdminScheduledDate.set('');
+    this.adminScheduledDateError.set(null);
 
     const matchingProposal = this.findMatchingProposal(exp);
     const resolvedHighlights =
@@ -4599,6 +5331,13 @@ export class AdminExperiencesComponent implements OnInit {
       this.editProviderCuitDni.set(resolvedProviderCuit);
       this.editProviderBankName.set(resolvedProviderBank);
     }
+
+    const hasMp = this.getExpMpConnected(exp);
+    const colId = this.getExpMpCollectorId(exp);
+    const nickname = this.getExpMpNickname(exp);
+    this.editMpConnected.set(hasMp);
+    this.editMpCollectorId.set(colId);
+    this.editMpNickname.set(nickname);
   }
 
   openCreateModal(): void {
@@ -4652,6 +5391,9 @@ export class AdminExperiencesComponent implements OnInit {
     this.editCoverImage.set('/assets/images/kayak-club-de-experiencias.jpg');
     this.editVideoUrl.set('');
     this.editVideoPoster.set('');
+    this.editScheduledDates.set([]);
+    this.newAdminScheduledDate.set('');
+    this.adminScheduledDateError.set(null);
     this.editDatesRaw.set('A coordinar');
     this.editHighlightsRaw.set('');
     this.editIncludedRaw.set('');
@@ -4663,6 +5405,9 @@ export class AdminExperiencesComponent implements OnInit {
     this.editProviderCbuAlias.set('');
     this.editProviderCuitDni.set('');
     this.editProviderBankName.set('');
+    this.editMpConnected.set(false);
+    this.editMpCollectorId.set('');
+    this.editMpNickname.set('');
   }
 
   closeEditModal(): void {
@@ -5051,6 +5796,8 @@ export class AdminExperiencesComponent implements OnInit {
       providerSlug: resolvedProviderSlug,
       providerEmail: resolvedProviderEmail,
       isClubExperience: isClub,
+      mpConnected: this.editMpConnected(),
+      mpCollectorId: this.editMpCollectorId().trim(),
       videoUrl: safeVideoUrl,
       videoPoster: this.editVideoPoster().trim(),
       dates,
@@ -5066,8 +5813,19 @@ export class AdminExperiencesComponent implements OnInit {
     this.saving.set(true);
     try {
       if (this.isCreating()) {
+        let serializedNotes: string | undefined = undefined;
+        const rawCollectorId = payload.mpCollectorId?.trim();
+        const isMpConn = payload.mpConnected;
+        if (rawCollectorId || isMpConn !== undefined) {
+          const notesObj: Record<string, any> = {};
+          if (rawCollectorId) notesObj['mp_collector_id'] = rawCollectorId;
+          if (isMpConn !== undefined) notesObj['mp_connected'] = isMpConn;
+          serializedNotes = JSON.stringify(notesObj);
+        }
+
         const fullNewExp: Experience = {
           ...payload,
+          notes: serializedNotes,
           kicker: '',
           bestSeason: '',
           durationDays: 1,
@@ -5400,5 +6158,34 @@ export class AdminExperiencesComponent implements OnInit {
 
   getPublicExperienceUrl(exp: { publicUrl?: string; slug?: string; detailRoute?: string }): string {
     return getPublicExperienceUrl(exp);
+  }
+
+  readonly experienceToDelete = signal<Experience | null>(null);
+  readonly isDeletingExp = signal<boolean>(false);
+
+  openDeleteModal(exp: Experience): void {
+    this.experienceToDelete.set(exp);
+  }
+
+  closeDeleteModal(): void {
+    if (this.isDeletingExp()) return;
+    this.experienceToDelete.set(null);
+  }
+
+  async confirmDeleteExperience(): Promise<void> {
+    const exp = this.experienceToDelete();
+    if (!exp) return;
+    this.isDeletingExp.set(true);
+    try {
+      await this.experienceService.deleteExperience(exp.id);
+      this.showToast(`La experiencia "${exp.title}" fue eliminada del catálogo.`);
+      this.closeDeleteModal();
+      this.router.navigateByUrl(this.backToListLink());
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error al eliminar la experiencia';
+      this.showToast(msg);
+    } finally {
+      this.isDeletingExp.set(false);
+    }
   }
 }

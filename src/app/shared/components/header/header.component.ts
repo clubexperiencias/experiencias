@@ -10,6 +10,7 @@ import {
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { NewsletterService } from '../../../core/services/newsletter.service';
+import { FavoritesService } from '../../../core/services/favorites.service';
 
 @Component({
   selector: 'app-header',
@@ -20,6 +21,7 @@ import { NewsletterService } from '../../../core/services/newsletter.service';
 })
 export class HeaderComponent {
   readonly newsletter = inject(NewsletterService);
+  readonly favoritesService = inject(FavoritesService);
   private readonly router = inject(Router);
 
   readonly mobileMenuOpen = model<boolean>(false);

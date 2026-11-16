@@ -161,6 +161,11 @@ BEGIN
     ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS region TEXT NOT NULL DEFAULT 'Catamarca';
     ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT '';
     ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS notes TEXT;
+    ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS tier TEXT NOT NULL DEFAULT 'emergente';
+    ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS rubro TEXT NOT NULL DEFAULT '';
+    ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS rating_score NUMERIC(3,2) NOT NULL DEFAULT 5.00;
+    ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS rating_count INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS verified BOOLEAN NOT NULL DEFAULT false;
 
     -- Migrar postulaciones_prestadores hacia el esquema canónico de prestadores
     INSERT INTO public.prestadores (
@@ -273,6 +278,14 @@ BEGIN
     ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
     ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS provider_agency TEXT NOT NULL DEFAULT '';
     ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS participant_requirements TEXT NOT NULL DEFAULT '';
+    ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS display_location TEXT NOT NULL DEFAULT 'catalogo';
+    ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS is_locked BOOLEAN NOT NULL DEFAULT false;
+    ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS is_exclusive_club BOOLEAN NOT NULL DEFAULT true;
+    ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS is_club_experience BOOLEAN NOT NULL DEFAULT false;
+    ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS gallery_images JSONB DEFAULT '[]'::jsonb;
+    ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS short_title TEXT DEFAULT '';
+    ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS favorites_count INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS provider_id UUID;
 
     -- Asegurar que provider_email exista en prestadores para mantener integridad referencial
     IF EXISTS (
@@ -672,6 +685,43 @@ ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS category TEXT NOT NULL D
 ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS region TEXT NOT NULL DEFAULT 'Catamarca';
 ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT '';
 ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS tier TEXT NOT NULL DEFAULT 'emergente';
+ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS rubro TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS rating_score NUMERIC(3,2) NOT NULL DEFAULT 5.00;
+ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS rating_count INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS verified BOOLEAN NOT NULL DEFAULT false;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.constraint_column_usage
+    WHERE table_name = 'prestadores' AND constraint_name = 'chk_prestadores_tier'
+  ) THEN
+    ALTER TABLE public.prestadores
+      ADD CONSTRAINT chk_prestadores_tier CHECK (tier IN ('emergente', 'pleno', 'fundador'));
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.constraint_column_usage
+    WHERE table_name = 'prestadores' AND constraint_name = 'chk_prestadores_rating_score'
+  ) THEN
+    ALTER TABLE public.prestadores
+      ADD CONSTRAINT chk_prestadores_rating_score CHECK (rating_score >= 1.0 AND rating_score <= 5.0);
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.constraint_column_usage
+    WHERE table_name = 'prestadores' AND constraint_name = 'chk_prestadores_rating_count'
+  ) THEN
+    ALTER TABLE public.prestadores
+      ADD CONSTRAINT chk_prestadores_rating_count CHECK (rating_count >= 0);
+  END IF;
+EXCEPTION
+  WHEN OTHERS THEN NULL;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_prestadores_tier ON public.prestadores(tier);
+CREATE INDEX IF NOT EXISTS idx_prestadores_rating ON public.prestadores(rating_score DESC, rating_count DESC);
 
 -- Normalizar posibles slugs duplicados no vacíos antes de crear el índice único
 DO $$
@@ -700,7 +750,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_prestadores_nonempty_slug
 
 -- Cuenta Oficial del Club de Experiencias como Prestador Institucional
 INSERT INTO public.prestadores (
-  email, name, agency, slug, phone, cbu_alias, cuit_dni, bank_name, account_holder, bio, website, active, status
+  email, name, agency, slug, phone, cbu_alias, cuit_dni, bank_name, account_holder, bio, website, active, status,
+  tier, rubro, verified, rating_score, rating_count
 ) VALUES (
   'admin@experiencias.club',
   'Club de Experiencias',
@@ -714,11 +765,19 @@ INSERT INTO public.prestadores (
   'Cuenta institucional oficial del Club de Experiencias. Administrada conjuntamente por el equipo de administradores.',
   'https://experiencias.club',
   true,
-  'aprobado'
+  'aprobado',
+  'fundador',
+  'Operador Oficial del Club',
+  true,
+  5.00,
+  1
 ) ON CONFLICT (email) DO UPDATE SET
   agency = EXCLUDED.agency,
   name = EXCLUDED.name,
   slug = EXCLUDED.slug,
+  tier = 'fundador',
+  rubro = COALESCE(NULLIF(public.prestadores.rubro, ''), 'Operador Oficial del Club'),
+  verified = true,
   active = true,
   status = 'aprobado';
 
@@ -836,6 +895,57 @@ ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS cover_video_name TEXT;
 ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS participant_requirements TEXT NOT NULL DEFAULT '';
 ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS notes TEXT;
 ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
+ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS display_location TEXT NOT NULL DEFAULT 'catalogo';
+ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS is_locked BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS is_exclusive_club BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS is_club_experience BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS gallery_images JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS short_title TEXT DEFAULT '';
+ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS favorites_count INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS provider_id UUID;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.constraint_column_usage
+    WHERE table_name = 'experiencias' AND constraint_name = 'chk_experiencias_display_location'
+  ) THEN
+    ALTER TABLE public.experiencias
+      ADD CONSTRAINT chk_experiencias_display_location CHECK (display_location IN ('catalogo', 'destacada', 'no_listada'));
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.constraint_column_usage
+    WHERE table_name = 'experiencias' AND constraint_name = 'chk_experiencias_favorites_count'
+  ) THEN
+    ALTER TABLE public.experiencias
+      ADD CONSTRAINT chk_experiencias_favorites_count CHECK (favorites_count >= 0);
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE constraint_name = 'fk_experiencias_provider_id' AND table_name = 'experiencias'
+  ) THEN
+    ALTER TABLE public.experiencias
+      ADD CONSTRAINT fk_experiencias_provider_id
+      FOREIGN KEY (provider_id) REFERENCES public.prestadores(id)
+      ON DELETE SET NULL;
+  END IF;
+EXCEPTION
+  WHEN OTHERS THEN NULL;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_experiencias_display ON public.experiencias(display_location, is_locked, status);
+CREATE INDEX IF NOT EXISTS idx_experiencias_provider_id ON public.experiencias(provider_id);
+CREATE INDEX IF NOT EXISTS idx_experiencias_favorites ON public.experiencias(favorites_count DESC);
+
+-- Auto-enlazar provider_id cuando provider_email coincida con public.prestadores
+UPDATE public.experiencias e
+SET provider_id = p.id
+FROM public.prestadores p
+WHERE e.provider_id IS NULL
+  AND e.provider_email IS NOT NULL
+  AND LOWER(TRIM(e.provider_email)) = LOWER(TRIM(p.email));
 
 DO $$
 BEGIN
@@ -959,6 +1069,80 @@ BEGIN
   ALTER TABLE public.pagos_transferencias ALTER COLUMN created_at SET NOT NULL;
 END $$;
 
+-- 2.10 calificaciones_prestadores (Votos y Reseñas de Socios para Prestadores)
+CREATE TABLE IF NOT EXISTS public.calificaciones_prestadores (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  prestador_id   UUID NOT NULL REFERENCES public.prestadores(id) ON DELETE CASCADE,
+  socio_id       UUID REFERENCES public.socios(id) ON DELETE SET NULL,
+  socio_email    TEXT NOT NULL,
+  score          INTEGER NOT NULL CHECK (score BETWEEN 1 AND 5),
+  comentario     TEXT DEFAULT '',
+  experience_id  TEXT REFERENCES public.experiencias(id) ON DELETE SET NULL,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_calif_prestador_id ON public.calificaciones_prestadores(prestador_id);
+CREATE INDEX IF NOT EXISTS idx_calif_socio_email  ON public.calificaciones_prestadores(socio_email);
+CREATE INDEX IF NOT EXISTS idx_calif_experience_id ON public.calificaciones_prestadores(experience_id);
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE constraint_name = 'uq_calificaciones_prestador_socio' AND table_name = 'calificaciones_prestadores'
+  ) THEN
+    ALTER TABLE public.calificaciones_prestadores
+      ADD CONSTRAINT uq_calificaciones_prestador_socio UNIQUE (prestador_id, socio_email);
+  END IF;
+EXCEPTION
+  WHEN OTHERS THEN NULL;
+END $$;
+
+-- 2.11 experiencias_favoritas (Favoritos y Wishlist de Socios)
+CREATE TABLE IF NOT EXISTS public.experiencias_favoritas (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  socio_id       UUID REFERENCES public.socios(id) ON DELETE CASCADE,
+  socio_email    TEXT NOT NULL,
+  experience_id  TEXT NOT NULL REFERENCES public.experiencias(id) ON DELETE CASCADE,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Migración segura si la tabla fue creada previamente como experiencias_favoritos
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables 
+    WHERE table_schema = 'public' AND table_name = 'experiencias_favoritos'
+  ) AND NOT EXISTS (
+    SELECT 1 FROM information_schema.tables 
+    WHERE table_schema = 'public' AND table_name = 'experiencias_favoritas'
+  ) THEN
+    ALTER TABLE public.experiencias_favoritos RENAME TO experiencias_favoritas;
+  END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_exp_fav_socio_email   ON public.experiencias_favoritas(socio_email);
+CREATE INDEX IF NOT EXISTS idx_exp_fav_experience_id ON public.experiencias_favoritas(experience_id);
+CREATE INDEX IF NOT EXISTS idx_exp_fav_socio_id      ON public.experiencias_favoritas(socio_id);
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE constraint_name = 'uq_experiencias_favoritas_socio_exp' AND table_name = 'experiencias_favoritas'
+  ) THEN
+    ALTER TABLE public.experiencias_favoritas
+      ADD CONSTRAINT uq_experiencias_favoritas_socio_exp UNIQUE (socio_email, experience_id);
+  END IF;
+EXCEPTION
+  WHEN OTHERS THEN NULL;
+END $$;
+
+-- Vista retrocompatible para referencias heredadas
+CREATE OR REPLACE VIEW public.experiencias_favoritos AS
+  SELECT * FROM public.experiencias_favoritas;
+
 -- ==============================================================================
 -- 3. VISTAS
 -- ==============================================================================
@@ -985,6 +1169,7 @@ DROP VIEW IF EXISTS public.public_provider_profiles CASCADE;
 DROP VIEW IF EXISTS public.perfiles_publicos CASCADE;
 CREATE VIEW public.perfiles_publicos AS
 SELECT
+  id,
   email,
   name,
   agency,
@@ -996,12 +1181,60 @@ SELECT
   social_media_secondary,
   avatar_url,
   cover_url,
+  tier,
+  rubro,
+  verified,
+  rating_score,
+  rating_count,
+  category,
+  region,
   active,
   status
 FROM public.prestadores
 WHERE active = true AND status = 'aprobado';
 
 GRANT SELECT ON public.perfiles_publicos TO anon, authenticated;
+
+-- 3.3 v_prestadores_ranking (Ranking Oficial Dinámico y Ponderado)
+DROP VIEW IF EXISTS public.v_prestadores_ranking CASCADE;
+CREATE VIEW public.v_prestadores_ranking AS
+SELECT
+  p.id,
+  p.name,
+  p.agency,
+  p.slug,
+  p.email,
+  p.phone,
+  p.avatar_url,
+  p.cover_url,
+  p.tier,
+  p.rubro,
+  p.category,
+  p.region,
+  p.verified,
+  p.rating_score,
+  p.rating_count,
+  p.active,
+  p.status,
+  ROW_NUMBER() OVER (
+    ORDER BY
+      CASE p.tier
+        WHEN 'fundador' THEN 1
+        WHEN 'pleno' THEN 2
+        WHEN 'emergente' THEN 3
+        ELSE 4
+      END ASC,
+      p.rating_score DESC,
+      p.rating_count DESC,
+      p.created_at ASC
+  ) AS ranking_position,
+  COUNT(e.id) FILTER (WHERE e.status = 'publicada') AS active_experiences_count
+FROM public.prestadores p
+LEFT JOIN public.experiencias e ON (e.provider_id = p.id OR LOWER(TRIM(e.provider_email)) = LOWER(TRIM(p.email)))
+WHERE p.active = true AND p.status = 'aprobado'
+GROUP BY p.id;
+
+GRANT SELECT ON public.v_prestadores_ranking TO anon, authenticated;
 
 -- ==============================================================================
 -- 4. TRIGGERS Y FUNCIONES DE NORMALIZACIÓN
@@ -1044,6 +1277,11 @@ CREATE TRIGGER experiencias_updated_at
 DROP TRIGGER IF EXISTS pagos_transferencias_updated_at ON public.pagos_transferencias;
 CREATE TRIGGER pagos_transferencias_updated_at
   BEFORE UPDATE ON public.pagos_transferencias
+  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+DROP TRIGGER IF EXISTS calificaciones_prestadores_updated_at ON public.calificaciones_prestadores;
+CREATE TRIGGER calificaciones_prestadores_updated_at
+  BEFORE UPDATE ON public.calificaciones_prestadores
   FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
 -- 4.2 Normalización de socios
@@ -1371,6 +1609,108 @@ DROP TRIGGER IF EXISTS on_socio_registered_trigger ON public.socios;
 CREATE TRIGGER on_socio_registered_trigger
   AFTER INSERT ON public.socios
   FOR EACH ROW EXECUTE FUNCTION public.handle_socio_registered();
+
+-- 4.8 Recálculo automático de promedio y votos en prestadores
+CREATE OR REPLACE FUNCTION public.recalculate_prestador_rating()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_prestador_id UUID;
+  v_score NUMERIC(3,2);
+  v_count INTEGER;
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    v_prestador_id := OLD.prestador_id;
+  ELSE
+    v_prestador_id := NEW.prestador_id;
+  END IF;
+
+  IF v_prestador_id IS NOT NULL THEN
+    PERFORM 1
+    FROM public.prestadores
+    WHERE id = v_prestador_id
+    FOR UPDATE;
+
+    SELECT
+      COALESCE(ROUND(AVG(score)::numeric, 2), 5.00),
+      COUNT(*)::INTEGER
+    INTO v_score, v_count
+    FROM public.calificaciones_prestadores
+    WHERE prestador_id = v_prestador_id;
+
+    UPDATE public.prestadores
+    SET
+      rating_score = CASE WHEN v_count = 0 THEN 5.00 ELSE v_score END,
+      rating_count = v_count,
+      updated_at = now()
+    WHERE id = v_prestador_id;
+  END IF;
+
+  RETURN NULL;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_calificaciones_prestadores_rating ON public.calificaciones_prestadores;
+CREATE TRIGGER trg_calificaciones_prestadores_rating
+  AFTER INSERT OR UPDATE OR DELETE ON public.calificaciones_prestadores
+  FOR EACH ROW EXECUTE FUNCTION public.recalculate_prestador_rating();
+
+-- 4.9 Contador de favoritas en catálogo de experiencias
+CREATE OR REPLACE FUNCTION public.sync_experiencias_favoritas_count()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_exp_id TEXT;
+  v_count INTEGER;
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    v_exp_id := OLD.experience_id;
+  ELSE
+    v_exp_id := NEW.experience_id;
+  END IF;
+
+  IF v_exp_id IS NOT NULL THEN
+    PERFORM 1
+    FROM public.experiencias
+    WHERE id = v_exp_id
+    FOR UPDATE;
+
+    SELECT COUNT(*)::INTEGER INTO v_count
+    FROM public.experiencias_favoritas
+    WHERE experience_id = v_exp_id;
+
+    UPDATE public.experiencias
+    SET favorites_count = v_count
+    WHERE id = v_exp_id;
+  END IF;
+
+  RETURN NULL;
+END;
+$$;
+
+-- Compatibilidad retroactiva
+CREATE OR REPLACE FUNCTION public.sync_experiencias_favorites_count()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  RETURN public.sync_experiencias_favoritas_count();
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_experiencias_favorites_count ON public.experiencias_favoritas;
+DROP TRIGGER IF EXISTS trg_experiencias_favoritas_count ON public.experiencias_favoritas;
+CREATE TRIGGER trg_experiencias_favoritas_count
+  AFTER INSERT OR DELETE ON public.experiencias_favoritas
+  FOR EACH ROW EXECUTE FUNCTION public.sync_experiencias_favoritas_count();
 
 -- ==============================================================================
 -- 5. FUNCIONES RPC DE APLICACIÓN
@@ -2541,6 +2881,263 @@ BEGIN
 END;
 $$;
 
+-- 5.15 can_socio_rate_provider (Verificación de elegibilidad para calificar prestador)
+DROP FUNCTION IF EXISTS public.can_socio_rate_provider(UUID, TEXT);
+CREATE OR REPLACE FUNCTION public.can_socio_rate_provider(
+  p_provider_id UUID
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_socio_email TEXT := LOWER(TRIM(COALESCE(auth.jwt() ->> 'email', '')));
+  v_socio_id UUID;
+  v_prestador_email TEXT;
+  v_has_approved_payment BOOLEAN := false;
+  v_already_rated BOOLEAN := false;
+  v_current_score INTEGER := NULL;
+  v_current_comment TEXT := '';
+BEGIN
+  IF v_socio_email = '' THEN
+    RETURN jsonb_build_object(
+      'can_vote', false,
+      'has_voted', false,
+      'reason', 'Debes ser socio e iniciar sesión para calificar a un prestador.'
+    );
+  END IF;
+
+  SELECT id INTO v_socio_id FROM public.socios WHERE LOWER(email) = v_socio_email;
+  SELECT LOWER(email) INTO v_prestador_email FROM public.prestadores WHERE id = p_provider_id;
+
+  IF v_prestador_email IS NULL THEN
+    RETURN jsonb_build_object(
+      'can_vote', false,
+      'has_voted', false,
+      'reason', 'El prestador solicitado no existe.'
+    );
+  END IF;
+
+  -- Verificar si el socio tiene al menos un pago aprobado con este prestador
+  SELECT EXISTS (
+    SELECT 1 FROM public.pagos_transferencias pt
+    WHERE (LOWER(TRIM(pt.email)) = v_socio_email OR (v_socio_id IS NOT NULL AND pt.socio_id = v_socio_id))
+      AND pt.status = 'aprobado'
+      AND (
+        LOWER(TRIM(COALESCE(pt.provider_email, ''))) = v_prestador_email
+        OR pt.experience_id IN (
+          SELECT id FROM public.experiencias
+          WHERE provider_id = p_provider_id OR LOWER(TRIM(provider_email)) = v_prestador_email
+        )
+      )
+  ) INTO v_has_approved_payment;
+
+  -- Verificar si ya votó previamente
+  SELECT
+    EXISTS (
+      SELECT 1 FROM public.calificaciones_prestadores
+      WHERE prestador_id = p_provider_id AND LOWER(socio_email) = v_socio_email
+    ),
+    (
+      SELECT score FROM public.calificaciones_prestadores
+      WHERE prestador_id = p_provider_id AND LOWER(socio_email) = v_socio_email
+      LIMIT 1
+    ),
+    (
+      SELECT comentario FROM public.calificaciones_prestadores
+      WHERE prestador_id = p_provider_id AND LOWER(socio_email) = v_socio_email
+      LIMIT 1
+    )
+  INTO v_already_rated, v_current_score, v_current_comment;
+
+  IF NOT v_has_approved_payment THEN
+    RETURN jsonb_build_object(
+      'can_vote', false,
+      'has_voted', v_already_rated,
+      'current_score', v_current_score,
+      'current_comment', COALESCE(v_current_comment, ''),
+      'reason', 'Solo los socios que hayan completado una experiencia con este prestador pueden calificarlo.'
+    );
+  END IF;
+
+  RETURN jsonb_build_object(
+    'can_vote', true,
+    'has_voted', v_already_rated,
+    'current_score', v_current_score,
+    'current_comment', COALESCE(v_current_comment, ''),
+    'reason', 'Habilitado para calificar'
+  );
+END;
+$$;
+
+-- 5.16 submit_prestador_rating (Registro atómico y seguro de calificación)
+DROP FUNCTION IF EXISTS public.submit_prestador_rating(UUID, INTEGER, TEXT, TEXT, TEXT);
+CREATE OR REPLACE FUNCTION public.submit_prestador_rating(
+  p_provider_id UUID,
+  p_score INTEGER,
+  p_comentario TEXT DEFAULT '',
+  p_experience_id TEXT DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_caller_email TEXT;
+  v_socio_id UUID;
+  v_eligibility JSONB;
+BEGIN
+  v_caller_email := LOWER(TRIM(COALESCE(auth.jwt() ->> 'email', '')));
+  IF v_caller_email = '' THEN
+    RAISE EXCEPTION 'Acceso no autenticado: Debes iniciar sesión como socio para calificar.';
+  END IF;
+
+  IF p_score < 1 OR p_score > 5 THEN
+    RAISE EXCEPTION 'Puntaje inválido: debe estar comprendido entre 1 y 5 estrellas.';
+  END IF;
+
+  -- Comprobar elegibilidad obligatoria
+  v_eligibility := public.can_socio_rate_provider(p_provider_id);
+  IF NOT (v_eligibility ->> 'can_vote')::boolean THEN
+    RAISE EXCEPTION '%', (v_eligibility ->> 'reason');
+  END IF;
+
+  SELECT id INTO v_socio_id FROM public.socios WHERE LOWER(email) = v_caller_email;
+
+  -- Insertar o actualizar voto
+  INSERT INTO public.calificaciones_prestadores (
+    prestador_id,
+    socio_id,
+    socio_email,
+    score,
+    comentario,
+    experience_id,
+    updated_at
+  ) VALUES (
+    p_provider_id,
+    v_socio_id,
+    v_caller_email,
+    p_score,
+    COALESCE(p_comentario, ''),
+    p_experience_id,
+    now()
+  )
+  ON CONFLICT (prestador_id, socio_email) DO UPDATE
+  SET
+    score = EXCLUDED.score,
+    comentario = CASE WHEN EXCLUDED.comentario <> '' THEN EXCLUDED.comentario ELSE public.calificaciones_prestadores.comentario END,
+    experience_id = COALESCE(EXCLUDED.experience_id, public.calificaciones_prestadores.experience_id),
+    updated_at = now();
+
+  RETURN jsonb_build_object(
+    'success', true,
+    'message', 'Calificación registrada exitosamente.'
+  );
+END;
+$$;
+
+-- 5.17 toggle_experiencia_favorita (Gestión atómica de experiencias favoritas de socios)
+DROP FUNCTION IF EXISTS public.toggle_experiencia_favorita(TEXT);
+DROP FUNCTION IF EXISTS public.toggle_experiencia_favorito(TEXT);
+DROP FUNCTION IF EXISTS public.toggle_experiencia_favorito(TEXT, TEXT);
+
+CREATE OR REPLACE FUNCTION public.toggle_experiencia_favorita(
+  p_experience_id TEXT
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_caller_email TEXT;
+  v_socio_id UUID;
+  v_is_fav BOOLEAN;
+  v_total_favs INTEGER;
+  v_resolved_exp_id TEXT;
+BEGIN
+  v_caller_email := LOWER(TRIM(COALESCE(auth.jwt() ->> 'email', '')));
+  IF v_caller_email = '' THEN
+    RAISE EXCEPTION 'Debes ser socio e iniciar sesión para marcar favoritos.';
+  END IF;
+
+  -- Resolver id real de la experiencia en public.experiencias
+  SELECT id INTO v_resolved_exp_id
+  FROM public.experiencias
+  WHERE id = p_experience_id OR LOWER(slug) = LOWER(p_experience_id)
+  LIMIT 1;
+
+  IF v_resolved_exp_id IS NULL THEN
+    v_resolved_exp_id := p_experience_id;
+  END IF;
+
+  SELECT id INTO v_socio_id FROM public.socios WHERE LOWER(email) = v_caller_email;
+
+  SELECT EXISTS (
+    SELECT 1 FROM public.experiencias_favoritas
+    WHERE LOWER(socio_email) = v_caller_email AND experience_id = v_resolved_exp_id
+  ) INTO v_is_fav;
+
+  IF v_is_fav THEN
+    DELETE FROM public.experiencias_favoritas
+    WHERE LOWER(socio_email) = v_caller_email AND experience_id = v_resolved_exp_id;
+    v_is_fav := false;
+  ELSE
+    INSERT INTO public.experiencias_favoritas (socio_id, socio_email, experience_id)
+    VALUES (v_socio_id, v_caller_email, v_resolved_exp_id)
+    ON CONFLICT (socio_email, experience_id) DO NOTHING;
+    v_is_fav := true;
+  END IF;
+
+  SELECT favorites_count INTO v_total_favs FROM public.experiencias WHERE id = v_resolved_exp_id;
+
+  RETURN jsonb_build_object(
+    'is_favorite', v_is_fav,
+    'favorites_count', COALESCE(v_total_favs, 0)
+  );
+END;
+$$;
+
+-- Alias retrocompatible
+CREATE OR REPLACE FUNCTION public.toggle_experiencia_favorito(
+  p_experience_id TEXT
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  RETURN public.toggle_experiencia_favorita(p_experience_id);
+END;
+$$;
+
+-- 5.18 get_my_provider_ratings (Lectura segura de calificaciones propias del socio autenticado)
+CREATE OR REPLACE FUNCTION public.get_my_provider_ratings()
+RETURNS TABLE (
+  prestador_id UUID,
+  score INTEGER
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_caller_email TEXT := LOWER(TRIM(COALESCE(auth.jwt() ->> 'email', '')));
+BEGIN
+  IF v_caller_email = '' THEN
+    RETURN;
+  END IF;
+
+  RETURN QUERY
+  SELECT cp.prestador_id, cp.score
+  FROM public.calificaciones_prestadores cp
+  WHERE LOWER(cp.socio_email) = v_caller_email;
+END;
+$$;
+
 -- Permisos de ejecución de RPCs
 GRANT EXECUTE ON FUNCTION public.record_waitlist_email TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_admin_socios_roster TO authenticated;
@@ -2556,6 +3153,20 @@ GRANT EXECUTE ON FUNCTION public.list_provider_transfer_submissions TO authentic
 GRANT EXECUTE ON FUNCTION public.review_transfer_submission TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_admin_all_members TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_admin_all_submissions TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.can_socio_rate_provider(UUID) FROM anon;
+GRANT EXECUTE ON FUNCTION public.can_socio_rate_provider(UUID) TO authenticated;
+
+REVOKE EXECUTE ON FUNCTION public.submit_prestador_rating(UUID, INTEGER, TEXT, TEXT) FROM anon;
+GRANT EXECUTE ON FUNCTION public.submit_prestador_rating(UUID, INTEGER, TEXT, TEXT) TO authenticated;
+
+REVOKE EXECUTE ON FUNCTION public.toggle_experiencia_favorita(TEXT) FROM anon;
+GRANT EXECUTE ON FUNCTION public.toggle_experiencia_favorita(TEXT) TO authenticated;
+
+REVOKE EXECUTE ON FUNCTION public.toggle_experiencia_favorito(TEXT) FROM anon;
+GRANT EXECUTE ON FUNCTION public.toggle_experiencia_favorito(TEXT) TO authenticated;
+
+REVOKE EXECUTE ON FUNCTION public.get_my_provider_ratings() FROM anon;
+GRANT EXECUTE ON FUNCTION public.get_my_provider_ratings() TO authenticated;
 
 -- ==============================================================================
 -- 6. ROW LEVEL SECURITY (RLS) Y POLÍTICAS
@@ -2570,6 +3181,8 @@ ALTER TABLE public.historial_bancario ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.historial_mp ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.experiencias ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pagos_transferencias ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.calificaciones_prestadores ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.experiencias_favoritas ENABLE ROW LEVEL SECURITY;
 
 -- 6.3 Políticas en socios
 DROP POLICY IF EXISTS "Socios can read own profile by auth_user_id" ON public.socios;
@@ -2940,6 +3553,115 @@ CREATE POLICY "Gestion de comprobantes para admins y prestadores"
       WHERE e.id = experience_id
         AND LOWER(pa.email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
         AND pa.active = true
+    )
+  );
+
+-- 6.11 Políticas en calificaciones_prestadores
+REVOKE SELECT, INSERT, UPDATE, DELETE ON public.calificaciones_prestadores FROM anon, authenticated;
+GRANT SELECT (id, prestador_id, score, comentario, experience_id, created_at, updated_at)
+  ON public.calificaciones_prestadores TO anon, authenticated;
+
+DROP POLICY IF EXISTS "Lectura publica de calificaciones de prestadores" ON public.calificaciones_prestadores;
+CREATE POLICY "Lectura publica de calificaciones de prestadores"
+  ON public.calificaciones_prestadores
+  FOR SELECT
+  TO anon, authenticated
+  USING (true);
+
+DROP POLICY IF EXISTS "Socios pueden registrar sus calificaciones" ON public.calificaciones_prestadores;
+DROP POLICY IF EXISTS "Admins pueden registrar calificaciones" ON public.calificaciones_prestadores;
+CREATE POLICY "Admins pueden registrar calificaciones"
+  ON public.calificaciones_prestadores
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.administradores
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+        AND active = true
+    )
+  );
+
+DROP POLICY IF EXISTS "Socios pueden actualizar sus propias calificaciones" ON public.calificaciones_prestadores;
+DROP POLICY IF EXISTS "Admins pueden actualizar calificaciones" ON public.calificaciones_prestadores;
+CREATE POLICY "Admins pueden actualizar calificaciones"
+  ON public.calificaciones_prestadores
+  FOR UPDATE
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.administradores
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+        AND active = true
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.administradores
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+        AND active = true
+    )
+  );
+
+DROP POLICY IF EXISTS "Admins pueden eliminar calificaciones" ON public.calificaciones_prestadores;
+CREATE POLICY "Admins pueden eliminar calificaciones"
+  ON public.calificaciones_prestadores
+  FOR DELETE
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.administradores
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+        AND active = true
+    )
+  );
+
+-- 6.12 Políticas en experiencias_favoritas
+GRANT SELECT, INSERT, DELETE ON public.experiencias_favoritas TO authenticated;
+GRANT SELECT ON public.experiencias_favoritos TO authenticated;
+
+DROP POLICY IF EXISTS "Socios leen sus propios favoritos" ON public.experiencias_favoritas;
+DROP POLICY IF EXISTS "Socios leen sus propias experiencias favoritas" ON public.experiencias_favoritas;
+CREATE POLICY "Socios leen sus propias experiencias favoritas"
+  ON public.experiencias_favoritas
+  FOR SELECT
+  TO authenticated
+  USING (
+    LOWER(socio_email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+    OR EXISTS (
+      SELECT 1 FROM public.administradores
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+        AND active = true
+    )
+  );
+
+DROP POLICY IF EXISTS "Socios agregan sus propios favoritos" ON public.experiencias_favoritas;
+DROP POLICY IF EXISTS "Socios agregan sus propias experiencias favoritas" ON public.experiencias_favoritas;
+CREATE POLICY "Socios agregan sus propias experiencias favoritas"
+  ON public.experiencias_favoritas
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    LOWER(socio_email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+    OR EXISTS (
+      SELECT 1 FROM public.administradores
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+        AND active = true
+    )
+  );
+
+DROP POLICY IF EXISTS "Socios eliminan sus propios favoritos" ON public.experiencias_favoritas;
+DROP POLICY IF EXISTS "Socios eliminan sus propias experiencias favoritas" ON public.experiencias_favoritas;
+CREATE POLICY "Socios eliminan sus propias experiencias favoritas"
+  ON public.experiencias_favoritas
+  FOR DELETE
+  TO authenticated
+  USING (
+    LOWER(socio_email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+    OR EXISTS (
+      SELECT 1 FROM public.administradores
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+        AND active = true
     )
   );
 

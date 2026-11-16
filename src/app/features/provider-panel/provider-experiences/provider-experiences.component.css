@@ -63,7 +63,7 @@
   background: #ffcc00;
   border: 1px solid #ffcc00;
   border-radius: 4px;
-  color: #000000;
+  color: #ffffff !important;
   font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;
@@ -73,12 +73,20 @@
   box-shadow: 0 4px 14px rgba(255, 204, 0, 0.28);
 }
 
+.new-proposal-btn span {
+  color: #ffffff !important;
+}
+
 .new-proposal-btn:hover {
   background: #ffd633;
   border-color: #ffd633;
-  color: #000000;
+  color: #ffffff !important;
   transform: translateY(-1px);
   box-shadow: 0 6px 18px rgba(255, 204, 0, 0.45);
+}
+
+.new-proposal-btn:hover span {
+  color: #ffffff !important;
 }
 
 .btn-back-panel {
@@ -1013,13 +1021,16 @@
 .request-badge-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 1rem;
+  width: 100%;
   flex-wrap: wrap;
 }
-.request-date-wrap {
-  display: inline-flex;
+.request-badge-left {
+  display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.75rem;
+  flex-wrap: wrap;
 }
 .request-date {
   font-size: 0.75rem;
@@ -1029,11 +1040,14 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.25rem 0.65rem;
+  margin-left: auto;
+  padding: 0.32rem 0.85rem;
   font-size: 0.72rem;
-  font-weight: 700;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   line-height: 1.2;
-  border-radius: 2px;
+  border-radius: 3px;
   background: rgba(128, 179, 255, 0.14);
   border: 1px solid rgba(128, 179, 255, 0.4);
   color: #80b3ff;
@@ -1045,7 +1059,7 @@
 .req-wa-btn:hover {
   background: rgba(128, 179, 255, 0.28);
   border-color: #80b3ff;
-  color: #ffffff;
+  color: #ffffff !important;
 }
 .request-exp-title {
   font-size: 1.2rem;

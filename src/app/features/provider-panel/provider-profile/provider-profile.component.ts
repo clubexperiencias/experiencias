@@ -114,7 +114,6 @@ import {
               <h3 class="section-title">Cobros con Mercado Pago (Acreditación Instantánea)</h3>
               @if (isMpConnected()) {
                 <span class="mp-status-pill connected">
-                  <mat-icon>check_circle</mat-icon>
                   Cuenta Vinculada
                 </span>
               } @else {
@@ -147,9 +146,6 @@ import {
             @if (isMpConnected()) {
               <div class="mp-active-card">
                 <div class="mp-active-left">
-                  <div class="mp-active-icon">
-                    <mat-icon>verified_user</mat-icon>
-                  </div>
                   <div class="mp-active-details">
                     <strong class="mp-active-title">Tu cuenta de Mercado Pago está vinculada y activa</strong>
                     <span class="mp-active-sub">
@@ -167,7 +163,6 @@ import {
                   (click)="disconnectMercadoPago()"
                   title="Desvincular cuenta de Mercado Pago"
                 >
-                  <mat-icon>link_off</mat-icon>
                   <span>Desvincular</span>
                 </button>
               </div>

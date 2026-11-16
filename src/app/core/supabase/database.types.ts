@@ -36,6 +36,11 @@ export interface Database {
           region?: string;
           description?: string;
           notes?: string | null;
+          tier?: 'emergente' | 'pleno' | 'fundador' | string;
+          rubro?: string;
+          rating_score?: number;
+          rating_count?: number;
+          verified?: boolean;
           created_at: string;
         };
         Insert: {
@@ -61,6 +66,11 @@ export interface Database {
           region?: string;
           description?: string;
           notes?: string | null;
+          tier?: 'emergente' | 'pleno' | 'fundador' | string;
+          rubro?: string;
+          rating_score?: number;
+          rating_count?: number;
+          verified?: boolean;
           created_at?: string;
         };
         Update: {
@@ -85,6 +95,11 @@ export interface Database {
           region?: string;
           description?: string;
           notes?: string | null;
+          tier?: 'emergente' | 'pleno' | 'fundador' | string;
+          rubro?: string;
+          rating_score?: number;
+          rating_count?: number;
+          verified?: boolean;
         };
         Relationships: [];
       };
@@ -563,6 +578,90 @@ export interface Database {
         };
         Relationships: [];
       };
+
+      calificaciones_prestadores: {
+        Row: {
+          id: string;
+          prestador_id: string;
+          socio_id: string | null;
+          socio_email: string;
+          score: number;
+          comentario: string | null;
+          experience_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          prestador_id: string;
+          socio_id?: string | null;
+          socio_email: string;
+          score: number;
+          comentario?: string | null;
+          experience_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          prestador_id?: string;
+          socio_id?: string | null;
+          socio_email?: string;
+          score?: number;
+          comentario?: string | null;
+          experience_id?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+
+      experiencias_favoritas: {
+        Row: {
+          id: string;
+          socio_id: string | null;
+          socio_email: string;
+          experience_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          socio_id?: string | null;
+          socio_email: string;
+          experience_id: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          socio_id?: string | null;
+          socio_email?: string;
+          experience_id?: string;
+        };
+        Relationships: [];
+      };
+
+      experiencias_favoritos: {
+        Row: {
+          id: string;
+          socio_id: string | null;
+          socio_email: string;
+          experience_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          socio_id?: string | null;
+          socio_email: string;
+          experience_id: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          socio_id?: string | null;
+          socio_email?: string;
+          experience_id?: string;
+        };
+        Relationships: [];
+      };
     };
 
     Views: {
@@ -581,6 +680,7 @@ export interface Database {
       };
       perfiles_publicos: {
         Row: {
+          id?: string;
           email: string;
           name: string;
           agency: string;
@@ -594,6 +694,29 @@ export interface Database {
           cover_url: string;
           active: boolean;
           status: string;
+          tier?: string;
+          rubro?: string;
+          rating_score?: number;
+          rating_count?: number;
+          verified?: boolean;
+        };
+        Relationships: [];
+      };
+      v_prestadores_ranking: {
+        Row: {
+          id: string;
+          name: string;
+          agency: string;
+          slug: string;
+          tier: string;
+          rubro: string;
+          rating_score: number;
+          rating_count: number;
+          verified: boolean;
+          active: boolean;
+          total_experiencias_activas: number;
+          avatar_url: string;
+          cover_url: string;
         };
         Relationships: [];
       };
@@ -715,6 +838,18 @@ export interface Database {
       is_active_admin: {
         Args: Record<string, never>;
         Returns: boolean;
+      };
+      toggle_experiencia_favorita: {
+        Args: {
+          p_experience_id: string;
+        };
+        Returns: Json;
+      };
+      toggle_experiencia_favorito: {
+        Args: {
+          p_experience_id: string;
+        };
+        Returns: Json;
       };
     };
     Enums: {

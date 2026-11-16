@@ -14,6 +14,7 @@ import { Router, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { NewsletterService } from '../../core/services/newsletter.service';
 import { ExperienceService } from '../../core/services/experience.service';
+import { FavoritesService } from '../../core/services/favorites.service';
 import { Experience } from '../../core/models/experience.model';
 import { DEFAULT_CLUB_PROFILE, isClubExperience } from '../../core/models/club-profile.model';
 import { FooterComponent } from '../../shared/components/footer/footer.component';
@@ -50,8 +51,24 @@ export interface CarouselExperienceItem {
 export class ExperiencesComponent implements AfterViewInit, OnDestroy {
   readonly newsletter = inject(NewsletterService);
   readonly experienceService = inject(ExperienceService);
+  readonly favoritesService = inject(FavoritesService);
   readonly router = inject(Router);
   readonly isClubExperience = isClubExperience;
+
+  isFavorite(exp: Experience): boolean {
+    return this.favoritesService.isFavorite(exp);
+  }
+
+  toggleFavorite(exp: Experience, event?: Event): void {
+    if (exp.isLocked) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      return;
+    }
+    this.favoritesService.toggleFavorite(exp, event);
+  }
 
   getProviderSlug(exp: Experience): string | null {
     if (exp.providerSlug) {
@@ -340,6 +357,14 @@ export class ExperiencesComponent implements AfterViewInit, OnDestroy {
       this.filterMaxSpots() !== 'todos' ||
       this.filterSeason() !== 'todas'
     );
+  });
+
+  readonly activeCatalogCount = computed(() => {
+    return this.filteredExperiences().filter((e) => !e.isLocked).length;
+  });
+
+  readonly totalActiveCatalogCount = computed(() => {
+    return this.allCatalogExperiences().filter((e) => !e.isLocked).length;
   });
 
   resetFilters(): void {

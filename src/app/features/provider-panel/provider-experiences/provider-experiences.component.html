@@ -5,8 +5,8 @@
     <div class="heading-row">
       <h2 class="card-heading">Experiencias</h2>
       <a [routerLink]="newProposalLink()" class="new-proposal-btn"
-        title="Cargar nueva solicitud de experiencia">
-        Cargar Propuesta
+        title="Cargar nueva solicitud de experiencia" style="color: #ffffff !important;">
+        <span style="color: #ffffff !important;">Cargar Propuesta</span>
       </a>
     </div>
     <p class="card-subheading">
@@ -64,9 +64,6 @@
     <button type="button" class="filter-tab-btn" [class.is-active]="activeTab() === 'solicitudes'"
       (click)="activeTab.set('solicitudes')">
       Solicitudes ({{ requests().length }})
-      @if (pendingRequestsCount() > 0) {
-      <span class="tab-badge">{{ pendingRequestsCount() }}</span>
-      }
     </button>
   </div>
 </div>
@@ -91,24 +88,24 @@
     <li class="kayak-section-card request-card" [class.is-pending]="req.status === 'pendiente'">
       <div class="request-card-head">
         <div class="request-badge-row">
-          @switch (req.status) {
-          @case ('aprobada') {
-          <span class="exp-status is-live">Propuesta Aprobada</span>
-          }
-          @case ('rechazada') {
-          <span class="exp-status is-moderation-red">Propuesta Rechazada</span>
-          }
-          @default {
-          <span class="exp-status is-moderation">Pendiente de Revisión Admin</span>
-          }
-          }
-          <div class="request-date-wrap">
+          <div class="request-badge-left">
+            @switch (req.status) {
+            @case ('aprobada') {
+            <span class="exp-status is-live">Propuesta Aprobada</span>
+            }
+            @case ('rechazada') {
+            <span class="exp-status is-moderation-red">Propuesta Rechazada</span>
+            }
+            @default {
+            <span class="exp-status is-moderation">Pendiente de Revisión Admin</span>
+            }
+            }
             <span class="request-date">Enviada: {{ req.createdAt | fecha: 'corta' }}</span>
-            <a [href]="getRequestWhatsappLink(req)" target="_blank" rel="noopener noreferrer" class="req-wa-btn"
-              title="Consultar al equipo de administración por WhatsApp sobre esta propuesta">
-              Consultar
-            </a>
           </div>
+          <a [href]="getRequestWhatsappLink(req)" target="_blank" rel="noopener noreferrer" class="req-wa-btn"
+            title="Consultar al equipo de administración por WhatsApp sobre esta propuesta">
+            CONSULTAR ESTADO
+          </a>
         </div>
         <h4 class="request-exp-title">{{ req.title }}</h4>
         <p class="request-kicker-tag">{{ req.kicker }}</p>

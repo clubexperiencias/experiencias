@@ -326,6 +326,82 @@
         @if (isProfileComplete()) {
           <ng-container *ngTemplateOutlet="membershipCard" />
         }
+
+        <!-- ═══════════════ FILA 5: EXPERIENCIAS FAVORITAS ═══════════════ -->
+        <div class="profile-section-card favorites-section-card" id="favoritos">
+          <div class="section-header-row">
+            <div>
+              <span class="section-kicker">CURADURÍA PERSONAL</span>
+              <h3 class="section-title">Mis Experiencias Favoritas</h3>
+            </div>
+            @if (favoriteExperiences().length > 0) {
+              <span class="fav-count-pill">
+                {{ favoriteExperiences().length }} {{ favoriteExperiences().length === 1 ? 'experiencia' : 'experiencias' }}
+              </span>
+            }
+          </div>
+
+          @if (favoriteExperiences().length > 0) {
+            <div class="favorites-grid">
+              @for (exp of favoriteExperiences(); track exp.id) {
+                <div class="fav-card-item">
+                  <div class="fav-card-media" [style.background-image]="'url(' + exp.coverImage + ')'">
+                    <span class="fav-region-badge">{{ exp.region }}</span>
+                    <button
+                      type="button"
+                      class="fav-remove-icon-btn"
+                      (click)="removeFavorite(exp, $event)"
+                      title="Quitar de favoritos"
+                      aria-label="Quitar de favoritos"
+                    >
+                      <mat-icon>favorite</mat-icon>
+                    </button>
+                  </div>
+
+                  <div class="fav-card-content">
+                    <h4 class="fav-card-title">
+                      <a [routerLink]="['/experiencias', exp.slug || exp.id]" class="fav-card-title-link">
+                        {{ exp.title }}
+                      </a>
+                    </h4>
+                    <p class="fav-card-tagline">{{ exp.tagline || exp.description }}</p>
+
+                    <div class="fav-card-specs">
+                      <span>{{ exp.durationLabel }}</span>
+                      <span>·</span>
+                      <span>{{ exp.difficulty }}</span>
+                      @if (exp.priceArs) {
+                        <span>·</span>
+                        <strong class="fav-price-highlight">${{ exp.priceArs.toLocaleString('es-AR') }} ARS</strong>
+                      }
+                    </div>
+                  </div>
+
+                  <div class="fav-card-actions">
+                    <a [routerLink]="['/experiencias', exp.slug || exp.id]" class="btn-fav-detail" style="color: #ffffff !important;">
+                      <span style="color: #ffffff !important;">Ver Experiencia</span>
+                      <mat-icon>arrow_forward</mat-icon>
+                    </a>
+                  </div>
+                </div>
+              }
+            </div>
+          } @else {
+            <div class="empty-favs-view">
+              <div class="empty-favs-icon-wrap">
+                <mat-icon>favorite_border</mat-icon>
+              </div>
+              <h4 class="empty-favs-title">Aún no agregaste experiencias a tus favoritos</h4>
+              <p class="empty-favs-desc">
+                Explorá las expediciones de alta montaña y aguas andinas en nuestro catálogo. Hacé clic en el ícono del corazón de cualquier tarjeta para guardarla en esta sección.
+              </p>
+              <a routerLink="/experiencias" class="btn-explore-favs" style="color: #ffffff !important;">
+                <span style="color: #ffffff !important;">Explorar Catálogo de Experiencias</span>
+                <mat-icon>explore</mat-icon>
+              </a>
+            </div>
+          }
+        </div>
       </div>
     </main>
   </div>

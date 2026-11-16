@@ -5,6 +5,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
 import { MatIconModule } from '@angular/material/icon';
 import { ExperienceService } from '../../../core/services/experience.service';
+import { FavoritesService } from '../../../core/services/favorites.service';
 import { DEFAULT_CLUB_PROFILE, isClubExperience } from '../../../core/models/club-profile.model';
 import { HeaderComponent } from '../../../shared/components/header/header.component';
 import { FooterComponent } from '../../../shared/components/footer/footer.component';
@@ -33,8 +34,18 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
 export class ExperienceDetailComponent {
   private readonly route = inject(ActivatedRoute);
   readonly experienceService = inject(ExperienceService);
+  readonly favoritesService = inject(FavoritesService);
   readonly isClubExperience = isClubExperience;
   readonly isLoading = signal(!this.experienceService.hasRemoteExperiences());
+
+  isFavorite(exp: any): boolean {
+    return this.favoritesService.isFavorite(exp);
+  }
+
+  toggleFavorite(exp: any, event?: Event): void {
+    if (!exp) return;
+    this.favoritesService.toggleFavorite(exp, event);
+  }
 
   constructor() {
     this.experienceService.remoteLoadPromise

@@ -40,17 +40,28 @@ describe('ProfileComponent', () => {
   it('should only show the last 2 activities in profile preview and link to full history when activities exist', () => {
     component.activityService.addActivity({
       id: 'act-1',
+      userId: 'user-1',
+      experienceId: 'exp-1',
       title: 'Trekking Laguna Blanca',
-      category: 'Aventura',
-      date: '2026-11-15',
-      location: 'Catamarca',
+      region: 'Catamarca',
+      altitude: '1200m',
+      coverImage: '/assets/images/kayak.jpg',
+      dateLabel: '15 Nov 2026',
       status: 'confirmada',
+      provider: {
+        name: 'Prestador',
+        category: 'Aventura',
+        contactPhone: '+5493834123456',
+      },
       receipt: {
         receiptNumber: 'REC-001',
-        paymentMethod: 'transferencia',
-        amount: 50000,
-        currency: 'ARS',
-        paymentDate: '2026-11-15',
+        transactionId: 'TX-001',
+        gateway: 'mercadopago',
+        gatewayDisplayName: 'Mercado Pago',
+        amountArs: 50000,
+        amountUsd: 50,
+        paidAt: '2026-11-15',
+        paymentMethodSummary: 'Transferencia',
         payerEmail: 'test@gmail.com',
         payerName: 'Test User',
         authCode: 'AUTH-1',
@@ -116,5 +127,19 @@ describe('ProfileComponent', () => {
     fixture.detectChanges();
 
     expect(component.newsletter.isSubscribed()).toBe(false);
+  });
+
+  it('should remove matching experience from selectedExperiences when favorite is removed', () => {
+    component.selectedExperiences.set(['kayak-las-jumeal', 'trekking-antofagasta', 'otra-exp']);
+
+    const mockExpToRemove: any = {
+      id: 'exp-kayak-1',
+      slug: 'kayak-las-jumeal',
+      title: 'Kayak en Las Jumeal',
+    };
+
+    component.removeFavorite(mockExpToRemove);
+
+    expect(component.selectedExperiences()).toEqual(['trekking-antofagasta', 'otra-exp']);
   });
 });

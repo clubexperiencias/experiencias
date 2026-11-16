@@ -70,14 +70,14 @@ export class ExperiencePaymentComponent implements OnInit {
     const exp = this.experience();
     if (!exp) return false;
     if (isClubExperience(exp)) {
-      return true;
+      return exp.mpConnected !== false;
     }
     const prov =
       (exp.providerId ? this.store.getProviderById(exp.providerId) : undefined) ||
       (exp.providerEmail ? this.store.getProviderByEmail(exp.providerEmail) : undefined) ||
       (exp.providerSlug ? this.store.getProviderBySlug(exp.providerSlug) : undefined);
     if (prov) {
-      return Boolean(prov.mpConnected);
+      return Boolean(prov.mpConnected && exp.mpConnected !== false);
     }
     return Boolean(exp.mpConnected);
   });

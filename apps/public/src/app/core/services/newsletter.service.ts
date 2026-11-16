@@ -1780,12 +1780,23 @@ export class NewsletterService {
     }
   }
 
-  private persistCurrentMember(entry: WaitlistEntry): void {
+  persistCurrentMember(entry: WaitlistEntry): void {
     try {
       localStorage.setItem(SUBSCRIBED_KEY, JSON.stringify(entry));
     } catch {
       /* ignore */
     }
+  }
+
+  updateCurrentMemberWishlist(wishlist: string[]): void {
+    const current = this._currentMember();
+    if (!current) return;
+    const updated: WaitlistEntry = {
+      ...current,
+      experiencesWishlist: [...wishlist],
+    };
+    this._currentMember.set(updated);
+    this.persistCurrentMember(updated);
   }
 
   private loadUsedMemberDiscounts(): string[] {
