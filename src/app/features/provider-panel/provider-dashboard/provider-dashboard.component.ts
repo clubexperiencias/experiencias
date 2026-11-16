@@ -31,7 +31,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
           </div>
           <div class="welcome-text">
             <div class="welcome-tag">
-              <span>PRESTADOR OFICIAL</span>
+              <span>{{ providerTierLabel() }}</span>
             </div>
             <h1 class="welcome-name">Hola, {{ provider()?.name || 'Patricio Facundo' }}</h1>
             <p class="welcome-agency">
@@ -45,7 +45,6 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
             [routerLink]="newProposalLink()"
             class="request-form-btn"
           >
-            <mat-icon class="btn-add-icon">add</mat-icon>
             <span>Cargar Nueva Experiencia</span>
           </a>
         </div>
@@ -196,9 +195,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         </div>
 
         @if (activeExperiences().length === 0) {
-          <div class="empty-active-box">
-            <p class="empty-text">No tenés experiencias activas publicadas actualmente.</p>
-          </div>
+          <p class="empty-text">No tenés experiencias activas publicadas actualmente.</p>
         } @else {
           <div class="active-experiences-list">
             @for (exp of activeExperiences(); track exp.id) {
@@ -371,7 +368,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
       </section>
 
       <!-- Sección 3: Experiencias Postuladas -->
-      <section class="dash-card full-width-card">
+      <section class="dash-card full-width-card postulaciones-section">
         <div class="card-head">
           <h2 class="card-title">Experiencias Postuladas</h2>
           <a
@@ -509,7 +506,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         background: rgba(22, 33, 85, 0.55);
         border: 1px solid rgba(128, 179, 255, 0.35);
         border-radius: 2px;
-        padding: 1.75rem 2rem;
+        padding: 1.25rem 2rem;
         box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
         backdrop-filter: blur(14px);
         -webkit-backdrop-filter: blur(14px);
@@ -519,15 +516,15 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
       .welcome-main {
         display: flex;
         align-items: center;
-        gap: 1.5rem;
+        gap: 1.25rem;
       }
       .avatar-ring {
         position: relative;
         flex-shrink: 0;
       }
       .provider-avatar {
-        width: 96px;
-        height: 96px;
+        width: 84px;
+        height: 84px;
         border-radius: 4px;
         border: 2px solid #80b3ff;
         box-shadow: 0 4px 16px rgba(0, 56, 143, 0.35);
@@ -828,15 +825,18 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         color: rgba(255, 255, 255, 0.5);
         text-align: center;
         padding: 2rem 0;
+        margin: 0;
       }
 
       /* Finanzas Section - Full Width */
-      .finanzas-section {
+      .finanzas-section,
+      .postulaciones-section {
         display: flex;
         flex-direction: column;
         gap: 0.75rem;
       }
-      .finanzas-section .card-head {
+      .finanzas-section .card-head,
+      .postulaciones-section .card-head {
         margin-bottom: 0;
       }
       .badge-pending {
@@ -1264,6 +1264,10 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
       .active-experiences-section {
         display: flex;
         flex-direction: column;
+        gap: 0.75rem;
+      }
+      .active-experiences-section .card-head {
+        margin-bottom: 0;
       }
       .card-head-actions {
         display: flex;
@@ -1279,14 +1283,6 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         padding: 0.2rem 0.55rem;
         border-radius: 2px;
         letter-spacing: 0.04em;
-      }
-      .empty-active-box {
-        text-align: center;
-        padding: 2rem 1rem;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 1rem;
       }
       .active-experiences-list {
         display: flex;
@@ -1994,6 +1990,63 @@ export class ProviderDashboardComponent implements OnInit {
   }
 
   readonly provider = this.store.currentProvider;
+  readonly providerTier = computed<'emergente' | 'pleno' | 'fundador'>(() => {
+    const p = this.provider();
+    if (!p) return 'emergente';
+
+    const isOfficialClub =
+      p.slug === 'club-de-experiencias' ||
+      p.id === 'prov-club-oficial';
+
+    if (isOfficialClub) {
+      return 'fundador';
+    }
+
+    const agencyNorm = (p.agency || '').toLowerCase().trim();
+    const isEmergingPlaceholder =
+      agencyNorm === 'prestador emergente del club de experiencias' ||
+      agencyNorm === 'prestador emergente del club';
+
+    if (
+      !isEmergingPlaceholder &&
+      p.tier !== 'emergente' &&
+      agencyNorm.includes('club de experiencias')
+    ) {
+      return 'fundador';
+    }
+
+    if (p.tier === 'fundador' || p.tier === 'pleno' || p.tier === 'emergente') {
+      return p.tier;
+    }
+
+    if (p.notes?.toLowerCase().includes('fundador')) {
+      return 'fundador';
+    }
+
+    const count = this.activeExperiences().length;
+    if (
+      p.notes?.toLowerCase().includes('pleno') ||
+      count > 0 ||
+      p.verified
+    ) {
+      return 'pleno';
+    }
+
+    return 'emergente';
+  });
+
+  readonly providerTierLabel = computed(() => {
+    const tier = this.providerTier();
+    switch (tier) {
+      case 'fundador':
+        return 'Prestador Fundador';
+      case 'pleno':
+        return 'Prestador Pleno';
+      default:
+        return 'Prestador Emergente';
+    }
+  });
+
   readonly displayAgency = computed(() => {
     const raw = this.provider()?.agency?.trim();
     if (

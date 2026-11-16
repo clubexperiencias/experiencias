@@ -11,7 +11,6 @@ import { ProviderUser } from '../../../core/models/bank-transfer.model';
 import { Experience } from '../../../core/models/experience.model';
 import { ArsPipe } from '../../../shared/pipes/format.pipes';
 
-export type RankingTab = 'all' | 'prestadores' | 'experiencias';
 
 export interface ProviderRankingRow {
   rank: number;
@@ -51,35 +50,6 @@ export interface ExperienceRankingRow {
             Puntuaciones otorgadas por socios a prestadores oficiales y popularidad de experiencias guardadas en favoritos.
           </p>
         </div>
-
-        <div class="ranking-header-actions">
-          <div class="tab-pill-group">
-            <button
-              type="button"
-              class="tab-pill"
-              [class.is-active]="activeTab() === 'all'"
-              (click)="activeTab.set('all')"
-            >
-              Vista Consolidada
-            </button>
-            <button
-              type="button"
-              class="tab-pill"
-              [class.is-active]="activeTab() === 'prestadores'"
-              (click)="activeTab.set('prestadores')"
-            >
-              Prestadores ({{ providerRanking().length }})
-            </button>
-            <button
-              type="button"
-              class="tab-pill"
-              [class.is-active]="activeTab() === 'experiencias'"
-              (click)="activeTab.set('experiencias')"
-            >
-              Experiencias Favoritas ({{ experienceRanking().length }})
-            </button>
-          </div>
-        </div>
       </header>
 
       <!-- Franja de Métricas Resumen -->
@@ -105,6 +75,12 @@ export interface ExperienceRankingRow {
         </div>
 
         <div class="summary-card">
+          <span class="sum-label">Total Favoritos en la Red</span>
+          <strong class="sum-value text-blue">{{ totalFavoritesCount() }}</strong>
+          <span class="sum-sub">Acumulado de toda la comunidad</span>
+        </div>
+
+        <div class="summary-card">
           <span class="sum-label">Experiencia Más Deseada</span>
           <strong class="sum-value text-orange">
             {{ topExperience() ? topExperience()?.title : '—' }}
@@ -117,17 +93,10 @@ export interface ExperienceRankingRow {
             }
           </span>
         </div>
-
-        <div class="summary-card">
-          <span class="sum-label">Total Favoritos en la Red</span>
-          <strong class="sum-value text-blue">{{ totalFavoritesCount() }}</strong>
-          <span class="sum-sub">Acumulado de toda la comunidad</span>
-        </div>
       </section>
 
       <!-- SECCIÓN 1: RANKING DE PRESTADORES -->
-      @if (activeTab() === 'all' || activeTab() === 'prestadores') {
-        <section class="ranking-section-block">
+      <section class="ranking-section-block">
           <div class="section-block-head">
             <div class="head-title-wrap">
               <span class="block-kicker">TABLA DE REPUTACIÓN</span>
@@ -135,33 +104,6 @@ export interface ExperienceRankingRow {
             </div>
             <span class="badge-total">{{ providerRanking().length }} prestadores</span>
           </div>
-
-          <!-- Podio Top 3 Prestadores -->
-          @if (top3Providers().length > 0) {
-            <div class="podium-grid">
-              @for (item of top3Providers(); track item.rank) {
-                <div class="podium-card" [class.is-gold]="item.rank === 1" [class.is-silver]="item.rank === 2" [class.is-bronze]="item.rank === 3">
-                  <div class="podium-medal">
-                    @if (item.rank === 1) { 🥇 #1 }
-                    @else if (item.rank === 2) { 🥈 #2 }
-                    @else { 🥉 #3 }
-                  </div>
-                  <div class="podium-info">
-                    <strong class="podium-name">{{ item.name }}</strong>
-                    <span class="podium-agency">{{ item.agency }}</span>
-                    <div class="podium-score-row">
-                      <span class="podium-score">{{ item.rating.score.toFixed(1) }} ★</span>
-                      <span class="podium-votes">({{ item.rating.count }} votos)</span>
-                    </div>
-                  </div>
-                  <a [routerLink]="['/prestadores', item.slug]" target="_blank" class="btn-podium-view">
-                    <span>Ver Perfil</span>
-                    <mat-icon>open_in_new</mat-icon>
-                  </a>
-                </div>
-              }
-            </div>
-          }
 
           <!-- Tabla Completa de Prestadores -->
           <div class="table-card">
@@ -225,10 +167,8 @@ export interface ExperienceRankingRow {
             </div>
           </div>
         </section>
-      }
 
-      <!-- SECCIÓN 2: RANKING DE EXPERIENCIAS FAVORITAS -->
-      @if (activeTab() === 'all' || activeTab() === 'experiencias') {
+        <!-- SECCIÓN 2: RANKING DE EXPERIENCIAS FAVORITAS -->
         <section class="ranking-section-block">
           <div class="section-block-head">
             <div class="head-title-wrap">
@@ -237,32 +177,6 @@ export interface ExperienceRankingRow {
             </div>
             <span class="badge-total">{{ experienceRanking().length }} experiencias</span>
           </div>
-
-          <!-- Podio Top 3 Experiencias -->
-          @if (top3Experiences().length > 0) {
-            <div class="podium-grid">
-              @for (item of top3Experiences(); track item.rank) {
-                <div class="podium-card exp-podium-card" [class.is-gold]="item.rank === 1" [class.is-silver]="item.rank === 2" [class.is-bronze]="item.rank === 3">
-                  <div class="podium-medal">
-                    @if (item.rank === 1) { 🥇 #1 }
-                    @else if (item.rank === 2) { 🥈 #2 }
-                    @else { 🥉 #3 }
-                  </div>
-                  <div class="podium-info">
-                    <strong class="podium-name">{{ item.title }}</strong>
-                    <span class="podium-agency">{{ item.providerName }} · {{ item.region }}</span>
-                    <div class="podium-score-row">
-                      <span class="podium-fav-count">❤️ {{ item.favoritesCount }} socios la guardaron</span>
-                    </div>
-                  </div>
-                  <a [routerLink]="['/experiencias', item.slug]" target="_blank" class="btn-podium-view">
-                    <span>Ver Experiencia</span>
-                    <mat-icon>open_in_new</mat-icon>
-                  </a>
-                </div>
-              }
-            </div>
-          }
 
           <!-- Tabla Completa de Experiencias -->
           <div class="table-card">
@@ -331,8 +245,7 @@ export interface ExperienceRankingRow {
             </div>
           </div>
         </section>
-      }
-    </div>
+      </div>
   `,
   styles: [`
     .ranking-page-container {
@@ -425,7 +338,7 @@ export interface ExperienceRankingRow {
     .summary-card {
       background: rgba(15, 23, 42, 0.7);
       border: 1px solid rgba(128, 179, 255, 0.2);
-      border-radius: 6px;
+      border-radius: 2px;
       padding: 1.1rem 1.25rem;
       display: flex;
       flex-direction: column;
@@ -456,6 +369,8 @@ export interface ExperienceRankingRow {
     .sum-sub {
       font-size: 0.75rem;
       color: rgba(255, 255, 255, 0.5);
+      margin-top: auto;
+      padding-top: 0.5rem;
     }
 
     /* Secciones de Bloque de Ranking */
@@ -495,7 +410,7 @@ export interface ExperienceRankingRow {
       padding: 0.25rem 0.65rem;
       background: rgba(255, 255, 255, 0.06);
       border: 1px solid rgba(255, 255, 255, 0.14);
-      border-radius: 999px;
+      border-radius: 2px;
       color: rgba(255, 255, 255, 0.8);
     }
 
@@ -876,8 +791,6 @@ export class AdminRankingComponent {
   private readonly ratingService = inject(ProviderRatingService);
   private readonly favoritesService = inject(FavoritesService);
 
-  readonly activeTab = signal<RankingTab>('all');
-
   // Ranking ordenado de prestadores por puntaje y cantidad de votos
   readonly providerRanking = computed<ProviderRankingRow[]>(() => {
     const providers = this.adminStore.providerStore.providers();
@@ -886,7 +799,9 @@ export class AdminRankingComponent {
     const rows = providers.map((p) => {
       const rating = this.ratingService.getRating(p);
       const activeCount = experiences.filter(
-        (e) => (e.providerId === p.id || e.providerSlug === p.slug) && e.status === 'publicada',
+        (e) =>
+          (e.providerId === p.id || (Boolean(p.slug) && e.providerSlug === p.slug)) &&
+          e.status === 'publicada',
       ).length;
 
       return {

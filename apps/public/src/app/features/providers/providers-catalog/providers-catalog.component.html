@@ -143,44 +143,23 @@
                         {{ p.bio || 'Prestador oficial verificado por el Club de Experiencias para salidas guiadas y expediciones en territorio andino.' }}
                       </p>
 
-                      <!-- Meta / Salidas activas -->
+                      <!-- Meta / Stats del Prestador (estilo experiencias) -->
                       <div class="card-stats-row">
-                        <span class="stat-pill-info">
-                          @let count = getExperiencesCount(p);
-                          {{ count }} {{ count === 1 ? 'salida activa' : 'salidas activas' }}
-                        </span>
-                        <span class="rubro-pill-tag">
-                          {{ getProviderRubro(p) }}
-                        </span>
-                      </div>
-
-                      <!-- Redes o Web (si están disponibles) -->
-                      @if (p.socialMedia || p.website) {
-                        <div class="card-social-strip">
-                          @if (p.socialMedia) {
-                            <a
-                              [href]="cleanSocialUrl(p.socialMedia)"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              class="social-pill"
-                              [title]="'Abrir ' + p.socialMedia"
-                            >
-                              <span>{{ socialHandle(p.socialMedia) }}</span>
-                            </a>
-                          }
-                          @if (p.website) {
-                            <a
-                              [href]="cleanSocialUrl(p.website)"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              class="social-pill"
-                              [title]="'Sitio Web oficial ' + p.website"
-                            >
-                              <span>Sitio Web</span>
-                            </a>
-                          }
+                        <div class="stats-top-row">
+                          <span class="stat-text">
+                            @let count = getExperiencesCount(p);
+                            {{ count }} {{ count === 1 ? 'salida activa' : 'salidas activas' }}
+                          </span>
+                          <span class="stat-text stat-region" [title]="'Región principal: ' + getProviderRegion(p)">
+                            Región: <strong class="stat-bold">{{ getProviderRegion(p) }}</strong>
+                          </span>
                         </div>
-                      }
+                        <div class="stats-bottom-row" [title]="'Rubro: ' + getProviderRubro(p)">
+                          <span class="stat-text stat-rubro">
+                            Rubro: <strong class="stat-bold">{{ getProviderRubro(p) }}</strong>
+                          </span>
+                        </div>
+                      </div>
 
                       <!-- Botón de acción al Perfil Público -->
                       <div class="card-footer-action">
@@ -211,7 +190,7 @@
               <input
                 type="text"
                 class="filter-search-input"
-                placeholder="Buscar por nombre, agencia, especialidad o biografía..."
+                placeholder="Buscar por nombre, agencia, especialidad, región o biografía..."
                 [value]="searchQuery()"
                 (input)="searchQuery.set($any($event.target).value)"
               />
@@ -347,45 +326,22 @@
                         {{ p.bio || 'Prestador oficial verificado por el Club de Experiencias para salidas guiadas y expediciones en territorio andino.' }}
                       </p>
 
-                      <!-- Metadata y Rubro -->
-                      <div class="horizontal-meta-row">
-                        <span class="meta-tag-rubro">
-                          {{ getProviderRubro(p) }}
-                        </span>
-                        <span class="meta-tag-count">
-                          @let count = getExperiencesCount(p);
-                          {{ count }} {{ count === 1 ? 'salida activa' : 'salidas activas' }}
-                        </span>
-                        <span class="meta-tag-rating">
-                          {{ getProviderRating(p).count }} {{ getProviderRating(p).count === 1 ? 'voto' : 'votos' }}
-                        </span>
-                      </div>
-
-                      <!-- Fila inferior: Redes Sociales y Botón de Acción -->
+                      <!-- Fila inferior: Metadata y Botón de Acción -->
                       <div class="horizontal-actions-row">
-                        <div class="horizontal-social-strip">
-                          @if (p.socialMedia) {
-                            <a
-                              [href]="cleanSocialUrl(p.socialMedia)"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              class="social-pill"
-                              [title]="'Abrir ' + p.socialMedia"
-                            >
-                              <span>{{ socialHandle(p.socialMedia) }}</span>
-                            </a>
-                          }
-                          @if (p.website) {
-                            <a
-                              [href]="cleanSocialUrl(p.website)"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              class="social-pill"
-                              [title]="'Sitio Web oficial ' + p.website"
-                            >
-                              <span>Sitio Web</span>
-                            </a>
-                          }
+                        <div class="horizontal-meta-row">
+                          <span class="meta-tag-rubro" [title]="getProviderRubro(p)">
+                            {{ getProviderRubro(p) }}
+                          </span>
+                          <span class="meta-tag-region" [title]="'Región principal: ' + getProviderRegion(p)">
+                            {{ getProviderRegion(p) }}
+                          </span>
+                          <span class="meta-tag-count">
+                            @let count = getExperiencesCount(p);
+                            {{ count }} {{ count === 1 ? 'salida activa' : 'salidas activas' }}
+                          </span>
+                          <span class="meta-tag-rating">
+                            {{ getProviderRating(p).count }} {{ getProviderRating(p).count === 1 ? 'voto' : 'votos' }}
+                          </span>
                         </div>
 
                         <a [routerLink]="['/prestadores', getProviderSlug(p)]" class="btn-view-profile-horizontal">

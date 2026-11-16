@@ -10,7 +10,7 @@ describe('HeaderComponent', () => {
     localStorage.clear();
     await TestBed.configureTestingModule({
       imports: [HeaderComponent],
-      providers: [provideRouter([])],
+      providers: [provideRouter([{ path: 'perfil', component: HeaderComponent }])],
     }).compileComponents();
 
     fixture = TestBed.createComponent(HeaderComponent);
@@ -47,5 +47,32 @@ describe('HeaderComponent', () => {
     expect(component.mobileMenuOpen()).toBe(true);
     component.closeMobileMenu();
     expect(component.mobileMenuOpen()).toBe(false);
+  });
+
+  it('should render toast notification with yellow Ver Favoritos button when an experience is removed from favorites', () => {
+    component.favoritesService.showToast({
+      title: 'Trekking Laguna Blanca',
+      slug: 'trekking-laguna-blanca',
+      action: 'removed',
+    });
+    fixture.detectChanges();
+
+    const toast = fixture.nativeElement.querySelector('.fav-toast-banner');
+    expect(toast).toBeTruthy();
+    expect(toast.classList.contains('is-removed-toast')).toBe(true);
+
+    const heading = toast.querySelector('.fav-toast-heading');
+    expect(heading.textContent).toContain('¡Quitada de tus favoritos!');
+
+    const text = toast.querySelector('.fav-toast-text');
+    expect(text.textContent).toContain('Quitaste "Trekking Laguna Blanca" de tus actividades preferidas.');
+
+    const btn = toast.querySelector('.fav-toast-btn');
+    expect(btn).toBeTruthy();
+    expect(btn.textContent).toContain('Ver Favoritos');
+
+    btn.click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.fav-toast-banner')).toBeFalsy();
   });
 });

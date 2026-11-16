@@ -12,12 +12,26 @@ export interface ProviderRatingData {
   userVote?: number;
 }
 
+export interface ProviderVoteItem {
+  socioEmail: string;
+  score: number;
+  comment?: string;
+  createdAt?: string;
+}
+
+export interface ProviderVotesResult {
+  votes: ProviderVoteItem[];
+  status: 'complete' | 'partial' | 'unavailable';
+  error?: string;
+}
+
 interface StoredRatingRecord {
   baseScore: number;
   baseCount: number;
   userVotes: Record<string, number>; // voterKey -> stars (1..5)
   committedVotes?: Record<string, number>; // voterKey -> stars (restaurados o confirmados en DB)
   pendingVotes?: Record<string, number>; // voterKey -> stars (pendientes no incluidos en conteo remoto)
+  voteTimestamps?: Record<string, string>; // voterKey -> ISO date string de cuándo se emitió el voto
 }
 
 @Injectable({
@@ -89,6 +103,7 @@ export class ProviderRatingService {
             item.committedVotes = item.committedVotes || {};
             item.pendingVotes = item.pendingVotes || {};
           }
+          item.voteTimestamps = item.voteTimestamps || {};
         }
       }
       return parsed;
@@ -271,6 +286,143 @@ export class ProviderRatingService {
     return this.getRating(provider).userVote || 0;
   }
 
+  async getProviderVotes(
+    provider: ProviderUser | { slug?: string; id?: string; email?: string },
+  ): Promise<ProviderVotesResult> {
+    const votesList: ProviderVoteItem[] = [];
+    const seenEmails = new Set<string>();
+    let remoteFailed = false;
+    let remoteErrorMessage = '';
+
+    // 1. Intentar cargar desde Supabase si está disponible
+    if (isSupabaseConfigured()) {
+      let targetUuid: string | null = null;
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (provider.id && uuidRegex.test(provider.id)) {
+        targetUuid = provider.id;
+      } else if (provider.email || provider.slug) {
+        try {
+          let q = (this.supabase as any).from('prestadores').select('id');
+          if (provider.email) {
+            q = q.eq('email', provider.email.trim().toLowerCase());
+          } else if (provider.slug) {
+            q = q.eq('slug', provider.slug.trim().toLowerCase());
+          }
+          const { data: pRow, error: pErr } = await q.maybeSingle();
+          if (pErr) {
+            throw pErr;
+          }
+          if (pRow?.id && uuidRegex.test(pRow.id)) {
+            targetUuid = pRow.id;
+          }
+        } catch (lookupErr: any) {
+          remoteFailed = true;
+          remoteErrorMessage = lookupErr?.message || 'Error al resolver prestador en base de datos';
+          console.warn('[ProviderRatingService] Error al resolver prestador para votos:', lookupErr);
+        }
+      }
+
+      if (!remoteFailed && targetUuid) {
+        try {
+          let data: any[] | null = null;
+          let fetchError: any = null;
+
+          // 1. Intentar RPC protegida para administradores autorizados
+          const { data: rpcData, error: rpcError } = await (this.supabase as any).rpc(
+            'get_calificaciones_prestador_admin',
+            { p_prestador_id: targetUuid },
+          );
+
+          if (!rpcError && Array.isArray(rpcData)) {
+            data = rpcData;
+          } else {
+            // 2. Fallback de compatibilidad (ej. entorno de tests/mocks)
+            const { data: tableData, error: tableErr } = await (this.supabase.from('calificaciones_prestadores') as any)
+              .select('id, socio_email, score, comentario, created_at')
+              .eq('prestador_id', targetUuid)
+              .order('created_at', { ascending: false });
+            data = tableData;
+            fetchError = tableErr;
+          }
+
+          if (fetchError && !data) {
+            throw fetchError;
+          }
+
+          if (Array.isArray(data)) {
+            for (const r of data) {
+              const email = (r.socio_email || '').trim().toLowerCase();
+              if (email) {
+                seenEmails.add(email);
+                votesList.push({
+                  socioEmail: email,
+                  score: Number(r.score) || 5,
+                  comment: r.comentario || '',
+                  createdAt: r.created_at,
+                });
+              }
+            }
+          }
+        } catch (fetchErr: any) {
+          remoteFailed = true;
+          remoteErrorMessage = fetchErr?.message || 'Error al obtener votos remotos';
+          console.warn('[ProviderRatingService] Error al obtener votos remotos:', fetchErr);
+        }
+      }
+    }
+
+    // 2. Complementar con votos en almacenamiento reactivo local (ratingsMap)
+    const key = this.getProviderKey(provider);
+    const stored = this.ratingsMap()[key];
+    if (stored) {
+      const userVotes = {
+        ...(stored.committedVotes || {}),
+        ...(stored.pendingVotes || {}),
+        ...(stored.userVotes || {}),
+      };
+      for (const [vKey, score] of Object.entries(userVotes)) {
+        let email = '';
+        if (vKey.startsWith('user:')) {
+          email = vKey.replace('user:', '').trim().toLowerCase();
+        } else if (vKey.includes('@')) {
+          email = vKey.trim().toLowerCase();
+        } else {
+          email = `socio.${vKey.replace(/[^a-zA-Z0-9]/g, '').slice(0, 8)}@experiencias.club`;
+        }
+        if (email && !seenEmails.has(email)) {
+          seenEmails.add(email);
+          const originalTimestamp = stored.voteTimestamps?.[vKey];
+          votesList.push({
+            socioEmail: email,
+            score: Number(score) || 5,
+            comment: '',
+            ...(originalTimestamp ? { createdAt: originalTimestamp } : {}),
+          });
+        }
+      }
+    }
+
+    if (remoteFailed) {
+      if (votesList.length === 0) {
+        return {
+          votes: [],
+          status: 'unavailable',
+          error: remoteErrorMessage || 'No se pudieron obtener las valoraciones del servidor',
+        };
+      }
+      return {
+        votes: votesList,
+        status: 'partial',
+        error: remoteErrorMessage || 'Mostrando valoraciones locales; no se pudo sincronizar con el servidor',
+      };
+    }
+
+    return {
+      votes: votesList,
+      status: 'complete',
+    };
+  }
+
   async rateProvider(
     provider: ProviderUser | { slug?: string; id?: string; agency?: string; name?: string; email?: string },
     stars: number,
@@ -344,10 +496,16 @@ export class ProviderRatingService {
       [voterKey]: cleanStars,
     };
 
+    const updatedVoteTimestamps = {
+      ...(existing.voteTimestamps || {}),
+      [voterKey]: new Date().toISOString(),
+    };
+
     currentMap[key] = {
       ...existing,
       userVotes: updatedUserVotes,
       pendingVotes: updatedPendingVotes,
+      voteTimestamps: updatedVoteTimestamps,
     };
 
     // Propagar a aliases conocidos si existen en el objeto provider

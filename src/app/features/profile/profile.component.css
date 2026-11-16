@@ -1761,6 +1761,101 @@
   letter-spacing: 0.04em;
 }
 
+/* Carrusel de Experiencias Favoritas */
+.carousel-nav-arrows {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 2px;
+}
+
+.carousel-nav-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 212, 42, 0.35);
+  color: #ffd42a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.carousel-nav-btn:hover:not(:disabled) {
+  background: #ffcc00;
+  border-color: #ffcc00;
+  color: #0b1120;
+  transform: scale(1.06);
+  box-shadow: 0 0 16px rgba(255, 204, 0, 0.45);
+}
+
+.carousel-nav-btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.carousel-nav-btn:disabled,
+.carousel-nav-btn.is-disabled-nav {
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
+}
+
+.carousel-nav-btn mat-icon {
+  font-size: 24px;
+  width: 24px;
+  height: 24px;
+}
+
+.fav-carousel-wrap {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  margin-bottom: 0.6rem;
+}
+
+.fav-carousel-track {
+  display: flex;
+  gap: 1.5rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  padding: 0.5rem 0 0.5rem;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.fav-carousel-track::-webkit-scrollbar {
+  display: none;
+}
+
+.fav-card-item.carousel-item {
+  flex: 0 0 calc((100% - 3rem) / 2.5);
+  width: calc((100% - 3rem) / 2.5);
+  min-width: 280px;
+  max-width: 420px;
+  scroll-snap-align: start;
+  box-sizing: border-box;
+}
+
+@media (max-width: 960px) {
+  .fav-card-item.carousel-item {
+    flex: 0 0 calc((100% - 1.5rem) / 1.5);
+    width: calc((100% - 1.5rem) / 1.5);
+    min-width: 260px;
+  }
+}
+
+@media (max-width: 640px) {
+  .fav-card-item.carousel-item {
+    flex: 0 0 calc((100% - 1rem) / 1.2);
+    width: calc((100% - 1rem) / 1.2);
+    min-width: 240px;
+  }
+}
+
 .favorites-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));

@@ -5,7 +5,7 @@ import { ProviderStoreService } from '../../../core/services/provider-store.serv
 import { ExperienceService } from '../../../core/services/experience.service';
 import { NewsletterService } from '../../../core/services/newsletter.service';
 import { ActivityHistoryService } from '../../../core/services/activity-history.service';
-import { ProviderUser } from '../../../core/models/provider.model';
+import { ProviderUser } from '../../../core/models/bank-transfer.model';
 import { Experience } from '../../../core/models/experience.model';
 import { signal } from '@angular/core';
 

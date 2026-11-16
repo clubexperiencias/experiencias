@@ -11,6 +11,7 @@ export interface FavoriteToastInfo {
   title: string;
   slug: string;
   requireAuth?: boolean;
+  action?: 'added' | 'removed';
 }
 
 @Injectable({
@@ -278,7 +279,12 @@ export class FavoritesService {
       this.persistFavorites(updated);
       this.syncWithMemberProfile(updated);
       this.callToggleRemoteFavorite(this.resolveExperienceId(exp));
-      this.dismissToast();
+      this.showToast({
+        title: exp.title || 'Experiencia',
+        slug: exp.slug || slug,
+        requireAuth: false,
+        action: 'removed',
+      });
       return false;
     } else {
       // Agregar a favoritos
@@ -295,6 +301,7 @@ export class FavoritesService {
         title: exp.title || 'Experiencia',
         slug: exp.slug || slug,
         requireAuth: false,
+        action: 'added',
       });
       return true;
     }
@@ -321,6 +328,13 @@ export class FavoritesService {
     this.persistFavorites(updated);
     this.syncWithMemberProfile(updated);
     this.callToggleRemoteFavorite(this.resolveExperienceId(exp));
+
+    this.showToast({
+      title: exp.title || 'Experiencia',
+      slug: exp.slug || slug,
+      requireAuth: false,
+      action: 'removed',
+    });
   }
 
   private resolveExperienceId(exp: Experience | string): string {

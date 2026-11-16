@@ -260,21 +260,6 @@ import {
                 />
               </div>
 
-              <div class="form-group full-col">
-                <label class="form-label">Descripción Atractiva del Emprendimiento <span class="req-star">*</span></label>
-                <textarea
-                  formControlName="bio"
-                  class="form-input form-textarea"
-                  rows="3"
-                  placeholder="Contá a los exploradores sobre tu trayectoria, guías certificados y qué hace únicas a tus salidas..."
-                  required
-                ></textarea>
-                <span class="field-hint"
-                  >Esta descripción se presentará en tu ficha técnica y en tu perfil público
-                  oficial.</span
-                >
-              </div>
-
               <div class="form-group media-field-group">
                 <label class="form-label">Foto de Perfil / Logo</label>
                 <div class="media-input-wrapper">
@@ -363,6 +348,21 @@ import {
                 <span class="field-hint">Banner panorámico superior de tu perfil público.</span>
               </div>
 
+              <div class="form-group full-col">
+                <label class="form-label">Descripción Atractiva del Emprendimiento <span class="req-star">*</span></label>
+                <textarea
+                  formControlName="bio"
+                  class="form-input form-textarea"
+                  rows="3"
+                  placeholder="Contá a los exploradores sobre tu trayectoria, guías certificados y qué hace únicas a tus salidas..."
+                  required
+                ></textarea>
+                <span class="field-hint"
+                  >Esta descripción se presentará en tu ficha técnica y en tu perfil público
+                  oficial.</span
+                >
+              </div>
+
               <div class="form-group">
                 <label class="form-label"
                   >Teléfono / WhatsApp de Contacto <span class="req-star">*</span></label
@@ -437,13 +437,32 @@ import {
           </div>
 
           @if (savedSuccess()) {
-            <div class="alert-success" role="status">
-              <mat-icon class="alert-icon">check_circle</mat-icon>
-              <span
-                >¡Perfil y datos bancarios actualizados correctamente! El historial de cambios ha
-                sido registrado.</span
-              >
-            </div>
+            <aside class="fav-toast-banner" role="status" aria-live="polite">
+              <div class="fav-toast-progress-track" aria-hidden="true">
+                <div class="fav-toast-progress-fill"></div>
+              </div>
+              <div class="fav-toast-left">
+                <div class="fav-toast-icon-circle">
+                  <mat-icon>check_circle</mat-icon>
+                </div>
+                <div class="fav-toast-info">
+                  <strong class="fav-toast-heading">¡Perfil actualizado!</strong>
+                  <p class="fav-toast-text">
+                    ¡Perfil y datos bancarios actualizados correctamente!
+                  </p>
+                </div>
+              </div>
+              <div class="fav-toast-actions">
+                <a
+                  [href]="getPublicProfileUrl(committedSlug() || currentSlug())"
+                  class="fav-toast-btn"
+                  (click)="savedSuccess.set(false)"
+                  title="Ver mi perfil público de prestador"
+                >
+                  <span>Ver Perfil</span>
+                </a>
+              </div>
+            </aside>
           }
 
           @if (errorMessage()) {
@@ -1148,6 +1167,148 @@ import {
           text-align: center;
         }
       }
+
+      /* Toast de Notificación Flotante Estilo Favoritos */
+      .fav-toast-banner {
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        z-index: 99999;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1.25rem;
+        padding: 0.95rem 1.35rem;
+        background: rgba(15, 23, 42, 0.94);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(16, 185, 129, 0.45);
+        border-radius: 8px;
+        box-shadow: 0 12px 35px rgba(0, 0, 0, 0.5), 0 0 20px rgba(16, 185, 129, 0.2);
+        animation: slideUpFavToast 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        max-width: 520px;
+        box-sizing: border-box;
+        overflow: hidden;
+      }
+      .fav-toast-progress-track {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: hsla(0, 0%, 100%, 0.1);
+        overflow: hidden;
+        display: flex;
+        justify-content: center;
+        z-index: 10;
+      }
+      .fav-toast-progress-fill {
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, #10b981, #ffffff, #10b981);
+        box-shadow: 0 0 10px rgba(16, 185, 129, 0.7);
+        border-radius: 999px;
+        animation: favToastDrainCenter 5s linear forwards;
+      }
+      @keyframes favToastDrainCenter {
+        from {
+          width: 100%;
+        }
+        to {
+          width: 0%;
+        }
+      }
+      @keyframes slideUpFavToast {
+        from {
+          opacity: 0;
+          transform: translateY(16px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .fav-toast-left {
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
+        min-width: 0;
+      }
+      .fav-toast-icon-circle {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        background: rgba(16, 185, 129, 0.16);
+        border: 1px solid rgba(16, 185, 129, 0.35);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .fav-toast-icon-circle mat-icon {
+        color: #10b981;
+        font-size: 20px;
+        width: 20px;
+        height: 20px;
+      }
+      .fav-toast-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+        min-width: 0;
+      }
+      .fav-toast-heading {
+        font-size: 0.88rem;
+        font-weight: 800;
+        color: #ffffff;
+        line-height: 1.2;
+      }
+      .fav-toast-text {
+        font-size: 0.78rem;
+        color: rgba(255, 255, 255, 0.75);
+        margin: 0;
+        line-height: 1.35;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 280px;
+      }
+      .fav-toast-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        flex-shrink: 0;
+      }
+      .fav-toast-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.48rem 0.95rem;
+        background: #ffcc00;
+        border: 1px solid #ffcc00;
+        border-radius: 4px;
+        color: #ffffff !important;
+        font-size: 0.78rem;
+        font-weight: 800;
+        text-decoration: none;
+        white-space: nowrap;
+        transition: all 0.18s ease;
+        box-shadow: 0 2px 10px rgba(255, 204, 0, 0.35);
+        cursor: pointer;
+      }
+      .fav-toast-btn:hover {
+        background: #ffda33;
+        border-color: #ffda33;
+        transform: translateY(-1px);
+      }
+      @media (max-width: 600px) {
+        .fav-toast-banner {
+          left: 1rem;
+          right: 1rem;
+          bottom: 1rem;
+          max-width: none;
+        }
+      }
     `,
   ],
 })
@@ -1159,6 +1320,7 @@ export class ProviderProfileComponent implements OnInit {
   readonly storageService = inject(StorageService);
 
   readonly savedSuccess = signal(false);
+  readonly committedSlug = signal<string>('');
   readonly errorMessage = signal<string | null>(null);
   readonly isSaving = signal(false);
   readonly isUploadingAvatar = signal(false);
@@ -1335,6 +1497,7 @@ export class ProviderProfileComponent implements OnInit {
 
     this.isSaving.set(false);
     if (result.success) {
+      this.committedSlug.set(values.slug);
       this.savedSuccess.set(true);
       setTimeout(() => this.savedSuccess.set(false), 5000);
     } else {

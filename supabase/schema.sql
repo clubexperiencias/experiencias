@@ -1108,20 +1108,6 @@ CREATE TABLE IF NOT EXISTS public.experiencias_favoritas (
   created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Migración segura si la tabla fue creada previamente como experiencias_favoritos
-DO $$
-BEGIN
-  IF EXISTS (
-    SELECT 1 FROM information_schema.tables 
-    WHERE table_schema = 'public' AND table_name = 'experiencias_favoritos'
-  ) AND NOT EXISTS (
-    SELECT 1 FROM information_schema.tables 
-    WHERE table_schema = 'public' AND table_name = 'experiencias_favoritas'
-  ) THEN
-    ALTER TABLE public.experiencias_favoritos RENAME TO experiencias_favoritas;
-  END IF;
-END $$;
-
 CREATE INDEX IF NOT EXISTS idx_exp_fav_socio_email   ON public.experiencias_favoritas(socio_email);
 CREATE INDEX IF NOT EXISTS idx_exp_fav_experience_id ON public.experiencias_favoritas(experience_id);
 CREATE INDEX IF NOT EXISTS idx_exp_fav_socio_id      ON public.experiencias_favoritas(socio_id);
@@ -1139,8 +1125,35 @@ EXCEPTION
   WHEN OTHERS THEN NULL;
 END $$;
 
+-- Migración segura si la tabla fue creada previamente como tabla física experiencias_favoritos
+DO $$
+DECLARE
+  v_relkind "char";
+BEGIN
+  SELECT c.relkind INTO v_relkind
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE n.nspname = 'public' AND c.relname = 'experiencias_favoritos';
+
+  IF v_relkind = 'r' THEN
+    -- Si existía como tabla física, copiar datos no existentes a experiencias_favoritas
+    BEGIN
+      INSERT INTO public.experiencias_favoritas (socio_id, socio_email, experience_id, created_at)
+      SELECT socio_id, socio_email, experience_id, created_at
+      FROM public.experiencias_favoritos
+      ON CONFLICT (socio_email, experience_id) DO NOTHING;
+    EXCEPTION
+      WHEN OTHERS THEN NULL;
+    END;
+
+    -- Eliminar la tabla física para permitir crear la vista retrocompatible
+    EXECUTE 'DROP TABLE public.experiencias_favoritos CASCADE';
+  END IF;
+END $$;
+
 -- Vista retrocompatible para referencias heredadas
-CREATE OR REPLACE VIEW public.experiencias_favoritos AS
+DROP VIEW IF EXISTS public.experiencias_favoritos CASCADE;
+CREATE VIEW public.experiencias_favoritos AS
   SELECT * FROM public.experiencias_favoritas;
 
 -- ==============================================================================
@@ -3138,6 +3151,52 @@ BEGIN
 END;
 $$;
 
+-- Obtener votos y reseñas detalladas de un prestador (solo administradores autorizados)
+CREATE OR REPLACE FUNCTION public.get_calificaciones_prestador_admin(
+  p_prestador_id UUID
+)
+RETURNS TABLE (
+  id UUID,
+  prestador_id UUID,
+  socio_id UUID,
+  socio_email TEXT,
+  score INTEGER,
+  comentario TEXT,
+  experience_id TEXT,
+  created_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  -- Caller authorization: Solo administradores activos
+  IF NOT EXISTS (
+    SELECT 1 FROM public.administradores
+    WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+      AND active = true
+  ) THEN
+    RAISE EXCEPTION 'Acceso denegado: solo administradores activos pueden consultar el detalle de votantes';
+  END IF;
+
+  RETURN QUERY
+  SELECT
+    cp.id,
+    cp.prestador_id,
+    cp.socio_id,
+    cp.socio_email,
+    cp.score,
+    cp.comentario,
+    cp.experience_id,
+    cp.created_at,
+    cp.updated_at
+  FROM public.calificaciones_prestadores cp
+  WHERE cp.prestador_id = p_prestador_id
+  ORDER BY cp.created_at DESC;
+END;
+$$;
+
 -- Permisos de ejecución de RPCs
 GRANT EXECUTE ON FUNCTION public.record_waitlist_email TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_admin_socios_roster TO authenticated;
@@ -3167,6 +3226,9 @@ GRANT EXECUTE ON FUNCTION public.toggle_experiencia_favorito(TEXT) TO authentica
 
 REVOKE EXECUTE ON FUNCTION public.get_my_provider_ratings() FROM anon;
 GRANT EXECUTE ON FUNCTION public.get_my_provider_ratings() TO authenticated;
+
+REVOKE EXECUTE ON FUNCTION public.get_calificaciones_prestador_admin(UUID) FROM anon;
+GRANT EXECUTE ON FUNCTION public.get_calificaciones_prestador_admin(UUID) TO authenticated;
 
 -- ==============================================================================
 -- 6. ROW LEVEL SECURITY (RLS) Y POLÍTICAS

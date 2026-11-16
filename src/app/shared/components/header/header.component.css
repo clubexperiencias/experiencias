@@ -147,7 +147,6 @@ mat-icon.btn-icon {
    ========================================================================== */
 .nav-pill-btn.profile-btn,
 .login-nav-btn {
-  display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
   height: 38px !important;
@@ -165,10 +164,44 @@ mat-icon.btn-icon {
   text-transform: uppercase !important;
   box-shadow: none !important;
   cursor: pointer !important;
+  box-sizing: border-box !important;
   transition:
     background-color 0.2s ease,
     color 0.2s ease,
     border-color 0.2s ease !important;
+}
+
+.login-nav-btn {
+  display: inline-flex !important;
+}
+
+/* El botón Mi Perfil iguala exactamente el ancho de cuando dice CERRAR SESIÓN para evitar layout shift en el header */
+.nav-pill-btn.profile-btn {
+  display: inline-grid !important;
+  grid-template-columns: 1fr;
+  justify-items: center !important;
+  text-align: center;
+}
+
+.nav-pill-btn.profile-btn::before {
+  content: 'Cerrar Sesión';
+  grid-area: 1 / 1;
+  visibility: hidden;
+  height: 0;
+  line-height: 0;
+  pointer-events: none;
+  user-select: none;
+  overflow: hidden;
+  font: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+
+.nav-pill-btn.profile-btn span {
+  grid-area: 1 / 1;
+  white-space: nowrap;
 }
 
 .nav-pill-btn.profile-btn::after,
@@ -635,6 +668,16 @@ mat-icon.btn-icon {
   white-space: normal;
 }
 
+/* Variante de notificación: Experiencia eliminada de favoritos */
+.fav-toast-banner.is-removed-toast {
+  border-color: rgba(148, 163, 184, 0.4);
+}
+
+.fav-toast-banner.is-removed-toast .fav-toast-progress-fill {
+  background: linear-gradient(90deg, #94a3b8, #ffffff, #94a3b8);
+  box-shadow: 0 0 10px rgba(148, 163, 184, 0.7);
+}
+
 /* Barra de progreso de cuenta regresiva estilo Manifiesto (drena hacia el centro en 6s) */
 .fav-toast-progress-track {
   position: absolute;
@@ -713,6 +756,15 @@ mat-icon.btn-icon {
   color: #ffaa00;
 }
 
+.fav-toast-icon-circle.is-removed-circle {
+  background: rgba(148, 163, 184, 0.16);
+  border-color: rgba(148, 163, 184, 0.35);
+}
+
+.fav-toast-icon-circle.is-removed-circle mat-icon {
+  color: #94a3b8;
+}
+
 .fav-toast-info {
   display: flex;
   flex-direction: column;
@@ -754,8 +806,8 @@ mat-icon.btn-icon {
   align-items: center;
   gap: 0.4rem;
   padding: 0.48rem 0.95rem;
-  background: #ff5f00;
-  border: 1px solid #ff5f00;
+  background: #ffcc00;
+  border: 1px solid #ffcc00;
   border-radius: 4px;
   color: #ffffff !important;
   font-size: 0.78rem;
@@ -763,7 +815,7 @@ mat-icon.btn-icon {
   text-decoration: none;
   white-space: nowrap;
   transition: all 0.18s ease;
-  box-shadow: 0 2px 10px rgba(255, 95, 0, 0.35);
+  box-shadow: 0 2px 10px rgba(255, 204, 0, 0.35);
 }
 
 .fav-toast-btn span {
@@ -778,10 +830,10 @@ mat-icon.btn-icon {
 }
 
 .fav-toast-btn:hover {
-  background: #ff7722;
-  border-color: #ff7722;
+  background: #ffd633;
+  border-color: #ffd633;
   transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(255, 95, 0, 0.45);
+  box-shadow: 0 4px 14px rgba(255, 204, 0, 0.45);
 }
 
 @media (max-width: 640px) {

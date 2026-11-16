@@ -3,7 +3,7 @@ import { provideRouter } from '@angular/router';
 import { AdminExperiencesComponent } from './admin-experiences.component';
 import { AdminStoreService } from '../../../core/services/admin-store.service';
 import { Experience } from '../../../core/models/experience.model';
-import { ProviderUser } from '../../../core/models/provider.model';
+import { ProviderUser } from '../../../core/models/bank-transfer.model';
 import { signal } from '@angular/core';
 
 describe('AdminExperiencesComponent - Mercado Pago Precedence', () => {

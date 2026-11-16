@@ -10,7 +10,7 @@ import {
   ApplicationStatus,
   ExperienceProposalRequest,
 } from '../../../core/services/admin-store.service';
-import { TransferSubmission } from '../../../core/models/bank-transfer.model';
+import { TransferSubmission, ProviderUser } from '../../../core/models/bank-transfer.model';
 import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
 import { slugify } from '../../../core/services/provider-store.service';
 import { ExperienceService } from '../../../core/services/experience.service';
@@ -380,8 +380,8 @@ import { FavoritesService } from '../../../core/services/favorites.service';
                   <tr [class.row-pending]="req.status === 'pendiente'">
                     <td>
                       <div class="cell-stack">
-                        <strong class="row-name">{{ req.providerName }}</strong>
-                        <span class="row-sub">{{ req.providerAgency }}</span>
+                        <strong class="row-name">{{ getProposalAgencyName(req) }}</strong>
+                        <span class="row-sub">{{ getProposalResponsibleName(req) }}</span>
                       </div>
                     </td>
                     <td>
@@ -394,7 +394,7 @@ import { FavoritesService } from '../../../core/services/favorites.service';
                         />
                         <div class="exp-cell-text">
                           <strong class="exp-title-cell">{{ req.title }}</strong>
-                          <span class="exp-kicker-sub">{{ req.kicker }}</span>
+                          <span class="exp-kicker-sub">{{ getProposalProviderTier(req) }}</span>
                         </div>
                       </div>
                     </td>
@@ -547,7 +547,7 @@ import { FavoritesService } from '../../../core/services/favorites.service';
           </div>
           <a [routerLink]="getAdminRankingRoute()" class="view-all-link">
             <span>Ver Ranking Completo</span>
-            <mat-icon class="icon-inline">arrow_forward</mat-icon>
+            <mat-icon class="icon-inline">north_east</mat-icon>
           </a>
         </div>
 
@@ -566,7 +566,7 @@ import { FavoritesService } from '../../../core/services/favorites.service';
               <table class="dash-table">
                 <thead>
                   <tr>
-                    <th style="width: 48px;">#</th>
+                    <th style="width: 36px;">#</th>
                     <th>Prestador Oficial</th>
                     <th class="text-right">Calificación</th>
                   </tr>
@@ -575,7 +575,7 @@ import { FavoritesService } from '../../../core/services/favorites.service';
                   @for (prov of topRatedProviders(); track prov.slug; let idx = $index) {
                     <tr>
                       <td>
-                        <span class="rank-pos-pill" [class.gold]="idx === 0" [class.silver]="idx === 1" [class.bronze]="idx === 2">
+                        <span class="rank-pos-pill">
                           {{ idx + 1 }}
                         </span>
                       </td>
@@ -616,7 +616,7 @@ import { FavoritesService } from '../../../core/services/favorites.service';
               <table class="dash-table">
                 <thead>
                   <tr>
-                    <th style="width: 48px;">#</th>
+                    <th style="width: 36px;">#</th>
                     <th>Experiencia</th>
                     <th class="text-right">Favoritos</th>
                   </tr>
@@ -625,7 +625,7 @@ import { FavoritesService } from '../../../core/services/favorites.service';
                   @for (exp of topFavoritedExperiences(); track exp.slug; let idx = $index) {
                     <tr>
                       <td>
-                        <span class="rank-pos-pill" [class.gold]="idx === 0" [class.silver]="idx === 1" [class.bronze]="idx === 2">
+                        <span class="rank-pos-pill">
                           {{ idx + 1 }}
                         </span>
                       </td>
@@ -881,11 +881,11 @@ import { FavoritesService } from '../../../core/services/favorites.service';
             <!-- Cabecera -->
             <div class="modal-head">
               <div class="modal-head-info">
-                <span class="modal-kicker">{{ expReq.kicker }}</span>
+                <span class="modal-kicker">{{ getProposalProviderTier(expReq) }}</span>
                 <h2 class="modal-title">{{ expReq.title }}</h2>
                 <p class="modal-sub-author">
-                  Propuesta de <strong>{{ expReq.providerName }}</strong> ({{
-                    expReq.providerAgency
+                  Propuesta de <strong>{{ getProposalResponsibleName(expReq) }}</strong> ({{
+                    getProposalAgencyName(expReq)
                   }})
                 </p>
               </div>
@@ -1441,7 +1441,7 @@ import { FavoritesService } from '../../../core/services/favorites.service';
       .view-all-link {
         display: inline-flex;
         align-items: center;
-        gap: 0.35rem;
+        gap: 0.18rem;
         color: #ff8533;
         text-decoration: none;
         font-size: 0.82rem;
@@ -1462,6 +1462,8 @@ import { FavoritesService } from '../../../core/services/favorites.service';
       .empty-text {
         color: rgba(255, 255, 255, 0.6);
         font-size: 0.85rem;
+        text-align: center;
+        padding: 2rem 0;
         margin: 0;
       }
 
@@ -3356,13 +3358,40 @@ import { FavoritesService } from '../../../core/services/favorites.service';
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 1.5rem;
-        margin-top: 1.25rem;
+        margin-top: -0.15rem;
       }
 
       @media (max-width: 900px) {
         .ranking-dash-grid {
           grid-template-columns: 1fr;
         }
+      }
+
+      .dash-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.85rem;
+        text-align: left;
+      }
+
+      .dash-table th {
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.5);
+        padding: 0.55rem 0.65rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .dash-table td {
+        padding: 0.7rem 0.65rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        vertical-align: middle;
+      }
+
+      .dash-table th.text-right,
+      .dash-table td.text-right {
+        text-align: right;
       }
 
       .ranking-dash-col {
@@ -3415,34 +3444,15 @@ import { FavoritesService } from '../../../core/services/favorites.service';
       }
 
       .rank-pos-pill {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 26px;
-        height: 26px;
-        border-radius: 50%;
-        font-size: 0.75rem;
-        font-weight: 800;
-        background: rgba(255, 255, 255, 0.06);
-        color: rgba(255, 255, 255, 0.8);
-      }
-
-      .rank-pos-pill.gold {
-        background: rgba(250, 204, 21, 0.2);
-        color: #fde047;
-        border: 1px solid rgba(250, 204, 21, 0.4);
-      }
-
-      .rank-pos-pill.silver {
-        background: rgba(226, 232, 240, 0.2);
-        color: #f8fafc;
-        border: 1px solid rgba(226, 232, 240, 0.4);
-      }
-
-      .rank-pos-pill.bronze {
-        background: rgba(217, 119, 6, 0.2);
-        color: #fdba74;
-        border: 1px solid rgba(217, 119, 6, 0.4);
+        display: inline-block;
+        font-size: 0.88rem;
+        font-weight: 700;
+        color: #ffffff !important;
+        background: transparent !important;
+        border: none !important;
+        width: auto;
+        height: auto;
+        padding: 0;
       }
 
       .rank-entity-info {
@@ -3517,7 +3527,7 @@ export class AdminDashboardComponent {
   private readonly router = inject(Router);
   private readonly ratingService = inject(ProviderRatingService);
   private readonly favoritesService = inject(FavoritesService);
-  readonly webExperiences = this.experienceService.experiences;
+  readonly webExperiences = this.experienceService.publishedExperiences;
 
   isClub(exp?: Partial<Experience> | null): boolean {
     return isClubExperience(exp);
@@ -3985,6 +3995,158 @@ export class AdminDashboardComponent {
       return '/assets/images/kayak-club-de-experiencias.jpg';
     }
     return url;
+  }
+
+  getProposalProvider(req: ExperienceProposalRequest): ProviderUser | undefined {
+    const providers = this.store.providerStore.providers();
+
+    // 1. Resolver por ID de prestador (identificador principal)
+    if (req.providerId) {
+      const byId = providers.find((p) => p.id === req.providerId);
+      if (byId) return byId;
+    }
+
+    // 2. Resolver por Email (identificador secundario fuerte)
+    if (req.providerEmail) {
+      const cleanEmail = req.providerEmail.trim().toLowerCase();
+      const byEmail = providers.find((p) => p.email?.trim().toLowerCase() === cleanEmail);
+      if (byEmail) return byEmail;
+    }
+
+    // 3. Fallback: resolver por Nombre o Agencia solo si ninguno de los anteriores resolvió
+    if (req.providerName) {
+      const cleanName = req.providerName.trim().toLowerCase();
+      const byName = providers.find(
+        (p) =>
+          p.name?.trim().toLowerCase() === cleanName ||
+          p.agency?.trim().toLowerCase() === cleanName,
+      );
+      if (byName) return byName;
+    }
+
+    if (req.providerAgency) {
+      const cleanAgency = req.providerAgency.trim().toLowerCase();
+      const byAgency = providers.find(
+        (p) =>
+          p.agency?.trim().toLowerCase() === cleanAgency ||
+          p.name?.trim().toLowerCase() === cleanAgency,
+      );
+      if (byAgency) return byAgency;
+    }
+
+    return undefined;
+  }
+
+  private isValidAgencyOrName(val?: string | null): boolean {
+    if (!val || typeof val !== 'string') return false;
+    const trimmed = val.trim();
+    return (
+      trimmed.length > 0 &&
+      trimmed !== 'Prestador emergente del Club' &&
+      trimmed !== 'Prestador emergente del Club de Experiencias' &&
+      trimmed !== 'Prestador Oficial'
+    );
+  }
+
+  getProposalAgencyName(req: ExperienceProposalRequest): string {
+    const p = this.getProposalProvider(req);
+
+    // 1. Validar p.agency y req.providerAgency por separado para evitar que un placeholder en p.agency oculte una agencia válida en req
+    const providerAgency = (p?.agency || '').trim();
+    if (this.isValidAgencyOrName(providerAgency)) {
+      return providerAgency;
+    }
+
+    const requestAgency = (req.providerAgency || '').trim();
+    if (this.isValidAgencyOrName(requestAgency)) {
+      return requestAgency;
+    }
+
+    // 2. Fallback a nombres de prestador solo si ninguna agencia candidata es válida
+    const requestName = (req.providerName || '').trim();
+    if (this.isValidAgencyOrName(requestName)) {
+      return requestName;
+    }
+
+    const providerName = (p?.name || '').trim();
+    if (this.isValidAgencyOrName(providerName)) {
+      return providerName;
+    }
+
+    return providerAgency || requestAgency || 'Club de Experiencias';
+  }
+
+  getProposalResponsibleName(req: ExperienceProposalRequest): string {
+    const p = this.getProposalProvider(req);
+    const pName = (p?.name || '').trim();
+    if (this.isValidAgencyOrName(pName)) {
+      return pName;
+    }
+
+    const agency = this.getProposalAgencyName(req);
+    const reqName = (req.providerName || '').trim();
+    if (
+      this.isValidAgencyOrName(reqName) &&
+      reqName.toLowerCase() !== agency.toLowerCase()
+    ) {
+      return reqName;
+    }
+
+    const reqAgency = (req.providerAgency || '').trim();
+    if (
+      this.isValidAgencyOrName(reqAgency) &&
+      reqAgency.toLowerCase() !== agency.toLowerCase()
+    ) {
+      return reqAgency;
+    }
+
+    const accountHolder = (p?.accountHolder || '').trim();
+    if (this.isValidAgencyOrName(accountHolder)) {
+      return accountHolder;
+    }
+
+    return (
+      (this.isValidAgencyOrName(pName) && pName) ||
+      (this.isValidAgencyOrName(reqName) && reqName) ||
+      'Responsable de Agencia'
+    );
+  }
+
+  getProposalProviderTier(req: ExperienceProposalRequest): 'EMERGENTE' | 'PLENO' | 'FUNDADOR' {
+    const p = this.getProposalProvider(req);
+    if (!p) {
+      return 'EMERGENTE';
+    }
+
+    if (
+      p.slug === 'club-de-experiencias' ||
+      p.id === 'prov-club-oficial' ||
+      p.agency?.toLowerCase().includes('club de experiencias')
+    ) {
+      return 'FUNDADOR';
+    }
+
+    if (p.tier === 'fundador') return 'FUNDADOR';
+    if (p.tier === 'pleno') return 'PLENO';
+    if (p.tier === 'emergente') return 'EMERGENTE';
+
+    if (p.notes?.toLowerCase().includes('fundador')) {
+      return 'FUNDADOR';
+    }
+
+    const count = this.experienceService
+      .experiences()
+      .filter(
+        (e) =>
+          (e.providerId === p.id || (Boolean(p.slug) && e.providerSlug === p.slug)) &&
+          e.status === 'publicada',
+      ).length;
+
+    if (p.notes?.toLowerCase().includes('pleno') || count > 0 || p.verified) {
+      return 'PLENO';
+    }
+
+    return 'EMERGENTE';
   }
 
   onImgError(event: Event): void {

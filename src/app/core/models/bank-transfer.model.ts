@@ -44,6 +44,7 @@ export interface ProviderUser {
   joinedAt: string;
   tier?: 'emergente' | 'pleno' | 'fundador';
   rubro?: string;
+  region?: string;
   ratingScore?: number;
   ratingCount?: number;
   mpConnected?: boolean;

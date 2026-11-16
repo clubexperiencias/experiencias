@@ -75,17 +75,6 @@ const ROUTE_LABELS: Record<string, string> = {
                 <!-- Opciones de Navegación del Menú Agrandadas -->
                 <div class="dropdown-nav-list">
                   <a
-                    [routerLink]="dashboardLink()"
-                    class="dropdown-item enlarged-item"
-                    (click)="userMenuOpen.set(false)"
-                  >
-                    <mat-icon class="menu-item-icon">dashboard</mat-icon>
-                    <div class="menu-item-info">
-                      <strong class="menu-item-title">Panel de Control</strong>
-                    </div>
-                  </a>
-
-                  <a
                     [routerLink]="newExperienceLink()"
                     class="dropdown-item enlarged-item"
                     (click)="userMenuOpen.set(false)"
@@ -93,6 +82,17 @@ const ROUTE_LABELS: Record<string, string> = {
                     <mat-icon class="menu-item-icon">add</mat-icon>
                     <div class="menu-item-info">
                       <strong class="menu-item-title">Cargar Experiencia</strong>
+                    </div>
+                  </a>
+
+                  <a
+                    [routerLink]="dashboardLink()"
+                    class="dropdown-item enlarged-item"
+                    (click)="userMenuOpen.set(false)"
+                  >
+                    <mat-icon class="menu-item-icon">dashboard</mat-icon>
+                    <div class="menu-item-info">
+                      <strong class="menu-item-title">Panel de Control</strong>
                     </div>
                   </a>
 
