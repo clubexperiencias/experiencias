@@ -3999,65 +3999,117 @@ export class AdminDashboardComponent {
 
   getProposalProvider(req: ExperienceProposalRequest): ProviderUser | undefined {
     const providers = this.store.providerStore.providers();
-    return providers.find(
-      (p) =>
-        (req.providerId && p.id === req.providerId) ||
-        (req.providerEmail && p.email?.toLowerCase() === req.providerEmail.toLowerCase()) ||
-        (req.providerName &&
-          (p.name?.toLowerCase() === req.providerName.toLowerCase() ||
-            p.agency?.toLowerCase() === req.providerName.toLowerCase())) ||
-        (req.providerAgency &&
-          (p.agency?.toLowerCase() === req.providerAgency.toLowerCase() ||
-            p.name?.toLowerCase() === req.providerAgency.toLowerCase())),
+
+    // 1. Resolver por ID de prestador (identificador principal)
+    if (req.providerId) {
+      const byId = providers.find((p) => p.id === req.providerId);
+      if (byId) return byId;
+    }
+
+    // 2. Resolver por Email (identificador secundario fuerte)
+    if (req.providerEmail) {
+      const cleanEmail = req.providerEmail.trim().toLowerCase();
+      const byEmail = providers.find((p) => p.email?.trim().toLowerCase() === cleanEmail);
+      if (byEmail) return byEmail;
+    }
+
+    // 3. Fallback: resolver por Nombre o Agencia solo si ninguno de los anteriores resolvió
+    if (req.providerName) {
+      const cleanName = req.providerName.trim().toLowerCase();
+      const byName = providers.find(
+        (p) =>
+          p.name?.trim().toLowerCase() === cleanName ||
+          p.agency?.trim().toLowerCase() === cleanName,
+      );
+      if (byName) return byName;
+    }
+
+    if (req.providerAgency) {
+      const cleanAgency = req.providerAgency.trim().toLowerCase();
+      const byAgency = providers.find(
+        (p) =>
+          p.agency?.trim().toLowerCase() === cleanAgency ||
+          p.name?.trim().toLowerCase() === cleanAgency,
+      );
+      if (byAgency) return byAgency;
+    }
+
+    return undefined;
+  }
+
+  private isValidAgencyOrName(val?: string | null): boolean {
+    if (!val || typeof val !== 'string') return false;
+    const trimmed = val.trim();
+    return (
+      trimmed.length > 0 &&
+      trimmed !== 'Prestador emergente del Club' &&
+      trimmed !== 'Prestador emergente del Club de Experiencias' &&
+      trimmed !== 'Prestador Oficial'
     );
   }
 
   getProposalAgencyName(req: ExperienceProposalRequest): string {
     const p = this.getProposalProvider(req);
-    const candidateAgency = (p?.agency || req.providerAgency || '').trim();
-    if (
-      candidateAgency &&
-      candidateAgency !== 'Prestador emergente del Club' &&
-      candidateAgency !== 'Prestador emergente del Club de Experiencias' &&
-      candidateAgency !== 'Prestador Oficial'
-    ) {
-      return candidateAgency;
+
+    // 1. Validar p.agency y req.providerAgency por separado para evitar que un placeholder en p.agency oculte una agencia válida en req
+    const providerAgency = (p?.agency || '').trim();
+    if (this.isValidAgencyOrName(providerAgency)) {
+      return providerAgency;
     }
-    const candidateName = (req.providerName || p?.name || '').trim();
-    if (
-      candidateName &&
-      candidateName !== 'Prestador emergente del Club' &&
-      candidateName !== 'Prestador emergente del Club de Experiencias' &&
-      candidateName !== 'Prestador Oficial'
-    ) {
-      return candidateName;
+
+    const requestAgency = (req.providerAgency || '').trim();
+    if (this.isValidAgencyOrName(requestAgency)) {
+      return requestAgency;
     }
-    return p?.agency || req.providerAgency || 'Club de Experiencias';
+
+    // 2. Fallback a nombres de prestador solo si ninguna agencia candidata es válida
+    const requestName = (req.providerName || '').trim();
+    if (this.isValidAgencyOrName(requestName)) {
+      return requestName;
+    }
+
+    const providerName = (p?.name || '').trim();
+    if (this.isValidAgencyOrName(providerName)) {
+      return providerName;
+    }
+
+    return providerAgency || requestAgency || 'Club de Experiencias';
   }
 
   getProposalResponsibleName(req: ExperienceProposalRequest): string {
     const p = this.getProposalProvider(req);
-    if (p?.name && p.name.trim() && p.name.trim() !== 'Prestador emergente del Club') {
-      return p.name.trim();
+    const pName = (p?.name || '').trim();
+    if (this.isValidAgencyOrName(pName)) {
+      return pName;
     }
+
     const agency = this.getProposalAgencyName(req);
     const reqName = (req.providerName || '').trim();
     if (
-      reqName &&
-      reqName !== 'Prestador emergente del Club' &&
+      this.isValidAgencyOrName(reqName) &&
       reqName.toLowerCase() !== agency.toLowerCase()
     ) {
       return reqName;
     }
+
     const reqAgency = (req.providerAgency || '').trim();
     if (
-      reqAgency &&
-      reqAgency !== 'Prestador emergente del Club' &&
+      this.isValidAgencyOrName(reqAgency) &&
       reqAgency.toLowerCase() !== agency.toLowerCase()
     ) {
       return reqAgency;
     }
-    return p?.accountHolder || p?.name || reqName || 'Responsable de Agencia';
+
+    const accountHolder = (p?.accountHolder || '').trim();
+    if (this.isValidAgencyOrName(accountHolder)) {
+      return accountHolder;
+    }
+
+    return (
+      (this.isValidAgencyOrName(pName) && pName) ||
+      (this.isValidAgencyOrName(reqName) && reqName) ||
+      'Responsable de Agencia'
+    );
   }
 
   getProposalProviderTier(req: ExperienceProposalRequest): 'EMERGENTE' | 'PLENO' | 'FUNDADOR' {
@@ -4086,7 +4138,8 @@ export class AdminDashboardComponent {
       .experiences()
       .filter(
         (e) =>
-          (e.providerId === p.id || e.providerSlug === p.slug) && e.status === 'publicada',
+          (e.providerId === p.id || (Boolean(p.slug) && e.providerSlug === p.slug)) &&
+          e.status === 'publicada',
       ).length;
 
     if (p.notes?.toLowerCase().includes('pleno') || count > 0 || p.verified) {

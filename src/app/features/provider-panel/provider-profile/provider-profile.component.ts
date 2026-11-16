@@ -1,5 +1,5 @@
 import { Component, computed, effect, inject, signal, OnInit } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { ProviderStoreService, slugify } from '../../../core/services/provider-store.service';
@@ -13,7 +13,7 @@ import {
 @Component({
   selector: 'app-provider-profile',
   standalone: true,
-  imports: [ReactiveFormsModule, MatIconModule, RouterLink],
+  imports: [ReactiveFormsModule, MatIconModule],
   template: `
     <div class="profile-container">
       <div class="profile-head">
@@ -454,7 +454,7 @@ import {
               </div>
               <div class="fav-toast-actions">
                 <a
-                  [routerLink]="getPublicProfileUrl(form.get('slug')?.value || currentSlug())"
+                  [href]="getPublicProfileUrl(committedSlug() || currentSlug())"
                   class="fav-toast-btn"
                   (click)="savedSuccess.set(false)"
                   title="Ver mi perfil público de prestador"
@@ -1320,6 +1320,7 @@ export class ProviderProfileComponent implements OnInit {
   readonly storageService = inject(StorageService);
 
   readonly savedSuccess = signal(false);
+  readonly committedSlug = signal<string>('');
   readonly errorMessage = signal<string | null>(null);
   readonly isSaving = signal(false);
   readonly isUploadingAvatar = signal(false);
@@ -1496,6 +1497,7 @@ export class ProviderProfileComponent implements OnInit {
 
     this.isSaving.set(false);
     if (result.success) {
+      this.committedSlug.set(values.slug);
       this.savedSuccess.set(true);
       setTimeout(() => this.savedSuccess.set(false), 5000);
     } else {

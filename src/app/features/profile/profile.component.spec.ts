@@ -37,6 +37,15 @@ describe('ProfileComponent', () => {
     expect(breadcrumb).toBeTruthy();
   });
 
+  it('should reset profileSuccessHighlight in ngOnDestroy when cancelling successTimer', () => {
+    component.newsletter.setLoginSuccessFlag();
+    component.ngOnInit();
+    expect(component.newsletter.profileSuccessHighlight()).toBe(true);
+
+    component.ngOnDestroy();
+    expect(component.newsletter.profileSuccessHighlight()).toBe(false);
+  });
+
   it('should only show the last 2 activities in profile preview and link to full history when activities exist', () => {
     component.activityService.addActivity({
       id: 'act-1',
@@ -144,6 +153,18 @@ describe('ProfileComponent', () => {
   });
 
   it('should display favorite count in title parentheses and not show fav-count-pill', () => {
+    localStorage.clear();
+    (component.newsletter as any)._currentMember.set({
+      id: 'socio-1',
+      email: 'socio@experiencias.club',
+      fullName: 'Socio Test',
+      status: 'confirmed',
+      createdAt: new Date().toISOString(),
+    });
+    (component.favoritesService as any).activeMemberIdentity = 'socio@experiencias.club';
+    (component.favoritesService as any)._favoriteSlugs.set([]);
+    (component.favoritesService as any)._removedSlugs.set(new Set());
+
     const titleEl = fixture.nativeElement.querySelector('#favoritos .section-title');
     expect(titleEl).toBeTruthy();
     expect(titleEl.textContent).toContain('Mis Experiencias Favoritas (0)');
@@ -161,6 +182,7 @@ describe('ProfileComponent', () => {
       priceArs: 15000,
       coverImage: '/assets/images/kayak.jpg',
     };
+    (component.experienceService as any)._experiences.set([mockExp]);
     component.favoritesService.toggleFavorite(mockExp);
     fixture.detectChanges();
 
@@ -170,7 +192,19 @@ describe('ProfileComponent', () => {
     expect(fixture.nativeElement.querySelector('.fav-carousel-track')).toBeTruthy();
   });
 
-  it('should navigate carousel on prev and next without error', () => {
+  it('should navigate carousel on prev and next and update scroll position', () => {
+    localStorage.clear();
+    (component.newsletter as any)._currentMember.set({
+      id: 'socio-1',
+      email: 'socio@experiencias.club',
+      fullName: 'Socio Test',
+      status: 'confirmed',
+      createdAt: new Date().toISOString(),
+    });
+    (component.favoritesService as any).activeMemberIdentity = 'socio@experiencias.club';
+    (component.favoritesService as any)._favoriteSlugs.set([]);
+    (component.favoritesService as any)._removedSlugs.set(new Set());
+
     const mockExp1: any = {
       id: 'exp-1',
       slug: 'kayak-1',
@@ -191,16 +225,80 @@ describe('ProfileComponent', () => {
       priceArs: 20000,
       coverImage: '/assets/images/kayak2.jpg',
     };
+    (component.experienceService as any)._experiences.set([mockExp1, mockExp2]);
     component.favoritesService.toggleFavorite(mockExp1);
     component.favoritesService.toggleFavorite(mockExp2);
     fixture.detectChanges();
 
-    expect(() => {
-      component.onCarouselNav('next');
-      component.onCarouselNav('prev');
-      component.onCarouselMouseEnter();
-      component.onCarouselMouseLeave();
-      component.onCarouselScroll();
-    }).not.toThrow();
+    const track = fixture.nativeElement.querySelector('.fav-carousel-track') as HTMLElement;
+    expect(track).toBeTruthy();
+
+    const items = track.querySelectorAll<HTMLElement>('.carousel-item');
+    if (items[0]) {
+      Object.defineProperty(items[0], 'offsetLeft', { value: 0, configurable: true });
+    }
+    if (items[1]) {
+      Object.defineProperty(items[1], 'offsetLeft', { value: 240, configurable: true });
+    }
+
+    const scrollBySpy = vi.fn((options: any) => {
+      const delta = typeof options === 'object' ? (options.left ?? 0) : options;
+      track.scrollLeft = (track.scrollLeft || 0) + delta;
+    });
+    track.scrollBy = scrollBySpy;
+
+    const initialScroll = track.scrollLeft;
+    component.onCarouselNav('next');
+    expect(scrollBySpy).toHaveBeenCalledWith(expect.objectContaining({ behavior: 'smooth' }));
+    expect(scrollBySpy.mock.calls[0][0].left).toBeGreaterThan(0);
+    expect(track.scrollLeft).toBeGreaterThan(initialScroll);
+
+    const nextScroll = track.scrollLeft;
+    component.onCarouselNav('prev');
+    expect(scrollBySpy).toHaveBeenCalledWith(expect.objectContaining({ behavior: 'smooth' }));
+    expect(scrollBySpy.mock.calls[1][0].left).toBeLessThan(0);
+    expect(track.scrollLeft).toBeLessThan(nextScroll);
+
+    expect((component as any).isUserHovering).toBe(false);
+    component.onCarouselMouseEnter();
+    expect((component as any).isUserHovering).toBe(true);
+    component.onCarouselMouseLeave();
+    expect((component as any).isUserHovering).toBe(false);
+
+    component.stopAutoplay();
+  });
+
+  it('should schedule carousel initialization when carouselFavoriteExperiences changes from empty to non-empty', () => {
+    localStorage.clear();
+    (component.newsletter as any)._currentMember.set({
+      id: 'socio-1',
+      email: 'socio@experiencias.club',
+      fullName: 'Socio Test',
+      status: 'confirmed',
+      createdAt: new Date().toISOString(),
+    });
+    (component.favoritesService as any).activeMemberIdentity = 'socio@experiencias.club';
+    (component.favoritesService as any)._favoriteSlugs.set([]);
+    (component.favoritesService as any)._removedSlugs.set(new Set());
+    (component.experienceService as any)._experiences.set([]);
+    fixture.detectChanges();
+
+    const scheduleSpy = vi.spyOn(component as any, 'scheduleCarouselInit');
+
+    const mockExp: any = {
+      id: 'exp-1',
+      slug: 'kayak-1',
+      title: 'Kayak 1',
+      region: 'Catamarca',
+      difficulty: 'Baja',
+      durationLabel: '2 horas',
+      priceArs: 15000,
+      coverImage: '/assets/images/kayak.jpg',
+    };
+    (component.experienceService as any)._experiences.set([mockExp]);
+    component.favoritesService.toggleFavorite(mockExp);
+    fixture.detectChanges();
+
+    expect(scheduleSpy).toHaveBeenCalled();
   });
 });

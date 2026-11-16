@@ -220,5 +220,107 @@ describe('ProviderRatingService', () => {
     const ratingById = service.getRating({ id: providerUuid });
     expect(ratingById.userVote).toBe(5);
   });
+
+  describe('getProviderVotes', () => {
+    const validUuid = '12345678-1234-1234-1234-123456789abc';
+
+    it('should return complete status with votes on successful remote fetch', async () => {
+      mockSupabase.from.mockReturnValue({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        order: vi.fn().mockResolvedValue({
+          data: [
+            {
+              id: 'vote-1',
+              socio_email: 'socio1@test.com',
+              score: 5,
+              comentario: 'Excelente servicio',
+              created_at: '2026-03-01T10:00:00Z',
+            },
+          ],
+          error: null,
+        }),
+      });
+
+      const res = await service.getProviderVotes({ id: validUuid });
+      expect(res.status).toBe('complete');
+      expect(res.votes.length).toBe(1);
+      expect(res.votes[0].socioEmail).toBe('socio1@test.com');
+      expect(res.votes[0].score).toBe(5);
+      expect(res.votes[0].comment).toBe('Excelente servicio');
+    });
+
+    it('should return unavailable status when remote fetch fails and local cache is empty', async () => {
+      mockSupabase.from.mockReturnValue({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        order: vi.fn().mockResolvedValue({
+          data: null,
+          error: { message: 'Network connection error' },
+        }),
+      });
+
+      const res = await service.getProviderVotes({ id: validUuid });
+      expect(res.status).toBe('unavailable');
+      expect(res.votes.length).toBe(0);
+      expect(res.error).toBe('Network connection error');
+    });
+
+    it('should return partial status when remote fetch fails and local cache has votes', async () => {
+      mockSupabase.from.mockReturnValue({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        order: vi.fn().mockResolvedValue({
+          data: null,
+          error: { message: 'Database unreachable' },
+        }),
+      });
+
+      // Simular voto local en almacenamiento
+      const ratingsKey = 'catamarca_provider_ratings_v2';
+      const map = {
+        [validUuid.toLowerCase()]: {
+          baseScore: 5,
+          baseCount: 1,
+          userVotes: { 'user:local.socio@test.com': 4 },
+        },
+      };
+      localStorage.setItem(ratingsKey, JSON.stringify(map));
+      (service as any).ratingsMap.set(map);
+
+      const res = await service.getProviderVotes({ id: validUuid });
+      expect(res.status).toBe('partial');
+      expect(res.votes.length).toBe(1);
+      expect(res.votes[0].socioEmail).toBe('local.socio@test.com');
+      expect(res.votes[0].score).toBe(4);
+      expect(res.votes[0].createdAt).toBeUndefined();
+    });
+
+    it('should preserve original vote timestamp when available in voteTimestamps', async () => {
+      mockSupabase.from.mockReturnValue({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        order: vi.fn().mockResolvedValue({
+          data: null,
+          error: { message: 'Database unreachable' },
+        }),
+      });
+
+      const originalIso = '2026-02-15T14:30:00.000Z';
+      const map = {
+        [validUuid.toLowerCase()]: {
+          baseScore: 5,
+          baseCount: 1,
+          userVotes: { 'user:local.socio@test.com': 5 },
+          voteTimestamps: { 'user:local.socio@test.com': originalIso },
+        },
+      };
+      (service as any).ratingsMap.set(map);
+
+      const res = await service.getProviderVotes({ id: validUuid });
+      expect(res.votes.length).toBe(1);
+      expect(res.votes[0].createdAt).toBe(originalIso);
+    });
+  });
 });
 

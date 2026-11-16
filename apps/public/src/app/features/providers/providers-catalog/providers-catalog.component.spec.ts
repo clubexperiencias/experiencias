@@ -87,10 +87,12 @@ describe('ProvidersCatalogComponent - Rating Sorting', () => {
 
     fixture = TestBed.createComponent(ProvidersCatalogComponent);
     component = fixture.componentInstance;
+    component.providers.set(mockProviders());
   });
 
   it('should rank providers with zero votes below providers with real ratings when sorting by rating', () => {
-    component.selectedSort.set('rating');
+    component.providers.set(mockProviders());
+    component.selectedSortOrder.set('rating');
     const sorted = component.filteredAllProviders();
 
     // Provider A (4.8, 10 votes) should be first
@@ -117,6 +119,7 @@ describe('ProvidersCatalogComponent - Rating Sorting', () => {
     } as ProviderUser;
 
     mockProviders.set([unvoted1, unvoted2]);
+    component.providers.set([unvoted1, unvoted2]);
     mockExpService.experiences.set([
       { id: 'exp-1', providerId: 'unvoted-1', status: 'publicada' },
       { id: 'exp-2', providerId: 'unvoted-2', status: 'publicada' },
@@ -124,7 +127,7 @@ describe('ProvidersCatalogComponent - Rating Sorting', () => {
       { id: 'exp-4', providerId: 'unvoted-2', status: 'publicada' },
     ]);
 
-    component.selectedSort.set('rating');
+    component.selectedSortOrder.set('rating');
     const sorted = component.filteredAllProviders();
 
     // Both have 0 votes, so tie-breaker is experience count: unvoted2 has 3 experiences vs unvoted1 with 1
@@ -150,7 +153,8 @@ describe('ProvidersCatalogComponent - Rating Sorting', () => {
     } as ProviderUser;
 
     mockProviders.set([founderProvider, emergingProvider]);
-    component.selectedSort.set('name');
+    component.providers.set([founderProvider, emergingProvider]);
+    component.selectedSortOrder.set('name');
 
     const sorted = component.filteredAllProviders();
     expect(sorted[0].id).toBe('prov-emerging');
@@ -322,6 +326,7 @@ describe('ProvidersCatalogComponent - Rating Sorting', () => {
       } as ProviderUser;
 
       mockProviders.set([fiambalaProv, valleProv]);
+      component.providers.set([fiambalaProv, valleProv]);
 
       // Search without accent "fiambala"
       component.searchQuery.set('fiambala');

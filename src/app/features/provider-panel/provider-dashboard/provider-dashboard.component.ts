@@ -1994,10 +1994,23 @@ export class ProviderDashboardComponent implements OnInit {
     const p = this.provider();
     if (!p) return 'emergente';
 
-    if (
+    const isOfficialClub =
       p.slug === 'club-de-experiencias' ||
-      p.id === 'prov-club-oficial' ||
-      p.agency?.toLowerCase().includes('club de experiencias')
+      p.id === 'prov-club-oficial';
+
+    if (isOfficialClub) {
+      return 'fundador';
+    }
+
+    const agencyNorm = (p.agency || '').toLowerCase().trim();
+    const isEmergingPlaceholder =
+      agencyNorm === 'prestador emergente del club de experiencias' ||
+      agencyNorm === 'prestador emergente del club';
+
+    if (
+      !isEmergingPlaceholder &&
+      p.tier !== 'emergente' &&
+      agencyNorm.includes('club de experiencias')
     ) {
       return 'fundador';
     }

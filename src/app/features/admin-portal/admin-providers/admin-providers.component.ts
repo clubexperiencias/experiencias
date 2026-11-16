@@ -525,11 +525,24 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
                 <div class="loading-votes-box">
                   <p class="empty-text">Cargando valoraciones de socios...</p>
                 </div>
+              } @else if (votesError()) {
+                <div class="error-votes-box">
+                  <p class="error-votes-text">{{ votesError() }}</p>
+                  <button type="button" class="btn-retry-votes" (click)="retryLoadVotes()">
+                    Reintentar
+                  </button>
+                </div>
               } @else if (providerVotes().length === 0) {
                 <div class="empty-votes-box">
                   <p class="empty-text">Aún no hay votos registrados de socios para este prestador.</p>
                 </div>
               } @else {
+                @if (votesStatus() === 'partial') {
+                  <div class="partial-votes-notice">
+                    <span>Aviso: Mostrando valoraciones almacenadas localmente. No se pudo sincronizar con el servidor.</span>
+                    <button type="button" class="btn-retry-votes-inline" (click)="retryLoadVotes()">Reintentar</button>
+                  </div>
+                }
                 <div class="table-responsive">
                   <table class="providers-table votes-table">
                     <thead>
@@ -583,7 +596,7 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
 
                           <!-- Fecha -->
                           <td class="text-right">
-                            <span class="date-cell font-mono">{{ v.createdAt ? (v.createdAt | fecha: 'corta') : 'Reciente' }}</span>
+                            <span class="date-cell font-mono">{{ v.createdAt ? (v.createdAt | fecha: 'corta') : '—' }}</span>
                           </td>
                         </tr>
                       }
@@ -2257,9 +2270,67 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
       }
 
       .loading-votes-box,
-      .empty-votes-box {
+      .empty-votes-box,
+      .error-votes-box {
         text-align: center;
         padding: 2rem 0;
+      }
+
+      .error-votes-text {
+        color: #ff6b6b;
+        font-size: 0.88rem;
+        margin-bottom: 0.85rem;
+      }
+
+      .btn-retry-votes {
+        background: rgba(255, 95, 0, 0.2);
+        border: 1px solid rgba(255, 95, 0, 0.6);
+        color: #ffaa00;
+        padding: 0.45rem 1.15rem;
+        font-size: 0.82rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border-radius: 2px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .btn-retry-votes:hover {
+        background: rgba(255, 95, 0, 0.4);
+        color: #ffffff;
+        border-color: #ffaa00;
+      }
+
+      .partial-votes-notice {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        background: rgba(255, 170, 0, 0.12);
+        border: 1px solid rgba(255, 170, 0, 0.35);
+        color: #ffcc66;
+        padding: 0.55rem 0.85rem;
+        font-size: 0.8rem;
+        border-radius: 2px;
+        margin-bottom: 1rem;
+      }
+
+      .btn-retry-votes-inline {
+        background: transparent;
+        border: 1px solid rgba(255, 170, 0, 0.5);
+        color: #ffffff;
+        padding: 0.2rem 0.55rem;
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        border-radius: 2px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+
+      .btn-retry-votes-inline:hover {
+        background: rgba(255, 170, 0, 0.3);
       }
 
       /* Edit Page */
@@ -2795,6 +2866,9 @@ export class AdminProvidersComponent implements OnInit {
   // Votos detallados del prestador en modo ficha
   readonly providerVotes = signal<ProviderVoteDetail[]>([]);
   readonly isLoadingVotes = signal<boolean>(false);
+  readonly votesError = signal<string | null>(null);
+  readonly votesStatus = signal<'complete' | 'partial' | 'unavailable'>('complete');
+  private currentVotesLoadToken = 0;
 
   // Modos de ruta
   readonly isRouteEditMode = signal<boolean>(false);
@@ -2830,6 +2904,15 @@ export class AdminProvidersComponent implements OnInit {
         this.currentUrl.set(ev.urlAfterRedirects || ev.url);
         this.resolveRouteState();
       });
+
+    this.destroyRef.onDestroy(() => {
+      this.cancelPendingVoteLoads();
+    });
+  }
+
+  private cancelPendingVoteLoads(): void {
+    this.currentVotesLoadToken++;
+    this.isLoadingVotes.set(false);
   }
 
   ngOnInit(): void {
@@ -2852,11 +2935,13 @@ export class AdminProvidersComponent implements OnInit {
 
     if (prestIdx === -1 || prestIdx === segments.length - 1) {
       // Ruta lista: /prestadores o /admin/prestadores
+      this.cancelPendingVoteLoads();
       this.isRouteEditMode.set(false);
       this.isRouteDetailMode.set(false);
       this.notFound.set(false);
       this.selectedProvider.set(null);
       this.providerVotes.set([]);
+      this.votesError.set(null);
       return;
     }
 
@@ -2875,11 +2960,13 @@ export class AdminProvidersComponent implements OnInit {
     }
 
     if (!provider) {
+      this.cancelPendingVoteLoads();
       this.notFound.set(true);
       this.isRouteEditMode.set(false);
       this.isRouteDetailMode.set(false);
       this.selectedProvider.set(null);
       this.providerVotes.set([]);
+      this.votesError.set(null);
       return;
     }
 
@@ -2887,9 +2974,11 @@ export class AdminProvidersComponent implements OnInit {
     this.selectedProvider.set(provider);
 
     if (isEdit) {
+      this.cancelPendingVoteLoads();
       this.isRouteEditMode.set(true);
       this.isRouteDetailMode.set(false);
       this.providerVotes.set([]);
+      this.votesError.set(null);
       this.populateEditForm(provider);
     } else {
       this.isRouteEditMode.set(false);
@@ -3616,14 +3705,34 @@ export class AdminProvidersComponent implements OnInit {
   });
 
   async loadProviderVotes(provider: ProviderUser): Promise<void> {
+    const token = ++this.currentVotesLoadToken;
     this.isLoadingVotes.set(true);
+    this.votesError.set(null);
     try {
       if (this.store.members().length === 0) {
         await this.store.loadAllMembers();
       }
-      const rawVotes = await this.ratingService.getProviderVotes(provider);
+      if (this.currentVotesLoadToken !== token) {
+        return;
+      }
+
+      const res = await this.ratingService.getProviderVotes(provider);
+      if (this.currentVotesLoadToken !== token) {
+        return;
+      }
+
+      if (res.status === 'unavailable') {
+        this.votesStatus.set('unavailable');
+        this.votesError.set(res.error || 'No se pudieron cargar las valoraciones en este momento.');
+        this.providerVotes.set([]);
+        return;
+      }
+
+      this.votesStatus.set(res.status);
+      this.votesError.set(null);
+
       const members = this.store.members();
-      const enriched: ProviderVoteDetail[] = rawVotes.map((v) => {
+      const enriched: ProviderVoteDetail[] = res.votes.map((v) => {
         const cleanEmail = v.socioEmail.toLowerCase().trim();
         const member = members.find((m) => m.email.toLowerCase().trim() === cleanEmail);
         return {
@@ -3638,11 +3747,25 @@ export class AdminProvidersComponent implements OnInit {
         };
       });
       this.providerVotes.set(enriched);
-    } catch (err) {
+    } catch (err: any) {
+      if (this.currentVotesLoadToken !== token) {
+        return;
+      }
       console.warn('[AdminProviders] Error cargando votos:', err);
+      this.votesStatus.set('unavailable');
+      this.votesError.set(err?.message || 'No se pudieron cargar las valoraciones en este momento.');
       this.providerVotes.set([]);
     } finally {
-      this.isLoadingVotes.set(false);
+      if (this.currentVotesLoadToken === token) {
+        this.isLoadingVotes.set(false);
+      }
+    }
+  }
+
+  retryLoadVotes(): void {
+    const provider = this.selectedProvider();
+    if (provider) {
+      void this.loadProviderVotes(provider);
     }
   }
 

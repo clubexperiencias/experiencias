@@ -799,7 +799,9 @@ export class AdminRankingComponent {
     const rows = providers.map((p) => {
       const rating = this.ratingService.getRating(p);
       const activeCount = experiences.filter(
-        (e) => (e.providerId === p.id || e.providerSlug === p.slug) && e.status === 'publicada',
+        (e) =>
+          (e.providerId === p.id || (Boolean(p.slug) && e.providerSlug === p.slug)) &&
+          e.status === 'publicada',
       ).length;
 
       return {

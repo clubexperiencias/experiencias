@@ -7,6 +7,7 @@ import {
   OnInit,
   ViewChild,
   computed,
+  effect,
   inject,
   signal,
 } from '@angular/core';
@@ -99,6 +100,17 @@ export class ProfileComponent implements OnInit, AfterViewInit, OnDestroy {
       exp,
     }));
   });
+
+  constructor() {
+    let wasEmpty = true;
+    effect(() => {
+      const count = this.carouselFavoriteExperiences().length;
+      if (count > 0 && wasEmpty) {
+        this.scheduleCarouselInit();
+      }
+      wasEmpty = count === 0;
+    });
+  }
 
   removeFavorite(exp: Experience, event?: Event): void {
     this.favoritesService.removeFavorite(exp, event);
@@ -202,6 +214,7 @@ export class ProfileComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.successTimer) {
       clearTimeout(this.successTimer);
       this.successTimer = null;
+      this.newsletter.profileSuccessHighlight.set(false);
     }
     const container = this.carouselRef?.nativeElement;
     if (container) {
