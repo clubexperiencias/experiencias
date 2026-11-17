@@ -1850,6 +1850,68 @@ export class AdminStoreService {
     return true;
   }
 
+  async recordFounderApplication(data: {
+    fullName: string;
+    email: string;
+    phone?: string;
+    status: ApplicationStatus;
+    motivationLetter?: string;
+  }): Promise<boolean> {
+    const cleanEmail = (data.email || '').trim().toLowerCase();
+    const existing = this._applications().find(
+      (a) => a.type === 'fundador' && a.email?.trim().toLowerCase() === cleanEmail,
+    );
+
+    if (existing) {
+      return this.updateApplicationStatus(existing.id, 'fundador', data.status);
+    }
+
+    const newApp: AdminApplication = {
+      id: `app-fundador-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      type: 'fundador',
+      fullName: data.fullName,
+      email: cleanEmail,
+      phone: data.phone || '—',
+      motivationLetter: data.motivationLetter || '',
+      status: data.status,
+      createdAt: new Date().toISOString(),
+    };
+
+    if (isSupabaseConfigured()) {
+      try {
+        const dbStatus =
+          data.status === 'aprobado'
+            ? 'aprobada'
+            : data.status === 'dado_de_baja'
+              ? 'dado_de_baja'
+              : data.status === 'rechazado'
+                ? 'rechazada'
+                : 'en_evaluacion';
+
+        const { data: inserted, error } = await (this.supabase.from('postulaciones_fundadores') as any)
+          .insert({
+            full_name: data.fullName,
+            email: cleanEmail,
+            phone: data.phone || '',
+            motivation_letter: data.motivationLetter || '',
+            status: dbStatus,
+          })
+          .select('id')
+          .maybeSingle();
+
+        if (!error && inserted?.id) {
+          newApp.id = inserted.id;
+        }
+      } catch (err) {
+        console.warn('[AdminStore] Error al registrar postulación de fundador en Supabase:', err);
+      }
+    }
+
+    this._applications.update((list) => [newApp, ...list]);
+    this.persistApplications(this._applications());
+    return true;
+  }
+
   private persistApplications(apps: AdminApplication[]): void {
     if (isSupabaseConfigured()) return;
     try {

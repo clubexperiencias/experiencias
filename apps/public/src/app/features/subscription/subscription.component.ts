@@ -116,39 +116,18 @@ export class SubscriptionComponent implements OnInit {
         void this.applyDiscount(codeParam);
       }
     });
-
-    const current = this.newsletter.currentMember();
-    if (current) {
-      if (current.fullName && !this.fullName()) this.fullName.set(current.fullName);
-      const dni = current.dni || current.documentNumber;
-      if (dni && !this.documentNumber()) this.documentNumber.set(dni);
-      if (current.phone && !this.phone()) this.phone.set(current.phone);
-      if (current.email && !this.email()) this.email.set(current.email);
-      if (
-        current.experiencesWishlist &&
-        current.experiencesWishlist.length > 0 &&
-        this.selectedExperiences().length === 0
-      ) {
-        this.selectedExperiences.set(current.experiencesWishlist);
-      }
-      if (current.experiencesOther && !this.otherExperience()) {
-        this.otherExperience.set(current.experiencesOther);
-        if (!this.selectedExperiences().includes('otros')) {
-          this.selectedExperiences.update((list) => [...list, 'otros']);
-        }
-      }
-    }
   }
 
   private async refreshGoogleAccount(): Promise<void> {
     const authenticatedEmail = await this.newsletter.getAuthenticatedEmail();
     if (authenticatedEmail) {
-      this.email.set(authenticatedEmail);
-      this.authenticatedEmail.set(authenticatedEmail);
+      const cleanAuthEmail = authenticatedEmail.trim().toLowerCase();
+      this.email.set(cleanAuthEmail);
+      this.authenticatedEmail.set(cleanAuthEmail);
       this.authReady.set(true);
       await this.newsletter.getAuthenticatedMember();
       const current = this.newsletter.currentMember();
-      if (current?.email.toLowerCase() === authenticatedEmail) {
+      if (current?.email && current.email.trim().toLowerCase() === cleanAuthEmail) {
         if (current.fullName && !this.fullName()) {
           this.fullName.set(current.fullName);
         }
@@ -159,9 +138,53 @@ export class SubscriptionComponent implements OnInit {
         if (current.phone && !this.phone()) {
           this.phone.set(current.phone);
         }
+        if (
+          current.experiencesWishlist &&
+          current.experiencesWishlist.length > 0 &&
+          this.selectedExperiences().length === 0
+        ) {
+          this.selectedExperiences.set(current.experiencesWishlist);
+        }
+        if (current.experiencesOther && !this.otherExperience()) {
+          this.otherExperience.set(current.experiencesOther);
+          if (!this.selectedExperiences().includes('otros')) {
+            this.selectedExperiences.update((list) => [...list, 'otros']);
+          }
+        }
       }
     } else {
       this.authReady.set(!this.newsletter.isSupabaseConnected());
+      if (!this.newsletter.isSupabaseConnected()) {
+        const current = this.newsletter.currentMember();
+        if (current) {
+          if (current.email && !this.email()) {
+            this.email.set(current.email);
+          }
+          if (current.fullName && !this.fullName()) {
+            this.fullName.set(current.fullName);
+          }
+          const dni = current.dni || current.documentNumber;
+          if (dni && !this.documentNumber()) {
+            this.documentNumber.set(dni);
+          }
+          if (current.phone && !this.phone()) {
+            this.phone.set(current.phone);
+          }
+          if (
+            current.experiencesWishlist &&
+            current.experiencesWishlist.length > 0 &&
+            this.selectedExperiences().length === 0
+          ) {
+            this.selectedExperiences.set(current.experiencesWishlist);
+          }
+          if (current.experiencesOther && !this.otherExperience()) {
+            this.otherExperience.set(current.experiencesOther);
+            if (!this.selectedExperiences().includes('otros')) {
+              this.selectedExperiences.update((list) => [...list, 'otros']);
+            }
+          }
+        }
+      }
     }
   }
 

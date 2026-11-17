@@ -241,6 +241,23 @@
   background: rgba(14, 28, 42, 0.45);
 }
 
+.founder-agreement-box:focus-within {
+  outline: 2px solid var(--color-gold, #f59e0b);
+  outline-offset: 2px;
+}
+
+.native-agreement-checkbox {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
 .custom-checkbox {
   width: 18px;
   height: 18px;

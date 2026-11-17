@@ -137,17 +137,25 @@
             </label>
 
             <!-- Checkbox de Compromiso Patrimonial (Idéntico a /socios/fundadores con amarillo) -->
-            <div
+            <label
               class="founder-agreement-box"
               [class.selected]="founderAgreedToPrice()"
-              (click)="founderAgreedToPrice.update((v) => !v)"
+              for="founder-agreed-chk"
             >
-              <div class="custom-checkbox" [class.checked]="founderAgreedToPrice()">
+              <input
+                #chk
+                type="checkbox"
+                id="founder-agreed-chk"
+                class="native-agreement-checkbox"
+                [checked]="founderAgreedToPrice()"
+                (change)="founderAgreedToPrice.set(chk.checked)"
+              />
+              <span class="custom-checkbox" [class.checked]="founderAgreedToPrice()" aria-hidden="true">
                 @if (founderAgreedToPrice()) {
                 <mat-icon class="chk-check-icon">check</mat-icon>
                 }
-              </div>
-              <div class="agreement-text">
+              </span>
+              <span class="agreement-text">
                 <strong class="agreement-title">
                   COMPROMISO FORMAL Y ADHESIÓN AL PROTOCOLO DE ADMISIÓN <b>*</b>
                 </strong>
@@ -156,14 +164,25 @@
                   <strong>Distinción de Prestador Fundador (10 millones de pesos ARS)</strong>,
                   asumiendo el compromiso de efectivizarlo en caso de que mi carta de postulación sea aprobada unánimemente por el Comité Directivo.
                 </p>
-              </div>
+              </span>
+            </label>
+
+            @if (submitError()) {
+            <div
+              class="provider-error-banner"
+              role="alert"
+              style="margin-bottom: 1.25rem; padding: 0.85rem 1rem; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 4px; color: #fca5a5; font-size: 0.88rem;"
+            >
+              {{ submitError() }}
             </div>
+            }
 
             <div class="form-submit-row">
               <button
                 type="submit"
                 class="founder-submit-btn"
                 [disabled]="
+                  isSubmitting() ||
                   !contactName().trim() ||
                   !agencyName().trim() ||
                   !email().trim() ||
@@ -172,7 +191,7 @@
                   !founderAgreedToPrice()
                 "
               >
-                <span>Enviar Carta al Comité Directivo</span>
+                <span>{{ isSubmitting() ? 'Enviando postulación...' : 'Enviar Carta al Comité Directivo' }}</span>
               </button>
             </div>
           </form>

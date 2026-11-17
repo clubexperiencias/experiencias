@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -30,6 +30,7 @@ export interface PlenoRow {
   bankName?: string;
   cuitDni?: string;
   notes?: string;
+  paymentReference?: string;
   submissionsCount: number;
   totalPaid: number;
 }
@@ -290,7 +291,7 @@ export interface PlenoRow {
                           <button
                             type="button"
                             class="btn-action-view"
-                            (click)="openDetail(row)"
+                            (click)="openDetail(row, $event)"
                             title="Ver Ficha y Comprobantes"
                           >
                             <mat-icon class="icon-sm">visibility</mat-icon>
@@ -330,11 +331,18 @@ export interface PlenoRow {
       <!-- Modal Detalle de Membresía Plena -->
       @if (selectedRow(); as row) {
         <div class="modal-backdrop" (click)="closeDetail()">
-          <div class="modal-dialog" (click)="$event.stopPropagation()">
+          <div
+            class="modal-dialog"
+            (click)="$event.stopPropagation()"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="pleno-detail-title"
+            tabindex="-1"
+          >
             <header class="modal-header">
               <div>
                 <span class="modal-kicker">DETALLE DE MEMBRESÍA PLENA (NIVEL 2)</span>
-                <h3 class="modal-title">{{ row.name }}</h3>
+                <h3 class="modal-title" id="pleno-detail-title">{{ row.name }}</h3>
                 <span class="modal-sub">{{ row.email }}</span>
               </div>
               <button type="button" class="modal-close-btn" (click)="closeDetail()" aria-label="Cerrar modal">
@@ -617,7 +625,7 @@ export interface PlenoRow {
         right: 0.75rem;
         background: transparent;
         border: none;
-        color: rgba(255, 255, 255, 0.6);
+        color: #ffffff;
         cursor: pointer;
         font-size: 1rem;
       }
@@ -963,11 +971,12 @@ export interface PlenoRow {
         font-weight: 600;
         cursor: pointer;
         border: none;
+        color: #ffffff;
       }
 
       .btn-status-baja {
         background: rgba(239, 68, 68, 0.15);
-        color: #f87171;
+        color: #ffffff;
         border: 1px solid rgba(239, 68, 68, 0.3);
       }
 
@@ -977,7 +986,7 @@ export interface PlenoRow {
 
       .btn-status-activa {
         background: rgba(16, 185, 129, 0.15);
-        color: #34d399;
+        color: #ffffff;
         border: 1px solid rgba(16, 185, 129, 0.3);
       }
 
@@ -1040,7 +1049,7 @@ export interface PlenoRow {
       .modal-close-btn {
         background: transparent;
         border: none;
-        color: rgba(255, 255, 255, 0.6);
+        color: #ffffff;
         font-size: 1.25rem;
         cursor: pointer;
       }
@@ -1239,10 +1248,42 @@ export class AdminPlenosComponent {
 
     // 1. Socios con perfil activo / dado_de_baja / waitlist
     for (const m of members) {
-      if (m.membershipTier === 'activo' || m.membershipTier === 'dado_de_baja' || (m.type === 'socio' && m.converted)) {
-        const memberSubmissions = submissions.filter(
-          (s) => s.email?.toLowerCase() === m.email.toLowerCase(),
-        );
+      if (m.membershipTier === 'waitlist' && m.converted) {
+        list.push({
+          id: `socio-${m.id}`,
+          sourceType: 'socio',
+          name: m.fullName || m.email.split('@')[0],
+          email: m.email,
+          phone: m.phone || '—',
+          dni: m.dni,
+          avatar: m.avatarUrl,
+          tier: 'socio_pleno',
+          tierLabel: 'Socio Pleno',
+          monthlyFee: 23000,
+          status: 'pendiente',
+          statusLabel: 'Pendiente',
+          date: m.createdAt,
+          submissionsCount: 0,
+          totalPaid: 0,
+        });
+      } else if (
+        m.membershipTier === 'activo' ||
+        m.membershipTier === 'dado_de_baja' ||
+        (m.type === 'socio' && m.converted)
+      ) {
+        const memberRef = (
+          (m as any).paymentReference ||
+          (m as any).payment_reference ||
+          (m as any).reference
+        )?.trim();
+        const memberSubmissions = memberRef
+          ? submissions.filter(
+              (s) =>
+                s.email?.toLowerCase() === m.email.toLowerCase() &&
+                (s.reference?.toLowerCase() === memberRef.toLowerCase() ||
+                  s.displayReference?.toLowerCase() === memberRef.toLowerCase()),
+            )
+          : [];
         const totalPaid = memberSubmissions.reduce((acc, curr) => acc + (curr.amountArs || 0), 0);
         const status: 'activa' | 'pendiente' | 'baja' =
           m.membershipTier === 'dado_de_baja' ? 'baja' : 'activa';
@@ -1261,40 +1302,38 @@ export class AdminPlenosComponent {
           status,
           statusLabel: status === 'activa' ? 'Activa' : 'Dada de baja',
           date: m.createdAt,
+          paymentReference: memberRef,
           submissionsCount: memberSubmissions.length,
           totalPaid,
-        });
-      } else if (m.membershipTier === 'waitlist' && m.converted) {
-        list.push({
-          id: `socio-${m.id}`,
-          sourceType: 'socio',
-          name: m.fullName || m.email.split('@')[0],
-          email: m.email,
-          phone: m.phone || '—',
-          dni: m.dni,
-          avatar: m.avatarUrl,
-          tier: 'socio_pleno',
-          tierLabel: 'Socio Pleno',
-          monthlyFee: 23000,
-          status: 'pendiente',
-          statusLabel: 'Pendiente',
-          date: m.createdAt,
-          submissionsCount: 0,
-          totalPaid: 0,
         });
       }
     }
 
     // 2. Prestadores Plenos oficiales
     for (const p of providers) {
-      // Prestador con tier pleno o aprobado
-      if (p.tier === 'pleno' || p.status === 'aprobado' || p.role === 'prestador') {
-        const provSubmissions = submissions.filter(
-          (s) => s.email?.toLowerCase() === p.email.toLowerCase(),
-        );
+      // Requisito independiente: únicamente prestadores con tier pleno
+      if (p.tier === 'pleno') {
+        const provRef = (
+          (p as any).paymentReference ||
+          (p as any).payment_reference ||
+          (p as any).reference
+        )?.trim();
+        const provSubmissions = provRef
+          ? submissions.filter(
+              (s) =>
+                s.email?.toLowerCase() === p.email.toLowerCase() &&
+                (s.reference?.toLowerCase() === provRef.toLowerCase() ||
+                  s.displayReference?.toLowerCase() === provRef.toLowerCase()),
+            )
+          : [];
         const totalPaid = provSubmissions.reduce((acc, curr) => acc + (curr.amountArs || 0), 0);
+        // Evaluar estado de aprobación independientemente
         const status: 'activa' | 'pendiente' | 'baja' =
-          p.status === 'dado_de_baja' ? 'baja' : p.status === 'pendiente' ? 'pendiente' : 'activa';
+          p.status === 'dado_de_baja' || p.status === 'rechazado'
+            ? 'baja'
+            : p.status === 'pendiente'
+              ? 'pendiente'
+              : 'activa';
 
         list.push({
           id: `prestador-${p.id}`,
@@ -1313,6 +1352,7 @@ export class AdminPlenosComponent {
           status,
           statusLabel: status === 'activa' ? 'Activa' : status === 'pendiente' ? 'Pendiente' : 'Dada de baja',
           date: p.joinedAt || new Date().toISOString(),
+          paymentReference: provRef,
           submissionsCount: provSubmissions.length,
           totalPaid,
         });
@@ -1324,6 +1364,11 @@ export class AdminPlenosComponent {
       if (a.type === 'prestador' && a.status === 'pendiente') {
         // Evitar duplicar si ya figura como provider
         if (!list.some((item) => item.email.toLowerCase() === a.email.toLowerCase())) {
+          const appRef = (
+            (a as any).paymentReference ||
+            (a as any).payment_reference ||
+            (a as any).reference
+          )?.trim();
           list.push({
             id: `postulacion-${a.id}`,
             sourceType: 'postulacion',
@@ -1340,6 +1385,7 @@ export class AdminPlenosComponent {
             status: 'pendiente',
             statusLabel: 'En Evaluación',
             date: a.createdAt,
+            paymentReference: appRef,
             submissionsCount: 0,
             totalPaid: 0,
           });
@@ -1409,18 +1455,103 @@ export class AdminPlenosComponent {
     return result;
   });
 
-  openDetail(row: PlenoRow): void {
+  private triggerElement: HTMLElement | null = null;
+
+  openDetail(row: PlenoRow, event?: Event): void {
+    this.triggerElement =
+      (event?.currentTarget as HTMLElement) ||
+      (typeof document !== 'undefined' ? (document.activeElement as HTMLElement) : null);
     this.selectedRow.set(row);
+
+    setTimeout(() => {
+      if (typeof document === 'undefined') return;
+      const dialog = document.querySelector<HTMLElement>('.modal-dialog');
+      if (!dialog) return;
+
+      const firstFocusable = dialog.querySelector<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+      if (firstFocusable) {
+        firstFocusable.focus();
+      } else {
+        dialog.focus();
+      }
+    }, 0);
   }
 
   closeDetail(): void {
     this.selectedRow.set(null);
+    if (this.triggerElement && typeof this.triggerElement.focus === 'function') {
+      const el = this.triggerElement;
+      setTimeout(() => {
+        if (el.isConnected) {
+          el.focus();
+        }
+      }, 0);
+    }
+    this.triggerElement = null;
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  handleWindowKeydown(event: KeyboardEvent): void {
+    if (!this.selectedRow()) return;
+
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      this.closeDetail();
+      return;
+    }
+
+    if (event.key === 'Tab') {
+      if (typeof document === 'undefined') return;
+      const dialog = document.querySelector<HTMLElement>('.modal-dialog');
+      if (!dialog) return;
+
+      const focusables = Array.from(
+        dialog.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((el) => el.offsetParent !== null || el.offsetWidth > 0 || el.offsetHeight > 0);
+
+      if (focusables.length === 0) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+
+      if (event.shiftKey) {
+        if (document.activeElement === first || !dialog.contains(document.activeElement)) {
+          event.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (document.activeElement === last || !dialog.contains(document.activeElement)) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
+    }
   }
 
   getReceiptsForSelected(row: PlenoRow): TransferSubmission[] {
+    const paymentRef = (row.paymentReference || (row as any).reference)?.trim().toLowerCase();
+    if (!paymentRef) {
+      return [];
+    }
     return this.store
       .submissions()
-      .filter((s) => s.email?.toLowerCase() === row.email.toLowerCase());
+      .filter(
+        (s) =>
+          s.email?.toLowerCase() === row.email.toLowerCase() &&
+          Boolean(
+            (s.reference && s.reference.trim().toLowerCase() === paymentRef) ||
+              (s.displayReference && s.displayReference.trim().toLowerCase() === paymentRef),
+          ),
+      );
   }
 
   getInitials(name: string): string {
@@ -1443,7 +1574,10 @@ export class AdminPlenosComponent {
       if (row.sourceType === 'socio') {
         const memberId = row.id.replace('socio-', '');
         const newTier = targetStatus === 'activa' ? 'activo' : 'dado_de_baja';
-        await this.store.updateMemberProfile(memberId, { membershipTier: newTier });
+        const result = await this.store.updateMemberProfile(memberId, { membershipTier: newTier });
+        if (!result?.success) {
+          throw new Error(result?.error || 'No fue posible actualizar el socio.');
+        }
         this.showToast(
           targetStatus === 'activa'
             ? `Membresía Plena de ${row.name} activada con éxito.`
@@ -1452,16 +1586,20 @@ export class AdminPlenosComponent {
       } else if (row.sourceType === 'prestador' || row.sourceType === 'postulacion') {
         const appStatus = targetStatus === 'activa' ? 'aprobado' : 'dado_de_baja';
         const rawId = row.id.replace('prestador-', '').replace('postulacion-', '');
-        await this.store.updateApplicationStatus(rawId, 'prestador', appStatus);
+        const ok = await this.store.updateApplicationStatus(rawId, 'prestador', appStatus);
+        if (!ok) {
+          throw new Error('No fue posible actualizar el estado del prestador.');
+        }
         this.showToast(
           targetStatus === 'activa'
             ? `Prestador Pleno ${row.name} activado con éxito.`
             : `Prestador Pleno ${row.name} dado de baja.`,
         );
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('[AdminPlenos] Error actualizando estado:', err);
-      this.showToast('Ocurrió un error al actualizar el estado.');
+      const msg = err?.message || (typeof err === 'string' ? err : 'Ocurrió un error al actualizar el estado.');
+      this.showToast(msg);
     }
   }
 

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
+import { DiscountService } from '../../../core/services/discount.service';
 import { NewsletterService } from '../../../core/services/newsletter.service';
 import { FooterComponent } from '../../../shared/components/footer/footer.component';
 import { HeaderComponent } from '../../../shared/components/header/header.component';
@@ -32,6 +33,7 @@ import { ProviderTiersComponent } from '../../../shared/components/provider-tier
 })
 export class ProviderPlenoComponent {
   readonly newsletter = inject(NewsletterService);
+  readonly discountService = inject(DiscountService);
   readonly router = inject(Router);
 
   readonly breadcrumbs: BreadcrumbItem[] = [
@@ -71,8 +73,10 @@ export class ProviderPlenoComponent {
   readonly invitationCode = signal('');
   readonly codeValid = signal(false);
   readonly codeError = signal<string | null>(null);
+  readonly isValidatingCode = signal(false);
   readonly isSubmitting = signal(false);
   readonly submitted = signal(false);
+  readonly submitError = signal<string | null>(null);
 
   constructor() {
     effect(() => {
@@ -94,32 +98,88 @@ export class ProviderPlenoComponent {
     }
   }
 
-  applyCode(): void {
+  async applyCode(): Promise<void> {
     const code = this.invitationCode().trim().toUpperCase();
     if (!code) {
       this.codeError.set('Ingresá un código de invitación.');
       this.codeValid.set(false);
       return;
     }
-    // Acepta códigos de prueba o de invitación del Club
-    if (code === 'PLENO2027' || code === 'INVITACION' || code === 'FUNDADOR' || code.length >= 5) {
-      this.codeValid.set(true);
-      this.codeError.set(null);
-    } else {
-      this.codeError.set('Código de invitación no válido o expirado.');
+
+    this.isValidatingCode.set(true);
+    this.codeError.set(null);
+
+    try {
+      const res = await this.discountService.validateDiscount(
+        code,
+        null,
+        null,
+        90000,
+        null,
+        { isMembership: true },
+      );
+
+      if (res.valid) {
+        this.codeValid.set(true);
+        this.codeError.set(null);
+      } else {
+        this.codeValid.set(false);
+        this.codeError.set(res.error || 'Código de invitación no válido o expirado.');
+      }
+    } catch {
       this.codeValid.set(false);
+      this.codeError.set('Código de invitación no válido o expirado.');
+    } finally {
+      this.isValidatingCode.set(false);
     }
   }
 
-  submitPleno(): void {
-    if (!this.fullName().trim() || !this.agency().trim() || !this.email().trim() || !this.phone().trim()) {
+  async submitPleno(): Promise<void> {
+    if (
+      this.isSubmitting() ||
+      !this.codeValid() ||
+      !this.fullName().trim() ||
+      !this.agency().trim() ||
+      !this.email().trim() ||
+      !this.phone().trim()
+    ) {
       return;
     }
+
     this.isSubmitting.set(true);
-    setTimeout(() => {
+    this.submitError.set(null);
+
+    try {
+      const code = this.invitationCode().trim().toUpperCase();
+      const description = code ? `Código de invitación: ${code}` : '';
+
+      const result = await this.newsletter.submitProviderApplication({
+        fullName: this.fullName().trim(),
+        agency: this.agency().trim(),
+        category: 'pleno',
+        region: 'Catamarca',
+        email: this.email().trim(),
+        phone: this.phone().trim(),
+        website: '',
+        description,
+      });
+
+      if (result?.success) {
+        this.submitted.set(true);
+      } else {
+        this.submitError.set(
+          result?.message ||
+            'El sistema no pudo registrar la postulación en este momento. Por favor intentá nuevamente.',
+        );
+      }
+    } catch (err: any) {
+      this.submitError.set(
+        err?.message ||
+          'Ocurrió un error inesperado al enviar la postulación. Por favor intentá nuevamente.',
+      );
+    } finally {
       this.isSubmitting.set(false);
-      this.submitted.set(true);
-    }, 600);
+    }
   }
 
   toggleMobileMenu(event: Event): void {

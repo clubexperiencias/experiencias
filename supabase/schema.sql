@@ -2621,6 +2621,9 @@ DECLARE
   v_socio public.socios%ROWTYPE;
   v_discount public.descuentos%ROWTYPE;
   v_now TIMESTAMPTZ := now();
+  v_subtotal NUMERIC := 23000;
+  v_discount_ars NUMERIC := 0;
+  v_remaining_balance NUMERIC := 23000;
 BEGIN
   -- 1. Validaciones básicas de entrada
   IF v_email = '' OR v_name = '' OR length(v_dni) < 7 OR length(v_dni) > 9 OR v_phone = '' THEN
@@ -2632,45 +2635,100 @@ BEGIN
     RETURN jsonb_build_object('status', 'unauthorized', 'message', 'Se requiere autenticación válida vía Google.');
   END IF;
 
-  -- 3. Validar código de descuento si se proporcionó
-  IF v_code <> '' THEN
-    SELECT * INTO v_discount
-    FROM public.descuentos
-    WHERE UPPER(code) = v_code AND active = true
-    LIMIT 1
-    FOR UPDATE;
+  -- 3. Validar código de descuento (requerido para activación) y recalcular saldo independiente contra ARS 23.000
+  IF v_code = '' THEN
+    RETURN jsonb_build_object(
+      'status', 'invalid_code',
+      'message', 'Por el momento, la activación de Socio Pleno está habilitada para personas elegidas por el Club con código promocional.'
+    );
+  END IF;
 
-    IF NOT FOUND THEN
-      -- Códigos estándar predefinidos de cortesía
-      IF v_code NOT IN ('PLENO100', 'SOCIO100', 'LANZAMIENTO100', 'BONIFICADO100', 'CLUB100') THEN
-        RETURN jsonb_build_object('status', 'invalid_code', 'message', 'El código de descuento no es válido o está inactivo.');
-      END IF;
+  SELECT * INTO v_discount
+  FROM public.descuentos
+  WHERE UPPER(code) = v_code
+  LIMIT 1
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    -- Códigos estándar predefinidos de cortesía (bonificación total del 100%) sólo si no existe fila registrada
+    IF v_code IN ('PLENO100', 'SOCIO100', 'LANZAMIENTO100', 'BONIFICADO100', 'CLUB100') THEN
+      v_discount_ars := v_subtotal;
+      v_remaining_balance := 0;
     ELSE
-      -- Validar vigencia
-      IF v_discount.starts_at IS NOT NULL AND v_discount.starts_at > v_now THEN
-        RETURN jsonb_build_object('status', 'invalid_code', 'message', 'Esta promoción aún no comenzó.');
-      END IF;
-      IF v_discount.ends_at IS NOT NULL AND v_discount.ends_at < v_now THEN
-        RETURN jsonb_build_object('status', 'invalid_code', 'message', 'Este código promocional ha expirado.');
-      END IF;
-      IF v_discount.max_uses IS NOT NULL AND v_discount.uses_count >= v_discount.max_uses THEN
-        RETURN jsonb_build_object('status', 'invalid_code', 'message', 'Este código promocional alcanzó el límite máximo de usos.');
-      END IF;
-      -- Validar scope: 'general' o 'membership'
-      IF v_discount.scope NOT IN ('general', 'membership') THEN
-        RETURN jsonb_build_object('status', 'invalid_code', 'message', 'Este cupón solo aplica para expediciones específicas y no para membresías.');
-      END IF;
+      RETURN jsonb_build_object(
+        'status', 'invalid_code',
+        'message', 'El código de descuento no es válido o está inactivo.'
+      );
+    END IF;
+  ELSE
+    -- Rechazar si el cupón registrado está inactivo
+    IF NOT v_discount.active THEN
+      RETURN jsonb_build_object('status', 'invalid_code', 'message', 'El código de descuento está inactivo.');
+    END IF;
 
-      -- Incrementar uso del cupón
-      UPDATE public.descuentos
-      SET uses_count = uses_count + 1,
-          updated_at = v_now
-      WHERE id = v_discount.id;
+    -- Validar vigencia
+    IF v_discount.starts_at IS NOT NULL AND v_discount.starts_at > v_now THEN
+      RETURN jsonb_build_object('status', 'invalid_code', 'message', 'Esta promoción aún no comenzó.');
+    END IF;
+    IF v_discount.ends_at IS NOT NULL AND v_discount.ends_at < v_now THEN
+      RETURN jsonb_build_object('status', 'invalid_code', 'message', 'Este código promocional ha expirado.');
+    END IF;
+    IF v_discount.max_uses IS NOT NULL AND v_discount.uses_count >= v_discount.max_uses THEN
+      RETURN jsonb_build_object('status', 'invalid_code', 'message', 'Este código promocional alcanzó el límite máximo de usos.');
+    END IF;
+
+    -- Validar scope: 'general' o 'membership'
+    IF v_discount.scope NOT IN ('general', 'membership') THEN
+      RETURN jsonb_build_object('status', 'invalid_code', 'message', 'Este cupón solo aplica para expediciones específicas y no para membresías.');
+    END IF;
+
+    -- Validar monto mínimo si aplica (min_amount_ars)
+    IF v_discount.min_amount_ars IS NOT NULL AND v_discount.min_amount_ars > 0 AND v_subtotal < v_discount.min_amount_ars THEN
+      RETURN jsonb_build_object('status', 'invalid_code', 'message', 'El monto de la membresía no alcanza el mínimo requerido para este cupón.');
+    END IF;
+
+    -- Recalcular descuento efectivo independientemente contra ARS 23.000
+    IF v_discount.discount_type = 'percentage' THEN
+      v_discount_ars := ROUND((v_subtotal * v_discount.discount_value) / 100.0);
+      -- Aplicar tope máximo de descuento si está configurado (max_discount_ars)
+      IF v_discount.max_discount_ars IS NOT NULL AND v_discount.max_discount_ars > 0 THEN
+        v_discount_ars := LEAST(v_discount_ars, v_discount.max_discount_ars);
+      END IF;
+    ELSIF v_discount.discount_type = 'fixed_amount' THEN
+      v_discount_ars := ROUND(v_discount.discount_value);
+    ELSE
+      v_discount_ars := 0;
+    END IF;
+
+    -- Acotar descuento entre 0 y el subtotal
+    v_discount_ars := GREATEST(0, LEAST(v_discount_ars, v_subtotal));
+    v_remaining_balance := v_subtotal - v_discount_ars;
+
+    -- Rechazar activación salvo que el saldo restante calculado sea cero
+    IF v_remaining_balance > 0 THEN
+      RETURN jsonb_build_object(
+        'status', 'invalid_code',
+        'message', 'Por el momento, la activación inmediata requiere un cupón que cubra el 100% de la membresía.'
+      );
     END IF;
   END IF;
 
   -- 4. Registrar o actualizar socio con categoría 'activo' (Socio Pleno)
-  IF EXISTS (SELECT 1 FROM public.socios WHERE email = v_email) THEN
+  SELECT * INTO v_socio FROM public.socios WHERE email = v_email LIMIT 1;
+  IF FOUND THEN
+    -- Proteger cuadro vitalicio: si ya es Socio Fundador (Nivel 3), rechazar la degradación a nivel inferior
+    IF v_socio.membership_tier = 'fundador' THEN
+      RETURN jsonb_build_object(
+        'status', 'already_fundador',
+        'message', 'Ya contás con la membresía vitalicia de Socio Fundador (Nivel 3). No es posible cambiar a una categoría inferior.'
+      );
+    END IF;
+
+    -- Validar DNI único si ya está registrado en otra cuenta
+    IF v_dni <> '' AND EXISTS (SELECT 1 FROM public.socios WHERE dni = v_dni AND email <> v_email) THEN
+      RETURN jsonb_build_object('status', 'already_registered_dni', 'message', 'Ya existe un socio registrado con este DNI.');
+    END IF;
+
     UPDATE public.socios
     SET
       full_name = v_name,
@@ -2716,6 +2774,14 @@ BEGIN
       v_now
     )
     RETURNING * INTO v_socio;
+  END IF;
+
+  -- 5. Incrementar uso del cupón sólo tras la inserción o actualización exitosa del socio
+  IF v_discount.id IS NOT NULL THEN
+    UPDATE public.descuentos
+    SET uses_count = uses_count + 1,
+        updated_at = v_now
+    WHERE id = v_discount.id;
   END IF;
 
   RETURN jsonb_build_object(

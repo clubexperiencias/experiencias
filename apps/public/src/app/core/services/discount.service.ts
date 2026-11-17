@@ -312,12 +312,19 @@ export class DiscountService {
 
     // 3. Fallback para membresía con códigos de adquisición predefinidos
     if (!discount && options?.isMembership) {
-      if (['PLENO100', 'SOCIO100', 'LANZAMIENTO100', 'BONIFICADO100', 'CLUB100'].includes(cleanCode)) {
+      if (
+        ['PLENO100', 'SOCIO100', 'LANZAMIENTO100', 'BONIFICADO100', 'CLUB100', 'PLENO2027', 'INVITACION', 'FUNDADOR'].includes(
+          cleanCode,
+        )
+      ) {
+        const isPleno2027 = cleanCode === 'PLENO2027';
         discount = {
-          id: 'disc-pleno-100',
+          id: `disc-${cleanCode.toLowerCase()}`,
           code: cleanCode,
-          name: '100% Bonificado Socio Pleno',
-          description: 'Membresía Socio Pleno bonificada con código promocional',
+          name: isPleno2027 ? 'Invitación Prestador Pleno 2027' : '100% Bonificado Socio Pleno',
+          description: isPleno2027
+            ? 'Invitación exclusiva para Prestador Pleno válida hasta 2027'
+            : 'Membresía Socio Pleno bonificada con código promocional',
           discountType: 'percentage',
           discountValue: 100,
           scope: 'membership',
@@ -325,7 +332,7 @@ export class DiscountService {
           minAmountArs: 0,
           maxDiscountArs: null,
           startsAt: null,
-          endsAt: null,
+          endsAt: isPleno2027 ? '2027-12-31T23:59:59.999Z' : '2026-12-31T23:59:59.999Z',
           maxUses: null,
           usesCount: 0,
           active: true,

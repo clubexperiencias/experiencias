@@ -4,6 +4,7 @@ import { WaitlistEntry, WaitlistSubmissionDto, WaitlistStats } from '../models/w
 import { DiscountCode } from '../models/bank-transfer.model';
 import { SUPABASE_CLIENT, isSupabaseConfigured } from '../supabase/supabase.client';
 import { NotificationService } from './notification.service';
+import { environment } from '../../../environments/environment';
 
 const STORAGE_KEY = 'catamarca_club_waitlist';
 const SUBSCRIBED_KEY = 'catamarca_club_user_subscribed';
@@ -60,6 +61,10 @@ export class NewsletterService {
   private readonly _loginSuccessFlag = signal<boolean>(false);
   private readonly usedMemberDiscounts = new Set(this.loadUsedMemberDiscounts());
 
+  private _sessionGeneration = 0;
+  private _activeAuthUserId: string | null = this.loadCurrentMember()?.authUserId || null;
+  private _activeAuthEmail: string | null = this.loadCurrentMember()?.email?.toLowerCase() || null;
+
   readonly profileSuccessHighlight = signal<boolean>(false);
 
   constructor() {
@@ -115,9 +120,30 @@ export class NewsletterService {
 
       // Escuchar cambios de sesión en Supabase Auth (ej. Login con Google)
       this.supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'SIGNED_OUT' || !session?.user) {
+          if (this._activeAuthUserId !== null || this._activeAuthEmail !== null) {
+            this._sessionGeneration++;
+            this._activeAuthUserId = null;
+            this._activeAuthEmail = null;
+          }
+          return;
+        }
+
+        const authEmail = session.user.email?.toLowerCase() || '';
+        const authId = session.user.id;
+
+        const isAccountChange =
+          (this._activeAuthUserId !== null && this._activeAuthUserId !== authId) ||
+          (this._activeAuthEmail !== null && this._activeAuthEmail !== authEmail);
+
+        if (isAccountChange) {
+          this._sessionGeneration++;
+        }
+
+        this._activeAuthUserId = authId;
+        this._activeAuthEmail = authEmail;
+
         if (session?.user?.email) {
-          const authEmail = session.user.email.toLowerCase();
-          const authId = session.user.id;
           // Solo activar la notificación de ingreso exitoso si el usuario acaba de ingresar con Google
           // por primera vez (evento SIGNED_IN tras OAuth flow). Nunca si ya tenía la sesión
           // previamente iniciada (INITIAL_SESSION) o por refresco/navegación común.
@@ -910,6 +936,8 @@ export class NewsletterService {
       return { success: false, message: 'Ingresá tu número de celular.' };
     }
 
+    const opGeneration = this._sessionGeneration;
+
     if (this.isSupabaseConnected()) {
       try {
         const { data: rpcRes, error: rpcErr } = await this.supabase.rpc(
@@ -925,78 +953,171 @@ export class NewsletterService {
           },
         );
 
-        const rpcPayload = rpcRes as any;
-        if (!rpcErr && rpcPayload?.status) {
-          if (rpcPayload.status === 'invalid_code') {
-            this._isLoading.set(false);
-            return {
-              success: false,
-              message: rpcPayload.message || 'Código de descuento inválido o expirado.',
-            };
-          }
-
-          if (rpcPayload.status === 'already_registered_dni') {
-            this._isLoading.set(false);
-            return {
-              success: false,
-              message: 'Ya existe un socio registrado con este número de DNI.',
-            };
-          }
-
-          if (rpcPayload.status === 'ok' && rpcPayload.socio) {
-            const entry = mapDbRowToEntry(rpcPayload.socio);
-            const today = new Date();
-            const nextMonth = new Date(today);
-            nextMonth.setMonth(nextMonth.getMonth() + 1);
-
-            entry.membershipTier = 'activo';
-            entry.subscription = {
-              status: 'active',
-              tier: 'activo',
-              amountArs: 23000,
-              paymentMethod: cleanDiscountCode ? `Cupón Promocional (${cleanDiscountCode})` : 'Bonificación de Adquisición',
-              startedAt: today.toISOString(),
-              nextBillingDate: nextMonth.toLocaleDateString('es-AR', {
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
-              }),
-              autoRenew: true,
-              lastPaymentReceipt: 'REC-' + Math.floor(100000 + Math.random() * 900000),
-            };
-
-            const updatedEntries = [
-              entry,
-              ...this._entries().filter((e) => e.email !== cleanEmail),
-            ];
-            this._entries.set(updatedEntries);
-            this._currentMember.set(entry);
-            this.persistEntries(updatedEntries);
-            this.persistCurrentMember(entry);
-
-            this._isLoading.set(false);
-            this.setLoginSuccessFlag();
-            this.notificationService
-              .notifyWelcomeMember({
-                fullName: entry.fullName || cleanName,
-                email: entry.email,
-                position: entry.position,
-              })
-              .catch((err) => console.warn('[NewsletterService] Error enviando bienvenida:', err));
-            return {
-              success: true,
-              socio: entry,
-              message: `¡Felicitaciones! Tu membresía de Socio Pleno #${entry.position} está activa con cuota bonificada.`,
-            };
-          }
+        if (rpcErr) {
+          this._isLoading.set(false);
+          console.warn('[NewsletterService] Error en RPC activate_socio_pleno_atomic:', rpcErr);
+          return {
+            success: false,
+            message: rpcErr.message || 'No fue posible completar la activación de la membresía.',
+          };
         }
-      } catch (err) {
+
+        const rpcPayload = rpcRes as any;
+        if (!rpcPayload || typeof rpcPayload !== 'object') {
+          this._isLoading.set(false);
+          return {
+            success: false,
+            message: 'Respuesta inválida del servidor al activar la membresía.',
+          };
+        }
+
+        if (rpcPayload.status === 'unauthorized') {
+          this._isLoading.set(false);
+          return {
+            success: false,
+            message:
+              rpcPayload.message ||
+              'Se requiere autenticación válida vía Google para activar la membresía.',
+          };
+        }
+
+        if (rpcPayload.status === 'invalid_input') {
+          this._isLoading.set(false);
+          return {
+            success: false,
+            message: rpcPayload.message || 'Completá todos los campos obligatorios.',
+          };
+        }
+
+        if (rpcPayload.status === 'invalid_code') {
+          this._isLoading.set(false);
+          return {
+            success: false,
+            message: rpcPayload.message || 'Código de descuento inválido o expirado.',
+          };
+        }
+
+        if (rpcPayload.status === 'already_registered_dni') {
+          this._isLoading.set(false);
+          return {
+            success: false,
+            message: 'Ya existe un socio registrado con este número de DNI.',
+          };
+        }
+
+        if (rpcPayload.status === 'already_fundador') {
+          this._isLoading.set(false);
+          return {
+            success: false,
+            message:
+              rpcPayload.message ||
+              'Ya contás con la membresía vitalicia de Socio Fundador (Nivel 3). No es necesario activar una membresía plena.',
+          };
+        }
+
+        if (rpcPayload.status === 'ok' && rpcPayload.socio) {
+          if (opGeneration !== this._sessionGeneration) {
+            this._isLoading.set(false);
+            return {
+              success: false,
+              message: 'La sesión o la cuenta cambió durante la activación. La operación no fue aplicada.',
+            };
+          }
+
+          const entry = mapDbRowToEntry(rpcPayload.socio);
+          const today = new Date();
+          const nextMonth = new Date(today);
+          nextMonth.setMonth(nextMonth.getMonth() + 1);
+
+          entry.membershipTier = 'activo';
+          entry.subscription = {
+            status: 'active',
+            tier: 'activo',
+            amountArs: 23000,
+            paymentMethod: cleanDiscountCode ? `Cupón Promocional (${cleanDiscountCode})` : 'Bonificación de Adquisición',
+            startedAt: today.toISOString(),
+            nextBillingDate: nextMonth.toLocaleDateString('es-AR', {
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+            }),
+            autoRenew: true,
+            lastPaymentReceipt: 'REC-' + Math.floor(100000 + Math.random() * 900000),
+          };
+
+          const updatedEntries = [
+            entry,
+            ...this._entries().filter((e) => e.email !== cleanEmail),
+          ];
+          this._entries.set(updatedEntries);
+          this._currentMember.set(entry);
+          this.persistEntries(updatedEntries);
+          this.persistCurrentMember(entry);
+
+          this._isLoading.set(false);
+          this.setLoginSuccessFlag();
+          this.notificationService
+            .notifyWelcomeMember({
+              fullName: entry.fullName || cleanName,
+              email: entry.email,
+              position: entry.position,
+            })
+            .catch((err) => console.warn('[NewsletterService] Error enviando bienvenida:', err));
+          return {
+            success: true,
+            socio: entry,
+            message: `¡Felicitaciones! Tu membresía de Socio Pleno #${entry.position} está activa con cuota bonificada.`,
+          };
+        }
+
+        // Respuesta no reconocida del servidor conectado
+        this._isLoading.set(false);
+        return {
+          success: false,
+          message: rpcPayload.message || 'No fue posible completar la activación de la membresía.',
+        };
+      } catch (err: any) {
         console.warn('[NewsletterService] Error llamando a activate_socio_pleno_atomic:', err);
+        this._isLoading.set(false);
+        return {
+          success: false,
+          message:
+            err?.message ||
+            'Error de comunicación con el servidor al activar la membresía. Por favor, reintentá.',
+        };
       }
+    }
+
+    // Permitir simulación local únicamente cuando el modo desarrollo explícito está habilitado (!environment.production)
+    if (environment.production) {
+      this._isLoading.set(false);
+      return {
+        success: false,
+        message: 'El servicio de activación de membresías no está disponible en este momento.',
+      };
     }
 
     // Fallback offline / local
     const existing = this._entries().find((e) => e.email === cleanEmail);
+    if (existing?.membershipTier === 'fundador') {
+      this._isLoading.set(false);
+      return {
+        success: false,
+        message:
+          'Ya contás con la membresía vitalicia de Socio Fundador (Nivel 3). No es posible cambiar a una membresía inferior.',
+      };
+    }
+
+    const dniDuplicate = this._entries().find(
+      (e) => e.email !== cleanEmail && e.dni && e.dni.replace(/\D/g, '') === cleanDni,
+    );
+    if (dniDuplicate) {
+      this._isLoading.set(false);
+      return {
+        success: false,
+        message: 'Ya existe un socio registrado con este número de DNI.',
+      };
+    }
     const position = existing?.position || this._entries().length + 1;
     const today = new Date();
     const nextMonth = new Date(today);
@@ -1030,6 +1151,14 @@ export class NewsletterService {
       status: 'confirmed',
       source: 'web_minimal_landing',
     };
+
+    if (opGeneration !== this._sessionGeneration) {
+      this._isLoading.set(false);
+      return {
+        success: false,
+        message: 'La sesión o la cuenta cambió durante la activación. La operación no fue aplicada.',
+      };
+    }
 
     const updated = [fallbackEntry, ...this._entries().filter((e) => e.email !== cleanEmail)];
     this._entries.set(updated);
@@ -1293,6 +1422,9 @@ export class NewsletterService {
         source: 'local_dev' as const,
         createdAt: new Date(),
       };
+      this._sessionGeneration++;
+      this._activeAuthUserId = (demoSocio as any).authUserId || null;
+      this._activeAuthEmail = demoSocio.email.toLowerCase();
       this._currentMember.set(demoSocio);
       this.persistCurrentMember(demoSocio);
       this.setLoginSuccessFlag();
@@ -1350,6 +1482,9 @@ export class NewsletterService {
 
     const current = this._currentMember();
     if (current && current.email.toLowerCase() !== authEmail) {
+      this._sessionGeneration++;
+      this._activeAuthUserId = data.session?.user.id || null;
+      this._activeAuthEmail = authEmail;
       this._currentMember.set(null);
     }
 
@@ -1551,6 +1686,9 @@ export class NewsletterService {
   }
 
   resetCurrentSubscription(): void {
+    this._sessionGeneration++;
+    this._activeAuthUserId = null;
+    this._activeAuthEmail = null;
     this._currentMember.set(null);
     try {
       localStorage.removeItem(SUBSCRIBED_KEY);

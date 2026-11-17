@@ -50,6 +50,8 @@ export class ProviderFounderComponent {
   readonly trajectory = signal('');
   readonly founderAgreedToPrice = signal(false);
   readonly applicationSuccess = signal(false);
+  readonly isSubmitting = signal(false);
+  readonly submitError = signal<string | null>(null);
 
   readonly highlights = [
     {
@@ -66,8 +68,9 @@ export class ProviderFounderComponent {
     },
   ];
 
-  submitApplication(): void {
+  async submitApplication(): Promise<void> {
     if (
+      this.isSubmitting() ||
       !this.contactName().trim() ||
       !this.agencyName().trim() ||
       !this.email().trim() ||
@@ -77,7 +80,45 @@ export class ProviderFounderComponent {
     ) {
       return;
     }
-    this.applicationSuccess.set(true);
+
+    this.isSubmitting.set(true);
+    this.submitError.set(null);
+
+    try {
+      const result = await this.newsletter.submitProviderApplication({
+        fullName: this.contactName().trim(),
+        agency: this.agencyName().trim(),
+        category: 'fundador',
+        region: 'Catamarca',
+        email: this.email().trim(),
+        phone: this.phone().trim(),
+        website: '',
+        description: this.trajectory().trim(),
+      });
+
+      if (result?.success) {
+        await this.newsletter.submitFounderApplication({
+          fullName: this.contactName().trim(),
+          email: this.email().trim(),
+          phone: this.phone().trim(),
+          motivationLetter: `${this.agencyName().trim()} - ${this.trajectory().trim()}`,
+          agreedToProtocol: this.founderAgreedToPrice(),
+        });
+        this.applicationSuccess.set(true);
+      } else {
+        this.submitError.set(
+          result?.message ||
+            'El sistema no pudo registrar la postulación en este momento. Por favor intentá nuevamente.',
+        );
+      }
+    } catch (err: any) {
+      this.submitError.set(
+        err?.message ||
+          'Ocurrió un error inesperado al enviar la postulación. Por favor intentá nuevamente.',
+      );
+    } finally {
+      this.isSubmitting.set(false);
+    }
   }
 
   toggleMobileMenu(event: Event): void {

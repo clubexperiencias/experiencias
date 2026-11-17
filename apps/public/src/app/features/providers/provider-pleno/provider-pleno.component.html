@@ -147,8 +147,8 @@
                     placeholder="Ingresá tu código de invitación"
                   />
                 </div>
-                <button type="button" class="promo-apply-btn" (click)="applyCode()">
-                  <span>Validar Código</span>
+                <button type="button" class="promo-apply-btn" (click)="applyCode()" [disabled]="isValidatingCode()">
+                  <span>{{ isValidatingCode() ? 'Validando...' : 'Validar Código' }}</span>
                 </button>
               </div>
 
@@ -189,6 +189,16 @@
               <div class="promo-required-hint">
                 <mat-icon class="hint-icon">lock</mat-icon>
                 <span>Por el momento, la membresía está habilitada para prestadores elegidos por el Club con código promocional o de invitación.</span>
+              </div>
+              }
+
+              @if (submitError()) {
+              <div
+                class="provider-error-banner"
+                role="alert"
+                style="margin-bottom: 1.25rem; padding: 0.85rem 1rem; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 4px; color: #fca5a5; font-size: 0.88rem;"
+              >
+                {{ submitError() }}
               </div>
               }
 

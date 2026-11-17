@@ -1342,8 +1342,22 @@ export class AdminFundadoresComponent {
             tier: 'prestador_fundador',
             tierLabel: 'Prestador Fundador',
             endowmentAmount: 10000000,
-            status: p.status === 'rechazado' ? 'rechazado' : p.status === 'dado_de_baja' ? 'baja' : 'vitalicio',
-            statusLabel: p.status === 'rechazado' ? 'Rechazado' : p.status === 'dado_de_baja' ? 'Dado de baja' : 'Vitalicio Confirmado',
+            status:
+              p.status === 'rechazado'
+                ? 'rechazado'
+                : p.status === 'dado_de_baja'
+                  ? 'baja'
+                  : p.status === 'pendiente'
+                    ? 'en_evaluacion'
+                    : 'vitalicio',
+            statusLabel:
+              p.status === 'rechazado'
+                ? 'Rechazado'
+                : p.status === 'dado_de_baja'
+                  ? 'Dado de baja'
+                  : p.status === 'pendiente'
+                    ? 'En Evaluación'
+                    : 'Vitalicio Confirmado',
             motivationLetter: p.bio || 'Prestador fundador integrante del cuadro de honor patrimonial.',
             date: p.joinedAt || new Date().toISOString(),
           });
@@ -1448,7 +1462,19 @@ export class AdminFundadoresComponent {
                 ? 'dado_de_baja'
                 : 'pendiente';
 
-        await this.store.updateApplicationStatus(rawId, 'fundador', appStatus);
+        const ok = await this.store.updateApplicationStatus(rawId, 'fundador', appStatus);
+        if (!ok) {
+          throw new Error('No fue posible actualizar el estado de la postulación.');
+        }
+
+        if (newStatus === 'vitalicio') {
+          const member = this.store
+            .members()
+            .find((m) => m.email.toLowerCase() === row.email.toLowerCase());
+          if (member) {
+            void this.store.updateMemberProfile(member.id, { membershipTier: 'fundador' });
+          }
+        }
       } else if (row.sourceType === 'socio_fundador') {
         const memberId = row.id.replace('socio-fundador-', '');
         const targetTier =
@@ -1457,16 +1483,44 @@ export class AdminFundadoresComponent {
             : newStatus === 'rechazado' || newStatus === 'baja'
               ? 'dado_de_baja'
               : 'waitlist';
-        await this.store.updateMemberProfile(memberId, { membershipTier: targetTier });
-      } else if (row.sourceType === 'prestador_fundador') {
-        const provId = row.id.replace('prestador-fundador-', '');
-        const provStatus =
+        const result = await this.store.updateMemberProfile(memberId, { membershipTier: targetTier });
+        if (!result?.success) {
+          throw new Error(result?.error || 'No fue posible actualizar el perfil del socio.');
+        }
+
+        const appStatus: ApplicationStatus =
           newStatus === 'vitalicio'
             ? 'aprobado'
             : newStatus === 'rechazado'
               ? 'rechazado'
-              : 'dado_de_baja';
-        await this.store.updateApplicationStatus(provId, 'prestador', provStatus);
+              : newStatus === 'baja'
+                ? 'dado_de_baja'
+                : 'pendiente';
+
+        const ok = await this.store.recordFounderApplication({
+          fullName: row.name,
+          email: row.email,
+          phone: row.phone,
+          status: appStatus,
+          motivationLetter: row.motivationLetter || 'Socio fundador en proceso de evaluación.',
+        });
+        if (!ok) {
+          throw new Error('No fue posible actualizar el estado de la postulación de fundador.');
+        }
+      } else if (row.sourceType === 'prestador_fundador') {
+        const provId = row.id.replace('prestador-fundador-', '');
+        const provStatus: ApplicationStatus =
+          newStatus === 'vitalicio'
+            ? 'aprobado'
+            : newStatus === 'rechazado'
+              ? 'rechazado'
+              : newStatus === 'baja'
+                ? 'dado_de_baja'
+                : 'pendiente';
+        const ok = await this.store.updateApplicationStatus(provId, 'prestador', provStatus);
+        if (!ok) {
+          throw new Error('No fue posible actualizar el estado del prestador.');
+        }
       }
 
       const statusLabels: Record<string, string> = {
@@ -1477,9 +1531,12 @@ export class AdminFundadoresComponent {
       };
 
       this.showToast(`Estado de ${row.name} actualizado: ${statusLabels[newStatus] || newStatus}.`);
-    } catch (err) {
+    } catch (err: any) {
       console.error('[AdminFundadores] Error actualizando estado:', err);
-      this.showToast('Ocurrió un error al actualizar el estado de la postulación.');
+      const msg =
+        err?.message ||
+        (typeof err === 'string' ? err : 'Ocurrió un error al actualizar el estado de la postulación.');
+      this.showToast(msg);
     }
   }
 
