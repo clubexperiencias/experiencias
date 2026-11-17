@@ -1,0 +1,295 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
+/* Card / Box Principal con Fondo translúcido */
+.provider-section-card {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  background: hsla(220, 24%, 9%, 0.22);
+  border: 1px solid rgba(255, 212, 42, 0.35);
+  border-radius: 2px;
+  padding: 2.2rem clamp(1.2rem, 2.5vw, 2.2rem) 1.75rem;
+  padding-bottom: clamp(1.2rem, 3vw, 2.2rem);
+  margin: 0;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: none;
+  text-align: left;
+  overflow: hidden;
+}
+
+.card-inner-header {
+  margin-bottom: 1.8rem;
+}
+
+.section-kicker {
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  color: var(--color-gold);
+  font-weight: 700;
+  display: block;
+  margin-bottom: 0.3rem;
+  text-transform: uppercase;
+}
+
+.card-heading {
+  font-family: var(--font-serif);
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.2;
+  margin: 0.3rem 0 0.5rem;
+}
+
+.card-subheading {
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  color: var(--color-text-soft, rgba(255, 255, 255, 0.7));
+  line-height: 1.65;
+  margin: 0;
+}
+
+.tier-featured-glow {
+  display: none;
+}
+
+/* Grilla de Escalones */
+.tiers-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.25rem;
+  width: 100%;
+  box-sizing: border-box;
+  align-items: stretch;
+}
+
+.tier-card {
+  position: relative;
+  background: rgba(14, 21, 33, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+  padding: 1.5rem 1.3rem 1.05rem;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  box-sizing: border-box;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: none;
+  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+/* Tier 1: Emergente (#779A9A) */
+.tier-card:not(.featured-tier):not(.founder-tier) {
+  background: #779a9a;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+}
+
+.tier-card:not(.featured-tier):not(.founder-tier):hover {
+  transform: translateY(-4px);
+  border-color: #8bbaba;
+  box-shadow: 0 16px 40px rgba(255, 255, 255, 0.35);
+}
+
+/* Tier 2: Pleno (#D9A300) */
+.tier-card.featured-tier {
+  background: #d9a300;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+}
+
+.tier-card.featured-tier:hover {
+  transform: translateY(-4px);
+  border-color: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 16px 40px rgba(255, 255, 255, 0.35);
+}
+
+/* Tier 3: Fundador (#6EA6F7) */
+.tier-card.founder-tier {
+  background: #6ea6f7;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+.tier-card.founder-tier:hover {
+  transform: translateY(-4px);
+  border-color: rgba(255, 255, 255, 0.75);
+  box-shadow: 0 16px 40px rgba(255, 255, 255, 0.35);
+}
+
+.tier-card-header {
+  margin-bottom: 1.1rem;
+}
+
+.tier-level-badge {
+  display: inline-block;
+  font-family: var(--font-sans);
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 0.25rem 0.55rem;
+  border-radius: 2px;
+  margin-bottom: 0.6rem;
+  background: rgba(15, 28, 45, 0.28);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+}
+
+.tier-level-badge.initial,
+.tier-level-badge.locked-badge,
+.tier-level-badge.active-badge {
+  background: rgba(15, 28, 45, 0.28);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+}
+
+.tier-level-badge.founder-badge {
+  background: rgba(15, 28, 45, 0.28);
+  color: #ffcc00 !important;
+  border: 1px solid rgba(255, 204, 0, 0.4);
+}
+
+.tier-name {
+  font-family: var(--font-serif);
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: #fff;
+  margin: 0;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.tier-price-wrap {
+  margin-top: 0.5rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.tier-price {
+  font-family: var(--font-sans);
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: #ffffff;
+}
+
+.tier-price.tier-price-free {
+  font-family: var(--font-sans);
+  color: #ffffff !important;
+}
+
+.tier-period {
+  font-family: var(--font-sans);
+  font-size: 0.76rem;
+  color: rgba(255, 255, 255, 0.88);
+  white-space: nowrap;
+}
+
+.tier-jump-card {
+  background: rgba(15, 28, 45, 0.26);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 3px;
+  padding: 0.75rem 0.9rem;
+  margin-bottom: 0.75rem;
+}
+
+.jump-tag {
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  font-weight: 700;
+  color: #ffffff;
+  display: block;
+  margin-bottom: 0.2rem;
+}
+
+.tier-jump-card p {
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.92);
+  margin: 0;
+}
+
+.tier-benefits {
+  list-style: none;
+  padding: 1.15rem 0 0;
+  margin: 0 0 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  flex-grow: 1;
+}
+
+.tier-benefits li {
+  position: relative;
+  padding-left: 1.3rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.tier-benefits li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: #ffffff;
+  font-weight: bold;
+}
+
+.tier-card-footer {
+  margin-top: auto;
+  padding-top: 1.2rem;
+}
+
+.tier-cta-btn {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.8rem 1rem;
+  border-radius: 2px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  border: none;
+  box-sizing: border-box;
+  background: #ffffff;
+  color: #000000;
+  font-weight: 600;
+}
+
+.cta-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.cta-sub-text {
+  font-size: 0.68rem;
+  font-weight: 400;
+  color: rgba(0, 0, 0, 0.72);
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+/* Hover de los botones */
+.tier-cta-btn:hover {
+  background: #f0f4f8;
+  transform: translateY(-2px);
+}
+
+@media (max-width: 880px) {
+  .tiers-grid {
+    grid-template-columns: 1fr;
+  }
+}

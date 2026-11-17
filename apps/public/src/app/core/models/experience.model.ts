@@ -70,4 +70,5 @@ export interface Experience {
   mpCollectorId?: string;
   pendingRemoteSync?: boolean;
   favoritesCount?: number;
+  deletedAt?: string | null;
 }

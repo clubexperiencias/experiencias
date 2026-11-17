@@ -16,6 +16,9 @@ const ROUTE_LABELS: Record<string, string> = {
   comprobantes: 'COMPROBANTES',
   experiencias: 'EXPERIENCIAS',
   ranking: 'RANKING & PUNTUACIONES',
+  descuentos: 'DESCUENTOS & PROMOCIONES',
+  plenos: 'MEMBRESÍAS PLENAS',
+  fundadores: 'CÍRCULO DE FUNDADORES',
   nueva: 'NUEVA',
   editar: 'EDITAR',
   perfil: 'PERFIL',
@@ -155,6 +158,28 @@ const ROUTE_LABELS: Record<string, string> = {
                     <mat-icon class="menu-item-icon">local_offer</mat-icon>
                     <div class="menu-item-info">
                       <strong class="menu-item-title">Descuentos & Promociones</strong>
+                    </div>
+                  </a>
+
+                  <a
+                    [routerLink]="adminLink('/plenos')"
+                    class="dropdown-item enlarged-item"
+                    (click)="userMenuOpen.set(false)"
+                  >
+                    <mat-icon class="menu-item-icon">card_membership</mat-icon>
+                    <div class="menu-item-info">
+                      <strong class="menu-item-title">Membresías Plenas</strong>
+                    </div>
+                  </a>
+
+                  <a
+                    [routerLink]="adminLink('/fundadores')"
+                    class="dropdown-item enlarged-item"
+                    (click)="userMenuOpen.set(false)"
+                  >
+                    <mat-icon class="menu-item-icon">military_tech</mat-icon>
+                    <div class="menu-item-info">
+                      <strong class="menu-item-title">Círculo de Fundadores</strong>
                     </div>
                   </a>
 

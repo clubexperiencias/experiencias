@@ -13,7 +13,7 @@
     <main class="sub-main-content">
       <div class="sub-wrapper">
         <!-- ═══════════════ CASO 1: SUSCRIPCIÓN ACTIVA (GESTIÓN) ═══════════════ -->
-        @if (newsletter.isMonthlyActive()) {
+        @if (newsletter.isMonthlyActive() && !justActivated()) {
         <div class="sub-section-card active-management-card">
           <div class="section-card-header">
             <div class="status-badge-row">
@@ -38,8 +38,8 @@
             <div class="detail-box">
               <span class="detail-lbl">Cuota Mensual</span>
               <span class="detail-val price-highlight">{{ newsletter.activeSubscription()?.amountArs ?
-                (newsletter.activeSubscription()?.amountArs | ars) : 'A definir' }}</span>
-              <span class="detail-sub">Sin permanencia</span>
+                (newsletter.activeSubscription()?.amountArs | ars) : (regularFeeArs | ars) }}</span>
+              <span class="detail-sub">Cuota bonificada</span>
             </div>
 
             <div class="detail-box">
@@ -51,27 +51,25 @@
                 {{
                 newsletter.activeSubscription()?.status === 'paused'
                 ? 'Reanudable cuando quieras'
-                : 'Débito automático'
+                : 'Membresía bonificada activa'
                 }}
               </span>
             </div>
 
             <div class="detail-box">
-              <span class="detail-lbl">Método de Cobro</span>
+              <span class="detail-lbl">Modalidad de Adquisición</span>
               <span class="detail-val">{{
-                newsletter.activeSubscription()?.paymentMethod || 'Tarjeta registrada'
+                newsletter.activeSubscription()?.paymentMethod || 'Código Promocional'
                 }}</span>
-              <button class="link-action-btn" (click)="openManageModal('change_payment')">
-                Cambiar método
-              </button>
+              <a routerLink="/perfil" class="link-action-btn">
+                Ver mi perfil
+              </a>
             </div>
 
             <div class="detail-box">
-              <span class="detail-lbl">Próximo Débito</span>
-              <span class="detail-val">{{
-                newsletter.activeSubscription()?.nextBillingDate || '12 de Noviembre 2026'
-                }}</span>
-              <span class="detail-sub">Recibo automático por email</span>
+              <span class="detail-lbl">Número de Socio</span>
+              <span class="detail-val">#{{ newsletter.currentMember()?.position || '---' }}</span>
+              <span class="detail-sub">Prioridad en expediciones</span>
             </div>
           </div>
 
@@ -82,7 +80,7 @@
               <span class="active-perk-pill">✓ 10% OFF directo en todas las salidas</span>
               <span class="active-perk-pill">✓ Cupo asegurado prioritario</span>
               <span class="active-perk-pill">✓ Asistencia personalizada con guías locales</span>
-              <span class="active-perk-pill">✓ Expediciones exclusivas y regalos sorpresa</span>
+              <span class="active-perk-pill">✓ Expediciones exclusivas cada temporada</span>
             </div>
           </div>
 
@@ -112,114 +110,253 @@
           </div>
         </div>
 
-        <!-- ═══════════════ CASO 2: CARD UNIFICADA DE SOCIO PLENO (DESHABILITADO) ═══════════════ -->
+        <!-- ═══════════════ CASO 2: ACTIVACIÓN EXITOSA ═══════════════ -->
+        } @else if (justActivated()) {
+        <div class="sub-section-card active-management-card">
+          <div class="section-card-header">
+            <span class="section-kicker">¡FELICITACIONES!</span>
+            <h1 class="section-main-title card-heading">¡Membresía Socio Pleno Activada!</h1>
+            <p class="card-subheading">
+              Ya sos Socio Pleno #{{ newsletter.currentMember()?.position }} del Club de Experiencias con tu membresía
+              bonificada. Te redirigimos a tu perfil...
+            </p>
+          </div>
+          <div class="management-actions-row" style="margin-top: 1.5rem">
+            <a routerLink="/perfil" class="mgmt-btn explore-btn">
+              <span>Ir a mi Perfil de Socio</span>
+              <mat-icon class="btn-icon">arrow_forward</mat-icon>
+            </a>
+            <a routerLink="/experiencias" class="mgmt-btn resume-btn">
+              <span>Explorar Experiencias</span>
+              <mat-icon class="btn-icon">explore</mat-icon>
+            </a>
+          </div>
+        </div>
+
+        <!-- ═══════════════ CASO 3: FORMULARIO DE ALTA SOCIO PLENO ═══════════════ -->
         } @else {
         <section class="sub-section-card hero-sub-card" aria-labelledby="pleno-title">
           <div class="section-card-header">
-            <span class="section-kicker">NIVEL 2: PRÓXIMAMENTE</span>
+            <span class="section-kicker">NIVEL 2: MEMBRESÍA MENSUAL</span>
             <h1 id="pleno-title" class="section-main-title card-heading">
               Membresía Socio Pleno
             </h1>
             <p class="card-subheading">
-              Sumate como miembro activo del <strong>Club de Experiencias</strong> con
-              <strong>10% OFF directo</strong> en expediciones por Catamarca, cupos prioritarios,
-              salidas exclusivas y regalos sorpresa.
+              Sumate como miembro pleno del <strong>Club de Experiencias</strong> con
+              <strong>10% OFF directo</strong> en todas las expediciones por Catamarca, cupos prioritarios y
+              salidas exclusivas cada temporada.
             </p>
           </div>
 
-          <!-- Franja de condiciones simplificadas (Look & Feel de Emergentes y Fundadores) -->
+          <!-- Franja de condiciones simplificadas -->
           <div class="sub-highlights-strip">
+            @for (h of highlights; track h.title) {
             <div class="highlight-item">
-              <strong class="highlight-title">A definir</strong>
-              <span class="highlight-desc">Suscripción en proceso.. </span>
+              <strong class="highlight-title">{{ h.title }}</strong>
+              <span class="highlight-desc">{{ h.description }}</span>
             </div>
-            <div class="highlight-item">
-              <strong class="highlight-title">10% OFF & Prioridad</strong>
-              <span class="highlight-desc">Descuento directo y cupo asegurado en salidas.</span>
-            </div>
-            <div class="highlight-item">
-              <strong class="highlight-title">Salidas Exclusivas & Regalos</strong>
-              <span class="highlight-desc">Travesías para socios plenos y sorpresas de temporada.</span>
-            </div>
+            }
           </div>
 
-          <!-- Aviso de estado pausado / próximamente -->
-          <div class="sub-paused-banner" role="status">
-            <div class="paused-banner-text">
-              <strong>Inscripciones en pausa hasta el lanzamiento de temporada</strong>
-              <span>
-                Se habilitará con la apertura del calendario oficial. Mientras tanto, podés
-                sumarte gratis como <a routerLink="/socios/emergentes">Socio Emergente</a>.
-              </span>
+          <!-- Paso 1: Vinculación con Google -->
+          @if (requiresGoogle()) {
+          <section class="google-link-gate" aria-live="polite">
+            <div class="google-link-gate-head">
+              <h2>Vincular cuenta con Google</h2>
             </div>
-          </div>
+            <p>
+              Para habilitar tu membresía de Socio Pleno y asociar tus beneficios de forma segura, primero ingresá con
+              Google.
+            </p>
+            @if (authError()) {
+            <div class="signup-alert-error" role="alert">
+              <mat-icon class="alert-icon">error_outline</mat-icon>
+              <span>{{ authError() }}</span>
+            </div>
+            }
+            <button type="button" class="google-link-btn" (click)="linkGoogleAccount()">
+              <svg class="google-link-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                <path fill="#4285F4"
+                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path fill="#34A853"
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path fill="#FBBC05"
+                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                <path fill="#EA4335"
+                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+              </svg>
+              Iniciar sesión con Google
+            </button>
+          </section>
+          }
 
-          <!-- Formulario Integrado (Deshabilitado) -->
-          <form class="payment-form form-is-blocked" (ngSubmit)="$event.preventDefault()">
-            <fieldset disabled class="form-blocked-fieldset">
-              <div class="form-grid-2col">
-                <label class="form-field">
-                  <span class="field-lbl">Nombre y Apellido del Titular <b>*</b></span>
-                  <input id="sub-name" type="text" class="field-input" placeholder="Ej. Valentina Morales"
-                    [value]="subscriberName()" disabled />
-                </label>
+          <!-- Formulario de Registro / Elevación a Socio Pleno -->
+          <form class="signup-form" [class.signup-form-locked]="requiresGoogle()" novalidate
+            (submit)="$event.preventDefault(); submit()">
+            @if (submitError()) {
+            <div class="signup-alert-error" role="alert">
+              <mat-icon class="alert-icon">error_outline</mat-icon>
+              <span>{{ submitError() }}</span>
+            </div>
+            }
 
-                <label class="form-field">
-                  <span class="field-lbl">Correo Electrónico del Socio <b>*</b></span>
-                  <input id="sub-email" type="email" class="field-input" placeholder="tu-correo@ejemplo.com"
-                    [value]="subscriberEmail()" disabled />
-                </label>
+            <div class="signup-grid">
+              <!-- Nombre y Apellido -->
+              <label class="signup-field">
+                <span>Nombre y Apellido <b>*</b></span>
+                <input type="text" [value]="fullName()" (input)="fullName.set($any($event.target).value)"
+                  maxlength="100" placeholder="Ej. Martín Rodríguez" autocomplete="name" required />
+              </label>
+
+              <!-- Correo Electrónico -->
+              <label class="signup-field">
+                <span>Correo Electrónico <b>*</b></span>
+                <input type="email" [value]="email()" (input)="email.set($any($event.target).value)" maxlength="254"
+                  placeholder="tu-correo@ejemplo.com" autocomplete="email" [readonly]="!!authenticatedEmail()"
+                  required />
+              </label>
+
+              <!-- DNI -->
+              <label class="signup-field">
+                <span>DNI <b>*(7 a 9 dígitos)</b></span>
+                <input type="text" [value]="documentNumber()" (input)="documentNumber.set($any($event.target).value)"
+                  maxlength="9" placeholder="Ej. 30123456" inputmode="numeric" required />
+              </label>
+
+              <!-- Celular -->
+              <label class="signup-field">
+                <span>Celular <b>*(WhatsApp)</b></span>
+                <input type="tel" [value]="phone()" (input)="phone.set($any($event.target).value)" maxlength="25"
+                  placeholder="Ej. +54 9 3834 123456" autocomplete="tel" required />
+              </label>
+            </div>
+
+            <!-- Preferencias de Experiencias -->
+            <div class="signup-field">
+              <span>¿QUÉ EXPEDICIONES TE INTERESAN PRINCIPALMENTE? <em>(opcional)</em></span>
+              <div class="experience-options">
+                @for (exp of experiences; track exp.id) {
+                <button type="button" class="experience-option" [class.selected]="isSelected(exp.id)"
+                  (click)="toggleExperience(exp.id)">
+                  <span class="checkbox-indicator">
+                    @if (isSelected(exp.id)) {
+                    <mat-icon class="indicator-icon">check</mat-icon>
+                    }
+                  </span>
+                  <span class="experience-title">{{ exp.title }}</span>
+                </button>
+                }
+              </div>
+            </div>
+
+            @if (isSelected('otros')) {
+            <label class="signup-field">
+              <span>Especificá qué otra travesía te gustaría realizar</span>
+              <textarea [value]="otherExperience()" (input)="otherExperience.set($any($event.target).value)" rows="3"
+                placeholder="Contanos tu proyecto de viaje o cumbre..."></textarea>
+            </label>
+            }
+
+            <!-- ═══════════════ CASILLA DE CÓDIGO PROMOCIONAL ═══════════════ -->
+            <div class="pleno-promo-card">
+              <div class="promo-header">
+                <span class="promo-kicker">ACCESO EXCLUSIVO</span>
+                <h3 class="promo-title">Código Promocional de Membresía</h3>
+                <p class="promo-desc">
+                  Por el momento, la membresía de Socio Pleno está habilitada para personas elegidas por el Club con
+                  código promocional o de invitación.
+                </p>
               </div>
 
-              <!-- Selección de Método de Pago -->
-              <div class="form-field">
-                <span class="field-lbl">
-                  Método de Pago Preferido <em>(se habilitará en el lanzamiento)</em>
-                </span>
-
-                <div class="payment-methods-selector">
-                  <button type="button" class="method-tab" [class.selected]="selectedPaymentMethod() === 'card'"
-                    disabled>
-                    <mat-icon class="method-icon">credit_card</mat-icon>
-                    <div class="method-info">
-                      <strong>Tarjeta de Débito / Crédito</strong>
-                      <span>Visa, Mastercard</span>
-                    </div>
-                  </button>
-
-                  <button type="button" class="method-tab" [class.selected]="selectedPaymentMethod() === 'mercadopago'"
-                    disabled>
-                    <mat-icon class="method-icon">account_balance_wallet</mat-icon>
-                    <div class="method-info">
-                      <strong>Mercado Pago</strong>
-                      <span>Débito automático o dinero en cuenta</span>
-                    </div>
-                  </button>
-
-                  <button type="button" class="method-tab" [class.selected]="selectedPaymentMethod() === 'transfer'"
-                    disabled>
-                    <mat-icon class="method-icon">account_balance</mat-icon>
-                    <div class="method-info">
-                      <strong>Transferencia CBU / Alias</strong>
-                      <span>Acreditación directa sin intermediarios</span>
-                    </div>
-                  </button>
+              <div class="promo-input-row">
+                <div class="promo-input-wrap">
+                  <input type="text" class="promo-input" [value]="discountCodeInput()"
+                    (input)="discountCodeInput.set($any($event.target).value)"
+                    placeholder="Ingresá tu código promocional" [disabled]="isValidatingDiscount()" />
                 </div>
-              </div>
-
-              <!-- Botón de Activación Bloqueado -->
-              <div class="submit-action-row">
-                <button type="button" class="activate-submit-btn is-blocked" disabled>
-                  <mat-icon class="btn-lock-icon">lock</mat-icon>
-                  <span>Suscripción Deshabilitada</span>
+                <button type="button" class="promo-apply-btn" (click)="applyDiscount()"
+                  [disabled]="isValidatingDiscount() || !discountCodeInput().trim()">
+                  <span>{{ isValidatingDiscount() ? 'Validando...' : 'Aplicar Código' }}</span>
                 </button>
               </div>
-            </fieldset>
+
+              @if (discountError()) {
+              <div class="promo-error-msg">
+                <mat-icon class="promo-icon">error_outline</mat-icon>
+                <span>{{ discountError() }}</span>
+              </div>
+              }
+
+              @if (appliedDiscount()) {
+              <div class="promo-applied-badge">
+                <mat-icon class="applied-icon">verified</mat-icon>
+                <div class="applied-info">
+                  <strong>{{ appliedDiscount()?.name || appliedDiscount()?.code }}</strong>
+                  <span>{{ appliedDiscount()?.description || 'Descuento aplicado en tu membresía mensual.' }}</span>
+                </div>
+                <button type="button" class="promo-remove-btn" (click)="removeDiscount()" title="Quitar descuento">
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+              }
+
+              <!-- Resumen de Facturación / Cuota -->
+              <div class="pricing-summary-box">
+                <div class="summary-line">
+                  <span>Cuota regular Socio Pleno:</span>
+                  <strong>{{ regularFeeArs | ars }}</strong>
+                </div>
+
+                @if (discountAmountArs() > 0) {
+                <div class="summary-line discount-line">
+                  <span>Bonificación promocional:</span>
+                  <strong class="discount-val">-{{ discountAmountArs() | ars }}</strong>
+                </div>
+                }
+
+                <div class="summary-divider"></div>
+
+                <div class="summary-line total-line">
+                  <span>Total a abonar hoy:</span>
+                  <strong class="total-val">{{ totalToPayArs() | ars }}</strong>
+                </div>
+
+                @if (totalToPayArs() === 0 && appliedDiscount()) {
+                <div class="bonified-badge">
+                  <mat-icon class="gift-icon">verified</mat-icon>
+                  <span>Cuota 100% bonificada con código promocional</span>
+                </div>
+                }
+              </div>
+            </div>
+
+            <!-- Botón de Activación -->
+            <div class="signup-actions">
+              @if (!appliedDiscount() || totalToPayArs() > 0) {
+              <div class="promo-required-hint">
+                <mat-icon class="hint-icon">lock</mat-icon>
+                <span>Por el momento, la membresía está habilitada para personas elegidas por el Club con código
+                  promocional.</span>
+              </div>
+              }
+
+              <button type="submit" class="signup-submit-btn"
+                [disabled]="isSubmitting() || requiresGoogle() || !appliedDiscount() || totalToPayArs() > 0">
+                <span>{{
+                  isSubmitting()
+                  ? 'Activando tu membresía...'
+                  : 'Activar Membresía Socio Pleno'
+                  }}</span>
+              </button>
+              <p class="reassurance-note">
+                Sin permanencia obligatoria. Podés pausar o cancelar tu suscripción en cualquier momento.
+              </p>
+            </div>
           </form>
         </section>
         }
 
-        <!-- Publicidad al final del contenido -->
+        <!-- Anuncio o Información Complementaria de Socios Fundadores -->
         <app-founder-ad />
       </div>
     </main>

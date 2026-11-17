@@ -1,0 +1,232 @@
+<div class="provider-pleno-container">
+  <!-- Barra Superior Unificada -->
+  <app-header [(mobileMenuOpen)]="mobileMenuOpen"></app-header>
+
+  <!-- Breadcrumb debajo del Header con fondo #FFCC00 -->
+  <app-breadcrumb [items]="breadcrumbs"></app-breadcrumb>
+
+  <!-- Contenedor Principal con Wallpaper -->
+  <div class="provider-wallpaper-body app-wallpaper-body">
+    <div class="ambient-overlay"></div>
+
+    <main class="provider-main-content">
+      <div class="provider-wrapper">
+        <!-- Hero Card Principal de Prestador Pleno -->
+        <section class="provider-section-card hero-pleno-card" aria-labelledby="pleno-heading">
+          <div class="section-card-header">
+            <span class="section-kicker">NIVEL 2 · ESCALAFÓN DESTACADO</span>
+            <h1 id="pleno-heading" class="section-main-title card-heading">
+              Membresía Prestador Pleno
+            </h1>
+            <p class="card-subheading">
+              El escalafón de prestadores activos con experiencias verificadas en el catálogo.
+              Publicá tus salidas, ganá visibilidad preferencial y conectá con la comunidad de socios
+              mediante una membresía mensual de $90.000 ARS.
+            </p>
+          </div>
+
+          <!-- Franja de 3 Condiciones Clave (Idéntico a /socios/plenos, sin iconos) -->
+          <div class="pleno-highlights-strip">
+            @for (h of highlights; track h.title) {
+            <div class="highlight-item">
+              <strong class="highlight-title">{{ h.title }}</strong>
+              <span class="highlight-desc">{{ h.description }}</span>
+            </div>
+            }
+          </div>
+
+          @if (submitted()) {
+          <!-- Estado de Éxito -->
+          <div class="pleno-success-box">
+            <h3 class="success-title">¡Solicitud de Membresía Plena Recibida!</h3>
+            <p class="success-desc">
+              Gracias, <strong>{{ fullName() }}</strong>. Recibimos tu postulación para <strong>{{ agency() }}</strong>.
+              El Comité de EXPERIENCIAS.CLUB se pondrá en contacto a la brevedad al correo <strong>{{ email() }}</strong> para formalizar tu incorporación.
+            </p>
+            <div class="success-actions">
+              <a routerLink="/prestadores" class="signup-submit-btn" style="text-decoration: none; display: inline-block;">
+                <span>Volver a Prestadores</span>
+              </a>
+            </div>
+          </div>
+          } @else {
+          <!-- Paso 1: Vinculación con Google (si no está autenticado) -->
+          @if (requiresGoogle()) {
+          <section class="google-link-gate" aria-live="polite">
+            <div class="google-link-gate-head">
+              <h2>Vincular cuenta con Google</h2>
+            </div>
+            <p>
+              Para habilitar tu membresía de Prestador Pleno y asociar tus servicios de forma segura, primero ingresá con Google.
+            </p>
+            @if (authError()) {
+            <p class="google-gate-error">{{ authError() }}</p>
+            }
+            <button type="button" class="google-link-btn" (click)="linkGoogleAccount()">
+              <svg class="google-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                <path fill="#4285F4"
+                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path fill="#34A853"
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path fill="#FBBC05"
+                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                <path fill="#EA4335"
+                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+              </svg>
+              <span>Continuar con Google</span>
+            </button>
+          </section>
+          }
+
+          <!-- Formulario de Elevación a Prestador Pleno (bloqueado y blureado si no inició con Google) -->
+          <form class="pleno-form signup-form" [class.signup-form-locked]="requiresGoogle()" (submit)="$event.preventDefault(); submitPleno()">
+            <div class="form-grid signup-grid">
+              <label class="form-field signup-field">
+                <span>Nombre del Titular o Guía <b>*</b></span>
+                <input
+                  type="text"
+                  [value]="fullName()"
+                  (input)="fullName.set($any($event.target).value)"
+                  placeholder="Ej. Roberto Sánchez"
+                  required
+                />
+              </label>
+
+              <label class="form-field signup-field">
+                <span>Agencia o Emprendimiento <b>*</b></span>
+                <input
+                  type="text"
+                  [value]="agency()"
+                  (input)="agency.set($any($event.target).value)"
+                  placeholder="Ej. Catamarca Kayak & Aventura"
+                  required
+                />
+              </label>
+
+              <label class="form-field signup-field">
+                <span>Correo Electrónico <b>*</b></span>
+                <input
+                  type="email"
+                  [value]="email()"
+                  (input)="email.set($any($event.target).value)"
+                  placeholder="tu-correo@ejemplo.com"
+                  [readonly]="!!authenticatedEmail()"
+                  required
+                />
+              </label>
+
+              <label class="form-field signup-field">
+                <span>Teléfono / WhatsApp <b>*</b></span>
+                <input
+                  type="tel"
+                  [value]="phone()"
+                  (input)="phone.set($any($event.target).value)"
+                  placeholder="Ej. +54 9 3834 123456"
+                  required
+                />
+              </label>
+            </div>
+
+            <!-- Box de Código de Invitación (Idéntico a /socios/plenos) -->
+            <div class="pleno-promo-card">
+              <div class="promo-header">
+                <span class="promo-kicker">ACCESO EXCLUSIVO</span>
+                <h3 class="promo-title">Código de Invitación de Prestador Pleno</h3>
+                <p class="promo-desc">
+                  Por el momento, la membresía de Prestador Pleno está habilitada para prestadores elegidos por el Club con código de invitación.
+                </p>
+              </div>
+
+              <div class="promo-input-row">
+                <div class="promo-input-wrap">
+                  <input
+                    type="text"
+                    class="promo-input"
+                    [value]="invitationCode()"
+                    (input)="invitationCode.set($any($event.target).value)"
+                    placeholder="Ingresá tu código de invitación"
+                  />
+                </div>
+                <button type="button" class="promo-apply-btn" (click)="applyCode()" [disabled]="isValidatingCode()">
+                  <span>{{ isValidatingCode() ? 'Validando...' : 'Validar Código' }}</span>
+                </button>
+              </div>
+
+              @if (codeError()) {
+              <div class="promo-error-msg">
+                <span>{{ codeError() }}</span>
+              </div>
+              }
+
+              @if (codeValid()) {
+              <div class="promo-applied-badge">
+                <div class="applied-info">
+                  <strong>✓ Invitación Verificada</strong>
+                  <span>Acceso habilitado para solicitar membresía de Prestador Pleno.</span>
+                </div>
+              </div>
+              }
+
+              <!-- Resumen de Facturación / Cuota (Idéntico al screenshot de /socios/plenos) -->
+              <div class="pricing-summary-box">
+                <div class="summary-line">
+                  <span>Cuota regular Prestador Pleno:</span>
+                  <strong>$90.000 ARS</strong>
+                </div>
+
+                <div class="summary-divider"></div>
+
+                <div class="summary-line total-line">
+                  <span>Total a abonar hoy:</span>
+                  <strong class="total-val">$90.000 ARS</strong>
+                </div>
+              </div>
+            </div>
+
+            <!-- Botón de Envío y Aclaración (Idéntico al screenshot) -->
+            <div class="signup-actions">
+              @if (!codeValid()) {
+              <div class="promo-required-hint">
+                <mat-icon class="hint-icon">lock</mat-icon>
+                <span>Por el momento, la membresía está habilitada para prestadores elegidos por el Club con código promocional o de invitación.</span>
+              </div>
+              }
+
+              @if (submitError()) {
+              <div
+                class="provider-error-banner"
+                role="alert"
+                style="margin-bottom: 1.25rem; padding: 0.85rem 1rem; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 4px; color: #fca5a5; font-size: 0.88rem;"
+              >
+                {{ submitError() }}
+              </div>
+              }
+
+              <button
+                type="submit"
+                class="signup-submit-btn pleno-submit-btn"
+                [disabled]="isSubmitting() || requiresGoogle() || !codeValid() || !fullName().trim() || !agency().trim() || !email().trim() || !phone().trim()"
+              >
+                <span>{{ isSubmitting() ? 'Enviando solicitud...' : 'Solicitar Membresía Plena' }}</span>
+              </button>
+
+              <p class="reassurance-note">
+                Sin permanencia obligatoria. Podés pausar o cancelar tu suscripción en cualquier momento.
+              </p>
+            </div>
+          </form>
+          }
+        </section>
+
+        <!-- Bloque de Niveles Reutilizable -->
+        <app-provider-tiers />
+
+        <!-- Anuncio de Socios Fundadores -->
+        <app-founder-ad />
+      </div>
+    </main>
+
+    <!-- Footer Unificado -->
+    <app-footer></app-footer>
+  </div>
+</div>

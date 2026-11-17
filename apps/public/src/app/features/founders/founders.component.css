@@ -84,7 +84,7 @@
   font-family: var(--font-sans);
   font-size: 0.68rem;
   letter-spacing: 0.16em;
-  color: var(--color-gold);
+  color: #ffcc00 !important;
   font-weight: 700;
   display: block;
   margin-bottom: 0.35rem;

@@ -1,0 +1,394 @@
+/* ==========================================================================
+   Página de Prestador Fundador • EXPERIENCIAS.CLUB
+   Replica el diseño limpio y formal de /socios/fundadores (#6ea6f7)
+   ========================================================================== */
+.provider-founder-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  color: var(--color-text-white);
+  background: transparent;
+}
+
+.provider-wallpaper-body {
+  flex: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.ambient-overlay {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at 50% 15%,
+    rgba(128, 179, 255, 0.06) 0%,
+    rgba(0, 0, 0, 0.55) 100%
+  );
+  pointer-events: none;
+}
+
+.provider-main-content {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  padding: 2.4rem 1.5rem 3.5rem;
+}
+
+.provider-wrapper {
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  gap: 2.2rem;
+}
+
+/* ==========================================================================
+   Card / Box Principal de Prestador Fundador (Idéntico a /socios/fundadores #6ea6f7)
+   ========================================================================== */
+.hero-founder-card {
+  width: 100%;
+  box-sizing: border-box;
+  background: #6ea6f7;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 4px;
+  padding: clamp(1.6rem, 4vw, 2.8rem);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+  text-align: left;
+}
+
+.section-card-header {
+  margin-bottom: 1.8rem;
+}
+
+.section-kicker {
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  color: #ffcc00;
+  font-weight: 700;
+  display: block;
+  margin-bottom: 0.3rem;
+  text-transform: uppercase;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.founder-exclusive-tag {
+  color: #ffcc00 !important;
+}
+
+.card-heading {
+  font-family: var(--font-serif);
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  font-weight: 600;
+  color: #ffffff;
+  line-height: 1.2;
+  margin: 0.3rem 0 0.5rem;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+
+.card-subheading {
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.92);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Franja de Condiciones Clave (Clean, sin iconos) */
+.founder-highlights-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.2rem;
+  background: rgba(15, 28, 45, 0.26);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 4px;
+  padding: 1.2rem 1.4rem;
+  margin-bottom: 1.8rem;
+}
+
+@media (max-width: 768px) {
+  .founder-highlights-strip {
+    grid-template-columns: 1fr;
+    gap: 0.85rem;
+  }
+}
+
+.highlight-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.highlight-title {
+  font-family: var(--font-sans);
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.highlight-desc {
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+/* ==========================================================================
+   Formulario de Carta de Postulación (Idéntico a /socios/fundadores)
+   ========================================================================== */
+.apply-form,
+.founder-form-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.form-grid,
+.form-grid-2col {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.2rem;
+}
+
+@media (max-width: 640px) {
+  .form-grid,
+  .form-grid-2col {
+    grid-template-columns: 1fr;
+  }
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.field-lbl,
+.form-field > span {
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #ffffff;
+}
+
+.field-lbl b,
+.form-field b,
+.req-star,
+.agreement-text b,
+.agreement-title b {
+  color: #ffcc00 !important;
+}
+
+.field-input,
+.field-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1.5px solid rgba(255, 255, 255, 0.5);
+  border-radius: 2px;
+  padding: 0.85rem 0.95rem;
+  background: rgba(14, 28, 42, 0.32);
+  color: #ffffff;
+  font-family: var(--font-sans);
+  font-size: 0.92rem;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.field-input:focus,
+.field-textarea:focus {
+  border-color: #ffffff;
+  background: rgba(14, 28, 42, 0.52);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.35);
+}
+
+.field-input::placeholder,
+.field-textarea::placeholder {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.field-textarea {
+  resize: vertical;
+  min-height: 6.5rem;
+}
+
+/* Checkbox de Compromiso Patrimonial (Idéntico a /socios/fundadores con dorado/amarillo) */
+.founder-agreement-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  padding: 1rem 1.15rem;
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  border-radius: 2px;
+  background: rgba(14, 28, 42, 0.28);
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.founder-agreement-box:hover {
+  border-color: rgba(255, 255, 255, 0.75);
+  background: rgba(14, 28, 42, 0.38);
+}
+
+.founder-agreement-box.selected {
+  border-color: #ffffff;
+  background: rgba(14, 28, 42, 0.45);
+}
+
+.founder-agreement-box:focus-within {
+  outline: 2px solid var(--color-gold, #f59e0b);
+  outline-offset: 2px;
+}
+
+.native-agreement-checkbox {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.custom-checkbox {
+  width: 18px;
+  height: 18px;
+  border-radius: 2px;
+  border: 1.5px solid rgba(255, 255, 255, 0.6);
+  background: rgba(0, 0, 0, 0.2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+  transition: all 0.2s ease;
+}
+
+.custom-checkbox.checked {
+  background: var(--color-gold);
+  border-color: var(--color-gold);
+  color: #0b1120;
+}
+
+.chk-check-icon {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+  color: #0b1120;
+  font-weight: bold;
+}
+
+.agreement-text {
+  font-family: var(--font-sans);
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.agreement-title {
+  color: #ffffff;
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.agreement-title b {
+  color: #ffcc00 !important;
+}
+
+.agreement-text p {
+  margin: 0;
+}
+
+/* Botones de Envío y WhatsApp */
+.form-submit-row,
+.apply-btn-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+@media (max-width: 640px) {
+  .form-submit-row,
+  .apply-btn-row {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+}
+
+.founder-submit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  background: var(--color-gold);
+  color: #ffffff !important;
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 0.95rem 2rem;
+  border: none;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.founder-submit-btn span {
+  color: #ffffff !important;
+}
+
+.founder-submit-btn:hover:not(:disabled) {
+  background: #ffe066;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.founder-submit-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.founder-submit-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Estado de Éxito */
+.apply-success-box {
+  background: rgba(15, 28, 45, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 4px;
+  padding: 2.2rem;
+  text-align: center;
+}
+
+.success-title {
+  color: #ffffff;
+  font-size: 1.35rem;
+  margin: 0 0 0.8rem;
+}
+
+.success-desc {
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 0.92rem;
+  line-height: 1.6;
+  max-width: 600px;
+  margin: 0 auto 1.5rem;
+}

@@ -1,0 +1,157 @@
+<div class="faq-page-container">
+  <!-- Barra Superior Unificada -->
+  <app-header [(mobileMenuOpen)]="mobileMenuOpen"></app-header>
+
+  <!-- Breadcrumb debajo del Header -->
+  <app-breadcrumb [items]="breadcrumbs"></app-breadcrumb>
+
+  <!-- Contenedor Principal con Fondo de Montaña -->
+  <div class="faq-wallpaper-body app-wallpaper-body">
+    <div class="ambient-overlay"></div>
+
+    <main class="faq-main-content">
+      <div class="faq-wrapper">
+        <section class="faq-section-card" aria-labelledby="faq-title">
+          <!-- Encabezado de la Sección -->
+          <div class="section-card-header">
+            <span class="section-kicker">CENTRO DE INFORMACIÓN & AYUDA</span>
+            <h1 id="faq-title" class="section-main-title card-heading">
+              Preguntas Frecuentes
+            </h1>
+            <p class="card-subheading">
+              Encontrá respuestas sobre cómo funciona el <strong>Club de Experiencias</strong>,
+              los niveles de socio, la coordinación de salidas andinas y el trabajo con guías locales.
+            </p>
+          </div>
+
+          <!-- Buscador y Filtros por Categoría -->
+          <div class="faq-controls-bar">
+            <div class="faq-search-box">
+              <mat-icon class="search-icon">search</mat-icon>
+              <input
+                type="text"
+                class="faq-search-input"
+                placeholder="Buscar por palabra clave (ej. cupón, clima, cancelar, prestador)..."
+                [value]="searchQuery()"
+                (input)="searchQuery.set($any($event.target).value)"
+                aria-label="Buscar en preguntas frecuentes"
+              />
+              @if (searchQuery()) {
+                <button
+                  type="button"
+                  class="clear-search-btn"
+                  (click)="clearSearch()"
+                  aria-label="Limpiar búsqueda"
+                >
+                  <mat-icon>close</mat-icon>
+                </button>
+              }
+            </div>
+
+            <!-- Botones de Categorías -->
+            <div class="faq-categories-row" role="tablist" aria-label="Filtrar por categoría">
+              @for (cat of categories; track cat.id) {
+                <button
+                  type="button"
+                  class="faq-cat-pill"
+                  [class.active]="selectedCategory() === cat.id"
+                  (click)="selectCategory(cat.id)"
+                  role="tab"
+                  [attr.aria-selected]="selectedCategory() === cat.id"
+                >
+                  <span>{{ cat.label }}</span>
+                </button>
+              }
+            </div>
+          </div>
+
+          <!-- Barra de Información de Resultados -->
+          <div class="faq-meta-bar">
+            <span class="faq-count-text">
+              Mostrando <strong>{{ filteredFaqs().length }}</strong>
+              {{ filteredFaqs().length === 1 ? 'pregunta' : 'preguntas' }}
+            </span>
+          </div>
+
+          <!-- Listado de Preguntas en Formato Acordeón -->
+          <div class="faq-accordion-list">
+            @for (faq of filteredFaqs(); track faq.id) {
+              <div class="faq-item-card" [class.is-open]="isOpen(faq.id)">
+                <button
+                  type="button"
+                  class="faq-question-btn"
+                  (click)="toggleFaq(faq.id)"
+                  [attr.aria-expanded]="isOpen(faq.id)"
+                  [attr.aria-controls]="'answer-' + faq.id"
+                >
+                  <span class="faq-question-text">{{ faq.question }}</span>
+                  <div class="faq-chevron-wrap">
+                    <mat-icon class="faq-chevron-icon">
+                      {{ isOpen(faq.id) ? 'remove' : 'add' }}
+                    </mat-icon>
+                  </div>
+                </button>
+
+                @if (isOpen(faq.id)) {
+                  <div [id]="'answer-' + faq.id" class="faq-answer-panel">
+                    @if (faq.highlight) {
+                      <div class="faq-highlight-badge">
+                        <span>{{ faq.highlight }}</span>
+                      </div>
+                    }
+                    <div class="faq-answer-text">
+                      <p>{{ faq.answer }}</p>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+
+            @if (filteredFaqs().length === 0) {
+              <div class="faq-empty-state">
+                <mat-icon class="empty-icon">search_off</mat-icon>
+                <h3>No encontramos preguntas con ese criterio</h3>
+                <p>
+                  Probá buscando con otros términos o seleccioná otra categoría en la parte superior.
+                </p>
+                <button type="button" class="reset-filter-btn" (click)="clearSearch(); selectCategory('todas')">
+                  Ver todas las preguntas
+                </button>
+              </div>
+            }
+          </div>
+
+          <!-- Tarjeta de Contacto / Asistencia Directa -->
+          <div class="faq-contact-card">
+            <div class="contact-card-body">
+              <h3 class="contact-card-title">¿Tenés alguna otra duda o consulta especial?</h3>
+              <p class="contact-card-desc">
+                Nuestro equipo está disponible para asistirte en cualquier inquietud sobre la plataforma.
+              </p>
+            </div>
+            <div class="contact-card-actions">
+              <a
+                href="https://wa.me/5493834000000?text=Hola!%20Tengo%20una%20consulta%20sobre%20el%20Club%20de%20Experiencias"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="contact-cta-btn wa-cta"
+              >
+                <span>Consultar por WhatsApp</span>
+              </a>
+              <a routerLink="/socios" class="contact-cta-btn members-cta">
+                <span>Ver Niveles de Socio</span>
+              </a>
+            </div>
+          </div>
+        </section>
+
+        <!-- Anuncio Complementario de Socios Fundadores -->
+        <app-founder-ad />
+      </div>
+    </main>
+  </div>
+
+  <!-- Footer Compartido -->
+  <app-footer />
+</div>
+

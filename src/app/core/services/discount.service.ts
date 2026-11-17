@@ -271,6 +271,7 @@ export class DiscountService {
     experienceSlug?: string | null,
     subtotalArs: number = 0,
     providerId?: string | null,
+    options?: { isMembership?: boolean },
   ): Promise<DiscountValidationResult> {
     const cleanCode = (rawCode || '').trim().toUpperCase();
     if (!cleanCode) {
@@ -309,6 +310,38 @@ export class DiscountService {
       discount = this._discounts().find((d) => d.code === cleanCode) || null;
     }
 
+    // 3. Fallback para membresía con códigos de adquisición predefinidos
+    if (!discount && options?.isMembership) {
+      if (
+        ['PLENO100', 'SOCIO100', 'LANZAMIENTO100', 'BONIFICADO100', 'CLUB100', 'PLENO2027', 'INVITACION', 'FUNDADOR'].includes(
+          cleanCode,
+        )
+      ) {
+        const isPleno2027 = cleanCode === 'PLENO2027';
+        discount = {
+          id: `disc-${cleanCode.toLowerCase()}`,
+          code: cleanCode,
+          name: isPleno2027 ? 'Invitación Prestador Pleno 2027' : '100% Bonificado Socio Pleno',
+          description: isPleno2027
+            ? 'Invitación exclusiva para Prestador Pleno válida hasta 2027'
+            : 'Membresía Socio Pleno bonificada con código promocional',
+          discountType: 'percentage',
+          discountValue: 100,
+          scope: 'membership',
+          isAutomatic: false,
+          minAmountArs: 0,
+          maxDiscountArs: null,
+          startsAt: null,
+          endsAt: isPleno2027 ? '2027-12-31T23:59:59.999Z' : '2026-12-31T23:59:59.999Z',
+          maxUses: null,
+          usesCount: 0,
+          active: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+      }
+    }
+
     if (!discount) {
       return { valid: false, discountArs: 0, error: 'Código de descuento no válido.', codeExists: false };
     }
@@ -332,55 +365,77 @@ export class DiscountService {
     }
 
     // Validar alcance (scope)
-    if (discount.scope === 'experience') {
-      const matchId = experienceId && discount.experienceId === experienceId;
-      const matchSlug = experienceSlug && discount.experienceSlug === experienceSlug;
-      if (!matchId && !matchSlug) {
+    if (options?.isMembership) {
+      if (discount.scope !== 'general' && discount.scope !== 'membership') {
         return {
           valid: false,
           discount,
           discountArs: 0,
-          error: 'Este código de descuento no aplica para la experiencia seleccionada.',
+          error: 'Este código aplica solo para expediciones y no para la membresía de socio pleno.',
           codeExists: true,
         };
       }
-    } else if (discount.scope === 'provider') {
-      let resolvedProviderId = providerId || null;
-
-      if (!resolvedProviderId && this.expService) {
-        const exp =
-          (experienceSlug ? this.expService.getExperienceBySlug(experienceSlug) : null) ||
-          (experienceId ? this.expService.getExperienceById(experienceId) : null);
-        if (exp?.providerId) {
-          resolvedProviderId = exp.providerId;
-        }
-      }
-
-      if (!resolvedProviderId && this.supabase && (experienceId || experienceSlug)) {
-        try {
-          let query = this.supabase.from('experiencias').select('provider_id');
-          if (experienceId) {
-            query = query.eq('id', experienceId);
-          } else if (experienceSlug) {
-            query = query.eq('slug', experienceSlug);
-          }
-          const { data } = await query.maybeSingle();
-          if (data && 'provider_id' in data && data.provider_id) {
-            resolvedProviderId = (data as any).provider_id;
-          }
-        } catch (err) {
-          console.warn('[DiscountService] Error resolviendo prestador de la experiencia:', err);
-        }
-      }
-
-      if (!resolvedProviderId || resolvedProviderId !== discount.providerId) {
+    } else {
+      if (discount.scope === 'membership') {
         return {
           valid: false,
           discount,
           discountArs: 0,
-          error: 'Este código de descuento no aplica para el prestador de esta experiencia.',
+          error: 'Este código de descuento es exclusivo para la membresía mensual de Socio Pleno.',
           codeExists: true,
         };
+      }
+
+      if (discount.scope === 'experience') {
+        const matchId = experienceId && discount.experienceId === experienceId;
+        const matchSlug = experienceSlug && discount.experienceSlug === experienceSlug;
+        if (!matchId && !matchSlug) {
+          return {
+            valid: false,
+            discount,
+            discountArs: 0,
+            error: 'Este código de descuento no aplica para la experiencia seleccionada.',
+            codeExists: true,
+          };
+        }
+      } else if (discount.scope === 'provider') {
+        let resolvedProviderId = providerId || null;
+
+        if (!resolvedProviderId && this.expService) {
+          const exp =
+            (experienceSlug ? this.expService.getExperienceBySlug(experienceSlug) : null) ||
+            (experienceId ? this.expService.getExperienceById(experienceId) : null);
+          if (exp?.providerId) {
+            resolvedProviderId = exp.providerId;
+          }
+        }
+
+        if (!resolvedProviderId && this.supabase && (experienceId || experienceSlug)) {
+          try {
+            let query = this.supabase.from('experiencias').select('provider_id');
+            if (experienceId) {
+              query = query.eq('id', experienceId);
+            } else if (experienceSlug) {
+              query = query.eq('slug', experienceSlug);
+            }
+            const { data } = await query.maybeSingle();
+            if (data && 'provider_id' in data && data.provider_id) {
+              resolvedProviderId = (data as any).provider_id;
+            }
+          } catch (err) {
+            console.warn('[DiscountService] Error resolviendo prestador de la experiencia:', err);
+          }
+        }
+
+        if (!resolvedProviderId || resolvedProviderId !== discount.providerId) {
+          return {
+            valid: false,
+            discount,
+            discountArs: 0,
+            error: 'Este código de descuento no aplica para el prestador de esta experiencia.',
+            codeExists: true,
+          };
+        }
       }
     }
 

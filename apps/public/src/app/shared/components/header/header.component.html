@@ -107,6 +107,11 @@
           <mat-icon class="row-arrow">chevron_right</mat-icon>
         </a>
 
+        <a routerLink="/faq" class="mobile-nav-row" (click)="closeMobileMenu()">
+          <span class="row-title">Preguntas Frecuentes</span>
+          <mat-icon class="row-arrow">chevron_right</mat-icon>
+        </a>
+
         @if (newsletter.isSubscribed()) {
           @if (isProfileRoute()) {
             <a routerLink="/perfil" class="mobile-nav-row" (click)="closeMobileMenu()">

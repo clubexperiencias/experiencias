@@ -678,17 +678,17 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
         <div class="summary-strip">
           <div class="summary-item">
             <span class="sum-label">Prestadores Oficiales</span>
-            <strong class="sum-value text-blue">{{ officialProvidersCount() }}</strong>
+            <strong class="sum-value">{{ officialProvidersCount() }}</strong>
             <span class="sum-sub">Habilitados en catálogo</span>
           </div>
           <div class="summary-item">
             <span class="sum-label">Experiencias a Cargo</span>
-            <strong class="sum-value text-blue">{{ totalExperiencesCount() }}</strong>
+            <strong class="sum-value">{{ totalExperiencesCount() }}</strong>
             <span class="sum-sub">En catálogo activo</span>
           </div>
           <div class="summary-item">
             <span class="sum-label">Pendientes</span>
-            <strong class="sum-value text-orange">{{ pendingApplicationsCount() }}</strong>
+            <strong class="sum-value">{{ pendingApplicationsCount() }}</strong>
             <span class="sum-sub">Por evaluar y aprobar</span>
           </div>
           <div class="summary-item">
@@ -1053,13 +1053,14 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
         font-weight: 800;
         text-transform: uppercase;
         letter-spacing: 0.08em;
-        color: rgba(255, 255, 255, 0.6);
+        color: #ffffff;
+        opacity: 0.88;
       }
 
       .sum-value {
         font-size: 1.75rem;
         font-weight: 800;
-        color: #ffffff;
+        color: #ffffff !important;
         font-family: var(--font-mono, monospace);
         letter-spacing: -0.02em;
         line-height: 1.15;
@@ -1067,7 +1068,8 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
 
       .sum-sub {
         font-size: 0.7rem;
-        color: rgba(255, 255, 255, 0.5);
+        color: #ffffff;
+        opacity: 0.8;
       }
 
       .text-orange {

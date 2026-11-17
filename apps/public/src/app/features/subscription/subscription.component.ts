@@ -1,9 +1,11 @@
-import { Component, HostListener, inject, signal, OnInit } from '@angular/core';
+import { Component, HostListener, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { NewsletterService } from '../../core/services/newsletter.service';
+import { DiscountService } from '../../core/services/discount.service';
+import { Discount } from '../../core/models/discount.model';
 import { FooterComponent } from '../../shared/components/footer/footer.component';
 import { HeaderComponent } from '../../shared/components/header/header.component';
 import {
@@ -13,7 +15,6 @@ import {
 import { FounderAdComponent } from '../../shared/components/founder-ad/founder-ad.component';
 import { ArsPipe } from '../../shared/pipes/format.pipes';
 
-export type PaymentMethodChoice = 'card' | 'mercadopago' | 'transfer';
 export type ManageModalType = 'change_payment' | 'pause_confirm' | 'cancel_confirm' | null;
 
 @Component({
@@ -35,9 +36,9 @@ export type ManageModalType = 'change_payment' | 'pause_confirm' | 'cancel_confi
 })
 export class SubscriptionComponent implements OnInit {
   readonly newsletter = inject(NewsletterService);
+  readonly discountService = inject(DiscountService);
   readonly router = inject(Router);
-
-  readonly bg = signal('/assets/images/laguna_blanca.jpg');
+  readonly route = inject(ActivatedRoute);
 
   readonly breadcrumbs: BreadcrumbItem[] = [
     { label: 'Inicio', url: '/' },
@@ -48,34 +49,281 @@ export class SubscriptionComponent implements OnInit {
   // Menús de navegación
   readonly mobileMenuOpen = signal(false);
 
-  // Formulario de suscripción
-  readonly subscriberEmail = signal('');
-  readonly subscriberName = signal('');
-  readonly selectedPaymentMethod = signal<PaymentMethodChoice>('card');
+  // Autenticación con Google
+  readonly authReady = signal(!this.newsletter.isSupabaseConnected());
+  readonly authError = signal<string | null>(null);
+  readonly requiresGoogle = computed(() => !this.authReady());
 
-  // Campos de tarjeta
-  readonly cardNumber = signal('');
-  readonly cardExp = signal('');
-  readonly cardCvc = signal('');
-  readonly cardHolder = signal('');
+  // Datos del Socio
+  readonly fullName = signal('');
+  readonly email = signal('');
+  readonly authenticatedEmail = signal<string | null>(null);
+  readonly documentNumber = signal('');
+  readonly phone = signal('');
+  readonly selectedExperiences = signal<string[]>([]);
+  readonly otherExperience = signal('');
 
-  // Gestión de suscripción activa
+  // Cuota y Descuento
+  readonly regularFeeArs = 23000;
+  readonly discountCodeInput = signal('');
+  readonly appliedDiscount = signal<Discount | null>(null);
+  readonly discountAmountArs = signal<number>(0);
+  readonly discountError = signal<string | null>(null);
+  readonly isValidatingDiscount = signal(false);
+
+  readonly totalToPayArs = computed(() =>
+    Math.max(0, this.regularFeeArs - this.discountAmountArs()),
+  );
+
+  // Estados de proceso
+  readonly isSubmitting = signal(false);
+  readonly submitError = signal<string | null>(null);
+  readonly justActivated = signal(false);
+
+  // Gestión de suscripción activa existente
   readonly manageModal = signal<ManageModalType>(null);
   readonly newSelectedMethod = signal('Tarjeta terminada en •••• 9210');
 
-  // Estados de proceso
-  readonly isProcessing = signal(false);
-  readonly errorMessage = signal<string | null>(null);
-  readonly justActivated = signal(false);
+  readonly experiences = [
+    { id: 'kayak', title: 'Kayak y aguas calmas en diques andinos' },
+    { id: 'pissis', title: 'Trekking Balcón del Pissis y lagunas' },
+    { id: 'termas', title: 'Termas de Fiambalá y valles secretos' },
+    { id: 'otros', title: 'Otros (especificar a continuación)' },
+  ];
+
+  readonly highlights = [
+    {
+      title: 'Cuota Regular $23.000',
+      description: 'Habilitada por el momento para personas elegidas por el Club.',
+    },
+    {
+      title: '10% OFF & Prioridad',
+      description: 'Descuento directo y cupo asegurado en salidas.',
+    },
+    {
+      title: 'Salidas Exclusivas',
+      description: 'Travesías especiales para socios plenos de mayor antigüedad.',
+    },
+  ];
 
   ngOnInit(): void {
-    const current = this.newsletter.currentMember();
-    if (current) {
-      this.subscriberEmail.set(current.email);
-      if (current.fullName) {
-        this.subscriberName.set(current.fullName);
-        this.cardHolder.set(current.fullName);
+    void this.refreshGoogleAccount();
+
+    this.route.queryParams.subscribe((params) => {
+      const codeParam = ((params['code'] as string) || (params['cupon'] as string) || '').trim();
+      if (codeParam) {
+        this.discountCodeInput.set(codeParam.toUpperCase());
+        void this.applyDiscount(codeParam);
       }
+    });
+  }
+
+  private async refreshGoogleAccount(): Promise<void> {
+    const authenticatedEmail = await this.newsletter.getAuthenticatedEmail();
+    if (authenticatedEmail) {
+      const cleanAuthEmail = authenticatedEmail.trim().toLowerCase();
+      this.email.set(cleanAuthEmail);
+      this.authenticatedEmail.set(cleanAuthEmail);
+      this.authReady.set(true);
+      await this.newsletter.getAuthenticatedMember();
+      const current = this.newsletter.currentMember();
+      if (current?.email && current.email.trim().toLowerCase() === cleanAuthEmail) {
+        if (current.fullName && !this.fullName()) {
+          this.fullName.set(current.fullName);
+        }
+        const dni = current.dni || current.documentNumber;
+        if (dni && !this.documentNumber()) {
+          this.documentNumber.set(dni);
+        }
+        if (current.phone && !this.phone()) {
+          this.phone.set(current.phone);
+        }
+        if (
+          current.experiencesWishlist &&
+          current.experiencesWishlist.length > 0 &&
+          this.selectedExperiences().length === 0
+        ) {
+          this.selectedExperiences.set(current.experiencesWishlist);
+        }
+        if (current.experiencesOther && !this.otherExperience()) {
+          this.otherExperience.set(current.experiencesOther);
+          if (!this.selectedExperiences().includes('otros')) {
+            this.selectedExperiences.update((list) => [...list, 'otros']);
+          }
+        }
+      }
+    } else {
+      this.authReady.set(!this.newsletter.isSupabaseConnected());
+      if (!this.newsletter.isSupabaseConnected()) {
+        const current = this.newsletter.currentMember();
+        if (current) {
+          if (current.email && !this.email()) {
+            this.email.set(current.email);
+          }
+          if (current.fullName && !this.fullName()) {
+            this.fullName.set(current.fullName);
+          }
+          const dni = current.dni || current.documentNumber;
+          if (dni && !this.documentNumber()) {
+            this.documentNumber.set(dni);
+          }
+          if (current.phone && !this.phone()) {
+            this.phone.set(current.phone);
+          }
+          if (
+            current.experiencesWishlist &&
+            current.experiencesWishlist.length > 0 &&
+            this.selectedExperiences().length === 0
+          ) {
+            this.selectedExperiences.set(current.experiencesWishlist);
+          }
+          if (current.experiencesOther && !this.otherExperience()) {
+            this.otherExperience.set(current.experiencesOther);
+            if (!this.selectedExperiences().includes('otros')) {
+              this.selectedExperiences.update((list) => [...list, 'otros']);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  async linkGoogleAccount(): Promise<void> {
+    this.authError.set(null);
+    const returnPath =
+      typeof window !== 'undefined'
+        ? window.location.pathname + window.location.search
+        : '/socios/plenos';
+    this.newsletter.saveAuthReturnUrl(returnPath);
+    const result = await this.newsletter.signInWithGoogle(
+      typeof window !== 'undefined' ? `${window.location.origin}${returnPath}` : undefined,
+    );
+    if (!result.success) {
+      this.authError.set(result.message);
+    }
+  }
+
+  async applyDiscount(rawCode?: string): Promise<void> {
+    const code = (rawCode !== undefined ? rawCode : this.discountCodeInput()).trim().toUpperCase();
+    if (!code) {
+      this.discountError.set('Ingresá un código de descuento.');
+      return;
+    }
+
+    this.isValidatingDiscount.set(true);
+    this.discountError.set(null);
+
+    try {
+      const res = await this.discountService.validateDiscount(
+        code,
+        null,
+        null,
+        this.regularFeeArs,
+        null,
+        { isMembership: true },
+      );
+
+      this.isValidatingDiscount.set(false);
+      if (res.valid && res.discount) {
+        this.appliedDiscount.set(res.discount);
+        this.discountAmountArs.set(res.discountArs || this.regularFeeArs);
+        this.discountCodeInput.set(res.discount.code);
+        this.discountError.set(null);
+      } else {
+        this.appliedDiscount.set(null);
+        this.discountAmountArs.set(0);
+        this.discountError.set(res.error || 'Código no válido o no aplicable para membresías.');
+      }
+    } catch {
+      this.isValidatingDiscount.set(false);
+      this.discountError.set('Error al verificar el cupón. Intentá de nuevo.');
+    }
+  }
+
+  removeDiscount(): void {
+    this.appliedDiscount.set(null);
+    this.discountAmountArs.set(0);
+    this.discountCodeInput.set('');
+    this.discountError.set(null);
+  }
+
+  toggleExperience(id: string): void {
+    const selected = this.selectedExperiences();
+    this.selectedExperiences.set(
+      selected.includes(id) ? selected.filter((item) => item !== id) : [...selected, id],
+    );
+  }
+
+  isSelected(id: string): boolean {
+    return this.selectedExperiences().includes(id);
+  }
+
+  async submit(): Promise<void> {
+    if (this.requiresGoogle()) {
+      this.submitError.set('Primero vinculá tu cuenta de Google para continuar.');
+      return;
+    }
+
+    this.submitError.set(null);
+    const name = this.fullName().trim();
+    const cleanEmail = this.email().trim().toLowerCase();
+    const dni = this.documentNumber().replace(/\D/g, '').slice(0, 9);
+    const phone = this.phone().trim().slice(0, 25);
+
+    if (!name) {
+      this.submitError.set('Ingresá tu nombre y apellido.');
+      return;
+    }
+
+    if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      this.submitError.set('Ingresá un correo electrónico válido.');
+      return;
+    }
+
+    if (!dni || dni.length < 7 || dni.length > 9) {
+      this.submitError.set('El DNI es obligatorio y debe contener entre 7 y 9 números.');
+      return;
+    }
+
+    if (!phone) {
+      this.submitError.set('El número de celular es obligatorio.');
+      return;
+    }
+
+    if (!this.appliedDiscount() || this.totalToPayArs() > 0) {
+      this.submitError.set(
+        'Por el momento, la activación de Socio Pleno está habilitada para personas elegidas por el Club con código promocional.'
+      );
+      return;
+    }
+
+    const otherText = this.isSelected('otros') ? this.otherExperience().trim() : undefined;
+    const discountCode = this.appliedDiscount()?.code || (this.discountAmountArs() > 0 ? this.discountCodeInput().trim() : undefined);
+
+    this.isSubmitting.set(true);
+    try {
+      const result = await this.newsletter.activateSocioPleno({
+        fullName: name,
+        email: cleanEmail,
+        dni,
+        phone,
+        discountCode,
+        experiencesWishlist: this.selectedExperiences(),
+        experiencesOther: otherText,
+      });
+
+      this.isSubmitting.set(false);
+      if (result.success) {
+        this.justActivated.set(true);
+        setTimeout(() => {
+          void this.router.navigate(['/perfil']);
+        }, 1500);
+      } else {
+        this.submitError.set(result.message);
+      }
+    } catch {
+      this.isSubmitting.set(false);
+      this.submitError.set('Ocurrió un error al activar tu membresía. Por favor, reintentá.');
     }
   }
 
@@ -87,11 +335,6 @@ export class SubscriptionComponent implements OnInit {
   @HostListener('document:click')
   onDocumentClick(): void {
     this.mobileMenuOpen.set(false);
-  }
-
-  setPaymentMethod(method: PaymentMethodChoice): void {
-    this.selectedPaymentMethod.set(method);
-    this.errorMessage.set(null);
   }
 
   openManageModal(modal: ManageModalType): void {
@@ -106,43 +349,6 @@ export class SubscriptionComponent implements OnInit {
   onEscape(): void {
     this.closeManageModal();
     this.mobileMenuOpen.set(false);
-  }
-
-  async submitSubscription(): Promise<void> {
-    const email = this.subscriberEmail().trim();
-    if (!email) {
-      this.errorMessage.set('Por favor, ingresá tu correo electrónico.');
-      return;
-    }
-
-    this.isProcessing.set(true);
-    this.errorMessage.set(null);
-
-    let paymentMethodLabel =
-      'Tarjeta de Crédito / Débito (•••• ' + (this.cardNumber().slice(-4) || '4821') + ')';
-    if (this.selectedPaymentMethod() === 'mercadopago') {
-      paymentMethodLabel = 'Mercado Pago (Débito en Cuenta)';
-    } else if (this.selectedPaymentMethod() === 'transfer') {
-      paymentMethodLabel = 'Transferencia Bancaria (CBU / Alias Oficial)';
-    }
-
-    try {
-      const res = await this.newsletter.activateMonthlySubscription({
-        email,
-        fullName: this.subscriberName().trim(),
-        paymentMethod: paymentMethodLabel,
-      });
-
-      this.isProcessing.set(false);
-      if (res.success) {
-        this.justActivated.set(true);
-      } else {
-        this.errorMessage.set(res.message);
-      }
-    } catch {
-      this.isProcessing.set(false);
-      this.errorMessage.set('Ocurrió un error al procesar el pago. Por favor, reintentá.');
-    }
   }
 
   cancelSubscription(): void {
@@ -168,6 +374,6 @@ export class SubscriptionComponent implements OnInit {
   logout(): void {
     this.newsletter.resetCurrentSubscription();
     this.mobileMenuOpen.set(false);
-    this.router.navigate(['/']);
+    void this.router.navigate(['/']);
   }
 }

@@ -14,6 +14,7 @@ import {
   BreadcrumbItem,
 } from '../../shared/components/breadcrumb/breadcrumb.component';
 import { FounderAdComponent } from '../../shared/components/founder-ad/founder-ad.component';
+import { ProviderTiersComponent } from '../../shared/components/provider-tiers/provider-tiers.component';
 
 @Component({
   selector: 'app-providers',
@@ -26,6 +27,7 @@ import { FounderAdComponent } from '../../shared/components/founder-ad/founder-a
     HeaderComponent,
     BreadcrumbComponent,
     FounderAdComponent,
+    ProviderTiersComponent,
   ],
   templateUrl: './providers.component.html',
   styleUrl: './providers.component.css',
@@ -40,7 +42,7 @@ export class ProvidersComponent implements OnInit {
   readonly breadcrumbs: BreadcrumbItem[] = [
     { label: 'Inicio', url: '/' },
     { label: 'Prestadores', url: '/prestadores' },
-    { label: 'Prestadores Emergentes' },
+    { label: 'NIVEL 1: EMERGENTES' },
   ];
 
   // Menús de navegación idénticos a los de /perfil y /

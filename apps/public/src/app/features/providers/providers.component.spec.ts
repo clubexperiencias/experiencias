@@ -54,7 +54,7 @@ describe('ProvidersComponent', () => {
     component.openModal('tiers');
     fixture.detectChanges();
 
-    const tiersGrid = fixture.nativeElement.querySelector('.tiers-grid');
+    const tiersGrid = fixture.nativeElement.querySelector('.tiers-modal-card .tiers-grid');
     expect(tiersGrid).toBeTruthy();
     expect(tiersGrid.textContent).toContain('Socio Emergente');
     expect(tiersGrid.textContent).toContain('Socio Pleno');

@@ -3732,7 +3732,7 @@ mat-icon.arrow-icon {
   border-left: 2.5px solid hsla(0, 0%, 100%, 0.25);
   padding: 0.55rem 0.75rem;
   border-radius: 0 2px 2px 0;
-  margin-bottom: 0.9rem;
+  margin-bottom: 0.75rem;
 }
 
 .tier-jump-card.highlight {
@@ -3805,7 +3805,7 @@ mat-icon.arrow-icon {
   flex-direction: column;
   gap: 0.45rem;
   margin-top: auto;
-  padding-top: 0.8rem;
+  padding-top: 1.15rem;
   border-top: 1px solid hsla(0, 0%, 100%, 0.08);
 }
 
@@ -4646,4 +4646,179 @@ mat-icon.arrow-icon {
 .login-modal-input:focus {
   border-color: var(--color-gold);
   background: hsla(0, 0%, 100%, 0.09);
+}
+
+/* ==========================================================================
+   Notificación Flotante: Plataforma en Construcción (Estilo Toast Favoritos)
+   ========================================================================== */
+.fav-toast-banner.is-construction-toast {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding: 0.95rem 1.35rem;
+  background: rgba(15, 23, 42, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 204, 0, 0.45);
+  border-radius: 8px;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.5), 0 0 20px rgba(255, 204, 0, 0.2);
+  animation: slideUpConstructionToast 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  max-width: 540px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.fav-toast-banner.is-construction-toast .fav-toast-progress-track {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: hsla(0, 0%, 100%, 0.1);
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  z-index: 10;
+}
+
+.fav-toast-banner.is-construction-toast .fav-toast-progress-fill {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, #ffcc00, #ffffff, #ffcc00);
+  box-shadow: 0 0 10px rgba(255, 204, 0, 0.7);
+  border-radius: 999px;
+  animation: constructionToastDrainCenter 7s linear forwards;
+}
+
+@keyframes constructionToastDrainCenter {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+@keyframes slideUpConstructionToast {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fav-toast-banner.is-construction-toast .fav-toast-left {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.fav-toast-banner.is-construction-toast .fav-toast-icon-circle {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(255, 204, 0, 0.16);
+  border: 1px solid rgba(255, 204, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.fav-toast-banner.is-construction-toast .fav-toast-icon-circle mat-icon {
+  color: #ffcc00;
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+}
+
+.fav-toast-banner.is-construction-toast .fav-toast-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.fav-toast-banner.is-construction-toast .fav-toast-heading {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1.2;
+}
+
+.fav-toast-banner.is-construction-toast .fav-toast-text {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.88);
+  margin: 0;
+  line-height: 1.4;
+  white-space: normal;
+  max-width: 380px;
+}
+
+.fav-toast-banner.is-construction-toast .fav-toast-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-shrink: 0;
+}
+
+.fav-toast-banner.is-construction-toast .fav-toast-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.48rem 0.95rem;
+  background: #ffcc00;
+  border: 1px solid #ffcc00;
+  border-radius: 4px;
+  color: #111827 !important;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.18s ease;
+  box-shadow: 0 2px 10px rgba(255, 204, 0, 0.35);
+}
+
+.fav-toast-banner.is-construction-toast .fav-toast-btn span {
+  color: #111827 !important;
+}
+
+.fav-toast-banner.is-construction-toast .fav-toast-btn:hover {
+  background: #ffd633;
+  border-color: #ffd633;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(255, 204, 0, 0.45);
+}
+
+@media (max-width: 640px) {
+  .fav-toast-banner.is-construction-toast {
+    left: 1rem;
+    right: 1rem;
+    bottom: 1rem;
+    max-width: none;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+  .fav-toast-banner.is-construction-toast .fav-toast-actions {
+    justify-content: stretch;
+  }
+  .fav-toast-banner.is-construction-toast .fav-toast-btn {
+    flex: 1;
+    justify-content: center;
+  }
+  .fav-toast-banner.is-construction-toast .fav-toast-text {
+    max-width: none;
+    white-space: normal;
+  }
 }
