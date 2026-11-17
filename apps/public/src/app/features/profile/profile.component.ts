@@ -23,6 +23,7 @@ import { PaymentReceipt } from '../../core/models/activity-history.model';
 import { ExperienceService } from '../../core/services/experience.service';
 import { FavoritesService } from '../../core/services/favorites.service';
 import { Experience } from '../../core/models/experience.model';
+import { DEFAULT_CLUB_PROFILE, isClubExperience } from '../../core/models/club-profile.model';
 import { ModalType } from '../waitlist/waitlist.component';
 import { FooterComponent } from '../../shared/components/footer/footer.component';
 import { HeaderComponent } from '../../shared/components/header/header.component';
@@ -126,6 +127,52 @@ export class ProfileComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     this.scheduleCarouselInit();
+  }
+
+  readonly isClubExperience = isClubExperience;
+
+  isFavorite(exp: Experience): boolean {
+    return this.favoritesService.isFavorite(exp);
+  }
+
+  toggleFavorite(exp: Experience, event?: Event): void {
+    if (exp.isLocked) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      return;
+    }
+    if (this.isFavorite(exp)) {
+      this.removeFavorite(exp, event);
+      return;
+    }
+    this.favoritesService.toggleFavorite(exp, event);
+    this.scheduleCarouselInit();
+  }
+
+  getProviderSlug(exp: Experience): string | null {
+    if (exp.providerSlug) {
+      return exp.providerSlug.toLowerCase().trim() === 'club'
+        ? DEFAULT_CLUB_PROFILE.slug
+        : exp.providerSlug;
+    }
+    if (this.isClubExperience(exp)) return DEFAULT_CLUB_PROFILE.slug;
+    const rawName = (exp.providerName || exp.providerAgency || '').trim();
+    if (rawName && rawName.toLowerCase() !== 'club de experiencias' && rawName.toLowerCase() !== 'club') {
+      const fallback = rawName
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)+/g, '');
+      if (fallback) return fallback;
+    }
+    return null;
+  }
+
+  closeExperienceDetails(): void {
+    this.selectedExperience.set(null);
   }
 
   readonly breadcrumbs: BreadcrumbItem[] = [{ label: 'Inicio', url: '/' }, { label: 'Mi Perfil' }];

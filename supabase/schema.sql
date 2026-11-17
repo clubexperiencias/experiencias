@@ -3895,3 +3895,77 @@ EXCEPTION
     RAISE NOTICE 'Aviso: No se pudieron crear politicas en storage.objects para experiencias (%).', SQLERRM;
 END;
 $$;
+
+-- ══════════════════════════════════════════════════════════════════════════════
+-- 2.12 DESCUENTOS Y PROMOCIONES (Admin & Checkout)
+-- ══════════════════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS public.descuentos (
+  id                  UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  code                TEXT NOT NULL,
+  name                TEXT NOT NULL,
+  description         TEXT DEFAULT '',
+  discount_type       TEXT NOT NULL CHECK (discount_type IN ('percentage', 'fixed_amount')),
+  discount_value      NUMERIC NOT NULL CHECK (discount_value > 0),
+  scope               TEXT NOT NULL DEFAULT 'general' CHECK (scope IN ('general', 'experience', 'provider')),
+  experience_id       TEXT REFERENCES public.experiencias(id) ON UPDATE CASCADE ON DELETE SET NULL,
+  experience_slug     TEXT,
+  provider_id         TEXT REFERENCES public.prestadores(id) ON UPDATE CASCADE ON DELETE SET NULL,
+  is_automatic        BOOLEAN NOT NULL DEFAULT false,
+  min_amount_ars      NUMERIC NOT NULL DEFAULT 0 CHECK (min_amount_ars >= 0),
+  max_discount_ars    NUMERIC CHECK (max_discount_ars IS NULL OR max_discount_ars > 0),
+  starts_at           TIMESTAMPTZ,
+  ends_at             TIMESTAMPTZ,
+  max_uses            INTEGER CHECK (max_uses IS NULL OR max_uses > 0),
+  uses_count          INTEGER NOT NULL DEFAULT 0 CHECK (uses_count >= 0),
+  active              BOOLEAN NOT NULL DEFAULT true,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_descuentos_code_upper ON public.descuentos (UPPER(code));
+CREATE INDEX IF NOT EXISTS idx_descuentos_active ON public.descuentos (active);
+CREATE INDEX IF NOT EXISTS idx_descuentos_experience_id ON public.descuentos (experience_id);
+CREATE INDEX IF NOT EXISTS idx_descuentos_scope ON public.descuentos (scope);
+
+ALTER TABLE public.descuentos ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Admins gestionan descuentos" ON public.descuentos;
+CREATE POLICY "Admins gestionan descuentos"
+  ON public.descuentos
+  FOR ALL
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.administradores
+      WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email') AND active = true
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.administradores
+      WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email') AND active = true
+    )
+  );
+
+DROP POLICY IF EXISTS "Lectura publica de descuentos activos" ON public.descuentos;
+CREATE POLICY "Lectura publica de descuentos activos"
+  ON public.descuentos
+  FOR SELECT
+  TO public, anon, authenticated
+  USING (
+    active = true
+    AND (starts_at IS NULL OR starts_at <= now())
+    AND (ends_at IS NULL OR ends_at >= now())
+  );
+
+GRANT SELECT ON public.descuentos TO anon, authenticated;
+GRANT ALL ON public.descuentos TO authenticated;
+
+-- Sembrar códigos iniciales
+INSERT INTO public.descuentos (code, name, discount_type, discount_value, scope, active)
+VALUES 
+  ('SOCIOFUNDADOR7', '7% socios fundadores', 'percentage', 7, 'general', true),
+  ('SOCIO10', '10% socios', 'percentage', 10, 'general', true),
+  ('FUNDADOR20', '20% socios fundadores', 'percentage', 20, 'general', true)
+ON CONFLICT DO NOTHING;
+

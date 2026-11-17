@@ -33,7 +33,13 @@ describe('HeaderComponent', () => {
   });
 
   it('should display Mi Perfil button when user is subscribed', async () => {
-    await component.newsletter.joinWaitlist({ email: 'socio@experiencias.club' });
+    (component.newsletter as any)._currentMember.set({
+      id: 'socio-1',
+      email: 'socio@experiencias.club',
+      fullName: 'Socio Test',
+      status: 'confirmed',
+      createdAt: new Date().toISOString(),
+    });
     fixture.detectChanges();
 
     const profileBtn = fixture.nativeElement.querySelector('.profile-btn');

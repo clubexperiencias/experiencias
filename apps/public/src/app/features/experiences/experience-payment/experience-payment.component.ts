@@ -25,6 +25,8 @@ import { AdminStoreService } from '../../../core/services/admin-store.service';
 import { isClubExperience } from '../../../core/models/club-profile.model';
 import { NotificationService } from '../../../core/services/notification.service';
 import { isSupabaseConfigured } from '../../../core/supabase/supabase.client';
+import { DiscountService } from '../../../core/services/discount.service';
+import { Discount, calculateDiscountAmount } from '../../../core/models/discount.model';
 import {
   BANK_TRANSFER_DESTINATION,
   DiscountCode,
@@ -63,6 +65,7 @@ export class ExperiencePaymentComponent implements OnInit {
   private readonly newsletter = inject(NewsletterService);
   private readonly notificationService = inject(NotificationService);
   private readonly adminStore = inject(AdminStoreService);
+  private readonly discountService = inject(DiscountService);
 
   readonly paymentMethod = signal<'transfer' | 'mercadopago'>('transfer');
 
@@ -248,10 +251,28 @@ export class ExperiencePaymentComponent implements OnInit {
   );
 
   readonly discountInput = signal('');
-  readonly appliedDiscount = signal<DiscountCode | undefined>(undefined);
+  readonly appliedDiscount = signal<{
+    code: string;
+    label: string;
+    percentOff?: number;
+    fixedAmountArs?: number;
+    isAutomatic?: boolean;
+    rawDiscount?: Discount;
+  } | undefined>(undefined);
+  readonly calculatedDiscountArs = signal<number | null>(null);
   readonly discountError = signal<string | null>(null);
-  readonly discountArs = computed(() => discountAmount(this.subtotal(), this.appliedDiscount()));
-  readonly baseTotal = computed(() => this.subtotal() - this.discountArs());
+
+  readonly discountArs = computed(() => {
+    const custom = this.calculatedDiscountArs();
+    if (custom !== null) return custom;
+    const applied = this.appliedDiscount();
+    if (!applied) return 0;
+    if (applied.fixedAmountArs) {
+      return Math.min(applied.fixedAmountArs, this.subtotal());
+    }
+    return discountAmount(this.subtotal(), applied as any);
+  });
+  readonly baseTotal = computed(() => Math.max(0, this.subtotal() - this.discountArs()));
 
   readonly mercadoPagoSurchargeArs = computed(() => {
     if (this.paymentMethod() !== 'mercadopago') return 0;
@@ -261,20 +282,88 @@ export class ExperiencePaymentComponent implements OnInit {
 
   readonly total = computed(() => this.baseTotal() + this.mercadoPagoSurchargeArs());
 
-  applyDiscount(): void {
+  private readonly autoDiscountEffect = effect(() => {
+    const exp = this.experience();
+    if (!exp || this.appliedDiscount()) return;
+    const auto = this.discountService.getAutomaticDiscountForExperience(exp.id, exp.slug);
+    if (auto) {
+      const subtotal = this.subtotal();
+      const amount = calculateDiscountAmount(subtotal, auto);
+      const label =
+        auto.discountType === 'percentage'
+          ? `${auto.discountValue}% OFF (${auto.name})`
+          : `$${auto.discountValue.toLocaleString('es-AR')} OFF (${auto.name})`;
+
+      this.appliedDiscount.set({
+        code: auto.code,
+        label,
+        percentOff: auto.discountType === 'percentage' ? auto.discountValue : 0,
+        fixedAmountArs: auto.discountType === 'fixed_amount' ? auto.discountValue : undefined,
+        isAutomatic: true,
+        rawDiscount: auto,
+      });
+      this.calculatedDiscountArs.set(amount);
+    }
+  });
+
+  async applyDiscount(): Promise<void> {
     const raw = this.discountInput().trim();
     if (!raw) {
       this.discountError.set('Ingresá un código.');
       return;
     }
-    const discount = findDiscountCode(raw) ?? this.newsletter.findMemberDiscount(raw);
-    this.appliedDiscount.set(discount);
-    this.discountError.set(discount ? null : 'Código inválido o vencido.');
-    if (discount) this.discountInput.set('');
+
+    const exp = this.experience();
+    const subtotal = this.subtotal();
+
+    // 1. Validar dinámicamente con DiscountService (Supabase)
+    const result = await this.discountService.validateDiscount(
+      raw,
+      exp?.id,
+      exp?.slug,
+      subtotal,
+    );
+
+    if (result.valid && result.discount) {
+      const d = result.discount;
+      const label =
+        d.discountType === 'percentage'
+          ? `${d.discountValue}% OFF (${d.name})`
+          : `$${d.discountValue.toLocaleString('es-AR')} OFF (${d.name})`;
+
+      this.appliedDiscount.set({
+        code: d.code,
+        label,
+        percentOff: d.discountType === 'percentage' ? d.discountValue : 0,
+        fixedAmountArs: d.discountType === 'fixed_amount' ? d.discountValue : undefined,
+        rawDiscount: d,
+      });
+      this.calculatedDiscountArs.set(result.discountArs);
+      this.discountError.set(null);
+      this.discountInput.set('');
+      return;
+    }
+
+    // 2. Fallback a cupón predefinido o socio fundador
+    const fallback = findDiscountCode(raw) ?? this.newsletter.findMemberDiscount(raw);
+    if (fallback) {
+      this.appliedDiscount.set({
+        code: fallback.code,
+        label: fallback.label,
+        percentOff: fallback.percentOff,
+      });
+      this.calculatedDiscountArs.set(null);
+      this.discountError.set(null);
+      this.discountInput.set('');
+      return;
+    }
+
+    this.discountError.set(result.error || 'Código inválido o vencido.');
   }
 
   removeDiscount(): void {
     this.appliedDiscount.set(undefined);
+    this.calculatedDiscountArs.set(null);
     this.discountError.set(null);
   }
 
@@ -467,6 +556,10 @@ export class ExperiencePaymentComponent implements OnInit {
         phone: value.phone.trim(),
         reference: bookingRef,
       });
+
+      if (this.appliedDiscount()?.code) {
+        void this.discountService.incrementDiscountUses(this.appliedDiscount()!.code);
+      }
 
       // 3. Guardar en sesión y redirigir al checkout oficial de Mercado Pago
       if (typeof window !== 'undefined') {
@@ -951,6 +1044,9 @@ export class ExperiencePaymentComponent implements OnInit {
         discountCode: this.appliedDiscount()?.code,
         receiptFile: file,
       });
+      if (this.appliedDiscount()?.code) {
+        void this.discountService.incrementDiscountUses(this.appliedDiscount()!.code);
+      }
       this.confirmation.set(submission);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {

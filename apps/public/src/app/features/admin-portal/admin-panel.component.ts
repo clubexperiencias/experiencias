@@ -148,6 +148,17 @@ const ROUTE_LABELS: Record<string, string> = {
                   </a>
 
                   <a
+                    [routerLink]="adminLink('/descuentos')"
+                    class="dropdown-item enlarged-item"
+                    (click)="userMenuOpen.set(false)"
+                  >
+                    <mat-icon class="menu-item-icon">local_offer</mat-icon>
+                    <div class="menu-item-info">
+                      <strong class="menu-item-title">Descuentos & Promociones</strong>
+                    </div>
+                  </a>
+
+                  <a
                     [routerLink]="adminLink('/logs')"
                     class="dropdown-item enlarged-item"
                     (click)="userMenuOpen.set(false)"
