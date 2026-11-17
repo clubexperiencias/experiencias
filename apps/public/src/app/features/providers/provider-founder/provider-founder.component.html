@@ -1,0 +1,193 @@
+<div class="provider-founder-container">
+  <!-- Barra Superior Unificada -->
+  <app-header [(mobileMenuOpen)]="mobileMenuOpen"></app-header>
+
+  <!-- Breadcrumb debajo del Header con fondo #FFCC00 -->
+  <app-breadcrumb [items]="breadcrumbs"></app-breadcrumb>
+
+  <!-- Contenedor Principal con Wallpaper -->
+  <div class="provider-wallpaper-body app-wallpaper-body">
+    <div class="ambient-overlay"></div>
+
+    <main class="provider-main-content">
+      <div class="provider-wrapper">
+        <!-- Hero Card Principal de Prestador Fundador (Idéntico a /socios/fundadores) -->
+        <div class="founders-section-card hero-founder-card">
+          <div class="card-inner-header section-card-header">
+            <span class="section-kicker founder-exclusive-tag">NIVEL 3: VITALICIO</span>
+            <h1 id="founder-heading" class="card-heading">
+              Carta de Postulación para Prestador Fundador
+            </h1>
+            <p class="card-subheading">
+              La distinción más alta para guías, anfitriones y empresas de montaña pioneras
+              que marcan el estándar de excelencia, autenticidad y seguridad en Catamarca.
+              Estatus vitalicio mediante un aporte patrimonial único de 10 millones de pesos
+              evaluado y avalado por el Comité Directivo de EXPERIENCIAS.CLUB.
+            </p>
+          </div>
+
+          <!-- Franja de 3 Condiciones Clave (Idéntico a /socios/fundadores) -->
+          <div class="founder-certificate-card founder-highlights-strip">
+            <div class="highlight-item">
+              <strong class="highlight-title">Beneficios Plenos</strong>
+              <span class="highlight-desc">
+                Todos los beneficios de Prestador Emergente y Prestador Pleno sin cuotas mensuales de por vida.
+              </span>
+            </div>
+            <div class="highlight-item">
+              <strong class="highlight-title">Máxima Visibilidad</strong>
+              <span class="highlight-desc">
+                Presencia institucional destacada en portada, catálogo y boletines oficiales del Club.
+              </span>
+            </div>
+            <div class="highlight-item">
+              <strong class="highlight-title">Consejo y Curaduría</strong>
+              <span class="highlight-desc">
+                Participación en la curaduría y co-creación de expediciones de autor junto al Club.
+              </span>
+            </div>
+          </div>
+
+          <!-- Formulario / Carta de Postulación al Comité -->
+          @if (applicationSuccess()) {
+          <div class="founder-success-card">
+            <span class="success-kicker">POSTULACIÓN REGISTRADA FORMALMENTE</span>
+            <h2 class="success-title">¡Carta de Admisión en Evaluación!</h2>
+            <p class="success-description">
+              Gracias, <strong>{{ contactName() }}</strong>. Recibimos la postulación de <strong>{{ agencyName() }}</strong>.
+              El Comité Directivo de EXPERIENCIAS.CLUB evaluará la trayectoria y solvencia operativa, y se comunicará confidencialmente al correo <strong>{{ email() }}</strong>.
+            </p>
+            <div class="success-actions" style="margin-top: 1.5rem;">
+              <a routerLink="/prestadores" class="founder-submit-btn" style="text-decoration: none; display: inline-flex;">
+                <span>Volver al Catálogo de Prestadores</span>
+              </a>
+            </div>
+          </div>
+          } @else {
+          <form class="founder-form-body" novalidate (submit)="$event.preventDefault(); submitApplication()">
+            <div class="form-grid-2col">
+              <label class="form-field">
+                <span class="field-lbl">Nombre del Titular o Guía Líder <b>*</b></span>
+                <input
+                  id="f-name"
+                  type="text"
+                  class="field-input"
+                  [value]="contactName()"
+                  (input)="contactName.set($any($event.target).value)"
+                  placeholder="Ej. Roberto Sánchez"
+                  required
+                />
+              </label>
+
+              <label class="form-field">
+                <span class="field-lbl">Agencia o Emprendimiento de Montaña <b>*</b></span>
+                <input
+                  id="f-agency"
+                  type="text"
+                  class="field-input"
+                  [value]="agencyName()"
+                  (input)="agencyName.set($any($event.target).value)"
+                  placeholder="Ej. Antofagasta Expediciones"
+                  required
+                />
+              </label>
+            </div>
+
+            <div class="form-grid-2col">
+              <label class="form-field">
+                <span class="field-lbl">Correo Electrónico de Contacto <b>*</b></span>
+                <input
+                  id="f-email"
+                  type="email"
+                  class="field-input"
+                  [value]="email()"
+                  (input)="email.set($any($event.target).value)"
+                  placeholder="roberto@antofagastaexpediciones.com"
+                  required
+                />
+              </label>
+
+              <label class="form-field">
+                <span class="field-lbl">Teléfono / WhatsApp de Contacto Confidencial <b>*</b></span>
+                <input
+                  id="f-phone"
+                  type="tel"
+                  class="field-input"
+                  [value]="phone()"
+                  (input)="phone.set($any($event.target).value)"
+                  placeholder="Ej. +54 9 3834 123456"
+                  required
+                />
+              </label>
+            </div>
+
+            <label class="form-field">
+              <span class="field-lbl">
+                Carta de Motivación & Trayectoria en Catamarca / Turismo Andino <b>*</b>
+              </span>
+              <textarea
+                id="f-letter"
+                class="field-textarea"
+                rows="4"
+                [value]="trajectory()"
+                (input)="trajectory.set($any($event.target).value)"
+                placeholder="Contanos tus años de experiencia, rutas principales, equipo, certificaciones y visión de colaboración con EXPERIENCIAS.CLUB..."
+                required
+              ></textarea>
+            </label>
+
+            <!-- Checkbox de Compromiso Patrimonial (Idéntico a /socios/fundadores con amarillo) -->
+            <div
+              class="founder-agreement-box"
+              [class.selected]="founderAgreedToPrice()"
+              (click)="founderAgreedToPrice.update((v) => !v)"
+            >
+              <div class="custom-checkbox" [class.checked]="founderAgreedToPrice()">
+                @if (founderAgreedToPrice()) {
+                <mat-icon class="chk-check-icon">check</mat-icon>
+                }
+              </div>
+              <div class="agreement-text">
+                <strong class="agreement-title">
+                  COMPROMISO FORMAL Y ADHESIÓN AL PROTOCOLO DE ADMISIÓN <b>*</b>
+                </strong>
+                <p>
+                  Declaro estar al tanto y en conformidad con el aporte patrimonial correspondiente a la
+                  <strong>Distinción de Prestador Fundador (10 millones de pesos ARS)</strong>,
+                  asumiendo el compromiso de efectivizarlo en caso de que mi carta de postulación sea aprobada unánimemente por el Comité Directivo.
+                </p>
+              </div>
+            </div>
+
+            <div class="form-submit-row">
+              <button
+                type="submit"
+                class="founder-submit-btn"
+                [disabled]="
+                  !contactName().trim() ||
+                  !agencyName().trim() ||
+                  !email().trim() ||
+                  !phone().trim() ||
+                  !trajectory().trim() ||
+                  !founderAgreedToPrice()
+                "
+              >
+                <span>Enviar Carta al Comité Directivo</span>
+              </button>
+            </div>
+          </form>
+          }
+        </div>
+
+        <!-- Bloque de Niveles Reutilizable -->
+        <app-provider-tiers />
+
+        <!-- Anuncio de Socios Fundadores -->
+        <app-founder-ad />
+      </div>
+    </main>
+
+    <!-- Footer Unificado -->
+    <app-footer></app-footer>
+  </div>
+</div>

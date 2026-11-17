@@ -1038,51 +1038,83 @@ export class ExperienceService {
     const prevList = this._experiences();
     const expToDelete = prevList.find((e) => e.id === id || e.slug === id);
     const targetId = expToDelete?.id ?? id;
+    const originalSlug = expToDelete?.slug;
     const list = prevList.filter((e) => e.id !== targetId && e.slug !== id);
 
-    this.recordDeletedId(targetId, expToDelete?.slug);
+    this.recordDeletedId(targetId, originalSlug);
     this._experiences.set(list);
     this.persistToLocalStorage(list);
 
     if (isSupabaseConfigured()) {
       try {
-        let notesObj: Record<string, any> = {};
-        const rawNotes = (expToDelete?.notes || '').trim();
-        if (rawNotes) {
-          if (rawNotes.startsWith('{')) {
-            try {
-              const parsed = JSON.parse(rawNotes);
-              if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-                notesObj = { ...parsed };
-              } else {
+        let softDeletedViaRpc = false;
+        try {
+          if (typeof (this.supabase as any).rpc === 'function') {
+            const { data: rpcRes, error: rpcErr } = await (this.supabase as any).rpc(
+              'admin_soft_delete_experience',
+              { p_experience_id: targetId },
+            );
+            if (!rpcErr && rpcRes && (rpcRes as any).status !== 'error') {
+              softDeletedViaRpc = true;
+            }
+          }
+        } catch {
+          // Fallback a actualización directa si la función RPC no está disponible aún
+        }
+
+        if (!softDeletedViaRpc) {
+          let notesObj: Record<string, any> = {};
+          const rawNotes = (expToDelete?.notes || '').trim();
+          if (rawNotes) {
+            if (rawNotes.startsWith('{')) {
+              try {
+                const parsed = JSON.parse(rawNotes);
+                if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                  notesObj = { ...parsed };
+                } else {
+                  notesObj = { text: rawNotes };
+                }
+              } catch {
                 notesObj = { text: rawNotes };
               }
-            } catch {
+            } else {
               notesObj = { text: rawNotes };
             }
-          } else {
-            notesObj = { text: rawNotes };
           }
-        }
-        notesObj['deleted'] = true;
-        notesObj['deleted_at'] = new Date().toISOString();
-        notesObj['deleted_by'] = 'admin_portal';
+          notesObj['deleted'] = true;
+          notesObj['deleted_at'] = new Date().toISOString();
+          notesObj['deleted_by'] = 'admin_portal';
+          if (originalSlug) {
+            notesObj['original_slug'] = originalSlug;
+          }
 
-        const { data, error } = await (this.supabase.from('experiencias') as any)
-          .update({
+          // Liberar el slug para permitir que se cree una nueva experiencia con la misma ruta
+          const freedSlug = originalSlug
+            ? `${originalSlug}--deleted-${Date.now()}`
+            : undefined;
+
+          const updatePayload: Record<string, any> = {
             status: 'oculta',
             display_location: 'no_listada',
             notes: JSON.stringify(notesObj),
-          })
-          .eq('id', targetId)
-          .select('id');
+            deleted_at: new Date().toISOString(),
+          };
+          if (freedSlug) {
+            updatePayload['slug'] = freedSlug;
+          }
 
-        if (error || !data || data.length === 0) {
-          throw error || new Error(`No se encontró la experiencia remota con id ${targetId}`);
+          const { data, error } = await (this.supabase.from('experiencias') as any)
+            .update(updatePayload)
+            .eq('id', targetId)
+            .select('id');
+
+          if (error || !data || data.length === 0) {
+            throw error || new Error(`No se encontró la experiencia remota con id ${targetId}`);
+          }
         }
       } catch (err) {
         console.warn('[ExperienceService] Fallo al marcar como eliminada en Supabase:', err);
-        this.removeDeletedId(targetId, expToDelete?.slug);
+        this.removeDeletedId(targetId, originalSlug);
         this._experiences.set(prevList);
         this.persistToLocalStorage(prevList);
         throw err;
@@ -2004,9 +2036,9 @@ export class ExperienceService {
           const resolvedBankName = isClub ? (clubProfile.bankName || 'Mercado Pago / Banco Nación') : (banking?.bank_name || undefined);
 
           // Omitir experiencias marcadas como borradas (soft delete)
-          let isSoftDeleted = false;
+          let isSoftDeleted = Boolean(exp.deleted_at);
           try {
-            if (exp.notes && typeof exp.notes === 'string' && exp.notes.startsWith('{')) {
+            if (!isSoftDeleted && exp.notes && typeof exp.notes === 'string' && exp.notes.startsWith('{')) {
               const parsedNotes = JSON.parse(exp.notes);
               if (parsedNotes?.deleted === true) {
                 isSoftDeleted = true;

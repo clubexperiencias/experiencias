@@ -48,7 +48,7 @@
   background: hsla(220, 24%, 9%, 0.22);
   border: 1px solid rgba(255, 212, 42, 0.35);
   border-radius: 2px;
-  padding: 2.2rem;
+  padding: 2.2rem 2.2rem 1.75rem;
   margin: 0;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
@@ -194,7 +194,7 @@
   background: rgba(14, 21, 33, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 2px;
-  padding: 1.5rem 1.3rem;
+  padding: 1.5rem 1.3rem 1.05rem;
   display: flex;
   flex-direction: column;
   backdrop-filter: blur(12px);
@@ -314,8 +314,8 @@
 
 .tier-level-badge.founder-badge {
   background: rgba(15, 28, 45, 0.28);
-  color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: #ffcc00 !important;
+  border: 1px solid rgba(255, 204, 0, 0.4);
 }
 
 .tier-name {
@@ -401,7 +401,7 @@
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 2px;
   padding: 0.75rem 0.9rem;
-  margin-bottom: 1.2rem;
+  margin-bottom: 0.75rem;
 }
 
 .jump-tag {
@@ -494,8 +494,9 @@
 
 .tier-benefits {
   list-style: none;
-  padding: 0;
-  margin: 0.65rem 0 1.5rem;
+  padding: 1.15rem 0 0;
+  margin: 0 0 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
   display: flex;
   flex-direction: column;
   gap: 0.65rem;

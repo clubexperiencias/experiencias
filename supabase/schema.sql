@@ -268,9 +268,12 @@ CREATE TABLE IF NOT EXISTS public.experiencias (
   provider_cbu_alias       TEXT,
   provider_cuit_dni        TEXT,
   provider_bank_name       TEXT,
+  deleted_at               TIMESTAMPTZ,
   created_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
 
 CREATE INDEX IF NOT EXISTS idx_experiencias_slug ON public.experiencias(slug);
 CREATE INDEX IF NOT EXISTS idx_experiencias_display ON public.experiencias(display_location, is_locked, status);
@@ -361,7 +364,7 @@ CREATE TABLE IF NOT EXISTS public.descuentos (
   description         TEXT DEFAULT '',
   discount_type       TEXT NOT NULL CHECK (discount_type IN ('percentage', 'fixed_amount')),
   discount_value      NUMERIC NOT NULL CHECK (discount_value > 0),
-  scope               TEXT NOT NULL DEFAULT 'general' CHECK (scope IN ('general', 'experience', 'provider')),
+  scope               TEXT NOT NULL DEFAULT 'general' CHECK (scope IN ('general', 'experience', 'provider', 'membership')),
   experience_id       TEXT REFERENCES public.experiencias(id) ON UPDATE CASCADE ON DELETE SET NULL,
   experience_slug     TEXT,
   provider_id         UUID REFERENCES public.prestadores(id) ON UPDATE CASCADE ON DELETE SET NULL,
@@ -382,6 +385,15 @@ CREATE INDEX IF NOT EXISTS idx_descuentos_active ON public.descuentos (active);
 CREATE INDEX IF NOT EXISTS idx_descuentos_experience_id ON public.descuentos (experience_id);
 CREATE INDEX IF NOT EXISTS idx_descuentos_provider_id ON public.descuentos (provider_id);
 CREATE INDEX IF NOT EXISTS idx_descuentos_scope ON public.descuentos (scope);
+
+DO $$
+BEGIN
+  ALTER TABLE public.descuentos DROP CONSTRAINT IF EXISTS descuentos_scope_check;
+  ALTER TABLE public.descuentos ADD CONSTRAINT descuentos_scope_check CHECK (scope IN ('general', 'experience', 'provider', 'membership'));
+EXCEPTION WHEN OTHERS THEN
+  NULL;
+END;
+$$;
 
 -- ==============================================================================
 -- 3. VISTAS
@@ -655,7 +667,7 @@ DECLARE
   v_is_registration_rpc BOOLEAN := false;
 BEGIN
   GET DIAGNOSTICS v_context = PG_CONTEXT;
-  IF v_context LIKE '%register_socio%' THEN
+  IF v_context LIKE '%register_socio%' OR v_context LIKE '%activate_socio_pleno%' THEN
     v_is_registration_rpc := true;
   END IF;
 
@@ -709,6 +721,11 @@ BEGIN
       END IF;
     ELSE
       -- Actualización directa: no permitir elegir posición, asignar la siguiente de la secuencia
+      NEW.position := nextval('public.socios_position_seq');
+    END IF;
+  ELSIF v_is_registration_rpc AND NEW.membership_tier = 'activo' THEN
+    -- Permitir elevación de nivel a Socio Pleno ('activo') desde la RPC autorizada
+    IF NEW.position IS NULL AND OLD.position IS NULL THEN
       NEW.position := nextval('public.socios_position_seq');
     END IF;
   ELSIF NEW.position IS DISTINCT FROM OLD.position OR
@@ -2497,6 +2514,217 @@ BEGIN
 END;
 $$;
 
+-- 5.20 admin_soft_delete_experience (Baja lógica y liberación de slug para administradores)
+CREATE OR REPLACE FUNCTION public.admin_soft_delete_experience(
+  p_experience_id TEXT
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_exp public.experiencias%ROWTYPE;
+  v_now TIMESTAMPTZ := now();
+  v_new_slug TEXT;
+  v_notes JSONB;
+BEGIN
+  -- 1. Validar que el usuario sea administrador activo
+  IF NOT EXISTS (
+    SELECT 1 FROM public.administradores
+    WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+      AND active = true
+  ) THEN
+    RAISE EXCEPTION 'Acceso denegado: solo administradores activos pueden dar de baja experiencias';
+  END IF;
+
+  -- 2. Buscar la experiencia
+  SELECT * INTO v_exp
+  FROM public.experiencias
+  WHERE id = p_experience_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('status', 'not_found', 'message', 'Experiencia no encontrada');
+  END IF;
+
+  -- 3. Si ya estaba eliminada, retornar ok idempotente
+  IF v_exp.deleted_at IS NOT NULL THEN
+    RETURN jsonb_build_object('status', 'already_deleted', 'id', v_exp.id, 'slug', v_exp.slug);
+  END IF;
+
+  -- 4. Liberar el slug agregando sufijo único de borrado para permitir reutilización inmediata
+  v_new_slug := v_exp.slug || '--deleted-' || to_char(v_now, 'YYYYMMDDHH24MISS') || '-' || substr(md5(random()::text), 1, 6);
+
+  -- 5. Preservar o inicializar metadatos en notes
+  BEGIN
+    IF v_exp.notes IS NOT NULL AND TRIM(v_exp.notes) LIKE '{%' THEN
+      v_notes := v_exp.notes::jsonb;
+    ELSE
+      v_notes := jsonb_build_object('previous_notes', COALESCE(v_exp.notes, ''));
+    END IF;
+  EXCEPTION WHEN OTHERS THEN
+    v_notes := jsonb_build_object('previous_notes', COALESCE(v_exp.notes, ''));
+  END;
+
+  v_notes := v_notes || jsonb_build_object(
+    'deleted', true,
+    'deleted_at', v_now,
+    'deleted_by', COALESCE(auth.jwt() ->> 'email', 'admin_portal'),
+    'original_slug', v_exp.slug
+  );
+
+  -- 6. Actualizar registro: status oculta, display no listada, slug liberado, timestamp
+  UPDATE public.experiencias
+  SET
+    status = 'oculta',
+    display_location = 'no_listada',
+    slug = v_new_slug,
+    deleted_at = v_now,
+    notes = v_notes::text,
+    updated_at = v_now
+  WHERE id = v_exp.id;
+
+  RETURN jsonb_build_object(
+    'status', 'ok',
+    'id', v_exp.id,
+    'original_slug', v_exp.slug,
+    'freed_slug', v_new_slug,
+    'deleted_at', v_now
+  );
+END;
+$$;
+
+-- 5.21 activate_socio_pleno_atomic (Activación segura de membresía Socio Pleno con cupón promocional)
+CREATE OR REPLACE FUNCTION public.activate_socio_pleno_atomic(
+  p_email TEXT,
+  p_full_name TEXT,
+  p_dni TEXT,
+  p_phone TEXT,
+  p_discount_code TEXT DEFAULT NULL,
+  p_experiences_wishlist JSONB DEFAULT '[]'::jsonb,
+  p_experiences_other TEXT DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_email TEXT := LOWER(TRIM(COALESCE(p_email, '')));
+  v_name TEXT := TRIM(COALESCE(p_full_name, ''));
+  v_dni TEXT := TRIM(COALESCE(p_dni, ''));
+  v_phone TEXT := TRIM(COALESCE(p_phone, ''));
+  v_code TEXT := UPPER(TRIM(COALESCE(p_discount_code, '')));
+  v_jwt_email TEXT := LOWER(TRIM(COALESCE(auth.jwt() ->> 'email', '')));
+  v_auth_uid UUID := auth.uid();
+  v_socio public.socios%ROWTYPE;
+  v_discount public.descuentos%ROWTYPE;
+  v_now TIMESTAMPTZ := now();
+BEGIN
+  -- 1. Validaciones básicas de entrada
+  IF v_email = '' OR v_name = '' OR length(v_dni) < 7 OR length(v_dni) > 9 OR v_phone = '' THEN
+    RETURN jsonb_build_object('status', 'invalid_input', 'message', 'Completá todos los campos obligatorios.');
+  END IF;
+
+  -- 2. Validar autenticación
+  IF v_auth_uid IS NULL OR v_jwt_email <> v_email THEN
+    RETURN jsonb_build_object('status', 'unauthorized', 'message', 'Se requiere autenticación válida vía Google.');
+  END IF;
+
+  -- 3. Validar código de descuento si se proporcionó
+  IF v_code <> '' THEN
+    SELECT * INTO v_discount
+    FROM public.descuentos
+    WHERE UPPER(code) = v_code AND active = true
+    LIMIT 1
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+      -- Códigos estándar predefinidos de cortesía
+      IF v_code NOT IN ('PLENO100', 'SOCIO100', 'LANZAMIENTO100', 'BONIFICADO100', 'CLUB100') THEN
+        RETURN jsonb_build_object('status', 'invalid_code', 'message', 'El código de descuento no es válido o está inactivo.');
+      END IF;
+    ELSE
+      -- Validar vigencia
+      IF v_discount.starts_at IS NOT NULL AND v_discount.starts_at > v_now THEN
+        RETURN jsonb_build_object('status', 'invalid_code', 'message', 'Esta promoción aún no comenzó.');
+      END IF;
+      IF v_discount.ends_at IS NOT NULL AND v_discount.ends_at < v_now THEN
+        RETURN jsonb_build_object('status', 'invalid_code', 'message', 'Este código promocional ha expirado.');
+      END IF;
+      IF v_discount.max_uses IS NOT NULL AND v_discount.uses_count >= v_discount.max_uses THEN
+        RETURN jsonb_build_object('status', 'invalid_code', 'message', 'Este código promocional alcanzó el límite máximo de usos.');
+      END IF;
+      -- Validar scope: 'general' o 'membership'
+      IF v_discount.scope NOT IN ('general', 'membership') THEN
+        RETURN jsonb_build_object('status', 'invalid_code', 'message', 'Este cupón solo aplica para expediciones específicas y no para membresías.');
+      END IF;
+
+      -- Incrementar uso del cupón
+      UPDATE public.descuentos
+      SET uses_count = uses_count + 1,
+          updated_at = v_now
+      WHERE id = v_discount.id;
+    END IF;
+  END IF;
+
+  -- 4. Registrar o actualizar socio con categoría 'activo' (Socio Pleno)
+  IF EXISTS (SELECT 1 FROM public.socios WHERE email = v_email) THEN
+    UPDATE public.socios
+    SET
+      full_name = v_name,
+      dni = v_dni,
+      phone = v_phone,
+      membership_tier = 'activo',
+      position = CASE WHEN position IS NULL THEN nextval('public.socios_position_seq') ELSE position END,
+      experiences_wishlist = CASE WHEN p_experiences_wishlist IS NOT NULL THEN p_experiences_wishlist ELSE experiences_wishlist END,
+      experiences_other = CASE WHEN p_experiences_other IS NOT NULL AND TRIM(p_experiences_other) <> '' THEN TRIM(p_experiences_other) ELSE experiences_other END,
+      auth_user_id = v_auth_uid,
+      updated_at = v_now
+    WHERE email = v_email
+    RETURNING * INTO v_socio;
+  ELSE
+    -- Validar DNI único si es nuevo
+    IF EXISTS (SELECT 1 FROM public.socios WHERE dni = v_dni AND dni <> '') THEN
+      RETURN jsonb_build_object('status', 'already_registered_dni', 'message', 'Ya existe un socio registrado con este DNI.');
+    END IF;
+
+    INSERT INTO public.socios (
+      email,
+      full_name,
+      dni,
+      phone,
+      experiences_wishlist,
+      experiences_other,
+      membership_tier,
+      position,
+      auth_user_id,
+      created_at,
+      updated_at
+    ) VALUES (
+      v_email,
+      v_name,
+      v_dni,
+      v_phone,
+      COALESCE(p_experiences_wishlist, '[]'::jsonb),
+      TRIM(p_experiences_other),
+      'activo',
+      nextval('public.socios_position_seq'),
+      v_auth_uid,
+      v_now,
+      v_now
+    )
+    RETURNING * INTO v_socio;
+  END IF;
+
+  RETURN jsonb_build_object(
+    'status', 'ok',
+    'socio', to_jsonb(v_socio) - 'registration_token'
+  );
+END;
+$$;
+
 -- Permisos de ejecución de RPCs
 GRANT EXECUTE ON FUNCTION public.record_waitlist_email TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_admin_socios_roster TO authenticated;
@@ -2531,6 +2759,8 @@ REVOKE EXECUTE ON FUNCTION public.get_calificaciones_prestador_admin(UUID) FROM 
 GRANT EXECUTE ON FUNCTION public.get_calificaciones_prestador_admin(UUID) TO authenticated;
 
 GRANT EXECUTE ON FUNCTION public.record_discount_redemption(TEXT, TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_soft_delete_experience(TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.activate_socio_pleno_atomic(TEXT, TEXT, TEXT, TEXT, TEXT, JSONB, TEXT) TO authenticated;
 
 -- ==============================================================================
 -- 6. ROW LEVEL SECURITY (RLS) Y POLÍTICAS
@@ -2777,6 +3007,10 @@ CREATE POLICY "Solo administradores pueden ver historial mp"
 DROP POLICY IF EXISTS "Usuarios autenticados registran eventos en historial mp" ON public.historial_mp;
 
 -- 6.9 Políticas en experiencias
+GRANT SELECT ON public.experiencias TO anon, authenticated;
+GRANT ALL ON public.experiencias TO authenticated;
+GRANT ALL ON public.experiencias TO service_role;
+
 DROP POLICY IF EXISTS "Lectura publica de experiencias publicadas" ON public.experiencias;
 DROP POLICY IF EXISTS "Lectura publica de experiencias publicadas anon" ON public.experiencias;
 DROP POLICY IF EXISTS "Lectura de experiencias para usuarios autenticados" ON public.experiencias;
@@ -2785,14 +3019,14 @@ CREATE POLICY "Lectura publica de experiencias publicadas anon"
   ON public.experiencias
   FOR SELECT
   TO anon
-  USING (status = 'publicada');
+  USING (status = 'publicada' AND deleted_at IS NULL);
 
 CREATE POLICY "Lectura de experiencias para usuarios autenticados"
   ON public.experiencias
   FOR SELECT
   TO authenticated
   USING (
-    status = 'publicada'
+    (status = 'publicada' AND deleted_at IS NULL)
     OR EXISTS (
       SELECT 1 FROM public.administradores
       WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
@@ -2801,6 +3035,7 @@ CREATE POLICY "Lectura de experiencias para usuarios autenticados"
     OR (
       provider_email IS NOT NULL
       AND LOWER(provider_email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+      AND deleted_at IS NULL
     )
   );
 

@@ -179,6 +179,7 @@
   flex-wrap: wrap;
 }
 
+.footer-faq-link,
 .footer-provider-link {
   color: #000000 !important;
   text-decoration: underline;
@@ -193,6 +194,7 @@
   padding: 0.25rem 0.5rem;
 }
 
+.footer-faq-link:hover,
 .footer-provider-link:hover {
   color: #000000 !important;
   text-decoration-color: #000000;
@@ -333,6 +335,10 @@
     justify-content: space-between;
     align-items: center;
     width: 100%;
+  }
+
+  .footer-faq-link {
+    display: none !important;
   }
 
   .footer-provider-link {

@@ -1,0 +1,511 @@
+/* ==========================================================================
+   Página de Prestador Pleno • EXPERIENCIAS.CLUB
+   Replica exactamente el diseño de /socios/plenos
+   ========================================================================== */
+.provider-pleno-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  color: var(--color-text-white);
+  background: transparent;
+}
+
+.provider-wallpaper-body {
+  flex: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.ambient-overlay {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at 50% 15%,
+    rgba(255, 204, 0, 0.06) 0%,
+    rgba(0, 0, 0, 0.55) 100%
+  );
+  pointer-events: none;
+}
+
+.provider-main-content {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  padding: 2.4rem 1.5rem 3.5rem;
+}
+
+.provider-wrapper {
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  gap: 2.2rem;
+}
+
+/* ==========================================================================
+   Card / Box Principal de Prestador Pleno (Idéntico a /socios/plenos #4a5568)
+   ========================================================================== */
+.hero-pleno-card {
+  width: 100%;
+  box-sizing: border-box;
+  background: #4a5568;
+  border: 1px solid rgba(255, 212, 42, 0.38);
+  border-radius: 4px;
+  padding: clamp(1.6rem, 4vw, 2.8rem);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35) !important;
+  text-align: left;
+}
+
+.section-card-header {
+  margin-bottom: 1.8rem;
+}
+
+.section-kicker {
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  color: var(--color-gold);
+  font-weight: 700;
+  display: block;
+  margin-bottom: 0.3rem;
+  text-transform: uppercase;
+}
+
+.card-heading {
+  font-family: var(--font-serif);
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.2;
+  margin: 0.3rem 0 0.5rem;
+}
+
+.card-subheading {
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.88);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Franja de Condiciones Clave (Clean, sin iconos) */
+.pleno-highlights-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.2rem;
+  background: rgba(15, 28, 45, 0.32);
+  border: 1px solid rgba(255, 212, 42, 0.22);
+  border-radius: 4px;
+  padding: 1.2rem 1.4rem;
+  margin-bottom: 1.8rem;
+}
+
+@media (max-width: 768px) {
+  .pleno-highlights-strip {
+    grid-template-columns: 1fr;
+    gap: 0.85rem;
+  }
+}
+
+.highlight-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.highlight-title {
+  font-family: var(--font-sans);
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--color-gold);
+}
+
+.highlight-desc {
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+/* ==========================================================================
+   Google Gate (Puerta de Autenticación con Google)
+   ========================================================================== */
+.google-link-gate {
+  display: grid;
+  gap: 0.8rem;
+  margin-bottom: 2rem;
+  padding: 1.25rem 1.4rem;
+  border: 1px solid rgba(255, 212, 42, 0.55);
+  background: rgba(15, 28, 45, 0.3);
+  border-radius: 4px;
+}
+
+.google-link-gate-head h2 {
+  margin: 0;
+  color: #fff;
+  font-size: 1.15rem;
+}
+
+.google-link-gate p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.9rem;
+}
+
+.google-gate-error {
+  color: #ff6b6b;
+  font-size: 0.82rem;
+  margin: 0.4rem 0;
+}
+
+.google-link-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  width: fit-content;
+  min-height: 3rem;
+  padding: 0.75rem 1.2rem;
+  border: 1px solid #dadce0;
+  border-radius: 3px;
+  background: #fff;
+  color: #202124;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.google-link-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* ==========================================================================
+   Formulario Bloqueado y Blureado (Idéntico a /socios/plenos)
+   ========================================================================== */
+.signup-form-locked {
+  filter: blur(2px);
+  opacity: 0.72;
+  pointer-events: none;
+  user-select: none;
+}
+
+.signup-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+}
+
+.signup-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.2rem;
+}
+
+@media (max-width: 640px) {
+  .signup-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.signup-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.signup-field span {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.signup-field span b {
+  color: var(--color-gold);
+}
+
+.signup-field input {
+  padding: 0.8rem 1rem;
+  background: rgba(15, 28, 45, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  color: #ffffff;
+  font-family: var(--font-sans);
+  font-size: 0.88rem;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.signup-field input:focus {
+  border-color: var(--color-gold);
+  background: rgba(15, 28, 45, 0.5);
+}
+
+/* ==========================================================================
+   Box de Código de Invitación y Resumen de Cuota (Idéntico a /socios/plenos)
+   ========================================================================== */
+.pleno-promo-card {
+  background: rgba(15, 28, 45, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  padding: 1.4rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.promo-kicker {
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  color: var(--color-gold);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.promo-title {
+  font-size: 1.05rem;
+  color: #ffffff;
+  margin: 0.25rem 0 0.35rem;
+}
+
+.promo-desc {
+  font-size: 0.84rem;
+  color: rgba(255, 255, 255, 0.88);
+  margin: 0;
+  line-height: 1.45;
+}
+
+.promo-input-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: stretch;
+}
+
+@media (max-width: 500px) {
+  .promo-input-row {
+    flex-direction: column;
+  }
+}
+
+.promo-input-wrap {
+  flex: 1;
+}
+
+.promo-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.8rem 1rem;
+  border-radius: 2px;
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  background: rgba(14, 28, 42, 0.5);
+  color: #ffffff;
+  font-family: var(--font-mono);
+  font-size: 0.96rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  outline: none;
+}
+
+.promo-input:focus {
+  border-color: var(--color-gold);
+}
+
+.promo-apply-btn {
+  padding: 0.8rem 1.4rem;
+  background: rgba(255, 212, 42, 0.2);
+  border: 1px solid var(--color-gold);
+  color: var(--color-gold);
+  font-weight: 700;
+  font-size: 0.86rem;
+  border-radius: 2px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.promo-apply-btn:hover:not(:disabled) {
+  background: var(--color-gold);
+  color: #000;
+}
+
+.promo-error-msg {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  padding: 0.6rem 0.85rem;
+  border-radius: 2px;
+}
+
+.promo-applied-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: rgba(16, 185, 129, 0.18);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  padding: 0.75rem 1rem;
+  border-radius: 3px;
+}
+
+.applied-info strong {
+  font-size: 0.9rem;
+  color: #ffffff;
+  display: block;
+}
+
+.applied-info span {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* ==========================================================================
+   Resumen de Facturación (Idéntico al screenshot de /socios/plenos)
+   ========================================================================== */
+.pricing-summary-box {
+  background: rgba(14, 28, 42, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  padding: 1.1rem 1.25rem;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.summary-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.summary-line strong {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+}
+
+.summary-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.15);
+  margin: 0.25rem 0;
+}
+
+.summary-line.total-line {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.total-val {
+  color: var(--color-gold);
+  font-size: 1.25rem !important;
+}
+
+/* ==========================================================================
+   Acciones Finales y Botón de Envío (Idéntico al screenshot de /socios/plenos)
+   ========================================================================== */
+.signup-actions {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0;
+}
+
+.promo-required-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 212, 42, 0.08);
+  border: 1px dashed rgba(255, 212, 42, 0.35);
+  border-radius: 3px;
+  font-size: 0.84rem;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.4;
+  margin-top: 0;
+  margin-bottom: 0.65rem;
+}
+
+.promo-required-hint .hint-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  color: var(--color-gold);
+  flex-shrink: 0;
+}
+
+/* Botón con texto en blanco solicitado explícitamente */
+.signup-submit-btn {
+  width: 100%;
+  padding: 1.1rem 1.5rem;
+  background: var(--color-gold);
+  color: #ffffff !important;
+  border: none;
+  border-radius: 3px;
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px rgba(255, 212, 42, 0.35);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.signup-submit-btn span {
+  color: #ffffff !important;
+}
+
+.signup-submit-btn:hover:not(:disabled) {
+  filter: brightness(1.08);
+  color: #ffffff !important;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(255, 212, 42, 0.45);
+}
+
+.signup-submit-btn:hover:not(:disabled) span {
+  color: #ffffff !important;
+}
+
+.signup-submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.reassurance-note {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.75);
+  text-align: center;
+  margin: 0;
+}
+
+/* Estado de Éxito */
+.pleno-success-box {
+  background: rgba(15, 28, 45, 0.35);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  border-radius: 4px;
+  padding: 2rem;
+  text-align: center;
+}
+
+.success-title {
+  color: #ffffff;
+  font-size: 1.35rem;
+  margin: 0 0 0.8rem;
+}
+
+.success-desc {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.92rem;
+  line-height: 1.6;
+  max-width: 600px;
+  margin: 0 auto 1.5rem;
+}

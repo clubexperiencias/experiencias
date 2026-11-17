@@ -22,7 +22,6 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
       <!-- Encabezado Principal -->
       <header class="discounts-header">
         <div>
-          <span class="discounts-kicker">VENTAS & CONVERSIÓN</span>
           <h1 class="discounts-title">Gestión de Descuentos & Promociones</h1>
           <p class="discounts-sub">
             Administrá códigos de cupón y ofertas directas para experiencias individuales o para toda la plataforma.
@@ -38,25 +37,25 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
       <section class="summary-strip">
         <div class="summary-card">
           <span class="sum-label">Cupones Activos</span>
-          <strong class="sum-value text-emerald">{{ activeCount() }}</strong>
+          <strong class="sum-value">{{ activeCount() }}</strong>
           <span class="sum-sub">{{ totalCount() }} promociones registradas</span>
         </div>
 
         <div class="summary-card">
           <span class="sum-label">Por Experiencia</span>
-          <strong class="sum-value text-amber">{{ experienceSpecificCount() }}</strong>
+          <strong class="sum-value">{{ experienceSpecificCount() }}</strong>
           <span class="sum-sub">{{ automaticCount() }} automáticas</span>
         </div>
 
         <div class="summary-card">
           <span class="sum-label">Canjes Confirmados</span>
-          <strong class="sum-value text-blue">{{ totalUsesCount() }}</strong>
+          <strong class="sum-value">{{ totalUsesCount() }}</strong>
           <span class="sum-sub">En reservas y pagos</span>
         </div>
 
         <div class="summary-card">
           <span class="sum-label">Total Ahorrado</span>
-          <strong class="sum-value text-purple">{{ totalSavingsArs() | ars }}</strong>
+          <strong class="sum-value text-gold">{{ totalSavingsArs() | ars }}</strong>
           <span class="sum-sub">Beneficio total a socios</span>
         </div>
       </section>
@@ -85,6 +84,7 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
             <option value="all">Todos los alcances</option>
             <option value="general">Generales (Toda la red)</option>
             <option value="experience">Por Experiencia Específica</option>
+            <option value="membership">Membresía Socio Pleno</option>
           </select>
         </div>
       </div>
@@ -138,6 +138,11 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                         {{ getExperienceTitle(disc) }}
                       </span>
                     </div>
+                  } @else if (disc.scope === 'membership') {
+                    <span class="scope-membership-pill">
+                      <mat-icon class="icon-tiny">card_membership</mat-icon>
+                      Socio Pleno
+                    </span>
                   } @else {
                     <span class="scope-general-pill">
                       <mat-icon class="icon-tiny">public</mat-icon>
@@ -312,6 +317,15 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                         [(ngModel)]="formData.scope"
                       />
                       <span>Experiencia Específica</span>
+                    </label>
+                    <label class="radio-label">
+                      <input
+                        type="radio"
+                        name="scope"
+                        value="membership"
+                        [(ngModel)]="formData.scope"
+                      />
+                      <span>Membresía Mensual (Socio Pleno)</span>
                     </label>
                   </div>
                 </div>
@@ -551,24 +565,28 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      color: rgba(255, 255, 255, 0.65);
+      color: #ffffff;
+      opacity: 0.88;
     }
 
     .sum-value {
       font-size: 1.85rem;
       font-weight: 800;
+      color: #ffffff;
       line-height: 1.15;
     }
 
     .sum-sub {
       font-size: 0.78rem;
-      color: rgba(255, 255, 255, 0.5);
+      color: #ffffff;
+      opacity: 0.8;
     }
 
-    .text-emerald { color: #34d399; }
-    .text-amber { color: #f59e0b; }
-    .text-blue { color: #80b3ff; }
-    .text-purple { color: #c084fc; }
+    .text-emerald { color: #ffffff !important; }
+    .text-amber { color: #ffffff !important; }
+    .text-blue { color: #ffffff !important; }
+    .text-purple { color: #ffcc00 !important; }
+    .text-gold { color: #ffcc00 !important; }
 
     /* Barra de filtros */
     .filters-bar {
@@ -770,6 +788,19 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
       border-radius: 9999px;
       background: rgba(255, 255, 255, 0.08);
       color: rgba(255, 255, 255, 0.75);
+    }
+
+    .scope-membership-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.2rem 0.55rem;
+      border-radius: 9999px;
+      background: rgba(59, 130, 246, 0.2);
+      color: #93c5fd;
+      border: 1px solid rgba(59, 130, 246, 0.35);
     }
 
     .benefit-badge {
@@ -1189,6 +1220,7 @@ export class AdminDiscountsComponent {
       // Filtro de alcance
       if (scope === 'general' && d.scope !== 'general') return false;
       if (scope === 'experience' && d.scope !== 'experience') return false;
+      if (scope === 'membership' && d.scope !== 'membership') return false;
 
       return true;
     });

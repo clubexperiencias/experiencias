@@ -45,28 +45,87 @@
 
 .providers-wrapper {
   width: 100%;
-  max-width: 900px;
+  max-width: 960px;
   display: flex;
   flex-direction: column;
   gap: 2.2rem;
   align-items: stretch;
 }
 
-/* ==========================================================================
-   Card / Box Principal con Fondo #3A506B y Acentos #80b3ff
-   ========================================================================== */
+/* Card / Box Principal con Fondo translúcido */
 .provider-section-card {
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
-  background: #3a506b;
-  border: 1px solid rgba(128, 179, 255, 0.35);
-  border-radius: 4px;
-  padding: clamp(1.6rem, 4vw, 2.8rem);
+  background: hsla(220, 24%, 9%, 0.22);
+  border: 1px solid rgba(255, 212, 42, 0.35);
+  border-radius: 2px;
+  padding: 2.2rem 2.2rem 1.75rem;
   margin: 0;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: none !important;
   text-align: left;
   animation: providerBoxEntrance 0.35s ease-out;
+}
+
+/* Box Convocatoria de Prestadores idéntica a Nivel 1: Socio Emergente (#779A9A) */
+.hero-provider-card {
+  background: #779a9a !important;
+  border: 1px solid rgba(255, 255, 255, 0.28) !important;
+  border-radius: 4px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.hero-provider-card .section-kicker {
+  color: var(--color-gold) !important;
+}
+
+.hero-provider-card .provider-highlights-strip {
+  background: rgba(15, 28, 45, 0.26) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+}
+
+.hero-provider-card .field-lbl b,
+.hero-provider-card .provider-field b,
+.hero-provider-card .req {
+  color: var(--color-gold) !important;
+}
+
+.hero-provider-card .provider-google-gate {
+  border: 1px solid rgba(255, 212, 42, 0.55);
+  background: rgba(15, 28, 45, 0.3);
+}
+
+.hero-provider-card .google-gate-kicker {
+  color: var(--color-gold);
+}
+
+.hero-provider-card .provider-input:focus,
+.hero-provider-card .provider-select:focus,
+.hero-provider-card .provider-textarea:focus {
+  border-color: #8bbaba !important;
+  background: rgba(14, 28, 42, 0.52) !important;
+  box-shadow: 0 0 0 3px rgba(139, 186, 186, 0.45) !important;
+}
+
+.hero-provider-card .provider-page-submit-btn {
+  background: var(--color-gold) !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25) !important;
+}
+
+.hero-provider-card .provider-page-submit-btn span {
+  color: #ffffff !important;
+}
+
+.hero-provider-card .provider-page-submit-btn:hover:not(:disabled) {
+  background: #ffe066 !important;
+  color: #ffffff !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35) !important;
 }
 
 @keyframes providerBoxEntrance {

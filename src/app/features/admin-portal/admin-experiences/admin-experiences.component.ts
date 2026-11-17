@@ -789,65 +789,65 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
             </div>
           </div>
         }
+      }
 
-        <!-- MODAL DE CONFIRMACIÓN DE BORRADO -->
-        @if (experienceToDelete()) {
-          <div class="confirm-delete-modal-backdrop" (click)="closeDeleteModal()">
-            <div class="confirm-delete-modal-dialog" (click)="$event.stopPropagation()">
-              <div class="delete-modal-header">
-                <div class="delete-modal-icon-wrap">
-                  <mat-icon>warning</mat-icon>
-                </div>
-                <div class="delete-modal-title-col">
-                  <h3 class="delete-modal-title">¿Eliminar Experiencia?</h3>
-                  <span class="delete-modal-sub">Esta acción dará de baja la experiencia del catálogo</span>
-                </div>
+      <!-- MODAL DE CONFIRMACIÓN DE BORRADO -->
+      @if (experienceToDelete()) {
+        <div class="confirm-delete-modal-backdrop" (click)="closeDeleteModal()">
+          <div class="confirm-delete-modal-dialog" (click)="$event.stopPropagation()">
+            <div class="delete-modal-header">
+              <div class="delete-modal-icon-wrap">
+                <mat-icon>warning</mat-icon>
               </div>
-
-              <div class="delete-modal-body">
-                <div class="delete-target-card">
-                  <span class="target-label">EXPERIENCIA SELECCIONADA:</span>
-                  <strong class="target-title">{{ experienceToDelete()?.title }}</strong>
-                  <span class="target-id">ID: <code>{{ experienceToDelete()?.id }}</code></span>
-                </div>
-
-                <div class="delete-consequences-list">
-                  <div class="consequence-item">
-                    <span class="bullet">•</span>
-                    <span><strong>Trazabilidad y registro protegidos:</strong> La experiencia no se borra físicamente de la base de datos para preservar los registros operativos.</span>
-                  </div>
-                  <div class="consequence-item">
-                    <span class="bullet">•</span>
-                    <span><strong>Historial de compras de socios intacto:</strong> Los socios que ya hayan comprado esta experiencia mantendrán sus recibos, historial de actividad y comprobantes.</span>
-                  </div>
-                  <div class="consequence-item">
-                    <span class="bullet">•</span>
-                    <span><strong>No reversible desde los paneles:</strong> La experiencia desaparecerá del catálogo y paneles, y no podrá ser reactivada desde ningún panel (solo manualmente desde la base de datos de Supabase).</span>
-                  </div>
-                </div>
-              </div>
-
-              <div class="delete-modal-actions">
-                <button
-                  type="button"
-                  class="btn-cancel-delete"
-                  (click)="closeDeleteModal()"
-                  [disabled]="isDeletingExp()"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  class="btn-confirm-delete"
-                  (click)="confirmDeleteExperience()"
-                  [disabled]="isDeletingExp()"
-                >
-                  <span>{{ isDeletingExp() ? 'Eliminando...' : 'Eliminar Experiencia' }}</span>
-                </button>
+              <div class="delete-modal-title-col">
+                <h3 class="delete-modal-title">¿Eliminar Experiencia?</h3>
+                <span class="delete-modal-sub">Esta acción dará de baja la experiencia del catálogo y liberará su enlace web</span>
               </div>
             </div>
+
+            <div class="delete-modal-body">
+              <div class="delete-target-card">
+                <span class="target-label">EXPERIENCIA SELECCIONADA:</span>
+                <strong class="target-title">{{ experienceToDelete()?.title }}</strong>
+                <span class="target-id">ID: <code>{{ experienceToDelete()?.id }}</code> · Ruta: <code>/experiencias/{{ experienceToDelete()?.slug }}</code></span>
+              </div>
+
+              <div class="delete-consequences-list">
+                <div class="consequence-item">
+                  <span class="bullet">•</span>
+                  <span><strong>Baja lógica y persistencia:</strong> La experiencia se conserva en la base de datos (marcada como borrada) para preservar la trazabilidad y el historial de compras de los socios.</span>
+                </div>
+                <div class="consequence-item">
+                  <span class="bullet">•</span>
+                  <span><strong>Liberación de slug:</strong> El slug <code>{{ experienceToDelete()?.slug }}</code> se libera inmediatamente para poder ser reutilizado en una nueva experiencia.</span>
+                </div>
+                <div class="consequence-item">
+                  <span class="bullet">•</span>
+                  <span><strong>Remoción del catálogo:</strong> Dejará de mostrarse en la web pública y en las listas operativas de los portales.</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="delete-modal-actions">
+              <button
+                type="button"
+                class="btn-cancel-delete"
+                (click)="closeDeleteModal()"
+                [disabled]="isDeletingExp()"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                class="btn-confirm-delete"
+                (click)="confirmDeleteExperience()"
+                [disabled]="isDeletingExp()"
+              >
+                <span>{{ isDeletingExp() ? 'Dando de baja...' : 'Eliminar Experiencia' }}</span>
+              </button>
+            </div>
           </div>
-        }
+        </div>
       }
 
       <ng-template #experienceFormSections>

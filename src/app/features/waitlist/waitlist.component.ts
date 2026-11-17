@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, HostListener, DestroyRef } from '@angular/core';
+import { Component, inject, signal, computed, HostListener, DestroyRef, OnInit } from '@angular/core';
 import { NewsletterService } from '../../core/services/newsletter.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ExperienceService } from '../../core/services/experience.service';
@@ -7,7 +7,9 @@ import { Experience } from '../../core/models/experience.model';
 import { ActivityHistoryService } from '../../core/services/activity-history.service';
 import { PaymentReceipt } from '../../core/models/activity-history.model';
 
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, NavigationEnd, Router, RouterLink } from '@angular/router';
+import { filter } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
 import { FooterComponent } from '../../shared/components/footer/footer.component';
 import { HeaderComponent } from '../../shared/components/header/header.component';
@@ -43,7 +45,7 @@ export interface LandscapeLocation {
   templateUrl: './waitlist.component.html',
   styleUrl: './waitlist.component.css',
 })
-export class WaitlistComponent {
+export class WaitlistComponent implements OnInit {
   readonly breadcrumbs: BreadcrumbItem[] = [
     { label: 'Inicio', url: '/' },
     { label: 'Experiencias', url: '/experiencias', mobileOnly: true },
@@ -57,8 +59,16 @@ export class WaitlistComponent {
   private readonly destroyRef = inject(DestroyRef);
   private manifestoTimer: any = null;
 
+  // Notificación flotante: Plataforma en construcción (Estilo Toast Favoritos)
+  readonly showConstructionNotice = signal(false);
+  private constructionTimer: any = null;
+
   constructor() {
-    this.destroyRef.onDestroy(() => this.clearManifestoTimer());
+    this.destroyRef.onDestroy(() => {
+      this.clearManifestoTimer();
+      this.clearConstructionTimer();
+    });
+
     this.route.queryParams.subscribe((params) => {
       const modal = params['modal'] as ModalType;
       if (
@@ -76,6 +86,47 @@ export class WaitlistComponent {
         this.openModal(modal);
       }
     });
+
+    // Detectar navegaciones a '/' (incluso si el usuario ya está en '/')
+    this.router.events
+      .pipe(
+        filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((e) => {
+        const cleanUrl = (e.urlAfterRedirects || e.url || '').split('?')[0].split('#')[0];
+        if (cleanUrl === '' || cleanUrl === '/') {
+          this.triggerConstructionNotice();
+        }
+      });
+  }
+
+  ngOnInit(): void {
+    this.triggerConstructionNotice();
+  }
+
+  triggerConstructionNotice(): void {
+    this.clearConstructionTimer();
+    this.showConstructionNotice.set(false);
+    setTimeout(() => {
+      this.showConstructionNotice.set(true);
+      this.constructionTimer = setTimeout(() => {
+        this.showConstructionNotice.set(false);
+        this.constructionTimer = null;
+      }, 7000);
+    }, 60);
+  }
+
+  dismissConstructionNotice(): void {
+    this.clearConstructionTimer();
+    this.showConstructionNotice.set(false);
+  }
+
+  private clearConstructionTimer(): void {
+    if (this.constructionTimer) {
+      clearTimeout(this.constructionTimer);
+      this.constructionTimer = null;
+    }
   }
 
   // Email de suscripción socio emergente

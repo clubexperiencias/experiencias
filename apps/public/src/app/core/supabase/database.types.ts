@@ -358,6 +358,7 @@ export interface Database {
           notes?: string | null;
           rejection_reason?: string | null;
           reviewed_at?: string | null;
+          deleted_at?: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -399,6 +400,7 @@ export interface Database {
           notes?: string | null;
           rejection_reason?: string | null;
           reviewed_at?: string | null;
+          deleted_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -440,6 +442,7 @@ export interface Database {
           notes?: string | null;
           rejection_reason?: string | null;
           reviewed_at?: string | null;
+          deleted_at?: string | null;
           updated_at?: string;
         };
         Relationships: [];
@@ -671,7 +674,7 @@ export interface Database {
           description: string;
           discount_type: 'percentage' | 'fixed_amount';
           discount_value: number;
-          scope: 'general' | 'experience' | 'provider';
+          scope: 'general' | 'experience' | 'provider' | 'membership';
           experience_id: string | null;
           experience_slug: string | null;
           provider_id: string | null;
@@ -693,7 +696,7 @@ export interface Database {
           description?: string;
           discount_type: 'percentage' | 'fixed_amount';
           discount_value: number;
-          scope?: 'general' | 'experience' | 'provider';
+          scope?: 'general' | 'experience' | 'provider' | 'membership';
           experience_id?: string | null;
           experience_slug?: string | null;
           provider_id?: string | null;
@@ -715,7 +718,7 @@ export interface Database {
           description?: string;
           discount_type?: 'percentage' | 'fixed_amount';
           discount_value?: number;
-          scope?: 'general' | 'experience' | 'provider';
+          scope?: 'general' | 'experience' | 'provider' | 'membership';
           experience_id?: string | null;
           experience_slug?: string | null;
           provider_id?: string | null;
@@ -792,6 +795,24 @@ export interface Database {
     };
 
     Functions: {
+      activate_socio_pleno_atomic: {
+        Args: {
+          p_email: string;
+          p_full_name: string;
+          p_dni: string;
+          p_phone: string;
+          p_discount_code?: string | null;
+          p_experiences_wishlist?: Json | null;
+          p_experiences_other?: string | null;
+        };
+        Returns: Json;
+      };
+      admin_soft_delete_experience: {
+        Args: {
+          p_experience_id: string;
+        };
+        Returns: Json;
+      };
       record_discount_redemption: {
         Args: {
           p_code: string;

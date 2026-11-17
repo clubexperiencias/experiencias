@@ -44,7 +44,6 @@ export interface ExperienceRankingRow {
       <!-- Encabezado Principal -->
       <header class="ranking-header">
         <div>
-          <span class="ranking-kicker">MÉTRICAS & REPUTACIÓN</span>
           <h1 class="ranking-title">Ranking de Prestadores & Favoritos</h1>
           <p class="ranking-sub">
             Puntuaciones otorgadas por socios a prestadores oficiales y popularidad de experiencias guardadas en favoritos.
@@ -56,13 +55,13 @@ export interface ExperienceRankingRow {
       <section class="summary-strip">
         <div class="summary-card">
           <span class="sum-label">Prestadores Evaluados</span>
-          <strong class="sum-value text-amber">{{ providerRanking().length }}</strong>
+          <strong class="sum-value">{{ providerRanking().length }}</strong>
           <span class="sum-sub">Promedio red: {{ networkAverageScore() }} ★</span>
         </div>
 
         <div class="summary-card">
           <span class="sum-label">Prestador Mejor Valorado</span>
-          <strong class="sum-value text-gold">
+          <strong class="sum-value">
             {{ topProvider() ? topProvider()?.name : '—' }}
           </strong>
           <span class="sum-sub">
@@ -76,13 +75,13 @@ export interface ExperienceRankingRow {
 
         <div class="summary-card">
           <span class="sum-label">Total Favoritos en la Red</span>
-          <strong class="sum-value text-blue">{{ totalFavoritesCount() }}</strong>
+          <strong class="sum-value">{{ totalFavoritesCount() }}</strong>
           <span class="sum-sub">Acumulado de toda la comunidad</span>
         </div>
 
         <div class="summary-card">
           <span class="sum-label">Experiencia Más Deseada</span>
-          <strong class="sum-value text-orange">
+          <strong class="sum-value">
             {{ topExperience() ? topExperience()?.title : '—' }}
           </strong>
           <span class="sum-sub">
@@ -351,24 +350,28 @@ export interface ExperienceRankingRow {
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.05em;
-      color: rgba(255, 255, 255, 0.6);
+      color: #ffffff;
+      opacity: 0.88;
     }
 
     .sum-value {
       font-size: 1.55rem;
       font-weight: 800;
-      color: #ffffff;
+      color: #ffffff !important;
       line-height: 1.2;
     }
 
-    .text-amber { color: #f59e0b; }
-    .text-gold { color: #ffcc00; }
-    .text-orange { color: #ff5f00; }
-    .text-blue { color: #80b3ff; }
+    .text-amber,
+    .text-gold,
+    .text-orange,
+    .text-blue {
+      color: #ffffff !important;
+    }
 
     .sum-sub {
       font-size: 0.75rem;
-      color: rgba(255, 255, 255, 0.5);
+      color: #ffffff;
+      opacity: 0.8;
       margin-top: auto;
       padding-top: 0.5rem;
     }

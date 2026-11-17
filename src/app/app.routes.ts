@@ -165,6 +165,22 @@ const adminRoutes: Routes = [
           ),
       },
       {
+        path: 'plenos',
+        title: 'Membresías Plenas - Portal de Admin',
+        loadComponent: () =>
+          import('./features/admin-portal/admin-plenos/admin-plenos.component').then(
+            (m) => m.AdminPlenosComponent,
+          ),
+      },
+      {
+        path: 'fundadores',
+        title: 'Círculo de Fundadores - Portal de Admin',
+        loadComponent: () =>
+          import('./features/admin-portal/admin-fundadores/admin-fundadores.component').then(
+            (m) => m.AdminFundadoresComponent,
+          ),
+      },
+      {
         path: 'logs',
         title: 'Registro de Actividad - Portal de Admin',
         loadComponent: () =>
@@ -368,6 +384,17 @@ const publicRoutes: Routes = [
     pathMatch: 'full',
   },
   {
+    path: 'faq',
+    title: 'Preguntas Frecuentes - Experiencias Club',
+    loadComponent: () =>
+      import('./features/faq/faq.component').then((m) => m.FaqComponent),
+  },
+  {
+    path: 'preguntas-frecuentes',
+    redirectTo: 'faq',
+    pathMatch: 'full',
+  },
+  {
     path: 'experiencias',
     loadComponent: () =>
       import('./features/experiences/experiences.component').then((m) => m.ExperiencesComponent),
@@ -490,9 +517,25 @@ const publicRoutes: Routes = [
   // "La web de antes" para prestadores y convocatoria abierta -> ahora /prestadores/emergentes
   {
     path: 'prestadores/emergentes',
-    title: 'Convertite en Prestador Oficial - Experiencias Club',
+    title: 'Prestador Emergente - Experiencias Club',
     loadComponent: () =>
       import('./features/providers/providers.component').then((m) => m.ProvidersComponent),
+  },
+  {
+    path: 'prestadores/plenos',
+    title: 'Prestador Pleno - Experiencias Club',
+    loadComponent: () =>
+      import('./features/providers/provider-pleno/provider-pleno.component').then(
+        (m) => m.ProviderPlenoComponent,
+      ),
+  },
+  {
+    path: 'prestadores/fundadores',
+    title: 'Prestador Fundador - Experiencias Club',
+    loadComponent: () =>
+      import('./features/providers/provider-founder/provider-founder.component').then(
+        (m) => m.ProviderFounderComponent,
+      ),
   },
 
   // ── Portal de Administración (Rutas securizadas bajo /admin) ──
@@ -625,6 +668,22 @@ const publicRoutes: Routes = [
         loadComponent: () =>
           import('./features/admin-portal/admin-discounts/admin-discounts.component').then(
             (m) => m.AdminDiscountsComponent,
+          ),
+      },
+      {
+        path: 'plenos',
+        title: 'Membresías Plenas - Portal de Admin',
+        loadComponent: () =>
+          import('./features/admin-portal/admin-plenos/admin-plenos.component').then(
+            (m) => m.AdminPlenosComponent,
+          ),
+      },
+      {
+        path: 'fundadores',
+        title: 'Círculo de Fundadores - Portal de Admin',
+        loadComponent: () =>
+          import('./features/admin-portal/admin-fundadores/admin-fundadores.component').then(
+            (m) => m.AdminFundadoresComponent,
           ),
       },
       {

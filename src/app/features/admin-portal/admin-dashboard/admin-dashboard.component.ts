@@ -62,6 +62,17 @@ import { Discount } from '../../../core/models/discount.model';
             </p>
           </div>
         </div>
+
+        <div class="welcome-actions">
+          <a [routerLink]="getAdminPlenosRoute()" class="btn-welcome-link">
+            <mat-icon class="icon-sm">card_membership</mat-icon>
+            <span>Membresías Plenas</span>
+          </a>
+          <a [routerLink]="getAdminFundadoresRoute()" class="btn-welcome-link btn-welcome-gold">
+            <mat-icon class="icon-sm text-gold">military_tech</mat-icon>
+            <span>Círculo Fundadores</span>
+          </a>
+        </div>
       </section>
 
       <!-- KPI Metrics Grid - 4 Boxes rectangulares sobrias como prestadores -->
@@ -433,7 +444,7 @@ import { Discount } from '../../../core/models/discount.model';
       <!-- Sección 5: Experiencias de la Web (Siguiente estadio de las propuestas) -->
       <section class="dash-card">
         <div class="card-head">
-          <div>
+          <div class="card-head-title-wrap">
             <h2 class="card-title">Experiencias de la Web</h2>
           </div>
           <div class="head-actions">
@@ -541,7 +552,6 @@ import { Discount } from '../../../core/models/discount.model';
       <section class="dash-card">
         <div class="card-head">
           <div>
-            <span class="card-kicker">VENTAS & CONVERSIÓN</span>
             <h2 class="card-title">Descuentos & Promociones</h2>
             <span class="card-sub-info">
               Cupones activos y ofertas especiales por experiencia o generales para toda la red.
@@ -557,22 +567,22 @@ import { Discount } from '../../../core/models/discount.model';
         <div class="discounts-dash-summary">
           <div class="disc-sum-item">
             <span class="disc-sum-label">Cupones Activos</span>
-            <strong class="disc-sum-value text-emerald">{{ activeDiscountsCount() }}</strong>
+            <strong class="disc-sum-value text-white">{{ activeDiscountsCount() }}</strong>
             <span class="disc-sum-sub">{{ totalDiscountsCount() }} registrados</span>
           </div>
           <div class="disc-sum-item">
             <span class="disc-sum-label">Por Experiencia</span>
-            <strong class="disc-sum-value text-amber">{{ experienceDiscountsCount() }}</strong>
+            <strong class="disc-sum-value text-white">{{ experienceDiscountsCount() }}</strong>
             <span class="disc-sum-sub">{{ automaticDiscountsCount() }} automáticas</span>
           </div>
           <div class="disc-sum-item">
             <span class="disc-sum-label">Canjes Totales</span>
-            <strong class="disc-sum-value text-blue">{{ totalDiscountUses() }}</strong>
+            <strong class="disc-sum-value text-white">{{ totalDiscountUses() }}</strong>
             <span class="disc-sum-sub">En reservas y pagos</span>
           </div>
           <div class="disc-sum-item">
             <span class="disc-sum-label">Ahorro Generado</span>
-            <strong class="disc-sum-value text-purple">{{ totalSavingsArs() | ars }}</strong>
+            <strong class="disc-sum-value text-gold">{{ totalSavingsArs() | ars }}</strong>
             <span class="disc-sum-sub">Beneficio total a socios</span>
           </div>
         </div>
@@ -663,7 +673,6 @@ import { Discount } from '../../../core/models/discount.model';
       <section class="dash-card">
         <div class="card-head">
           <div>
-            <span class="card-kicker">MÉTRICAS & REPUTACIÓN</span>
             <h2 class="card-title">Ranking de Prestadores & Favoritos</h2>
             <span class="card-sub-info">
               Top de prestadores mejor calificados y experiencias más guardadas por los socios.
@@ -1358,6 +1367,42 @@ import { Discount } from '../../../core/models/discount.model';
         margin: 0;
       }
 
+      .welcome-actions {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+      }
+
+      .btn-welcome-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        background: rgba(255, 95, 0, 0.12);
+        border: 1px solid rgba(255, 95, 0, 0.35);
+        color: #ffffff;
+        padding: 0.55rem 0.95rem;
+        border-radius: 4px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: all 0.2s ease;
+      }
+
+      .btn-welcome-link:hover {
+        background: rgba(255, 95, 0, 0.25);
+        border-color: #ff5f00;
+      }
+
+      .btn-welcome-gold {
+        background: rgba(255, 204, 0, 0.1);
+        border-color: rgba(255, 204, 0, 0.35);
+      }
+
+      .btn-welcome-gold:hover {
+        background: rgba(255, 204, 0, 0.22);
+        border-color: #ffcc00;
+      }
+
       /* KPI Metrics Grid - 4 Boxes sobrias rectangulares */
       .metrics-grid {
         display: grid;
@@ -1401,13 +1446,23 @@ import { Discount } from '../../../core/models/discount.model';
           font-size: 0.62rem;
         }
         .card-head {
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 0.5rem;
+          flex-direction: column !important;
+          align-items: flex-start !important;
+          gap: 0.5rem !important;
+          width: 100% !important;
+        }
+        .card-head > div:first-child,
+        .card-head-title-wrap {
+          width: 100% !important;
+          text-align: left !important;
         }
         .head-actions {
-          width: 100%;
-          justify-content: flex-start;
+          width: 100% !important;
+          justify-content: flex-start !important;
+        }
+        .discounts-dash-summary {
+          grid-template-columns: repeat(2, 1fr) !important;
+          gap: 0.65rem !important;
         }
       }
 
@@ -1421,7 +1476,36 @@ import { Discount } from '../../../core/models/discount.model';
           font-size: 1.35rem;
         }
         .metrics-grid {
-          grid-template-columns: 1fr !important;
+          grid-template-columns: repeat(2, 1fr) !important;
+          gap: 0.5rem !important;
+        }
+        .metric-card {
+          padding: 0.75rem 0.65rem !important;
+        }
+        .metric-value {
+          font-size: 1.15rem !important;
+        }
+        .metric-label {
+          font-size: 0.6rem !important;
+        }
+        .metric-hint {
+          font-size: 0.58rem !important;
+        }
+        .discounts-dash-summary {
+          grid-template-columns: repeat(2, 1fr) !important;
+          gap: 0.5rem !important;
+        }
+        .disc-sum-item {
+          padding: 0.75rem 0.65rem !important;
+        }
+        .disc-sum-value {
+          font-size: 1.25rem !important;
+        }
+        .disc-sum-label {
+          font-size: 0.62rem !important;
+        }
+        .disc-sum-sub {
+          font-size: 0.65rem !important;
         }
       }
 
@@ -1496,9 +1580,16 @@ import { Discount } from '../../../core/models/discount.model';
       .card-head {
         display: flex;
         justify-content: space-between;
-        align-items: center;
+        align-items: flex-start;
         gap: 1rem;
         flex-wrap: wrap;
+        width: 100%;
+        text-align: left;
+      }
+
+      .card-head > div:first-child,
+      .card-head-title-wrap {
+        text-align: left !important;
       }
 
       .card-kicker {
@@ -3684,24 +3775,28 @@ import { Discount } from '../../../core/models/discount.model';
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.08em;
-        color: rgba(255, 255, 255, 0.55);
+        color: #ffffff;
+        opacity: 0.88;
       }
 
       .disc-sum-value {
         font-size: 1.55rem;
         font-weight: 800;
+        color: #ffffff;
         line-height: 1.2;
       }
 
       .disc-sum-sub {
         font-size: 0.74rem;
-        color: rgba(255, 255, 255, 0.45);
+        color: #ffffff;
+        opacity: 0.8;
       }
 
-      .text-emerald { color: #34d399; }
-      .text-amber { color: #f59e0b; }
-      .text-blue { color: #80b3ff; }
-      .text-purple { color: #c084fc; }
+      .text-emerald { color: #ffffff !important; }
+      .text-amber { color: #ffffff !important; }
+      .text-blue { color: #ffffff !important; }
+      .text-purple { color: #ffcc00 !important; }
+      .text-gold { color: #ffcc00 !important; }
 
       .discount-code-pill {
         display: inline-flex;
@@ -4587,6 +4682,18 @@ export class AdminDashboardComponent {
     const rawPath = this.router.url.split('?')[0].split('#')[0];
     const segments = rawPath.split('/').filter(Boolean);
     return segments[0] === 'admin' ? '/admin/descuentos' : '/descuentos';
+  }
+
+  getAdminPlenosRoute(): string {
+    const rawPath = this.router.url.split('?')[0].split('#')[0];
+    const segments = rawPath.split('/').filter(Boolean);
+    return segments[0] === 'admin' ? '/admin/plenos' : '/plenos';
+  }
+
+  getAdminFundadoresRoute(): string {
+    const rawPath = this.router.url.split('?')[0].split('#')[0];
+    const segments = rawPath.split('/').filter(Boolean);
+    return segments[0] === 'admin' ? '/admin/fundadores' : '/fundadores';
   }
 
   getDiscountExperienceTitle(disc: Discount): string {

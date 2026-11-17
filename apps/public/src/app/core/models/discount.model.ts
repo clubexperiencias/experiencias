@@ -1,5 +1,5 @@
 export type DiscountType = 'percentage' | 'fixed_amount';
-export type DiscountScope = 'general' | 'experience' | 'provider';
+export type DiscountScope = 'general' | 'experience' | 'provider' | 'membership';
 
 export interface Discount {
   id: string;

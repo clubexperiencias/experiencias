@@ -1,0 +1,510 @@
+/* ==========================================================================
+   Página de Preguntas Frecuentes (FAQ) • EXPERIENCIAS.CLUB
+   ========================================================================== */
+@import '../waitlist/waitlist.component.css';
+
+.faq-page-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  color: var(--color-text-white);
+  background: transparent;
+}
+
+.faq-wallpaper-body {
+  flex: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.ambient-overlay {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at 50% 15%,
+    rgba(255, 204, 0, 0.06) 0%,
+    rgba(0, 0, 0, 0.55) 100%
+  );
+  pointer-events: none;
+}
+
+.faq-main-content {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  padding: 2.4rem 1.5rem 3.5rem;
+}
+
+.faq-wrapper {
+  width: 100%;
+  max-width: 920px;
+  display: flex;
+  flex-direction: column;
+  gap: 2.2rem;
+}
+
+/* ==========================================================================
+   Card / Box Principal con Look & Feel del Club
+   ========================================================================== */
+.faq-section-card {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(74, 85, 104, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 212, 42, 0.38);
+  border-radius: 4px;
+  padding: clamp(1.6rem, 4vw, 2.8rem);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35) !important;
+  text-align: left;
+  animation: faqBoxEntrance 0.35s ease-out;
+}
+
+@keyframes faqBoxEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.section-card-header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-bottom: 2rem;
+}
+
+.section-kicker {
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  color: var(--color-gold);
+  font-weight: 700;
+  display: block;
+  margin-bottom: 0.35rem;
+  text-transform: uppercase;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+.section-main-title,
+.card-heading {
+  font-family: var(--font-serif);
+  font-size: clamp(1.85rem, 3.5vw, 2.45rem);
+  font-weight: 600;
+  color: #ffffff;
+  line-height: 1.18;
+  margin: 0 0 0.65rem;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.card-subheading {
+  font-family: var(--font-sans);
+  font-size: 0.94rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.95);
+  margin: 0;
+}
+
+/* ==========================================================================
+   Buscador y Filtros por Categoría
+   ========================================================================== */
+.faq-controls-bar {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.faq-search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: rgba(14, 28, 42, 0.45);
+  border: 1.5px solid rgba(255, 255, 255, 0.32);
+  border-radius: 4px;
+  padding: 0.2rem 0.8rem;
+  transition: all 0.2s ease;
+}
+
+.faq-search-box:focus-within {
+  border-color: var(--color-gold);
+  background: rgba(14, 28, 42, 0.65);
+  box-shadow: 0 0 0 3px rgba(255, 204, 0, 0.2);
+}
+
+.search-icon {
+  font-size: 22px;
+  width: 22px;
+  height: 22px;
+  color: var(--color-gold);
+  margin-right: 0.5rem;
+  flex-shrink: 0;
+}
+
+.faq-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #ffffff;
+  font-family: var(--font-sans);
+  font-size: 0.92rem;
+  padding: 0.65rem 0;
+}
+
+.faq-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.clear-search-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 50%;
+  transition: color 0.15s ease;
+}
+
+.clear-search-btn:hover {
+  color: #ffffff;
+}
+
+.clear-search-btn mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
+.faq-categories-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.faq-cat-pill {
+  padding: 0.45rem 0.95rem;
+  border-radius: 999px;
+  background: rgba(14, 28, 42, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: rgba(255, 255, 255, 0.85);
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.faq-cat-pill:hover {
+  background: rgba(14, 28, 42, 0.6);
+  border-color: rgba(255, 255, 255, 0.4);
+  color: #ffffff;
+}
+
+.faq-cat-pill.active {
+  background: var(--color-gold);
+  border-color: var(--color-gold);
+  color: #000000;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(255, 204, 0, 0.28);
+}
+
+/* ==========================================================================
+   Barra Meta (Conteo y Controles)
+   ========================================================================== */
+.faq-meta-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  margin-bottom: 1.25rem;
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.faq-count-text strong {
+  color: #ffffff;
+}
+
+/* ==========================================================================
+   Listado Acordeón
+   ========================================================================== */
+.faq-accordion-list {
+  display: grid;
+  gap: 0.85rem;
+  margin-bottom: 2.2rem;
+}
+
+.faq-item-card {
+  background: rgba(15, 28, 45, 0.32);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 4px;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.faq-item-card:hover {
+  border-color: rgba(255, 255, 255, 0.35);
+  background: rgba(15, 28, 45, 0.45);
+}
+
+.faq-item-card.is-open {
+  border-color: rgba(255, 212, 42, 0.5);
+  background: rgba(15, 28, 45, 0.55);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.faq-question-btn {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.15rem 1.35rem;
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  cursor: pointer;
+  text-align: left;
+}
+
+.faq-question-text {
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.4;
+  color: #ffffff;
+  transition: color 0.15s ease;
+}
+
+.faq-item-card.is-open .faq-question-text {
+  color: #ffffff;
+}
+
+.faq-chevron-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.faq-item-card.is-open .faq-chevron-wrap {
+  background: transparent;
+  color: #ffffff;
+}
+
+.faq-chevron-icon {
+  font-size: 22px;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+}
+
+.faq-answer-panel {
+  padding: 0 1.35rem 1.35rem;
+  display: grid;
+  gap: 0.85rem;
+  animation: answerFadeIn 0.2s ease-out;
+}
+
+@keyframes answerFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.faq-highlight-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  background: rgba(255, 212, 42, 0.12);
+  border: 1px solid rgba(255, 212, 42, 0.35);
+  border-radius: 3px;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--color-gold);
+}
+
+.highlight-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.faq-answer-text p {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 0.92rem;
+  line-height: 1.65;
+  color: rgba(255, 255, 255, 0.9);
+  white-space: pre-line;
+}
+
+/* Estado Vacío */
+.faq-empty-state {
+  text-align: center;
+  padding: 3rem 1.5rem;
+  background: rgba(15, 28, 45, 0.25);
+  border: 1px dashed rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
+}
+
+.empty-icon {
+  font-size: 40px;
+  width: 40px;
+  height: 40px;
+  color: rgba(255, 255, 255, 0.4);
+  margin-bottom: 0.5rem;
+}
+
+.faq-empty-state h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.15rem;
+  color: #ffffff;
+}
+
+.faq-empty-state p {
+  margin: 0 0 1.25rem;
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.reset-filter-btn {
+  padding: 0.65rem 1.25rem;
+  background: var(--color-gold);
+  border: none;
+  border-radius: 3px;
+  color: #000;
+  font-weight: 700;
+  font-size: 0.84rem;
+  cursor: pointer;
+}
+
+/* ==========================================================================
+   Tarjeta Inferior de Contacto
+   ========================================================================== */
+.faq-contact-card {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  background: rgba(14, 28, 42, 0.48);
+  border: 1px solid rgba(255, 212, 42, 0.35);
+  border-radius: 4px;
+  padding: 1.4rem 1.6rem;
+}
+
+.contact-card-icon-wrap {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255, 212, 42, 0.15);
+  border: 1px solid rgba(255, 212, 42, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.contact-card-icon {
+  font-size: 26px;
+  width: 26px;
+  height: 26px;
+  color: var(--color-gold);
+}
+
+.contact-card-body {
+  flex: 1;
+}
+
+.contact-card-title {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.contact-card-desc {
+  margin: 0;
+  font-size: 0.84rem;
+  color: rgba(255, 255, 255, 0.82);
+  line-height: 1.45;
+}
+
+.contact-card-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.contact-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.15rem;
+  border-radius: 3px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.contact-cta-btn.wa-cta,
+.contact-cta-btn.members-cta {
+  background: transparent;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.contact-cta-btn.wa-cta:hover,
+.contact-cta-btn.members-cta:hover {
+  border-color: var(--color-gold);
+  color: var(--color-gold);
+}
+
+@media (max-width: 768px) {
+  .faq-contact-card {
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+    gap: 1rem;
+  }
+
+  .contact-card-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .contact-cta-btn {
+    width: 100%;
+    box-sizing: border-box;
+    text-align: center;
+  }
+}
+

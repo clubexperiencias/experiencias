@@ -871,6 +871,180 @@ export class NewsletterService {
     };
   }
 
+  async activateSocioPleno(dto: {
+    fullName: string;
+    email: string;
+    dni: string;
+    phone: string;
+    discountCode?: string;
+    experiencesWishlist?: string[];
+    experiencesOther?: string;
+  }): Promise<{
+    success: boolean;
+    socio?: WaitlistEntry;
+    message: string;
+  }> {
+    this._isLoading.set(true);
+    this._errorMessage.set(null);
+
+    const cleanEmail = dto.email.trim().toLowerCase();
+    const cleanName = dto.fullName.trim();
+    const cleanDni = dto.dni.replace(/\D/g, '').slice(0, 9);
+    const cleanPhone = dto.phone.trim().slice(0, 25);
+    const cleanDiscountCode = (dto.discountCode || '').trim().toUpperCase();
+
+    if (!cleanName) {
+      this._isLoading.set(false);
+      return { success: false, message: 'Ingresá tu nombre y apellido.' };
+    }
+    if (!this.isValidEmail(cleanEmail)) {
+      this._isLoading.set(false);
+      return { success: false, message: 'Ingresá un correo electrónico válido.' };
+    }
+    if (!/^\d{7,9}$/.test(cleanDni)) {
+      this._isLoading.set(false);
+      return { success: false, message: 'El DNI debe contener entre 7 y 9 números.' };
+    }
+    if (!cleanPhone) {
+      this._isLoading.set(false);
+      return { success: false, message: 'Ingresá tu número de celular.' };
+    }
+
+    if (this.isSupabaseConnected()) {
+      try {
+        const { data: rpcRes, error: rpcErr } = await this.supabase.rpc(
+          'activate_socio_pleno_atomic' as any,
+          {
+            p_email: cleanEmail,
+            p_full_name: cleanName,
+            p_dni: cleanDni,
+            p_phone: cleanPhone,
+            p_discount_code: cleanDiscountCode || null,
+            p_experiences_wishlist: dto.experiencesWishlist || [],
+            p_experiences_other: dto.experiencesOther || null,
+          },
+        );
+
+        const rpcPayload = rpcRes as any;
+        if (!rpcErr && rpcPayload?.status) {
+          if (rpcPayload.status === 'invalid_code') {
+            this._isLoading.set(false);
+            return {
+              success: false,
+              message: rpcPayload.message || 'Código de descuento inválido o expirado.',
+            };
+          }
+
+          if (rpcPayload.status === 'already_registered_dni') {
+            this._isLoading.set(false);
+            return {
+              success: false,
+              message: 'Ya existe un socio registrado con este número de DNI.',
+            };
+          }
+
+          if (rpcPayload.status === 'ok' && rpcPayload.socio) {
+            const entry = mapDbRowToEntry(rpcPayload.socio);
+            const today = new Date();
+            const nextMonth = new Date(today);
+            nextMonth.setMonth(nextMonth.getMonth() + 1);
+
+            entry.membershipTier = 'activo';
+            entry.subscription = {
+              status: 'active',
+              tier: 'activo',
+              amountArs: 23000,
+              paymentMethod: cleanDiscountCode ? `Cupón Promocional (${cleanDiscountCode})` : 'Bonificación de Adquisición',
+              startedAt: today.toISOString(),
+              nextBillingDate: nextMonth.toLocaleDateString('es-AR', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+              }),
+              autoRenew: true,
+              lastPaymentReceipt: 'REC-' + Math.floor(100000 + Math.random() * 900000),
+            };
+
+            const updatedEntries = [
+              entry,
+              ...this._entries().filter((e) => e.email !== cleanEmail),
+            ];
+            this._entries.set(updatedEntries);
+            this._currentMember.set(entry);
+            this.persistEntries(updatedEntries);
+            this.persistCurrentMember(entry);
+
+            this._isLoading.set(false);
+            this.setLoginSuccessFlag();
+            this.notificationService
+              .notifyWelcomeMember({
+                fullName: entry.fullName || cleanName,
+                email: entry.email,
+                position: entry.position,
+              })
+              .catch((err) => console.warn('[NewsletterService] Error enviando bienvenida:', err));
+            return {
+              success: true,
+              socio: entry,
+              message: `¡Felicitaciones! Tu membresía de Socio Pleno #${entry.position} está activa con cuota bonificada.`,
+            };
+          }
+        }
+      } catch (err) {
+        console.warn('[NewsletterService] Error llamando a activate_socio_pleno_atomic:', err);
+      }
+    }
+
+    // Fallback offline / local
+    const existing = this._entries().find((e) => e.email === cleanEmail);
+    const position = existing?.position || this._entries().length + 1;
+    const today = new Date();
+    const nextMonth = new Date(today);
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
+
+    const fallbackEntry: WaitlistEntry = {
+      id: existing?.id || 'socio-' + Date.now(),
+      email: cleanEmail,
+      fullName: cleanName,
+      dni: cleanDni,
+      phone: cleanPhone,
+      experiencesWishlist: dto.experiencesWishlist || existing?.experiencesWishlist || [],
+      experiencesOther: dto.experiencesOther || existing?.experiencesOther || '',
+      position,
+      membershipTier: 'activo',
+      subscription: {
+        status: 'active',
+        tier: 'activo',
+        amountArs: 23000,
+        paymentMethod: cleanDiscountCode ? `Cupón Promocional (${cleanDiscountCode})` : 'Bonificación de Adquisición',
+        startedAt: today.toISOString(),
+        nextBillingDate: nextMonth.toLocaleDateString('es-AR', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+        }),
+        autoRenew: true,
+        lastPaymentReceipt: 'REC-' + Math.floor(100000 + Math.random() * 900000),
+      },
+      createdAt: existing?.createdAt ? new Date(existing.createdAt) : new Date(),
+      status: 'confirmed',
+      source: 'web_minimal_landing',
+    };
+
+    const updated = [fallbackEntry, ...this._entries().filter((e) => e.email !== cleanEmail)];
+    this._entries.set(updated);
+    this._currentMember.set(fallbackEntry);
+    this.persistEntries(updated);
+    this.persistCurrentMember(fallbackEntry);
+
+    this._isLoading.set(false);
+    return {
+      success: true,
+      socio: fallbackEntry,
+      message: `¡Felicitaciones! Tu membresía de Socio Pleno #${fallbackEntry.position} está activa.`,
+    };
+  }
+
   /**
    * Método compatible que maneja tanto prospecto por email como socio completo
    */
