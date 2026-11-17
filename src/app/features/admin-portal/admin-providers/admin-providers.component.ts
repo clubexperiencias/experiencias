@@ -508,16 +508,13 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
 
             <!-- 5. Calificaciones y Votos de Socios -->
             <div class="fiche-section-card full-width provider-votes-card">
-              <div class="section-title-row">
-                <div class="section-title-left">
-                  <h3 class="fiche-card-title">
-                    Votación y Calificaciones de Socios ({{ providerRatingData()?.count || 0 }})
-                  </h3>
-                  <div class="votes-score-badge">
-                    <span class="star-gold">★</span>
-                    <strong>{{ (providerRatingData()?.score || 5.0).toFixed(1) }}</strong>
-                    <span class="votes-score-sub">/ 5.0</span>
-                  </div>
+              <div class="section-title-row votes-header-row">
+                <h3 class="fiche-card-title">
+                  Votación y Calificaciones de Socios ({{ providerRatingData()?.count || 0 }})
+                </h3>
+                <div class="votes-score-badge">
+                  <span class="star-gold">★</span>
+                  <strong>{{ (providerRatingData()?.score || 5.0).toFixed(1) }}</strong>
                 </div>
               </div>
 
@@ -884,9 +881,6 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
                           <span class="rating-stars-pill">
                             <span class="star-icon">★</span>
                             <strong class="rating-val">{{ (item.ratingScore ?? 5.0).toFixed(1) }}</strong>
-                          </span>
-                          <span class="rating-count-sub">
-                            {{ item.ratingCount || 0 }} {{ (item.ratingCount || 0) === 1 ? 'voto' : 'votos' }}
                           </span>
                         </div>
                       </td>
@@ -2187,11 +2181,20 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
         margin-top: 0.5rem;
       }
 
-      .section-title-left {
+      .votes-header-row {
         display: flex;
         align-items: center;
+        justify-content: space-between;
         gap: 1rem;
-        flex-wrap: wrap;
+        border-bottom: 1px solid rgba(255, 95, 0, 0.25);
+        padding-bottom: 0.6rem;
+        margin-bottom: 1rem;
+      }
+
+      .votes-header-row .fiche-card-title {
+        border-bottom: none;
+        padding-bottom: 0;
+        margin-bottom: 0;
       }
 
       .votes-score-badge {
@@ -2204,16 +2207,12 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
         border-radius: 2px;
         font-size: 0.88rem;
         color: #ffffff;
+        flex-shrink: 0;
       }
 
       .star-gold {
         color: #ffaa00;
         font-size: 1rem;
-      }
-
-      .votes-score-sub {
-        color: rgba(255, 255, 255, 0.5);
-        font-size: 0.72rem;
       }
 
       .socio-avatar {

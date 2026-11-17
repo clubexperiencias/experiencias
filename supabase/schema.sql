@@ -22,539 +22,6 @@ CREATE SEQUENCE IF NOT EXISTS public.socios_position_seq START WITH 100;
 -- 2. TABLAS E ÍNDICES (ESQUEMA CANÓNICO UNIFICADO)
 -- ==============================================================================
 
--- Limpieza de vistas obsoletas de compatibilidad
-DROP VIEW IF EXISTS public.provider_access CASCADE;
-DROP VIEW IF EXISTS public.admin_access CASCADE;
-DROP VIEW IF EXISTS public.provider_banking_history CASCADE;
-DROP VIEW IF EXISTS public.historia_bancaria CASCADE;
-DROP VIEW IF EXISTS public.public_provider_profiles CASCADE;
-DROP VIEW IF EXISTS public.waitlist_stats CASCADE;
-
--- Migración segura y consolidación de tablas heredadas hacia el esquema canónico
--- La migración valida las filas copiadas y solo permite eliminar las tablas heredadas si la migración tiene éxito
-DO $$
-DECLARE
-  v_missing_waitlist INTEGER := 0;
-  v_missing_postulaciones INTEGER := 0;
-  v_missing_propuestas INTEGER := 0;
-BEGIN
-  -- 1. Migración y validación de public.waitlist -> public.socios
-  IF EXISTS (
-    SELECT 1 FROM information_schema.tables
-    WHERE table_schema = 'public' AND table_name = 'waitlist'
-  ) THEN
-    -- Asegurar que public.socios exista en el esquema actual y admita prospectos de waitlist
-    CREATE TABLE IF NOT EXISTS public.socios (
-      id                          UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-      email                       TEXT NOT NULL UNIQUE,
-      full_name                   TEXT DEFAULT '',
-      dni                         TEXT DEFAULT '',
-      phone                       TEXT DEFAULT '',
-      experiences_wishlist        JSONB DEFAULT '[]'::jsonb,
-      experiences_other           TEXT,
-      position                    INTEGER UNIQUE,
-      membership_tier             TEXT NOT NULL DEFAULT 'emergente'
-                                  CHECK (membership_tier IN ('waitlist', 'emergente', 'activo', 'fundador', 'dado_de_baja')),
-      auth_user_id                UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-      registration_token          UUID NOT NULL DEFAULT gen_random_uuid(),
-      created_at                  TIMESTAMPTZ NOT NULL DEFAULT now(),
-      updated_at                  TIMESTAMPTZ NOT NULL DEFAULT now()
-    );
-
-    ALTER TABLE public.socios ALTER COLUMN full_name DROP NOT NULL;
-    ALTER TABLE public.socios ALTER COLUMN full_name SET DEFAULT '';
-    ALTER TABLE public.socios ALTER COLUMN dni DROP NOT NULL;
-    ALTER TABLE public.socios ALTER COLUMN dni SET DEFAULT '';
-    ALTER TABLE public.socios ALTER COLUMN phone DROP NOT NULL;
-    ALTER TABLE public.socios ALTER COLUMN phone SET DEFAULT '';
-    ALTER TABLE public.socios ALTER COLUMN position DROP NOT NULL;
-    ALTER TABLE public.socios DROP CONSTRAINT IF EXISTS socios_membership_tier_check;
-    ALTER TABLE public.socios ADD CONSTRAINT socios_membership_tier_check
-      CHECK (membership_tier IN ('waitlist', 'emergente', 'activo', 'fundador', 'dado_de_baja'));
-
-    -- Migrar prospectos de waitlist a socios
-    INSERT INTO public.socios (
-      email,
-      membership_tier,
-      full_name,
-      dni,
-      phone,
-      position,
-      created_at,
-      updated_at
-    )
-    SELECT
-      LOWER(TRIM(w.email)),
-      'waitlist',
-      '',
-      '',
-      '',
-      NULL,
-      MIN(w.created_at),
-      MIN(w.created_at)
-    FROM public.waitlist w
-    WHERE w.email IS NOT NULL AND TRIM(w.email) <> ''
-    GROUP BY LOWER(TRIM(w.email))
-    ON CONFLICT (email) DO NOTHING;
-
-    -- Validar que todos los registros de waitlist existan en socios
-    SELECT COUNT(*) INTO v_missing_waitlist
-    FROM public.waitlist w
-    WHERE NOT EXISTS (
-      SELECT 1 FROM public.socios s
-      WHERE LOWER(TRIM(s.email)) = LOWER(TRIM(w.email))
-    );
-
-    IF v_missing_waitlist > 0 THEN
-      RAISE EXCEPTION 'Fallo de validación en migración: % registros de public.waitlist no fueron transferidos a public.socios', v_missing_waitlist;
-    END IF;
-
-    -- Solo permitir eliminar la tabla una vez validada exitosamente la migración
-    DROP TABLE public.waitlist CASCADE;
-  END IF;
-
-  -- 2. Migración y validación de public.postulaciones_prestadores -> public.prestadores
-  IF EXISTS (
-    SELECT 1 FROM information_schema.tables
-    WHERE table_schema = 'public' AND table_name = 'postulaciones_prestadores'
-  ) THEN
-    -- Si existe provider_access como tabla base y no prestadores, renombrarla primero
-    IF NOT EXISTS (
-      SELECT 1 FROM information_schema.tables
-      WHERE table_schema = 'public' AND table_name = 'prestadores' AND table_type = 'BASE TABLE'
-    ) AND EXISTS (
-      SELECT 1 FROM information_schema.tables
-      WHERE table_schema = 'public' AND table_name = 'provider_access' AND table_type = 'BASE TABLE'
-    ) THEN
-      ALTER TABLE public.provider_access RENAME TO prestadores;
-    END IF;
-
-    -- Asegurar tabla canónica prestadores
-    CREATE TABLE IF NOT EXISTS public.prestadores (
-      id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      email          TEXT NOT NULL UNIQUE,
-      name           TEXT NOT NULL DEFAULT '',
-      agency         TEXT NOT NULL DEFAULT '',
-      active         BOOLEAN NOT NULL DEFAULT true,
-      status         TEXT NOT NULL DEFAULT 'aprobado' CHECK (status IN ('aprobado', 'pendiente', 'rechazado', 'dado_de_baja')),
-      cbu_alias      TEXT NOT NULL DEFAULT '',
-      cuit_dni       TEXT NOT NULL DEFAULT '',
-      bank_name      TEXT NOT NULL DEFAULT '',
-      account_holder TEXT NOT NULL DEFAULT '',
-      phone          TEXT NOT NULL DEFAULT '',
-      website        TEXT NOT NULL DEFAULT '',
-      social_media   TEXT NOT NULL DEFAULT '',
-      social_media_secondary TEXT NOT NULL DEFAULT '',
-      slug           TEXT NOT NULL DEFAULT '',
-      bio            TEXT NOT NULL DEFAULT '',
-      avatar_url     TEXT NOT NULL DEFAULT '',
-      cover_url      TEXT NOT NULL DEFAULT '',
-      category       TEXT NOT NULL DEFAULT '',
-      region         TEXT NOT NULL DEFAULT 'Catamarca',
-      description    TEXT NOT NULL DEFAULT '',
-      notes          TEXT,
-      created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
-      updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()
-    );
-
-    ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT '';
-    ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS region TEXT NOT NULL DEFAULT 'Catamarca';
-    ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT '';
-    ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS notes TEXT;
-    ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS tier TEXT NOT NULL DEFAULT 'emergente';
-    ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS rubro TEXT NOT NULL DEFAULT '';
-    ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS rating_score NUMERIC(3,2) NOT NULL DEFAULT 5.00;
-    ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS rating_count INTEGER NOT NULL DEFAULT 0;
-    ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS verified BOOLEAN NOT NULL DEFAULT false;
-
-    -- Migrar postulaciones_prestadores hacia el esquema canónico de prestadores
-    INSERT INTO public.prestadores (
-      email,
-      name,
-      phone,
-      category,
-      region,
-      website,
-      description,
-      notes,
-      status,
-      active,
-      created_at,
-      updated_at
-    )
-    SELECT
-      LOWER(TRIM(p.email)),
-      COALESCE(p.full_name, ''),
-      COALESCE(p.phone, ''),
-      COALESCE(p.category, ''),
-      COALESCE(p.region, 'Catamarca'),
-      COALESCE(p.website, ''),
-      COALESCE(p.description, ''),
-      p.notes,
-      COALESCE(p.status, 'pendiente'),
-      (COALESCE(p.status, 'pendiente') = 'aprobado'),
-      p.created_at,
-      COALESCE(p.updated_at, p.created_at)
-    FROM public.postulaciones_prestadores p
-    ON CONFLICT (email) DO UPDATE
-    SET
-      category = COALESCE(NULLIF(public.prestadores.category, ''), EXCLUDED.category),
-      region = COALESCE(NULLIF(public.prestadores.region, ''), EXCLUDED.region),
-      description = COALESCE(NULLIF(public.prestadores.description, ''), EXCLUDED.description),
-      notes = COALESCE(public.prestadores.notes, EXCLUDED.notes);
-
-    -- Validar que todas las postulaciones se encuentren registradas en prestadores
-    SELECT COUNT(*) INTO v_missing_postulaciones
-    FROM public.postulaciones_prestadores p
-    WHERE NOT EXISTS (
-      SELECT 1 FROM public.prestadores pr
-      WHERE LOWER(TRIM(pr.email)) = LOWER(TRIM(p.email))
-    );
-
-    IF v_missing_postulaciones > 0 THEN
-      RAISE EXCEPTION 'Fallo de validación en migración: % registros de public.postulaciones_prestadores no se encuentran en public.prestadores', v_missing_postulaciones;
-    END IF;
-
-    -- Solo permitir eliminar la tabla una vez validada exitosamente la migración
-    DROP TABLE public.postulaciones_prestadores CASCADE;
-  END IF;
-
-  -- 3. Migración y validación de public.propuestas_experiencias -> public.experiencias
-  IF EXISTS (
-    SELECT 1 FROM information_schema.tables
-    WHERE table_schema = 'public' AND table_name = 'propuestas_experiencias'
-  ) THEN
-    -- Asegurar tabla canónica experiencias
-    CREATE TABLE IF NOT EXISTS public.experiencias (
-      id                   TEXT PRIMARY KEY,
-      slug                 TEXT NOT NULL UNIQUE,
-      title                TEXT NOT NULL,
-      kicker               TEXT DEFAULT '',
-      tagline              TEXT NOT NULL DEFAULT '',
-      description          TEXT NOT NULL DEFAULT '',
-      region               TEXT NOT NULL DEFAULT 'Valle Central y Ambato',
-      meeting_point        TEXT NOT NULL DEFAULT '',
-      meeting_point_url    TEXT NOT NULL DEFAULT '',
-      difficulty           TEXT NOT NULL DEFAULT 'Baja',
-      duration_label       TEXT NOT NULL DEFAULT '4 horas',
-      price_ars            INTEGER NOT NULL DEFAULT 65000 CHECK (price_ars >= 0),
-      price_usd            INTEGER DEFAULT 70,
-      capacity_per_date    INTEGER NOT NULL DEFAULT 12 CHECK (capacity_per_date >= 1),
-      dates                JSONB NOT NULL DEFAULT '[]'::jsonb,
-      date_slots           JSONB NOT NULL DEFAULT '[]'::jsonb,
-      status               TEXT NOT NULL DEFAULT 'publicada'
-                           CHECK (status IN ('borrador', 'pendiente', 'publicada', 'oculta', 'rechazada')),
-      public_url           TEXT DEFAULT '',
-      cover_image          TEXT DEFAULT '/assets/images/kayak-club-de-experiencias.jpg',
-      cover_image_name     TEXT,
-      cover_video_name     TEXT,
-      album_photos         JSONB DEFAULT '[]'::jsonb,
-      video_url            TEXT DEFAULT '/assets/videos/kayak.mp4',
-      video_poster         TEXT DEFAULT '/assets/images/kayak-video.png',
-      altitude_meters      INTEGER DEFAULT 850,
-      best_season          TEXT DEFAULT '',
-      itinerary            TEXT DEFAULT '',
-      highlights           JSONB DEFAULT '[]'::jsonb,
-      included             JSONB DEFAULT '[]'::jsonb,
-      not_included         JSONB DEFAULT '[]'::jsonb,
-      participant_requirements TEXT NOT NULL DEFAULT '',
-      notes                TEXT,
-      reviewed_at          TIMESTAMPTZ,
-      provider_agency      TEXT NOT NULL DEFAULT '',
-      provider_email       TEXT DEFAULT 'patriciofacundodiaztillar@gmail.com',
-      provider_name        TEXT,
-      provider_phone       TEXT,
-      provider_cbu_alias   TEXT,
-      provider_cuit_dni    TEXT,
-      provider_bank_name   TEXT,
-      created_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
-      updated_at           TIMESTAMPTZ NOT NULL DEFAULT now()
-    );
-
-    ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS kicker TEXT DEFAULT '';
-    ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS best_season TEXT DEFAULT '';
-    ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS itinerary TEXT DEFAULT '';
-    ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS notes TEXT;
-    ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
-    ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS provider_agency TEXT NOT NULL DEFAULT '';
-    ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS participant_requirements TEXT NOT NULL DEFAULT '';
-    ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS display_location TEXT NOT NULL DEFAULT 'catalogo';
-    ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS is_locked BOOLEAN NOT NULL DEFAULT false;
-    ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS is_exclusive_club BOOLEAN NOT NULL DEFAULT true;
-    ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS is_club_experience BOOLEAN NOT NULL DEFAULT false;
-    ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS gallery_images JSONB DEFAULT '[]'::jsonb;
-    ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS short_title TEXT DEFAULT '';
-    ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS favorites_count INTEGER NOT NULL DEFAULT 0;
-    ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS provider_id UUID;
-
-    -- Asegurar que provider_email exista en prestadores para mantener integridad referencial
-    IF EXISTS (
-      SELECT 1 FROM information_schema.tables
-      WHERE table_schema = 'public' AND table_name = 'prestadores'
-    ) THEN
-      INSERT INTO public.prestadores (
-        email,
-        name,
-        agency,
-        phone,
-        cbu_alias,
-        cuit_dni,
-        bank_name,
-        active,
-        status
-      )
-      SELECT DISTINCT ON (LOWER(TRIM(p.provider_email)))
-        LOWER(TRIM(p.provider_email)),
-        COALESCE(NULLIF(TRIM(p.provider_name), ''), 'Prestador'),
-        COALESCE(TRIM(p.provider_agency), ''),
-        COALESCE(TRIM(p.provider_phone), ''),
-        COALESCE(TRIM(p.provider_cbu_alias), ''),
-        COALESCE(TRIM(p.provider_cuit_dni), ''),
-        COALESCE(TRIM(p.provider_bank_name), ''),
-        false,
-        'pendiente'
-      FROM public.propuestas_experiencias p
-      WHERE p.provider_email IS NOT NULL AND TRIM(p.provider_email) <> ''
-      ON CONFLICT (email) DO UPDATE
-      SET
-        name = CASE WHEN public.prestadores.name = '' OR public.prestadores.name = 'Prestador' THEN EXCLUDED.name ELSE public.prestadores.name END,
-        agency = CASE WHEN public.prestadores.agency = '' THEN EXCLUDED.agency ELSE public.prestadores.agency END,
-        phone = CASE WHEN public.prestadores.phone = '' THEN EXCLUDED.phone ELSE public.prestadores.phone END;
-    END IF;
-
-    -- Reconciliar propuestas aprobadas con experiencias existentes en el catálogo
-    UPDATE public.experiencias e
-    SET
-      provider_agency = COALESCE(NULLIF(e.provider_agency, ''), p.provider_agency, ''),
-      participant_requirements = COALESCE(NULLIF(e.participant_requirements, ''), p.participant_requirements, ''),
-      notes = COALESCE(e.notes, p.notes),
-      reviewed_at = COALESCE(e.reviewed_at, p.reviewed_at, now()),
-      cover_image_name = COALESCE(e.cover_image_name, p.cover_image_name),
-      video_url = COALESCE(e.video_url, p.cover_video_url),
-      updated_at = GREATEST(e.updated_at, COALESCE(p.updated_at, p.created_at, e.updated_at))
-    FROM public.propuestas_experiencias p
-    WHERE p.status = 'aprobada'
-      AND (
-        e.id = p.id::TEXT
-        OR e.id = 'exp-' || p.id::TEXT
-        OR (
-          p.id::TEXT = 'req-sunset-las-pirquitas'
-          AND (
-            e.id IN ('exp-sunset-las-pirquitas', 'exp-travesia-en-kayak-nocturna-luna-llena-en-el-jumeal')
-            OR e.slug = 'sunset-las-pirquitas'
-          )
-        )
-        OR (
-          (
-            LOWER(TRIM(unaccent(e.title))) =
-            LOWER(TRIM(unaccent(p.title)))
-            OR (
-              p.provider_email IS NOT NULL AND TRIM(p.provider_email) <> ''
-              AND LOWER(TRIM(e.provider_email)) = LOWER(TRIM(p.provider_email))
-            )
-          )
-          AND (
-            e.slug = LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(unaccent(p.title), '[^a-zA-Z0-9]+', '-', 'g')))
-            OR e.slug ~ ('^' || LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(unaccent(p.title), '[^a-zA-Z0-9]+', '-', 'g'))) || '(-[0-9]+|-exp)$')
-            OR e.id = 'exp-' || LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(unaccent(p.title), '[^a-zA-Z0-9]+', '-', 'g')))
-            OR e.id ~ ('^exp-' || LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(unaccent(p.title), '[^a-zA-Z0-9]+', '-', 'g'))) || '(-[0-9]+|-exp)$')
-          )
-        )
-      );
-
-    -- Migrar propuestas restantes generando slugs únicos y normalizando defaults
-    WITH proposals_to_insert AS (
-      SELECT
-        p.*,
-        COALESCE(
-          NULLIF(LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(unaccent(p.title), '[^a-zA-Z0-9]+', '-', 'g'))), ''),
-          'exp-' || SUBSTRING(REPLACE(p.id::TEXT, '-', '') FROM 1 FOR 8)
-        ) AS base_slug,
-        ROW_NUMBER() OVER (
-          PARTITION BY COALESCE(
-            NULLIF(LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(unaccent(p.title), '[^a-zA-Z0-9]+', '-', 'g'))), ''),
-            'exp-' || SUBSTRING(REPLACE(p.id::TEXT, '-', '') FROM 1 FOR 8)
-          )
-          ORDER BY p.created_at, p.id
-        ) AS batch_row_num
-      FROM public.propuestas_experiencias p
-      WHERE NOT EXISTS (
-        SELECT 1 FROM public.experiencias e
-        WHERE e.id = p.id::TEXT
-           OR (
-             p.status = 'aprobada'
-             AND (
-               e.id = 'exp-' || p.id::TEXT
-               OR (
-                 p.id::TEXT = 'req-sunset-las-pirquitas'
-                 AND (
-                   e.id IN ('exp-sunset-las-pirquitas', 'exp-travesia-en-kayak-nocturna-luna-llena-en-el-jumeal')
-                   OR e.slug = 'sunset-las-pirquitas'
-                 )
-               )
-               OR (
-                 (
-                   LOWER(TRIM(unaccent(e.title))) =
-                   LOWER(TRIM(unaccent(p.title)))
-                   OR (
-                     p.provider_email IS NOT NULL AND TRIM(p.provider_email) <> ''
-                     AND LOWER(TRIM(e.provider_email)) = LOWER(TRIM(p.provider_email))
-                   )
-                 )
-                 AND (
-                   e.slug = LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(unaccent(p.title), '[^a-zA-Z0-9]+', '-', 'g')))
-                   OR e.slug ~ ('^' || LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(unaccent(p.title), '[^a-zA-Z0-9]+', '-', 'g'))) || '(-[0-9]+|-exp)$')
-                   OR e.id = 'exp-' || LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(unaccent(p.title), '[^a-zA-Z0-9]+', '-', 'g')))
-                   OR e.id ~ ('^exp-' || LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(unaccent(p.title), '[^a-zA-Z0-9]+', '-', 'g'))) || '(-[0-9]+|-exp)$')
-                 )
-               )
-             )
-           )
-      )
-    )
-    INSERT INTO public.experiencias (
-      id,
-      slug,
-      title,
-      kicker,
-      tagline,
-      region,
-      difficulty,
-      duration_label,
-      altitude_meters,
-      price_ars,
-      price_usd,
-      capacity_per_date,
-      best_season,
-      itinerary,
-      meeting_point,
-      meeting_point_url,
-      cover_image,
-      cover_image_name,
-      video_url,
-      album_photos,
-      provider_name,
-      provider_email,
-      provider_phone,
-      provider_cbu_alias,
-      provider_cuit_dni,
-      provider_bank_name,
-      provider_agency,
-      participant_requirements,
-      notes,
-      status,
-      reviewed_at,
-      created_at,
-      updated_at
-    )
-    SELECT
-      sp.id::TEXT,
-      CASE
-        WHEN sp.batch_row_num = 1 AND NOT EXISTS (
-          SELECT 1 FROM public.experiencias e
-          WHERE e.id <> sp.id::TEXT AND e.slug = sp.base_slug
-        ) THEN sp.base_slug
-        ELSE sp.base_slug || '-' || SUBSTRING(REPLACE(sp.id::TEXT, '-', '') FROM 1 FOR 8)
-      END,
-      sp.title,
-      COALESCE(sp.kicker, 'EXPERIENCIA'),
-      COALESCE(sp.subheading, ''),
-      COALESCE(sp.region, 'Valle Central y Ambato'),
-      CASE
-        WHEN sp.difficulty ILIKE 'alta%' THEN 'Alta Montaña'
-        WHEN sp.difficulty ILIKE 'exigente%' THEN 'Exigente'
-        WHEN sp.difficulty ILIKE 'baja%' THEN 'Baja'
-        ELSE 'Moderada'
-      END,
-      COALESCE(sp.duration, '4 horas'),
-      CASE
-        WHEN sp.altitude ~ '[0-9]+[^0-9]+[0-9]+' THEN 850
-        WHEN NULLIF(REGEXP_REPLACE(sp.altitude, '[^0-9]', '', 'g'), '') IS NULL THEN 850
-        WHEN LENGTH(REGEXP_REPLACE(sp.altitude, '[^0-9]', '', 'g')) <= 4
-         AND REGEXP_REPLACE(sp.altitude, '[^0-9]', '', 'g')::INTEGER BETWEEN 0 AND 7000
-          THEN REGEXP_REPLACE(sp.altitude, '[^0-9]', '', 'g')::INTEGER
-        ELSE 850
-      END,
-      GREATEST(0, COALESCE(sp.price_ars, 0)),
-      sp.price_usd,
-      GREATEST(1, COALESCE(NULLIF(sp.capacity, 0), 12)),
-      COALESCE(sp.season, 'Todo el año'),
-      COALESCE(sp.itinerary, ''),
-      COALESCE(sp.meeting_point, ''),
-      COALESCE(sp.meeting_point_url, ''),
-      COALESCE(sp.cover_image, '/assets/images/kayak-club-de-experiencias.jpg'),
-      sp.cover_image_name,
-      sp.cover_video_url,
-      COALESCE(sp.album_photos, '[]'::jsonb),
-      COALESCE(sp.provider_name, ''),
-      CASE
-        WHEN sp.provider_email IS NOT NULL AND TRIM(sp.provider_email) <> '' THEN LOWER(TRIM(sp.provider_email))
-        ELSE NULL
-      END,
-      COALESCE(sp.provider_phone, ''),
-      COALESCE(sp.provider_cbu_alias, ''),
-      COALESCE(sp.provider_cuit_dni, ''),
-      COALESCE(sp.provider_bank_name, ''),
-      COALESCE(sp.provider_agency, ''),
-      COALESCE(sp.participant_requirements, ''),
-      sp.notes,
-      CASE
-        WHEN sp.status = 'aprobada' THEN 'publicada'
-        WHEN sp.status = 'rechazada' THEN 'rechazada'
-        ELSE 'pendiente'
-      END,
-      sp.reviewed_at,
-      sp.created_at,
-      COALESCE(sp.updated_at, sp.created_at)
-    FROM proposals_to_insert sp
-    ON CONFLICT (id) DO NOTHING;
-
-    -- Validar que todas las propuestas estén preservadas en experiencias
-    SELECT COUNT(*) INTO v_missing_propuestas
-    FROM public.propuestas_experiencias p
-    WHERE NOT EXISTS (
-      SELECT 1 FROM public.experiencias e
-      WHERE e.id = p.id::TEXT
-         OR (
-           p.status = 'aprobada'
-           AND (
-             e.id = 'exp-' || p.id::TEXT
-             OR (
-               p.id::TEXT = 'req-sunset-las-pirquitas'
-               AND (
-                 e.id IN ('exp-sunset-las-pirquitas', 'exp-travesia-en-kayak-nocturna-luna-llena-en-el-jumeal')
-                 OR e.slug = 'sunset-las-pirquitas'
-               )
-             )
-             OR (
-               (
-                 LOWER(TRIM(unaccent(e.title))) =
-                 LOWER(TRIM(unaccent(p.title)))
-                 OR (
-                   p.provider_email IS NOT NULL AND TRIM(p.provider_email) <> ''
-                   AND LOWER(TRIM(e.provider_email)) = LOWER(TRIM(p.provider_email))
-                 )
-               )
-               AND (
-                 e.slug = LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(unaccent(p.title), '[^a-zA-Z0-9]+', '-', 'g')))
-                 OR e.slug ~ ('^' || LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(unaccent(p.title), '[^a-zA-Z0-9]+', '-', 'g'))) || '(-[0-9]+|-exp)$')
-                 OR e.id = 'exp-' || LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(unaccent(p.title), '[^a-zA-Z0-9]+', '-', 'g')))
-                 OR e.id ~ ('^exp-' || LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(unaccent(p.title), '[^a-zA-Z0-9]+', '-', 'g'))) || '(-[0-9]+|-exp)$')
-               )
-             )
-           )
-         )
-    );
-
-    IF v_missing_propuestas > 0 THEN
-      RAISE EXCEPTION 'Fallo de validación en migración: % registros de public.propuestas_experiencias no fueron transferidos o reconciliados en public.experiencias', v_missing_propuestas;
-    END IF;
-
-    -- Solo permitir eliminar la tabla una vez validada exitosamente la migración
-    DROP TABLE public.propuestas_experiencias CASCADE;
-  END IF;
-END $$;
-
 -- 2.1 socios (Prospectos Waitlist, Socios Emergentes, Activos y Fundadores)
 CREATE TABLE IF NOT EXISTS public.socios (
   id                          UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -573,17 +40,8 @@ CREATE TABLE IF NOT EXISTS public.socios (
   updated_at                  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Limpieza de columnas obsoletas y redundantes en public.socios
-ALTER TABLE public.socios DROP COLUMN IF EXISTS converted CASCADE;
-ALTER TABLE public.socios DROP COLUMN IF EXISTS google_linked CASCADE;
-ALTER TABLE public.socios DROP COLUMN IF EXISTS founder_motivation_letter CASCADE;
-ALTER TABLE public.socios DROP COLUMN IF EXISTS founder_agreed_to_protocol CASCADE;
-ALTER TABLE public.socios DROP COLUMN IF EXISTS founder_application_status CASCADE;
-
 CREATE INDEX IF NOT EXISTS idx_socios_email    ON public.socios(email);
 CREATE INDEX IF NOT EXISTS idx_socios_position ON public.socios(position);
-ALTER TABLE public.socios ADD COLUMN IF NOT EXISTS auth_user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL;
-ALTER TABLE public.socios ADD COLUMN IF NOT EXISTS registration_token UUID NOT NULL DEFAULT gen_random_uuid();
 
 DO $$
 BEGIN
@@ -635,115 +93,43 @@ CREATE TABLE IF NOT EXISTS public.postulaciones_fundadores (
 );
 
 CREATE INDEX IF NOT EXISTS idx_postulaciones_fundadores_email ON public.postulaciones_fundadores(email);
-ALTER TABLE public.postulaciones_fundadores ADD COLUMN IF NOT EXISTS notes TEXT;
 
 -- 2.5 prestadores (Accesos, Postulaciones y Datos Bancarios de Prestadores)
 CREATE TABLE IF NOT EXISTS public.prestadores (
-  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  email          TEXT NOT NULL UNIQUE,
-  name           TEXT NOT NULL DEFAULT '',
-  agency         TEXT NOT NULL DEFAULT '',
-  active         BOOLEAN NOT NULL DEFAULT true,
-  status         TEXT NOT NULL DEFAULT 'aprobado' CHECK (status IN ('aprobado', 'pendiente', 'rechazado', 'dado_de_baja')),
-  cbu_alias      TEXT NOT NULL DEFAULT '',
-  cuit_dni       TEXT NOT NULL DEFAULT '',
-  bank_name      TEXT NOT NULL DEFAULT '',
-  account_holder TEXT NOT NULL DEFAULT '',
-  phone          TEXT NOT NULL DEFAULT '',
-  website        TEXT NOT NULL DEFAULT '',
-  social_media   TEXT NOT NULL DEFAULT '',
-  social_media_secondary TEXT NOT NULL DEFAULT '',
-  slug           TEXT NOT NULL DEFAULT '',
-  bio            TEXT NOT NULL DEFAULT '',
-  avatar_url     TEXT NOT NULL DEFAULT '',
-  cover_url      TEXT NOT NULL DEFAULT '',
-  category       TEXT NOT NULL DEFAULT '',
-  region         TEXT NOT NULL DEFAULT 'Catamarca',
-  description    TEXT NOT NULL DEFAULT '',
-  notes          TEXT,
-  created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+  id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email                   TEXT NOT NULL UNIQUE,
+  name                    TEXT NOT NULL DEFAULT '',
+  agency                  TEXT NOT NULL DEFAULT '',
+  active                  BOOLEAN NOT NULL DEFAULT true,
+  status                  TEXT NOT NULL DEFAULT 'aprobado' CHECK (status IN ('aprobado', 'pendiente', 'rechazado', 'dado_de_baja')),
+  tier                    TEXT NOT NULL DEFAULT 'emergente' CHECK (tier IN ('emergente', 'pleno', 'fundador')),
+  rubro                   TEXT NOT NULL DEFAULT '',
+  verified                BOOLEAN NOT NULL DEFAULT false,
+  rating_score            NUMERIC(3,2) NOT NULL DEFAULT 5.00 CHECK (rating_score >= 1.0 AND rating_score <= 5.0),
+  rating_count            INTEGER NOT NULL DEFAULT 0 CHECK (rating_count >= 0),
+  cbu_alias               TEXT NOT NULL DEFAULT '',
+  cuit_dni                TEXT NOT NULL DEFAULT '',
+  bank_name               TEXT NOT NULL DEFAULT '',
+  account_holder          TEXT NOT NULL DEFAULT '',
+  phone                   TEXT NOT NULL DEFAULT '',
+  website                 TEXT NOT NULL DEFAULT '',
+  social_media            TEXT NOT NULL DEFAULT '',
+  social_media_secondary  TEXT NOT NULL DEFAULT '',
+  slug                    TEXT NOT NULL DEFAULT '',
+  bio                     TEXT NOT NULL DEFAULT '',
+  avatar_url              TEXT NOT NULL DEFAULT '',
+  cover_url               TEXT NOT NULL DEFAULT '',
+  category                TEXT NOT NULL DEFAULT '',
+  region                  TEXT NOT NULL DEFAULT 'Catamarca',
+  description             TEXT NOT NULL DEFAULT '',
+  notes                   TEXT,
+  created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at              TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE INDEX IF NOT EXISTS idx_prestadores_email ON public.prestadores(email);
-ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS agency TEXT NOT NULL DEFAULT '';
-ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT true;
-ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'aprobado';
-ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS cbu_alias TEXT NOT NULL DEFAULT '';
-ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS cuit_dni TEXT NOT NULL DEFAULT '';
-ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS bank_name TEXT NOT NULL DEFAULT '';
-ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS account_holder TEXT NOT NULL DEFAULT '';
-ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS phone TEXT NOT NULL DEFAULT '';
-ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS website TEXT NOT NULL DEFAULT '';
-ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS social_media TEXT NOT NULL DEFAULT '';
-ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS social_media_secondary TEXT NOT NULL DEFAULT '';
-ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS slug TEXT NOT NULL DEFAULT '';
-ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS bio TEXT NOT NULL DEFAULT '';
-ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS avatar_url TEXT NOT NULL DEFAULT '';
-ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS cover_url TEXT NOT NULL DEFAULT '';
-ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT '';
-ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS region TEXT NOT NULL DEFAULT 'Catamarca';
-ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT '';
-ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS notes TEXT;
-ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS tier TEXT NOT NULL DEFAULT 'emergente';
-ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS rubro TEXT NOT NULL DEFAULT '';
-ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS rating_score NUMERIC(3,2) NOT NULL DEFAULT 5.00;
-ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS rating_count INTEGER NOT NULL DEFAULT 0;
-ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS verified BOOLEAN NOT NULL DEFAULT false;
-
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.constraint_column_usage
-    WHERE table_name = 'prestadores' AND constraint_name = 'chk_prestadores_tier'
-  ) THEN
-    ALTER TABLE public.prestadores
-      ADD CONSTRAINT chk_prestadores_tier CHECK (tier IN ('emergente', 'pleno', 'fundador'));
-  END IF;
-
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.constraint_column_usage
-    WHERE table_name = 'prestadores' AND constraint_name = 'chk_prestadores_rating_score'
-  ) THEN
-    ALTER TABLE public.prestadores
-      ADD CONSTRAINT chk_prestadores_rating_score CHECK (rating_score >= 1.0 AND rating_score <= 5.0);
-  END IF;
-
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.constraint_column_usage
-    WHERE table_name = 'prestadores' AND constraint_name = 'chk_prestadores_rating_count'
-  ) THEN
-    ALTER TABLE public.prestadores
-      ADD CONSTRAINT chk_prestadores_rating_count CHECK (rating_count >= 0);
-  END IF;
-EXCEPTION
-  WHEN OTHERS THEN NULL;
-END $$;
-
 CREATE INDEX IF NOT EXISTS idx_prestadores_tier ON public.prestadores(tier);
 CREATE INDEX IF NOT EXISTS idx_prestadores_rating ON public.prestadores(rating_score DESC, rating_count DESC);
-
--- Normalizar posibles slugs duplicados no vacíos antes de crear el índice único
-DO $$
-BEGIN
-  IF EXISTS (
-    SELECT 1 FROM information_schema.tables 
-    WHERE table_schema = 'public' AND table_name = 'prestadores'
-  ) THEN
-    WITH duplicates AS (
-      SELECT id, slug,
-             ROW_NUMBER() OVER (PARTITION BY slug ORDER BY id) AS rn
-      FROM public.prestadores
-      WHERE slug IS NOT NULL AND slug <> ''
-    )
-    UPDATE public.prestadores pa
-    SET slug = pa.slug || '-' || SUBSTRING(pa.id::text, 1, 6)
-    FROM duplicates d
-    WHERE pa.id = d.id AND d.rn > 1;
-  END IF;
-END $$;
-
-DROP INDEX IF EXISTS public.idx_prestadores_slug;
 CREATE UNIQUE INDEX IF NOT EXISTS uq_prestadores_nonempty_slug
   ON public.prestadores(slug)
   WHERE slug IS NOT NULL AND slug <> '';
@@ -823,157 +209,73 @@ CREATE INDEX IF NOT EXISTS idx_historial_mp_changed_at ON public.historial_mp(ch
 
 -- 2.8 experiencias (Catálogo Oficial de Rutas y Salidas)
 CREATE TABLE IF NOT EXISTS public.experiencias (
-  id                   TEXT PRIMARY KEY,
-  slug                 TEXT NOT NULL UNIQUE,
-  title                TEXT NOT NULL,
-  kicker               TEXT DEFAULT '',
-  tagline              TEXT NOT NULL DEFAULT '',
-  description          TEXT NOT NULL DEFAULT '',
-  region               TEXT NOT NULL DEFAULT 'Valle Central y Ambato',
-  meeting_point        TEXT NOT NULL DEFAULT '',
-  meeting_point_url    TEXT NOT NULL DEFAULT '',
-  difficulty           TEXT NOT NULL DEFAULT 'Baja'
-                       CHECK (
-                         difficulty IN ('Baja', 'Moderada', 'Exigente', 'Alta Montaña')
-                         OR difficulty ILIKE 'baja%'
-                         OR difficulty ILIKE 'moderada%'
-                         OR difficulty ILIKE 'exigente%'
-                         OR difficulty ILIKE 'alta%'
-                       ),
-  duration_label       TEXT NOT NULL DEFAULT '4 horas',
-  price_ars            INTEGER NOT NULL DEFAULT 65000 CHECK (price_ars >= 0),
-  price_usd            INTEGER DEFAULT 70,
-  capacity_per_date    INTEGER NOT NULL DEFAULT 12 CHECK (capacity_per_date >= 1),
-  dates                JSONB NOT NULL DEFAULT '[]'::jsonb,
-  date_slots           JSONB NOT NULL DEFAULT '[]'::jsonb,
-  status               TEXT NOT NULL DEFAULT 'publicada'
-                       CHECK (status IN ('borrador', 'pendiente', 'publicada', 'oculta', 'rechazada')),
-  public_url           TEXT DEFAULT '',
-  cover_image          TEXT DEFAULT '/assets/images/kayak-club-de-experiencias.jpg',
-  cover_image_name     TEXT,
-  cover_video_name     TEXT,
-  album_photos         JSONB DEFAULT '[]'::jsonb,
-  video_url            TEXT DEFAULT '/assets/videos/kayak.mp4',
-  video_poster         TEXT DEFAULT '/assets/images/kayak-video.png',
-  altitude_meters      INTEGER DEFAULT 850,
-  best_season          TEXT DEFAULT '',
-  itinerary            TEXT DEFAULT '',
-  highlights           JSONB DEFAULT '[]'::jsonb,
-  included             JSONB DEFAULT '[]'::jsonb,
-  not_included         JSONB DEFAULT '[]'::jsonb,
+  id                       TEXT PRIMARY KEY,
+  slug                     TEXT NOT NULL UNIQUE,
+  title                    TEXT NOT NULL,
+  short_title              TEXT DEFAULT '',
+  kicker                   TEXT DEFAULT '',
+  tagline                  TEXT NOT NULL DEFAULT '',
+  description              TEXT NOT NULL DEFAULT '',
+  region                   TEXT NOT NULL DEFAULT 'Valle Central y Ambato',
+  meeting_point            TEXT NOT NULL DEFAULT '',
+  meeting_point_url        TEXT NOT NULL DEFAULT '',
+  difficulty               TEXT NOT NULL DEFAULT 'Baja'
+                           CHECK (
+                             difficulty IN ('Baja', 'Moderada', 'Exigente', 'Alta Montaña')
+                             OR difficulty ILIKE 'baja%'
+                             OR difficulty ILIKE 'moderada%'
+                             OR difficulty ILIKE 'exigente%'
+                             OR difficulty ILIKE 'alta%'
+                           ),
+  duration_label           TEXT NOT NULL DEFAULT '4 horas',
+  price_ars                INTEGER NOT NULL DEFAULT 65000 CHECK (price_ars >= 0),
+  price_usd                INTEGER DEFAULT 70,
+  capacity_per_date        INTEGER NOT NULL DEFAULT 12 CHECK (capacity_per_date >= 1),
+  dates                    JSONB NOT NULL DEFAULT '[]'::jsonb,
+  date_slots               JSONB NOT NULL DEFAULT '[]'::jsonb,
+  status                   TEXT NOT NULL DEFAULT 'publicada'
+                           CHECK (status IN ('borrador', 'pendiente', 'publicada', 'oculta', 'rechazada')),
+  display_location         TEXT NOT NULL DEFAULT 'catalogo'
+                           CHECK (display_location IN ('catalogo', 'destacada', 'no_listada')),
+  public_url               TEXT DEFAULT '',
+  cover_image              TEXT DEFAULT '/assets/images/kayak-club-de-experiencias.jpg',
+  cover_image_name         TEXT,
+  cover_video_name         TEXT,
+  album_photos             JSONB DEFAULT '[]'::jsonb,
+  gallery_images           JSONB DEFAULT '[]'::jsonb,
+  video_url                TEXT DEFAULT '/assets/videos/kayak.mp4',
+  video_poster             TEXT DEFAULT '/assets/images/kayak-video.png',
+  altitude_meters          INTEGER DEFAULT 850,
+  best_season              TEXT DEFAULT '',
+  itinerary                TEXT DEFAULT '',
+  highlights               JSONB DEFAULT '[]'::jsonb,
+  included                 JSONB DEFAULT '[]'::jsonb,
+  not_included             JSONB DEFAULT '[]'::jsonb,
+  promos_and_pricing       TEXT DEFAULT '',
   participant_requirements TEXT NOT NULL DEFAULT '',
-  notes                TEXT,
-  reviewed_at          TIMESTAMPTZ,
-  provider_agency      TEXT NOT NULL DEFAULT '',
-  provider_email       TEXT DEFAULT 'patriciofacundodiaztillar@gmail.com',
-  provider_name        TEXT,
-  provider_phone       TEXT,
-  provider_cbu_alias   TEXT,
-  provider_cuit_dni    TEXT,
-  provider_bank_name   TEXT,
-  created_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at           TIMESTAMPTZ NOT NULL DEFAULT now()
+  notes                    TEXT,
+  reviewed_at              TIMESTAMPTZ,
+  is_locked                BOOLEAN NOT NULL DEFAULT false,
+  is_exclusive_club        BOOLEAN NOT NULL DEFAULT true,
+  is_club_experience       BOOLEAN NOT NULL DEFAULT false,
+  favorites_count          INTEGER NOT NULL DEFAULT 0 CHECK (favorites_count >= 0),
+  provider_id              UUID REFERENCES public.prestadores(id) ON DELETE SET NULL,
+  provider_agency          TEXT NOT NULL DEFAULT '',
+  provider_slug            TEXT,
+  provider_name            TEXT,
+  provider_email           TEXT DEFAULT 'patriciofacundodiaztillar@gmail.com' REFERENCES public.prestadores(email) ON UPDATE CASCADE ON DELETE SET NULL,
+  provider_phone           TEXT,
+  provider_cbu_alias       TEXT,
+  provider_cuit_dni        TEXT,
+  provider_bank_name       TEXT,
+  created_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE INDEX IF NOT EXISTS idx_experiencias_slug ON public.experiencias(slug);
-ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS album_photos JSONB DEFAULT '[]'::jsonb;
-ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS date_slots JSONB DEFAULT '[]'::jsonb;
-ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS provider_email TEXT DEFAULT 'patriciofacundodiaztillar@gmail.com';
-ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS provider_name TEXT;
-ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS provider_slug TEXT;
-ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS provider_phone TEXT;
-ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS provider_cbu_alias TEXT;
-ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS provider_cuit_dni TEXT;
-ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS provider_bank_name TEXT;
-ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS kicker TEXT DEFAULT '';
-ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS itinerary TEXT DEFAULT '';
-ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS best_season TEXT DEFAULT '';
-ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS promos_and_pricing TEXT DEFAULT '';
-ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS provider_agency TEXT NOT NULL DEFAULT '';
-ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS cover_image_name TEXT;
-ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS cover_video_name TEXT;
-ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS participant_requirements TEXT NOT NULL DEFAULT '';
-ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS notes TEXT;
-ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
-ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS display_location TEXT NOT NULL DEFAULT 'catalogo';
-ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS is_locked BOOLEAN NOT NULL DEFAULT false;
-ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS is_exclusive_club BOOLEAN NOT NULL DEFAULT true;
-ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS is_club_experience BOOLEAN NOT NULL DEFAULT false;
-ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS gallery_images JSONB DEFAULT '[]'::jsonb;
-ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS short_title TEXT DEFAULT '';
-ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS favorites_count INTEGER NOT NULL DEFAULT 0;
-ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS provider_id UUID;
-
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.constraint_column_usage
-    WHERE table_name = 'experiencias' AND constraint_name = 'chk_experiencias_display_location'
-  ) THEN
-    ALTER TABLE public.experiencias
-      ADD CONSTRAINT chk_experiencias_display_location CHECK (display_location IN ('catalogo', 'destacada', 'no_listada'));
-  END IF;
-
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.constraint_column_usage
-    WHERE table_name = 'experiencias' AND constraint_name = 'chk_experiencias_favorites_count'
-  ) THEN
-    ALTER TABLE public.experiencias
-      ADD CONSTRAINT chk_experiencias_favorites_count CHECK (favorites_count >= 0);
-  END IF;
-
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.table_constraints
-    WHERE constraint_name = 'fk_experiencias_provider_id' AND table_name = 'experiencias'
-  ) THEN
-    ALTER TABLE public.experiencias
-      ADD CONSTRAINT fk_experiencias_provider_id
-      FOREIGN KEY (provider_id) REFERENCES public.prestadores(id)
-      ON DELETE SET NULL;
-  END IF;
-EXCEPTION
-  WHEN OTHERS THEN NULL;
-END $$;
-
 CREATE INDEX IF NOT EXISTS idx_experiencias_display ON public.experiencias(display_location, is_locked, status);
 CREATE INDEX IF NOT EXISTS idx_experiencias_provider_id ON public.experiencias(provider_id);
 CREATE INDEX IF NOT EXISTS idx_experiencias_favorites ON public.experiencias(favorites_count DESC);
-
--- Auto-enlazar provider_id cuando provider_email coincida con public.prestadores
-UPDATE public.experiencias e
-SET provider_id = p.id
-FROM public.prestadores p
-WHERE e.provider_id IS NULL
-  AND e.provider_email IS NOT NULL
-  AND LOWER(TRIM(e.provider_email)) = LOWER(TRIM(p.email));
-
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.table_constraints
-    WHERE constraint_name = 'fk_experiencias_provider_email' AND table_name = 'experiencias'
-  ) THEN
-    ALTER TABLE public.experiencias
-      ADD CONSTRAINT fk_experiencias_provider_email
-      FOREIGN KEY (provider_email) REFERENCES public.prestadores(email)
-      ON UPDATE CASCADE ON DELETE SET NULL;
-  END IF;
-EXCEPTION
-  WHEN OTHERS THEN
-    NULL;
-END $$;
-
--- Actualizar experiencias oficiales del Club de Experiencias (ej. Kayak)
-UPDATE public.experiencias
-SET
-  provider_name = 'Club de Experiencias',
-  provider_slug = 'club-de-experiencias',
-  provider_email = 'admin@experiencias.club',
-  provider_phone = '+54 9 383 456-7890'
-WHERE slug = 'kayak' OR slug = 'exp-kayak';
-
-ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS meeting_point_url TEXT NOT NULL DEFAULT '';
-ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS display_location TEXT NOT NULL DEFAULT 'destacada';
 
 -- 2.9 pagos_transferencias (Registro de Comprobantes de Pago)
 CREATE TABLE IF NOT EXISTS public.pagos_transferencias (
@@ -987,6 +289,7 @@ CREATE TABLE IF NOT EXISTS public.pagos_transferencias (
   phone                    TEXT NOT NULL DEFAULT '',
   dni                      TEXT NOT NULL DEFAULT '',
   selected_date            TEXT NOT NULL,
+  date                     TEXT,
   participants             INTEGER NOT NULL DEFAULT 1 CHECK (participants >= 1),
   amount_ars               INTEGER NOT NULL CHECK (amount_ars >= 0),
   discount_code            TEXT,
@@ -997,12 +300,14 @@ CREATE TABLE IF NOT EXISTS public.pagos_transferencias (
   receipt_size_bytes       INTEGER,
   receipt_url              TEXT,
   receipt_storage_path     TEXT,
+  receipt_storage_key      TEXT,
   receipt_storage_provider TEXT DEFAULT 'supabase',
   status                   TEXT NOT NULL DEFAULT 'pendiente'
                            CHECK (status IN ('pendiente', 'aprobado', 'rechazado')),
   rejection_reason         TEXT,
   reviewed_by              TEXT,
   reviewed_at              TIMESTAMPTZ,
+  submitted_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
   created_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -1010,64 +315,6 @@ CREATE TABLE IF NOT EXISTS public.pagos_transferencias (
 CREATE INDEX IF NOT EXISTS idx_pagos_reference ON public.pagos_transferencias(reference);
 CREATE INDEX IF NOT EXISTS idx_pagos_email     ON public.pagos_transferencias(email);
 CREATE INDEX IF NOT EXISTS idx_pagos_status    ON public.pagos_transferencias(status);
-ALTER TABLE public.pagos_transferencias ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT now();
-ALTER TABLE public.pagos_transferencias ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMPTZ DEFAULT now();
-ALTER TABLE public.pagos_transferencias ADD COLUMN IF NOT EXISTS selected_date TEXT;
-ALTER TABLE public.pagos_transferencias ADD COLUMN IF NOT EXISTS date TEXT;
-ALTER TABLE public.pagos_transferencias ADD COLUMN IF NOT EXISTS receipt_storage_path TEXT;
-ALTER TABLE public.pagos_transferencias ADD COLUMN IF NOT EXISTS receipt_storage_key TEXT;
-ALTER TABLE public.pagos_transferencias ADD COLUMN IF NOT EXISTS provider_email TEXT;
-ALTER TABLE public.pagos_transferencias ADD COLUMN IF NOT EXISTS discount_code TEXT;
-ALTER TABLE public.pagos_transferencias ADD COLUMN IF NOT EXISTS discount_ars INTEGER NOT NULL DEFAULT 0;
-ALTER TABLE public.pagos_transferencias ADD COLUMN IF NOT EXISTS socio_id UUID;
-ALTER TABLE public.pagos_transferencias ADD COLUMN IF NOT EXISTS receipt_file_name TEXT;
-ALTER TABLE public.pagos_transferencias ADD COLUMN IF NOT EXISTS receipt_mime_type TEXT;
-ALTER TABLE public.pagos_transferencias ADD COLUMN IF NOT EXISTS receipt_size_bytes INTEGER;
-ALTER TABLE public.pagos_transferencias ADD COLUMN IF NOT EXISTS receipt_storage_provider TEXT DEFAULT 'supabase';
-ALTER TABLE public.pagos_transferencias ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
-ALTER TABLE public.pagos_transferencias ADD COLUMN IF NOT EXISTS reviewed_by TEXT;
-ALTER TABLE public.pagos_transferencias ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
-
-DO $$
-BEGIN
-  -- Backfill de created_at a partir de submitted_at si existen registros legacy con created_at nulo
-  UPDATE public.pagos_transferencias
-  SET created_at = COALESCE(submitted_at, now())
-  WHERE created_at IS NULL;
-
-  -- Sincronizar submitted_at si es nulo
-  UPDATE public.pagos_transferencias
-  SET submitted_at = created_at
-  WHERE submitted_at IS NULL;
-
-  -- Backfill de selected_date desde date solo cuando selected_date no existe o está vacío
-  UPDATE public.pagos_transferencias
-  SET selected_date = date
-  WHERE (selected_date IS NULL OR selected_date = '')
-    AND date IS NOT NULL AND date <> '';
-
-  -- Sincronizar date si está vacío a partir de selected_date
-  UPDATE public.pagos_transferencias
-  SET date = selected_date
-  WHERE (date IS NULL OR date = '')
-    AND selected_date IS NOT NULL AND selected_date <> '';
-
-  -- Backfill de receipt_storage_path desde receipt_storage_key solo cuando está vacío
-  UPDATE public.pagos_transferencias
-  SET receipt_storage_path = receipt_storage_key
-  WHERE (receipt_storage_path IS NULL OR receipt_storage_path = '')
-    AND receipt_storage_key IS NOT NULL AND receipt_storage_key <> '';
-
-  -- Sincronizar receipt_storage_key si está vacío
-  UPDATE public.pagos_transferencias
-  SET receipt_storage_key = receipt_storage_path
-  WHERE (receipt_storage_key IS NULL OR receipt_storage_key = '')
-    AND receipt_storage_path IS NOT NULL AND receipt_storage_path <> '';
-
-  -- Asegurar valor por defecto y restricción NOT NULL en created_at
-  ALTER TABLE public.pagos_transferencias ALTER COLUMN created_at SET DEFAULT now();
-  ALTER TABLE public.pagos_transferencias ALTER COLUMN created_at SET NOT NULL;
-END $$;
 
 -- 2.10 calificaciones_prestadores (Votos y Reseñas de Socios para Prestadores)
 CREATE TABLE IF NOT EXISTS public.calificaciones_prestadores (
@@ -1079,25 +326,13 @@ CREATE TABLE IF NOT EXISTS public.calificaciones_prestadores (
   comentario     TEXT DEFAULT '',
   experience_id  TEXT REFERENCES public.experiencias(id) ON DELETE SET NULL,
   created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+  updated_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT uq_calificaciones_prestador_socio UNIQUE (prestador_id, socio_email)
 );
 
 CREATE INDEX IF NOT EXISTS idx_calif_prestador_id ON public.calificaciones_prestadores(prestador_id);
 CREATE INDEX IF NOT EXISTS idx_calif_socio_email  ON public.calificaciones_prestadores(socio_email);
 CREATE INDEX IF NOT EXISTS idx_calif_experience_id ON public.calificaciones_prestadores(experience_id);
-
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.table_constraints
-    WHERE constraint_name = 'uq_calificaciones_prestador_socio' AND table_name = 'calificaciones_prestadores'
-  ) THEN
-    ALTER TABLE public.calificaciones_prestadores
-      ADD CONSTRAINT uq_calificaciones_prestador_socio UNIQUE (prestador_id, socio_email);
-  END IF;
-EXCEPTION
-  WHEN OTHERS THEN NULL;
-END $$;
 
 -- 2.11 experiencias_favoritas (Favoritos y Wishlist de Socios)
 CREATE TABLE IF NOT EXISTS public.experiencias_favoritas (
@@ -1105,63 +340,54 @@ CREATE TABLE IF NOT EXISTS public.experiencias_favoritas (
   socio_id       UUID REFERENCES public.socios(id) ON DELETE CASCADE,
   socio_email    TEXT NOT NULL,
   experience_id  TEXT NOT NULL REFERENCES public.experiencias(id) ON DELETE CASCADE,
-  created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT uq_experiencias_favoritas_socio_exp UNIQUE (socio_email, experience_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_exp_fav_socio_email   ON public.experiencias_favoritas(socio_email);
 CREATE INDEX IF NOT EXISTS idx_exp_fav_experience_id ON public.experiencias_favoritas(experience_id);
 CREATE INDEX IF NOT EXISTS idx_exp_fav_socio_id      ON public.experiencias_favoritas(socio_id);
 
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.table_constraints
-    WHERE constraint_name = 'uq_experiencias_favoritas_socio_exp' AND table_name = 'experiencias_favoritas'
-  ) THEN
-    ALTER TABLE public.experiencias_favoritas
-      ADD CONSTRAINT uq_experiencias_favoritas_socio_exp UNIQUE (socio_email, experience_id);
-  END IF;
-EXCEPTION
-  WHEN OTHERS THEN NULL;
-END $$;
-
--- Migración segura si la tabla fue creada previamente como tabla física experiencias_favoritos
-DO $$
-DECLARE
-  v_relkind "char";
-BEGIN
-  SELECT c.relkind INTO v_relkind
-  FROM pg_class c
-  JOIN pg_namespace n ON n.oid = c.relnamespace
-  WHERE n.nspname = 'public' AND c.relname = 'experiencias_favoritos';
-
-  IF v_relkind = 'r' THEN
-    -- Si existía como tabla física, copiar datos no existentes a experiencias_favoritas
-    BEGIN
-      INSERT INTO public.experiencias_favoritas (socio_id, socio_email, experience_id, created_at)
-      SELECT socio_id, socio_email, experience_id, created_at
-      FROM public.experiencias_favoritos
-      ON CONFLICT (socio_email, experience_id) DO NOTHING;
-    EXCEPTION
-      WHEN OTHERS THEN NULL;
-    END;
-
-    -- Eliminar la tabla física para permitir crear la vista retrocompatible
-    EXECUTE 'DROP TABLE public.experiencias_favoritos CASCADE';
-  END IF;
-END $$;
-
 -- Vista retrocompatible para referencias heredadas
 DROP VIEW IF EXISTS public.experiencias_favoritos CASCADE;
 CREATE VIEW public.experiencias_favoritos AS
   SELECT * FROM public.experiencias_favoritas;
+
+-- 2.12 descuentos (Cupones y Promociones Dinámicas)
+CREATE TABLE IF NOT EXISTS public.descuentos (
+  id                  UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  code                TEXT NOT NULL,
+  name                TEXT NOT NULL,
+  description         TEXT DEFAULT '',
+  discount_type       TEXT NOT NULL CHECK (discount_type IN ('percentage', 'fixed_amount')),
+  discount_value      NUMERIC NOT NULL CHECK (discount_value > 0),
+  scope               TEXT NOT NULL DEFAULT 'general' CHECK (scope IN ('general', 'experience', 'provider')),
+  experience_id       TEXT REFERENCES public.experiencias(id) ON UPDATE CASCADE ON DELETE SET NULL,
+  experience_slug     TEXT,
+  provider_id         UUID REFERENCES public.prestadores(id) ON UPDATE CASCADE ON DELETE SET NULL,
+  is_automatic        BOOLEAN NOT NULL DEFAULT false,
+  min_amount_ars      NUMERIC NOT NULL DEFAULT 0 CHECK (min_amount_ars >= 0),
+  max_discount_ars    NUMERIC CHECK (max_discount_ars IS NULL OR max_discount_ars > 0),
+  starts_at           TIMESTAMPTZ,
+  ends_at             TIMESTAMPTZ,
+  max_uses            INTEGER CHECK (max_uses IS NULL OR max_uses > 0),
+  uses_count          INTEGER NOT NULL DEFAULT 0 CHECK (uses_count >= 0),
+  active              BOOLEAN NOT NULL DEFAULT true,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_descuentos_code_upper ON public.descuentos (UPPER(code));
+CREATE INDEX IF NOT EXISTS idx_descuentos_active ON public.descuentos (active);
+CREATE INDEX IF NOT EXISTS idx_descuentos_experience_id ON public.descuentos (experience_id);
+CREATE INDEX IF NOT EXISTS idx_descuentos_provider_id ON public.descuentos (provider_id);
+CREATE INDEX IF NOT EXISTS idx_descuentos_scope ON public.descuentos (scope);
 
 -- ==============================================================================
 -- 3. VISTAS
 -- ==============================================================================
 
 -- 3.1 estadisticas_socios (Métricas y conteos de la comunidad de socios)
-DROP VIEW IF EXISTS public.waitlist_stats CASCADE;
 DROP VIEW IF EXISTS public.estadisticas_socios CASCADE;
 CREATE VIEW public.estadisticas_socios AS
 SELECT
@@ -1178,7 +404,6 @@ FROM public.socios;
 GRANT SELECT ON public.estadisticas_socios TO anon, authenticated;
 
 -- 3.2 perfiles_publicos (Vista pública segura de prestadores aprobados, sin datos bancarios o fiscales)
-DROP VIEW IF EXISTS public.public_provider_profiles CASCADE;
 DROP VIEW IF EXISTS public.perfiles_publicos CASCADE;
 CREATE VIEW public.perfiles_publicos AS
 SELECT
@@ -1295,6 +520,11 @@ CREATE TRIGGER pagos_transferencias_updated_at
 DROP TRIGGER IF EXISTS calificaciones_prestadores_updated_at ON public.calificaciones_prestadores;
 CREATE TRIGGER calificaciones_prestadores_updated_at
   BEFORE UPDATE ON public.calificaciones_prestadores
+  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+DROP TRIGGER IF EXISTS descuentos_updated_at ON public.descuentos;
+CREATE TRIGGER descuentos_updated_at
+  BEFORE UPDATE ON public.descuentos
   FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
 -- 4.2 Normalización de socios
@@ -2331,18 +1561,42 @@ BEGIN
     v_expected_subtotal := v_unit_price * p_participants;
 
     IF p_discount_code IS NOT NULL AND TRIM(p_discount_code) <> '' THEN
-      IF UPPER(TRIM(p_discount_code)) IN ('FUNDADOR100') THEN
-        v_expected_discount := v_expected_subtotal;
-      ELSIF UPPER(TRIM(p_discount_code)) IN ('FUNDADOR20') THEN
-        v_expected_discount := ROUND(v_expected_subtotal * 0.20);
-      ELSIF UPPER(TRIM(p_discount_code)) IN ('SOCIO15', 'DESCUENTO15') THEN
-        v_expected_discount := ROUND(v_expected_subtotal * 0.15);
-      ELSIF UPPER(TRIM(p_discount_code)) IN ('AMIGO10', 'CLUB10', 'SOCIO10') THEN
-        v_expected_discount := ROUND(v_expected_subtotal * 0.10);
-      ELSIF UPPER(TRIM(p_discount_code)) IN ('SOCIOFUNDADOR7') THEN
-        v_expected_discount := ROUND(v_expected_subtotal * 0.07);
-      ELSE
-        v_expected_discount := 0;
+      SELECT
+        CASE
+          WHEN discount_type = 'percentage' THEN
+            ROUND((v_expected_subtotal * discount_value) / 100)
+          WHEN discount_type = 'fixed_amount' THEN
+            LEAST(v_expected_subtotal, discount_value::integer)
+          ELSE 0
+        END
+      INTO v_expected_discount
+      FROM public.descuentos
+      WHERE UPPER(code) = UPPER(TRIM(p_discount_code))
+        AND active = true
+        AND (starts_at IS NULL OR starts_at <= now())
+        AND (ends_at IS NULL OR ends_at >= now())
+        AND (min_amount_ars IS NULL OR min_amount_ars <= v_expected_subtotal)
+        AND (
+          scope = 'general'
+          OR (scope = 'experience' AND (experience_id = p_experience_id OR experience_slug = (SELECT slug FROM public.experiencias WHERE id = p_experience_id LIMIT 1)))
+          OR (scope = 'provider' AND provider_id = (SELECT provider_id FROM public.experiencias WHERE id = p_experience_id LIMIT 1))
+        )
+      LIMIT 1;
+
+      IF v_expected_discount IS NULL THEN
+        IF UPPER(TRIM(p_discount_code)) IN ('FUNDADOR100') THEN
+          v_expected_discount := v_expected_subtotal;
+        ELSIF UPPER(TRIM(p_discount_code)) IN ('FUNDADOR20') THEN
+          v_expected_discount := ROUND(v_expected_subtotal * 0.20);
+        ELSIF UPPER(TRIM(p_discount_code)) IN ('SOCIO15', 'DESCUENTO15') THEN
+          v_expected_discount := ROUND(v_expected_subtotal * 0.15);
+        ELSIF UPPER(TRIM(p_discount_code)) IN ('AMIGO10', 'CLUB10', 'SOCIO10') THEN
+          v_expected_discount := ROUND(v_expected_subtotal * 0.10);
+        ELSIF UPPER(TRIM(p_discount_code)) IN ('SOCIOFUNDADOR7') THEN
+          v_expected_discount := ROUND(v_expected_subtotal * 0.07);
+        ELSE
+          v_expected_discount := 0;
+        END IF;
       END IF;
     ELSE
       v_expected_discount := 0;
@@ -3197,6 +2451,52 @@ BEGIN
 END;
 $$;
 
+-- 5.19 record_discount_redemption (Redención de cupones y registro seguro de usos)
+CREATE OR REPLACE FUNCTION public.record_discount_redemption(
+  p_code TEXT,
+  p_reference TEXT DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_code TEXT := UPPER(TRIM(COALESCE(p_code, '')));
+  v_discount public.descuentos%ROWTYPE;
+BEGIN
+  IF v_code = '' THEN
+    RETURN jsonb_build_object('status', 'invalid_code');
+  END IF;
+
+  SELECT * INTO v_discount
+  FROM public.descuentos
+  WHERE UPPER(code) = v_code AND active = true
+  LIMIT 1
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('status', 'not_found');
+  END IF;
+
+  IF v_discount.max_uses IS NOT NULL AND v_discount.uses_count >= v_discount.max_uses THEN
+    RETURN jsonb_build_object('status', 'max_uses_reached');
+  END IF;
+
+  UPDATE public.descuentos
+  SET uses_count = uses_count + 1,
+      updated_at = now()
+  WHERE id = v_discount.id;
+
+  RETURN jsonb_build_object(
+    'status', 'ok',
+    'id', v_discount.id,
+    'code', v_discount.code,
+    'uses_count', v_discount.uses_count + 1
+  );
+END;
+$$;
+
 -- Permisos de ejecución de RPCs
 GRANT EXECUTE ON FUNCTION public.record_waitlist_email TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_admin_socios_roster TO authenticated;
@@ -3230,6 +2530,8 @@ GRANT EXECUTE ON FUNCTION public.get_my_provider_ratings() TO authenticated;
 REVOKE EXECUTE ON FUNCTION public.get_calificaciones_prestador_admin(UUID) FROM anon;
 GRANT EXECUTE ON FUNCTION public.get_calificaciones_prestador_admin(UUID) TO authenticated;
 
+GRANT EXECUTE ON FUNCTION public.record_discount_redemption(TEXT, TEXT) TO anon, authenticated;
+
 -- ==============================================================================
 -- 6. ROW LEVEL SECURITY (RLS) Y POLÍTICAS
 -- ==============================================================================
@@ -3245,6 +2547,7 @@ ALTER TABLE public.experiencias ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pagos_transferencias ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.calificaciones_prestadores ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.experiencias_favoritas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.descuentos ENABLE ROW LEVEL SECURITY;
 
 -- 6.3 Políticas en socios
 DROP POLICY IF EXISTS "Socios can read own profile by auth_user_id" ON public.socios;
@@ -3727,6 +3030,39 @@ CREATE POLICY "Socios eliminan sus propias experiencias favoritas"
     )
   );
 
+-- 6.13 Políticas en descuentos
+DROP POLICY IF EXISTS "Admins gestionan descuentos" ON public.descuentos;
+CREATE POLICY "Admins gestionan descuentos"
+  ON public.descuentos
+  FOR ALL
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.administradores
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', '')) AND active = true
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.administradores
+      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', '')) AND active = true
+    )
+  );
+
+DROP POLICY IF EXISTS "Lectura publica de descuentos activos" ON public.descuentos;
+CREATE POLICY "Lectura publica de descuentos activos"
+  ON public.descuentos
+  FOR SELECT
+  TO public, anon, authenticated
+  USING (
+    active = true
+    AND (starts_at IS NULL OR starts_at <= now())
+    AND (ends_at IS NULL OR ends_at >= now())
+  );
+
+GRANT SELECT ON public.descuentos TO anon, authenticated;
+GRANT ALL ON public.descuentos TO authenticated;
+
 -- ==============================================================================
 -- 7. STORAGE BUCKETS Y POLÍTICAS DE ALMACENAMIENTO
 -- ==============================================================================
@@ -3895,77 +3231,3 @@ EXCEPTION
     RAISE NOTICE 'Aviso: No se pudieron crear politicas en storage.objects para experiencias (%).', SQLERRM;
 END;
 $$;
-
--- ══════════════════════════════════════════════════════════════════════════════
--- 2.12 DESCUENTOS Y PROMOCIONES (Admin & Checkout)
--- ══════════════════════════════════════════════════════════════════════════════
-CREATE TABLE IF NOT EXISTS public.descuentos (
-  id                  UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  code                TEXT NOT NULL,
-  name                TEXT NOT NULL,
-  description         TEXT DEFAULT '',
-  discount_type       TEXT NOT NULL CHECK (discount_type IN ('percentage', 'fixed_amount')),
-  discount_value      NUMERIC NOT NULL CHECK (discount_value > 0),
-  scope               TEXT NOT NULL DEFAULT 'general' CHECK (scope IN ('general', 'experience', 'provider')),
-  experience_id       TEXT REFERENCES public.experiencias(id) ON UPDATE CASCADE ON DELETE SET NULL,
-  experience_slug     TEXT,
-  provider_id         TEXT REFERENCES public.prestadores(id) ON UPDATE CASCADE ON DELETE SET NULL,
-  is_automatic        BOOLEAN NOT NULL DEFAULT false,
-  min_amount_ars      NUMERIC NOT NULL DEFAULT 0 CHECK (min_amount_ars >= 0),
-  max_discount_ars    NUMERIC CHECK (max_discount_ars IS NULL OR max_discount_ars > 0),
-  starts_at           TIMESTAMPTZ,
-  ends_at             TIMESTAMPTZ,
-  max_uses            INTEGER CHECK (max_uses IS NULL OR max_uses > 0),
-  uses_count          INTEGER NOT NULL DEFAULT 0 CHECK (uses_count >= 0),
-  active              BOOLEAN NOT NULL DEFAULT true,
-  created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE UNIQUE INDEX IF NOT EXISTS idx_descuentos_code_upper ON public.descuentos (UPPER(code));
-CREATE INDEX IF NOT EXISTS idx_descuentos_active ON public.descuentos (active);
-CREATE INDEX IF NOT EXISTS idx_descuentos_experience_id ON public.descuentos (experience_id);
-CREATE INDEX IF NOT EXISTS idx_descuentos_scope ON public.descuentos (scope);
-
-ALTER TABLE public.descuentos ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Admins gestionan descuentos" ON public.descuentos;
-CREATE POLICY "Admins gestionan descuentos"
-  ON public.descuentos
-  FOR ALL
-  TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.administradores
-      WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email') AND active = true
-    )
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.administradores
-      WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email') AND active = true
-    )
-  );
-
-DROP POLICY IF EXISTS "Lectura publica de descuentos activos" ON public.descuentos;
-CREATE POLICY "Lectura publica de descuentos activos"
-  ON public.descuentos
-  FOR SELECT
-  TO public, anon, authenticated
-  USING (
-    active = true
-    AND (starts_at IS NULL OR starts_at <= now())
-    AND (ends_at IS NULL OR ends_at >= now())
-  );
-
-GRANT SELECT ON public.descuentos TO anon, authenticated;
-GRANT ALL ON public.descuentos TO authenticated;
-
--- Sembrar códigos iniciales
-INSERT INTO public.descuentos (code, name, discount_type, discount_value, scope, active)
-VALUES 
-  ('SOCIOFUNDADOR7', '7% socios fundadores', 'percentage', 7, 'general', true),
-  ('SOCIO10', '10% socios', 'percentage', 10, 'general', true),
-  ('FUNDADOR20', '20% socios fundadores', 'percentage', 20, 'general', true)
-ON CONFLICT DO NOTHING;
-

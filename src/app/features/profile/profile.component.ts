@@ -22,6 +22,7 @@ import { ActivityHistoryService } from '../../core/services/activity-history.ser
 import { PaymentReceipt } from '../../core/models/activity-history.model';
 import { ExperienceService } from '../../core/services/experience.service';
 import { FavoritesService } from '../../core/services/favorites.service';
+import { ProviderStoreService } from '../../core/services/provider-store.service';
 import { Experience } from '../../core/models/experience.model';
 import { DEFAULT_CLUB_PROFILE, isClubExperience } from '../../core/models/club-profile.model';
 import { ModalType } from '../waitlist/waitlist.component';
@@ -62,6 +63,7 @@ export class ProfileComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly experienceService = inject(ExperienceService);
   readonly favoritesService = inject(FavoritesService);
   readonly router = inject(Router);
+  private readonly providerStore = inject(ProviderStoreService, { optional: true });
 
   readonly favoriteExperiences = this.favoritesService.favoriteExperiences;
 
@@ -76,7 +78,7 @@ export class ProfileComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly onVisibilityChangeBound = () => {
     if (document.hidden) {
       this.stopAutoplay();
-    } else if (!this.isUserHovering) {
+    } else if (!this.isUserHovering && !this.selectedExperience()) {
       this.startAutoplay();
     }
   };
@@ -158,21 +160,39 @@ export class ProfileComponent implements OnInit, AfterViewInit, OnDestroy {
         : exp.providerSlug;
     }
     if (this.isClubExperience(exp)) return DEFAULT_CLUB_PROFILE.slug;
-    const rawName = (exp.providerName || exp.providerAgency || '').trim();
-    if (rawName && rawName.toLowerCase() !== 'club de experiencias' && rawName.toLowerCase() !== 'club') {
-      const fallback = rawName
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)+/g, '');
-      if (fallback) return fallback;
+
+    if (this.providerStore) {
+      const providers = this.providerStore.providers();
+      const expEmail = (exp.providerEmail || '').trim().toLowerCase();
+      const expName = (exp.providerName || '').trim().toLowerCase();
+      const expAgency = (exp.providerAgency || '').trim().toLowerCase();
+
+      const match = providers.find((p) => {
+        if (!p.slug) return false;
+        if (exp.providerId && p.id === exp.providerId) return true;
+        const pEmail = (p.email || '').trim().toLowerCase();
+        const pName = (p.name || '').trim().toLowerCase();
+        const pAgency = (p.agency || '').trim().toLowerCase();
+
+        if (expEmail && pEmail && pEmail === expEmail) return true;
+        if (expName && ((pName && pName === expName) || (pAgency && pAgency === expName))) return true;
+        if (expAgency && ((pAgency && pAgency === expAgency) || (pName && pName === expAgency))) return true;
+        return false;
+      });
+
+      if (match?.slug) {
+        return match.slug;
+      }
     }
+
     return null;
   }
 
   closeExperienceDetails(): void {
     this.selectedExperience.set(null);
+    if (!this.isUserHovering && !document.hidden) {
+      this.startAutoplay();
+    }
   }
 
   readonly breadcrumbs: BreadcrumbItem[] = [{ label: 'Inicio', url: '/' }, { label: 'Mi Perfil' }];
@@ -274,12 +294,13 @@ export class ProfileComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.isDestroyed) return;
     this.stopAutoplay();
     if (this.favoriteExperiences().length <= 1) return;
+    if (this.selectedExperience()) return;
     this.autoplayTimer = setInterval(() => {
       if (this.isDestroyed) {
         this.stopAutoplay();
         return;
       }
-      if (!this.isUserHovering && !document.hidden) {
+      if (!this.isUserHovering && !document.hidden && !this.selectedExperience()) {
         this.scrollCarousel('next');
       }
     }, this.autoplayIntervalMs);
@@ -299,12 +320,14 @@ export class ProfileComponent implements OnInit, AfterViewInit, OnDestroy {
 
   onCarouselMouseLeave(): void {
     this.isUserHovering = false;
-    this.startAutoplay();
+    if (!this.selectedExperience()) {
+      this.startAutoplay();
+    }
   }
 
   onCarouselNav(direction: 'prev' | 'next'): void {
     this.scrollCarousel(direction);
-    if (!this.isUserHovering) {
+    if (!this.isUserHovering && !this.selectedExperience()) {
       this.startAutoplay();
     }
   }
@@ -586,12 +609,17 @@ export class ProfileComponent implements OnInit, AfterViewInit, OnDestroy {
     this.activeModal.set(null);
     this.selectedExperience.set(null);
     this.activityService.closeReceipt();
+    if (!this.isUserHovering && !document.hidden) {
+      this.startAutoplay();
+    }
   }
 
   @HostListener('window:keydown.escape')
   onEscape(): void {
     if (this.activeModal()) {
       this.closeModal();
+    } else if (this.selectedExperience()) {
+      this.closeExperienceDetails();
     }
     this.profileMenuOpen.set(false);
     this.mobileMenuOpen.set(false);
@@ -600,8 +628,12 @@ export class ProfileComponent implements OnInit, AfterViewInit, OnDestroy {
   toggleExperienceDetails(exp: Experience): void {
     if (this.selectedExperience()?.id === exp.id) {
       this.selectedExperience.set(null);
+      if (!this.isUserHovering && !document.hidden) {
+        this.startAutoplay();
+      }
     } else {
       this.selectedExperience.set(exp);
+      this.stopAutoplay();
     }
   }
 

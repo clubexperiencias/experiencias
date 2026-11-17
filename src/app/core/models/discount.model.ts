@@ -32,6 +32,7 @@ export interface DiscountValidationResult {
   discount?: Discount;
   discountArs: number;
   error?: string;
+  codeExists?: boolean;
 }
 
 /**
@@ -81,3 +82,4 @@ export function calculateDiscountAmount(
   }
   return Math.max(0, Math.min(amount, subtotalArs));
 }
+

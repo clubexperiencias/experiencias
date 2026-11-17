@@ -32,6 +32,7 @@ export interface DiscountValidationResult {
   discount?: Discount;
   discountArs: number;
   error?: string;
+  codeExists?: boolean;
 }
 
 /**

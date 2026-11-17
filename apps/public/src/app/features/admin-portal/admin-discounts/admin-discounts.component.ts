@@ -423,14 +423,15 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
 
                 <!-- Descripción -->
                 <div class="form-group full-width">
-                  <label class="form-label">Descripción / Notas Internas</label>
+                  <label class="form-label">Descripción (Pública)</label>
                   <textarea
                     name="description"
                     [(ngModel)]="formData.description"
                     rows="2"
-                    placeholder="Detalles sobre la campaña o condiciones..."
+                    placeholder="Detalles sobre la campaña o condiciones visibles para los usuarios..."
                     class="form-control textarea"
                   ></textarea>
+                  <span class="field-hint">Esta descripción es de acceso público y visible al consultar la promoción.</span>
                 </div>
               </div>
 
@@ -1128,6 +1129,7 @@ export class AdminDiscountsComponent {
   editingId = signal<string | null>(null);
   saving = signal<boolean>(false);
   formError = signal<string | null>(null);
+  private modalSessionId = 0;
 
   formData: {
     code: string;
@@ -1213,6 +1215,7 @@ export class AdminDiscountsComponent {
   }
 
   openCreateModal(): void {
+    this.modalSessionId++;
     this.formData = this.initialFormData();
     this.isEditing.set(false);
     this.editingId.set(null);
@@ -1221,6 +1224,7 @@ export class AdminDiscountsComponent {
   }
 
   openEditModal(disc: Discount): void {
+    this.modalSessionId++;
     this.formData = {
       code: disc.code,
       name: disc.name,
@@ -1245,6 +1249,7 @@ export class AdminDiscountsComponent {
   }
 
   closeModal(): void {
+    this.modalSessionId++;
     this.modalOpen.set(false);
   }
 
@@ -1329,6 +1334,7 @@ export class AdminDiscountsComponent {
       return;
     }
 
+    const currentSessionId = this.modalSessionId;
     this.saving.set(true);
     try {
       const payload: CreateDiscountDto = {
@@ -1355,11 +1361,15 @@ export class AdminDiscountsComponent {
         await this.discountService.createDiscount(payload);
       }
 
+      if (this.modalSessionId !== currentSessionId) return;
       this.closeModal();
     } catch (err: any) {
+      if (this.modalSessionId !== currentSessionId) return;
       this.formError.set(err?.message || 'Error al guardar el descuento.');
     } finally {
-      this.saving.set(false);
+      if (this.modalSessionId === currentSessionId) {
+        this.saving.set(false);
+      }
     }
   }
 }

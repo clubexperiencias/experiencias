@@ -1,5 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { SUPABASE_CLIENT } from '../supabase/supabase.client';
+import { ExperienceService } from './experience.service';
 import {
   Discount,
   CreateDiscountDto,
@@ -14,6 +15,7 @@ import {
 })
 export class DiscountService {
   private readonly supabase = inject(SUPABASE_CLIENT, { optional: true });
+  private readonly expService = inject(ExperienceService, { optional: true });
 
   private readonly _discounts = signal<Discount[]>([]);
   readonly discounts = this._discounts.asReadonly();
@@ -134,9 +136,23 @@ export class DiscountService {
       if (dto.discountValue !== undefined) payload['discount_value'] = dto.discountValue;
       if (dto.scope !== undefined) {
         payload['scope'] = dto.scope;
-        payload['experience_id'] = dto.scope === 'experience' ? dto.experienceId : null;
-        payload['experience_slug'] = dto.scope === 'experience' ? dto.experienceSlug : null;
-        payload['provider_id'] = dto.scope === 'provider' ? dto.providerId : null;
+        if (dto.scope === 'general') {
+          payload['experience_id'] = null;
+          payload['experience_slug'] = null;
+          payload['provider_id'] = null;
+        } else if (dto.scope === 'experience') {
+          payload['provider_id'] = null;
+          if (dto.experienceId !== undefined) payload['experience_id'] = dto.experienceId;
+          if (dto.experienceSlug !== undefined) payload['experience_slug'] = dto.experienceSlug;
+        } else if (dto.scope === 'provider') {
+          payload['experience_id'] = null;
+          payload['experience_slug'] = null;
+          if (dto.providerId !== undefined) payload['provider_id'] = dto.providerId;
+        }
+      } else {
+        if (dto.experienceId !== undefined) payload['experience_id'] = dto.experienceId;
+        if (dto.experienceSlug !== undefined) payload['experience_slug'] = dto.experienceSlug;
+        if (dto.providerId !== undefined) payload['provider_id'] = dto.providerId;
       }
       if (dto.isAutomatic !== undefined) payload['is_automatic'] = dto.isAutomatic;
       if (dto.minAmountArs !== undefined) payload['min_amount_ars'] = dto.minAmountArs;
@@ -205,14 +221,40 @@ export class DiscountService {
   /**
    * Obtiene descuento automático si existe para una experiencia específica
    */
-  getAutomaticDiscountForExperience(experienceId?: string | null, experienceSlug?: string | null): Discount | null {
-    const list = this._discounts().filter((d) => d.active && d.isAutomatic);
+  getAutomaticDiscountForExperience(
+    experienceId?: string | null,
+    experienceSlug?: string | null,
+    providerId?: string | null,
+  ): Discount | null {
+    const now = new Date();
+    const list = this._discounts().filter(
+      (d) =>
+        d.active &&
+        d.isAutomatic &&
+        (!d.startsAt || new Date(d.startsAt) <= now) &&
+        (!d.endsAt || new Date(d.endsAt) >= now) &&
+        (d.maxUses == null || d.usesCount < d.maxUses),
+    );
+
+    let resolvedProviderId = providerId || null;
+    if (!resolvedProviderId && this.expService) {
+      const exp =
+        (experienceSlug ? this.expService.getExperienceBySlug(experienceSlug) : null) ||
+        (experienceId ? this.expService.getExperienceById(experienceId) : null);
+      if (exp?.providerId) {
+        resolvedProviderId = exp.providerId;
+      }
+    }
+
     return (
       list.find((d) => {
         if (d.scope === 'experience') {
           if (experienceId && d.experienceId === experienceId) return true;
           if (experienceSlug && d.experienceSlug === experienceSlug) return true;
           return false;
+        }
+        if (d.scope === 'provider') {
+          return Boolean(resolvedProviderId && d.providerId === resolvedProviderId);
         }
         if (d.scope === 'general') return true;
         return false;
@@ -228,17 +270,18 @@ export class DiscountService {
     experienceId?: string | null,
     experienceSlug?: string | null,
     subtotalArs: number = 0,
+    providerId?: string | null,
   ): Promise<DiscountValidationResult> {
     const cleanCode = (rawCode || '').trim().toUpperCase();
     if (!cleanCode) {
-      return { valid: false, discountArs: 0, error: 'Ingresá un código.' };
+      return { valid: false, discountArs: 0, error: 'Ingresá un código.', codeExists: false };
     }
 
-    // 1. Buscar en cache local primero
-    let discount = this._discounts().find((d) => d.code === cleanCode);
+    // 1. Si Supabase está disponible, consultar siempre el estado más reciente
+    let discount: Discount | null = null;
+    let fetchedFromRemote = false;
 
-    // 2. Si no está en cache local o falta consultar Supabase, consultar directamente
-    if (!discount && this.supabase) {
+    if (this.supabase) {
       try {
         const { data, error } = await this.supabase
           .from('descuentos')
@@ -246,38 +289,46 @@ export class DiscountService {
           .eq('code', cleanCode)
           .maybeSingle();
 
-        if (!error && data) {
-          discount = mapSupabaseDiscount(data);
-          this._discounts.update((prev) => {
-            const exists = prev.some((d) => d.id === discount!.id);
-            return exists ? prev.map((d) => (d.id === discount!.id ? discount! : d)) : [discount!, ...prev];
-          });
+        if (!error) {
+          fetchedFromRemote = true;
+          if (data) {
+            discount = mapSupabaseDiscount(data);
+            this._discounts.update((prev) => {
+              const exists = prev.some((d) => d.id === discount!.id);
+              return exists ? prev.map((d) => (d.id === discount!.id ? discount! : d)) : [discount!, ...prev];
+            });
+          }
         }
       } catch (err) {
-        console.warn('[DiscountService] Error consultando cupón:', err);
+        console.warn('[DiscountService] Error consultando cupón fresco en Supabase:', err);
       }
     }
 
+    // 2. Si no se pudo consultar de forma remota (sin Supabase o error), recurrir a cache local
+    if (!fetchedFromRemote) {
+      discount = this._discounts().find((d) => d.code === cleanCode) || null;
+    }
+
     if (!discount) {
-      return { valid: false, discountArs: 0, error: 'Código de descuento no válido.' };
+      return { valid: false, discountArs: 0, error: 'Código de descuento no válido.', codeExists: false };
     }
 
     if (!discount.active) {
-      return { valid: false, discountArs: 0, error: 'Este código de descuento no está activo.' };
+      return { valid: false, discount, discountArs: 0, error: 'Este código de descuento no está activo.', codeExists: true };
     }
 
     // Validar vigencia de fechas
     const now = new Date();
     if (discount.startsAt && new Date(discount.startsAt) > now) {
-      return { valid: false, discountArs: 0, error: 'Esta promoción aún no ha comenzado.' };
+      return { valid: false, discount, discountArs: 0, error: 'Esta promoción aún no ha comenzado.', codeExists: true };
     }
     if (discount.endsAt && new Date(discount.endsAt) < now) {
-      return { valid: false, discountArs: 0, error: 'Este código de descuento ha expirado.' };
+      return { valid: false, discount, discountArs: 0, error: 'Este código de descuento ha expirado.', codeExists: true };
     }
 
     // Validar límite de usos
     if (discount.maxUses != null && discount.usesCount >= discount.maxUses) {
-      return { valid: false, discountArs: 0, error: 'Este código ha alcanzado el límite máximo de usos.' };
+      return { valid: false, discount, discountArs: 0, error: 'Este código ha alcanzado el límite máximo de usos.', codeExists: true };
     }
 
     // Validar alcance (scope)
@@ -287,8 +338,48 @@ export class DiscountService {
       if (!matchId && !matchSlug) {
         return {
           valid: false,
+          discount,
           discountArs: 0,
           error: 'Este código de descuento no aplica para la experiencia seleccionada.',
+          codeExists: true,
+        };
+      }
+    } else if (discount.scope === 'provider') {
+      let resolvedProviderId = providerId || null;
+
+      if (!resolvedProviderId && this.expService) {
+        const exp =
+          (experienceSlug ? this.expService.getExperienceBySlug(experienceSlug) : null) ||
+          (experienceId ? this.expService.getExperienceById(experienceId) : null);
+        if (exp?.providerId) {
+          resolvedProviderId = exp.providerId;
+        }
+      }
+
+      if (!resolvedProviderId && this.supabase && (experienceId || experienceSlug)) {
+        try {
+          let query = this.supabase.from('experiencias').select('provider_id');
+          if (experienceId) {
+            query = query.eq('id', experienceId);
+          } else if (experienceSlug) {
+            query = query.eq('slug', experienceSlug);
+          }
+          const { data } = await query.maybeSingle();
+          if (data && 'provider_id' in data && data.provider_id) {
+            resolvedProviderId = (data as any).provider_id;
+          }
+        } catch (err) {
+          console.warn('[DiscountService] Error resolviendo prestador de la experiencia:', err);
+        }
+      }
+
+      if (!resolvedProviderId || resolvedProviderId !== discount.providerId) {
+        return {
+          valid: false,
+          discount,
+          discountArs: 0,
+          error: 'Este código de descuento no aplica para el prestador de esta experiencia.',
+          codeExists: true,
         };
       }
     }
@@ -297,8 +388,10 @@ export class DiscountService {
     if (discount.minAmountArs > 0 && subtotalArs < discount.minAmountArs) {
       return {
         valid: false,
+        discount,
         discountArs: 0,
         error: `El monto mínimo de reserva para este cupón es de $${discount.minAmountArs.toLocaleString('es-AR')}.`,
+        codeExists: true,
       };
     }
 
@@ -309,46 +402,46 @@ export class DiscountService {
       valid: true,
       discount,
       discountArs,
+      codeExists: true,
     };
   }
 
   /**
-   * Incrementa el contador de usos de un descuento tras confirmar un pago o reserva
+   * Registra la redención de un cupón mediante operación backend autorizada tras confirmar un pago o reserva
    */
-  async incrementDiscountUses(code: string): Promise<void> {
+  async incrementDiscountUses(code: string, reservationReference?: string | null): Promise<boolean> {
     const cleanCode = (code || '').trim().toUpperCase();
-    if (!cleanCode || !this.supabase) return;
+    if (!cleanCode || !this.supabase) return false;
 
     try {
-      const current = this._discounts().find((d) => d.code === cleanCode);
-      if (current) {
-        const nextUses = current.usesCount + 1;
-        await this.supabase
-          .from('descuentos')
-          .update({ uses_count: nextUses, updated_at: new Date().toISOString() })
-          .eq('id', current.id);
+      // 1. Invocar función RPC autorizada en el backend
+      const { data, error } = await this.supabase.rpc('record_discount_redemption', {
+        p_code: cleanCode,
+        p_reference: reservationReference || null,
+      });
 
-        this._discounts.update((prev) =>
-          prev.map((d) => (d.id === current.id ? { ...d, usesCount: nextUses } : d)),
-        );
-      } else {
-        // Incremento directo por código
-        const { data } = await this.supabase
-          .from('descuentos')
-          .select('id, uses_count')
-          .eq('code', cleanCode)
-          .maybeSingle();
-
-        if (data) {
-          const rowData = data as any;
-          await this.supabase
-            .from('descuentos')
-            .update({ uses_count: (rowData.uses_count || 0) + 1, updated_at: new Date().toISOString() })
-            .eq('id', rowData.id);
-        }
+      if (error) {
+        console.warn('[DiscountService] Error al registrar redención de descuento en backend:', error.message);
+        return false;
       }
+
+      const res = data as any;
+      if (res && res.status === 'ok') {
+        const nextUses = Number(res.uses_count);
+        const discountId = res.id;
+
+        // 2. Confirmada la persistencia en el backend, actualizar estado local y cache
+        this._discounts.update((prev) =>
+          prev.map((d) => (d.code === cleanCode || d.id === discountId ? { ...d, usesCount: nextUses } : d)),
+        );
+        return true;
+      }
+
+      console.warn('[DiscountService] Redención no autorizada o cupón no válido en backend:', res?.status);
+      return false;
     } catch (err) {
-      console.warn('[DiscountService] No se pudo incrementar el uso del cupón:', err);
+      console.warn('[DiscountService] Excepción al registrar redención de cupón:', err);
+      return false;
     }
   }
 }

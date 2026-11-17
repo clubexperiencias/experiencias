@@ -1,4 +1,5 @@
 import type { ExperienceAlbumPhoto } from './experience.model';
+import type { Discount } from './discount.model';
 export type { ExperienceAlbumPhoto };
 
 export type ExperienceStatus =
@@ -148,6 +149,8 @@ export interface NewTransferSubmission {
   dni: string;
   phone: string;
   discountCode?: string;
+  discountArs?: number;
+  validatedDiscount?: Discount;
   receiptFile: File;
   paymentMethod?: 'transfer' | 'mercadopago';
   surchargeArs?: number;

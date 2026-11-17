@@ -20,6 +20,8 @@ import {
   findDiscountCode,
 } from '../models/bank-transfer.model';
 import { Experience } from '../models/experience.model';
+import { calculateDiscountAmount } from '../models/discount.model';
+import { DiscountService } from './discount.service';
 import { TransactionalEmailService } from './transactional-email.service';
 import { NewsletterService } from './newsletter.service';
 import { ActivityHistoryService } from './activity-history.service';
@@ -212,6 +214,7 @@ export class ProviderStoreService {
   private readonly expService = inject(ExperienceService);
   private readonly supabase = inject(SUPABASE_CLIENT);
   private readonly storageService = inject(StorageService);
+  private readonly discountService = inject(DiscountService, { optional: true });
 
   private readonly _providers = signal<ProviderUser[]>(this.loadStoredProviders());
   private readonly _currentProvider = signal<ProviderUser | null>(this.loadStoredSession());
@@ -2253,16 +2256,59 @@ export class ProviderStoreService {
     if (fileError) {
       throw new Error(fileError);
     }
-    const discount = input.discountCode
-      ? (findDiscountCode(input.discountCode) ??
-        this.newsletter.findMemberDiscount(input.discountCode))
-      : undefined;
-    if (input.discountCode && !discount) {
-      throw new Error('El código de descuento no es válido.');
-    }
     const subtotal = experience.priceArs * input.participants;
-    const discountArs = discountAmount(subtotal, discount);
-    const amountArs = subtotal - discountArs;
+    let discountArs = 0;
+    let discountCode: string | undefined = undefined;
+
+    if (input.discountCode) {
+      discountCode = input.discountCode.trim().toUpperCase();
+
+      if (input.validatedDiscount) {
+        discountArs =
+          input.discountArs != null
+            ? input.discountArs
+            : calculateDiscountAmount(subtotal, input.validatedDiscount);
+      } else if (input.discountArs != null && input.discountArs > 0) {
+        discountArs = input.discountArs;
+      } else {
+        let dbValidated = false;
+        if (this.discountService) {
+          try {
+            const valRes = await this.discountService.validateDiscount(
+              input.discountCode,
+              experience.id,
+              experience.slug,
+              subtotal,
+              experience.providerId,
+            );
+            if (valRes.valid && valRes.discount) {
+              discountArs = valRes.discountArs;
+              dbValidated = true;
+            } else if (valRes.codeExists || valRes.discount) {
+              throw new Error(valRes.error || 'El código de descuento no es válido para esta reserva.');
+            }
+          } catch (err: any) {
+            if (err?.message && err.message !== 'El código de descuento no es válido.') {
+              throw err;
+            }
+            // Continuar a fallbacks solo si no fue un rechazo explícito de cupón existente
+          }
+        }
+
+        if (!dbValidated) {
+          const fallback =
+            findDiscountCode(input.discountCode) ??
+            this.newsletter.findMemberDiscount(input.discountCode);
+
+          if (!fallback) {
+            throw new Error('El código de descuento no es válido.');
+          }
+          discountArs = discountAmount(subtotal, fallback);
+        }
+      }
+    }
+
+    const amountArs = Math.max(0, subtotal - discountArs);
     const ref = this.buildReference(experience.slug);
 
     const uploadRes = await this.storageService.uploadReceipt(input.receiptFile, ref);
@@ -2281,7 +2327,7 @@ export class ProviderStoreService {
             p_date: input.date,
             p_participants: input.participants,
             p_amount_ars: amountArs,
-            p_discount_code: discount?.code || null,
+            p_discount_code: discountCode || null,
             p_discount_ars: discountArs,
             p_full_name: input.fullName.trim(),
             p_email: input.email.trim().toLowerCase(),
@@ -2347,7 +2393,7 @@ export class ProviderStoreService {
       date: input.date,
       participants: input.participants,
       amountArs,
-      ...(discount ? { discountCode: discount.code, discountArs } : {}),
+      ...(discountCode ? { discountCode, discountArs } : {}),
       fullName: input.fullName.trim(),
       email: input.email.trim().toLowerCase(),
       dni: input.dni.trim(),

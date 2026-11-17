@@ -792,6 +792,13 @@ export interface Database {
     };
 
     Functions: {
+      record_discount_redemption: {
+        Args: {
+          p_code: string;
+          p_reference?: string | null;
+        };
+        Returns: Json;
+      };
       record_waitlist_email: {
         Args: {
           p_email: string;

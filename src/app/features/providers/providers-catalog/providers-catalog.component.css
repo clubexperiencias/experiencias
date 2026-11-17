@@ -542,6 +542,13 @@
   min-width: 0;
 }
 
+.card-stats-row--featured {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.75rem;
+}
+
 .stat-item {
   display: inline-flex;
   align-items: center;
