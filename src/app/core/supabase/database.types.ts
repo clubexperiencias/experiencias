@@ -662,6 +662,75 @@ export interface Database {
         };
         Relationships: [];
       };
+
+      descuentos: {
+        Row: {
+          id: string;
+          code: string;
+          name: string;
+          description: string;
+          discount_type: 'percentage' | 'fixed_amount';
+          discount_value: number;
+          scope: 'general' | 'experience' | 'provider';
+          experience_id: string | null;
+          experience_slug: string | null;
+          provider_id: string | null;
+          is_automatic: boolean;
+          min_amount_ars: number;
+          max_discount_ars: number | null;
+          starts_at: string | null;
+          ends_at: string | null;
+          max_uses: number | null;
+          uses_count: number;
+          active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          code: string;
+          name: string;
+          description?: string;
+          discount_type: 'percentage' | 'fixed_amount';
+          discount_value: number;
+          scope?: 'general' | 'experience' | 'provider';
+          experience_id?: string | null;
+          experience_slug?: string | null;
+          provider_id?: string | null;
+          is_automatic?: boolean;
+          min_amount_ars?: number;
+          max_discount_ars?: number | null;
+          starts_at?: string | null;
+          ends_at?: string | null;
+          max_uses?: number | null;
+          uses_count?: number;
+          active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          code?: string;
+          name?: string;
+          description?: string;
+          discount_type?: 'percentage' | 'fixed_amount';
+          discount_value?: number;
+          scope?: 'general' | 'experience' | 'provider';
+          experience_id?: string | null;
+          experience_slug?: string | null;
+          provider_id?: string | null;
+          is_automatic?: boolean;
+          min_amount_ars?: number;
+          max_discount_ars?: number | null;
+          starts_at?: string | null;
+          ends_at?: string | null;
+          max_uses?: number | null;
+          uses_count?: number;
+          active?: boolean;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
 
     Views: {
@@ -723,6 +792,13 @@ export interface Database {
     };
 
     Functions: {
+      record_discount_redemption: {
+        Args: {
+          p_code: string;
+          p_reference?: string | null;
+        };
+        Returns: Json;
+      };
       record_waitlist_email: {
         Args: {
           p_email: string;

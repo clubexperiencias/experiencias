@@ -52,7 +52,15 @@ describe('ProvidersCatalogComponent - Rating Sorting', () => {
     remoteLoadPromise: Promise.resolve(),
     experiences: mockExperiences,
     publishedExperiences: signal<any[]>([]),
-    getExperiencesByProvider: vi.fn().mockReturnValue([]),
+    getExperiencesByProvider: vi.fn().mockImplementation((filter?: any) => {
+      if (!filter) return mockExperiences();
+      return mockExperiences().filter((e) => {
+        if (filter.slug && (e.providerSlug === filter.slug || e.providerId === filter.slug)) return true;
+        if (filter.email && e.providerEmail === filter.email) return true;
+        if (filter.agency && e.providerAgency === filter.agency) return true;
+        return false;
+      });
+    }),
   };
 
   const mockRatingService = {
@@ -259,7 +267,7 @@ describe('ProvidersCatalogComponent - Rating Sorting', () => {
       const providerKeywordMatching: ProviderUser = {
         id: 'prov-keyword',
         rubro: '   ',
-        bio: 'Hacemos travesías en kayak por el dique',
+        bio: 'Hacemos paseos en kayak por el dique',
       } as ProviderUser;
 
       expect(component.getProviderRubro(providerKeywordMatching)).toBe('Kayak & Náutica');

@@ -1065,8 +1065,71 @@ module.exports = async function handler(req, res) {
       const pricePerPerson = expData ? Number(expData.price_ars) || 0 : (Number(baseAmountArs) || 65000);
       const subtotal = pricePerPerson * count;
 
-      const discountObj = findDiscountCode(discountCode);
-      const discountArs = discountObj ? Math.round((subtotal * discountObj.percentOff) / 100) : 0;
+      let discountArs = 0;
+      if (discountCode) {
+        const cleanDiscountCode = String(discountCode).trim().toUpperCase();
+        let dbDiscount = null;
+
+        if (supabaseUrl && supabaseServiceKey) {
+          try {
+            const supabaseHost = new URL(supabaseUrl).hostname;
+            const authHeaders = {
+              'Content-Type': 'application/json',
+              apikey: supabaseServiceKey,
+              Authorization: `Bearer ${supabaseServiceKey}`,
+            };
+            const discRes = await requestHttps({
+              hostname: supabaseHost,
+              path: `/rest/v1/descuentos?code=eq.${encodeURIComponent(cleanDiscountCode)}&select=*`,
+              method: 'GET',
+              headers: authHeaders,
+            });
+
+            if (discRes.status >= 200 && discRes.status < 300 && Array.isArray(discRes.data) && discRes.data.length > 0) {
+              const d = discRes.data[0];
+              const now = new Date();
+              const active = d.active === true || d.active === 'true';
+              const startsValid = !d.starts_at || new Date(d.starts_at) <= now;
+              const endsValid = !d.ends_at || new Date(d.ends_at) >= now;
+              const usesValid = d.max_uses == null || (Number(d.uses_count) || 0) < Number(d.max_uses);
+              const minValid = !d.min_amount_ars || subtotal >= Number(d.min_amount_ars);
+
+              let scopeValid = true;
+              if (d.scope === 'experience') {
+                const matchId = expData?.id && d.experience_id === expData.id;
+                const matchSlug = expData?.slug && d.experience_slug === expData.slug;
+                scopeValid = Boolean(matchId || matchSlug);
+              } else if (d.scope === 'provider') {
+                scopeValid = Boolean(expData?.provider_id && d.provider_id === expData.provider_id);
+              }
+
+              if (active && startsValid && endsValid && usesValid && minValid && scopeValid) {
+                dbDiscount = d;
+              }
+            }
+          } catch (discErr) {
+            console.warn('[MercadoPago API] Error consultando descuento en Supabase:', discErr);
+          }
+        }
+
+        if (dbDiscount) {
+          const val = Number(dbDiscount.discount_value) || 0;
+          if (dbDiscount.discount_type === 'percentage') {
+            let calc = Math.round((subtotal * val) / 100);
+            if (dbDiscount.max_discount_ars != null && Number(dbDiscount.max_discount_ars) > 0) {
+              calc = Math.min(calc, Number(dbDiscount.max_discount_ars));
+            }
+            discountArs = calc;
+          } else if (dbDiscount.discount_type === 'fixed_amount') {
+            discountArs = Math.min(val, subtotal);
+          }
+        } else {
+          // Fallback a lista estática DISCOUNT_CODES
+          const discountObj = findDiscountCode(cleanDiscountCode);
+          discountArs = discountObj ? Math.round((subtotal * discountObj.percentOff) / 100) : 0;
+        }
+      }
+
       const trustedBase = Math.max(0, subtotal - discountArs);
       const trustedSurcharge = Math.round((trustedBase * clubSurchargePct) / 100);
       const trustedTotal = trustedBase + trustedSurcharge;
@@ -1500,6 +1563,26 @@ module.exports = async function handler(req, res) {
                     reviewed_at: new Date().toISOString(),
                   };
                 }
+
+                // Registrar uso del cupón de descuento en el servidor únicamente ante pago aprobado e idempotente
+                if (matchedRow.discount_code && matchedRow.status !== 'aprobado') {
+                  try {
+                    await requestHttps(
+                      {
+                        hostname: supabaseHost,
+                        path: `/rest/v1/rpc/record_discount_redemption`,
+                        method: 'POST',
+                        headers: authHeaders,
+                      },
+                      {
+                        p_code: String(matchedRow.discount_code).trim().toUpperCase(),
+                        p_reference: matchedRow.reference,
+                      }
+                    );
+                  } catch (discErr) {
+                    console.warn('[MercadoPago API] Error registrando uso de cupón en verify-payment:', discErr);
+                  }
+                }
               }
             }
           } catch (patchErr) {
@@ -1704,6 +1787,26 @@ module.exports = async function handler(req, res) {
 
             if (patchRes.status < 200 || patchRes.status >= 300) {
               return res.status(500).json({ error: 'Error al actualizar estado de reserva existente.' });
+            }
+
+            // Registrar uso del cupón de descuento en el servidor únicamente ante pago aprobado e idempotente
+            if (bookingStatus === 'aprobado' && matchedRow.discount_code && matchedRow.status !== 'aprobado') {
+              try {
+                await requestHttps(
+                  {
+                    hostname: supabaseHost,
+                    path: `/rest/v1/rpc/record_discount_redemption`,
+                    method: 'POST',
+                    headers: authHeaders,
+                  },
+                  {
+                    p_code: String(matchedRow.discount_code).trim().toUpperCase(),
+                    p_reference: matchedRow.reference,
+                  }
+                );
+              } catch (discErr) {
+                console.warn('[MercadoPago Webhook] Error registrando uso de cupón en aprobación:', discErr);
+              }
             }
           } else {
             // Si la reserva no existía previamente, resolver un experience_id válido antes de registrar

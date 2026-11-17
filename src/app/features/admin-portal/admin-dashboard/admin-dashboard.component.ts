@@ -24,6 +24,8 @@ import {
 import { AdminApplicationModalComponent } from '../admin-application-modal/admin-application-modal.component';
 import { ProviderRatingService } from '../../../core/services/provider-rating.service';
 import { FavoritesService } from '../../../core/services/favorites.service';
+import { DiscountService } from '../../../core/services/discount.service';
+import { Discount } from '../../../core/models/discount.model';
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -535,6 +537,128 @@ import { FavoritesService } from '../../../core/services/favorites.service';
         }
       </section>
 
+      <!-- Sección: Gestión de Descuentos & Promociones -->
+      <section class="dash-card">
+        <div class="card-head">
+          <div>
+            <span class="card-kicker">VENTAS & CONVERSIÓN</span>
+            <h2 class="card-title">Descuentos & Promociones</h2>
+            <span class="card-sub-info">
+              Cupones activos y ofertas especiales por experiencia o generales para toda la red.
+            </span>
+          </div>
+          <a [routerLink]="getAdminDiscountsRoute()" class="view-all-link">
+            <span>Gestionar Descuentos</span>
+            <mat-icon class="icon-inline">north_east</mat-icon>
+          </a>
+        </div>
+
+        <!-- Métricas Rápidas de Descuentos -->
+        <div class="discounts-dash-summary">
+          <div class="disc-sum-item">
+            <span class="disc-sum-label">Cupones Activos</span>
+            <strong class="disc-sum-value text-emerald">{{ activeDiscountsCount() }}</strong>
+            <span class="disc-sum-sub">{{ totalDiscountsCount() }} registrados</span>
+          </div>
+          <div class="disc-sum-item">
+            <span class="disc-sum-label">Por Experiencia</span>
+            <strong class="disc-sum-value text-amber">{{ experienceDiscountsCount() }}</strong>
+            <span class="disc-sum-sub">{{ automaticDiscountsCount() }} automáticas</span>
+          </div>
+          <div class="disc-sum-item">
+            <span class="disc-sum-label">Canjes Totales</span>
+            <strong class="disc-sum-value text-blue">{{ totalDiscountUses() }}</strong>
+            <span class="disc-sum-sub">En reservas y pagos</span>
+          </div>
+          <div class="disc-sum-item">
+            <span class="disc-sum-label">Ahorro Generado</span>
+            <strong class="disc-sum-value text-purple">{{ totalSavingsArs() | ars }}</strong>
+            <span class="disc-sum-sub">Beneficio total a socios</span>
+          </div>
+        </div>
+
+        <!-- Tabla Resumen de Descuentos Destacados -->
+        <div class="table-wrap">
+          <table class="dash-table">
+            <thead>
+              <tr>
+                <th>CÓDIGO</th>
+                <th>PROMOCIÓN</th>
+                <th>ALCANCE</th>
+                <th>BENEFICIO</th>
+                <th>VIGENCIA</th>
+                <th>USOS</th>
+                <th class="text-right">ESTADO</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (disc of recentDiscounts(); track disc.id) {
+                <tr>
+                  <td>
+                    <span class="discount-code-pill" [class.code-auto]="disc.isAutomatic">
+                      {{ disc.code }}
+                    </span>
+                  </td>
+                  <td>
+                    <div class="rank-entity-info">
+                      <strong class="rank-entity-name">{{ disc.name }}</strong>
+                      @if (disc.description) {
+                        <span class="rank-entity-sub">{{ disc.description }}</span>
+                      }
+                    </div>
+                  </td>
+                  <td>
+                    @if (disc.scope === 'experience') {
+                      <span class="scope-exp-badge" [title]="getDiscountExperienceTitle(disc)">
+                        <mat-icon class="scope-icon-inline">explore</mat-icon>
+                        {{ getDiscountExperienceTitle(disc) }}
+                      </span>
+                    } @else {
+                      <span class="scope-gen-badge">
+                        <mat-icon class="scope-icon-inline">public</mat-icon>
+                        General
+                      </span>
+                    }
+                  </td>
+                  <td>
+                    <span class="benefit-tag" [class.benefit-pct]="disc.discountType === 'percentage'">
+                      @if (disc.discountType === 'percentage') {
+                        {{ disc.discountValue }}% OFF
+                      } @else {
+                        {{ disc.discountValue | ars }} OFF
+                      }
+                    </span>
+                  </td>
+                  <td>
+                    <span class="validity-sub">
+                      {{ formatDiscountValidity(disc) }}
+                    </span>
+                  </td>
+                  <td>
+                    <span class="uses-tag">
+                      {{ disc.usesCount }} {{ disc.maxUses ? '/ ' + disc.maxUses : 'usos' }}
+                    </span>
+                  </td>
+                  <td class="text-right">
+                    <span class="status-indicator-pill" [class.status-active]="disc.active">
+                      {{ disc.active ? 'Activo' : 'Pausado' }}
+                    </span>
+                  </td>
+                </tr>
+              }
+              @if (recentDiscounts().length === 0) {
+                <tr>
+                  <td colspan="7" class="empty-cell">
+                    No hay descuentos registrados aún.
+                    <a [routerLink]="getAdminDiscountsRoute()" class="inline-action-link">Crear el primero</a>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       <!-- Sección 6: Ranking & Puntuaciones de la Plataforma -->
       <section class="dash-card">
         <div class="card-head">
@@ -555,11 +679,7 @@ import { FavoritesService } from '../../../core/services/favorites.service';
           <!-- Columna Izquierda: Top Prestadores -->
           <div class="ranking-dash-col">
             <div class="ranking-col-header">
-              <div class="col-title-wrap">
-                <mat-icon class="col-icon">star</mat-icon>
-                <h3 class="col-title">Prestadores Mejor Calificados</h3>
-              </div>
-              <span class="col-badge">TOP 5</span>
+              <h3 class="col-title">Top 5 de Prestadores Mejor Calificados</h3>
             </div>
 
             <div class="table-wrap">
@@ -580,9 +700,23 @@ import { FavoritesService } from '../../../core/services/favorites.service';
                         </span>
                       </td>
                       <td>
-                        <div class="rank-entity-info">
-                          <strong class="rank-entity-name">{{ prov.name }}</strong>
-                          <span class="rank-entity-sub">{{ prov.rating.count }} valoraciones</span>
+                        <div class="rank-exp-cell">
+                          @if (prov.avatar) {
+                            <img
+                              [src]="prov.avatar"
+                              [alt]="prov.name"
+                              class="rank-exp-thumb"
+                              (error)="onImgError($event)"
+                            />
+                          } @else {
+                            <div class="rank-exp-thumb rank-prov-placeholder">
+                              <span>{{ prov.name.charAt(0).toUpperCase() }}</span>
+                            </div>
+                          }
+                          <div class="rank-entity-info">
+                            <strong class="rank-entity-name">{{ prov.name }}</strong>
+                            <span class="rank-entity-sub">{{ prov.rating.count }} valoraciones</span>
+                          </div>
                         </div>
                       </td>
                       <td class="text-right">
@@ -605,11 +739,7 @@ import { FavoritesService } from '../../../core/services/favorites.service';
           <!-- Columna Derecha: Top Experiencias Más Favoritas -->
           <div class="ranking-dash-col">
             <div class="ranking-col-header">
-              <div class="col-title-wrap">
-                <mat-icon class="col-icon">favorite</mat-icon>
-                <h3 class="col-title">Experiencias Más Guardadas en Favoritos</h3>
-              </div>
-              <span class="col-badge">TOP 5</span>
+              <h3 class="col-title">Top 5 de Experiencias Más Guardadas en Favoritos</h3>
             </div>
 
             <div class="table-wrap">
@@ -3497,6 +3627,18 @@ import { FavoritesService } from '../../../core/services/favorites.service';
         border-radius: 4px;
         object-fit: cover;
         background: #111;
+        flex-shrink: 0;
+      }
+
+      .rank-prov-placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: rgba(255, 255, 255, 0.85);
+        font-weight: 700;
+        font-size: 0.85rem;
       }
 
       .rank-fav-pill {
@@ -3517,6 +3659,145 @@ import { FavoritesService } from '../../../core/services/favorites.service';
         width: 14px;
         height: 14px;
         color: #fb7185;
+      }
+
+      /* Estilos de la caja de Descuentos & Promociones */
+      .discounts-dash-summary {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 0.85rem;
+        margin-bottom: 1.25rem;
+      }
+
+      .disc-sum-item {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        border-radius: 4px;
+        padding: 0.85rem 1.1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+      }
+
+      .disc-sum-label {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: rgba(255, 255, 255, 0.55);
+      }
+
+      .disc-sum-value {
+        font-size: 1.55rem;
+        font-weight: 800;
+        line-height: 1.2;
+      }
+
+      .disc-sum-sub {
+        font-size: 0.74rem;
+        color: rgba(255, 255, 255, 0.45);
+      }
+
+      .text-emerald { color: #34d399; }
+      .text-amber { color: #f59e0b; }
+      .text-blue { color: #80b3ff; }
+      .text-purple { color: #c084fc; }
+
+      .discount-code-pill {
+        display: inline-flex;
+        align-items: center;
+        font-family: monospace;
+        font-weight: 800;
+        font-size: 0.82rem;
+        letter-spacing: 0.04em;
+        padding: 0.2rem 0.55rem;
+        border-radius: 3px;
+        background: rgba(128, 179, 255, 0.15);
+        color: #80b3ff;
+        border: 1px solid rgba(128, 179, 255, 0.3);
+      }
+
+      .discount-code-pill.code-auto {
+        background: rgba(245, 158, 11, 0.15);
+        color: #fbbf24;
+        border-color: rgba(245, 158, 11, 0.35);
+      }
+
+      .scope-exp-badge, .scope-gen-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        font-size: 0.76rem;
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .scope-exp-badge {
+        color: #fbbf24;
+      }
+
+      .scope-gen-badge {
+        color: rgba(255, 255, 255, 0.7);
+      }
+
+      .scope-icon-inline {
+        font-size: 14px;
+        width: 14px;
+        height: 14px;
+        flex-shrink: 0;
+      }
+
+      .benefit-tag {
+        display: inline-block;
+        font-weight: 800;
+        font-size: 0.8rem;
+        padding: 0.2rem 0.5rem;
+        border-radius: 3px;
+        background: rgba(52, 211, 153, 0.15);
+        color: #34d399;
+        border: 1px solid rgba(52, 211, 153, 0.3);
+      }
+
+      .benefit-tag.benefit-pct {
+        background: rgba(192, 132, 252, 0.15);
+        color: #c084fc;
+        border-color: rgba(192, 132, 252, 0.3);
+      }
+
+      .validity-sub {
+        font-size: 0.78rem;
+        color: rgba(255, 255, 255, 0.65);
+        white-space: nowrap;
+      }
+
+      .uses-tag {
+        font-size: 0.8rem;
+        color: rgba(255, 255, 255, 0.75);
+      }
+
+      .status-indicator-pill {
+        display: inline-block;
+        font-size: 0.74rem;
+        font-weight: 700;
+        padding: 0.2rem 0.55rem;
+        border-radius: 9999px;
+        background: rgba(255, 255, 255, 0.08);
+        color: rgba(255, 255, 255, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+      }
+
+      .status-indicator-pill.status-active {
+        background: rgba(52, 211, 153, 0.12);
+        color: #34d399;
+        border-color: rgba(52, 211, 153, 0.35);
+      }
+
+      .inline-action-link {
+        color: #80b3ff;
+        text-decoration: underline;
+        margin-left: 0.4rem;
       }
     `,
   ],
@@ -3561,16 +3842,33 @@ export class AdminDashboardComponent {
     this.store.experienceRequests().filter((r) => r.status === 'pendiente'),
   );
 
+  readonly discountService = inject(DiscountService);
+  readonly activeDiscountsCount = computed(() => this.discountService.discounts().filter((d) => d.active).length);
+  readonly totalDiscountsCount = computed(() => this.discountService.discounts().length);
+  readonly experienceDiscountsCount = computed(() => this.discountService.discounts().filter((d) => d.scope === 'experience').length);
+  readonly automaticDiscountsCount = computed(() => this.discountService.discounts().filter((d) => d.isAutomatic).length);
+  readonly totalDiscountUses = computed(() => this.discountService.discounts().reduce((sum, d) => sum + (d.usesCount || 0), 0));
+  readonly recentDiscounts = computed(() => this.discountService.discounts().slice(0, 5));
+  readonly totalSavingsArs = computed(() => {
+    return this.store
+      .submissions()
+      .filter((s) => s.status === 'aprobado' && (s.discountArs || 0) > 0)
+      .reduce((sum, s) => sum + (s.discountArs || 0), 0);
+  });
+
   readonly topRatedProviders = computed(() => {
     const officialProviders = this.store.providerStore.providers();
+    const exps = this.webExperiences();
     const rows = officialProviders
       .filter((p) => p.verified && p.status !== 'dado_de_baja' && p.status !== 'pendiente')
       .map((p) => {
         const rating = this.ratingService.getRating(p);
+        const avatar = this.getProviderAvatar(p, exps);
         return {
           provider: p,
           name: p.agency?.trim() || p.name?.trim() || 'Prestador Oficial',
           slug: p.slug || slugify(p.agency || p.name || p.id),
+          avatar,
           rating,
         };
       });
@@ -4252,6 +4550,62 @@ export class AdminDashboardComponent {
       (exp) => this.isClub(exp),
       this.store.clubProfile().email || 'admin@experiencias.club',
     );
+  }
+
+  getProviderAvatar(p: ProviderUser, exps?: any[]): string | null {
+    if (p.avatar && p.avatar.trim()) {
+      return p.avatar.trim();
+    }
+    const slug = (p.slug || '').toLowerCase().trim();
+    const email = (p.email || '').toLowerCase().trim();
+    const agency = (p.agency || '').toLowerCase().trim();
+    if (
+      slug === 'club-de-experiencias' ||
+      slug === 'club' ||
+      email === 'contacto@clubexperiencias.com' ||
+      agency.includes('club de experiencias')
+    ) {
+      return '/assets/images/kayak-video.png';
+    }
+    if (p.coverImage && p.coverImage.trim()) {
+      return p.coverImage.trim();
+    }
+    const list = exps || this.webExperiences();
+    const exp = list.find(
+      (e) =>
+        (p.id && (e.providerId === p.id || e.id === p.id)) ||
+        (p.slug && (e.providerSlug === p.slug || e.slug === p.slug)) ||
+        (p.email && e.providerEmail === p.email),
+    );
+    if (exp?.coverImage && exp.coverImage.trim()) {
+      return exp.coverImage.trim();
+    }
+    return null;
+  }
+
+  getAdminDiscountsRoute(): string {
+    const rawPath = this.router.url.split('?')[0].split('#')[0];
+    const segments = rawPath.split('/').filter(Boolean);
+    return segments[0] === 'admin' ? '/admin/descuentos' : '/descuentos';
+  }
+
+  getDiscountExperienceTitle(disc: Discount): string {
+    if (disc.experienceId) {
+      const exp = this.webExperiences().find((e) => e.id === disc.experienceId);
+      if (exp) return exp.title;
+    }
+    return disc.experienceSlug || 'Experiencia específica';
+  }
+
+  formatDiscountValidity(disc: Discount): string {
+    if (!disc.startsAt && !disc.endsAt) return 'Permanente';
+    if (disc.startsAt && disc.endsAt) {
+      return `${disc.startsAt.split('T')[0]} al ${disc.endsAt.split('T')[0]}`;
+    }
+    if (disc.endsAt) {
+      return `Hasta ${disc.endsAt.split('T')[0]}`;
+    }
+    return `Desde ${disc.startsAt!.split('T')[0]}`;
   }
 
   getPublicExperienceUrl(exp: { publicUrl?: string; slug?: string; detailRoute?: string }): string {

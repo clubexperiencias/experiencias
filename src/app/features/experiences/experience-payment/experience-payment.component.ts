@@ -25,6 +25,8 @@ import { AdminStoreService } from '../../../core/services/admin-store.service';
 import { isClubExperience } from '../../../core/models/club-profile.model';
 import { NotificationService } from '../../../core/services/notification.service';
 import { isSupabaseConfigured } from '../../../core/supabase/supabase.client';
+import { DiscountService } from '../../../core/services/discount.service';
+import { Discount, calculateDiscountAmount } from '../../../core/models/discount.model';
 import {
   BANK_TRANSFER_DESTINATION,
   DiscountCode,
@@ -63,6 +65,7 @@ export class ExperiencePaymentComponent implements OnInit {
   private readonly newsletter = inject(NewsletterService);
   private readonly notificationService = inject(NotificationService);
   private readonly adminStore = inject(AdminStoreService);
+  private readonly discountService = inject(DiscountService);
 
   readonly paymentMethod = signal<'transfer' | 'mercadopago'>('transfer');
 
@@ -248,10 +251,67 @@ export class ExperiencePaymentComponent implements OnInit {
   );
 
   readonly discountInput = signal('');
-  readonly appliedDiscount = signal<DiscountCode | undefined>(undefined);
+  readonly appliedDiscount = signal<{
+    code: string;
+    label: string;
+    percentOff?: number;
+    fixedAmountArs?: number;
+    isAutomatic?: boolean;
+    rawDiscount?: Discount;
+  } | undefined>(undefined);
+  readonly calculatedDiscountArs = signal<number | null>(null);
   readonly discountError = signal<string | null>(null);
-  readonly discountArs = computed(() => discountAmount(this.subtotal(), this.appliedDiscount()));
-  readonly baseTotal = computed(() => this.subtotal() - this.discountArs());
+  private readonly dismissedAutoDiscountExpId = signal<string | null>(null);
+
+  readonly discountArs = computed(() => {
+    const applied = this.appliedDiscount();
+    if (!applied) return 0;
+
+    const currentSubtotal = this.subtotal();
+    const exp = this.experience();
+
+    // 1. Si disponemos del objeto rawDiscount (Supabase), revalidar elegibilidad frente a los inputs de reserva actuales
+    if (applied.rawDiscount) {
+      const raw = applied.rawDiscount;
+
+      // Revalidar monto mínimo de compra
+      if (raw.minAmountArs > 0 && currentSubtotal < raw.minAmountArs) {
+        return 0;
+      }
+
+      // Revalidar vigencia si cambió la experiencia
+      if (raw.scope === 'experience' && exp) {
+        const matchId = raw.experienceId && exp.id === raw.experienceId;
+        const matchSlug = raw.experienceSlug && exp.slug === raw.experienceSlug;
+        if (!matchId && !matchSlug) return 0;
+      }
+
+      // Revalidar prestador si cambió la experiencia
+      if (raw.scope === 'provider' && exp && raw.providerId) {
+        if (exp.providerId !== raw.providerId) return 0;
+      }
+
+      // Recalcular monto de descuento dinámicamente según subtotal actualizado
+      return calculateDiscountAmount(currentSubtotal, raw);
+    }
+
+    // 2. Si es monto fijo directo
+    if (applied.fixedAmountArs != null && applied.fixedAmountArs > 0) {
+      return Math.min(applied.fixedAmountArs, currentSubtotal);
+    }
+
+    // 3. Si tiene porcentaje (ej: fallback o socios fundadores)
+    if (applied.percentOff != null && applied.percentOff > 0) {
+      return Math.round((currentSubtotal * applied.percentOff) / 100);
+    }
+
+    // 4. Fallback si existiera monto estático personalizado
+    const custom = this.calculatedDiscountArs();
+    if (custom !== null) return Math.min(custom, currentSubtotal);
+
+    return discountAmount(currentSubtotal, applied as any);
+  });
+  readonly baseTotal = computed(() => Math.max(0, this.subtotal() - this.discountArs()));
 
   readonly mercadoPagoSurchargeArs = computed(() => {
     if (this.paymentMethod() !== 'mercadopago') return 0;
@@ -261,20 +321,127 @@ export class ExperiencePaymentComponent implements OnInit {
 
   readonly total = computed(() => this.baseTotal() + this.mercadoPagoSurchargeArs());
 
-  applyDiscount(): void {
+  private readonly autoDiscountEffect = effect(() => {
+    const exp = this.experience();
+    const currentApplied = this.appliedDiscount();
+    // No pisar cupones ingresados manualmente por el usuario
+    if (currentApplied && !currentApplied.isAutomatic) return;
+
+    if (!exp) {
+      if (currentApplied?.isAutomatic) {
+        this.appliedDiscount.set(undefined);
+        this.calculatedDiscountArs.set(null);
+      }
+      this.dismissedAutoDiscountExpId.set(null);
+      return;
+    }
+
+    // Si el usuario quitó explícitamente el descuento automático de esta experiencia, no volver a reponerlo
+    const expKey = exp.id || exp.slug;
+    if (this.dismissedAutoDiscountExpId() === expKey) {
+      return;
+    }
+
+    const subtotal = this.subtotal();
+    const auto = this.discountService.getAutomaticDiscountForExperience(exp.id, exp.slug, exp.providerId);
+    const isEligible = auto && (!auto.minAmountArs || subtotal >= auto.minAmountArs);
+
+    if (isEligible && auto) {
+      const label =
+        auto.discountType === 'percentage'
+          ? `${auto.discountValue}% OFF (${auto.name})`
+          : `$${auto.discountValue.toLocaleString('es-AR')} OFF (${auto.name})`;
+
+      if (currentApplied?.code !== auto.code) {
+        this.appliedDiscount.set({
+          code: auto.code,
+          label,
+          percentOff: auto.discountType === 'percentage' ? auto.discountValue : 0,
+          fixedAmountArs: auto.discountType === 'fixed_amount' ? auto.discountValue : undefined,
+          isAutomatic: true,
+          rawDiscount: auto,
+        });
+        this.calculatedDiscountArs.set(null);
+      }
+    } else if (currentApplied?.isAutomatic) {
+      this.appliedDiscount.set(undefined);
+      this.calculatedDiscountArs.set(null);
+    }
+  });
+
+  async applyDiscount(): Promise<void> {
     const raw = this.discountInput().trim();
     if (!raw) {
       this.discountError.set('Ingresá un código.');
       return;
     }
-    const discount = findDiscountCode(raw) ?? this.newsletter.findMemberDiscount(raw);
-    this.appliedDiscount.set(discount);
-    this.discountError.set(discount ? null : 'Código inválido o vencido.');
-    if (discount) this.discountInput.set('');
+
+    const exp = this.experience();
+    const subtotal = this.subtotal();
+
+    // 1. Validar dinámicamente con DiscountService (Supabase)
+    const result = await this.discountService.validateDiscount(
+      raw,
+      exp?.id,
+      exp?.slug,
+      subtotal,
+      exp?.providerId,
+    );
+
+    if (result.valid && result.discount) {
+      const d = result.discount;
+      const label =
+        d.discountType === 'percentage'
+          ? `${d.discountValue}% OFF (${d.name})`
+          : `$${d.discountValue.toLocaleString('es-AR')} OFF (${d.name})`;
+
+      this.appliedDiscount.set({
+        code: d.code,
+        label,
+        percentOff: d.discountType === 'percentage' ? d.discountValue : 0,
+        fixedAmountArs: d.discountType === 'fixed_amount' ? d.discountValue : undefined,
+        rawDiscount: d,
+      });
+      this.calculatedDiscountArs.set(null);
+      this.dismissedAutoDiscountExpId.set(null);
+      this.discountError.set(null);
+      this.discountInput.set('');
+      return;
+    }
+
+    // Si el sistema administrado conoce el código pero lo rechazó (inactivo, vencido, alcance, límite de usos o monto no válido),
+    // preservar el rechazo y no aplicar fallbacks estáticos obsoletos.
+    const dbCodeExists = result.codeExists ?? Boolean(result.discount);
+    if (dbCodeExists) {
+      this.discountError.set(result.error || 'Código no disponible para esta reserva.');
+      return;
+    }
+
+    // 2. Solo recurrir al fallback de cupón predefinido o socio fundador si el sistema administrado no conoce el código
+    const fallback = findDiscountCode(raw) ?? this.newsletter.findMemberDiscount(raw);
+    if (fallback) {
+      this.appliedDiscount.set({
+        code: fallback.code,
+        label: fallback.label,
+        percentOff: fallback.percentOff,
+      });
+      this.calculatedDiscountArs.set(null);
+      this.dismissedAutoDiscountExpId.set(null);
+      this.discountError.set(null);
+      this.discountInput.set('');
+      return;
+    }
+
+    this.discountError.set(result.error || 'Código inválido o vencido.');
   }
 
   removeDiscount(): void {
+    const exp = this.experience();
+    if (exp) {
+      this.dismissedAutoDiscountExpId.set(exp.id || exp.slug);
+    }
     this.appliedDiscount.set(undefined);
+    this.calculatedDiscountArs.set(null);
     this.discountError.set(null);
   }
 
@@ -940,6 +1107,7 @@ export class ExperiencePaymentComponent implements OnInit {
           this.checkoutMember.set(profileResult.entry);
         }
       }
+      const applied = this.appliedDiscount();
       const submission = await this.store.submitTransfer({
         experienceId: exp.id,
         date: value.date,
@@ -948,9 +1116,17 @@ export class ExperiencePaymentComponent implements OnInit {
         email: authenticatedMember?.email ?? normalizedEmail,
         dni: value.dni,
         phone: value.phone,
-        discountCode: this.appliedDiscount()?.code,
+        discountCode: applied?.code,
+        discountArs: this.discountArs(),
+        validatedDiscount: applied?.rawDiscount,
         receiptFile: file,
       });
+      if (applied?.code) {
+        void this.discountService.incrementDiscountUses(
+          applied.code,
+          (submission as any)?.reference || null,
+        );
+      }
       this.confirmation.set(submission);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {

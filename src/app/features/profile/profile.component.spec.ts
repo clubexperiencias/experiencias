@@ -9,7 +9,12 @@ describe('ProfileComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [ProfileComponent],
-      providers: [provideRouter([{ path: 'ingresar', component: ProfileComponent }])],
+      providers: [
+        provideRouter([
+          { path: 'perfil', component: ProfileComponent },
+          { path: 'ingresar', component: ProfileComponent },
+        ]),
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(ProfileComponent);
@@ -125,15 +130,28 @@ describe('ProfileComponent', () => {
   });
 
   it('should have a logout button that resets current subscription', async () => {
-    await component.newsletter.joinWaitlist({ email: 'perfil@test.com' });
+    vi.spyOn(component.router, 'url', 'get').mockReturnValue('/perfil');
+    (component.newsletter as any)._currentMember.set({
+      id: 'socio-1',
+      email: 'perfil@test.com',
+      fullName: 'Perfil Test',
+      status: 'confirmed',
+      createdAt: new Date().toISOString(),
+    });
     fixture.detectChanges();
 
-    const logoutBtn = fixture.nativeElement.querySelector('.logout-btn') as HTMLElement;
+    const logoutBtn = fixture.nativeElement.querySelector('.logout-header-btn, .logout-btn') as HTMLElement;
     expect(logoutBtn).toBeTruthy();
     expect(logoutBtn.textContent).toContain('Cerrar Sesión');
 
     logoutBtn.click();
     fixture.detectChanges();
+
+    const confirmBtn = fixture.nativeElement.querySelector('.logout-confirm-btn') as HTMLElement;
+    if (confirmBtn) {
+      confirmBtn.click();
+      fixture.detectChanges();
+    }
 
     expect(component.newsletter.isSubscribed()).toBe(false);
   });

@@ -157,6 +157,14 @@ const adminRoutes: Routes = [
           ),
       },
       {
+        path: 'descuentos',
+        title: 'Descuentos & Promociones - Portal de Admin',
+        loadComponent: () =>
+          import('./features/admin-portal/admin-discounts/admin-discounts.component').then(
+            (m) => m.AdminDiscountsComponent,
+          ),
+      },
+      {
         path: 'logs',
         title: 'Registro de Actividad - Portal de Admin',
         loadComponent: () =>
@@ -612,6 +620,14 @@ const publicRoutes: Routes = [
           ),
       },
       {
+        path: 'descuentos',
+        title: 'Descuentos & Promociones - Portal de Admin',
+        loadComponent: () =>
+          import('./features/admin-portal/admin-discounts/admin-discounts.component').then(
+            (m) => m.AdminDiscountsComponent,
+          ),
+      },
+      {
         path: 'logs',
         title: 'Registro de Actividad - Portal de Admin',
         loadComponent: () =>
@@ -748,6 +764,11 @@ const publicRoutes: Routes = [
   {
     path: 'ranking',
     redirectTo: 'admin/ranking',
+    pathMatch: 'full',
+  },
+  {
+    path: 'descuentos',
+    redirectTo: 'admin/descuentos',
     pathMatch: 'full',
   },
 

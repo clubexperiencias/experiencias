@@ -144,21 +144,17 @@
                       </p>
 
                       <!-- Meta / Stats del Prestador (estilo experiencias) -->
-                      <div class="card-stats-row">
-                        <div class="stats-top-row">
-                          <span class="stat-text">
-                            @let count = getExperiencesCount(p);
-                            {{ count }} {{ count === 1 ? 'salida activa' : 'salidas activas' }}
-                          </span>
-                          <span class="stat-text stat-region" [title]="'Región principal: ' + getProviderRegion(p)">
-                            Región: <strong class="stat-bold">{{ getProviderRegion(p) }}</strong>
-                          </span>
-                        </div>
-                        <div class="stats-bottom-row" [title]="'Rubro: ' + getProviderRubro(p)">
-                          <span class="stat-text stat-rubro">
-                            Rubro: <strong class="stat-bold">{{ getProviderRubro(p) }}</strong>
-                          </span>
-                        </div>
+                      <div class="card-stats-row card-stats-row--featured">
+                        <span class="stat-text stat-count">
+                          @let count = getExperiencesCount(p);
+                          {{ count }} {{ count === 1 ? 'salida activa' : 'salidas activas' }}
+                        </span>
+                        <span class="stat-text stat-region" [title]="'Región principal: ' + getProviderRegion(p)">
+                          Región: <strong class="stat-bold">{{ getProviderRegion(p) }}</strong>
+                        </span>
+                        <span class="stat-text stat-rubro" [title]="'Rubro: ' + getProviderRubro(p)">
+                          Rubro: <strong class="stat-bold">{{ getProviderRubro(p) }}</strong>
+                        </span>
                       </div>
 
                       <!-- Botón de acción al Perfil Público -->
