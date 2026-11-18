@@ -150,7 +150,7 @@ export const MEMBERSHIP_TIERS: MembershipTierInfo[] = [
     howToReach: 'Creando tu perfil al vincular tu cuenta de Google.',
     monthlyPriceArs: 0,
     benefits: [
-      'Enterarse de las nuevas experiencias y descuentos antes que nadie',
+      'Enterate de las nuevas experiencias y descuentos antes que nadie',
       'Cupo asegurado prioritario en fechas de alta demanda',
     ],
     discountPercent: 0,

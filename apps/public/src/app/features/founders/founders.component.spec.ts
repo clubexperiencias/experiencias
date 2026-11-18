@@ -1,16 +1,28 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { FoundersComponent } from './founders.component';
+import { NewsletterService } from '../../core/services/newsletter.service';
 
 describe('FoundersComponent (/fundadores)', () => {
   let component: FoundersComponent;
   let fixture: ComponentFixture<FoundersComponent>;
+  let fakeNewsletter: jasmine.SpyObj<NewsletterService>;
 
   beforeEach(async () => {
     localStorage.clear();
+    fakeNewsletter = jasmine.createSpyObj<NewsletterService>('NewsletterService', [
+      'submitFounderApplication',
+      'resetCurrentSubscription',
+    ]);
+    (fakeNewsletter as any).currentMember = jasmine.createSpy('currentMember').and.returnValue(null);
+    fakeNewsletter.submitFounderApplication.and.resolveTo({ success: true });
+
     await TestBed.configureTestingModule({
       imports: [FoundersComponent],
-      providers: [provideRouter([])],
+      providers: [
+        provideRouter([]),
+        { provide: NewsletterService, useValue: fakeNewsletter },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(FoundersComponent);
@@ -42,6 +54,13 @@ describe('FoundersComponent (/fundadores)', () => {
     fixture.detectChanges();
 
     expect(component.founderSuccess()).toBe(true);
+    expect(fakeNewsletter.submitFounderApplication).toHaveBeenCalledWith({
+      fullName: 'Ignacio Balcarce',
+      email: 'ignacio@fundador.com',
+      phone: '+54 9 3834 123456',
+      motivationLetter: 'Mi carta de motivación para el círculo vitalicio...',
+      agreedToProtocol: true,
+    });
     const successCard = fixture.nativeElement.querySelector('.founder-success-card');
     expect(successCard).toBeTruthy();
     expect(successCard.textContent).toContain('¡Carta de Admisión en Evaluación!');

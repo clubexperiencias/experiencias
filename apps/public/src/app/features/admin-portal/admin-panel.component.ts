@@ -17,6 +17,7 @@ const ROUTE_LABELS: Record<string, string> = {
   experiencias: 'EXPERIENCIAS',
   ranking: 'RANKING & PUNTUACIONES',
   descuentos: 'DESCUENTOS & PROMOCIONES',
+  nuevo: 'NUEVO DESCUENTO',
   plenos: 'MEMBRESÍAS PLENAS',
   fundadores: 'CÍRCULO DE FUNDADORES',
   nueva: 'NUEVA',

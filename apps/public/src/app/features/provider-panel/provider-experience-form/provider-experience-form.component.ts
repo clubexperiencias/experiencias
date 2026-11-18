@@ -47,7 +47,27 @@ export class ProviderExperienceFormComponent implements OnInit {
     'Moderada',
     'Exigente',
     'Alta Montaña',
+    'Ninguna',
   ];
+  readonly durationOptions: readonly string[] = [
+    '30 minutos',
+    '1 hora',
+    '2 horas',
+    '3 horas',
+    '4 horas (Media jornada)',
+    '5 horas',
+    '6 horas',
+    '7 horas',
+    '8 horas (Jornada completa)',
+    'Día completo (10 h)',
+    '2 días',
+    '3 días',
+    '4 días o más',
+  ];
+
+  isCustomDuration(val: string | null | undefined): boolean {
+    return Boolean(val && !this.durationOptions.includes(val));
+  }
   readonly regions = [
     'Valle Central y Ambato',
     'Puna de Atacama',

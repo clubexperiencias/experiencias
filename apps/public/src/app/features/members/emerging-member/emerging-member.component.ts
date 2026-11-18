@@ -88,12 +88,12 @@ export class EmergingMemberComponent implements OnInit {
       description: 'Activación gratuita sin datos bancarios.',
     },
     {
-      title: 'Lista de Espera Oficial',
+      title: 'Socio Oficial del Club',
       description: 'Asignación de número de socio.',
     },
     {
-      title: 'Acceso a Preventas',
-      description: 'Prioridad 24h en expediciones privadas.',
+      title: 'Información Exclusiva',
+      description: 'Descuentos y nuevas experiencias.',
     },
   ];
 

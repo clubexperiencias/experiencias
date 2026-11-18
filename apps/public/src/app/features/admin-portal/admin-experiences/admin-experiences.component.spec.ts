@@ -203,5 +203,40 @@ describe('AdminExperiencesComponent - Mercado Pago Precedence', () => {
       expect(component.editDatesRaw()).toBe('A coordinar');
     });
   });
+
+  describe('delete confirmation modal', () => {
+    it('should display the selected record ID alongside its title and route', () => {
+      const exp: Partial<Experience> = {
+        id: 'exp-delete-999',
+        slug: 'kayak-sunset-del-valle',
+        title: 'Kayak Sunset del Valle',
+      };
+      component.openDeleteModal(exp as Experience);
+      fixture.detectChanges();
+
+      const modal = fixture.nativeElement.querySelector('.confirm-delete-modal-dialog');
+      expect(modal).toBeTruthy();
+
+      const targetTitle = modal.querySelector('.target-title');
+      expect(targetTitle?.textContent).toContain('Kayak Sunset del Valle');
+
+      const targetId = modal.querySelector('.target-id');
+      expect(targetId?.textContent).toContain('exp-delete-999');
+      expect(targetId?.textContent).toContain('/experiencias/kayak-sunset-del-valle');
+    });
+  });
+
+  describe('duration dropdown', () => {
+    it('should have duration dropdown options matching provider form', () => {
+      expect(component.durationOptions).toContain('4 horas (Media jornada)');
+      expect(component.durationOptions).toContain('8 horas (Jornada completa)');
+      expect(component.durationOptions).toContain('1 hora');
+    });
+
+    it('should initialize create modal with 4 horas (Media jornada)', () => {
+      component.openCreateModal();
+      expect(component.editDurationLabel()).toBe('4 horas (Media jornada)');
+    });
+  });
 });
 

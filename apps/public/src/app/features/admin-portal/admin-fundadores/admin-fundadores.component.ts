@@ -263,14 +263,6 @@ export interface FundadorRow {
                             <span class="letter-snippet-text" [title]="row.motivationLetter">
                               "{{ getSnippet(row.motivationLetter) }}"
                             </span>
-                            <button
-                              type="button"
-                              class="btn-read-letter"
-                              (click)="openLetterModal(row)"
-                            >
-                              <mat-icon class="icon-xs">visibility</mat-icon>
-                              <span>Leer Carta</span>
-                            </button>
                           } @else {
                             <span class="no-letter">Sin carta adjunta</span>
                           }
@@ -291,29 +283,8 @@ export interface FundadorRow {
                             (click)="openLetterModal(row)"
                             title="Revisar Carta y Evaluar Postulación"
                           >
-                            <mat-icon class="icon-sm">fact_check</mat-icon>
-                            <span>Evaluar</span>
+                            <span>EVALUAR</span>
                           </button>
-
-                          @if (row.status !== 'vitalicio') {
-                            <button
-                              type="button"
-                              class="btn-quick-approve"
-                              (click)="updateStatus(row, 'vitalicio')"
-                              title="Aprobar Membresía Vitalicia"
-                            >
-                              Aprobar
-                            </button>
-                          } @else {
-                            <button
-                              type="button"
-                              class="btn-quick-reject"
-                              (click)="updateStatus(row, 'rechazado')"
-                              title="Revocar o archivar"
-                            >
-                              Revocar
-                            </button>
-                          }
                         </div>
                       </td>
                     </tr>
@@ -354,7 +325,13 @@ export interface FundadorRow {
                 <div class="meta-item">
                   <span class="m-label">Estado de Evaluación</span>
                   <span class="status-badge" [attr.data-status]="row.status">
-                    {{ row.status.toUpperCase() }}
+                    @switch (row.status) {
+                      @case ('vitalicio') { VITALICIO CONFIRMADO }
+                      @case ('en_evaluacion') { EN EVALUACIÓN }
+                      @case ('rechazado') { RECHAZADO }
+                      @case ('baja') { DADO DE BAJA }
+                      @default { {{ row.statusLabel || row.status }} }
+                    }
                   </span>
                 </div>
                 <div class="meta-item">
@@ -384,7 +361,6 @@ export interface FundadorRow {
 
               <!-- Protocolo de Compromiso -->
               <div class="protocol-box">
-                <mat-icon class="icon-inline text-gold">verified</mat-icon>
                 <div class="protocol-text">
                   <strong>Protocolo de Compromiso Fundacional:</strong>
                   <span>
@@ -398,35 +374,37 @@ export interface FundadorRow {
             <footer class="modal-footer">
               <button type="button" class="btn-modal-cancel" (click)="closeModal()">Cerrar</button>
 
-              @if (row.status !== 'rechazado') {
-                <button
-                  type="button"
-                  class="btn-modal-danger"
-                  (click)="updateStatus(row, 'rechazado'); closeModal()"
-                >
-                  Rechazar Postulación
-                </button>
-              }
+              <div class="modal-footer-actions">
+                @if (row.status !== 'rechazado') {
+                  <button
+                    type="button"
+                    class="btn-modal-danger"
+                    (click)="updateStatus(row, 'rechazado'); closeModal()"
+                  >
+                    Rechazar Postulación
+                  </button>
+                }
 
-              @if (row.status !== 'en_evaluacion') {
-                <button
-                  type="button"
-                  class="btn-modal-pending"
-                  (click)="updateStatus(row, 'en_evaluacion'); closeModal()"
-                >
-                  Poner en Evaluación
-                </button>
-              }
+                @if (row.status !== 'en_evaluacion') {
+                  <button
+                    type="button"
+                    class="btn-modal-pending"
+                    (click)="updateStatus(row, 'en_evaluacion'); closeModal()"
+                  >
+                    Poner en Evaluación
+                  </button>
+                }
 
-              @if (row.status !== 'vitalicio') {
-                <button
-                  type="button"
-                  class="btn-modal-gold"
-                  (click)="updateStatus(row, 'vitalicio'); closeModal()"
-                >
-                  Aprobar Membresía Vitalicia
-                </button>
-              }
+                @if (row.status !== 'vitalicio') {
+                  <button
+                    type="button"
+                    class="btn-modal-gold"
+                    (click)="updateStatus(row, 'vitalicio'); closeModal()"
+                  >
+                    Aprobar Membresía Vitalicia
+                  </button>
+                }
+              </div>
             </footer>
           </div>
         </div>
@@ -949,19 +927,22 @@ export interface FundadorRow {
       .btn-action-eval {
         display: inline-flex;
         align-items: center;
-        gap: 0.3rem;
+        justify-content: center;
         background: rgba(255, 204, 0, 0.1);
         border: 1px solid rgba(255, 204, 0, 0.3);
         color: #ffcc00;
-        padding: 0.35rem 0.7rem;
+        padding: 0.35rem 0.85rem;
         border-radius: 4px;
         font-size: 0.75rem;
         font-weight: 700;
+        letter-spacing: 0.04em;
         cursor: pointer;
+        transition: background 0.15s ease, border-color 0.15s ease;
       }
 
       .btn-action-eval:hover {
-        background: rgba(255, 204, 0, 0.2);
+        background: rgba(255, 204, 0, 0.22);
+        border-color: #ffcc00;
       }
 
       .icon-sm {
@@ -1160,9 +1141,17 @@ export interface FundadorRow {
         padding: 1rem 1.5rem;
         border-top: 1px solid rgba(255, 255, 255, 0.1);
         display: flex;
-        justify-content: flex-end;
+        justify-content: space-between;
+        align-items: center;
         gap: 0.65rem;
         background: rgba(0, 0, 0, 0.2);
+        flex-wrap: wrap;
+      }
+
+      .modal-footer-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
         flex-wrap: wrap;
       }
 
@@ -1180,7 +1169,7 @@ export interface FundadorRow {
       .btn-modal-gold {
         background: #ffcc00;
         border: none;
-        color: #000000;
+        color: #ffffff;
         padding: 0.55rem 1.25rem;
         border-radius: 4px;
         cursor: pointer;
@@ -1268,6 +1257,12 @@ export class AdminFundadoresComponent {
     // 1. Postulaciones directas a fundadores registradas en applications
     for (const a of applications) {
       if (a.type === 'fundador') {
+        const emailNorm = (a.email || '').trim().toLowerCase();
+        // Evitar duplicaciones en la tabla si existen múltiples postulaciones con el mismo email
+        if (emailNorm && list.some((item) => (item.email || '').trim().toLowerCase() === emailNorm)) {
+          continue;
+        }
+
         const isPrestador = !!a.agency || (a.category && a.category !== 'socio');
         const status: 'vitalicio' | 'en_evaluacion' | 'rechazado' | 'baja' =
           a.status === 'aprobado'
@@ -1306,62 +1301,68 @@ export class AdminFundadoresComponent {
     // 2. Socios registrados formalmente con tier 'fundador'
     for (const m of members) {
       if (m.membershipTier === 'fundador') {
-        // Evitar duplicar si ya vino por application
-        if (!list.some((item) => item.email.toLowerCase() === m.email.toLowerCase())) {
-          list.push({
-            id: `socio-fundador-${m.id}`,
-            sourceType: 'socio_fundador',
-            name: m.fullName || m.email.split('@')[0],
-            email: m.email,
-            phone: m.phone || '—',
-            avatar: m.avatarUrl,
-            tier: 'socio_fundador',
-            tierLabel: 'Socio Fundador',
-            endowmentAmount: 5000000,
-            status: 'vitalicio',
-            statusLabel: 'Vitalicio Confirmado',
-            motivationLetter: 'Socio fundador registrado y validado en el cuadro patrimonial del Club de Experiencias.',
-            date: m.createdAt,
-          });
+        const emailNorm = (m.email || '').trim().toLowerCase();
+        // Evitar duplicar si ya vino por application o socio previo
+        if (emailNorm && list.some((item) => (item.email || '').trim().toLowerCase() === emailNorm)) {
+          continue;
         }
+
+        list.push({
+          id: `socio-fundador-${m.id}`,
+          sourceType: 'socio_fundador',
+          name: m.fullName || (m.email ? m.email.split('@')[0] : 'Socio Fundador'),
+          email: m.email,
+          phone: m.phone || '—',
+          avatar: m.avatarUrl,
+          tier: 'socio_fundador',
+          tierLabel: 'Socio Fundador',
+          endowmentAmount: 5000000,
+          status: 'vitalicio',
+          statusLabel: 'Vitalicio Confirmado',
+          motivationLetter: 'Socio fundador registrado y validado en el cuadro patrimonial del Club de Experiencias.',
+          date: m.createdAt,
+        });
       }
     }
 
     // 3. Prestadores registrados con tier 'fundador'
     for (const p of providers) {
       if (p.tier === 'fundador') {
-        if (!list.some((item) => item.email.toLowerCase() === p.email.toLowerCase())) {
-          list.push({
-            id: `prestador-fundador-${p.id}`,
-            sourceType: 'prestador_fundador',
-            name: p.name,
-            email: p.email,
-            phone: p.phone || '—',
-            agency: p.agency,
-            avatar: p.avatar,
-            tier: 'prestador_fundador',
-            tierLabel: 'Prestador Fundador',
-            endowmentAmount: 10000000,
-            status:
-              p.status === 'rechazado'
-                ? 'rechazado'
-                : p.status === 'dado_de_baja'
-                  ? 'baja'
-                  : p.status === 'pendiente'
-                    ? 'en_evaluacion'
-                    : 'vitalicio',
-            statusLabel:
-              p.status === 'rechazado'
-                ? 'Rechazado'
-                : p.status === 'dado_de_baja'
-                  ? 'Dado de baja'
-                  : p.status === 'pendiente'
-                    ? 'En Evaluación'
-                    : 'Vitalicio Confirmado',
-            motivationLetter: p.bio || 'Prestador fundador integrante del cuadro de honor patrimonial.',
-            date: p.joinedAt || new Date().toISOString(),
-          });
+        const emailNorm = (p.email || '').trim().toLowerCase();
+        if (emailNorm && list.some((item) => (item.email || '').trim().toLowerCase() === emailNorm)) {
+          continue;
         }
+
+        list.push({
+          id: `prestador-fundador-${p.id}`,
+          sourceType: 'prestador_fundador',
+          name: p.name,
+          email: p.email,
+          phone: p.phone || '—',
+          agency: p.agency,
+          avatar: p.avatar,
+          tier: 'prestador_fundador',
+          tierLabel: 'Prestador Fundador',
+          endowmentAmount: 10000000,
+          status:
+            p.status === 'rechazado'
+              ? 'rechazado'
+              : p.status === 'dado_de_baja'
+                ? 'baja'
+                : p.status === 'pendiente'
+                  ? 'en_evaluacion'
+                  : 'vitalicio',
+          statusLabel:
+            p.status === 'rechazado'
+              ? 'Rechazado'
+              : p.status === 'dado_de_baja'
+                ? 'Dado de baja'
+                : p.status === 'pendiente'
+                  ? 'En Evaluación'
+                  : 'Vitalicio Confirmado',
+          motivationLetter: p.bio || 'Prestador fundador integrante del cuadro de honor patrimonial.',
+          date: p.joinedAt || new Date().toISOString(),
+        });
       }
     }
 
@@ -1468,9 +1469,12 @@ export class AdminFundadoresComponent {
         }
 
         if (newStatus === 'vitalicio') {
-          const member = this.store
-            .members()
-            .find((m) => m.email.toLowerCase() === row.email.toLowerCase());
+          const rowEmailNorm = (row.email || '').trim().toLowerCase();
+          const member = rowEmailNorm
+            ? this.store
+                .members()
+                .find((m) => (m.email || '').trim().toLowerCase() === rowEmailNorm)
+            : null;
           if (member) {
             void this.store.updateMemberProfile(member.id, { membershipTier: 'fundador' });
           }

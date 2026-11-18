@@ -9,6 +9,7 @@ import {
   input,
   output,
   signal,
+  untracked,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, NgForm } from '@angular/forms';
@@ -22,6 +23,22 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ProviderUser } from '../../../core/models/bank-transfer.model';
 import { ExperienceAlbumPhoto } from '../../../core/models/experience.model';
+import { AdminStoreService } from '../../../core/services/admin-store.service';
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result);
+      } else {
+        reject(new Error('No se pudo convertir el archivo a Base64'));
+      }
+    };
+    reader.onerror = (e) => reject(e);
+    reader.readAsDataURL(file);
+  });
+}
 
 const DEFAULT_REQ_FORM = {
   title: '',
@@ -383,6 +400,8 @@ const DEFAULT_REQ_FORM = {
                         </option>
                         <option value="Moderada">Moderada</option>
                         <option value="Exigente">Exigente</option>
+                        <option value="Alta Montaña">Alta Montaña</option>
+                        <option value="Ninguna">Ninguna</option>
                       </select>
                     </div>
 
@@ -395,6 +414,7 @@ const DEFAULT_REQ_FORM = {
                         name="duration"
                         required
                       >
+                        <option value="30 minutos">30 minutos</option>
                         <option value="1 hora">1 hora</option>
                         <option value="2 horas">2 horas</option>
                         <option value="3 horas">3 horas</option>
@@ -403,6 +423,10 @@ const DEFAULT_REQ_FORM = {
                         <option value="6 horas">6 horas</option>
                         <option value="7 horas">7 horas</option>
                         <option value="8 horas (Jornada completa)">8 horas (Jornada completa)</option>
+                        <option value="Día completo (10 h)">Día completo (10 h)</option>
+                        <option value="2 días">2 días</option>
+                        <option value="3 días">3 días</option>
+                        <option value="4 días o más">4 días o más</option>
                       </select>
                     </div>
                   </div>
@@ -474,19 +498,10 @@ const DEFAULT_REQ_FORM = {
                     <div class="usd-box-wrapper">
                       <div class="usd-header-row">
                         <label class="usd-box-label" for="req-price-usd">Referencia en Dólares (USD)</label>
-                        <div class="usd-rate-control">
+                        <div class="usd-rate-control" title="Cotización oficial fijada por la administración del Club">
                           <span class="rate-label">Cotización referencial:</span>
                           <span class="rate-prefix">&#36;</span>
-                          <input
-                            type="number"
-                            class="rate-input"
-                            [ngModel]="usdExchangeRate()"
-                            (ngModelChange)="onExchangeRateChange($event)"
-                            name="usdExchangeRate"
-                            min="100"
-                            step="50"
-                            title="Modificar cotización del dólar para el cálculo"
-                          />
+                          <strong class="rate-val">{{ usdExchangeRate() | number:'1.0-0' }}</strong>
                           <span class="rate-suffix">ARS / USD</span>
                         </div>
                       </div>
@@ -1541,20 +1556,16 @@ const DEFAULT_REQ_FORM = {
         font-size: 0.76rem;
         color: rgba(255, 255, 255, 0.65);
       }
-      .rate-input {
-        width: 75px;
-        padding: 0.2rem 0.4rem;
-        background: rgba(10, 18, 38, 0.8);
-        border: 1px solid rgba(128, 179, 255, 0.35);
-        border-radius: 3px;
+      .rate-val {
         color: #ffffff;
-        font-size: 0.76rem;
-        font-weight: 600;
-        text-align: right;
-      }
-      .rate-input:focus {
-        border-color: #80b3ff;
-        outline: none;
+        font-weight: 700;
+        font-size: 0.8rem;
+        padding: 0.15rem 0.45rem;
+        background: rgba(10, 18, 38, 0.75);
+        border: 1px solid rgba(128, 179, 255, 0.25);
+        border-radius: 3px;
+        letter-spacing: 0.02em;
+        display: inline-block;
       }
       .dates-picker-group {
         display: flex;
@@ -2493,6 +2504,7 @@ export class ProviderExperienceProposalModalComponent {
   private readonly supabase = inject(SUPABASE_CLIENT);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly adminStore = inject(AdminStoreService);
 
   readonly isMpConnected = computed(() => Boolean(this.store.currentProvider()?.mpConnected));
   readonly mpCollectorId = computed(() => this.store.currentProvider()?.mpCollectorId || '');
@@ -2573,10 +2585,25 @@ export class ProviderExperienceProposalModalComponent {
         if (typeof document !== 'undefined') {
           this.previousActiveElement = document.activeElement as HTMLElement | null;
         }
-        this.loadDraft();
+        untracked(() => {
+          this.loadDraft();
+        });
         setTimeout(() => {
           this.focusInitialElement();
         }, 0);
+      }
+    });
+
+    effect(() => {
+      const rate = this.usdExchangeRate();
+      if (this.isOpen()) {
+        untracked(() => {
+          if (this.isUsdAutoCalc() && this.reqForm.priceArs) {
+            this.reqForm.priceUsd = Math.round(
+              (Number(this.reqForm.priceArs) || 0) / (rate || 1400),
+            );
+          }
+        });
       }
     });
   }
@@ -2738,8 +2765,8 @@ export class ProviderExperienceProposalModalComponent {
   readonly meetingPointError = signal<string | null>(null);
   readonly formValidationError = signal<string | null>(null);
 
-  // USD Rate and Calculation
-  readonly usdExchangeRate = signal<number>(1400);
+  // USD Rate and Calculation (gestionado centralmente por administración)
+  readonly usdExchangeRate = computed(() => this.adminStore.usdExchangeRate() || 1400);
   readonly isUsdAutoCalc = signal<boolean>(true);
 
   // Scheduled Dates & Datepicker
@@ -3094,9 +3121,9 @@ export class ProviderExperienceProposalModalComponent {
   }
 
   onExchangeRateChange(newRate: number): void {
-    const rate = Number(newRate) || 1400;
-    this.usdExchangeRate.set(rate);
+    // La cotización del dólar es fijada por la administración desde el panel
     if (this.isUsdAutoCalc()) {
+      const rate = this.usdExchangeRate() || 1400;
       this.reqForm.priceUsd = Math.round((Number(this.reqForm.priceArs) || 0) / rate);
     }
     this.saveDraft();
@@ -3180,11 +3207,13 @@ export class ProviderExperienceProposalModalComponent {
         }
       }
       this.syncBankingWithProvider();
-      if (data.usdExchangeRate) {
-        this.usdExchangeRate.set(Number(data.usdExchangeRate) || 1400);
-      }
       if (data.isUsdAutoCalc !== undefined) {
         this.isUsdAutoCalc.set(Boolean(data.isUsdAutoCalc));
+      }
+      const isAuto = untracked(() => this.isUsdAutoCalc());
+      const rate = untracked(() => this.usdExchangeRate()) || 1400;
+      if (isAuto && this.reqForm.priceArs) {
+        this.reqForm.priceUsd = Math.round((Number(this.reqForm.priceArs) || 0) / rate);
       }
       if (this.reqForm.dates) {
         const parts = this.reqForm.dates.split(',').map((p: string) => p.trim());
@@ -3353,7 +3382,6 @@ export class ProviderExperienceProposalModalComponent {
     this.scheduledDates.set([]);
     this.isDateFlexible.set(true);
     this.isUsdAutoCalc.set(true);
-    this.usdExchangeRate.set(1400);
     this.formValidationError.set(null);
     this.meetingPointError.set(null);
     this.removeCoverImage();
@@ -3382,7 +3410,6 @@ export class ProviderExperienceProposalModalComponent {
       this.scheduledDates.set([]);
       this.isDateFlexible.set(true);
       this.isUsdAutoCalc.set(true);
-      this.usdExchangeRate.set(1400);
       this.formValidationError.set(null);
       this.meetingPointError.set(null);
       this.removeCoverImage();
@@ -3514,7 +3541,7 @@ export class ProviderExperienceProposalModalComponent {
       providerId = providerId || 'provider-anon';
     }
 
-    let coverImageUrl = '/assets/images/kayak-club-de-experiencias.jpg';
+    let coverImageUrl = '';
     const coverFile = this.coverImageFile();
 
     if (coverFile) {
@@ -3522,22 +3549,29 @@ export class ProviderExperienceProposalModalComponent {
         const uploadRes = await this.storageService.uploadFile(coverFile, 'PROPOSAL');
         if (uploadRes?.url) {
           coverImageUrl = uploadRes.url;
-        } else {
-          coverImageUrl =
-            this.coverImagePreview() && !this.coverImagePreview()!.startsWith('blob:')
-              ? this.coverImagePreview()!
-              : '/assets/images/kayak-club-de-experiencias.jpg';
         }
       } catch (err) {
         console.warn('[ProposalModal] Aviso al subir imagen de portada a storage, usando fallback:', err);
-        coverImageUrl =
-          this.coverImagePreview() && !this.coverImagePreview()!.startsWith('blob:')
-            ? this.coverImagePreview()!
-            : '/assets/images/kayak-club-de-experiencias.jpg';
       }
-    } else if (this.coverImagePreview()) {
-      const prev = this.coverImagePreview()!;
-      coverImageUrl = prev.startsWith('blob:') ? '/assets/images/kayak-club-de-experiencias.jpg' : prev;
+      if (!coverImageUrl) {
+        coverImageUrl =
+          (this.coverImageFile() === coverFile ? this.coverImageDataUrl() : null) ||
+          (await fileToDataUrl(coverFile).catch(() => '')) ||
+          '';
+      }
+    }
+    if (!coverImageUrl) {
+      if (!coverFile && this.coverImageDataUrl()) {
+        coverImageUrl = this.coverImageDataUrl()!;
+      } else if (this.coverImagePreview()) {
+        const prev = this.coverImagePreview()!;
+        if (!prev.startsWith('blob:')) {
+          coverImageUrl = prev;
+        }
+      }
+    }
+    if (!coverImageUrl) {
+      coverImageUrl = '/assets/images/kayak-club-de-experiencias.jpg';
     }
 
     this.finalSuccessCoverUrl.set(coverImageUrl || this.coverImagePreview());
@@ -3555,9 +3589,21 @@ export class ProviderExperienceProposalModalComponent {
       }
     }
 
-    const priceUsd =
-      Number(this.reqForm.priceUsd) ||
-      Math.round(priceArs / (this.usdExchangeRate() || 1400));
+    let priceUsd: number;
+    if (this.isUsdAutoCalc()) {
+      const rate = this.usdExchangeRate() || 1400;
+      priceUsd = Math.round(priceArs / rate);
+      this.reqForm.priceUsd = priceUsd;
+    } else {
+      const manualUsd = Number(this.reqForm.priceUsd);
+      if (Number.isFinite(manualUsd) && manualUsd > 0) {
+        priceUsd = manualUsd;
+      } else {
+        const rate = this.usdExchangeRate() || 1400;
+        priceUsd = Math.round(priceArs / rate);
+        this.reqForm.priceUsd = priceUsd;
+      }
+    }
 
     const cbuAlias = this.reqForm.cbuAlias?.trim() || '';
     const bankName = this.reqForm.bankName?.trim() || '';
@@ -3604,8 +3650,16 @@ export class ProviderExperienceProposalModalComponent {
       } catch (err) {
         console.warn('[ProposalModal] Error subiendo destacada 1:', err);
       }
+      if (!feat1Url) {
+        feat1Url =
+          this.featuredPhoto1DataUrl() ||
+          (await fileToDataUrl(feat1File).catch(() => undefined)) ||
+          undefined;
+      }
+    } else if (this.featuredPhoto1DataUrl()) {
+      feat1Url = this.featuredPhoto1DataUrl() || undefined;
     } else if (
-      this.featuredPhoto1Preview()?.startsWith('http') &&
+      this.featuredPhoto1Preview() &&
       !this.featuredPhoto1Preview()?.startsWith('blob:')
     ) {
       feat1Url = this.featuredPhoto1Preview() || undefined;
@@ -3623,8 +3677,16 @@ export class ProviderExperienceProposalModalComponent {
       } catch (err) {
         console.warn('[ProposalModal] Error subiendo destacada 2:', err);
       }
+      if (!feat2Url) {
+        feat2Url =
+          this.featuredPhoto2DataUrl() ||
+          (await fileToDataUrl(feat2File).catch(() => undefined)) ||
+          undefined;
+      }
+    } else if (this.featuredPhoto2DataUrl()) {
+      feat2Url = this.featuredPhoto2DataUrl() || undefined;
     } else if (
-      this.featuredPhoto2Preview()?.startsWith('http') &&
+      this.featuredPhoto2Preview() &&
       !this.featuredPhoto2Preview()?.startsWith('blob:')
     ) {
       feat2Url = this.featuredPhoto2Preview() || undefined;
@@ -3643,7 +3705,14 @@ export class ProviderExperienceProposalModalComponent {
         } catch (err) {
           console.warn('[ProposalModal] Error subiendo foto de galería:', err);
         }
-      } else if (item.previewUrl?.startsWith('http') && !item.previewUrl?.startsWith('blob:')) {
+        if (!finalUrl) {
+          finalUrl =
+            item.dataUrl ||
+            (await fileToDataUrl(item.file).catch(() => undefined));
+        }
+      } else if (item.dataUrl) {
+        finalUrl = item.dataUrl;
+      } else if (item.previewUrl && !item.previewUrl.startsWith('blob:')) {
         finalUrl = item.previewUrl;
       }
       if (finalUrl) {

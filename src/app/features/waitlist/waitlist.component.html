@@ -183,7 +183,7 @@
           </div>
 
           <ul class="tier-benefits">
-            <li>Enterarse de las nuevas experiencias y descuentos antes que nadie</li>
+            <li>Enterate de las nuevas experiencias y descuentos antes que nadie</li>
             <li>Cupo asegurado prioritario en fechas de alta demanda</li>
           </ul>
 
@@ -902,11 +902,7 @@
 
   <!-- Notificación Flotante: Plataforma en Construcción (Estilo Toast Favoritos) -->
   @if (showConstructionNotice()) {
-  <aside
-    class="fav-toast-banner is-construction-toast"
-    role="status"
-    aria-live="polite"
-  >
+  <aside class="fav-toast-banner is-construction-toast" role="status" aria-live="polite">
     <div class="fav-toast-progress-track" aria-hidden="true">
       <div class="fav-toast-progress-fill"></div>
     </div>
@@ -923,12 +919,7 @@
     </div>
 
     <div class="fav-toast-actions">
-      <button
-        type="button"
-        class="fav-toast-btn"
-        (click)="dismissConstructionNotice()"
-        title="Cerrar notificación"
-      >
+      <button type="button" class="fav-toast-btn" (click)="dismissConstructionNotice()" title="Cerrar notificación">
         <span>Entendido</span>
       </button>
     </div>

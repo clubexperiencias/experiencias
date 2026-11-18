@@ -165,6 +165,22 @@ const adminRoutes: Routes = [
           ),
       },
       {
+        path: 'descuentos/nuevo',
+        title: 'Nuevo Descuento & Promoción - Portal de Admin',
+        loadComponent: () =>
+          import('./features/admin-portal/admin-discounts/admin-discount-editor.component').then(
+            (m) => m.AdminDiscountEditorComponent,
+          ),
+      },
+      {
+        path: 'descuentos/:id/editar',
+        title: 'Editar Descuento - Portal de Admin',
+        loadComponent: () =>
+          import('./features/admin-portal/admin-discounts/admin-discount-editor.component').then(
+            (m) => m.AdminDiscountEditorComponent,
+          ),
+      },
+      {
         path: 'plenos',
         title: 'Membresías Plenas - Portal de Admin',
         loadComponent: () =>
@@ -677,6 +693,22 @@ const publicRoutes: Routes = [
           ),
       },
       {
+        path: 'descuentos/nuevo',
+        title: 'Nuevo Descuento & Promoción - Portal de Admin',
+        loadComponent: () =>
+          import('./features/admin-portal/admin-discounts/admin-discount-editor.component').then(
+            (m) => m.AdminDiscountEditorComponent,
+          ),
+      },
+      {
+        path: 'descuentos/:id/editar',
+        title: 'Editar Descuento - Portal de Admin',
+        loadComponent: () =>
+          import('./features/admin-portal/admin-discounts/admin-discount-editor.component').then(
+            (m) => m.AdminDiscountEditorComponent,
+          ),
+      },
+      {
         path: 'plenos',
         title: 'Membresías Plenas - Portal de Admin',
         loadComponent: () =>
@@ -834,6 +866,16 @@ const publicRoutes: Routes = [
   {
     path: 'descuentos',
     redirectTo: 'admin/descuentos',
+    pathMatch: 'full',
+  },
+  {
+    path: 'descuentos/nuevo',
+    redirectTo: 'admin/descuentos/nuevo',
+    pathMatch: 'full',
+  },
+  {
+    path: 'descuentos/:id/editar',
+    redirectTo: 'admin/descuentos/:id/editar',
     pathMatch: 'full',
   },
 

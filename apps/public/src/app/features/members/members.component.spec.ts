@@ -1,16 +1,33 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { signal, WritableSignal } from '@angular/core';
 import { MembersComponent } from './members.component';
+import { TestimoniosService } from '../../core/services/testimonios.service';
 
 describe('MembersComponent (/socios)', () => {
   let component: MembersComponent;
   let fixture: ComponentFixture<MembersComponent>;
+  let featuredSignal: WritableSignal<any[]>;
+  let communitySignal: WritableSignal<any[]>;
 
   beforeEach(async () => {
     localStorage.clear();
+    featuredSignal = signal<any[]>([]);
+    communitySignal = signal<any[]>([]);
+
     await TestBed.configureTestingModule({
       imports: [MembersComponent],
-      providers: [provideRouter([])],
+      providers: [
+        provideRouter([]),
+        {
+          provide: TestimoniosService,
+          useValue: {
+            featuredTestimonios: featuredSignal,
+            communityTestimonios: communitySignal,
+            isLoading: signal(false),
+          },
+        },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(MembersComponent);
@@ -57,4 +74,39 @@ describe('MembersComponent (/socios)', () => {
     expect(hrefs).toContain('/experiencias');
     expect(hrefs).not.toContain('/prestadores');
   });
+
+  it('should preserve focus when keyboard-focused share card is replaced by arriving active testimonials', fakeAsync(() => {
+    // Initially featuredTestimonios is empty, so share card is displayed
+    fixture.detectChanges();
+    const shareCard = fixture.nativeElement.querySelector('.showcase-add-card') as HTMLElement;
+    expect(shareCard).toBeTruthy();
+
+    // User focuses the share card via keyboard
+    shareCard.focus();
+    expect(document.activeElement).toBe(shareCard);
+
+    // Active testimonial arrives
+    featuredSignal.set([
+      {
+        id: 't-1',
+        authorDisplay: 'Lucía M.',
+        membershipTier: 'fundador',
+        content: 'Una experiencia inolvidable en Catamarca.',
+        createdAt: '2026-01-01',
+      },
+    ]);
+    fixture.detectChanges();
+
+    // Fast forward macro/microtasks
+    tick(10);
+    fixture.detectChanges();
+
+    // Focus must not be lost to body; it should be on a valid element (the arriving active testimonial or stable target)
+    expect(document.activeElement).not.toBe(document.body);
+    const activeTestimonial = fixture.nativeElement.querySelector('.featured-testimonial');
+    expect(
+      document.activeElement === activeTestimonial ||
+        fixture.nativeElement.contains(document.activeElement),
+    ).toBe(true);
+  }));
 });

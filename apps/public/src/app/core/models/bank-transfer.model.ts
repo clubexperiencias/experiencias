@@ -71,7 +71,7 @@ export interface ProviderExperience {
   description: string;
   region: string;
   meetingPoint: string;
-  difficulty: 'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña';
+  difficulty: 'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña' | 'Ninguna';
   durationLabel: string;
   priceArs: number;
   capacityPerDate: number;
@@ -91,6 +91,7 @@ export interface ProviderExperience {
   mpConnected?: boolean;
   mpCollectorId?: string;
   coverImage?: string;
+  galleryImages?: string[];
   albumPhotos?: ExperienceAlbumPhoto[];
   createdAt: string;
   updatedAt?: string;

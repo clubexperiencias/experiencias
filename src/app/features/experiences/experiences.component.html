@@ -89,7 +89,9 @@
                     @if (!exp.isLocked) {
                     <div class="exp-meta-row">
                       <span>{{ exp.durationLabel }}</span>
-                      <span>Dificultad: {{ exp.difficulty }}</span>
+                      @if (exp.difficulty && exp.difficulty.toLowerCase() !== 'ninguna') {
+                        <span>Dificultad: {{ exp.difficulty }}</span>
+                      }
                       @if (exp.providerName) {
                         @if (getProviderSlug(exp); as slug) {
                           <span>Prestador: <a [routerLink]="['/prestadores', slug]" class="provider-stat-link">{{ exp.providerName }}</a></span>
@@ -281,6 +283,7 @@
                     <option value="Moderada">Moderada</option>
                     <option value="Exigente">Exigente</option>
                     <option value="Alta Montaña">Alta Montaña</option>
+                    <option value="Ninguna">Ninguna</option>
                   </select>
                 </div>
               </div>
@@ -445,7 +448,9 @@
                         @if (!exp.isLocked) {
                         <div class="exp-meta-row">
                           <span>{{ exp.durationLabel }}</span>
-                          <span>Dificultad: {{ exp.difficulty }}</span>
+                          @if (exp.difficulty && exp.difficulty.toLowerCase() !== 'ninguna') {
+                            <span>Dificultad: {{ exp.difficulty }}</span>
+                          }
                           @if (exp.altitudeMeters) {
                             <span>{{ exp.altitudeMeters }} msnm</span>
                           }
@@ -604,7 +609,9 @@
                           @if (!exp.isLocked) {
                           <div class="exp-meta-row">
                             <span>{{ exp.durationLabel }}</span>
-                            <span>Dificultad: {{ exp.difficulty }}</span>
+                            @if (exp.difficulty && exp.difficulty.toLowerCase() !== 'ninguna') {
+                              <span>Dificultad: {{ exp.difficulty }}</span>
+                            }
                             @if (exp.altitudeMeters) {
                               <span>{{ exp.altitudeMeters }} msnm</span>
                             }
@@ -723,7 +730,7 @@
                 }
               }
             </div>
-          } @else {
+          } @else if (hasActiveFilters()) {
             <div class="no-filter-results-box">
               <mat-icon class="no-results-icon">travel_explore</mat-icon>
               <h4 class="no-results-title">No encontramos experiencias con esos criterios</h4>
@@ -734,6 +741,44 @@
                 <mat-icon>restart_alt</mat-icon>
                 <span>Ver Todas las Experiencias</span>
               </button>
+            </div>
+          }
+
+          <!-- Card aparte: Próxima experiencia en preparación (independiente de los filtros) -->
+          @if (!hasActiveFilters()) {
+            <div class="experiences-horizontal-list standalone-coming-soon-list">
+              @let exp = comingSoonCatalogExperience;
+              <div class="exp-catalog-item exp-item-standard is-locked-card">
+                <button
+                  type="button"
+                  class="fav-btn-circle is-disabled-fav"
+                  disabled
+                  aria-label="Próximamente disponible"
+                  title="Próximamente disponible"
+                >
+                  <mat-icon class="fav-icon">favorite_border</mat-icon>
+                </button>
+
+                <div class="exp-card-main standard-card-main">
+                  <div class="exp-card-media standard-media">
+                    <img [src]="exp.coverImage" [alt]="exp.title" class="exp-card-img" loading="lazy" decoding="async" />
+                    <span class="exp-region-tag">{{ exp.region }}</span>
+                  </div>
+
+                  <div class="exp-card-content standard-content">
+                    <div class="standard-text-wrap">
+                      <h3 class="exp-title">{{ exp.title }}</h3>
+                      <p class="exp-tagline">{{ exp.tagline }}</p>
+                    </div>
+
+                    <div class="exp-price-action-row standard-footer-row is-locked-footer">
+                      <button type="button" disabled class="exp-locked-btn is-blocked-btn" title="Próximamente disponible">
+                        <span>Próximamente</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           }
         </div>

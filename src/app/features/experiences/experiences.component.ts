@@ -143,7 +143,7 @@ export class ExperiencesComponent implements AfterViewInit, OnDestroy {
     isLocked: true,
   };
 
-  private readonly comingSoonCatalogExperience: Experience = {
+  readonly comingSoonCatalogExperience: Experience = {
     id: 'exp-coming-soon-catalog',
     slug: 'proximamente-valle-catamarca',
     title: 'Nueva experiencia en Catamarca',
@@ -205,12 +205,18 @@ export class ExperiencesComponent implements AfterViewInit, OnDestroy {
   readonly filterMaxSpots = signal('todos');
   readonly filterSeason = signal('todas');
 
-  // Catálogo completo: experiencias no destacadas primero (incluyendo la nueva experiencia en Catamarca), y destacadas al fondo
+  // Catálogo completo: experiencias no destacadas primero, y destacadas al fondo (excluye cards informativas aparte)
   readonly allCatalogExperiences = computed<Experience[]>(() => {
-    const all = this.experienceService.publishedExperiences();
-    const nonFeatured = all.filter((e) => e.displayLocation === 'catalogo');
+    const all = this.experienceService
+      .publishedExperiences()
+      .filter((e) => !e.isLocked);
+    const nonFeatured = all.filter(
+      (e) =>
+        e.displayLocation === 'catalogo' ||
+        (e.displayLocation && e.displayLocation !== 'destacada'),
+    );
     const featured = all.filter((e) => !e.displayLocation || e.displayLocation === 'destacada');
-    return [this.comingSoonCatalogExperience, ...nonFeatured, ...featured];
+    return [...nonFeatured, ...featured];
   });
 
   readonly availableRegions = computed<string[]>(() => {
@@ -360,11 +366,11 @@ export class ExperiencesComponent implements AfterViewInit, OnDestroy {
   });
 
   readonly activeCatalogCount = computed(() => {
-    return this.filteredExperiences().filter((e) => !e.isLocked).length;
+    return this.filteredExperiences().length;
   });
 
   readonly totalActiveCatalogCount = computed(() => {
-    return this.allCatalogExperiences().filter((e) => !e.isLocked).length;
+    return this.allCatalogExperiences().length;
   });
 
   resetFilters(): void {

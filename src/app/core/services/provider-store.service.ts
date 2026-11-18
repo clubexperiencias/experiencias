@@ -2013,9 +2013,11 @@ export class ProviderStoreService {
 
     const coverPhoto = photos.find((p) => p.isCover);
     const coverUrl = coverPhoto?.url;
+    const replacementGallery = photos.map((p) => p.url);
 
     const updates: Partial<ProviderExperience> = {
       albumPhotos: photos,
+      galleryImages: replacementGallery,
       ...(coverUrl ? { coverImage: coverUrl } : {}),
     };
 
@@ -2032,6 +2034,7 @@ export class ProviderStoreService {
           id: expMatch.id,
           coverImage: coverUrl || expMatch.coverImage,
           albumPhotos: photos,
+          galleryImages: replacementGallery,
         })
         .catch((err) => {
           console.warn(
@@ -3382,6 +3385,10 @@ export class ProviderStoreService {
           cover_image_name: newReq.coverImageName || '',
           video_url: newReq.coverVideoUrl || '',
           album_photos: newReq.albumPhotos || [],
+          gallery_images:
+            newReq.galleryImages && newReq.galleryImages.length > 0
+              ? newReq.galleryImages
+              : (newReq.albumPhotos || []).map((p: any) => p.url),
           provider_name: newReq.providerName,
           provider_agency: newReq.providerAgency || '',
           provider_email: (newReq.providerEmail || '').toLowerCase(),
@@ -3540,7 +3547,28 @@ export class ProviderStoreService {
             coverImageName: row.cover_image_name || '',
             coverVideoUrl: row.video_url || '',
             coverVideoName: row.cover_video_name || '',
-            albumPhotos: Array.isArray(row.album_photos) ? row.album_photos : [],
+            albumPhotos:
+              Array.isArray(row.album_photos) && row.album_photos.length > 0
+                ? row.album_photos
+                : (Array.isArray(row.gallery_images) && row.gallery_images.length > 0
+                  ? row.gallery_images.map((u: string, idx: number) => ({
+                      id: `photo_${idx + 1}`,
+                      url: u,
+                      title: row.title || 'Foto de experiencia',
+                      isCover: Boolean(
+                        typeof row.cover_image === 'string' &&
+                          row.cover_image.trim() !== '' &&
+                          u.trim() === row.cover_image.trim(),
+                      ),
+                      order: idx + 1,
+                    }))
+                  : []),
+            galleryImages:
+              Array.isArray(row.gallery_images) && row.gallery_images.length > 0
+                ? row.gallery_images
+                : (Array.isArray(row.album_photos)
+                  ? row.album_photos.map((p: any) => p.url)
+                  : []),
             status: (row.status === 'publicada' ? 'aprobada' : row.status) as
               | 'pendiente'
               | 'aprobada'
