@@ -21,7 +21,7 @@ export const RECOMMENDED_CARD: MenuCard = {
 
 export const MEMBERSHIP_CARD: MenuCard = {
   kicker: 'Membresía',
-  title: 'Sumate como Socio Fundador',
+  title: 'HACETE SOCIO Fundador',
   subtitle: 'Membresía vitalicia con cupos y accesos exclusivos',
   url: '/socios/fundadores',
   imageUrl: '/assets/images/sumate.png',

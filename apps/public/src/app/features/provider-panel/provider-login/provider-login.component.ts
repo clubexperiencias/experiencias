@@ -1,6 +1,6 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { Title } from '@angular/platform-browser';
 import { MatIconModule } from '@angular/material/icon';
 import {
@@ -13,7 +13,7 @@ import { environment } from '../../../../environments/environment';
 @Component({
   selector: 'app-provider-login',
   standalone: true,
-  imports: [CommonModule, MatIconModule],
+  imports: [CommonModule, MatIconModule, RouterLink],
   template: `
     <div class="login-page-container provider-theme">
       <!-- Barra Superior Oficial del Portal -->
@@ -84,7 +84,8 @@ import { environment } from '../../../../environments/environment';
                       La cuenta <code>{{ unapprovedEmail() }}</code> aún no completó la postulación para ser prestador oficial de EXPERIENCIAS.CLUB.
                     </p>
                     <a
-                      href="https://experiencias.club/prestadores"
+                      [routerLink]="isExternalApplicationUrl() ? null : applicationUrl()"
+                      [attr.href]="isExternalApplicationUrl() ? applicationUrl() : null"
                       class="alert-action-btn"
                     >
                       Completar Postulación de Prestador
@@ -183,9 +184,8 @@ import { environment } from '../../../../environments/environment';
               <div class="provider-footer-help">
                 ¿Aún no tenés cuenta de prestador aprobada?
                 <a
-                  href="https://experiencias.club/prestadores"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  [routerLink]="isExternalApplicationUrl() ? null : applicationUrl()"
+                  [attr.href]="isExternalApplicationUrl() ? applicationUrl() : null"
                   class="link-btn"
                 >
                   Postulate acá
@@ -584,7 +584,7 @@ import { environment } from '../../../../environments/environment';
         margin-top: 0.4rem;
         padding: 0.45rem 0.95rem;
         background: #80b3ff;
-        color: #050a18;
+        color: #ffffff !important;
         font-size: 0.82rem;
         font-weight: 800;
         border-radius: 3px;
@@ -594,6 +594,7 @@ import { environment } from '../../../../environments/environment';
       }
       .alert-action-btn:hover {
         background: #a3cbff;
+        color: #ffffff !important;
         transform: translateY(-1px);
         box-shadow: 0 4px 12px rgba(128, 179, 255, 0.35);
       }
@@ -888,6 +889,19 @@ export class ProviderLoginComponent implements OnInit {
   readonly connectingGoogle = signal(false);
   readonly accountStatus = signal<'none' | 'pending' | 'unregistered' | 'inactive'>('none');
   readonly unapprovedEmail = signal<string>('');
+
+  readonly isExternalApplicationUrl = computed(() => {
+    const isBrowser = typeof window !== 'undefined';
+    if (!isBrowser) return false;
+    const host = window.location.hostname.toLowerCase();
+    return host.startsWith('prestadores.') || host.includes('prestadores.experiencias');
+  });
+
+  readonly applicationUrl = computed(() => {
+    return this.isExternalApplicationUrl()
+      ? 'https://experiencias.club/prestadores/emergentes'
+      : '/prestadores/emergentes';
+  });
 
   constructor() {
     this.pageTitle.setTitle('Portal de Prestadores del Club de Experiencias');

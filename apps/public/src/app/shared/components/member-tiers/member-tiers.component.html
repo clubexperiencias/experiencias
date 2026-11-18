@@ -1,0 +1,154 @@
+<!-- ═══════════════ CARD: PLAN DE MEMBRESÍAS Y EVOLUCIÓN ═══════════════ -->
+<div class="member-section-card hero-member-card">
+  <div class="section-card-header">
+    <span class="section-kicker">PLAN DE MEMBRESÍAS Y EVOLUCIÓN</span>
+    <h2 class="section-main-title">Niveles de Socio del Club</h2>
+  </div>
+
+  <p class="section-lead-text">
+    Diseñado para exploradores comprometidos con la naturaleza, el patrimonio andino y las
+    travesías irrepetibles. Evolucioná en la comunidad para acceder a preventas exclusivas,
+    tarifas bonificadas y expediciones privadas.
+  </p>
+
+  <div class="card-inner-header merged-inner-header">
+    <h3 class="card-heading">Elegí tu Grado de Participación</h3>
+    <p class="card-subheading">
+      Desde el registro sin cargo hasta la membresía vitalicia perpetua evaluada por el
+      Comité Directivo.
+    </p>
+  </div>
+
+  <div class="tiers-grid">
+    <!-- 1. Socio Emergente -->
+    <div class="tier-card" [class.user-current-tier]="newsletter.isSubscribed()">
+      <div class="tier-card-header">
+        @if (newsletter.isSubscribed()) {
+        <span class="tier-level-badge current">NIVEL 1: ACTUAL</span>
+        } @else {
+        <span class="tier-level-badge initial">NIVEL 1: PUNTO DE PARTIDA</span>
+        }
+        <h4 class="tier-name">Socio Emergente</h4>
+        <div class="tier-price-wrap">
+          <span class="tier-price tier-price-free" style="color: #ffffff !important">$0</span>
+          <span class="tier-period">Sin costo de ingreso</span>
+        </div>
+      </div>
+
+      <div class="tier-jump-card">
+        <span class="jump-tag">CÓMO ACCEDER</span>
+        <p>Creando tu perfil al vincular tu cuenta de Google.</p>
+      </div>
+
+      <ul class="tier-benefits">
+        <li>Enterarse de las nuevas experiencias y descuentos antes que nadie</li>
+        <li>Cupo asegurado prioritario en fechas de alta demanda</li>
+      </ul>
+
+      <div class="tier-card-footer">
+        @if (newsletter.isSubscribed()) {
+        <a routerLink="/perfil" class="tier-cta-btn current-achieved" title="Ir a tu perfil de socio">
+          <span class="cta-title-row">
+            <span>Ir a Mi Perfil</span>
+          </span>
+          <span class="cta-sub-text" style="font-weight: 400 !important;">Socio registrado en la plataforma</span>
+        </a>
+        } @else {
+        <a routerLink="/socios/emergentes" fragment="registro" class="tier-cta-btn default-action">
+          <span class="cta-title-row">
+            <span>Unirme Gratis</span>
+          </span>
+          <span class="cta-sub-text" style="font-weight: 400 !important;">Socio registrado en la plataforma</span>
+        </a>
+        }
+      </div>
+    </div>
+
+    <!-- 2. Socio Pleno -->
+    <div class="tier-card featured-tier" [class.tier-card-locked]="!newsletter.isMonthlyActive()">
+      <div class="tier-featured-glow"></div>
+      <div class="tier-card-header">
+        @if (newsletter.isMonthlyActive()) {
+        <span class="tier-level-badge current">NIVEL 2: ACTUAL</span>
+        } @else {
+        <span class="tier-level-badge locked-badge">NIVEL 2: PRÓXIMAMENTE</span>
+        }
+        <h4 class="tier-name">Socio Pleno</h4>
+        <div class="tier-price-wrap">
+          <span class="tier-price">$23.000</span>
+          <span class="tier-period">ARS / mes</span>
+        </div>
+      </div>
+
+      <div class="tier-jump-card">
+        <span class="jump-tag">CÓMO ACCEDER</span>
+        <p>
+          Suscripción mensual. <strong>Habilitada por el momento para personas
+            elegidas por el Club</strong> con invitación.
+        </p>
+      </div>
+
+      <ul class="tier-benefits">
+        <li>Todos los beneficios de Socio Emergente</li>
+        <li><strong>10% OFF directo</strong> en todas las expediciones y salidas</li>
+        <li>Asistencia personalizada de viaje con guías locales</li>
+      </ul>
+
+      <div class="tier-card-footer">
+        @if (newsletter.isMonthlyActive()) {
+        <a routerLink="/socios/plenos" class="tier-cta-btn current-achieved">
+          <span class="cta-title-row">
+            <mat-icon class="btn-icon">check</mat-icon>
+            <span>Membresía Activa</span>
+          </span>
+          <span class="cta-sub-text">Gestionar suscripción</span>
+        </a>
+        } @else {
+        <a routerLink="/socios/plenos" class="tier-cta-btn default-action">
+          <span class="cta-title-row">
+            <span>Unirme como Socio Pleno</span>
+          </span>
+          <span class="cta-sub-text">Primer mes bonificado con código</span>
+        </a>
+        }
+      </div>
+    </div>
+
+    <!-- 3. Socio Fundador Vitalicio -->
+    <div class="tier-card founder-tier">
+      <div class="tier-card-header">
+        <span class="tier-level-badge founder-badge">NIVEL 3: VITALICIO</span>
+        <h4 class="tier-name">Socio Fundador</h4>
+        <div class="tier-price-wrap">
+          <span class="tier-price">Vitalicio</span>
+          <span class="tier-period">Aporte único</span>
+        </div>
+      </div>
+
+      <div class="tier-jump-card founder-jump">
+        <span class="jump-tag">CÓMO ACCEDER</span>
+        <p>Aporte patrimonial único evaluado por el Comité del Club.</p>
+      </div>
+
+      <ul class="tier-benefits">
+        <li>Todos los beneficios de Socio Emergente y Socio Pleno</li>
+        <li>
+          <strong>20% OFF permanente</strong> en todas las expediciones para titular y
+          acompañante
+        </li>
+        <li>Participación formal en el Consejo Consultivo del Club</li>
+        <li>Acceso prioritario a experiencias privadas de lujo del Club</li>
+      </ul>
+
+      <div class="tier-card-footer">
+        <a routerLink="/socios/fundadores" class="tier-cta-btn founder-cta">
+          <span class="cta-title-row">
+            <span>Postularme como Fundador</span>
+          </span>
+          <span class="cta-sub-text" style="font-weight: 400 !important;">Carta de admisión confidencial</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+

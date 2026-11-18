@@ -239,6 +239,12 @@ const providerRoutes: Routes = [
       ),
   },
   {
+    path: 'prestadores/emergentes',
+    title: 'Prestador Emergente - Experiencias Club',
+    loadComponent: () =>
+      import('./features/providers/providers.component').then((m) => m.ProvidersComponent),
+  },
+  {
     path: '',
     title: 'Portal de Prestadores del Club de Experiencias',
     canActivate: [providerGuard],

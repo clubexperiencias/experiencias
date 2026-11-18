@@ -96,6 +96,7 @@
           <!-- Formulario de Registro o Confirmación de Membresía -->
           @if (!newsletter.isSubscribed() || !isProfileComplete()) {
             <form
+              id="registro"
               class="signup-form"
               [class.signup-form-locked]="requiresGoogle()"
               novalidate
@@ -228,6 +229,9 @@
             </div>
           }
         </section>
+
+        <!-- ═══════════════ PLAN DE MEMBRESÍAS Y EVOLUCIÓN ═══════════════ -->
+        <app-member-tiers />
 
         <!-- ═══════════════ AD BANNER: CONVOCATORIA SOCIO FUNDADOR ═══════════════ -->
         <app-kayak-ad />

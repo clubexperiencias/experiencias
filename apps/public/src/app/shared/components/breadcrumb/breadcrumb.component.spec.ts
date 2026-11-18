@@ -19,8 +19,8 @@ describe('BreadcrumbComponent', () => {
   it('should render breadcrumb with #FFCC00 yellow background and proper links', () => {
     fixture.componentRef.setInput('items', [
       { label: 'Inicio', url: '/' },
-      { label: 'Niveles de Socio', url: '/socios' },
-      { label: 'Socios Plenos' },
+      { label: 'Socios', url: '/socios' },
+      { label: 'Nivel 2: Plenos' },
     ]);
     fixture.detectChanges();
 
@@ -34,7 +34,7 @@ describe('BreadcrumbComponent', () => {
     const currentElements = fixture.nativeElement.querySelectorAll('.bc-current');
     expect(currentElements.length).toBe(2);
     expect(currentElements[0].textContent).toContain('Inicio');
-    expect(currentElements[1].textContent).toContain('Socios Plenos');
+    expect(currentElements[1].textContent).toContain('Nivel 2: Plenos');
   });
 
   it('should not render a home icon in the breadcrumb', () => {
@@ -91,5 +91,31 @@ describe('BreadcrumbComponent', () => {
     const founderImg = fixture.nativeElement.querySelector('.natgeo-founder-col .featured-img');
     expect(founderImg).toBeTruthy();
     expect(founderImg.getAttribute('src')).toContain('sumate.png');
+  });
+
+  it('should use general exploration menu for provider NIVEL 2: PLENOS instead of member tier links', () => {
+    fixture.componentRef.setInput('items', [
+      { label: 'Inicio', url: '/' },
+      { label: 'Prestadores', url: '/prestadores' },
+      { label: 'NIVEL 2: PLENOS' },
+    ]);
+    fixture.detectChanges();
+
+    const data = component.getNextStepsData({ label: 'NIVEL 2: PLENOS' });
+    expect(data.kicker).toBe('Explorar');
+    expect(data.steps.some((s) => s.url === '/socios/plenos')).toBe(false);
+  });
+
+  it('should retain member-tier links for member Nivel 2: Plenos', () => {
+    fixture.componentRef.setInput('items', [
+      { label: 'Inicio', url: '/' },
+      { label: 'Socios', url: '/socios' },
+      { label: 'Nivel 2: Plenos' },
+    ]);
+    fixture.detectChanges();
+
+    const data = component.getNextStepsData({ label: 'Nivel 2: Plenos' });
+    expect(data.kicker).toBe('Socios');
+    expect(data.steps.some((s) => s.url === '/socios/plenos')).toBe(true);
   });
 });

@@ -140,16 +140,11 @@
 
 .tier-level-badge.initial,
 .tier-level-badge.locked-badge,
-.tier-level-badge.active-badge {
+.tier-level-badge.active-badge,
+.tier-level-badge.founder-badge {
   background: rgba(15, 28, 45, 0.28);
   color: #ffffff;
   border: 1px solid rgba(255, 255, 255, 0.28);
-}
-
-.tier-level-badge.founder-badge {
-  background: rgba(15, 28, 45, 0.28);
-  color: #ffcc00 !important;
-  border: 1px solid rgba(255, 204, 0, 0.4);
 }
 
 .tier-name {
@@ -159,6 +154,11 @@
   color: #fff;
   margin: 0;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.initial-tier .tier-name,
+.tier-card.initial-tier .tier-name {
+  font-size: 1.25rem;
 }
 
 .tier-price-wrap {

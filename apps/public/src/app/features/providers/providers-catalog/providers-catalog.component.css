@@ -744,10 +744,11 @@
 
 .join-title {
   font-family: var(--font-serif);
-  font-size: 1.45rem;
+  font-size: 1.75rem;
+  font-weight: 600;
   color: #ffffff;
   margin: 0.25rem 0 0.5rem;
-  line-height: 1.3;
+  line-height: 1.2;
 }
 
 .join-description {

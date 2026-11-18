@@ -734,6 +734,45 @@ export interface Database {
         };
         Relationships: [];
       };
+      testimonios: {
+        Row: {
+          id: string;
+          socio_id: string | null;
+          email: string;
+          full_name: string;
+          membership_tier: 'fundador' | 'activo' | 'emergente' | 'waitlist';
+          content: string;
+          active: boolean;
+          featured: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          socio_id?: string | null;
+          email: string;
+          full_name?: string;
+          membership_tier?: 'fundador' | 'activo' | 'emergente' | 'waitlist';
+          content: string;
+          active?: boolean;
+          featured?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          socio_id?: string | null;
+          email?: string;
+          full_name?: string;
+          membership_tier?: 'fundador' | 'activo' | 'emergente' | 'waitlist';
+          content?: string;
+          active?: boolean;
+          featured?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
 
     Views: {
@@ -946,6 +985,21 @@ export interface Database {
         Args: {
           p_experience_id: string;
         };
+        Returns: Json;
+      };
+      submit_socio_testimonio: {
+        Args: {
+          p_content: string;
+          p_email?: string | null;
+        };
+        Returns: Json;
+      };
+      get_socios_testimonios: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
+      get_my_socio_testimonio: {
+        Args: Record<string, never>;
         Returns: Json;
       };
     };

@@ -233,7 +233,7 @@ export class BreadcrumbComponent implements OnInit {
         kicker: 'Explorar',
         steps: [
           { label: 'Experiencias & Expediciones', url: '/experiencias' },
-          { label: 'Membresías & Niveles de Socio', url: '/socios' },
+          { label: 'Socios', url: '/socios' },
           { label: 'Mi Perfil de Socio', url: '/perfil' },
           { label: 'Volver al inicio', url: '/' },
         ],
@@ -276,29 +276,46 @@ export class BreadcrumbComponent implements OnInit {
       };
     }
 
+    const isProviderContext =
+      this.items().some(
+        (b) =>
+          (b.label || '').toLowerCase().includes('prestador') ||
+          (b.url || '').toLowerCase().includes('/prestador'),
+      ) ||
+      urlNorm.includes('/prestador') ||
+      (this.router.url || '').toLowerCase().includes('/prestador');
+
     // 5. SOCIOS / MEMBRESÍAS
-    if (labelNorm.includes('socio') || labelNorm.includes('membres') || urlNorm === '/socios') {
+    if (
+      !isProviderContext &&
+      (labelNorm.includes('socio') || labelNorm.includes('membres') || urlNorm === '/socios')
+    ) {
       return {
         kicker: 'Membresías',
         steps: [
-          { label: 'Socios Fundadores', url: '/socios/fundadores' },
-          { label: 'Socios Plenos Mensuales', url: '/socios/plenos' },
+          { label: 'Nivel 3: Fundadores', url: '/socios/fundadores' },
+          { label: 'Nivel 2: Plenos', url: '/socios/plenos' },
+          { label: 'Nivel 1: Emergentes', url: '/socios/emergentes' },
           { label: 'Volver atrás', url: '/' },
         ],
       };
     }
 
-    // 6. SOCIO FUNDADOR O PLENO
+    // 6. SOCIO FUNDADOR O PLENO O EMERGENTE
     if (
-      labelNorm.includes('fundador') ||
-      labelNorm.includes('activo') ||
-      labelNorm.includes('emergente')
+      !isProviderContext &&
+      (labelNorm.includes('fundador') ||
+        labelNorm.includes('activo') ||
+        labelNorm.includes('pleno') ||
+        labelNorm.includes('emergente') ||
+        labelNorm.includes('nivel'))
     ) {
       return {
-        kicker: 'Niveles de Socio',
+        kicker: 'Socios',
         steps: [
-          { label: 'Socios Fundadores', url: '/socios/fundadores' },
-          { label: 'Socios Plenos Mensuales', url: '/socios/plenos' },
+          { label: 'Nivel 3: Fundadores', url: '/socios/fundadores' },
+          { label: 'Nivel 2: Plenos', url: '/socios/plenos' },
+          { label: 'Nivel 1: Emergentes', url: '/socios/emergentes' },
           { label: 'Volver atrás', url: '/' },
         ],
       };
@@ -314,7 +331,7 @@ export class BreadcrumbComponent implements OnInit {
         kicker: 'Socio',
         steps: [
           { label: 'Mis Actividades & Reservas', url: '/perfil/actividades' },
-          { label: 'Membresías & Niveles de Socio', url: '/socios' },
+          { label: 'Socios', url: '/socios' },
           { label: 'Volver atrás', url: '/' },
         ],
       };
@@ -325,7 +342,7 @@ export class BreadcrumbComponent implements OnInit {
       kicker: 'Explorar',
       steps: [
         { label: 'Experiencias & Expediciones', url: '/experiencias' },
-        { label: 'Membresías & Niveles de Socio', url: '/socios' },
+        { label: 'Socios', url: '/socios' },
         { label: 'Mi Perfil de Socio', url: '/perfil' },
         { label: 'Volver atrás', url: '/' },
       ],

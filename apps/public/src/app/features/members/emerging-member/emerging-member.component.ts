@@ -10,6 +10,7 @@ import {
   BreadcrumbItem,
 } from '../../../shared/components/breadcrumb/breadcrumb.component';
 import { KayakAdComponent } from '../../../shared/components/kayak-ad/kayak-ad.component';
+import { MemberTiersComponent } from '../../../shared/components/member-tiers/member-tiers.component';
 
 export interface EmergingHighlight {
   title: string;
@@ -27,6 +28,7 @@ export interface EmergingHighlight {
     HeaderComponent,
     BreadcrumbComponent,
     KayakAdComponent,
+    MemberTiersComponent,
   ],
   templateUrl: './emerging-member.component.html',
   styleUrl: './emerging-member.component.css',
@@ -38,8 +40,8 @@ export class EmergingMemberComponent implements OnInit {
 
   readonly breadcrumbs: BreadcrumbItem[] = [
     { label: 'Inicio', url: '/' },
-    { label: 'Niveles de Socio', url: '/socios' },
-    { label: 'Socios Emergentes' },
+    { label: 'Socios', url: '/socios' },
+    { label: 'Nivel 1: Emergentes' },
   ];
 
   readonly mobileMenuOpen = signal(false);
@@ -126,6 +128,17 @@ export class EmergingMemberComponent implements OnInit {
           this.showSuccessNotification.set(false);
           this.newsletter.profileSuccessHighlight.set(false);
         }, 3500);
+      }
+    });
+
+    this.route.fragment.subscribe((fragment) => {
+      if (fragment) {
+        setTimeout(() => {
+          const el = document.getElementById(fragment);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }, 100);
       }
     });
 

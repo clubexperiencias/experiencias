@@ -45,7 +45,7 @@
 
     <a routerLink="/socios" class="nav-pill-btn socios-nav-btn" routerLinkActive="active-route">
       <mat-icon class="btn-icon">military_tech</mat-icon>
-      <span>Niveles de Socio</span>
+      <span>Socios del Club</span>
     </a>
 
     <!-- Menú Desktop: En /perfil y subrutas muestra Cerrar Sesión; en las demás muestra Mi Perfil amarillo -->
@@ -103,7 +103,7 @@
         </a>
 
         <a routerLink="/socios" class="mobile-nav-row" (click)="closeMobileMenu()">
-          <span class="row-title">Niveles de Socio</span>
+          <span class="row-title">Socios del Club</span>
           <mat-icon class="row-arrow">chevron_right</mat-icon>
         </a>
 
@@ -210,9 +210,9 @@
       </div>
       <div class="fav-toast-info">
         @if (toast.requireAuth) {
-          <strong class="fav-toast-heading">¡Exclusivo para Socios!</strong>
+          <strong class="fav-toast-heading">{{ toast.heading || '¡Exclusivo para Socios!' }}</strong>
           <p class="fav-toast-text">
-            Tenés que ser socio e iniciar sesión para guardar tus favoritos.
+            {{ toast.message || 'Tenés que ser socio e iniciar sesión para guardar tus favoritos.' }}
           </p>
         } @else if (toast.action === 'removed') {
           <strong class="fav-toast-heading">¡Quitada de tus favoritos!</strong>
@@ -228,8 +228,17 @@
       </div>
     </div>
 
-    @if (!toast.requireAuth) {
-      <div class="fav-toast-actions">
+    <div class="fav-toast-actions">
+      @if (toast.requireAuth) {
+        <a
+          routerLink="/ingresar"
+          class="fav-toast-btn"
+          (click)="favoritesService.dismissToast()"
+          title="Iniciar sesión en el Club"
+        >
+          <span>Ingresar</span>
+        </a>
+      } @else {
         <a
           routerLink="/perfil"
           fragment="favoritos"
@@ -239,7 +248,7 @@
         >
           <span>Ver Favoritos</span>
         </a>
-      </div>
-    }
+      }
+    </div>
   </aside>
 }
