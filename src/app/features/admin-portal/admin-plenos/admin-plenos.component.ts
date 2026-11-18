@@ -1359,9 +1359,9 @@ export class AdminPlenosComponent {
       }
     }
 
-    // 3. Postulaciones pendientes de prestadores (para activación plena)
+    // 3. Postulaciones pendientes de prestadores específicamente al tier pleno
     for (const a of applications) {
-      if (a.type === 'prestador' && a.status === 'pendiente') {
+      if (a.type === 'prestador' && a.status === 'pendiente' && a.tier === 'pleno') {
         // Evitar duplicar si ya figura como provider
         if (!list.some((item) => item.email.toLowerCase() === a.email.toLowerCase())) {
           const appRef = (

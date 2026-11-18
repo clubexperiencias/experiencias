@@ -2,15 +2,11 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
+import { Router } from '@angular/router';
 import { DiscountService } from '../../../core/services/discount.service';
 import { ExperienceService } from '../../../core/services/experience.service';
 import { AdminStoreService } from '../../../core/services/admin-store.service';
-import {
-  Discount,
-  DiscountType,
-  DiscountScope,
-  CreateDiscountDto,
-} from '../../../core/models/discount.model';
+import { Discount } from '../../../core/models/discount.model';
 import { ArsPipe } from '../../../shared/pipes/format.pipes';
 
 @Component({
@@ -27,8 +23,7 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
             Administrá códigos de cupón y ofertas directas para experiencias individuales o para toda la plataforma.
           </p>
         </div>
-        <button class="btn-create-discount" (click)="openCreateModal()">
-          <mat-icon>add</mat-icon>
+        <button class="btn-create-discount" (click)="goToCreate()">
           <span>Nuevo Descuento</span>
         </button>
       </header>
@@ -192,7 +187,7 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                       type="button"
                       class="action-btn edit-btn"
                       title="Editar descuento"
-                      (click)="openEditModal(disc)"
+                      (click)="goToEdit(disc)"
                     >
                       <mat-icon>edit</mat-icon>
                     </button>
@@ -214,7 +209,7 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
                   <div class="empty-state">
                     <mat-icon class="empty-icon">local_offer</mat-icon>
                     <p>No se encontraron descuentos con los filtros seleccionados.</p>
-                    <button class="btn-create-inline" (click)="openCreateModal()">
+                    <button class="btn-create-inline" (click)="goToCreate()">
                       Crear primer descuento
                     </button>
                   </div>
@@ -224,263 +219,13 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
           </tbody>
         </table>
       </div>
-
-      <!-- Modal de Creación / Edición -->
-      @if (modalOpen()) {
-        <div class="modal-backdrop" (click)="closeModal()">
-          <div class="modal-card" (click)="$event.stopPropagation()">
-            <div class="modal-header">
-              <div class="modal-title-wrap">
-                <mat-icon class="modal-title-icon">local_offer</mat-icon>
-                <h3 class="modal-title">
-                  {{ isEditing() ? 'Editar Descuento' : 'Nuevo Descuento' }}
-                </h3>
-              </div>
-              <button type="button" class="btn-close" (click)="closeModal()">
-                <mat-icon>close</mat-icon>
-              </button>
-            </div>
-
-            <form (ngSubmit)="saveDiscount()" class="modal-form">
-              <div class="form-grid">
-                <!-- Código -->
-                <div class="form-group">
-                  <label class="form-label">Código de Cupón *</label>
-                  <input
-                    type="text"
-                    name="code"
-                    [(ngModel)]="formData.code"
-                    (ngModelChange)="onCodeInput($event)"
-                    placeholder="Ej. VERANO2026"
-                    required
-                    class="form-control code-input"
-                  />
-                  <span class="field-hint">Se guarda automáticamente en mayúsculas.</span>
-                </div>
-
-                <!-- Nombre -->
-                <div class="form-group">
-                  <label class="form-label">Nombre de la Promoción *</label>
-                  <input
-                    type="text"
-                    name="name"
-                    [(ngModel)]="formData.name"
-                    placeholder="Ej. 15% Descuento Socios Club"
-                    required
-                    class="form-control"
-                  />
-                </div>
-
-                <!-- Tipo de Descuento -->
-                <div class="form-group">
-                  <label class="form-label">Tipo de Descuento *</label>
-                  <select name="discountType" [(ngModel)]="formData.discountType" class="form-control">
-                    <option value="percentage">Porcentaje (%)</option>
-                    <option value="fixed_amount">Monto Fijo ($ ARS)</option>
-                  </select>
-                </div>
-
-                <!-- Valor -->
-                <div class="form-group">
-                  <label class="form-label">
-                    {{ formData.discountType === 'percentage' ? 'Porcentaje de Rebaja (%) *' : 'Monto en Pesos ($ ARS) *' }}
-                  </label>
-                  <input
-                    type="number"
-                    name="discountValue"
-                    [(ngModel)]="formData.discountValue"
-                    [placeholder]="formData.discountType === 'percentage' ? 'Ej. 15' : 'Ej. 5000'"
-                    min="1"
-                    required
-                    class="form-control"
-                  />
-                </div>
-
-                <!-- Alcance -->
-                <div class="form-group full-width">
-                  <label class="form-label">Alcance de la Promoción *</label>
-                  <div class="scope-radio-group">
-                    <label class="radio-label">
-                      <input
-                        type="radio"
-                        name="scope"
-                        value="general"
-                        [(ngModel)]="formData.scope"
-                      />
-                      <span>Todas las Experiencias (General)</span>
-                    </label>
-                    <label class="radio-label">
-                      <input
-                        type="radio"
-                        name="scope"
-                        value="experience"
-                        [(ngModel)]="formData.scope"
-                      />
-                      <span>Experiencia Específica</span>
-                    </label>
-                    <label class="radio-label">
-                      <input
-                        type="radio"
-                        name="scope"
-                        value="membership"
-                        [(ngModel)]="formData.scope"
-                      />
-                      <span>Membresía Mensual (Socio Pleno)</span>
-                    </label>
-                  </div>
-                </div>
-
-                <!-- Selector de Experiencia si scope = experience -->
-                @if (formData.scope === 'experience') {
-                  <div class="form-group full-width">
-                    <label class="form-label">Seleccionar Experiencia *</label>
-                    <select
-                      name="experienceId"
-                      [(ngModel)]="formData.experienceId"
-                      (ngModelChange)="onExperienceSelect($event)"
-                      required
-                      class="form-control"
-                    >
-                      <option value="" disabled>Elegí una experiencia...</option>
-                      @for (exp of experiences(); track exp.id) {
-                        <option [value]="exp.id">
-                          {{ exp.title }} ({{ exp.providerAgency || exp.providerName || 'Oficial' }})
-                        </option>
-                      }
-                    </select>
-                  </div>
-                }
-
-                <!-- Checkbox Descuento Automático -->
-                <div class="form-group full-width">
-                  <label class="checkbox-label">
-                    <input
-                      type="checkbox"
-                      name="isAutomatic"
-                      [(ngModel)]="formData.isAutomatic"
-                    />
-                    <span>
-                      <strong>Descuento Automático Directo</strong> (Se aplica automáticamente en la experiencia sin que el usuario tenga que ingresar un código)
-                    </span>
-                  </label>
-                </div>
-
-                <!-- Monto Mínimo de Compra -->
-                <div class="form-group">
-                  <label class="form-label">Monto Mínimo de Reserva ($ ARS)</label>
-                  <input
-                    type="number"
-                    name="minAmountArs"
-                    [(ngModel)]="formData.minAmountArs"
-                    placeholder="0 = Sin mínimo"
-                    min="0"
-                    class="form-control"
-                  />
-                </div>
-
-                <!-- Tope Máximo (si es porcentaje) -->
-                <div class="form-group">
-                  <label class="form-label">Tope Máximo en $ ARS (Opcional)</label>
-                  <input
-                    type="number"
-                    name="maxDiscountArs"
-                    [(ngModel)]="formData.maxDiscountArs"
-                    placeholder="Dejar vacío para sin tope"
-                    min="0"
-                    class="form-control"
-                  />
-                </div>
-
-                <!-- Fecha Inicio -->
-                <div class="form-group">
-                  <label class="form-label">Fecha de Inicio (Opcional)</label>
-                  <input
-                    type="date"
-                    name="startsAt"
-                    [(ngModel)]="formData.startsAt"
-                    class="form-control"
-                  />
-                </div>
-
-                <!-- Fecha Fin -->
-                <div class="form-group">
-                  <label class="form-label">Fecha de Expiración (Opcional)</label>
-                  <input
-                    type="date"
-                    name="endsAt"
-                    [(ngModel)]="formData.endsAt"
-                    class="form-control"
-                  />
-                </div>
-
-                <!-- Límite de Usos -->
-                <div class="form-group">
-                  <label class="form-label">Límite Máximo de Canjes (Opcional)</label>
-                  <input
-                    type="number"
-                    name="maxUses"
-                    [(ngModel)]="formData.maxUses"
-                    placeholder="Dejar vacío para ilimitado"
-                    min="1"
-                    class="form-control"
-                  />
-                </div>
-
-                <!-- Estado Activo -->
-                <div class="form-group">
-                  <label class="form-label">Estado Inicial</label>
-                  <select name="active" [(ngModel)]="formData.active" class="form-control">
-                    <option [ngValue]="true">Activo</option>
-                    <option [ngValue]="false">Pausado</option>
-                  </select>
-                </div>
-
-                <!-- Descripción -->
-                <div class="form-group full-width">
-                  <label class="form-label">Descripción (Pública)</label>
-                  <textarea
-                    name="description"
-                    [(ngModel)]="formData.description"
-                    rows="2"
-                    placeholder="Detalles sobre la campaña o condiciones visibles para los usuarios..."
-                    class="form-control textarea"
-                  ></textarea>
-                  <span class="field-hint">Esta descripción es de acceso público y visible al consultar la promoción.</span>
-                </div>
-              </div>
-
-              <!-- Mensaje de error si hubiese -->
-              @if (formError()) {
-                <div class="form-error-alert">
-                  <mat-icon>error_outline</mat-icon>
-                  <span>{{ formError() }}</span>
-                </div>
-              }
-
-              <!-- Botones del modal -->
-              <div class="modal-footer">
-                <button type="button" class="btn-cancel" (click)="closeModal()">
-                  Cancelar
-                </button>
-                <button type="submit" class="btn-submit" [disabled]="saving()">
-                  @if (saving()) {
-                    <span>Guardando...</span>
-                  } @else {
-                    <span>{{ isEditing() ? 'Guardar Cambios' : 'Crear Descuento' }}</span>
-                  }
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      }
     </div>
   `,
   styles: [`
     .discounts-page-container {
-      max-width: 1380px;
+      max-width: 1240px;
       margin: 0 auto;
-      padding: 1.5rem 2rem 4rem;
+      padding: 1.5rem 1.5rem 4rem;
       color: #ffffff;
       font-family: var(--font-sans);
     }
@@ -492,16 +237,6 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
       gap: 1.5rem;
       margin-bottom: 2rem;
       flex-wrap: wrap;
-    }
-
-    .discounts-kicker {
-      font-size: 0.72rem;
-      font-weight: 800;
-      letter-spacing: 0.12em;
-      color: #ffd42a;
-      text-transform: uppercase;
-      display: block;
-      margin-bottom: 0.35rem;
     }
 
     .discounts-title {
@@ -524,20 +259,19 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
       display: inline-flex;
       align-items: center;
       gap: 0.5rem;
-      padding: 0.7rem 1.4rem;
       background: #80b3ff;
-      color: #ffffff;
       border: none;
+      color: #ffffff;
+      padding: 0.65rem 1.25rem;
       border-radius: 4px;
       font-weight: 700;
       font-size: 0.88rem;
       cursor: pointer;
       transition: all 0.2s ease;
-      box-shadow: 0 4px 14px rgba(128, 179, 255, 0.25);
     }
 
     .btn-create-discount:hover {
-      background: #a6c8ff;
+      background: #99c2ff;
       transform: translateY(-1px);
     }
 
@@ -550,29 +284,29 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
     }
 
     .summary-card {
-      background: rgba(14, 21, 33, 0.55);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 4px;
-      padding: 1.25rem 1.4rem;
+      background: rgba(14, 21, 33, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 6px;
+      padding: 1.15rem 1.35rem;
       display: flex;
       flex-direction: column;
       gap: 0.25rem;
-      backdrop-filter: blur(10px);
     }
 
     .sum-label {
-      font-size: 0.75rem;
-      font-weight: 700;
-      text-transform: uppercase;
+      font-size: 0.72rem;
+      font-weight: 800;
       letter-spacing: 0.08em;
+      text-transform: uppercase;
       color: #ffffff;
-      opacity: 0.88;
+      opacity: 0.9;
     }
 
     .sum-value {
-      font-size: 1.85rem;
+      font-size: 2.35rem;
       font-weight: 800;
       color: #ffffff;
+      letter-spacing: -0.02em;
       line-height: 1.15;
     }
 
@@ -600,9 +334,8 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
 
     .search-input-wrap {
       position: relative;
-      flex: 1;
-      min-width: 280px;
-      max-width: 480px;
+      flex: 1 1 320px;
+      min-width: 260px;
     }
 
     .search-icon {
@@ -635,7 +368,6 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
 
     .filter-controls {
       display: flex;
-      align-items: center;
       gap: 0.75rem;
       flex-wrap: wrap;
     }
@@ -644,194 +376,186 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
       background: rgba(14, 21, 33, 0.6);
       border: 1px solid rgba(255, 255, 255, 0.12);
       border-radius: 4px;
-      padding: 0.65rem 1rem;
       color: #ffffff;
-      font-size: 0.84rem;
+      padding: 0.65rem 1rem;
+      font-size: 0.86rem;
       outline: none;
       cursor: pointer;
     }
 
+    .filter-select option {
+      background: #0e1521;
+      color: #ffffff;
+    }
+
     /* Tabla */
     .table-container {
-      background: rgba(14, 21, 33, 0.55);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 4px;
+      background: rgba(14, 21, 33, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 6px;
       overflow-x: auto;
-      backdrop-filter: blur(10px);
     }
 
     .dash-table {
       width: 100%;
       border-collapse: collapse;
       font-size: 0.86rem;
+      text-align: left;
     }
 
     .dash-table th {
-      text-align: left;
+      padding: 0.85rem 1rem;
       font-size: 0.72rem;
       font-weight: 800;
       letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: rgba(255, 255, 255, 0.55);
-      padding: 0.85rem 1rem;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      color: #ffffff;
+      opacity: 0.9;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
       background: rgba(255, 255, 255, 0.02);
       white-space: nowrap;
     }
 
     .dash-table td {
-      padding: 0.85rem 1rem;
+      padding: 0.95rem 1rem;
       border-bottom: 1px solid rgba(255, 255, 255, 0.05);
       vertical-align: middle;
+      color: rgba(255, 255, 255, 0.88);
     }
 
-    .dash-table tr:hover {
-      background: rgba(255, 255, 255, 0.03);
+    .dash-table tr:last-child td {
+      border-bottom: none;
     }
 
-    .text-right {
-      text-align: right;
+    .dash-table tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
     }
 
     .code-badge-wrap {
-      display: flex;
+      display: inline-flex;
       align-items: center;
       gap: 0.4rem;
     }
 
     .discount-code-pill {
-      display: inline-flex;
-      align-items: center;
       font-family: monospace;
-      font-weight: 800;
-      font-size: 0.85rem;
-      letter-spacing: 0.05em;
-      padding: 0.25rem 0.6rem;
-      border-radius: 3px;
+      font-size: 0.88rem;
+      font-weight: 700;
       background: rgba(128, 179, 255, 0.15);
       color: #80b3ff;
       border: 1px solid rgba(128, 179, 255, 0.3);
+      padding: 0.2rem 0.55rem;
+      border-radius: 4px;
+      letter-spacing: 0.05em;
     }
 
     .discount-code-pill.code-auto {
-      background: rgba(245, 158, 11, 0.15);
-      color: #fbbf24;
-      border-color: rgba(245, 158, 11, 0.35);
+      background: rgba(255, 212, 42, 0.15);
+      color: #ffd42a;
+      border-color: rgba(255, 212, 42, 0.35);
     }
 
     .btn-copy-code {
       background: transparent;
       border: none;
-      color: rgba(255, 255, 255, 0.45);
+      color: rgba(255, 255, 255, 0.4);
       cursor: pointer;
       padding: 2px;
-      display: flex;
+      display: inline-flex;
       align-items: center;
-      transition: color 0.2s ease;
+      justify-content: center;
+      border-radius: 3px;
+      transition: all 0.2s ease;
     }
 
     .btn-copy-code:hover {
       color: #ffffff;
+      background: rgba(255, 255, 255, 0.1);
     }
 
     .icon-tiny {
-      font-size: 15px;
-      width: 15px;
-      height: 15px;
+      font-size: 14px;
+      width: 14px;
+      height: 14px;
     }
 
     .disc-info {
       display: flex;
       flex-direction: column;
-      gap: 0.15rem;
+      gap: 0.2rem;
     }
 
     .disc-name {
       color: #ffffff;
-      font-weight: 600;
+      font-weight: 700;
     }
 
     .disc-desc {
-      font-size: 0.76rem;
-      color: rgba(255, 255, 255, 0.55);
+      font-size: 0.78rem;
+      color: rgba(255, 255, 255, 0.5);
     }
 
     .scope-exp-cell {
-      display: flex;
+      display: inline-flex;
       align-items: center;
       gap: 0.4rem;
-      max-width: 220px;
     }
 
     .scope-icon {
       font-size: 16px;
       width: 16px;
       height: 16px;
-      flex-shrink: 0;
     }
 
     .scope-text {
+      max-width: 220px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      font-size: 0.82rem;
-      color: rgba(255, 255, 255, 0.85);
+      font-weight: 600;
     }
 
-    .scope-general-pill {
+    .scope-membership-pill, .scope-general-pill {
       display: inline-flex;
       align-items: center;
-      gap: 0.3rem;
-      font-size: 0.75rem;
+      gap: 0.35rem;
+      font-size: 0.78rem;
       font-weight: 700;
-      padding: 0.2rem 0.55rem;
-      border-radius: 9999px;
-      background: rgba(255, 255, 255, 0.08);
-      color: rgba(255, 255, 255, 0.75);
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
     }
 
     .scope-membership-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.3rem;
-      font-size: 0.75rem;
-      font-weight: 700;
-      padding: 0.2rem 0.55rem;
-      border-radius: 9999px;
-      background: rgba(59, 130, 246, 0.2);
-      color: #93c5fd;
-      border: 1px solid rgba(59, 130, 246, 0.35);
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .scope-general-pill {
+      background: rgba(255, 255, 255, 0.06);
+      color: rgba(255, 255, 255, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.1);
     }
 
     .benefit-badge {
-      display: inline-block;
       font-weight: 800;
-      font-size: 0.84rem;
-      padding: 0.25rem 0.6rem;
-      border-radius: 3px;
-      background: rgba(52, 211, 153, 0.15);
-      color: #34d399;
-      border: 1px solid rgba(52, 211, 153, 0.3);
-      white-space: nowrap;
+      color: #ffd42a;
+      display: block;
     }
 
     .benefit-badge.benefit-pct {
-      background: rgba(192, 132, 252, 0.15);
-      color: #c084fc;
-      border-color: rgba(192, 132, 252, 0.3);
+      color: #60a5fa;
     }
 
     .min-amount-hint {
-      display: block;
       font-size: 0.72rem;
       color: rgba(255, 255, 255, 0.45);
-      margin-top: 0.2rem;
+      display: block;
+      margin-top: 0.15rem;
     }
 
     .validity-text {
       font-size: 0.8rem;
       color: rgba(255, 255, 255, 0.75);
-      white-space: nowrap;
     }
 
     .uses-info {
@@ -842,11 +566,11 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
 
     .uses-count {
       color: #ffffff;
-      font-weight: 700;
+      font-weight: 800;
     }
 
     .uses-max {
-      font-size: 0.75rem;
+      font-size: 0.76rem;
       color: rgba(255, 255, 255, 0.45);
     }
 
@@ -854,20 +578,20 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
       display: inline-flex;
       align-items: center;
       gap: 0.4rem;
-      padding: 0.3rem 0.7rem;
-      border-radius: 9999px;
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      background: rgba(255, 255, 255, 0.05);
-      color: rgba(255, 255, 255, 0.6);
-      font-size: 0.78rem;
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #f87171;
+      font-size: 0.76rem;
       font-weight: 700;
+      padding: 0.25rem 0.55rem;
+      border-radius: 20px;
       cursor: pointer;
       transition: all 0.2s ease;
     }
 
     .status-toggle-btn.active {
-      border-color: rgba(52, 211, 153, 0.4);
-      background: rgba(52, 211, 153, 0.12);
+      background: rgba(16, 185, 129, 0.15);
+      border-color: rgba(16, 185, 129, 0.3);
       color: #34d399;
     }
 
@@ -942,208 +666,10 @@ import { ArsPipe } from '../../../shared/pipes/format.pipes';
       font-weight: 700;
       cursor: pointer;
     }
-
-    /* Modal */
-    .modal-backdrop {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.75);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-      padding: 1.5rem;
-      backdrop-filter: blur(6px);
-    }
-
-    .modal-card {
-      background: #0e1521;
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 6px;
-      width: 100%;
-      max-width: 680px;
-      max-height: 90vh;
-      overflow-y: auto;
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
-      display: flex;
-      flex-direction: column;
-    }
-
-    .modal-header {
-      padding: 1.25rem 1.5rem;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .modal-title-wrap {
-      display: flex;
-      align-items: center;
-      gap: 0.6rem;
-    }
-
-    .modal-title-icon {
-      color: #80b3ff;
-    }
-
-    .modal-title {
-      font-size: 1.2rem;
-      font-weight: 800;
-      margin: 0;
-      color: #ffffff;
-    }
-
-    .btn-close {
-      background: transparent;
-      border: none;
-      color: rgba(255, 255, 255, 0.5);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      transition: color 0.2s ease;
-    }
-
-    .btn-close:hover {
-      color: #ffffff;
-    }
-
-    .modal-form {
-      padding: 1.5rem;
-      display: flex;
-      flex-direction: column;
-      gap: 1.25rem;
-    }
-
-    .form-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 1rem;
-    }
-
-    .form-group {
-      display: flex;
-      flex-direction: column;
-      gap: 0.35rem;
-    }
-
-    .form-group.full-width {
-      grid-column: span 2;
-    }
-
-    .form-label {
-      font-size: 0.8rem;
-      font-weight: 700;
-      color: rgba(255, 255, 255, 0.85);
-    }
-
-    .form-control {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 4px;
-      padding: 0.65rem 0.85rem;
-      color: #ffffff;
-      font-size: 0.86rem;
-      outline: none;
-      transition: border-color 0.2s ease;
-    }
-
-    .form-control:focus {
-      border-color: #80b3ff;
-      background: rgba(255, 255, 255, 0.08);
-    }
-
-    .code-input {
-      font-family: monospace;
-      font-weight: 700;
-      letter-spacing: 0.05em;
-    }
-
-    .field-hint {
-      font-size: 0.72rem;
-      color: rgba(255, 255, 255, 0.45);
-    }
-
-    .textarea {
-      resize: vertical;
-    }
-
-    .scope-radio-group {
-      display: flex;
-      gap: 1.5rem;
-      margin-top: 0.25rem;
-    }
-
-    .radio-label, .checkbox-label {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-size: 0.84rem;
-      cursor: pointer;
-      color: rgba(255, 255, 255, 0.9);
-    }
-
-    .form-error-alert {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.75rem 1rem;
-      background: rgba(239, 68, 68, 0.15);
-      border: 1px solid rgba(239, 68, 68, 0.3);
-      border-radius: 4px;
-      color: #f87171;
-      font-size: 0.84rem;
-    }
-
-    .modal-footer {
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      gap: 0.75rem;
-      padding-top: 1rem;
-      border-top: 1px solid rgba(255, 255, 255, 0.08);
-    }
-
-    .btn-cancel {
-      padding: 0.65rem 1.25rem;
-      background: transparent;
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      color: rgba(255, 255, 255, 0.8);
-      border-radius: 4px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    .btn-submit {
-      padding: 0.65rem 1.4rem;
-      background: #80b3ff;
-      border: none;
-      color: #ffffff;
-      border-radius: 4px;
-      font-weight: 700;
-      cursor: pointer;
-    }
-
-    .btn-submit:hover:not(:disabled) {
-      background: #a6c8ff;
-    }
-
-    .btn-submit:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
-    @media (max-width: 650px) {
-      .form-grid {
-        grid-template-columns: 1fr;
-      }
-      .form-group.full-width {
-        grid-column: span 1;
-      }
-    }
   `],
 })
 export class AdminDiscountsComponent {
+  private readonly router = inject(Router);
   private readonly discountService = inject(DiscountService);
   private readonly experienceService = inject(ExperienceService);
   private readonly store = inject(AdminStoreService);
@@ -1155,40 +681,14 @@ export class AdminDiscountsComponent {
   statusFilter = signal<string>('all');
   scopeFilter = signal<string>('all');
 
-  modalOpen = signal<boolean>(false);
-  isEditing = signal<boolean>(false);
-  editingId = signal<string | null>(null);
-  saving = signal<boolean>(false);
-  formError = signal<string | null>(null);
-  private modalSessionId = 0;
-
-  formData: {
-    code: string;
-    name: string;
-    description: string;
-    discountType: DiscountType;
-    discountValue: number | null;
-    scope: DiscountScope;
-    experienceId: string;
-    experienceSlug: string;
-    isAutomatic: boolean;
-    minAmountArs: number | null;
-    maxDiscountArs: number | null;
-    startsAt: string;
-    endsAt: string;
-    maxUses: number | null;
-    active: boolean;
-  } = this.initialFormData();
-
   // Métricas
   readonly activeCount = computed(() => this.discounts().filter((d) => d.active).length);
   readonly totalCount = computed(() => this.discounts().length);
   readonly experienceSpecificCount = computed(() => this.discounts().filter((d) => d.scope === 'experience').length);
   readonly automaticCount = computed(() => this.discounts().filter((d) => d.isAutomatic).length);
   readonly totalUsesCount = computed(() => this.discounts().reduce((sum, d) => sum + (d.usesCount || 0), 0));
-  
+
   readonly totalSavingsArs = computed(() => {
-    // Calculado a partir de comprobantes aprobados que tuvieron discount_ars
     const submissions = this.store.submissions();
     return submissions
       .filter((s) => s.status === 'aprobado' && (s.discountArs || 0) > 0)
@@ -1226,76 +726,20 @@ export class AdminDiscountsComponent {
     });
   });
 
-  private initialFormData() {
-    return {
-      code: '',
-      name: '',
-      description: '',
-      discountType: 'percentage' as DiscountType,
-      discountValue: null,
-      scope: 'general' as DiscountScope,
-      experienceId: '',
-      experienceSlug: '',
-      isAutomatic: false,
-      minAmountArs: null,
-      maxDiscountArs: null,
-      startsAt: '',
-      endsAt: '',
-      maxUses: null,
-      active: true,
-    };
+  goToCreate(): void {
+    const rawPath = this.router.url.split('?')[0].split('#')[0];
+    const segments = rawPath.split('/').filter(Boolean);
+    const isUnderAdmin = segments[0] === 'admin';
+    const target = isUnderAdmin ? '/admin/descuentos/nuevo' : '/descuentos/nuevo';
+    this.router.navigateByUrl(target);
   }
 
-  openCreateModal(): void {
-    this.modalSessionId++;
-    this.formData = this.initialFormData();
-    this.isEditing.set(false);
-    this.editingId.set(null);
-    this.formError.set(null);
-    this.modalOpen.set(true);
-  }
-
-  openEditModal(disc: Discount): void {
-    this.modalSessionId++;
-    this.formData = {
-      code: disc.code,
-      name: disc.name,
-      description: disc.description || '',
-      discountType: disc.discountType,
-      discountValue: disc.discountValue,
-      scope: disc.scope,
-      experienceId: disc.experienceId || '',
-      experienceSlug: disc.experienceSlug || '',
-      isAutomatic: disc.isAutomatic,
-      minAmountArs: disc.minAmountArs || null,
-      maxDiscountArs: disc.maxDiscountArs || null,
-      startsAt: disc.startsAt ? disc.startsAt.split('T')[0] : '',
-      endsAt: disc.endsAt ? disc.endsAt.split('T')[0] : '',
-      maxUses: disc.maxUses || null,
-      active: disc.active,
-    };
-    this.isEditing.set(true);
-    this.editingId.set(disc.id);
-    this.formError.set(null);
-    this.modalOpen.set(true);
-  }
-
-  closeModal(): void {
-    this.modalSessionId++;
-    this.modalOpen.set(false);
-  }
-
-  onCodeInput(value: string): void {
-    if (value) {
-      this.formData.code = value.toUpperCase().trim();
-    }
-  }
-
-  onExperienceSelect(expId: string): void {
-    const exp = this.experiences().find((e) => e.id === expId);
-    if (exp) {
-      this.formData.experienceSlug = exp.slug || '';
-    }
+  goToEdit(disc: Discount): void {
+    const rawPath = this.router.url.split('?')[0].split('#')[0];
+    const segments = rawPath.split('/').filter(Boolean);
+    const isUnderAdmin = segments[0] === 'admin';
+    const target = isUnderAdmin ? `/admin/descuentos/${disc.id}/editar` : `/descuentos/${disc.id}/editar`;
+    this.router.navigateByUrl(target);
   }
 
   getExperienceTitle(disc: Discount): string {
@@ -1337,71 +781,6 @@ export class AdminDiscountsComponent {
       await this.discountService.deleteDiscount(disc.id);
     } catch (err: any) {
       alert(`Error al eliminar descuento: ${err?.message || err}`);
-    }
-  }
-
-  async saveDiscount(): Promise<void> {
-    this.formError.set(null);
-
-    const code = (this.formData.code || '').trim().toUpperCase();
-    if (!code) {
-      this.formError.set('Ingresá un código para el cupón.');
-      return;
-    }
-    if (!this.formData.name.trim()) {
-      this.formError.set('Ingresá un nombre para la promoción.');
-      return;
-    }
-    const val = Number(this.formData.discountValue);
-    if (!val || val <= 0) {
-      this.formError.set('El valor del descuento debe ser mayor a 0.');
-      return;
-    }
-    if (this.formData.discountType === 'percentage' && val > 100) {
-      this.formError.set('El porcentaje no puede ser mayor a 100%.');
-      return;
-    }
-    if (this.formData.scope === 'experience' && !this.formData.experienceId) {
-      this.formError.set('Seleccioná la experiencia a la que aplica este descuento.');
-      return;
-    }
-
-    const currentSessionId = this.modalSessionId;
-    this.saving.set(true);
-    try {
-      const payload: CreateDiscountDto = {
-        code,
-        name: this.formData.name.trim(),
-        description: this.formData.description.trim(),
-        discountType: this.formData.discountType,
-        discountValue: val,
-        scope: this.formData.scope,
-        experienceId: this.formData.scope === 'experience' ? this.formData.experienceId : null,
-        experienceSlug: this.formData.scope === 'experience' ? this.formData.experienceSlug : null,
-        isAutomatic: this.formData.isAutomatic,
-        minAmountArs: Number(this.formData.minAmountArs) || 0,
-        maxDiscountArs: this.formData.maxDiscountArs ? Number(this.formData.maxDiscountArs) : null,
-        startsAt: this.formData.startsAt ? new Date(this.formData.startsAt).toISOString() : null,
-        endsAt: this.formData.endsAt ? new Date(this.formData.endsAt + 'T23:59:59Z').toISOString() : null,
-        maxUses: this.formData.maxUses ? Number(this.formData.maxUses) : null,
-        active: this.formData.active,
-      };
-
-      if (this.isEditing() && this.editingId()) {
-        await this.discountService.updateDiscount(this.editingId()!, payload);
-      } else {
-        await this.discountService.createDiscount(payload);
-      }
-
-      if (this.modalSessionId !== currentSessionId) return;
-      this.closeModal();
-    } catch (err: any) {
-      if (this.modalSessionId !== currentSessionId) return;
-      this.formError.set(err?.message || 'Error al guardar el descuento.');
-    } finally {
-      if (this.modalSessionId === currentSessionId) {
-        this.saving.set(false);
-      }
     }
   }
 }

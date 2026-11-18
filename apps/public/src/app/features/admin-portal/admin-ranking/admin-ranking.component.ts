@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -10,7 +10,6 @@ import { FavoritesService } from '../../../core/services/favorites.service';
 import { ProviderUser } from '../../../core/models/bank-transfer.model';
 import { Experience } from '../../../core/models/experience.model';
 import { ArsPipe } from '../../../shared/pipes/format.pipes';
-
 
 export interface ProviderRankingRow {
   rank: number;
@@ -46,7 +45,7 @@ export interface ExperienceRankingRow {
         <div>
           <h1 class="ranking-title">Ranking de Prestadores & Favoritos</h1>
           <p class="ranking-sub">
-            Puntuaciones otorgadas por socios a prestadores oficiales y popularidad de experiencias guardadas en favoritos.
+            Puntuaciones otorgadas por socios a prestadores oficiales y popularidad de experiencias guardadas en favoritos con datos reales.
           </p>
         </div>
       </header>
@@ -55,38 +54,38 @@ export interface ExperienceRankingRow {
       <section class="summary-strip">
         <div class="summary-card">
           <span class="sum-label">Prestadores Evaluados</span>
-          <strong class="sum-value">{{ providerRanking().length }}</strong>
+          <strong class="sum-value num-lg">{{ providerRanking().length }}</strong>
           <span class="sum-sub">Promedio red: {{ networkAverageScore() }} ★</span>
         </div>
 
         <div class="summary-card">
           <span class="sum-label">Prestador Mejor Valorado</span>
-          <strong class="sum-value">
+          <strong class="sum-value text-truncate-val" [title]="topProvider() ? topProvider()?.name : ''">
             {{ topProvider() ? topProvider()?.name : '—' }}
           </strong>
           <span class="sum-sub">
             @if (topProvider()) {
               Score líder: {{ topProvider()?.rating?.score?.toFixed(1) }} ★ ({{ topProvider()?.rating?.count }} votos)
             } @else {
-              Sin datos de votos
+              Sin prestadores activos
             }
           </span>
         </div>
 
         <div class="summary-card">
           <span class="sum-label">Total Favoritos en la Red</span>
-          <strong class="sum-value">{{ totalFavoritesCount() }}</strong>
+          <strong class="sum-value num-lg">{{ totalFavoritesCount() }}</strong>
           <span class="sum-sub">Acumulado de toda la comunidad</span>
         </div>
 
         <div class="summary-card">
           <span class="sum-label">Experiencia Más Deseada</span>
-          <strong class="sum-value">
+          <strong class="sum-value text-truncate-val" [title]="topExperience() ? topExperience()?.title : ''">
             {{ topExperience() ? topExperience()?.title : '—' }}
           </strong>
           <span class="sum-sub">
             @if (topExperience()) {
-              Guardada por {{ topExperience()?.favoritesCount }} socios
+              Guardada por {{ topExperience()?.favoritesCount }} {{ topExperience()?.favoritesCount === 1 ? 'socio' : 'socios' }}
             } @else {
               Sin favoritos registrados
             }
@@ -96,166 +95,200 @@ export interface ExperienceRankingRow {
 
       <!-- SECCIÓN 1: RANKING DE PRESTADORES -->
       <section class="ranking-section-block">
-          <div class="section-block-head">
-            <div class="head-title-wrap">
-              <span class="block-kicker">TABLA DE REPUTACIÓN</span>
-              <h2 class="block-title">Puntuación de Prestadores Oficiales</h2>
-            </div>
-            <span class="badge-total">{{ providerRanking().length }} prestadores</span>
+        <div class="section-block-head">
+          <div class="head-title-wrap">
+            <span class="block-kicker">TABLA DE REPUTACIÓN</span>
+            <h2 class="block-title">Puntuación de Prestadores Oficiales</h2>
           </div>
+          <span class="badge-total">{{ providerRanking().length }} prestadores</span>
+        </div>
 
-          <!-- Tabla Completa de Prestadores -->
-          <div class="table-card">
-            <div class="table-scroll">
-              <table class="ranking-table">
-                <thead>
-                  <tr>
-                    <th style="width: 70px;">PUESTO</th>
-                    <th>PRESTADOR & AGENCIA</th>
-                    <th>CALIFICACIÓN PROMEDIO</th>
-                    <th>TOTAL DE VOTOS</th>
-                    <th>EXP. ACTIVAS</th>
-                    <th>ESTADO</th>
-                    <th class="text-right">ACCIONES</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (row of providerRanking(); track row.provider.id || row.slug) {
-                    <tr [class.is-top-three]="row.rank <= 3">
-                      <td>
-                        <span class="rank-badge" [class.rank-gold]="row.rank === 1" [class.rank-silver]="row.rank === 2" [class.rank-bronze]="row.rank === 3">
-                          #{{ row.rank }}
-                        </span>
-                      </td>
-                      <td>
-                        <div class="provider-cell">
-                          <strong class="cell-primary-title">{{ row.name }}</strong>
-                          @if (row.agency && row.agency !== row.name) {
-                            <span class="cell-sub-text">{{ row.agency }}</span>
-                          }
-                        </div>
-                      </td>
-                      <td>
-                        <div class="stars-cell">
-                          <span class="score-number">{{ row.rating.score.toFixed(1) }}</span>
-                          <span class="score-star">★</span>
-                          <div class="score-progress-bar">
-                            <div class="score-progress-fill" [style.width.%]="(row.rating.score / 5) * 100"></div>
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        <span class="votes-pill">{{ row.rating.count }} valoraciones</span>
-                      </td>
-                      <td>
-                        <span class="exp-count-tag">{{ row.activeExperiencesCount }} experiencias</span>
-                      </td>
-                      <td>
-                        <span class="verified-pill">Verificado</span>
-                      </td>
-                      <td class="text-right">
-                        <a [routerLink]="['/prestadores', row.slug]" target="_blank" class="btn-action-outline">
-                          <span>Perfil Público</span>
-                          <mat-icon>open_in_new</mat-icon>
-                        </a>
-                      </td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </section>
+        <!-- Tabla Estilizada con el Estándar del Portal Admin -->
+        <div class="table-container">
+          <table class="dash-table">
+            <thead>
+              <tr>
+                <th style="width: 75px;">PUESTO</th>
+                <th>PRESTADOR & AGENCIA</th>
+                <th>CALIFICACIÓN PROMEDIO</th>
+                <th>TOTAL DE VOTOS</th>
+                <th>EXP. ACTIVAS</th>
+                <th>ESTADO</th>
+                <th class="text-right">ACCIONES</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of providerRanking(); track row.provider.id || row.slug) {
+                <tr [class.is-top-three]="row.rank <= 3">
+                  <td>
+                    <span
+                      class="rank-badge"
+                      [class.rank-gold]="row.rank === 1"
+                      [class.rank-silver]="row.rank === 2"
+                      [class.rank-bronze]="row.rank === 3"
+                    >
+                      #{{ row.rank }}
+                    </span>
+                  </td>
+                  <td>
+                    <div class="cell-main-info">
+                      <strong class="cell-title">{{ row.name }}</strong>
+                      @if (row.agency && row.agency !== row.name) {
+                        <span class="cell-sub">{{ row.agency }}</span>
+                      }
+                    </div>
+                  </td>
+                  <td>
+                    <div class="stars-cell">
+                      <span class="score-number">{{ row.rating.score.toFixed(1) }}</span>
+                      <span class="score-star">★</span>
+                      <div class="score-progress-bar">
+                        <div
+                          class="score-progress-fill"
+                          [style.width.%]="(row.rating.score / 5) * 100"
+                        ></div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <span class="votes-pill">{{ row.rating.count }} valoraciones</span>
+                  </td>
+                  <td>
+                    <span class="exp-count-tag">{{ row.activeExperiencesCount }} experiencias</span>
+                  </td>
+                  <td>
+                    <span class="verified-pill">VERIFICADO</span>
+                  </td>
+                  <td class="text-right">
+                    <a
+                      [routerLink]="['/prestadores', row.slug]"
+                      target="_blank"
+                      class="btn-action-outline"
+                    >
+                      <span>Perfil Público</span>
+                      <mat-icon class="icon-tiny">open_in_new</mat-icon>
+                    </a>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="7" class="empty-table-cell">
+                    No hay prestadores oficiales activos registrados en el sistema.
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-        <!-- SECCIÓN 2: RANKING DE EXPERIENCIAS FAVORITAS -->
-        <section class="ranking-section-block">
-          <div class="section-block-head">
-            <div class="head-title-wrap">
-              <span class="block-kicker">DEMANDA & FAVORITOS</span>
-              <h2 class="block-title">Experiencias más Guardadas por Socios</h2>
-            </div>
-            <span class="badge-total">{{ experienceRanking().length }} experiencias</span>
+      <!-- SECCIÓN 2: RANKING DE EXPERIENCIAS FAVORITAS -->
+      <section class="ranking-section-block">
+        <div class="section-block-head">
+          <div class="head-title-wrap">
+            <span class="block-kicker">DEMANDA & FAVORITOS</span>
+            <h2 class="block-title">Experiencias más Guardadas por Socios</h2>
           </div>
+          <span class="badge-total">{{ experienceRanking().length }} experiencias</span>
+        </div>
 
-          <!-- Tabla Completa de Experiencias -->
-          <div class="table-card">
-            <div class="table-scroll">
-              <table class="ranking-table">
-                <thead>
-                  <tr>
-                    <th style="width: 70px;">PUESTO</th>
-                    <th>EXPERIENCIA</th>
-                    <th>PRESTADOR RESPONSABLE</th>
-                    <th>SOCIOS CON ESTA FAVORITA</th>
-                    <th>TARIFA ARS</th>
-                    <th>DIFICULTAD</th>
-                    <th class="text-right">ACCIONES</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (row of experienceRanking(); track row.experience.id || row.slug) {
-                    <tr [class.is-top-three]="row.rank <= 3">
-                      <td>
-                        <span class="rank-badge" [class.rank-gold]="row.rank === 1" [class.rank-silver]="row.rank === 2" [class.rank-bronze]="row.rank === 3">
-                          #{{ row.rank }}
-                        </span>
-                      </td>
-                      <td>
-                        <div class="exp-cell-row">
-                          @if (row.coverImage) {
-                            <img [src]="row.coverImage" [alt]="row.title" class="exp-cell-thumb" />
-                          }
-                          <div class="exp-cell-info">
-                            <strong class="cell-primary-title">{{ row.title }}</strong>
-                            <span class="cell-sub-text">{{ row.region }}</span>
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        <span class="provider-pill">{{ row.providerName }}</span>
-                      </td>
-                      <td>
-                        <div class="fav-badge-cell">
-                          <span class="heart-icon">❤️</span>
-                          <strong class="fav-count-num">{{ row.favoritesCount }}</strong>
-                          <span class="fav-count-lbl">{{ row.favoritesCount === 1 ? 'socio' : 'socios' }}</span>
-                        </div>
-                      </td>
-                      <td>
-                        <strong class="price-text">{{ row.priceArs | ars }}</strong>
-                      </td>
-                      <td>
-                        <span class="diff-badge">{{ row.difficulty }}</span>
-                      </td>
-                      <td class="text-right">
-                        <div class="action-btn-group">
-                          <a [routerLink]="['/admin/experiencias', row.slug]" class="btn-action-outline">
-                            <span>Ficha Admin</span>
-                          </a>
-                          <a [routerLink]="['/experiencias', row.slug]" target="_blank" class="btn-action-outline btn-web-link">
-                            <mat-icon>open_in_new</mat-icon>
-                          </a>
-                        </div>
-                      </td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-      </div>
+        <!-- Tabla Estilizada con el Estándar del Portal Admin -->
+        <div class="table-container">
+          <table class="dash-table">
+            <thead>
+              <tr>
+                <th style="width: 75px;">PUESTO</th>
+                <th>EXPERIENCIA</th>
+                <th>PRESTADOR RESPONSABLE</th>
+                <th>SOCIOS CON ESTA FAVORITA</th>
+                <th>TARIFA ARS</th>
+                <th>DIFICULTAD</th>
+                <th class="text-right">ACCIONES</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of experienceRanking(); track row.experience.id || row.slug) {
+                <tr [class.is-top-three]="row.rank <= 3">
+                  <td>
+                    <span
+                      class="rank-badge"
+                      [class.rank-gold]="row.rank === 1"
+                      [class.rank-silver]="row.rank === 2"
+                      [class.rank-bronze]="row.rank === 3"
+                    >
+                      #{{ row.rank }}
+                    </span>
+                  </td>
+                  <td>
+                    <div class="exp-cell-row">
+                      @if (row.coverImage) {
+                        <img [src]="row.coverImage" [alt]="row.title" class="exp-cell-thumb" />
+                      }
+                      <div class="cell-main-info">
+                        <strong class="cell-title">{{ row.title }}</strong>
+                        <span class="cell-sub">{{ row.region }}</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <span class="provider-pill">{{ row.providerName }}</span>
+                  </td>
+                  <td>
+                    <div class="fav-badge-cell">
+                      <span class="heart-icon">❤️</span>
+                      <strong class="fav-count-num">{{ row.favoritesCount }}</strong>
+                      <span class="fav-count-lbl">{{
+                        row.favoritesCount === 1 ? 'socio' : 'socios'
+                      }}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <strong class="price-text">{{ row.priceArs | ars }}</strong>
+                  </td>
+                  <td>
+                    <span class="diff-badge">{{ row.difficulty }}</span>
+                  </td>
+                  <td class="text-right">
+                    <div class="action-btn-group">
+                      <a [routerLink]="['/admin/experiencias', row.slug]" class="btn-action-outline">
+                        <span>Ficha Admin</span>
+                      </a>
+                      <a
+                        [routerLink]="['/experiencias', row.slug]"
+                        target="_blank"
+                        class="btn-action-outline btn-web-link"
+                        title="Ver página pública"
+                      >
+                        <mat-icon class="icon-tiny">open_in_new</mat-icon>
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="7" class="empty-table-cell">
+                    No hay experiencias publicadas activas registradas en el catálogo.
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
   `,
   styles: [`
     .ranking-page-container {
       display: flex;
       flex-direction: column;
       gap: 1.75rem;
-      padding: 1.5rem;
-      max-width: 1400px;
+      padding: 1.5rem 1.5rem 3rem;
+      max-width: 1240px;
       margin: 0 auto;
       width: 100%;
       box-sizing: border-box;
+      color: #ffffff;
+      font-family: var(--font-sans);
     }
 
     .ranking-header {
@@ -264,18 +297,8 @@ export interface ExperienceRankingRow {
       align-items: flex-end;
       flex-wrap: wrap;
       gap: 1.25rem;
-      padding-bottom: 0.5rem;
+      padding-bottom: 0.75rem;
       border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    }
-
-    .ranking-kicker {
-      font-size: 0.72rem;
-      font-weight: 800;
-      letter-spacing: 0.12em;
-      color: #ff5f00;
-      text-transform: uppercase;
-      display: block;
-      margin-bottom: 0.25rem;
     }
 
     .ranking-title {
@@ -283,48 +306,16 @@ export interface ExperienceRankingRow {
       font-weight: 800;
       color: #ffffff;
       margin: 0 0 0.4rem 0;
+      letter-spacing: -0.02em;
       line-height: 1.2;
     }
 
     .ranking-sub {
-      font-size: 0.88rem;
-      color: rgba(255, 255, 255, 0.65);
+      font-size: 0.9rem;
+      color: rgba(255, 255, 255, 0.68);
       margin: 0;
-      max-width: 650px;
-      line-height: 1.45;
-    }
-
-    .tab-pill-group {
-      display: flex;
-      background: rgba(14, 22, 42, 0.75);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: 6px;
-      padding: 0.25rem;
-      gap: 0.25rem;
-    }
-
-    .tab-pill {
-      background: transparent;
-      border: none;
-      padding: 0.45rem 0.95rem;
-      border-radius: 4px;
-      color: rgba(255, 255, 255, 0.75);
-      font-size: 0.8rem;
-      font-weight: 700;
-      cursor: pointer;
-      transition: all 0.18s ease;
-      white-space: nowrap;
-    }
-
-    .tab-pill:hover {
-      color: #ffffff;
-      background: rgba(255, 255, 255, 0.06);
-    }
-
-    .tab-pill.is-active {
-      background: #ff5f00;
-      color: #ffffff;
-      box-shadow: 0 2px 8px rgba(255, 95, 0, 0.4);
+      max-width: 680px;
+      line-height: 1.5;
     }
 
     /* Franja de Métricas Resumen */
@@ -335,52 +326,57 @@ export interface ExperienceRankingRow {
     }
 
     .summary-card {
-      background: rgba(15, 23, 42, 0.7);
-      border: 1px solid rgba(128, 179, 255, 0.2);
-      border-radius: 2px;
-      padding: 1.1rem 1.25rem;
+      background: rgba(14, 21, 33, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 6px;
+      padding: 1.15rem 1.35rem;
       display: flex;
       flex-direction: column;
-      gap: 0.25rem;
+      gap: 0.35rem;
       backdrop-filter: blur(8px);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
     }
 
     .sum-label {
-      font-size: 0.74rem;
-      font-weight: 700;
+      font-size: 0.72rem;
+      font-weight: 800;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.06em;
       color: #ffffff;
-      opacity: 0.88;
+      opacity: 0.9;
     }
 
     .sum-value {
-      font-size: 1.55rem;
+      font-size: 1.35rem;
       font-weight: 800;
       color: #ffffff !important;
-      line-height: 1.2;
+      line-height: 1.15;
     }
 
-    .text-amber,
-    .text-gold,
-    .text-orange,
-    .text-blue {
-      color: #ffffff !important;
+    .sum-value.num-lg {
+      font-size: 2.35rem;
+      letter-spacing: -0.02em;
+    }
+
+    .text-truncate-val {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      display: block;
     }
 
     .sum-sub {
-      font-size: 0.75rem;
-      color: #ffffff;
-      opacity: 0.8;
+      font-size: 0.76rem;
+      color: rgba(255, 255, 255, 0.75);
       margin-top: auto;
-      padding-top: 0.5rem;
+      padding-top: 0.4rem;
     }
 
     /* Secciones de Bloque de Ranking */
     .ranking-section-block {
       display: flex;
       flex-direction: column;
-      gap: 1.15rem;
+      gap: 0.85rem;
     }
 
     .section-block-head {
@@ -398,6 +394,7 @@ export interface ExperienceRankingRow {
       color: #80b3ff;
       text-transform: uppercase;
       display: block;
+      margin-bottom: 0.2rem;
     }
 
     .block-title {
@@ -405,6 +402,7 @@ export interface ExperienceRankingRow {
       font-weight: 800;
       color: #ffffff;
       margin: 0;
+      letter-spacing: -0.01em;
     }
 
     .badge-total {
@@ -412,172 +410,56 @@ export interface ExperienceRankingRow {
       font-weight: 700;
       padding: 0.25rem 0.65rem;
       background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      border-radius: 2px;
-      color: rgba(255, 255, 255, 0.8);
-    }
-
-    /* Podio Top 3 */
-    .podium-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 1rem;
-    }
-
-    .podium-card {
-      background: rgba(15, 23, 42, 0.85);
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      border-radius: 8px;
-      padding: 1.25rem;
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      position: relative;
-      overflow: hidden;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-    }
-
-    .podium-card.is-gold {
-      border-color: rgba(255, 204, 0, 0.5);
-      background: linear-gradient(135deg, rgba(255, 204, 0, 0.12) 0%, rgba(15, 23, 42, 0.9) 100%);
-    }
-
-    .podium-card.is-silver {
-      border-color: rgba(226, 232, 240, 0.45);
-      background: linear-gradient(135deg, rgba(226, 232, 240, 0.08) 0%, rgba(15, 23, 42, 0.9) 100%);
-    }
-
-    .podium-card.is-bronze {
-      border-color: rgba(205, 127, 50, 0.45);
-      background: linear-gradient(135deg, rgba(205, 127, 50, 0.08) 0%, rgba(15, 23, 42, 0.9) 100%);
-    }
-
-    .podium-medal {
-      font-size: 1.35rem;
-      font-weight: 900;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 48px;
-      height: 48px;
-      border-radius: 8px;
-      background: rgba(0, 0, 0, 0.35);
-      flex-shrink: 0;
-    }
-
-    .podium-info {
-      display: flex;
-      flex-direction: column;
-      gap: 0.15rem;
-      flex: 1;
-      min-width: 0;
-    }
-
-    .podium-name {
-      font-size: 1rem;
-      font-weight: 800;
-      color: #ffffff;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .podium-agency {
-      font-size: 0.78rem;
-      color: rgba(255, 255, 255, 0.6);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .podium-score-row {
-      display: flex;
-      align-items: center;
-      gap: 0.4rem;
-      margin-top: 0.35rem;
-    }
-
-    .podium-score {
-      font-size: 0.95rem;
-      font-weight: 900;
-      color: #ffcc00;
-    }
-
-    .podium-votes, .podium-fav-count {
-      font-size: 0.75rem;
-      color: rgba(255, 255, 255, 0.7);
-    }
-
-    .btn-podium-view {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.3rem;
-      padding: 0.45rem 0.8rem;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.18);
+      border: 1px solid rgba(255, 255, 255, 0.12);
       border-radius: 4px;
-      color: #ffffff !important;
-      font-size: 0.74rem;
-      font-weight: 700;
-      text-decoration: none;
-      white-space: nowrap;
-      transition: all 0.18s ease;
-      flex-shrink: 0;
+      color: rgba(255, 255, 255, 0.85);
     }
 
-    .btn-podium-view:hover {
-      background: #ff5f00;
-      border-color: #ff5f00;
-    }
-
-    .btn-podium-view mat-icon {
-      font-size: 14px;
-      width: 14px;
-      height: 14px;
-    }
-
-    /* Tabla */
-    .table-card {
-      background: #0b1222;
-      border: 1px solid rgba(128, 179, 255, 0.18);
+    /* Tabla Estándar del Portal Admin */
+    .table-container {
+      background: rgba(14, 21, 33, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 6px;
-      overflow: hidden;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-    }
-
-    .table-scroll {
-      width: 100%;
       overflow-x: auto;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
     }
 
-    .ranking-table {
+    .dash-table {
       width: 100%;
       border-collapse: collapse;
+      font-size: 0.86rem;
       text-align: left;
-      font-size: 0.82rem;
     }
 
-    .ranking-table th {
+    .dash-table th {
       padding: 0.85rem 1rem;
-      background: rgba(14, 22, 42, 0.9);
-      color: rgba(255, 255, 255, 0.65);
+      font-size: 0.72rem;
       font-weight: 800;
-      font-size: 0.7rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.08em;
+      color: #ffffff;
+      opacity: 0.9;
       border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.02);
       white-space: nowrap;
     }
 
-    .ranking-table td {
-      padding: 0.85rem 1rem;
+    .dash-table td {
+      padding: 0.95rem 1rem;
       border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-      color: rgba(255, 255, 255, 0.85);
       vertical-align: middle;
+      color: rgba(255, 255, 255, 0.88);
     }
 
-    .ranking-table tr:hover {
-      background: rgba(255, 255, 255, 0.025);
+    .dash-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .dash-table tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .dash-table tr.is-top-three td {
+      background: rgba(255, 255, 255, 0.015);
     }
 
     .rank-badge {
@@ -591,97 +473,110 @@ export interface ExperienceRankingRow {
       font-size: 0.82rem;
       background: rgba(255, 255, 255, 0.06);
       color: rgba(255, 255, 255, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.1);
     }
 
     .rank-gold {
-      background: rgba(255, 204, 0, 0.2);
+      background: rgba(255, 204, 0, 0.18);
       color: #ffcc00;
-      border: 1px solid rgba(255, 204, 0, 0.45);
+      border-color: rgba(255, 204, 0, 0.45);
     }
 
     .rank-silver {
       background: rgba(226, 232, 240, 0.15);
-      color: #f1f5f9;
-      border: 1px solid rgba(226, 232, 240, 0.35);
+      color: #e2e8f0;
+      border-color: rgba(226, 232, 240, 0.35);
     }
 
     .rank-bronze {
-      background: rgba(205, 127, 50, 0.15);
-      color: #fca5a5;
-      border: 1px solid rgba(205, 127, 50, 0.35);
+      background: rgba(205, 127, 50, 0.18);
+      color: #f6ad55;
+      border-color: rgba(205, 127, 50, 0.35);
     }
 
-    .provider-cell, .exp-cell-info {
+    .cell-main-info {
       display: flex;
       flex-direction: column;
       gap: 0.15rem;
     }
 
-    .cell-primary-title {
+    .cell-title {
       color: #ffffff;
+      font-weight: 700;
       font-size: 0.88rem;
     }
 
-    .cell-sub-text {
+    .cell-sub {
       font-size: 0.74rem;
-      color: rgba(255, 255, 255, 0.5);
+      color: rgba(255, 255, 255, 0.55);
     }
 
     .stars-cell {
       display: flex;
       align-items: center;
-      gap: 0.45rem;
+      gap: 0.4rem;
     }
 
     .score-number {
-      font-size: 0.95rem;
+      font-size: 0.88rem;
       font-weight: 800;
-      color: #ffcc00;
+      color: #ffffff;
     }
 
     .score-star {
       color: #ffcc00;
       font-size: 0.95rem;
+      line-height: 1;
     }
 
     .score-progress-bar {
-      width: 70px;
-      height: 6px;
+      width: 60px;
+      height: 5px;
+      background: rgba(255, 255, 255, 0.12);
       border-radius: 999px;
-      background: rgba(255, 255, 255, 0.1);
       overflow: hidden;
+      margin-left: 0.25rem;
     }
 
     .score-progress-fill {
       height: 100%;
-      background: #ffcc00;
+      background: linear-gradient(90deg, #ffcc00, #ff8a4c);
       border-radius: 999px;
     }
 
     .votes-pill {
       display: inline-block;
-      padding: 0.25rem 0.55rem;
-      background: rgba(255, 255, 255, 0.05);
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.65);
+      background: rgba(255, 255, 255, 0.04);
+      padding: 0.2rem 0.55rem;
       border-radius: 4px;
-      font-size: 0.74rem;
-      color: rgba(255, 255, 255, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      white-space: nowrap;
     }
 
     .exp-count-tag {
-      font-size: 0.75rem;
+      font-size: 0.78rem;
+      font-weight: 600;
       color: #80b3ff;
-      font-weight: 700;
+      background: rgba(128, 179, 255, 0.12);
+      border: 1px solid rgba(128, 179, 255, 0.25);
+      padding: 0.2rem 0.55rem;
+      border-radius: 4px;
+      white-space: nowrap;
     }
 
     .verified-pill {
       font-size: 0.7rem;
       font-weight: 800;
+      letter-spacing: 0.05em;
+      color: #48bb78;
+      background: rgba(72, 187, 120, 0.12);
+      border: 1px solid rgba(72, 187, 120, 0.28);
       padding: 0.2rem 0.55rem;
-      border-radius: 999px;
-      background: rgba(16, 185, 129, 0.12);
-      border: 1px solid rgba(16, 185, 129, 0.35);
-      color: #34d399;
+      border-radius: 4px;
       text-transform: uppercase;
+      white-space: nowrap;
     }
 
     .exp-cell-row {
@@ -695,95 +590,121 @@ export interface ExperienceRankingRow {
       height: 44px;
       border-radius: 4px;
       object-fit: cover;
+      border: 1px solid rgba(255, 255, 255, 0.1);
       flex-shrink: 0;
-      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(255, 255, 255, 0.05);
     }
 
     .provider-pill {
       display: inline-block;
-      padding: 0.25rem 0.55rem;
-      background: rgba(128, 179, 255, 0.1);
-      border: 1px solid rgba(128, 179, 255, 0.25);
+      font-size: 0.78rem;
+      color: rgba(255, 255, 255, 0.85);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 0.25rem 0.6rem;
       border-radius: 4px;
-      color: #80b3ff;
-      font-size: 0.75rem;
-      font-weight: 700;
+      max-width: 220px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .fav-badge-cell {
       display: inline-flex;
       align-items: center;
       gap: 0.35rem;
+      background: rgba(255, 95, 0, 0.1);
+      border: 1px solid rgba(255, 95, 0, 0.25);
       padding: 0.25rem 0.65rem;
-      background: rgba(239, 68, 68, 0.12);
-      border: 1px solid rgba(239, 68, 68, 0.3);
       border-radius: 4px;
+      white-space: nowrap;
     }
 
-    .heart-icon { font-size: 0.85rem; }
-    .fav-count-num { color: #fca5a5; font-size: 0.85rem; }
-    .fav-count-lbl { color: rgba(255, 255, 255, 0.55); font-size: 0.72rem; }
+    .heart-icon {
+      font-size: 0.82rem;
+      line-height: 1;
+    }
+
+    .fav-count-num {
+      color: #ffffff;
+      font-size: 0.85rem;
+      font-weight: 800;
+    }
+
+    .fav-count-lbl {
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 0.74rem;
+    }
 
     .price-text {
       color: #ffffff;
-      font-size: 0.85rem;
+      font-weight: 700;
+      font-size: 0.88rem;
     }
 
     .diff-badge {
-      display: inline-block;
+      font-size: 0.74rem;
+      font-weight: 600;
       padding: 0.2rem 0.5rem;
-      border-radius: 3px;
-      font-size: 0.72rem;
-      background: rgba(255, 255, 255, 0.06);
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.05);
       color: rgba(255, 255, 255, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      white-space: nowrap;
     }
 
     .action-btn-group {
-      display: flex;
-      justify-content: flex-end;
-      gap: 0.45rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
     }
 
     .btn-action-outline {
       display: inline-flex;
       align-items: center;
       gap: 0.35rem;
-      padding: 0.35rem 0.75rem;
+      padding: 0.4rem 0.75rem;
       background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.18);
-      border-radius: 3px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
       color: #ffffff !important;
-      font-size: 0.74rem;
+      font-size: 0.78rem;
       font-weight: 700;
       text-decoration: none;
-      transition: all 0.15s ease;
+      transition: all 0.2s ease;
       white-space: nowrap;
     }
 
     .btn-action-outline:hover {
       background: #ff5f00;
       border-color: #ff5f00;
-    }
-
-    .btn-action-outline mat-icon {
-      font-size: 13px;
-      width: 13px;
-      height: 13px;
+      color: #ffffff;
     }
 
     .btn-web-link {
-      padding: 0.35rem 0.5rem;
+      padding: 0.4rem 0.55rem;
     }
 
-    .text-right { text-align: right; }
+    .icon-tiny {
+      font-size: 14px;
+      width: 14px;
+      height: 14px;
+    }
+
+    .empty-table-cell {
+      text-align: center;
+      padding: 2.5rem 1rem !important;
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 0.88rem;
+    }
+
+    .text-right {
+      text-align: right;
+    }
 
     @media (max-width: 768px) {
       .ranking-page-container {
-        padding: 1rem;
-      }
-      .tab-pill-group {
-        width: 100%;
-        overflow-x: auto;
+        padding: 1rem 1rem 2.5rem;
       }
     }
   `],
@@ -794,18 +715,89 @@ export class AdminRankingComponent {
   private readonly ratingService = inject(ProviderRatingService);
   private readonly favoritesService = inject(FavoritesService);
 
-  // Ranking ordenado de prestadores por puntaje y cantidad de votos
+  // Ranking ordenado de prestadores activos aprobados por puntaje y cantidad de votos
   readonly providerRanking = computed<ProviderRankingRow[]>(() => {
-    const providers = this.adminStore.providerStore.providers();
-    const experiences = this.experienceService.experiences();
+    const officialProviders = this.adminStore.providerStore.allProviders() || [];
+    const applications = this.adminStore.applications().filter((a) => a.type === 'prestador');
+    const publishedExperiences = this.experienceService.experiences().filter(
+      (e) => e.status === 'publicada' && !e.deletedAt && !(e as any).isSoftDeleted,
+    );
 
-    const rows = providers.map((p) => {
+    const approvedProviders: ProviderUser[] = [];
+    const seenEmails = new Set<string>();
+    const seenSlugs = new Set<string>();
+    const seenIds = new Set<string>();
+
+    for (const p of officialProviders) {
+      // Excluir dados de baja, rechazados o pendientes
+      const isBaja =
+        p.status === 'dado_de_baja' ||
+        (p as any).status === 'baja' ||
+        (p as any).isDeleted ||
+        Boolean((p as any).deleted_at);
+      const isRechazado = p.status === 'rechazado';
+      const isPendiente = p.status === 'pendiente';
+
+      if (isBaja || isRechazado || isPendiente) {
+        continue;
+      }
+
+      // Solo prestadores aprobados o verificados activos
+      if (p.status !== 'aprobado' && !p.verified) {
+        continue;
+      }
+
+      const email = (p.email || '').toLowerCase().trim();
+      const slug = (p.slug || '').toLowerCase().trim();
+      const id = (p.id || '').toLowerCase().trim();
+
+      if (id) seenIds.add(id);
+      if (email) seenEmails.add(email);
+      if (slug) seenSlugs.add(slug);
+
+      approvedProviders.push(p);
+    }
+
+    // Agregar prestadores aprobados desde solicitudes si no están ya en la lista
+    for (const app of applications) {
+      if (app.status !== 'aprobado') continue;
+      const cleanEmail = (app.email || '').toLowerCase().trim();
+      const appSlug = ((app as any).slug || app.id || '').toLowerCase().trim();
+      const appId = (app.id || '').toLowerCase().trim();
+
+      if (cleanEmail && seenEmails.has(cleanEmail)) continue;
+      if (appSlug && seenSlugs.has(appSlug)) continue;
+      if (appId && seenIds.has(appId)) continue;
+
+      if (cleanEmail) seenEmails.add(cleanEmail);
+      if (appSlug) seenSlugs.add(appSlug);
+      if (appId) seenIds.add(appId);
+
+      approvedProviders.push({
+        id: app.id,
+        name: app.fullName || app.email || 'Prestador Oficial',
+        agency: app.agency || app.description || 'Club de Experiencias',
+        email: app.email,
+        phone: app.phone,
+        bio: app.description || '',
+        slug: (app as any).slug || app.id,
+        verified: true,
+        status: 'aprobado',
+      } as ProviderUser);
+    }
+
+    const rows = approvedProviders.map((p) => {
       const rating = this.ratingService.getRating(p);
-      const activeCount = experiences.filter(
-        (e) =>
-          (e.providerId === p.id || (Boolean(p.slug) && e.providerSlug === p.slug)) &&
-          e.status === 'publicada',
-      ).length;
+      const activeCount = publishedExperiences.filter((e) => {
+        const matchId = Boolean(p.id && e.providerId && e.providerId === p.id);
+        const matchSlug = Boolean(p.slug && e.providerSlug && e.providerSlug === p.slug);
+        const matchEmail = Boolean(
+          p.email &&
+            e.providerEmail &&
+            e.providerEmail.toLowerCase().trim() === p.email.toLowerCase().trim(),
+        );
+        return matchId || matchSlug || matchEmail;
+      }).length;
 
       return {
         rank: 0,
@@ -839,38 +831,46 @@ export class AdminRankingComponent {
     return (sum / list.length).toFixed(1);
   });
 
-  // Ranking ordenado de experiencias por favoritos de socios
+  // Ranking ordenado de experiencias publicadas por favoritos reales de socios
   readonly experienceRanking = computed<ExperienceRankingRow[]>(() => {
-    const experiences = this.experienceService.experiences();
+    // Filtrar estrictamente solo experiencias publicadas (no pendientes de evaluación, no borradores, no eliminadas)
+    const publishedExperiences = this.experienceService.experiences().filter(
+      (exp) => exp.status === 'publicada' && !exp.deletedAt && !(exp as any).isSoftDeleted,
+    );
     const members = this.adminStore.members();
-    const localFavs = this.favoritesService.favoriteSlugs().map((s) => s.toLowerCase());
+    const localFavs = this.favoritesService.favoriteSlugs().map((s) => s.toLowerCase().trim());
 
-    // Contar cuántos socios tienen cada experiencia en su wishlist
+    // Contar cuántos socios reales tienen cada experiencia en su wishlist
     const countsMap = new Map<string, number>();
 
     for (const m of members) {
+      if (m.membershipTier === 'dado_de_baja') continue;
       if (Array.isArray(m.experiencesWishlist)) {
         for (const fav of m.experiencesWishlist) {
           const k = fav.trim().toLowerCase();
-          countsMap.set(k, (countsMap.get(k) || 0) + 1);
+          if (k) {
+            countsMap.set(k, (countsMap.get(k) || 0) + 1);
+          }
         }
       }
     }
 
     // Agregar favoritos locales si no están en members
     for (const fav of localFavs) {
-      if (!countsMap.has(fav)) {
+      if (fav && !countsMap.has(fav)) {
         countsMap.set(fav, 1);
       }
     }
 
-    const rows = experiences.map((exp) => {
-      const slugKey = (exp.slug || '').toLowerCase();
-      const idKey = (exp.id || '').toLowerCase();
+    const rows = publishedExperiences.map((exp) => {
+      const slugKey = (exp.slug || '').toLowerCase().trim();
+      const idKey = (exp.id || '').toLowerCase().trim();
 
-      const countFromSlug = countsMap.get(slugKey) || 0;
-      const countFromId = countsMap.get(idKey) || 0;
-      const favCount = Math.max(countFromSlug, countFromId, exp.favoritesCount || 0);
+      const countFromSlug = slugKey ? (countsMap.get(slugKey) || 0) : 0;
+      const countFromId = idKey ? (countsMap.get(idKey) || 0) : 0;
+
+      // DATOS REALES: Tomar únicamente el conteo real de socios que tienen la experiencia guardada
+      const realFavCount = Math.max(countFromSlug, countFromId);
 
       return {
         rank: 0,
@@ -882,7 +882,7 @@ export class AdminRankingComponent {
         difficulty: exp.difficulty || 'Moderada',
         providerName: exp.providerAgency || exp.providerName || 'Club de Experiencias',
         priceArs: exp.priceArs,
-        favoritesCount: favCount,
+        favoritesCount: realFavCount,
       };
     });
 
@@ -904,4 +904,3 @@ export class AdminRankingComponent {
     return this.experienceRanking().reduce((acc, e) => acc + e.favoritesCount, 0);
   });
 }
-

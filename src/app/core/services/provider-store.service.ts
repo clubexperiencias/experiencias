@@ -3382,6 +3382,10 @@ export class ProviderStoreService {
           cover_image_name: newReq.coverImageName || '',
           video_url: newReq.coverVideoUrl || '',
           album_photos: newReq.albumPhotos || [],
+          gallery_images:
+            newReq.galleryImages && newReq.galleryImages.length > 0
+              ? newReq.galleryImages
+              : (newReq.albumPhotos || []).map((p: any) => p.url),
           provider_name: newReq.providerName,
           provider_agency: newReq.providerAgency || '',
           provider_email: (newReq.providerEmail || '').toLowerCase(),
@@ -3540,7 +3544,24 @@ export class ProviderStoreService {
             coverImageName: row.cover_image_name || '',
             coverVideoUrl: row.video_url || '',
             coverVideoName: row.cover_video_name || '',
-            albumPhotos: Array.isArray(row.album_photos) ? row.album_photos : [],
+            albumPhotos:
+              Array.isArray(row.album_photos) && row.album_photos.length > 0
+                ? row.album_photos
+                : (Array.isArray(row.gallery_images) && row.gallery_images.length > 0
+                  ? row.gallery_images.map((u: string, idx: number) => ({
+                      id: `photo_${idx + 1}`,
+                      url: u,
+                      title: row.title || 'Foto de experiencia',
+                      isCover: idx === 0,
+                      order: idx + 1,
+                    }))
+                  : []),
+            galleryImages:
+              Array.isArray(row.gallery_images) && row.gallery_images.length > 0
+                ? row.gallery_images
+                : (Array.isArray(row.album_photos)
+                  ? row.album_photos.map((p: any) => p.url)
+                  : []),
             status: (row.status === 'publicada' ? 'aprobada' : row.status) as
               | 'pendiente'
               | 'aprobada'

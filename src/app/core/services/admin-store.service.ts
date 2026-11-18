@@ -54,6 +54,7 @@ export interface AdminApplication {
   motivationLetter?: string;
   status: ApplicationStatus;
   createdAt: string;
+  tier?: 'emergente' | 'pleno' | 'fundador';
   // Datos de cobro y fiscales del prestador gestionados por el admin
   cbuAlias?: string;
   cuitDni?: string;
@@ -1657,6 +1658,7 @@ export class AdminStoreService {
             cuitDni: p.cuit_dni || undefined,
             cbuAlias: p.cbu_alias || undefined,
             bankName: p.bank_name || undefined,
+            tier: (p.tier as any) || 'emergente',
             createdAt: p.created_at || new Date().toISOString(),
           };
         });

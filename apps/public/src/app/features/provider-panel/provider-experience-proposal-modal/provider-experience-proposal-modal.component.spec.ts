@@ -1,8 +1,10 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { signal } from '@angular/core';
 import { ProviderExperienceProposalModalComponent } from './provider-experience-proposal-modal.component';
 import { ProviderStoreService } from '../../../core/services/provider-store.service';
 import { StorageService } from '../../../core/services/storage.service';
+import { AdminStoreService } from '../../../core/services/admin-store.service';
 
 describe('ProviderExperienceProposalModalComponent Draft Persistence', () => {
   let component: ProviderExperienceProposalModalComponent;
@@ -17,6 +19,12 @@ describe('ProviderExperienceProposalModalComponent Draft Persistence', () => {
       providers: [
         provideRouter([]),
         ProviderStoreService,
+        {
+          provide: AdminStoreService,
+          useValue: {
+            usdExchangeRate: signal(1400),
+          },
+        },
         {
           provide: StorageService,
           useValue: {

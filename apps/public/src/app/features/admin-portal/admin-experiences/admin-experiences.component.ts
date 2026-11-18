@@ -796,9 +796,6 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         <div class="confirm-delete-modal-backdrop" (click)="closeDeleteModal()">
           <div class="confirm-delete-modal-dialog" (click)="$event.stopPropagation()">
             <div class="delete-modal-header">
-              <div class="delete-modal-icon-wrap">
-                <mat-icon>warning</mat-icon>
-              </div>
               <div class="delete-modal-title-col">
                 <h3 class="delete-modal-title">¿Eliminar Experiencia?</h3>
                 <span class="delete-modal-sub">Esta acción dará de baja la experiencia del catálogo y liberará su enlace web</span>
@@ -809,7 +806,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
               <div class="delete-target-card">
                 <span class="target-label">EXPERIENCIA SELECCIONADA:</span>
                 <strong class="target-title">{{ experienceToDelete()?.title }}</strong>
-                <span class="target-id">ID: <code>{{ experienceToDelete()?.id }}</code> · Ruta: <code>/experiencias/{{ experienceToDelete()?.slug }}</code></span>
+                <span class="target-id">Ruta: <code>/experiencias/{{ experienceToDelete()?.slug }}</code></span>
               </div>
 
               <div class="delete-consequences-list">
@@ -3429,7 +3426,8 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         background: rgba(0, 0, 0, 0.25);
         border-top: 1px solid rgba(255, 255, 255, 0.08);
         display: flex;
-        justify-content: flex-end;
+        justify-content: space-between;
+        align-items: center;
         gap: 0.85rem;
       }
       .btn-cancel-delete {

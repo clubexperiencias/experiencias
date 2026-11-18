@@ -1,6 +1,8 @@
-import { Component, HostListener, signal, computed } from '@angular/core';
+import { Component, HostListener, signal, computed, OnInit, inject, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { Router, NavigationEnd, RouterLink } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { filter } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { HeaderComponent } from '../../shared/components/header/header.component';
@@ -37,11 +39,65 @@ export interface FaqItem {
   templateUrl: './faq.component.html',
   styleUrl: './faq.component.css',
 })
-export class FaqComponent {
+export class FaqComponent implements OnInit {
+  private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
+
   readonly breadcrumbs: BreadcrumbItem[] = [
     { label: 'Inicio', url: '/' },
     { label: 'Preguntas Frecuentes' },
   ];
+
+  // Notificación flotante: Plataforma en construcción (Estilo Toast Favoritos)
+  readonly showConstructionNotice = signal(false);
+  private constructionTimer: any = null;
+
+  constructor() {
+    this.destroyRef.onDestroy(() => {
+      this.clearConstructionTimer();
+    });
+
+    // Detectar navegaciones a '/faq' (incluso si el usuario ya está en '/faq')
+    this.router.events
+      .pipe(
+        filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((e) => {
+        const cleanUrl = (e.urlAfterRedirects || e.url || '').split('?')[0].split('#')[0];
+        if (cleanUrl === '/faq') {
+          this.triggerConstructionNotice();
+        }
+      });
+  }
+
+  ngOnInit(): void {
+    this.triggerConstructionNotice();
+  }
+
+  triggerConstructionNotice(): void {
+    this.clearConstructionTimer();
+    this.showConstructionNotice.set(false);
+    setTimeout(() => {
+      this.showConstructionNotice.set(true);
+      this.constructionTimer = setTimeout(() => {
+        this.showConstructionNotice.set(false);
+        this.constructionTimer = null;
+      }, 7000);
+    }, 60);
+  }
+
+  dismissConstructionNotice(): void {
+    this.clearConstructionTimer();
+    this.showConstructionNotice.set(false);
+  }
+
+  private clearConstructionTimer(): void {
+    if (this.constructionTimer) {
+      clearTimeout(this.constructionTimer);
+      this.constructionTimer = null;
+    }
+  }
 
   readonly mobileMenuOpen = signal(false);
   readonly selectedCategory = signal<FaqCategory>('todas');

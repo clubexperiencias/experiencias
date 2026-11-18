@@ -595,6 +595,7 @@ export class ExperienceService {
         }
         if (safeAlbumPhotos) {
           payload['album_photos'] = safeAlbumPhotos;
+          payload['gallery_images'] = safeAlbumPhotos.map((p) => p.url);
         }
 
         if (merged.dateSlots !== undefined) {
@@ -868,6 +869,7 @@ export class ExperienceService {
           display_location: experience.displayLocation || 'destacada',
           public_url: experience.publicUrl,
           album_photos: experience.albumPhotos || [],
+          gallery_images: experience.galleryImages || (experience.albumPhotos || []).map((p) => p.url),
           provider_name: experience.providerName || null,
           provider_phone: experience.providerPhone || null,
           provider_email: experience.providerEmail || null,
@@ -1409,7 +1411,12 @@ export class ExperienceService {
                   publicUrl: p.publicUrl || `https://experiencias.club/experiencias/${p.slug}`,
                   detailRoute: `/experiencias/${p.slug}`,
                   coverImage: p.coverImage || KAYAK_IMAGE,
-                  galleryImages: p.coverImage ? [p.coverImage] : [KAYAK_IMAGE],
+                  galleryImages:
+                    Array.isArray(p.galleryImages) && p.galleryImages.length > 0
+                      ? p.galleryImages
+                      : (Array.isArray(p.albumPhotos) && p.albumPhotos.length > 0
+                        ? p.albumPhotos.map((ph: any) => ph.url)
+                        : (p.coverImage ? [p.coverImage] : [KAYAK_IMAGE])),
                   isExclusiveClub: true,
                   isLocked: false,
                   providerId: p.providerId,
@@ -1911,7 +1918,7 @@ export class ExperienceService {
         'id, slug, title, tagline, description, region, meeting_point, difficulty, ' +
         'duration_label, price_ars, price_usd, capacity_per_date, cover_image, ' +
         'video_url, video_poster, altitude_meters, dates, highlights, included, ' +
-        'not_included, status, public_url, album_photos, provider_name, provider_phone, ' +
+        'not_included, status, public_url, album_photos, gallery_images, provider_name, provider_phone, ' +
         'provider_email, provider_slug, date_slots, favorites_count, created_at';
 
       const fetchExperiences = (columns: string): Promise<{ data: any[] | null; error: any }> =>
@@ -2057,6 +2064,32 @@ export class ExperienceService {
             return null;
           }
 
+          const rawGallery = Array.isArray(exp.gallery_images) && exp.gallery_images.length > 0
+            ? exp.gallery_images
+                .map((u: any) => (typeof u === 'string' && !u.startsWith('blob:') ? u : ''))
+                .filter(Boolean)
+            : [];
+          const rawAlbum = Array.isArray(exp.album_photos) && exp.album_photos.length > 0
+            ? exp.album_photos
+                .map((p: any) => (typeof p?.url === 'string' && !p.url.startsWith('blob:') ? p.url : ''))
+                .filter(Boolean)
+            : [];
+          const combinedGallery = rawGallery.length > 0
+            ? rawGallery
+            : (rawAlbum.length > 0 ? rawAlbum : [image]);
+          const combinedAlbum = Array.isArray(exp.album_photos) && exp.album_photos.length > 0
+            ? exp.album_photos.map((p: any) => ({
+                ...p,
+                url: (typeof p?.url === 'string' && p.url.startsWith('blob:')) ? KAYAK_IMAGE : (p?.url || KAYAK_IMAGE),
+              }))
+            : combinedGallery.map((u: string, idx: number) => ({
+                id: `photo_${idx + 1}`,
+                url: u,
+                title: exp.title,
+                isCover: idx === 0,
+                order: idx + 1,
+              }));
+
           return {
             id: exp.id,
             slug: exp.slug,
@@ -2079,14 +2112,8 @@ export class ExperienceService {
             priceUsd: exp.price_usd ?? 70,
             maxSpotsPerGroup: exp.capacity_per_date || 12,
             coverImage: image,
-            galleryImages: [image],
-            albumPhotos:
-              Array.isArray(exp.album_photos) && exp.album_photos.length > 0
-                ? exp.album_photos.map((p: any) => ({
-                    ...p,
-                    url: (typeof p?.url === 'string' && p.url.startsWith('blob:')) ? KAYAK_IMAGE : (p?.url || KAYAK_IMAGE),
-                  }))
-                : undefined,
+            galleryImages: combinedGallery,
+            albumPhotos: combinedAlbum,
             videoUrl: (typeof exp.video_url === 'string' && exp.video_url.startsWith('blob:')) ? undefined : (exp.video_url || undefined),
             videoPoster: exp.video_poster || undefined,
             highlights:

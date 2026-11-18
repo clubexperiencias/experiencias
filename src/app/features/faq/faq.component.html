@@ -131,15 +131,15 @@
             </div>
             <div class="contact-card-actions">
               <a
-                href="https://wa.me/5493834000000?text=Hola!%20Tengo%20una%20consulta%20sobre%20el%20Club%20de%20Experiencias"
+                href="https://wa.me/5493515490431?text=Hola!%20Tengo%20una%20duda%20y%20necesito%20asistencia%20con%20el%20Club%20de%20Experiencias%2C%20%C2%BFme%20podr%C3%ADan%20ayudar%3F"
                 target="_blank"
                 rel="noopener noreferrer"
                 class="contact-cta-btn wa-cta"
               >
                 <span>Consultar por WhatsApp</span>
               </a>
-              <a routerLink="/socios" class="contact-cta-btn members-cta">
-                <span>Ver Niveles de Socio</span>
+              <a routerLink="/socios/emergentes" class="contact-cta-btn members-cta">
+                <span>Hacete Socio</span>
               </a>
             </div>
           </div>
@@ -153,5 +153,31 @@
 
   <!-- Footer Compartido -->
   <app-footer />
+
+  <!-- Notificación Flotante: Plataforma en Construcción (Estilo Toast Favoritos) -->
+  @if (showConstructionNotice()) {
+  <aside class="fav-toast-banner is-construction-toast" role="status" aria-live="polite">
+    <div class="fav-toast-progress-track" aria-hidden="true">
+      <div class="fav-toast-progress-fill"></div>
+    </div>
+    <div class="fav-toast-left">
+      <div class="fav-toast-icon-circle is-construction-circle">
+        <mat-icon>construction</mat-icon>
+      </div>
+      <div class="fav-toast-info">
+        <strong class="fav-toast-heading">¡Plataforma en Construcción!</strong>
+        <p class="fav-toast-text">
+          Estamos en plena construcción de la plataforma para dejarla lista para su pronta inauguración.
+        </p>
+      </div>
+    </div>
+
+    <div class="fav-toast-actions">
+      <button type="button" class="fav-toast-btn" (click)="dismissConstructionNotice()" title="Cerrar notificación">
+        <span>Entendido</span>
+      </button>
+    </div>
+  </aside>
+  }
 </div>
 

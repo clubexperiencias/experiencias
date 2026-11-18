@@ -413,18 +413,11 @@
           </div>
           } @else {
           <div class="empty-favs-view">
-            <div class="empty-favs-icon-wrap">
-              <mat-icon>favorite_border</mat-icon>
-            </div>
             <h4 class="empty-favs-title">Aún no agregaste experiencias a tus favoritos</h4>
             <p class="empty-favs-desc">
               Explorá las expediciones de alta montaña y aguas andinas en nuestro catálogo. Hacé clic en el ícono del
               corazón de cualquier tarjeta para guardarla en esta sección.
             </p>
-            <a routerLink="/experiencias" class="btn-explore-favs" style="color: #ffffff !important;">
-              <span style="color: #ffffff !important;">Explorar Catálogo de Experiencias</span>
-              <mat-icon>explore</mat-icon>
-            </a>
           </div>
           }
         </div>
@@ -461,20 +454,6 @@
             </div>
 
             <div class="testimonial-actions-row">
-              <button type="button" class="btn-save-testimonial"
-                [disabled]="testimonialSaving() || testimonialText().trim().length < 10" (click)="onSaveTestimonial()">
-                @if (testimonialSaving()) {
-                <mat-icon class="spin-icon">sync</mat-icon>
-                <span>Guardando...</span>
-                } @else if (isMyTestimonioPublished()) {
-                <mat-icon>edit_note</mat-icon>
-                <span>Actualizar Testimonio</span>
-                } @else {
-                <mat-icon>send</mat-icon>
-                <span>Publicar Testimonio</span>
-                }
-              </button>
-
               @if (testimonialSuccess()) {
               <div class="testimonial-alert-feedback success">
                 <mat-icon>check_circle</mat-icon>
@@ -488,6 +467,17 @@
                 <span>{{ testimonialError() }}</span>
               </div>
               }
+
+              <button type="button" class="btn-save-testimonial"
+                [disabled]="testimonialSaving() || testimonialText().trim().length < 10" (click)="onSaveTestimonial()">
+                @if (testimonialSaving()) {
+                <span>Guardando...</span>
+                } @else if (isMyTestimonioPublished()) {
+                <span>Actualizar Testimonio</span>
+                } @else {
+                <span>Publicar Testimonio</span>
+                }
+              </button>
             </div>
           </div>
         </div>
@@ -576,7 +566,7 @@
           </div>
 
           <ul class="tier-benefits">
-            <li>Enterarse de las nuevas experiencias y descuentos antes que nadie</li>
+            <li>Enterate de las nuevas experiencias y descuentos antes que nadie</li>
             <li>Cupo asegurado prioritario en fechas de alta demanda</li>
           </ul>
 

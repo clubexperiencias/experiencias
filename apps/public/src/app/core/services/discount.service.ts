@@ -26,6 +26,10 @@ export class DiscountService {
   readonly activeDiscounts = computed(() => this._discounts().filter((d) => d.active));
   readonly automaticDiscounts = computed(() => this._discounts().filter((d) => d.active && d.isAutomatic));
 
+  getDiscountById(id: string): Discount | undefined {
+    return this._discounts().find((d) => d.id === id);
+  }
+
   constructor() {
     this.loadDiscounts();
   }

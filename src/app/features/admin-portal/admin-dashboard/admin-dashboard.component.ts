@@ -65,12 +65,10 @@ import { Discount } from '../../../core/models/discount.model';
 
         <div class="welcome-actions">
           <a [routerLink]="getAdminPlenosRoute()" class="btn-welcome-link">
-            <mat-icon class="icon-sm">card_membership</mat-icon>
-            <span>Membresías Plenas</span>
+            <span>MEMBRESÍAS PLENAS</span>
           </a>
           <a [routerLink]="getAdminFundadoresRoute()" class="btn-welcome-link btn-welcome-gold">
-            <mat-icon class="icon-sm text-gold">military_tech</mat-icon>
-            <span>Círculo Fundadores</span>
+            <span>CÍRCULO FUNDADORES</span>
           </a>
         </div>
       </section>
@@ -1376,7 +1374,7 @@ import { Discount } from '../../../core/models/discount.model';
       .btn-welcome-link {
         display: inline-flex;
         align-items: center;
-        gap: 0.4rem;
+        justify-content: center;
         background: rgba(255, 95, 0, 0.12);
         border: 1px solid rgba(255, 95, 0, 0.35);
         color: #ffffff;
@@ -1384,6 +1382,8 @@ import { Discount } from '../../../core/models/discount.model';
         border-radius: 4px;
         font-size: 0.82rem;
         font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
         text-decoration: none;
         transition: all 0.2s ease;
       }

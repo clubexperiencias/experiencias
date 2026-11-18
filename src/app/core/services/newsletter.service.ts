@@ -2033,13 +2033,35 @@ export class NewsletterService {
   }): Promise<{ success: boolean }> {
     if (this.isSupabaseConnected()) {
       try {
-        await this.supabase.from('postulaciones_fundadores').insert({
-          full_name: data.fullName.trim(),
-          email: data.email.trim().toLowerCase(),
-          phone: data.phone.trim(),
-          motivation_letter: data.motivationLetter.trim(),
-          agreed_to_protocol: data.agreedToProtocol,
-        });
+        const cleanEmail = data.email.trim().toLowerCase();
+        // Evitar duplicaciones verificando si ya existe una postulación previa para este email
+        const { data: existing } = await this.supabase
+          .from('postulaciones_fundadores' as any)
+          .select('id')
+          .ilike('email', cleanEmail)
+          .limit(1)
+          .maybeSingle();
+
+        if (existing && (existing as any).id) {
+          await this.supabase
+            .from('postulaciones_fundadores' as any)
+            .update({
+              full_name: data.fullName.trim(),
+              phone: data.phone.trim(),
+              motivation_letter: data.motivationLetter.trim(),
+              agreed_to_protocol: data.agreedToProtocol,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', (existing as any).id);
+        } else {
+          await this.supabase.from('postulaciones_fundadores' as any).insert({
+            full_name: data.fullName.trim(),
+            email: cleanEmail,
+            phone: data.phone.trim(),
+            motivation_letter: data.motivationLetter.trim(),
+            agreed_to_protocol: data.agreedToProtocol,
+          });
+        }
       } catch (err) {
         console.warn('[Supabase] Error guardando postulación de fundador:', err);
       }
