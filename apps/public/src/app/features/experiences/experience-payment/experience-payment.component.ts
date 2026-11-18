@@ -144,28 +144,56 @@ export class ExperiencePaymentComponent implements OnInit {
 
     const hosp = this.hospedajesService?.getHospedajeBySlug(slug);
     if (hosp) {
-      return {
-        id: hosp.id,
-        slug: hosp.slug,
-        title: hosp.title,
-        shortTitle: hosp.title,
-        tagline: hosp.tagline,
-        description: hosp.description,
-        region: hosp.region,
-        meetingPoint: hosp.locality,
-        difficulty: 'Baja',
-        durationDays: 1,
-        durationLabel: 'Por noche',
-        altitudeMeters: hosp.altitudeMeters,
-        priceArs: hosp.priceArsPerNight,
-        priceUsd: hosp.priceUsdPerNight || 0,
-        capacityPerDate: hosp.capacityPerRoom || 4,
-        dates: [],
-        status: 'publicada',
-        providerId: 'club-hospedajes',
-        providerName: hosp.hostName || 'Club de Experiencias',
-        providerAgency: hosp.hostAgency,
-      } as unknown as ProviderExperience;
+      const canonicalRecord =
+        this.expService.getPublishedExperienceBySlug(hosp.slug) ||
+        this.expService.getExperienceById(hosp.id) ||
+        this.store.getExperienceBySlug(hosp.slug) ||
+        this.store.getExperienceById(hosp.id);
+
+      if (canonicalRecord && canonicalRecord.status === 'publicada') {
+        const canonicalStore =
+          this.store.getExperienceBySlug(canonicalRecord.slug) ||
+          this.store.getExperienceById(canonicalRecord.id);
+
+        return {
+          ...(canonicalStore || {}),
+          id: canonicalRecord.id,
+          slug: canonicalRecord.slug,
+          title: canonicalRecord.title || hosp.title,
+          shortTitle: (canonicalRecord as any).shortTitle || hosp.title,
+          tagline: canonicalRecord.tagline || hosp.tagline,
+          description: canonicalRecord.description || hosp.description,
+          region: canonicalRecord.region || hosp.region,
+          meetingPoint: canonicalRecord.meetingPoint || hosp.locality,
+          difficulty: 'Baja',
+          durationDays: 1,
+          durationLabel: canonicalRecord.durationLabel || 'Por noche',
+          altitudeMeters: canonicalRecord.altitudeMeters || hosp.altitudeMeters,
+          priceArs: canonicalRecord.priceArs || hosp.priceArsPerNight,
+          priceUsd: (canonicalRecord as any).priceUsd || hosp.priceUsdPerNight || 0,
+          capacityPerDate:
+            (canonicalRecord as any).maxSpotsPerGroup ||
+            (canonicalRecord as any).capacityPerDate ||
+            hosp.capacityPerRoom ||
+            4,
+          dates: canonicalRecord.dates || [],
+          status: 'publicada',
+          providerId: canonicalRecord.providerId || 'club-hospedajes',
+          providerName: canonicalRecord.providerName || hosp.hostName || 'Club de Experiencias',
+          providerAgency: (canonicalRecord as any).providerAgency || hosp.hostAgency,
+          providerEmail: canonicalRecord.providerEmail,
+          providerSlug: canonicalRecord.providerSlug,
+          providerPhone:
+            canonicalRecord.providerPhone ||
+            hosp.contactWhatsapp ||
+            hosp.hostPhone ||
+            '+54 9 383 456-7890',
+          providerCbuAlias: canonicalRecord.providerCbuAlias,
+          providerCuitDni: canonicalRecord.providerCuitDni,
+          providerBankName: canonicalRecord.providerBankName,
+        } as ProviderExperience;
+      }
+      return undefined;
     }
 
     if (this.expService.hasRemoteExperiences()) {

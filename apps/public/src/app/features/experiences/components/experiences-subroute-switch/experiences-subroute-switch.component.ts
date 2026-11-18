@@ -1,13 +1,22 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   computed,
   inject,
   input,
   signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterLink } from '@angular/router';
+import {
+  NavigationCancel,
+  NavigationEnd,
+  NavigationError,
+  NavigationStart,
+  Router,
+  RouterLink,
+} from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 export type SubrouteTab = 'expediciones' | 'hospedajes';
 
@@ -21,6 +30,7 @@ export type SubrouteTab = 'expediciones' | 'hospedajes';
 })
 export class ExperiencesSubrouteSwitchComponent {
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
 
   /**
    * Permite fijar la pestaña activa explícitamente ('expediciones' | 'hospedajes').
@@ -34,6 +44,36 @@ export class ExperiencesSubrouteSwitchComponent {
    */
   readonly selectedTab = signal<SubrouteTab | null>(null);
 
+  private isNavigating = false;
+  private navigationTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  constructor() {
+    this.router.events
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((event) => {
+        if (event instanceof NavigationStart) {
+          this.isNavigating = true;
+          if (this.navigationTimeout) {
+            clearTimeout(this.navigationTimeout);
+            this.navigationTimeout = null;
+          }
+        } else if (event instanceof NavigationEnd) {
+          this.isNavigating = false;
+          if (this.navigationTimeout) {
+            clearTimeout(this.navigationTimeout);
+            this.navigationTimeout = null;
+          }
+        } else if (event instanceof NavigationCancel || event instanceof NavigationError) {
+          this.isNavigating = false;
+          if (this.navigationTimeout) {
+            clearTimeout(this.navigationTimeout);
+            this.navigationTimeout = null;
+          }
+          this.selectedTab.set(null);
+        }
+      });
+  }
+
   readonly currentTab = computed<SubrouteTab>(() => {
     const selected = this.selectedTab();
     if (selected) return selected;
@@ -46,8 +86,42 @@ export class ExperiencesSubrouteSwitchComponent {
     return 'expediciones';
   });
 
-  onSelect(tab: SubrouteTab): void {
+  onSelect(tab: SubrouteTab, event?: Event): void {
+    if (this.currentTab() === tab) {
+      return;
+    }
+
+    if (event instanceof MouseEvent) {
+      if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey) {
+        return;
+      }
+    } else if (event instanceof KeyboardEvent) {
+      if (event.ctrlKey || event.metaKey || event.shiftKey) {
+        return;
+      }
+    }
+
     this.selectedTab.set(tab);
+
+    if (this.navigationTimeout) {
+      clearTimeout(this.navigationTimeout);
+    }
+    this.navigationTimeout = setTimeout(() => {
+      if (!this.isNavigating) {
+        this.selectedTab.set(null);
+      }
+      this.navigationTimeout = null;
+    }, 1500);
+  }
+
+  clearProvisional(): void {
+    if (!this.isNavigating) {
+      if (this.navigationTimeout) {
+        clearTimeout(this.navigationTimeout);
+        this.navigationTimeout = null;
+      }
+      this.selectedTab.set(null);
+    }
   }
 }
 

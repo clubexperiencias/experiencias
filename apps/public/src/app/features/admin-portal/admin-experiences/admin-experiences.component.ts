@@ -5259,7 +5259,17 @@ export class AdminExperiencesComponent implements OnInit {
     this.editItinerary.set(exp.itinerary || '');
     this.editDifficulty.set(exp.difficulty || 'Baja');
     this.editDurationLabel.set(exp.durationLabel || '4 horas (Media jornada)');
-    this.editAltitude.set(exp.altitudeMeters || 850);
+    const rawAlt = exp.altitudeMeters;
+    const resolvedAltitude =
+      typeof rawAlt === 'number' && Number.isFinite(rawAlt)
+        ? rawAlt
+        : rawAlt !== undefined &&
+            rawAlt !== null &&
+            String(rawAlt).replace(/\D/g, '') !== '' &&
+            Number.isFinite(Number(String(rawAlt).replace(/\D/g, '')))
+          ? Number(String(rawAlt).replace(/\D/g, ''))
+          : 850;
+    this.editAltitude.set(resolvedAltitude);
     this.editCapacity.set(exp.maxSpotsPerGroup || 12);
     this.editPriceArs.set(exp.priceArs || 65000);
     const rawCover = exp.coverImage || '';

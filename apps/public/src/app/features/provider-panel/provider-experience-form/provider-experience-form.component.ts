@@ -349,6 +349,14 @@ export class ProviderExperienceFormComponent implements OnInit {
     }
 
     const value = this.form.getRawValue();
+    const rawAlt = value.altitudeMeters;
+    const parsedAlt =
+      rawAlt !== null && rawAlt !== undefined && String(rawAlt).trim() !== ''
+        ? Number(rawAlt)
+        : NaN;
+    const altitudeMeters =
+      Number.isFinite(parsedAlt) && parsedAlt >= 0 ? Math.round(parsedAlt) : 850;
+
     const payload = {
       title: value.title.trim(),
       shortTitle: value.title.trim(),
@@ -359,7 +367,7 @@ export class ProviderExperienceFormComponent implements OnInit {
       meetingPoint: value.meetingPoint.trim(),
       difficulty: value.difficulty,
       durationLabel: value.durationLabel.trim(),
-      altitudeMeters: Math.round(Number(value.altitudeMeters)) || 850,
+      altitudeMeters,
       priceArs: Math.round(Number(value.priceArs)),
       capacityPerDate: Math.round(Number(value.capacityPerDate)),
       dates: this.dates(),

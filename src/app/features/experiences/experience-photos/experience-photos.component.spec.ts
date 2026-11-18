@@ -133,4 +133,10 @@ describe('ExperiencePhotosComponent (/experiencias/:slug/fotos)', () => {
       component.getMeetingPointUrl(undefined, 'Dique El Jumeal'),
     ).toBeNull();
   });
+
+  it('should resolve lodging experience from INITIAL_HOSPEDAJES when HospedajesService has no custom in-memory entry', () => {
+    const lodging = component.hospedajesService?.getHospedajeBySlug('proximamente-hospedaje-puna');
+    expect(lodging).toBeTruthy();
+    expect(lodging?.slug).toBe('proximamente-hospedaje-puna');
+  });
 });

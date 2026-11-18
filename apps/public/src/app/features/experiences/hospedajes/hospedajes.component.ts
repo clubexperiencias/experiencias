@@ -6,13 +6,16 @@ import {
   OnDestroy,
   ViewChild,
   computed,
+  effect,
   inject,
   signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
-import { HospedajesService } from '../../../core/services/hospedajes.service';
+import { ExperienceService } from '../../../core/services/experience.service';
+import { Experience } from '../../../core/models/experience.model';
+import { HospedajesService, INITIAL_HOSPEDAJES } from '../../../core/services/hospedajes.service';
 import { Hospedaje, HospedajeType } from '../../../core/models/hospedaje.model';
 import { HeaderComponent } from '../../../shared/components/header/header.component';
 import { FooterComponent } from '../../../shared/components/footer/footer.component';
@@ -45,8 +48,16 @@ export interface CarouselHospedajeItem {
   styleUrls: ['../experiences.component.css', './hospedajes.component.css'],
 })
 export class HospedajesComponent implements AfterViewInit, OnDestroy {
+  readonly experienceService = inject(ExperienceService);
   readonly hospedajesService = inject(HospedajesService);
   readonly router = inject(Router);
+
+  constructor() {
+    this.syncPublishedHospedajes();
+    effect(() => {
+      this.syncPublishedHospedajes();
+    });
+  }
 
   readonly breadcrumbs: BreadcrumbItem[] = [
     { label: 'Inicio', url: '/' },
@@ -94,97 +105,76 @@ export class HospedajesComponent implements AfterViewInit, OnDestroy {
   ];
 
   // Hospedajes en preparación (Nueva experiencia en Catamarca)
-  readonly comingSoonHospedajes: Hospedaje[] = [
-    {
-      id: 'hosp-coming-soon-1',
-      slug: 'proximamente-hospedaje-puna',
-      title: 'Nueva experiencia en Catamarca',
-      tagline: 'Estamos preparando una nueva opción de hospedaje y refugio para compartir con el Club.',
-      description:
-        'Muy pronto vas a poder conocer todos los detalles de este alojamiento para tu descanso y aclimatación.',
-      type: 'Refugio Puneño',
-      region: 'Puna y Seismiles',
-      locality: 'Catamarca',
-      altitudeMeters: 3400,
-      priceArsPerNight: 0,
-      priceUsdPerNight: 0,
-      capacityPerRoom: 0,
-      totalRooms: 0,
-      amenities: [],
-      hostName: 'Club de Experiencias',
-      coverImage: '/assets/images/catamarca_hero.jpg',
-      galleryImages: ['/assets/images/catamarca_hero.jpg'],
-      highlights: [
-        'Alojamiento exclusivo en fase final de curaduría y relevamiento técnico',
-        'Protocolo estricto de confort andino y hospitalidad regional',
-      ],
-      includedServices: [],
-      isFeatured: true,
+  readonly comingSoonHospedajes: Hospedaje[] = INITIAL_HOSPEDAJES;
+
+  private resolveHospedajeType(kicker?: string): HospedajeType {
+    if (!kicker) return 'Hostería de Altura';
+    const match = this.lodgingTypes.find(
+      (t) => t.toLowerCase() === kicker.trim().toLowerCase(),
+    );
+    return match || 'Hostería de Altura';
+  }
+
+  private mapExperienceToHospedaje(exp: Experience): Hospedaje {
+    return {
+      id: exp.id,
+      slug: exp.slug,
+      title: exp.title,
+      tagline: exp.tagline || exp.description || '',
+      description: exp.description || exp.tagline || '',
+      type: this.resolveHospedajeType(exp.kicker),
+      region: exp.region || 'Catamarca',
+      locality: exp.meetingPoint || 'Catamarca',
+      altitudeMeters: exp.altitudeMeters || 850,
+      coverImage: exp.coverImage || '/assets/images/catamarca_pomez.jpg',
+      galleryImages:
+        exp.galleryImages && exp.galleryImages.length > 0
+          ? exp.galleryImages
+          : [exp.coverImage || '/assets/images/catamarca_pomez.jpg'],
+      priceArsPerNight: exp.priceArs,
+      priceUsdPerNight: exp.priceUsd,
+      capacityPerRoom: exp.maxSpotsPerGroup || 4,
+      totalRooms: 1,
+      amenities: exp.included && exp.included.length > 0 ? exp.included : [],
+      hostName: exp.providerName || 'Club de Experiencias',
+      hostAgency: exp.providerAgency,
+      hostPhone: exp.providerPhone,
+      isFeatured: !exp.displayLocation || exp.displayLocation === 'destacada',
       isVerified: true,
-      isLocked: true,
-    },
-    {
-      id: 'hosp-coming-soon-2',
-      slug: 'proximamente-hospedaje-valle',
-      title: 'Nueva experiencia en Catamarca',
-      tagline: 'Estamos preparando una nueva opción de hospedaje y refugio para compartir con el Club.',
-      description:
-        'Muy pronto vas a poder conocer todos los detalles de esta estancia andina para socios del Club.',
-      type: 'Eco-Lodge & Cabaña',
-      region: 'Valle Central y Ambato',
-      locality: 'Catamarca',
-      altitudeMeters: 1200,
-      priceArsPerNight: 0,
-      priceUsdPerNight: 0,
-      capacityPerRoom: 0,
-      totalRooms: 0,
-      amenities: [],
-      hostName: 'Club de Experiencias',
-      coverImage: '/assets/images/laguna_blanca.jpg',
-      galleryImages: ['/assets/images/laguna_blanca.jpg'],
-      highlights: [
-        'Espacio seleccionado para descanso previo y posterior a travesías',
-        'Entorno natural con diseño sustentable y térmico',
-      ],
-      includedServices: [],
-      isFeatured: true,
-      isVerified: true,
-      isLocked: true,
-    },
-    {
-      id: 'hosp-coming-soon-3',
-      slug: 'proximamente-hospedaje-belen',
-      title: 'Nueva experiencia en Catamarca',
-      tagline: 'Estamos preparando una nueva opción de hospedaje y refugio para compartir con el Club.',
-      description:
-        'Hostería de altura en proceso de relevamiento y homologación.',
-      type: 'Hostería de Altura',
-      region: 'Belén y Ruta 40',
-      locality: 'Catamarca',
-      altitudeMeters: 2000,
-      priceArsPerNight: 0,
-      priceUsdPerNight: 0,
-      capacityPerRoom: 0,
-      totalRooms: 0,
-      amenities: [],
-      hostName: 'Club de Experiencias',
-      coverImage: '/assets/images/catamarca_pomez.jpg',
-      galleryImages: ['/assets/images/catamarca_pomez.jpg'],
-      highlights: [
-        'Ubicación estratégica sobre los corredores turísticos de la provincia',
-        'Atención personalizada con anfitriones y baqueanos locales',
-      ],
-      includedServices: [],
-      isFeatured: true,
-      isVerified: true,
-      isLocked: true,
-    },
-  ];
+      isLocked: exp.isLocked || false,
+      detailRoute: exp.detailRoute || `/experiencias/hospedajes/${exp.slug}`,
+      bookingUrl: exp.publicUrl || `/experiencias/hospedajes/${exp.slug}/pago`,
+      highlights: exp.highlights || [],
+      includedServices: exp.included || [],
+    };
+  }
+
+  private syncPublishedHospedajes(): void {
+    const published = this.experienceService
+      .publishedExperiences()
+      .filter((e) => e.category === 'hospedajes');
+
+    if (published.length > 0) {
+      this.hospedajesService.setHospedajes(
+        published.map((e) => this.mapExperienceToHospedaje(e)),
+      );
+    }
+  }
 
   // Hospedajes disponibles para el catálogo (o en preparación si aún no hay en BD)
   readonly allAvailableHospedajes = computed<Hospedaje[]>(() => {
+    const published = this.experienceService
+      .publishedExperiences()
+      .filter((e) => e.category === 'hospedajes');
+
     const list = this.hospedajesService.hospedajes();
-    return list.length > 0 ? list : this.comingSoonHospedajes;
+    if (list.length > 0) {
+      return list;
+    }
+    if (published.length > 0) {
+      return published.map((e) => this.mapExperienceToHospedaje(e));
+    }
+    return this.comingSoonHospedajes;
   });
 
   // Regiones disponibles dinámicamente
@@ -223,7 +213,7 @@ export class HospedajesComponent implements AfterViewInit, OnDestroy {
 
       // 2. Región
       if (reg !== 'todas') {
-        if (h.region.toLowerCase() !== reg.toLowerCase()) {
+        if ((h.region || '').trim().toLowerCase() !== reg.trim().toLowerCase()) {
           return false;
         }
       }

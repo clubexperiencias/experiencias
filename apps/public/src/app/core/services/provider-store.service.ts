@@ -3402,6 +3402,7 @@ export class ProviderStoreService {
 
     const newReq: ExperienceProposalRequest = {
       ...data,
+      category: data.category || 'expediciones',
       id,
       slug: (data as any).slug || generatedSlug,
       status: 'pendiente',
@@ -3420,6 +3421,7 @@ export class ProviderStoreService {
           kicker: newReq.kicker || 'EXPERIENCIA',
           tagline: newReq.subheading || '',
           description: newReq.subheading || '',
+          category: newReq.category || 'expediciones',
           region: newReq.region || 'Valle Central y Ambato',
           meeting_point: newReq.meetingPoint || '',
           meeting_point_url: newReq.meetingPointUrl || '',
@@ -3579,6 +3581,7 @@ export class ProviderStoreService {
             title: row.title,
             kicker: row.kicker || 'EXPERIENCIA',
             subheading: row.tagline || row.description || '',
+            category: row.category || 'expediciones',
             region: row.region || '',
             difficulty: row.difficulty || 'Moderada',
             duration: row.duration_label || '4 horas',
@@ -3790,6 +3793,8 @@ export class ProviderStoreService {
         id: publishedId,
         slug: generatedSlug,
         status: 'publicada',
+        category: req.category || 'expediciones',
+        detailRoute: req.category === 'hospedajes' ? `/experiencias/hospedajes/${generatedSlug}` : `/experiencias/${generatedSlug}`,
         dates: publishedDates,
         publicUrl: resolvedUrl,
         reviewedAt: new Date().toISOString(),
@@ -3816,6 +3821,7 @@ export class ProviderStoreService {
         const { error: updErr } = await (this.supabase.from('experiencias') as any)
           .update({
             status: 'publicada',
+            category: req.category || 'expediciones',
             slug: generatedSlug,
             public_url: resolvedUrl,
             dates: publishedDates,
@@ -3939,6 +3945,7 @@ export class ProviderStoreService {
         const { error } = await (this.supabase.from('experiencias') as any)
           .update({
             status: 'publicada',
+            category: req.category || 'expediciones',
             slug: generatedSlug,
             public_url: resolvedUrl,
             dates: publishedDates,

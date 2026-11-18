@@ -122,7 +122,9 @@ describe('MembersComponent (/socios)', () => {
       const toast = fixture.nativeElement.querySelector('.is-construction-toast');
       expect(toast).toBeTruthy();
       expect(toast.textContent).toContain('¡Plataforma en Construcción!');
-      expect(toast.textContent).toContain('hardcodeadas');
+      expect(toast.textContent).toContain(
+        'Estamos en plena etapa de desarrollo: las reseñas y vivencias de socios mostradas son a modo de demo.',
+      );
 
       tick(7000);
       fixture.detectChanges();

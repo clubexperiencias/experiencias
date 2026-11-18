@@ -5,7 +5,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
 import { MatIconModule } from '@angular/material/icon';
 import { ExperienceService } from '../../../core/services/experience.service';
-import { HospedajesService } from '../../../core/services/hospedajes.service';
+import { HospedajesService, INITIAL_HOSPEDAJES } from '../../../core/services/hospedajes.service';
 import { FavoritesService } from '../../../core/services/favorites.service';
 import { DEFAULT_CLUB_PROFILE, isClubExperience } from '../../../core/models/club-profile.model';
 import { Experience } from '../../../core/models/experience.model';
@@ -110,7 +110,10 @@ export class ExperienceDetailComponent {
     if (!s) return undefined;
     const fromExp = this.experienceService.getPublishedExperienceBySlug(s);
     if (fromExp) return fromExp;
-    const hosp = this.hospedajesService?.getHospedajeBySlug(s);
+    const clean = s.trim().toLowerCase();
+    const hosp =
+      this.hospedajesService?.getHospedajeBySlug(s) ||
+      INITIAL_HOSPEDAJES.find((h) => h.slug.toLowerCase() === clean);
     if (hosp) {
       return {
         id: hosp.id,
@@ -134,6 +137,7 @@ export class ExperienceDetailComponent {
         included: hosp.includedServices || hosp.amenities || [],
         providerName: hosp.hostName,
         providerAgency: hosp.hostAgency,
+        providerPhone: hosp.contactWhatsapp || hosp.hostPhone || DEFAULT_CLUB_PROFILE.phone,
         isExclusiveClub: true,
         isLocked: hosp.isLocked,
         status: 'publicada',

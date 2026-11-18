@@ -99,6 +99,10 @@ describe('HospedajesComponent (/experiencias/hospedajes)', () => {
     const filtered = component.filteredHospedajes();
     expect(filtered.length).toBe(1);
     expect(filtered[0].region).toBe('Puna de Atacama');
+
+    // Matches with surrounding whitespace
+    component.filterRegion.set('  Puna de Atacama  ');
+    expect(component.filteredHospedajes().length).toBe(1);
   });
 
   it('should filter lodgings by type', () => {
