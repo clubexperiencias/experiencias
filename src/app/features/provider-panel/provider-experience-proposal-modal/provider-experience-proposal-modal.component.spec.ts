@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { signal, WritableSignal } from '@angular/core';
+import { vi } from 'vitest';
 import { ProviderExperienceProposalModalComponent } from './provider-experience-proposal-modal.component';
 import { ProviderStoreService } from '../../../core/services/provider-store.service';
 import { StorageService } from '../../../core/services/storage.service';
@@ -19,7 +20,7 @@ describe('ProviderExperienceProposalModalComponent Draft Persistence', () => {
     await TestBed.configureTestingModule({
       imports: [ProviderExperienceProposalModalComponent],
       providers: [
-        provideRouter([]),
+        provideRouter([{ path: '**', children: [] }]),
         ProviderStoreService,
         {
           provide: AdminStoreService,
@@ -101,6 +102,7 @@ describe('ProviderExperienceProposalModalComponent Draft Persistence', () => {
   });
 
   it('should clear draft from localStorage when proposal is submitted successfully', async () => {
+    vi.spyOn(store, 'submitExperienceRequest').mockResolvedValue({ id: 'mock-1' } as any);
     component.reqForm.title = 'Kayak Sunset';
     component.reqForm.region = 'Valle Central';
     component.reqForm.subheading = 'Sunset en kayak en el dique';
@@ -132,13 +134,13 @@ describe('ProviderExperienceProposalModalComponent Draft Persistence', () => {
 
   it('should update automatic USD amount on exchange rate change without reloading draft', () => {
     component.reqForm.priceArs = 280000;
+    component.onPriceArsChange(280000);
     component.isUsdAutoCalc.set(true);
-    rateSignal.set(1400);
     fixture.detectChanges();
 
     expect(component.reqForm.priceUsd).toBe(200);
 
-    const loadDraftSpy = spyOn(component, 'loadDraft');
+    const loadDraftSpy = vi.spyOn(component, 'loadDraft');
     rateSignal.set(1000);
     fixture.detectChanges();
 
@@ -147,8 +149,8 @@ describe('ProviderExperienceProposalModalComponent Draft Persistence', () => {
   });
 
   it('should not track exchange rate in modal-open effect when loadDraft is invoked', () => {
-    const focusSpy = spyOn<any>(component, 'focusInitialElement');
-    const loadDraftSpy = spyOn(component, 'loadDraft').and.callThrough();
+    const focusSpy = vi.spyOn(component as any, 'focusInitialElement');
+    const loadDraftSpy = vi.spyOn(component, 'loadDraft');
 
     rateSignal.set(1200);
     fixture.detectChanges();
@@ -172,13 +174,13 @@ describe('ProviderExperienceProposalModalComponent Draft Persistence', () => {
     rateSignal.set(1500);
     fixture.detectChanges();
 
-    const submitSpy = spyOn(store, 'submitExperienceRequest').and.returnValue(Promise.resolve(true));
+    const submitSpy = vi.spyOn(store, 'submitExperienceRequest').mockResolvedValue({ id: 'mock-1' } as any);
 
     await component.submitRequestForm();
 
     expect(component.reqForm.priceUsd).toBe(100);
     expect(submitSpy).toHaveBeenCalledWith(
-      jasmine.objectContaining({
+      expect.objectContaining({
         priceArs: 150000,
         priceUsd: 100,
       }),
@@ -200,13 +202,13 @@ describe('ProviderExperienceProposalModalComponent Draft Persistence', () => {
     component.coverImagePreview.set('blob:http://localhost/cabalgata');
 
     const storage = TestBed.inject(StorageService);
-    spyOn(storage, 'uploadFile').and.returnValue(Promise.reject(new Error('Upload failed')));
-    const submitSpy = spyOn(store, 'submitExperienceRequest').and.returnValue(Promise.resolve(true));
+    vi.spyOn(storage, 'uploadFile').mockRejectedValue(new Error('Upload failed'));
+    const submitSpy = vi.spyOn(store, 'submitExperienceRequest').mockResolvedValue({ id: 'mock-1' } as any);
 
     await component.submitRequestForm();
 
     expect(submitSpy).toHaveBeenCalledWith(
-      jasmine.objectContaining({
+      expect.objectContaining({
         coverImage: 'data:image/jpeg;base64,liveDataUrl',
         coverImageName: 'cabalgata.jpg',
       }),
@@ -230,20 +232,20 @@ describe('ProviderExperienceProposalModalComponent Draft Persistence', () => {
     component.coverImagePreview.set('blob:http://localhost/captured');
 
     const storage = TestBed.inject(StorageService);
-    spyOn(storage, 'uploadFile').and.callFake(async () => {
+    vi.spyOn(storage, 'uploadFile').mockImplementation(async () => {
       component.coverImageFile.set(file2);
       throw new Error('Upload failed');
     });
-    const submitSpy = spyOn(store, 'submitExperienceRequest').and.returnValue(Promise.resolve(true));
+    const submitSpy = vi.spyOn(store, 'submitExperienceRequest').mockResolvedValue({ id: 'mock-1' } as any);
 
     await component.submitRequestForm();
 
     expect(submitSpy).toHaveBeenCalledWith(
-      jasmine.objectContaining({
+      expect.objectContaining({
         coverImageName: 'captured.jpg',
       }),
     );
-    const callArgs = submitSpy.calls.mostRecent().args[0];
+    const callArgs = submitSpy.mock.calls[submitSpy.mock.calls.length - 1][0];
     expect(callArgs.coverImage).not.toBe('data:image/jpeg;base64,otherDataUrl');
     expect(callArgs.coverImage).toContain('data:image/jpeg;base64,');
   });

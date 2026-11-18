@@ -1,0 +1,360 @@
+<div class="exp-page-container">
+  <!-- Barra Superior Unificada -->
+  <app-header [(mobileMenuOpen)]="mobileMenuOpen"></app-header>
+
+  <!-- Breadcrumb debajo del Header -->
+  <app-breadcrumb [items]="breadcrumbs"></app-breadcrumb>
+
+  <!-- Contenedor Principal de Hospedajes (Mismo fondo y wallpaper que /experiencias) -->
+  <div class="exp-wallpaper-body app-wallpaper-body">
+    <div class="ambient-overlay"></div>
+
+    <main class="exp-main-content">
+      <div class="exp-wrapper">
+        <!-- ═══════════════ SUB-RUTA SWITCHER (EXPEDICIONES <-> HOSPEDAJES) ═══════════════ -->
+        <app-experiences-subroute-switch [active]="'hospedajes'"></app-experiences-subroute-switch>
+
+        <!-- ═══════════════ CARD 1: HERO / INTRODUCCIÓN ═══════════════ -->
+        <div class="exp-section-card hero-exp-card">
+          <div class="section-card-header">
+            <span class="section-kicker">CURADURÍA EXCLUSIVA · CATAMARCA</span>
+            <h1 class="section-main-title">Hosterías, Cabañas & Refugios de Altura</h1>
+          </div>
+
+          <p class="section-lead-text">
+            Una selección de estancias andinas, cabañas de adobe térmico, domos geodésicos y
+            refugios puneños verificados para tu descanso y aclimatación previa o posterior a cada travesía.
+          </p>
+        </div>
+
+        <!-- ═══════════════ CARD 2: CARRUSEL DESTACADOS ═══════════════ -->
+        <div class="exp-section-card featured-section-card">
+          <div class="card-inner-header featured-header-flex">
+            <div>
+              <span class="section-kicker">SELECCIÓN RECOMENDADA</span>
+              <h2 class="card-heading">Hospedajes & Refugios Destacados</h2>
+              <p class="card-subheading">
+                Alojamientos estratégicos en la Puna y los Valles para aclimatación y descanso en Catamarca.
+              </p>
+            </div>
+            <div class="carousel-nav-arrows">
+              <button class="arrow-btn prev" (click)="scrollCarousel('prev')" aria-label="Anterior" title="Anterior">
+                <mat-icon>chevron_left</mat-icon>
+              </button>
+              <button class="arrow-btn next" (click)="scrollCarousel('next')" aria-label="Siguiente" title="Siguiente">
+                <mat-icon>chevron_right</mat-icon>
+              </button>
+            </div>
+          </div>
+
+          <!-- Carrusel de Hospedajes Destacados -->
+          <div class="featured-carousel-wrap" (mouseenter)="onCarouselMouseEnter()"
+            (mouseleave)="onCarouselMouseLeave()" (touchstart)="onCarouselMouseEnter()"
+            (touchend)="onCarouselMouseLeave()">
+            <div class="featured-carousel-track" #carouselRef (scroll)="onCarouselScroll()">
+              @for (item of infiniteFeaturedHospedajes(); track item.key) {
+              @let hosp = item.hospedaje;
+              <div class="exp-catalog-item carousel-item hosp-carousel-card" [class.is-locked-card]="hosp.isLocked">
+                <div class="exp-card-main">
+                  <div class="exp-card-media">
+                    <img [src]="hosp.coverImage" [alt]="hosp.title" class="exp-card-img" loading="lazy" decoding="async" />
+                    <span class="exp-region-tag" [class.is-enabled-tag]="!hosp.isLocked">{{ hosp.region }}</span>
+                    <button
+                      type="button"
+                      class="fav-btn-circle"
+                      [class.is-disabled-fav]="hosp.isLocked"
+                      [class.is-favorited]="!hosp.isLocked && isFavorite(hosp)"
+                      [disabled]="hosp.isLocked"
+                      (click)="!hosp.isLocked && toggleFavorite(hosp, $event)"
+                      [attr.aria-label]="hosp.isLocked ? 'Próximamente disponible' : (isFavorite(hosp) ? 'Quitar de favoritos' : 'Agregar a favoritos')"
+                      [title]="hosp.isLocked ? 'Próximamente disponible' : (isFavorite(hosp) ? 'Quitar de favoritos' : 'Agregar a favoritos')"
+                    >
+                      <mat-icon class="fav-icon" [class.is-favorited]="!hosp.isLocked && isFavorite(hosp)">
+                        {{ !hosp.isLocked && isFavorite(hosp) ? 'favorite' : 'favorite_border' }}
+                      </mat-icon>
+                    </button>
+                  </div>
+
+                  <div class="exp-card-content">
+                    <h3 class="exp-title">
+                      @if (!hosp.isLocked) {
+                        <a [routerLink]="['/experiencias/hospedajes', hosp.slug]" class="exp-title-link">
+                          {{ hosp.title }}
+                        </a>
+                      } @else {
+                        {{ hosp.title }}
+                      }
+                    </h3>
+                    <p class="exp-tagline">{{ hosp.tagline }}</p>
+
+                    @if (!hosp.isLocked) {
+                    <div class="exp-meta-row">
+                      <span>{{ hosp.type }}</span>
+                      @if (hosp.altitudeMeters) {
+                        <span>Altitud: {{ hosp.altitudeMeters }} msnm</span>
+                      }
+                      <span>Localidad: <strong class="provider-stat-name">{{ hosp.locality }}</strong></span>
+                    </div>
+                    }
+
+                    <div class="exp-price-action-row" [class.is-locked-footer]="hosp.isLocked">
+                      @if (hosp.isLocked) {
+                        <button type="button" disabled class="exp-locked-btn is-blocked-btn" title="Próximamente disponible">
+                          <span>Próximamente</span>
+                        </button>
+                      } @else {
+                        <div class="price-box">
+                          <span class="price-val">{{ hosp.priceArsPerNight | ars }}</span>
+                          @if (hosp.priceUsdPerNight) {
+                            <span class="price-usd">o ${{ hosp.priceUsdPerNight }} USD / noche</span>
+                          }
+                        </div>
+                        <a [routerLink]="['/experiencias/hospedajes', hosp.slug]" class="exp-toggle-details-btn exp-cta-link" style="color: #ffffff !important;">
+                          <span style="color: #ffffff !important;">Saber Más</span>
+                        </a>
+                      }
+                    </div>
+                  </div>
+                </div>
+              </div>
+              }
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══════════════ CARD 3: LISTADO COMPLETO Y FILTRADO ═══════════════ -->
+        <div class="exp-section-card full-list-section-card">
+          <div class="card-inner-header">
+            <span class="section-kicker">CURADURÍA & ALOJAMIENTOS</span>
+            <h2 class="card-heading">Hosterías, Cabañas & Refugios en Catamarca</h2>
+            <p class="card-subheading">
+              Encontrá el lugar ideal para tu descanso, aclimatación y base operativa en cada rincón andino.
+            </p>
+          </div>
+
+          <!-- Barra de Filtros y Búsqueda (Mismo diseño y clases de /experiencias) -->
+          <div class="catalog-filters-container">
+            <!-- 1. Búsqueda por Texto -->
+            <div class="filter-search-box">
+              <mat-icon class="search-box-icon">search</mat-icon>
+              <input
+                type="text"
+                class="filter-search-input"
+                placeholder="Buscar por nombre, localidad, anfitrión o descripción..."
+                [value]="searchTerm()"
+                (input)="searchTerm.set($any($event.target).value)"
+                aria-label="Buscar hospedajes"
+              />
+              @if (searchTerm()) {
+                <button
+                  type="button"
+                  class="search-clear-btn"
+                  (click)="searchTerm.set('')"
+                  aria-label="Borrar búsqueda"
+                  title="Borrar búsqueda"
+                >
+                  <mat-icon>close</mat-icon>
+                </button>
+              }
+            </div>
+
+            <!-- 2. Grid de Filtros de Stats (REGIÓN, TIPO, ALTITUD, COMODIDADES) -->
+            <div class="filter-stats-grid">
+              <!-- REGIÓN -->
+              <div class="filter-field-col">
+                <label class="filter-field-lbl" for="filter-region">REGIÓN</label>
+                <div class="filter-select-wrap">
+                  <select
+                    id="filter-region"
+                    class="filter-select"
+                    [value]="filterRegion()"
+                    (change)="filterRegion.set($any($event.target).value)"
+                  >
+                    <option value="todas">Todas las regiones</option>
+                    @for (reg of availableRegions(); track reg) {
+                      <option [value]="reg">{{ reg }}</option>
+                    }
+                  </select>
+                </div>
+              </div>
+
+              <!-- TIPO DE HOSPEDAJE -->
+              <div class="filter-field-col">
+                <label class="filter-field-lbl" for="filter-type">TIPO DE ALOJAMIENTO</label>
+                <div class="filter-select-wrap">
+                  <select
+                    id="filter-type"
+                    class="filter-select"
+                    [value]="filterType()"
+                    (change)="filterType.set($any($event.target).value)"
+                  >
+                    <option value="todos">Todos los tipos</option>
+                    @for (t of lodgingTypes; track t) {
+                      <option [value]="t">{{ t }}</option>
+                    }
+                  </select>
+                </div>
+              </div>
+
+              <!-- ALTITUD -->
+              <div class="filter-field-col">
+                <label class="filter-field-lbl" for="filter-altitude">ALTITUD</label>
+                <div class="filter-select-wrap">
+                  <select
+                    id="filter-altitude"
+                    class="filter-select"
+                    [value]="filterAltitude()"
+                    (change)="filterAltitude.set($any($event.target).value)"
+                  >
+                    <option value="todas">Todas las altitudes</option>
+                    <option value="baja">Hasta 1.500 msnm (Valles y Yungas)</option>
+                    <option value="media">1.500 a 3.000 msnm (Pre-cordillera)</option>
+                    <option value="alta">+3.000 msnm (Puna y Seismiles)</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- COMODIDADES -->
+              <div class="filter-field-col">
+                <label class="filter-field-lbl" for="filter-amenity">COMODIDADES</label>
+                <div class="filter-select-wrap">
+                  <select
+                    id="filter-amenity"
+                    class="filter-select"
+                    [value]="filterAmenity()"
+                    (change)="filterAmenity.set($any($event.target).value)"
+                  >
+                    <option value="todas">Cualquier comodidad</option>
+                    @for (am of topAmenities; track am) {
+                      <option [value]="am">{{ am }}</option>
+                    }
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- 3. Contador y Botón Limpiar -->
+            <div class="filter-meta-bar">
+              <span class="filter-results-counter">
+                Mostrando <strong>{{ filteredHospedajes().length }}</strong> hospedajes
+                @if (hasActiveFilters()) {
+                  <span class="filter-total-ref">(de {{ allAvailableHospedajes().length }})</span>
+                }
+              </span>
+
+              @if (hasActiveFilters()) {
+                <button
+                  type="button"
+                  class="filter-reset-btn"
+                  (click)="resetFilters()"
+                  title="Restablecer todos los filtros"
+                >
+                  <mat-icon>restart_alt</mat-icon>
+                  <span>Limpiar filtros</span>
+                </button>
+              }
+            </div>
+          </div>
+
+          <!-- Listado de Hospedajes Horizontal (Idéntico a /experiencias) -->
+          @if (filteredHospedajes().length > 0) {
+            <div class="experiences-horizontal-list">
+              @for (hosp of filteredHospedajes(); track hosp.id) {
+                <div
+                  class="exp-catalog-item exp-item-standard"
+                  [class.is-locked-card]="hosp.isLocked"
+                >
+                  <button
+                    type="button"
+                    class="fav-btn-circle"
+                    [class.is-disabled-fav]="hosp.isLocked"
+                    [class.is-favorited]="!hosp.isLocked && isFavorite(hosp)"
+                    [disabled]="hosp.isLocked"
+                    (click)="!hosp.isLocked && toggleFavorite(hosp, $event)"
+                    [attr.aria-label]="hosp.isLocked ? 'Próximamente disponible' : (isFavorite(hosp) ? 'Quitar de favoritos' : 'Agregar a favoritos')"
+                    [title]="hosp.isLocked ? 'Próximamente disponible' : (isFavorite(hosp) ? 'Quitar de favoritos' : 'Agregar a favoritos')"
+                  >
+                    <mat-icon class="fav-icon" [class.is-favorited]="!hosp.isLocked && isFavorite(hosp)">
+                      {{ !hosp.isLocked && isFavorite(hosp) ? 'favorite' : 'favorite_border' }}
+                    </mat-icon>
+                  </button>
+
+                  <div class="exp-card-main standard-card-main">
+                    <div class="exp-card-media standard-media">
+                      <img [src]="hosp.coverImage" [alt]="hosp.title" class="exp-card-img" loading="lazy" decoding="async" />
+                      <span class="exp-region-tag" [class.is-enabled-tag]="!hosp.isLocked">{{ hosp.region }}</span>
+                    </div>
+
+                    <div class="exp-card-content standard-content">
+                      <div class="standard-text-wrap">
+                        <h3 class="exp-title">
+                          @if (!hosp.isLocked) {
+                            <a [routerLink]="['/experiencias/hospedajes', hosp.slug]" class="exp-title-link">
+                              {{ hosp.title }}
+                            </a>
+                          } @else {
+                            {{ hosp.title }}
+                          }
+                        </h3>
+                        <p class="exp-tagline">{{ hosp.tagline }}</p>
+                      </div>
+
+                      @if (!hosp.isLocked) {
+                      <div class="exp-meta-row standard-meta-row">
+                        <span>{{ hosp.type }}</span>
+                        @if (hosp.altitudeMeters) {
+                          <span>Altitud: {{ hosp.altitudeMeters }} msnm</span>
+                        }
+                        <span>Localidad: <strong class="provider-stat-name">{{ hosp.locality }}</strong></span>
+                        @if (hosp.capacityPerRoom) {
+                          <span>Capacidad: hasta {{ hosp.capacityPerRoom }} por hab.</span>
+                        }
+                      </div>
+                      }
+
+                      <div class="exp-price-action-row standard-footer-row" [class.is-locked-footer]="hosp.isLocked">
+                        @if (hosp.isLocked) {
+                          <button type="button" disabled class="exp-locked-btn is-blocked-btn" title="Próximamente disponible">
+                            <span>Próximamente</span>
+                          </button>
+                        } @else {
+                          <div class="price-box">
+                            <span class="price-val">{{ hosp.priceArsPerNight | ars }}</span>
+                            @if (hosp.priceUsdPerNight) {
+                              <span class="price-usd">o ${{ hosp.priceUsdPerNight }} USD / noche</span>
+                            }
+                          </div>
+                          <a [routerLink]="['/experiencias/hospedajes', hosp.slug]" class="exp-toggle-details-btn exp-cta-link" style="color: #ffffff !important;">
+                            <span style="color: #ffffff !important;">Saber Más</span>
+                          </a>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          } @else {
+            <div class="no-filter-results-box">
+              <mat-icon class="no-results-icon">travel_explore</mat-icon>
+              <h4 class="no-results-title">No encontramos hospedajes con esos criterios</h4>
+              <p class="no-results-desc">
+                Probá modificando las opciones de búsqueda o limpiá los filtros para ver todas las opciones disponibles.
+              </p>
+              <button type="button" class="filter-reset-action-btn" (click)="resetFilters()">
+                <mat-icon>restart_alt</mat-icon>
+                <span>Ver Todos los Hospedajes</span>
+              </button>
+            </div>
+          }
+        </div>
+
+        <!-- Banner de Membresía Fundador -->
+        <app-founder-ad></app-founder-ad>
+      </div>
+    </main>
+
+    <!-- Footer oficial -->
+    <app-footer></app-footer>
+  </div>
+</div>

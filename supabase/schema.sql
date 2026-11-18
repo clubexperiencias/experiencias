@@ -237,6 +237,7 @@ CREATE TABLE IF NOT EXISTS public.experiencias (
                            CHECK (status IN ('borrador', 'pendiente', 'publicada', 'oculta', 'rechazada')),
   display_location         TEXT NOT NULL DEFAULT 'catalogo'
                            CHECK (display_location IN ('catalogo', 'destacada', 'no_listada')),
+  category                 TEXT NOT NULL DEFAULT 'expediciones',
   public_url               TEXT DEFAULT '',
   cover_image              TEXT DEFAULT '/assets/images/kayak-club-de-experiencias.jpg',
   cover_image_name         TEXT,
@@ -274,8 +275,10 @@ CREATE TABLE IF NOT EXISTS public.experiencias (
 );
 
 ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT 'expediciones';
 
 CREATE INDEX IF NOT EXISTS idx_experiencias_slug ON public.experiencias(slug);
+CREATE INDEX IF NOT EXISTS idx_experiencias_category ON public.experiencias(category);
 CREATE INDEX IF NOT EXISTS idx_experiencias_display ON public.experiencias(display_location, is_locked, status);
 CREATE INDEX IF NOT EXISTS idx_experiencias_provider_id ON public.experiencias(provider_id);
 CREATE INDEX IF NOT EXISTS idx_experiencias_favorites ON public.experiencias(favorites_count DESC);

@@ -12,6 +12,9 @@
     <!-- Contenido Principal de /experiencias -->
     <main class="exp-main-content">
       <div class="exp-wrapper">
+        <!-- ═══════════════ SUB-RUTA SWITCHER (EXPEDICIONES <-> HOSPEDAJES) ═══════════════ -->
+        <app-experiences-subroute-switch [active]="'expediciones'"></app-experiences-subroute-switch>
+
         <!-- ═══════════════ CARD 1: HERO / INTRODUCCIÓN ═══════════════ -->
         <div class="exp-section-card hero-exp-card">
           <div class="section-card-header">

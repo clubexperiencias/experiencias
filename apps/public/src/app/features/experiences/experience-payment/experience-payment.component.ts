@@ -21,6 +21,7 @@ import {
   validateReceiptFile,
 } from '../../../core/services/provider-store.service';
 import { ExperienceService } from '../../../core/services/experience.service';
+import { HospedajesService } from '../../../core/services/hospedajes.service';
 import { AdminStoreService } from '../../../core/services/admin-store.service';
 import { isClubExperience } from '../../../core/models/club-profile.model';
 import { NotificationService } from '../../../core/services/notification.service';
@@ -90,6 +91,7 @@ export class ExperiencePaymentComponent implements OnInit {
   });
 
   readonly acceptedTypes = RECEIPT_ACCEPTED_TYPES.join(',');
+  readonly hospedajesService = inject(HospedajesService, { optional: true });
   readonly mobileMenuOpen = signal(false);
   readonly authReady = signal(!isSupabaseConfigured());
   readonly checkoutMember =
@@ -140,6 +142,32 @@ export class ExperiencePaymentComponent implements OnInit {
       return undefined;
     }
 
+    const hosp = this.hospedajesService?.getHospedajeBySlug(slug);
+    if (hosp) {
+      return {
+        id: hosp.id,
+        slug: hosp.slug,
+        title: hosp.title,
+        shortTitle: hosp.title,
+        tagline: hosp.tagline,
+        description: hosp.description,
+        region: hosp.region,
+        meetingPoint: hosp.locality,
+        difficulty: 'Baja',
+        durationDays: 1,
+        durationLabel: 'Por noche',
+        altitudeMeters: hosp.altitudeMeters,
+        priceArs: hosp.priceArsPerNight,
+        priceUsd: hosp.priceUsdPerNight || 0,
+        capacityPerDate: hosp.capacityPerRoom || 4,
+        dates: [],
+        status: 'publicada',
+        providerId: 'club-hospedajes',
+        providerName: hosp.hostName || 'Club de Experiencias',
+        providerAgency: hosp.hostAgency,
+      } as unknown as ProviderExperience;
+    }
+
     if (this.expService.hasRemoteExperiences()) {
       return undefined;
     }
@@ -149,6 +177,16 @@ export class ExperiencePaymentComponent implements OnInit {
 
   readonly breadcrumbs = computed<BreadcrumbItem[]>(() => {
     const exp = this.experience();
+    const isHosp = typeof window !== 'undefined' && window.location.pathname.includes('/hospedajes');
+    if (isHosp) {
+      return [
+        { label: 'Inicio', url: '/' },
+        { label: 'Experiencias', url: '/experiencias' },
+        { label: 'Hospedajes', url: '/experiencias/hospedajes' },
+        ...(exp ? [{ label: exp.shortTitle ?? exp.title, url: `/experiencias/hospedajes/${exp.slug}` }] : []),
+        { label: 'Pago' },
+      ];
+    }
     return [
       { label: 'Inicio', url: '/' },
       { label: 'Experiencias', url: '/experiencias' },

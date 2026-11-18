@@ -422,6 +422,60 @@ const publicRoutes: Routes = [
       import('./features/experiences/experiences.component').then((m) => m.ExperiencesComponent),
   },
   {
+    path: 'experiencias/hospedajes',
+    loadComponent: () =>
+      import('./features/experiences/hospedajes/hospedajes.component').then(
+        (m) => m.HospedajesComponent,
+      ),
+    title: 'Hospedajes, Hosterías & Refugios en Catamarca · EXPERIENCIAS.CLUB',
+  },
+  {
+    path: 'experiencias/hospedajes/:slug/fotos',
+    loadComponent: () =>
+      import('./features/experiences/experience-photos/experience-photos.component').then(
+        (m) => m.ExperiencePhotosComponent,
+      ),
+  },
+  {
+    path: 'experiencias/hospedajes/:slug/pago',
+    loadComponent: () =>
+      import('./features/experiences/experience-payment/experience-payment.component').then(
+        (m) => m.ExperiencePaymentComponent,
+      ),
+  },
+  {
+    path: 'experiencias/hospedajes/:slug/pagar',
+    redirectTo: 'experiencias/hospedajes/:slug/pago',
+  },
+  {
+    path: 'experiencias/hospedajes/:slug',
+    loadComponent: () =>
+      import('./features/experiences/experience-detail/experience-detail.component').then(
+        (m) => m.ExperienceDetailComponent,
+      ),
+  },
+  {
+    path: 'hospedajes',
+    redirectTo: 'experiencias/hospedajes',
+    pathMatch: 'full',
+  },
+  {
+    path: 'hospedajes/:slug/fotos',
+    redirectTo: 'experiencias/hospedajes/:slug/fotos',
+  },
+  {
+    path: 'hospedajes/:slug/pago',
+    redirectTo: 'experiencias/hospedajes/:slug/pago',
+  },
+  {
+    path: 'hospedajes/:slug/pagar',
+    redirectTo: 'experiencias/hospedajes/:slug/pago',
+  },
+  {
+    path: 'hospedajes/:slug',
+    redirectTo: 'experiencias/hospedajes/:slug',
+  },
+  {
     path: 'experiencias/fotos',
     loadComponent: () =>
       import('./features/experiences/experiences-photos/experiences-photos.component').then(

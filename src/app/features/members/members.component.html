@@ -46,8 +46,7 @@
             <div class="featured-carousel-track" #carouselRef (scroll)="onCarouselScroll()">
               @for (item of infiniteFeaturedTestimonios(); track item.key) {
               @let t = item.testimonio;
-              <article class="testimonial-card featured-testimonial carousel-item"
-                tabindex="0"
+              <article class="testimonial-card featured-testimonial carousel-item" tabindex="0"
                 [class.founder]="t.membershipTier === 'fundador'" [class.pleno]="t.membershipTier === 'activo'">
                 <div class="testimonial-quote-icon">
                   <mat-icon>format_quote</mat-icon>
@@ -75,9 +74,9 @@
           } @else {
           <!-- Card para compartir testimonio (visible únicamente cuando no hay destacados o no cargan) -->
           <div class="showcase-add-wrap">
-            <article class="testimonial-card add-testimonial-card showcase-add-card" (click)="onAddTestimonialClick()" role="button"
-              tabindex="0" (keydown.enter)="onAddTestimonialClick()" (keydown.space)="onAddTestimonialClick()"
-              title="Compartí tu testimonio en el Club">
+            <article class="testimonial-card add-testimonial-card showcase-add-card" (click)="onAddTestimonialClick()"
+              role="button" tabindex="0" (keydown.enter)="onAddTestimonialClick()"
+              (keydown.space)="onAddTestimonialClick()" title="Compartí tu testimonio en el Club">
               <div class="add-testimonial-body">
                 <h3 class="add-testimonial-title">¿Sos socio del Club?</h3>
                 <p class="add-testimonial-desc">
@@ -225,5 +224,31 @@
       </div>
     </div>
   </div>
+  }
+
+  <!-- Notificación Flotante: Plataforma en Construcción (Estilo Toast Favoritos) -->
+  @if (showConstructionNotice()) {
+  <aside class="fav-toast-banner is-construction-toast" role="status" aria-live="polite">
+    <div class="fav-toast-progress-track" aria-hidden="true">
+      <div class="fav-toast-progress-fill"></div>
+    </div>
+    <div class="fav-toast-left">
+      <div class="fav-toast-icon-circle is-construction-circle">
+        <mat-icon>construction</mat-icon>
+      </div>
+      <div class="fav-toast-info">
+        <strong class="fav-toast-heading">¡Plataforma en Construcción!</strong>
+        <p class="fav-toast-text">
+          Estamos en plena etapa de desarrollo: las reseñas y vivencias de socios mostradas son a modo de demo.
+        </p>
+      </div>
+    </div>
+
+    <div class="fav-toast-actions">
+      <button type="button" class="fav-toast-btn" (click)="dismissConstructionNotice()" title="Cerrar notificación">
+        <span>Entendido</span>
+      </button>
+    </div>
+  </aside>
   }
 </div>

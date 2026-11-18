@@ -109,4 +109,35 @@ describe('MembersComponent (/socios)', () => {
         fixture.nativeElement.contains(document.activeElement),
     ).toBe(true);
   }));
+
+  describe('construction notice toast', () => {
+    it('should show the construction notice toast after init delay and auto-dismiss after 7 seconds', fakeAsync(() => {
+      component.triggerConstructionNotice();
+      expect(component.showConstructionNotice()).toBeFalse();
+
+      tick(70);
+      fixture.detectChanges();
+      expect(component.showConstructionNotice()).toBeTrue();
+
+      const toast = fixture.nativeElement.querySelector('.is-construction-toast');
+      expect(toast).toBeTruthy();
+      expect(toast.textContent).toContain('¡Plataforma en Construcción!');
+      expect(toast.textContent).toContain('hardcodeadas');
+
+      tick(7000);
+      fixture.detectChanges();
+      expect(component.showConstructionNotice()).toBeFalse();
+    }));
+
+    it('should dismiss the notice immediately when dismissConstructionNotice is called', fakeAsync(() => {
+      component.triggerConstructionNotice();
+      tick(70);
+      fixture.detectChanges();
+      expect(component.showConstructionNotice()).toBeTrue();
+
+      component.dismissConstructionNotice();
+      fixture.detectChanges();
+      expect(component.showConstructionNotice()).toBeFalse();
+    }));
+  });
 });

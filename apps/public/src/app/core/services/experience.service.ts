@@ -635,6 +635,10 @@ export class ExperienceService {
           payload['display_location'] = merged.displayLocation;
         }
 
+        if (merged.category !== undefined) {
+          payload['category'] = merged.category;
+        }
+
         if (merged.mpCollectorId !== undefined || merged.mpConnected !== undefined) {
           let notesObj: Record<string, any> = {};
           if (merged.notes && typeof merged.notes === 'object' && !Array.isArray(merged.notes)) {
@@ -692,9 +696,10 @@ export class ExperienceService {
           .eq('id', merged.id)
           .select();
 
-        if (error && (/meeting_point_url/.test(error.message || '') || /display_location/.test(error.message || ''))) {
+        if (error && (/meeting_point_url/.test(error.message || '') || /display_location/.test(error.message || '') || /category/.test(error.message || ''))) {
           const hasMeetingPointUrlErr = /meeting_point_url/.test(error.message || '');
           const hasDisplayLocationErr = /display_location/.test(error.message || '');
+          const hasCategoryErr = /category/.test(error.message || '');
 
           if (hasMeetingPointUrlErr && updated.meetingPointUrl !== undefined && String(updated.meetingPointUrl).trim() !== '') {
             // A non-empty value was supplied: reject the update rather than committing without it
@@ -714,6 +719,9 @@ export class ExperienceService {
           }
           if (hasDisplayLocationErr) {
             delete payloadToUse['display_location'];
+          }
+          if (hasCategoryErr) {
+            delete payloadToUse['category'];
           }
 
           ({ data, error } = (await this.supabase
@@ -891,6 +899,7 @@ export class ExperienceService {
           included: experience.included || [],
           not_included: experience.notIncluded || [],
           status: experience.status,
+          category: experience.category || 'expediciones',
           display_location: experience.displayLocation || 'destacada',
           public_url: experience.publicUrl,
           album_photos: experience.albumPhotos || [],
@@ -903,6 +912,10 @@ export class ExperienceService {
 
         if (experience.notes !== undefined) {
           payload['notes'] = experience.notes;
+        }
+
+        if (experience.category !== undefined) {
+          payload['category'] = experience.category;
         }
 
         // Asegurar que el prestador exista en prestadores para evitar fallos de clave foránea
@@ -940,6 +953,7 @@ export class ExperienceService {
           'best_season',
           'promos_and_pricing',
           'display_location',
+          'category',
         ];
 
         let insertPayload: Record<string, any> = { ...payload };
@@ -2242,11 +2256,12 @@ export class ExperienceService {
             })(),
             reviewedAt: exp.reviewed_at || undefined,
             status: exp.status || 'publicada',
+            category: exp.category || 'expediciones',
             displayLocation: (exp.display_location as 'destacada' | 'catalogo' | 'no_listada') || 'destacada',
             publicUrl: exp.public_url || `https://experiencias.club/experiencias/${exp.slug}`,
             isExclusiveClub: true,
             isLocked: false,
-            detailRoute: `/experiencias/${exp.slug}`,
+            detailRoute: exp.category === 'hospedajes' ? `/experiencias/hospedajes/${exp.slug}` : `/experiencias/${exp.slug}`,
           };
         }) as (Experience | null)[]).filter((e): e is Experience => e !== null);
 

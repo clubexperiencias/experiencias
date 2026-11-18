@@ -82,6 +82,7 @@ describe('ClubProfile Model Helpers', () => {
 
     it('returns true for admin email', () => {
       expect(isClubProvider({ email: 'admin@experiencias.club' })).toBe(true);
+      expect(isClubProvider({ email: 'gonzagramaglia@gmail.com' })).toBe(true);
     });
 
     it('returns true for club slugs', () => {

@@ -1,0 +1,38 @@
+/* ==========================================================================
+   Página de Hospedajes & Refugios en Catamarca • EXPERIENCIAS.CLUB
+   Hereda 100% de la identidad y estructura visual de /experiencias
+   ========================================================================== */
+
+/* Colores base para garantizar render inmediato sin parpadeo */
+:host {
+  display: block;
+}
+
+.hero-exp-card .section-main-title {
+  color: #ffffff !important;
+}
+
+.hero-exp-card .section-lead-text {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.hero-exp-card .section-kicker {
+  color: #ffcc00 !important;
+}
+
+/* WhatsApp reserve button custom styling */
+.btn-primary-reserve {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.4rem;
+  border-radius: 4px;
+  font-size: 0.88rem;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.btn-primary-reserve:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 4px 15px rgba(37, 211, 102, 0.35);
+}

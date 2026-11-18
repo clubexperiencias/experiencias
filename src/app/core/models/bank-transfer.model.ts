@@ -73,6 +73,8 @@ export interface ProviderExperience {
   meetingPoint: string;
   difficulty: 'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña' | 'Ninguna';
   durationLabel: string;
+  altitudeMeters?: number;
+  category?: 'expediciones' | 'hospedajes' | string;
   priceArs: number;
   capacityPerDate: number;
   dates: string[];
