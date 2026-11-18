@@ -92,4 +92,30 @@ describe('BreadcrumbComponent', () => {
     expect(founderImg).toBeTruthy();
     expect(founderImg.getAttribute('src')).toContain('sumate.png');
   });
+
+  it('should use general exploration menu for provider NIVEL 2: PLENOS instead of member tier links', () => {
+    fixture.componentRef.setInput('items', [
+      { label: 'Inicio', url: '/' },
+      { label: 'Prestadores', url: '/prestadores' },
+      { label: 'NIVEL 2: PLENOS' },
+    ]);
+    fixture.detectChanges();
+
+    const data = component.getNextStepsData({ label: 'NIVEL 2: PLENOS' });
+    expect(data.kicker).toBe('Explorar');
+    expect(data.steps.some((s) => s.url === '/socios/plenos')).toBe(false);
+  });
+
+  it('should retain member-tier links for member Nivel 2: Plenos', () => {
+    fixture.componentRef.setInput('items', [
+      { label: 'Inicio', url: '/' },
+      { label: 'Socios', url: '/socios' },
+      { label: 'Nivel 2: Plenos' },
+    ]);
+    fixture.detectChanges();
+
+    const data = component.getNextStepsData({ label: 'Nivel 2: Plenos' });
+    expect(data.kicker).toBe('Socios');
+    expect(data.steps.some((s) => s.url === '/socios/plenos')).toBe(true);
+  });
 });

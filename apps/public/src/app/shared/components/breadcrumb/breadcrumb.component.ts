@@ -276,8 +276,20 @@ export class BreadcrumbComponent implements OnInit {
       };
     }
 
+    const isProviderContext =
+      this.items().some(
+        (b) =>
+          (b.label || '').toLowerCase().includes('prestador') ||
+          (b.url || '').toLowerCase().includes('/prestador'),
+      ) ||
+      urlNorm.includes('/prestador') ||
+      (this.router.url || '').toLowerCase().includes('/prestador');
+
     // 5. SOCIOS / MEMBRESÍAS
-    if (labelNorm.includes('socio') || labelNorm.includes('membres') || urlNorm === '/socios') {
+    if (
+      !isProviderContext &&
+      (labelNorm.includes('socio') || labelNorm.includes('membres') || urlNorm === '/socios')
+    ) {
       return {
         kicker: 'Membresías',
         steps: [
@@ -291,11 +303,12 @@ export class BreadcrumbComponent implements OnInit {
 
     // 6. SOCIO FUNDADOR O PLENO O EMERGENTE
     if (
-      labelNorm.includes('fundador') ||
-      labelNorm.includes('activo') ||
-      labelNorm.includes('pleno') ||
-      labelNorm.includes('emergente') ||
-      labelNorm.includes('nivel')
+      !isProviderContext &&
+      (labelNorm.includes('fundador') ||
+        labelNorm.includes('activo') ||
+        labelNorm.includes('pleno') ||
+        labelNorm.includes('emergente') ||
+        labelNorm.includes('nivel'))
     ) {
       return {
         kicker: 'Socios',

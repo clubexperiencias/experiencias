@@ -436,7 +436,7 @@
               <span class="section-kicker">ESPACIO DEL SOCIO</span>
               <h3 class="section-title">Testimonio Personal del Club</h3>
             </div>
-            @if (testimoniosService.myTestimonio()) {
+            @if (isMyTestimonioPublished()) {
             <div class="testimonial-badge-published">
               <mat-icon>check_circle</mat-icon>
               <span>Testimonio Publicado</span>
@@ -466,7 +466,7 @@
                 @if (testimonialSaving()) {
                 <mat-icon class="spin-icon">sync</mat-icon>
                 <span>Guardando...</span>
-                } @else if (testimoniosService.myTestimonio()) {
+                } @else if (isMyTestimonioPublished()) {
                 <mat-icon>edit_note</mat-icon>
                 <span>Actualizar Testimonio</span>
                 } @else {

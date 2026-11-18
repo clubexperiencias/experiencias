@@ -131,6 +131,17 @@ export class EmergingMemberComponent implements OnInit {
       }
     });
 
+    this.route.fragment.subscribe((fragment) => {
+      if (fragment) {
+        setTimeout(() => {
+          const el = document.getElementById(fragment);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }, 100);
+      }
+    });
+
     const current = this.newsletter.currentMember();
     if (current) {
       if (current.fullName && !this.fullName()) this.fullName.set(current.fullName);

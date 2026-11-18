@@ -73,6 +73,20 @@ export class ProfileComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly testimonialSaving = signal<boolean>(false);
   readonly testimonialSuccess = signal<boolean>(false);
   readonly testimonialError = signal<string | null>(null);
+  private isTestimonialDirty = false;
+
+  readonly isMyTestimonioPublished = computed(() => {
+    const my = this.testimoniosService.myTestimonio();
+    if (!my) return false;
+    const currentOwner = (this.newsletter.currentMember()?.email || this.authenticatedEmail() || '')
+      .toLowerCase()
+      .trim();
+    if (!currentOwner) return false;
+    const myEmail = (my.email || '').toLowerCase().trim();
+    const currentMemberId = this.newsletter.currentMember()?.id;
+    return (myEmail !== '' && myEmail === currentOwner) ||
+           (Boolean(my.socioId) && Boolean(currentMemberId) && my.socioId === currentMemberId);
+  });
 
   readonly favoriteExperiences = this.favoritesService.favoriteExperiences;
 
@@ -123,10 +137,60 @@ export class ProfileComponent implements OnInit, AfterViewInit, OnDestroy {
       wasEmpty = count === 0;
     });
 
+    let lastOwnerEmail: string | null = null;
+    let initializedTestimonialKey: string | null = null;
     effect(() => {
+      const currentOwner = (this.newsletter.currentMember()?.email || this.authenticatedEmail() || '')
+        .toLowerCase()
+        .trim();
+
+      // Si el propietario cambió (o cerró sesión), reiniciar borrador y estado de inicialización
+      if (currentOwner !== lastOwnerEmail) {
+        lastOwnerEmail = currentOwner;
+        initializedTestimonialKey = null;
+        this.isTestimonialDirty = false;
+        this.testimonialText.set('');
+        this.testimonialError.set(null);
+      }
+
+      if (!currentOwner) {
+        return;
+      }
+
       const my = this.testimoniosService.myTestimonio();
-      if (my && !this.testimonialText()) {
-        this.testimonialText.set(my.content);
+      if (!my) {
+        // Si no hay testimonio (o la búsqueda está pendiente) y el usuario no ha escrito activamente,
+        // asegurar que el borrador no retenga contenido de otra cuenta
+        if (!this.isTestimonialDirty && initializedTestimonialKey !== null) {
+          this.testimonialText.set('');
+          initializedTestimonialKey = null;
+        }
+        return;
+      }
+
+      // Verificar que el testimonio pertenezca al propietario actual del editor
+      const myEmail = (my.email || '').toLowerCase().trim();
+      const currentMemberId = this.newsletter.currentMember()?.id;
+      const isOwner = (myEmail !== '' && myEmail === currentOwner) ||
+                      (Boolean(my.socioId) && Boolean(currentMemberId) && my.socioId === currentMemberId);
+
+      if (!isOwner) {
+        // El testimonio cargado en el servicio no pertenece a la cuenta actual
+        if (!this.isTestimonialDirty) {
+          this.testimonialText.set('');
+          initializedTestimonialKey = null;
+        }
+        return;
+      }
+
+      const currentTestimonialKey = `${currentOwner}:${my.id || my.createdAt || 'mine'}`;
+
+      // Inicializar el editor una sola vez por testimonio cargado y reiniciar si se carga uno diferente
+      if (initializedTestimonialKey !== currentTestimonialKey) {
+        initializedTestimonialKey = currentTestimonialKey;
+        if (!this.isTestimonialDirty) {
+          this.testimonialText.set(my.content);
+        }
       }
     });
   }
@@ -513,6 +577,7 @@ export class ProfileComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onTestimonialInput(val: string): void {
+    this.isTestimonialDirty = true;
     this.testimonialText.set(val);
     if (this.testimonialError()) {
       this.testimonialError.set(null);
@@ -531,6 +596,7 @@ export class ProfileComponent implements OnInit, AfterViewInit, OnDestroy {
     const res = await this.testimoniosService.submitTestimonio(text);
     this.testimonialSaving.set(false);
     if (res.success) {
+      this.isTestimonialDirty = false;
       this.testimonialSuccess.set(true);
       setTimeout(() => this.testimonialSuccess.set(false), 5000);
     } else {
@@ -543,7 +609,14 @@ export class ProfileComponent implements OnInit, AfterViewInit, OnDestroy {
     const email = member?.email || (await this.newsletter.getAuthenticatedEmail());
     if (email) {
       const t = await this.testimoniosService.loadMyTestimonioFor(email);
-      if (t && !this.testimonialText()) {
+      const currentOwner = (this.newsletter.currentMember()?.email || this.authenticatedEmail() || email)
+        .toLowerCase()
+        .trim();
+      const tEmail = (t?.email || '').toLowerCase().trim();
+      const currentMemberId = this.newsletter.currentMember()?.id;
+      const isOwner = t && ((tEmail !== '' && tEmail === currentOwner) ||
+                      (Boolean(t.socioId) && Boolean(currentMemberId) && t.socioId === currentMemberId));
+      if (isOwner && !this.isTestimonialDirty) {
         this.testimonialText.set(t.content);
       }
     }

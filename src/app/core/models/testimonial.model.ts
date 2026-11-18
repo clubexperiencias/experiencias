@@ -3,8 +3,8 @@ import { MembershipTier } from './waitlist.model';
 export interface SocioTestimonio {
   id: string;
   socioId?: string;
-  email: string;
-  fullName: string;
+  email?: string;
+  fullName?: string;
   authorDisplay: string; // ej. "Carlos M."
   membershipTier: MembershipTier;
   tierLabel: string; // "Socio Fundador", "Socio Pleno", "Socio Emergente"

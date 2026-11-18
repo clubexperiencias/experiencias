@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { Title } from '@angular/platform-browser';
@@ -84,7 +84,8 @@ import { environment } from '../../../../environments/environment';
                       La cuenta <code>{{ unapprovedEmail() }}</code> aún no completó la postulación para ser prestador oficial de EXPERIENCIAS.CLUB.
                     </p>
                     <a
-                      routerLink="/prestadores/emergentes"
+                      [routerLink]="isExternalApplicationUrl() ? null : applicationUrl()"
+                      [attr.href]="isExternalApplicationUrl() ? applicationUrl() : null"
                       class="alert-action-btn"
                     >
                       Completar Postulación de Prestador
@@ -183,7 +184,8 @@ import { environment } from '../../../../environments/environment';
               <div class="provider-footer-help">
                 ¿Aún no tenés cuenta de prestador aprobada?
                 <a
-                  routerLink="/prestadores/emergentes"
+                  [routerLink]="isExternalApplicationUrl() ? null : applicationUrl()"
+                  [attr.href]="isExternalApplicationUrl() ? applicationUrl() : null"
                   class="link-btn"
                 >
                   Postulate acá
@@ -887,6 +889,19 @@ export class ProviderLoginComponent implements OnInit {
   readonly connectingGoogle = signal(false);
   readonly accountStatus = signal<'none' | 'pending' | 'unregistered' | 'inactive'>('none');
   readonly unapprovedEmail = signal<string>('');
+
+  readonly isExternalApplicationUrl = computed(() => {
+    const isBrowser = typeof window !== 'undefined';
+    if (!isBrowser) return false;
+    const host = window.location.hostname.toLowerCase();
+    return host.startsWith('prestadores.') || host.includes('prestadores.experiencias');
+  });
+
+  readonly applicationUrl = computed(() => {
+    return this.isExternalApplicationUrl()
+      ? 'https://experiencias.club/prestadores/emergentes'
+      : '/prestadores/emergentes';
+  });
 
   constructor() {
     this.pageTitle.setTitle('Portal de Prestadores del Club de Experiencias');

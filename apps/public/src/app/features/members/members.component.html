@@ -69,26 +69,11 @@
                 </div>
               </article>
               }
-
-              <!-- Card Clickeable: Compartí tu propio testimonio dentro del carrusel -->
-              <article class="testimonial-card add-testimonial-card carousel-item" (click)="onAddTestimonialClick()" role="button"
-                tabindex="0" (keydown.enter)="onAddTestimonialClick()" (keydown.space)="onAddTestimonialClick()"
-                title="Compartí tu testimonio en el Club">
-                <div class="add-testimonial-body">
-                  <h3 class="add-testimonial-title">¿Sos socio del Club?</h3>
-                  <p class="add-testimonial-desc">
-                    Compartí tu vivencia e inspirá a la comunidad.
-                  </p>
-                </div>
-
-                <div class="add-testimonial-footer">
-                  <span class="add-testimonial-cta-btn">Compartir testimonio</span>
-                </div>
-              </article>
             </div>
           </div>
-          } @else {
-          <!-- Sin testimonios destacados: card para compartir testimonio en la box superior -->
+          }
+
+          <!-- Card para compartir testimonio (siempre visible y accesible fuera del carrusel) -->
           <div class="showcase-add-wrap">
             <article class="testimonial-card add-testimonial-card showcase-add-card" (click)="onAddTestimonialClick()" role="button"
               tabindex="0" (keydown.enter)="onAddTestimonialClick()" (keydown.space)="onAddTestimonialClick()"
@@ -105,7 +90,6 @@
               </div>
             </article>
           </div>
-          }
         </section>
 
         <!-- ═══════════════ CALLOUT CONVOCATORIA DE SOCIOS 1 ═══════════════ -->

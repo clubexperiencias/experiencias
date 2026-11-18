@@ -998,6 +998,10 @@ export interface Database {
         Args: Record<string, never>;
         Returns: Json;
       };
+      get_my_socio_testimonio: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
     };
     Enums: {
       membership_tier: MembershipTier;

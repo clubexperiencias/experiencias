@@ -53,7 +53,44 @@ export class MembersComponent implements AfterViewInit, OnDestroy {
   readonly favoritesService = inject(FavoritesService);
   readonly router = inject(Router);
 
-  @ViewChild('carouselRef') carouselRef?: ElementRef<HTMLDivElement>;
+  private _carouselRef?: ElementRef<HTMLDivElement>;
+  private currentTrackEl: HTMLDivElement | null = null;
+
+  @ViewChild('carouselRef')
+  set carouselRef(ref: ElementRef<HTMLDivElement> | undefined) {
+    this._carouselRef = ref;
+    const el = ref?.nativeElement ?? null;
+    if (this.currentTrackEl === el) return;
+
+    // Limpiar listeners del track previo y detener autoplay si desaparece
+    if (this.currentTrackEl) {
+      this.currentTrackEl.removeEventListener('scrollend', this.onScrollEndBound);
+      this.stopAutoplay();
+      if (this.initTimer) {
+        clearTimeout(this.initTimer);
+        this.initTimer = null;
+      }
+    }
+
+    this.currentTrackEl = el;
+
+    // Inicializar posición y listeners reactivamente cuando el track condicional aparece
+    if (el && !this.isDestroyed) {
+      el.addEventListener('scrollend', this.onScrollEndBound);
+      if (this.initTimer) {
+        clearTimeout(this.initTimer);
+      }
+      this.initTimer = setTimeout(() => {
+        if (this.isDestroyed || this.currentTrackEl !== el) return;
+        this.initCarouselPosition();
+        this.startAutoplay();
+      }, 0);
+    }
+  }
+
+  get carouselRef(): ElementRef<HTMLDivElement> | undefined {
+    return this._carouselRef;
+  }
 
   readonly featuredTestimonios = this.testimoniosService.featuredTestimonios;
   readonly communityTestimonios = this.testimoniosService.communityTestimonios;
@@ -78,6 +115,8 @@ export class MembersComponent implements AfterViewInit, OnDestroy {
   private readonly autoplayIntervalMs = 4000;
   private isUserHovering = false;
   private scrollDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private initTimer: ReturnType<typeof setTimeout> | null = null;
+  private isDestroyed = false;
   private readonly onVisibilityChangeBound = () => {
     if (document.hidden) {
       this.stopAutoplay();
@@ -103,34 +142,32 @@ export class MembersComponent implements AfterViewInit, OnDestroy {
   });
 
   ngAfterViewInit(): void {
-    setTimeout(() => {
-      this.initCarouselPosition();
-      this.startAutoplay();
-    }, 60);
-
-    const container = this.carouselRef?.nativeElement;
-    if (container) {
-      container.addEventListener('scrollend', this.onScrollEndBound);
-    }
     document.addEventListener('visibilitychange', this.onVisibilityChangeBound);
   }
 
   ngOnDestroy(): void {
+    this.isDestroyed = true;
+    if (this.initTimer) {
+      clearTimeout(this.initTimer);
+      this.initTimer = null;
+    }
     this.stopAutoplay();
     if (this.scrollDebounceTimer) {
       clearTimeout(this.scrollDebounceTimer);
+      this.scrollDebounceTimer = null;
     }
-    const container = this.carouselRef?.nativeElement;
-    if (container) {
-      container.removeEventListener('scrollend', this.onScrollEndBound);
+    if (this.currentTrackEl) {
+      this.currentTrackEl.removeEventListener('scrollend', this.onScrollEndBound);
+      this.currentTrackEl = null;
     }
     document.removeEventListener('visibilitychange', this.onVisibilityChangeBound);
   }
 
   startAutoplay(): void {
+    if (this.isDestroyed) return;
     this.stopAutoplay();
     this.autoplayTimer = setInterval(() => {
-      if (!this.isUserHovering && !document.hidden) {
+      if (!this.isUserHovering && !document.hidden && !this.isDestroyed) {
         this.scrollCarousel('next');
       }
     }, this.autoplayIntervalMs);

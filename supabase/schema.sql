@@ -3586,14 +3586,36 @@ CREATE POLICY "Administradores gestion de testimonios"
     )
   );
 
--- Politica: socio puede ver y editar su propio testimonio
+-- Politica: socio puede ver su propio testimonio (incluso si se encuentra inactivo)
 DROP POLICY IF EXISTS "Socio gestion de su propio testimonio" ON public.testimonios;
-CREATE POLICY "Socio gestion de su propio testimonio"
+DROP POLICY IF EXISTS "Socio lectura de su propio testimonio" ON public.testimonios;
+CREATE POLICY "Socio lectura de su propio testimonio"
   ON public.testimonios
-  FOR ALL
+  FOR SELECT
   TO authenticated
-  USING (LOWER(email) = LOWER(auth.jwt() ->> 'email'))
-  WITH CHECK (LOWER(email) = LOWER(auth.jwt() ->> 'email'));
+  USING (LOWER(email) = LOWER(auth.jwt() ->> 'email'));
+
+-- Revocación de permisos de escritura directa para authenticated y anon.
+-- La publicación y edición de testimonios por parte de socios se gestiona
+-- exclusivamente a través de la función SECURITY DEFINER submit_socio_testimonio(),
+-- previniendo manipulación de campos privilegiados (membership_tier, featured, active, socio_id).
+REVOKE INSERT, UPDATE, DELETE ON public.testimonios FROM anon, authenticated;
+
+-- Restricción de acceso a nivel de columnas para el rol anon:
+-- Se revoca SELECT completo y solo se conceden las columnas públicas no sensibles,
+-- impidiendo que consultas directas o fallbacks expongan campos de identidad privada (email, full_name, socio_id).
+REVOKE SELECT ON public.testimonios FROM anon;
+GRANT SELECT (
+  id,
+  membership_tier,
+  content,
+  featured,
+  active,
+  created_at,
+  updated_at
+) ON public.testimonios TO anon;
+GRANT SELECT ON public.testimonios TO authenticated;
+GRANT ALL ON public.testimonios TO service_role;
 
 -- Trigger updated_at
 DROP TRIGGER IF EXISTS trg_testimonios_updated_at ON public.testimonios;
@@ -3603,6 +3625,7 @@ CREATE TRIGGER trg_testimonios_updated_at
   EXECUTE FUNCTION public.handle_updated_at();
 
 -- RPC: public.submit_socio_testimonio
+DROP FUNCTION IF EXISTS public.submit_socio_testimonio(TEXT, TEXT);
 CREATE OR REPLACE FUNCTION public.submit_socio_testimonio(
   p_content TEXT,
   p_email   TEXT DEFAULT NULL
@@ -3613,6 +3636,7 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 DECLARE
+  v_jwt_email       TEXT;
   v_email           TEXT;
   v_socio_id        UUID;
   v_full_name       TEXT;
@@ -3621,11 +3645,28 @@ DECLARE
   v_testimonio_id   UUID;
   v_created_at      TIMESTAMPTZ;
   v_updated_at      TIMESTAMPTZ;
+  v_is_admin        BOOLEAN := false;
 BEGIN
-  -- Determinar email del remitente (priorizar sesion JWT)
-  v_email := LOWER(TRIM(COALESCE(auth.jwt() ->> 'email', p_email, '')));
-  IF v_email = '' OR v_email !~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$' THEN
-    RETURN jsonb_build_object('success', false, 'error', 'Email invalido o sesion no encontrada');
+  -- Requerir sesión JWT verificada para autorizar la publicación
+  v_jwt_email := LOWER(TRIM(COALESCE(auth.jwt() ->> 'email', '')));
+  IF v_jwt_email = '' OR v_jwt_email !~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$' THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Sesión no autenticada o token inválido');
+  END IF;
+
+  -- Verificar si el llamador es un administrador activo
+  SELECT EXISTS (
+    SELECT 1 FROM public.administradores
+    WHERE LOWER(email) = v_jwt_email AND active = true
+  ) INTO v_is_admin;
+
+  -- Si es administrador y especificó p_email, permitirlo; de lo contrario, exigir coincidencia con el JWT
+  IF v_is_admin AND p_email IS NOT NULL AND TRIM(p_email) <> '' THEN
+    v_email := LOWER(TRIM(p_email));
+  ELSE
+    IF p_email IS NOT NULL AND TRIM(p_email) <> '' AND LOWER(TRIM(p_email)) <> v_jwt_email THEN
+      RETURN jsonb_build_object('success', false, 'error', 'No autorizado: el email no coincide con la sesión autenticada');
+    END IF;
+    v_email := v_jwt_email;
   END IF;
 
   v_content := TRIM(p_content);
@@ -3688,14 +3729,14 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.submit_socio_testimonio(TEXT, TEXT) TO anon, authenticated, service_role;
+REVOKE EXECUTE ON FUNCTION public.submit_socio_testimonio(TEXT, TEXT) FROM anon;
+GRANT EXECUTE ON FUNCTION public.submit_socio_testimonio(TEXT, TEXT) TO authenticated, service_role;
 
--- RPC: public.get_socios_testimonios
+-- RPC: public.get_socios_testimonios (proyección pública anónima sin email ni full_name)
+DROP FUNCTION IF EXISTS public.get_socios_testimonios();
 CREATE OR REPLACE FUNCTION public.get_socios_testimonios()
 RETURNS TABLE (
   id              UUID,
-  email           TEXT,
-  full_name       TEXT,
   author_display  TEXT,
   membership_tier TEXT,
   tier_label      TEXT,
@@ -3714,8 +3755,6 @@ BEGIN
   RETURN QUERY
   SELECT
     t.id,
-    t.email,
-    COALESCE(s.full_name, t.full_name, '') AS full_name,
     CASE
       WHEN COALESCE(s.full_name, t.full_name, '') = '' THEN 'Socio del Club'
       ELSE (
@@ -3763,6 +3802,75 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.get_socios_testimonios() TO anon, authenticated, service_role;
 
+-- RPC: public.get_my_socio_testimonio (Ruta autenticada segura para que el socio acceda a su registro completo)
+DROP FUNCTION IF EXISTS public.get_my_socio_testimonio();
+CREATE OR REPLACE FUNCTION public.get_my_socio_testimonio()
+RETURNS TABLE (
+  id              UUID,
+  socio_id        UUID,
+  email           TEXT,
+  full_name       TEXT,
+  author_display  TEXT,
+  membership_tier TEXT,
+  tier_label      TEXT,
+  content         TEXT,
+  featured        BOOLEAN,
+  active          BOOLEAN,
+  created_at      TIMESTAMPTZ,
+  updated_at      TIMESTAMPTZ
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_jwt_email TEXT;
+BEGIN
+  v_jwt_email := LOWER(TRIM(COALESCE(auth.jwt() ->> 'email', '')));
+  IF v_jwt_email = '' THEN
+    RETURN;
+  END IF;
+
+  RETURN QUERY
+  SELECT
+    t.id,
+    t.socio_id,
+    t.email,
+    t.full_name,
+    CASE
+      WHEN COALESCE(s.full_name, t.full_name, '') = '' THEN 'Socio del Club'
+      ELSE (
+        SELECT
+          initcap(trim(parts[1])) ||
+          CASE
+            WHEN array_length(parts, 1) > 1 THEN ' ' || upper(left(trim(parts[array_length(parts, 1)]), 1)) || '.'
+            ELSE ''
+          END
+        FROM (SELECT string_to_array(trim(COALESCE(s.full_name, t.full_name)), ' ') AS parts) sub
+      )
+    END AS author_display,
+    COALESCE(s.membership_tier, t.membership_tier, 'emergente') AS membership_tier,
+    CASE COALESCE(s.membership_tier, t.membership_tier, 'emergente')
+      WHEN 'fundador'  THEN 'Socio Fundador'
+      WHEN 'activo'    THEN 'Socio Pleno'
+      WHEN 'emergente' THEN 'Socio Emergente'
+      ELSE 'Socio del Club'
+    END AS tier_label,
+    t.content,
+    t.featured,
+    t.active,
+    t.created_at,
+    t.updated_at
+  FROM public.testimonios t
+  LEFT JOIN public.socios s ON (s.id = t.socio_id OR LOWER(s.email) = LOWER(t.email))
+  WHERE LOWER(t.email) = v_jwt_email
+  LIMIT 1;
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.get_my_socio_testimonio() FROM anon;
+GRANT EXECUTE ON FUNCTION public.get_my_socio_testimonio() TO authenticated, service_role;
+
 -- ----------------------------------------------------------------------------
 -- Semillas iniciales en base de datos para testimonios de socios
 -- ----------------------------------------------------------------------------
@@ -3803,11 +3911,4 @@ VALUES
     false,
     true
   )
-ON CONFLICT (email) DO UPDATE
-SET
-  socio_id        = COALESCE(EXCLUDED.socio_id, public.testimonios.socio_id),
-  full_name       = EXCLUDED.full_name,
-  membership_tier = EXCLUDED.membership_tier,
-  content         = EXCLUDED.content,
-  featured        = EXCLUDED.featured,
-  active          = EXCLUDED.active;
+ON CONFLICT (email) DO NOTHING;

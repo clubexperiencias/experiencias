@@ -96,6 +96,7 @@
           <!-- Formulario de Registro o Confirmación de Membresía -->
           @if (!newsletter.isSubscribed() || !isProfileComplete()) {
             <form
+              id="registro"
               class="signup-form"
               [class.signup-form-locked]="requiresGoogle()"
               novalidate
