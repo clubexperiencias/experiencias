@@ -109,6 +109,7 @@ export function isClubProvider(provider?: {
   return (
     id === 'prov-club' ||
     email === 'admin@experiencias.club' ||
+    email === 'gonzagramaglia@gmail.com' ||
     slug === 'club-de-experiencias' ||
     slug === 'club'
   );

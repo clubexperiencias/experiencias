@@ -60,6 +60,7 @@ export interface ExperienceProposalRequest {
   title: string;
   kicker: string;
   subheading: string;
+  category?: 'expediciones' | 'hospedajes' | string;
   region: string;
   difficulty: string;
   duration: string;
@@ -362,8 +363,11 @@ export class ProviderStoreService {
       }
 
       const email = data.user.email.trim().toLowerCase();
+      const isSuperAdminEmail =
+        email === 'gonzagramaglia@gmail.com' ||
+        email === 'admin@experiencias.club';
 
-      const { data: access, error } = await (this.supabase.from('prestadores') as any)
+      const { data: accessData, error } = await (this.supabase.from('prestadores') as any)
         .select('*')
         .eq('email', email)
         .maybeSingle();
@@ -372,11 +376,41 @@ export class ProviderStoreService {
         console.warn('[ProviderStore] Error consultando prestadores:', error);
       }
 
-      if (error || !access || access.active !== true || access.status !== 'aprobado') {
+      if (!isSuperAdminEmail && (error || !accessData || accessData.active !== true || accessData.status !== 'aprobado')) {
         this.lastSessionRestoreTime = 0;
         this._currentProvider.set(null);
         this.saveSession(null);
         return false;
+      }
+
+      let access = accessData;
+      if (isSuperAdminEmail) {
+        if (!access) {
+          access = {
+            id: 'prov-club',
+            email,
+            name: 'Gonzalo Gramaglia',
+            agency: 'Club de Experiencias',
+            active: true,
+            status: 'aprobado',
+            verified: true,
+            tier: 'fundador',
+            rubro: 'Operador Oficial del Club',
+            region: 'Valle Central y Ambato',
+            rating_score: 5.0,
+            rating_count: 1,
+          };
+        } else if (access.active !== true || access.status !== 'aprobado') {
+          try {
+            await (this.supabase.from('prestadores') as any)
+              .update({ active: true, status: 'aprobado' })
+              .eq('email', email);
+          } catch {
+            // Ignorar si RLS bloquea update
+          }
+          access.active = true;
+          access.status = 'aprobado';
+        }
       }
 
       const existing = this._providers().find((provider) => provider.email.toLowerCase() === email);
@@ -570,9 +604,18 @@ export class ProviderStoreService {
   // ==========================================
   login(email: string, _password?: string): { success: boolean; message: string } {
     const normalized = email.trim().toLowerCase();
+    const isSuperAdminEmail =
+      normalized === 'gonzagramaglia@gmail.com' ||
+      normalized === 'admin@experiencias.club';
+
     const provider = this._providers().find((p) => p.email.toLowerCase() === normalized);
 
     if (provider) {
+      if (isSuperAdminEmail) {
+        provider.status = 'aprobado';
+        provider.verified = true;
+        provider.active = true;
+      }
       if (provider.status === 'dado_de_baja') {
         return {
           success: false,
@@ -590,6 +633,21 @@ export class ProviderStoreService {
       this._currentProvider.set(provider);
       this.saveSession(provider);
       return { success: true, message: 'Ingreso exitoso.' };
+    }
+
+    if (isSuperAdminEmail) {
+      const adminProv: ProviderUser = {
+        ...CLUB_OFFICIAL_PROVIDER,
+        email: normalized,
+        name: 'Gonzalo Gramaglia',
+        status: 'aprobado',
+        verified: true,
+        active: true,
+      };
+      this._providers.update((list) => [adminProv, ...list]);
+      this._currentProvider.set(adminProv);
+      this.saveSession(adminProv);
+      return { success: true, message: 'Ingreso exitoso como administrador.' };
     }
 
     return {
@@ -3344,6 +3402,7 @@ export class ProviderStoreService {
 
     const newReq: ExperienceProposalRequest = {
       ...data,
+      category: data.category || 'expediciones',
       id,
       slug: (data as any).slug || generatedSlug,
       status: 'pendiente',
@@ -3362,6 +3421,7 @@ export class ProviderStoreService {
           kicker: newReq.kicker || 'EXPERIENCIA',
           tagline: newReq.subheading || '',
           description: newReq.subheading || '',
+          category: newReq.category || 'expediciones',
           region: newReq.region || 'Valle Central y Ambato',
           meeting_point: newReq.meetingPoint || '',
           meeting_point_url: newReq.meetingPointUrl || '',
@@ -3521,6 +3581,7 @@ export class ProviderStoreService {
             title: row.title,
             kicker: row.kicker || 'EXPERIENCIA',
             subheading: row.tagline || row.description || '',
+            category: row.category || 'expediciones',
             region: row.region || '',
             difficulty: row.difficulty || 'Moderada',
             duration: row.duration_label || '4 horas',
@@ -3732,6 +3793,8 @@ export class ProviderStoreService {
         id: publishedId,
         slug: generatedSlug,
         status: 'publicada',
+        category: req.category || 'expediciones',
+        detailRoute: req.category === 'hospedajes' ? `/experiencias/hospedajes/${generatedSlug}` : `/experiencias/${generatedSlug}`,
         dates: publishedDates,
         publicUrl: resolvedUrl,
         reviewedAt: new Date().toISOString(),
@@ -3758,6 +3821,7 @@ export class ProviderStoreService {
         const { error: updErr } = await (this.supabase.from('experiencias') as any)
           .update({
             status: 'publicada',
+            category: req.category || 'expediciones',
             slug: generatedSlug,
             public_url: resolvedUrl,
             dates: publishedDates,
@@ -3811,8 +3875,9 @@ export class ProviderStoreService {
         maxSpotsPerGroup: req.capacity,
         dates: publishedDates,
         status: 'publicada',
+        category: req.category || 'expediciones',
         publicUrl: resolvedUrl,
-        detailRoute: `/experiencias/${generatedSlug}`,
+        detailRoute: req.category === 'hospedajes' ? `/experiencias/hospedajes/${generatedSlug}` : `/experiencias/${generatedSlug}`,
         coverImage: req.coverImage || '/assets/images/kayak-club-de-experiencias.jpg',
         galleryImages:
           req.albumPhotos && req.albumPhotos.length > 0
@@ -3880,6 +3945,7 @@ export class ProviderStoreService {
         const { error } = await (this.supabase.from('experiencias') as any)
           .update({
             status: 'publicada',
+            category: req.category || 'expediciones',
             slug: generatedSlug,
             public_url: resolvedUrl,
             dates: publishedDates,

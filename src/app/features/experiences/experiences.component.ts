@@ -19,11 +19,9 @@ import { Experience } from '../../core/models/experience.model';
 import { DEFAULT_CLUB_PROFILE, isClubExperience } from '../../core/models/club-profile.model';
 import { FooterComponent } from '../../shared/components/footer/footer.component';
 import { HeaderComponent } from '../../shared/components/header/header.component';
-import {
-  BreadcrumbComponent,
-  BreadcrumbItem,
-} from '../../shared/components/breadcrumb/breadcrumb.component';
+import { BreadcrumbComponent, BreadcrumbItem } from '../../shared/components/breadcrumb/breadcrumb.component';
 import { FounderAdComponent } from '../../shared/components/founder-ad/founder-ad.component';
+import { ExperiencesSubrouteSwitchComponent } from './components/experiences-subroute-switch/experiences-subroute-switch.component';
 
 export type ExperiencesModalType = 'login' | null;
 
@@ -44,6 +42,7 @@ export interface CarouselExperienceItem {
     HeaderComponent,
     BreadcrumbComponent,
     FounderAdComponent,
+    ExperiencesSubrouteSwitchComponent,
   ],
   templateUrl: './experiences.component.html',
   styleUrl: './experiences.component.css',

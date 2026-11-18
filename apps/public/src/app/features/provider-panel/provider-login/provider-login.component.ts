@@ -932,6 +932,18 @@ export class ProviderLoginComponent implements OnInit {
         const rawEmail = data.user?.email;
         if (rawEmail) {
           const cleanEmail = rawEmail.trim().toLowerCase();
+          const isSuperAdmin =
+            cleanEmail === 'gonzagramaglia@gmail.com' ||
+            cleanEmail === 'admin@experiencias.club';
+
+          if (isSuperAdmin) {
+            const forceRestored = await this.store.restoreSupabaseSession(true);
+            if (forceRestored && this.store.isProviderApproved()) {
+              this.router.navigate([this.resolveDashboardPath()]);
+              return;
+            }
+          }
+
           this.unapprovedEmail.set(cleanEmail);
           const navigated = await this.evaluateUnapprovedStatus(cleanEmail);
           if (!navigated) {
@@ -947,6 +959,17 @@ export class ProviderLoginComponent implements OnInit {
   private async evaluateUnapprovedStatus(email: string): Promise<boolean> {
     try {
       const cleanEmail = email.trim().toLowerCase();
+      const isSuperAdmin =
+        cleanEmail === 'gonzagramaglia@gmail.com' ||
+        cleanEmail === 'admin@experiencias.club';
+
+      if (isSuperAdmin) {
+        const forceRestored = await this.store.restoreSupabaseSession(true);
+        if (forceRestored && this.store.isProviderApproved()) {
+          this.router.navigate([this.resolveDashboardPath()]);
+          return true;
+        }
+      }
 
       // 1. Intentar verificación mediante RPC segura (Security Definer)
       try {

@@ -1,0 +1,33 @@
+<nav class="subroute-nav-container" aria-label="Navegación de categorías">
+  <a
+    routerLink="/experiencias"
+    class="subroute-tab"
+    [class.is-active]="currentTab() === 'expediciones'"
+    [attr.aria-current]="currentTab() === 'expediciones' ? 'page' : null"
+    (mousedown)="onSelect('expediciones', $event)"
+    (click)="onSelect('expediciones', $event)"
+    (keydown.enter)="onSelect('expediciones', $event)"
+    (keydown.space)="onSelect('expediciones', $event)"
+    (mouseleave)="clearProvisional()"
+    (blur)="clearProvisional()"
+    title="Ver catálogo de expediciones"
+  >
+    <span class="subroute-text">Expediciones & Aventuras</span>
+  </a>
+  <a
+    routerLink="/experiencias/hospedajes"
+    class="subroute-tab"
+    [class.is-active]="currentTab() === 'hospedajes'"
+    [attr.aria-current]="currentTab() === 'hospedajes' ? 'page' : null"
+    (mousedown)="onSelect('hospedajes', $event)"
+    (click)="onSelect('hospedajes', $event)"
+    (keydown.enter)="onSelect('hospedajes', $event)"
+    (keydown.space)="onSelect('hospedajes', $event)"
+    (mouseleave)="clearProvisional()"
+    (blur)="clearProvisional()"
+    title="Ver catálogo de hospedajes en Catamarca"
+  >
+    <span class="subroute-text">Hospedajes & Refugios</span>
+  </a>
+</nav>
+

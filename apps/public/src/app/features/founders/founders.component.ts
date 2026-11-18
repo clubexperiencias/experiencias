@@ -1,6 +1,6 @@
 import { Component, HostListener, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { NewsletterService } from '../../core/services/newsletter.service';
@@ -18,7 +18,6 @@ import { MemberTiersComponent } from '../../shared/components/member-tiers/membe
   standalone: true,
   imports: [
     CommonModule,
-    RouterLink,
     FormsModule,
     MatIconModule,
     FooterComponent,

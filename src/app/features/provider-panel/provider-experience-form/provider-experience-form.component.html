@@ -67,13 +67,28 @@
         }
       </div>
 
-      <div class="form-group" [class.has-error]="fieldInvalid('region')">
-        <label for="region" class="form-label">Región turística de Catamarca *</label>
-        <select id="region" formControlName="region" class="form-input form-select">
-          @for (r of regions; track r) {
-            <option [value]="r">{{ r }}</option>
-          }
-        </select>
+      <div class="form-row form-row-2">
+        <div class="form-group" [class.has-error]="fieldInvalid('category')">
+          <label for="category" class="form-label">Ubicación en la Web (Sección) *</label>
+          <select id="category" formControlName="category" class="form-input form-select">
+            @if (isCustomCategory(form.get('category')?.value)) {
+              <option [value]="form.get('category')?.value">{{ form.get('category')?.value }} (Personalizado)</option>
+            }
+            @for (cat of categoryOptions; track cat.value) {
+              <option [value]="cat.value">{{ cat.label }}</option>
+            }
+          </select>
+          <span class="field-hint">Define en qué sección del switch principal se ubicará la experiencia.</span>
+        </div>
+
+        <div class="form-group" [class.has-error]="fieldInvalid('region')">
+          <label for="region" class="form-label">Región turística de Catamarca *</label>
+          <select id="region" formControlName="region" class="form-input form-select">
+            @for (r of regions; track r) {
+              <option [value]="r">{{ r }}</option>
+            }
+          </select>
+        </div>
       </div>
 
       <div class="form-group" [class.has-error]="fieldInvalid('tagline')">
@@ -135,7 +150,7 @@
         </div>
       </div>
 
-      <div class="form-row form-row-3">
+      <div class="form-row form-row-2">
         <div class="form-group" [class.has-error]="fieldInvalid('difficulty')">
           <label for="difficulty" class="form-label">Nivel de exigencia física *</label>
           <select id="difficulty" formControlName="difficulty" class="form-input form-select">
@@ -145,6 +160,20 @@
           </select>
         </div>
 
+        <div class="form-group" [class.has-error]="fieldInvalid('altitudeMeters')">
+          <label for="altitudeMeters" class="form-label">Altitud (msnm) *</label>
+          <select id="altitudeMeters" formControlName="altitudeMeters" class="form-input form-select">
+            @if (isCustomAltitude(form.get('altitudeMeters')?.value)) {
+              <option [value]="form.get('altitudeMeters')?.value">{{ form.get('altitudeMeters')?.value }} msnm (Personalizado)</option>
+            }
+            @for (opt of altitudeOptions; track opt.value) {
+              <option [value]="opt.value">{{ opt.label }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row form-row-2">
         <div class="form-group" [class.has-error]="fieldInvalid('priceArs')">
           <label for="priceArs" class="form-label">Tarifa por persona ($ ARS) *</label>
           <input

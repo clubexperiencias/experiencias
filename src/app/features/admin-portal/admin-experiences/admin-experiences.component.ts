@@ -9,7 +9,7 @@ import { ExperienceService } from '../../../core/services/experience.service';
 import { StorageService } from '../../../core/services/storage.service';
 import { AdminStoreService } from '../../../core/services/admin-store.service';
 import { ExperienceProposalRequest, parseConfirmedProposalDates, slugify } from '../../../core/services/provider-store.service';
-import { Experience, ExperienceAlbumPhoto } from '../../../core/models/experience.model';
+import { ALTITUDE_OPTIONS, EXPERIENCE_CATEGORY_OPTIONS, Experience, ExperienceAlbumPhoto } from '../../../core/models/experience.model';
 import { ProviderUser } from '../../../core/models/bank-transfer.model';
 import { isClubExperience } from '../../../core/models/club-profile.model';
 import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
@@ -919,6 +919,21 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
           </div>
 
           <div class="form-field">
+            <label>Ubicación en la Web (Switch de Cabecera): <span class="req-star">*</span></label>
+            <select class="form-select" [(ngModel)]="editCategory" required>
+              @if (isCustomCategory(editCategory())) {
+                <option [value]="editCategory()">{{ editCategory() }} (Personalizado)</option>
+              }
+              @for (cat of categoryOptions; track cat.value) {
+                <option [value]="cat.value">{{ cat.label }}</option>
+              }
+            </select>
+            <span class="field-hint">
+              Define en qué sección del switch superior se mostrará esta experiencia (Expediciones o Hospedajes).
+            </span>
+          </div>
+
+          <div class="form-field">
             <div class="field-label-row">
               <label>Subtítulo / Bajada destacada (Tagline): <span class="req-star">*</span></label>
               <span class="char-counter">{{ editTagline().length }}/160</span>
@@ -1021,14 +1036,14 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
 
             <div class="form-field">
               <label>Altitud (msnm):</label>
-              <input
-                type="number"
-                class="form-input"
-                [(ngModel)]="editAltitude"
-                placeholder="850"
-                min="0"
-                max="7000"
-              />
+              <select class="form-select" [(ngModel)]="editAltitude">
+                @if (isCustomAltitude(editAltitude())) {
+                  <option [value]="editAltitude()">{{ editAltitude() }} msnm (Personalizado)</option>
+                }
+                @for (opt of altitudeOptions; track opt.value) {
+                  <option [value]="opt.value">{{ opt.label }}</option>
+                }
+              </select>
             </div>
           </div>
         </div>
@@ -5088,7 +5103,18 @@ export class AdminExperiencesComponent implements OnInit {
     '4 días o más',
   ];
   readonly editDurationLabel = signal('4 horas (Media jornada)');
+  readonly categoryOptions = EXPERIENCE_CATEGORY_OPTIONS;
+  readonly editCategory = signal<string>('expediciones');
+  isCustomCategory(val: string | null | undefined): boolean {
+    if (!val) return false;
+    return !this.categoryOptions.some((opt) => opt.value === val);
+  }
+  readonly altitudeOptions = ALTITUDE_OPTIONS;
   readonly editAltitude = signal(850);
+  isCustomAltitude(val: number | null | undefined): boolean {
+    if (val === null || val === undefined) return false;
+    return !this.altitudeOptions.some((opt) => opt.value === Number(val));
+  }
   readonly editCapacity = signal(12);
   readonly editPriceArs = signal(65000);
   readonly usdExchangeRate = computed(() => this.adminStore.usdExchangeRate() || 1400);
@@ -5223,6 +5249,7 @@ export class AdminExperiencesComponent implements OnInit {
 
     this.editId.set(exp.id);
     this.editSlug.set(exp.slug);
+    this.editCategory.set(exp.category || 'expediciones');
     this.editTitle.set(exp.title);
     this.editTagline.set(exp.tagline || '');
     this.editDescription.set(exp.description || '');
@@ -5232,7 +5259,17 @@ export class AdminExperiencesComponent implements OnInit {
     this.editItinerary.set(exp.itinerary || '');
     this.editDifficulty.set(exp.difficulty || 'Baja');
     this.editDurationLabel.set(exp.durationLabel || '4 horas (Media jornada)');
-    this.editAltitude.set(exp.altitudeMeters || 850);
+    const rawAlt = exp.altitudeMeters;
+    const resolvedAltitude =
+      typeof rawAlt === 'number' && Number.isFinite(rawAlt)
+        ? rawAlt
+        : rawAlt !== undefined &&
+            rawAlt !== null &&
+            String(rawAlt).replace(/\D/g, '') !== '' &&
+            Number.isFinite(Number(String(rawAlt).replace(/\D/g, '')))
+          ? Number(String(rawAlt).replace(/\D/g, ''))
+          : 850;
+    this.editAltitude.set(resolvedAltitude);
     this.editCapacity.set(exp.maxSpotsPerGroup || 12);
     this.editPriceArs.set(exp.priceArs || 65000);
     const rawCover = exp.coverImage || '';
@@ -5390,6 +5427,7 @@ export class AdminExperiencesComponent implements OnInit {
 
     this.editId.set(newId);
     this.editSlug.set('');
+    this.editCategory.set('expediciones');
     this.editTitle.set('');
     this.editTagline.set('');
     this.editDescription.set('');
@@ -5786,6 +5824,7 @@ export class AdminExperiencesComponent implements OnInit {
       shortTitle: title,
       tagline: this.editTagline().trim(),
       description: this.editDescription().trim(),
+      category: this.editCategory(),
       region: this.editRegion().trim() || 'Catamarca',
       meetingPoint,
       meetingPointUrl,
@@ -5821,7 +5860,7 @@ export class AdminExperiencesComponent implements OnInit {
       status: this.editStatus(),
       displayLocation: this.editStatus() === 'publicada' ? this.editDisplayLocation() : (this.editDisplayLocation() || 'destacada'),
       publicUrl: `https://experiencias.club/experiencias/${slug}`,
-      detailRoute: `/experiencias/${slug}`,
+      detailRoute: this.editCategory() === 'hospedajes' ? `/experiencias/hospedajes/${slug}` : `/experiencias/${slug}`,
     };
 
     this.saving.set(true);

@@ -519,18 +519,21 @@ export class ExperienceService {
           ? safeAlbumPhotos.map((p) => p.url)
           : current.galleryImages);
 
+    const resultingCategory = updated.category || current.category || 'expediciones';
+    const resultingSlug = updated.slug || current.slug;
+    const routePrefix = resultingCategory === 'hospedajes' ? '/experiencias/hospedajes' : '/experiencias';
+
     const merged: Experience = {
       ...current,
       ...updated,
       id: index !== -1 ? current.id : updated.id,
+      category: resultingCategory,
       coverImage: safeCoverImage,
       videoUrl: safeVideoUrl || undefined,
       albumPhotos: safeAlbumPhotos,
       galleryImages: replacementGallery,
-      detailRoute: updated.slug ? `/experiencias/${updated.slug}` : current.detailRoute,
-      publicUrl: updated.slug
-        ? `https://experiencias.club/experiencias/${updated.slug}`
-        : current.publicUrl,
+      detailRoute: `${routePrefix}/${resultingSlug}`,
+      publicUrl: `https://experiencias.club${routePrefix}/${resultingSlug}`,
     };
 
     const nextList = [...prevList];
@@ -635,6 +638,10 @@ export class ExperienceService {
           payload['display_location'] = merged.displayLocation;
         }
 
+        if (merged.category !== undefined) {
+          payload['category'] = merged.category;
+        }
+
         if (merged.mpCollectorId !== undefined || merged.mpConnected !== undefined) {
           let notesObj: Record<string, any> = {};
           if (merged.notes && typeof merged.notes === 'object' && !Array.isArray(merged.notes)) {
@@ -692,9 +699,10 @@ export class ExperienceService {
           .eq('id', merged.id)
           .select();
 
-        if (error && (/meeting_point_url/.test(error.message || '') || /display_location/.test(error.message || ''))) {
+        if (error && (/meeting_point_url/.test(error.message || '') || /display_location/.test(error.message || '') || /category/.test(error.message || ''))) {
           const hasMeetingPointUrlErr = /meeting_point_url/.test(error.message || '');
           const hasDisplayLocationErr = /display_location/.test(error.message || '');
+          const hasCategoryErr = /category/.test(error.message || '');
 
           if (hasMeetingPointUrlErr && updated.meetingPointUrl !== undefined && String(updated.meetingPointUrl).trim() !== '') {
             // A non-empty value was supplied: reject the update rather than committing without it
@@ -708,12 +716,20 @@ export class ExperienceService {
             );
           }
 
+          if (hasCategoryErr && updated.category !== undefined) {
+            // An explicit category change was supplied: reject the update rather than committing without it
+            throw error;
+          }
+
           // Columna aún no migrada en la base remota: reintenta omitiendo solo el campo rechazado
           if (hasMeetingPointUrlErr) {
             delete payloadToUse['meeting_point_url'];
           }
           if (hasDisplayLocationErr) {
             delete payloadToUse['display_location'];
+          }
+          if (hasCategoryErr) {
+            delete payloadToUse['category'];
           }
 
           ({ data, error } = (await this.supabase
@@ -891,6 +907,7 @@ export class ExperienceService {
           included: experience.included || [],
           not_included: experience.notIncluded || [],
           status: experience.status,
+          category: experience.category,
           display_location: experience.displayLocation || 'destacada',
           public_url: experience.publicUrl,
           album_photos: experience.albumPhotos || [],
@@ -903,6 +920,10 @@ export class ExperienceService {
 
         if (experience.notes !== undefined) {
           payload['notes'] = experience.notes;
+        }
+
+        if (experience.category !== undefined) {
+          payload['category'] = experience.category;
         }
 
         // Asegurar que el prestador exista en prestadores para evitar fallos de clave foránea
@@ -940,6 +961,7 @@ export class ExperienceService {
           'best_season',
           'promos_and_pricing',
           'display_location',
+          'category',
         ];
 
         let insertPayload: Record<string, any> = { ...payload };
@@ -1438,10 +1460,33 @@ export class ExperienceService {
                       ? validAlbumPhotos
                       : [safeCover];
 
+                const category = p.category || 'expediciones';
+                const detailRoute =
+                  category === 'hospedajes'
+                    ? `/experiencias/hospedajes/${p.slug}`
+                    : `/experiencias/${p.slug}`;
+                const publicUrl =
+                  p.publicUrl ||
+                  (category === 'hospedajes'
+                    ? `https://experiencias.club/experiencias/hospedajes/${p.slug}`
+                    : `https://experiencias.club/experiencias/${p.slug}`);
+
+                const rawAlt = p.altitudeMeters;
+                const safeAltitude =
+                  typeof rawAlt === 'number' && Number.isFinite(rawAlt)
+                    ? rawAlt
+                    : rawAlt !== undefined &&
+                        rawAlt !== null &&
+                        String(rawAlt).replace(/\D/g, '') !== '' &&
+                        Number.isFinite(Number(String(rawAlt).replace(/\D/g, '')))
+                      ? Number(String(rawAlt).replace(/\D/g, ''))
+                      : 850;
+
                 localExperiences.push({
                   id: p.id || `exp-${p.slug}`,
                   slug: p.slug,
                   title: p.title,
+                  category,
                   shortTitle: p.shortTitle || p.title,
                   kicker: p.kicker || 'EXPERIENCIA',
                   tagline: p.tagline || p.title,
@@ -1452,15 +1497,15 @@ export class ExperienceService {
                   difficulty: p.difficulty || 'Moderada',
                   durationDays: 1,
                   durationLabel: p.durationLabel || 'Medio día',
-                  altitudeMeters: p.altitudeMeters || 850,
+                  altitudeMeters: safeAltitude,
                   bestSeason: p.bestSeason || 'Todo el año',
                   priceArs: p.priceArs || 0,
                   priceUsd: p.priceUsd || 70,
                   maxSpotsPerGroup: p.capacityPerDate || 12,
                   dates: Array.isArray(p.dates) ? p.dates : [],
                   status: 'publicada',
-                  publicUrl: p.publicUrl || `https://experiencias.club/experiencias/${p.slug}`,
-                  detailRoute: `/experiencias/${p.slug}`,
+                  publicUrl,
+                  detailRoute,
                   coverImage: safeCover,
                   galleryImages: resolvedGallery,
                   isExclusiveClub: true,
@@ -1525,10 +1570,32 @@ export class ExperienceService {
                   !existingIds.has(id.toLowerCase())
                 ) {
                   const mappedStatus = r.status === 'aprobada' ? 'publicada' : 'pendiente';
+                  const category = r.category || 'expediciones';
+                  const detailRoute =
+                    category === 'hospedajes'
+                      ? `/experiencias/hospedajes/${slug}`
+                      : `/experiencias/${slug}`;
+                  const publicUrl =
+                    r.experienceUrl ||
+                    (category === 'hospedajes'
+                      ? `https://experiencias.club/experiencias/hospedajes/${slug}`
+                      : `https://experiencias.club/experiencias/${slug}`);
+
+                  const rAltRaw = r.altitude;
+                  const rAltDigits =
+                    rAltRaw !== undefined && rAltRaw !== null
+                      ? String(rAltRaw).replace(/\D/g, '')
+                      : '';
+                  const rAltitudeMeters =
+                    rAltDigits !== '' && Number.isFinite(Number(rAltDigits))
+                      ? Number(rAltDigits)
+                      : 850;
+
                   localExperiences.push({
                     id,
                     slug,
                     title: r.title,
+                    category,
                     shortTitle: r.title.split('&')[0].trim(),
                     kicker: r.kicker || 'EXPERIENCIA',
                     tagline:
@@ -1543,7 +1610,7 @@ export class ExperienceService {
                       (r.difficulty?.split('(')[0]?.trim() as any) || 'Moderada',
                     durationDays: 1,
                     durationLabel: r.duration || 'Medio día',
-                    altitudeMeters: Number(r.altitude?.replace(/\D/g, '')) || 850,
+                    altitudeMeters: rAltitudeMeters,
                     bestSeason: r.season || 'Todo el año',
                     priceArs: r.priceArs || 0,
                     priceUsd: r.priceUsd || 70,
@@ -1551,8 +1618,8 @@ export class ExperienceService {
                     maxSpotsPerGroup: r.capacity || 12,
                     dates: Array.isArray(r.dates) ? r.dates : r.dates ? [r.dates] : [],
                     status: mappedStatus,
-                    publicUrl: r.experienceUrl || `https://experiencias.club/experiencias/${slug}`,
-                    detailRoute: `/experiencias/${slug}`,
+                    publicUrl,
+                    detailRoute,
                     coverImage: r.coverImage || KAYAK_IMAGE,
                     galleryImages:
                       r.albumPhotos && r.albumPhotos.length > 0
@@ -1974,38 +2041,53 @@ export class ExperienceService {
           .order('created_at', { ascending: true }) as any;
 
       let { data, error } = await fetchExperiences(
-        `${publicColumns}, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing, provider_agency, participant_requirements, notes, reviewed_at, display_location`,
+        `${publicColumns}, category, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing, provider_agency, participant_requirements, notes, reviewed_at, display_location`,
       );
       if (error) {
         const isDisplayLocationErr = /display_location/.test(error.message || '');
         if (isDisplayLocationErr) {
           // Si falló por display_location, reintentar preservando las demás columnas opcionales
           ({ data, error } = await fetchExperiences(
-            `${publicColumns}, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing, provider_agency, participant_requirements, notes, reviewed_at`,
+            `${publicColumns}, category, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing, provider_agency, participant_requirements, notes, reviewed_at`,
           ));
         } else {
           // Si falló por otra columna opcional (ej: reviewed_at), preservar display_location y notes
           ({ data, error } = await fetchExperiences(
-            `${publicColumns}, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing, notes, display_location`,
+            `${publicColumns}, category, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing, notes, display_location`,
           ));
         }
       }
       if (error) {
         ({ data, error } = await fetchExperiences(
-          `${publicColumns}, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing, notes`,
+          `${publicColumns}, category, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing, notes`,
         ));
       }
       if (error) {
         // Reintento con fallback progresivo si alguna columna nueva no existe aún
-        ({ data, error } = await fetchExperiences(`${publicColumns}, meeting_point_url, notes`));
+        ({ data, error } = await fetchExperiences(`${publicColumns}, category, meeting_point_url, notes`));
         if (error && /meeting_point_url/.test(error.message || '')) {
-          ({ data, error } = await fetchExperiences(`${publicColumns}, notes`));
+          ({ data, error } = await fetchExperiences(`${publicColumns}, category, notes`));
         }
       }
       if (error && /notes/.test(error.message || '')) {
         // Último recurso solo si la columna notes no estuviera disponible en el esquema remoto
-        ({ data, error } = await fetchExperiences(`${publicColumns}, meeting_point_url`));
+        ({ data, error } = await fetchExperiences(`${publicColumns}, category, meeting_point_url`));
         if (error && /meeting_point_url/.test(error.message || '')) {
+          ({ data, error } = await fetchExperiences(`${publicColumns}, category`));
+        }
+      }
+      if (error && /category/.test(error.message || '')) {
+        // Si falló porque la columna category no existe aún en el esquema remoto, reintentar sin category
+        ({ data, error } = await fetchExperiences(
+          `${publicColumns}, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing, notes, display_location`,
+        ));
+        if (error) {
+          ({ data, error } = await fetchExperiences(`${publicColumns}, meeting_point_url, notes`));
+          if (error && /meeting_point_url/.test(error.message || '')) {
+            ({ data, error } = await fetchExperiences(`${publicColumns}, notes`));
+          }
+        }
+        if (error && /notes/.test(error.message || '')) {
           ({ data, error } = await fetchExperiences(publicColumns));
         }
       }
@@ -2242,11 +2324,12 @@ export class ExperienceService {
             })(),
             reviewedAt: exp.reviewed_at || undefined,
             status: exp.status || 'publicada',
+            category: exp.category || 'expediciones',
             displayLocation: (exp.display_location as 'destacada' | 'catalogo' | 'no_listada') || 'destacada',
-            publicUrl: exp.public_url || `https://experiencias.club/experiencias/${exp.slug}`,
+            publicUrl: exp.public_url || (exp.category === 'hospedajes' ? `https://experiencias.club/experiencias/hospedajes/${exp.slug}` : `https://experiencias.club/experiencias/${exp.slug}`),
             isExclusiveClub: true,
             isLocked: false,
-            detailRoute: `/experiencias/${exp.slug}`,
+            detailRoute: exp.category === 'hospedajes' ? `/experiencias/hospedajes/${exp.slug}` : `/experiencias/${exp.slug}`,
           };
         }) as (Experience | null)[]).filter((e): e is Experience => e !== null);
 

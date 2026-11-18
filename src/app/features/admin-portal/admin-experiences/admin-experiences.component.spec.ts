@@ -12,6 +12,8 @@ describe('AdminExperiencesComponent - Mercado Pago Precedence', () => {
   let mockAdminStore: {
     providerStore: {
       providers: ReturnType<typeof signal<ProviderUser[]>>;
+      experienceRequests: ReturnType<typeof signal<any[]>>;
+      loadProposalsFromSupabase: () => Promise<void>;
     };
     clubProfile: ReturnType<typeof signal<any>>;
     experiences: ReturnType<typeof signal<Experience[]>>;
@@ -41,6 +43,8 @@ describe('AdminExperiencesComponent - Mercado Pago Precedence', () => {
     mockAdminStore = {
       providerStore: {
         providers: signal<ProviderUser[]>([sampleConnectedProvider, sampleDisconnectedProvider]),
+        experienceRequests: signal<any[]>([]),
+        loadProposalsFromSupabase: () => Promise.resolve(),
       },
       clubProfile: signal({
         name: 'Club de Experiencias',
@@ -236,6 +240,29 @@ describe('AdminExperiencesComponent - Mercado Pago Precedence', () => {
     it('should initialize create modal with 4 horas (Media jornada)', () => {
       component.openCreateModal();
       expect(component.editDurationLabel()).toBe('4 horas (Media jornada)');
+    });
+  });
+
+  describe('web section / category dropdown', () => {
+    it('should have category options including expediciones and hospedajes', () => {
+      expect(component.categoryOptions.some((c) => c.value === 'expediciones')).toBe(true);
+      expect(component.categoryOptions.some((c) => c.value === 'hospedajes')).toBe(true);
+    });
+
+    it('should initialize create modal with expediciones by default', () => {
+      component.openCreateModal();
+      expect(component.editCategory()).toBe('expediciones');
+    });
+
+    it('should load experience category when editing an existing lodging', () => {
+      const exp: Partial<Experience> = {
+        id: 'hosp-1',
+        slug: 'refugio-puna',
+        title: 'Refugio Puna',
+        category: 'hospedajes',
+      };
+      component.openEditModal(exp as Experience);
+      expect(component.editCategory()).toBe('hospedajes');
     });
   });
 });

@@ -4,6 +4,7 @@ import {
   ElementRef,
   HostListener,
   OnDestroy,
+  OnInit,
   ViewChild,
   computed,
   effect,
@@ -48,11 +49,15 @@ export interface CarouselTestimonioItem {
   templateUrl: './members.component.html',
   styleUrl: './members.component.css',
 })
-export class MembersComponent implements AfterViewInit, OnDestroy {
+export class MembersComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly newsletter = inject(NewsletterService);
   readonly testimoniosService = inject(TestimoniosService);
   readonly favoritesService = inject(FavoritesService);
   readonly router = inject(Router);
+
+  // Notificación flotante: Plataforma en construcción (Estilo Toast Favoritos)
+  readonly showConstructionNotice = signal(false);
+  private constructionTimer: any = null;
 
   private previousTestimoniosCount = 0;
 
@@ -185,11 +190,40 @@ export class MembersComponent implements AfterViewInit, OnDestroy {
     return items;
   });
 
+  ngOnInit(): void {
+    this.triggerConstructionNotice();
+  }
+
+  triggerConstructionNotice(): void {
+    this.clearConstructionTimer();
+    this.showConstructionNotice.set(false);
+    this.constructionTimer = setTimeout(() => {
+      this.showConstructionNotice.set(true);
+      this.constructionTimer = setTimeout(() => {
+        this.showConstructionNotice.set(false);
+        this.constructionTimer = null;
+      }, 7000);
+    }, 60);
+  }
+
+  dismissConstructionNotice(): void {
+    this.clearConstructionTimer();
+    this.showConstructionNotice.set(false);
+  }
+
+  private clearConstructionTimer(): void {
+    if (this.constructionTimer) {
+      clearTimeout(this.constructionTimer);
+      this.constructionTimer = null;
+    }
+  }
+
   ngAfterViewInit(): void {
     document.addEventListener('visibilitychange', this.onVisibilityChangeBound);
   }
 
   ngOnDestroy(): void {
+    this.clearConstructionTimer();
     this.isDestroyed = true;
     if (this.initTimer) {
       clearTimeout(this.initTimer);

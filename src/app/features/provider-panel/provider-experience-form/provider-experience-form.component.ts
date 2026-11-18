@@ -5,6 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { ProviderStoreService } from '../../../core/services/provider-store.service';
 import { ExperienceService } from '../../../core/services/experience.service';
 import { ExperienceStatus, ProviderExperience } from '../../../core/models/bank-transfer.model';
+import { ALTITUDE_OPTIONS, EXPERIENCE_CATEGORY_OPTIONS } from '../../../core/models/experience.model';
 import { FechaPipe } from '../../../shared/pipes/format.pipes';
 
 const MAX_DATES = 25;
@@ -68,6 +69,21 @@ export class ProviderExperienceFormComponent implements OnInit {
   isCustomDuration(val: string | null | undefined): boolean {
     return Boolean(val && !this.durationOptions.includes(val));
   }
+  readonly altitudeOptions = ALTITUDE_OPTIONS;
+
+  isCustomAltitude(val: any): boolean {
+    if (val === null || val === undefined || val === '') return false;
+    const num = Number(val);
+    if (isNaN(num)) return true;
+    return !this.altitudeOptions.some((opt) => opt.value === num);
+  }
+
+  readonly categoryOptions = EXPERIENCE_CATEGORY_OPTIONS;
+
+  isCustomCategory(val: string | null | undefined): boolean {
+    if (!val) return false;
+    return !this.categoryOptions.some((opt) => opt.value === val);
+  }
   readonly regions = [
     'Valle Central y Ambato',
     'Puna de Atacama',
@@ -92,6 +108,7 @@ export class ProviderExperienceFormComponent implements OnInit {
     title: ['', [Validators.required, Validators.minLength(6), Validators.maxLength(100)]],
     tagline: ['', [Validators.required, Validators.maxLength(160)]],
     description: ['', [Validators.required, Validators.minLength(30), Validators.maxLength(2500)]],
+    category: ['expediciones', Validators.required],
     region: [this.regions[0], Validators.required],
     meetingPoint: ['', [Validators.required, Validators.maxLength(160)]],
     difficulty: this.fb.nonNullable.control<ProviderExperience['difficulty']>(
@@ -99,6 +116,7 @@ export class ProviderExperienceFormComponent implements OnInit {
       Validators.required,
     ),
     durationLabel: ['', [Validators.required, Validators.maxLength(50)]],
+    altitudeMeters: [850, [Validators.required, Validators.min(0)]],
     priceArs: [65000, [Validators.required, Validators.min(1000), Validators.max(20_000_000)]],
     capacityPerDate: [12, [Validators.required, Validators.min(1), Validators.max(999)]],
   });
@@ -147,10 +165,12 @@ export class ProviderExperienceFormComponent implements OnInit {
       title: exp.title,
       tagline: exp.tagline,
       description: exp.description,
+      category: exp.category || 'expediciones',
       region: exp.region,
       meetingPoint: exp.meetingPoint,
       difficulty: exp.difficulty,
       durationLabel: exp.durationLabel,
+      altitudeMeters: exp.altitudeMeters ?? 850,
       priceArs: exp.priceArs,
       capacityPerDate: exp.capacityPerDate,
     });
@@ -285,10 +305,12 @@ export class ProviderExperienceFormComponent implements OnInit {
       title: '',
       tagline: '',
       description: '',
+      category: 'expediciones',
       region: this.regions[0],
       meetingPoint: '',
       difficulty: 'Baja',
       durationLabel: '',
+      altitudeMeters: 850,
       priceArs: 65000,
       capacityPerDate: 12,
     });
@@ -327,15 +349,25 @@ export class ProviderExperienceFormComponent implements OnInit {
     }
 
     const value = this.form.getRawValue();
+    const rawAlt = value.altitudeMeters;
+    const parsedAlt =
+      rawAlt !== null && rawAlt !== undefined && String(rawAlt).trim() !== ''
+        ? Number(rawAlt)
+        : NaN;
+    const altitudeMeters =
+      Number.isFinite(parsedAlt) && parsedAlt >= 0 ? Math.round(parsedAlt) : 850;
+
     const payload = {
       title: value.title.trim(),
       shortTitle: value.title.trim(),
       tagline: value.tagline.trim(),
       description: value.description.trim(),
+      category: value.category || 'expediciones',
       region: value.region,
       meetingPoint: value.meetingPoint.trim(),
       difficulty: value.difficulty,
       durationLabel: value.durationLabel.trim(),
+      altitudeMeters,
       priceArs: Math.round(Number(value.priceArs)),
       capacityPerDate: Math.round(Number(value.capacityPerDate)),
       dates: this.dates(),

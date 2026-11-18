@@ -21,6 +21,7 @@ import {
   validateReceiptFile,
 } from '../../../core/services/provider-store.service';
 import { ExperienceService } from '../../../core/services/experience.service';
+import { HospedajesService } from '../../../core/services/hospedajes.service';
 import { AdminStoreService } from '../../../core/services/admin-store.service';
 import { isClubExperience } from '../../../core/models/club-profile.model';
 import { NotificationService } from '../../../core/services/notification.service';
@@ -90,6 +91,7 @@ export class ExperiencePaymentComponent implements OnInit {
   });
 
   readonly acceptedTypes = RECEIPT_ACCEPTED_TYPES.join(',');
+  readonly hospedajesService = inject(HospedajesService, { optional: true });
   readonly mobileMenuOpen = signal(false);
   readonly authReady = signal(!isSupabaseConfigured());
   readonly checkoutMember =
@@ -140,6 +142,60 @@ export class ExperiencePaymentComponent implements OnInit {
       return undefined;
     }
 
+    const hosp = this.hospedajesService?.getHospedajeBySlug(slug);
+    if (hosp) {
+      const canonicalRecord =
+        this.expService.getPublishedExperienceBySlug(hosp.slug) ||
+        this.expService.getExperienceById(hosp.id) ||
+        this.store.getExperienceBySlug(hosp.slug) ||
+        this.store.getExperienceById(hosp.id);
+
+      if (canonicalRecord && canonicalRecord.status === 'publicada') {
+        const canonicalStore =
+          this.store.getExperienceBySlug(canonicalRecord.slug) ||
+          this.store.getExperienceById(canonicalRecord.id);
+
+        return {
+          ...(canonicalStore || {}),
+          id: canonicalRecord.id,
+          slug: canonicalRecord.slug,
+          title: canonicalRecord.title || hosp.title,
+          shortTitle: (canonicalRecord as any).shortTitle || hosp.title,
+          tagline: canonicalRecord.tagline || hosp.tagline,
+          description: canonicalRecord.description || hosp.description,
+          region: canonicalRecord.region || hosp.region,
+          meetingPoint: canonicalRecord.meetingPoint || hosp.locality,
+          difficulty: 'Baja',
+          durationDays: 1,
+          durationLabel: canonicalRecord.durationLabel || 'Por noche',
+          altitudeMeters: canonicalRecord.altitudeMeters || hosp.altitudeMeters,
+          priceArs: canonicalRecord.priceArs || hosp.priceArsPerNight,
+          priceUsd: (canonicalRecord as any).priceUsd || hosp.priceUsdPerNight || 0,
+          capacityPerDate:
+            (canonicalRecord as any).maxSpotsPerGroup ||
+            (canonicalRecord as any).capacityPerDate ||
+            hosp.capacityPerRoom ||
+            4,
+          dates: canonicalRecord.dates || [],
+          status: 'publicada',
+          providerId: canonicalRecord.providerId || 'club-hospedajes',
+          providerName: canonicalRecord.providerName || hosp.hostName || 'Club de Experiencias',
+          providerAgency: (canonicalRecord as any).providerAgency || hosp.hostAgency,
+          providerEmail: canonicalRecord.providerEmail,
+          providerSlug: canonicalRecord.providerSlug,
+          providerPhone:
+            canonicalRecord.providerPhone ||
+            hosp.contactWhatsapp ||
+            hosp.hostPhone ||
+            '+54 9 383 456-7890',
+          providerCbuAlias: canonicalRecord.providerCbuAlias,
+          providerCuitDni: canonicalRecord.providerCuitDni,
+          providerBankName: canonicalRecord.providerBankName,
+        } as ProviderExperience;
+      }
+      return undefined;
+    }
+
     if (this.expService.hasRemoteExperiences()) {
       return undefined;
     }
@@ -149,6 +205,16 @@ export class ExperiencePaymentComponent implements OnInit {
 
   readonly breadcrumbs = computed<BreadcrumbItem[]>(() => {
     const exp = this.experience();
+    const isHosp = typeof window !== 'undefined' && window.location.pathname.includes('/hospedajes');
+    if (isHosp) {
+      return [
+        { label: 'Inicio', url: '/' },
+        { label: 'Experiencias', url: '/experiencias' },
+        { label: 'Hospedajes', url: '/experiencias/hospedajes' },
+        ...(exp ? [{ label: exp.shortTitle ?? exp.title, url: `/experiencias/hospedajes/${exp.slug}` }] : []),
+        { label: 'Pago' },
+      ];
+    }
     return [
       { label: 'Inicio', url: '/' },
       { label: 'Experiencias', url: '/experiencias' },

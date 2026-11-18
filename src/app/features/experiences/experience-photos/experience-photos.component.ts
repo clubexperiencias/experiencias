@@ -5,7 +5,8 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
 import { MatIconModule } from '@angular/material/icon';
 import { ExperienceService, KAYAK_ALBUM_PHOTOS } from '../../../core/services/experience.service';
-import { ExperienceAlbumPhoto } from '../../../core/models/experience.model';
+import { HospedajesService, INITIAL_HOSPEDAJES } from '../../../core/services/hospedajes.service';
+import { Experience, ExperienceAlbumPhoto } from '../../../core/models/experience.model';
 import { DEFAULT_CLUB_PROFILE, isClubExperience } from '../../../core/models/club-profile.model';
 import { HeaderComponent } from '../../../shared/components/header/header.component';
 import { FooterComponent } from '../../../shared/components/footer/footer.component';
@@ -36,6 +37,7 @@ export class ExperiencePhotosComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   readonly expService = inject(ExperienceService);
+  readonly hospedajesService = inject(HospedajesService, { optional: true });
   readonly isClubExperience = isClubExperience;
 
   readonly mobileMenuOpen = signal(false);
@@ -127,7 +129,42 @@ export class ExperiencePhotosComponent {
   readonly exp = computed(() => {
     const s = this.slug();
     if (!s) return undefined;
-    return this.expService.getPublishedExperienceBySlug(s);
+    const fromExp = this.expService.getPublishedExperienceBySlug(s);
+    if (fromExp) return fromExp;
+    const clean = s.trim().toLowerCase();
+    const hosp =
+      this.hospedajesService?.getHospedajeBySlug(s) ||
+      INITIAL_HOSPEDAJES.find((h) => h.slug.toLowerCase() === clean);
+    if (hosp) {
+      return {
+        id: hosp.id,
+        slug: hosp.slug,
+        title: hosp.title,
+        shortTitle: hosp.title,
+        tagline: hosp.tagline,
+        description: hosp.description,
+        region: hosp.region,
+        difficulty: 'Baja',
+        durationDays: 1,
+        durationLabel: 'Por noche',
+        altitudeMeters: hosp.altitudeMeters,
+        bestSeason: 'Todo el año',
+        priceArs: hosp.priceArsPerNight,
+        priceUsd: hosp.priceUsdPerNight || 0,
+        maxSpotsPerGroup: hosp.capacityPerRoom || 4,
+        coverImage: hosp.coverImage,
+        galleryImages: hosp.galleryImages || [hosp.coverImage],
+        highlights: hosp.highlights || [],
+        included: hosp.includedServices || hosp.amenities || [],
+        providerName: hosp.hostName,
+        providerAgency: hosp.hostAgency,
+        providerPhone: hosp.contactWhatsapp || hosp.hostPhone || DEFAULT_CLUB_PROFILE.phone,
+        isExclusiveClub: true,
+        isLocked: hosp.isLocked,
+        status: 'publicada',
+      } as Experience;
+    }
+    return undefined;
   });
 
   // Lista de fotos del álbum (hasta 12)
@@ -233,6 +270,19 @@ export class ExperiencePhotosComponent {
   // Breadcrumbs dinámicos
   readonly breadcrumbs = computed<BreadcrumbItem[]>(() => {
     const e = this.exp();
+    const isHosp = typeof window !== 'undefined' && window.location.pathname.includes('/hospedajes');
+    if (isHosp) {
+      return [
+        { label: 'Inicio', url: '/' },
+        { label: 'Experiencias', url: '/experiencias' },
+        { label: 'Hospedajes', url: '/experiencias/hospedajes' },
+        {
+          label: e?.shortTitle || e?.title || 'Hospedaje',
+          url: e ? `/experiencias/hospedajes/${e.slug}` : '/experiencias/hospedajes',
+        },
+        { label: 'Álbum de Fotos' },
+      ];
+    }
     return [
       { label: 'Inicio', url: '/' },
       { label: 'Experiencias', url: '/experiencias' },

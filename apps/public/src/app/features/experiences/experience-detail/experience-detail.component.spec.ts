@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, ActivatedRoute } from '@angular/router';
 import { of } from 'rxjs';
 import { ExperienceDetailComponent } from './experience-detail.component';
+import { KAYAK_DEFAULT_EXPERIENCE, STORAGE_KEY } from '../../../core/services/experience.service';
 
 describe('ExperienceDetailComponent (/experiencias/:slug)', () => {
   let component: ExperienceDetailComponent;
@@ -10,6 +11,10 @@ describe('ExperienceDetailComponent (/experiencias/:slug)', () => {
   beforeEach(async () => {
     if (typeof localStorage !== 'undefined') {
       localStorage.clear();
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify([KAYAK_DEFAULT_EXPERIENCE]),
+      );
     }
     await TestBed.configureTestingModule({
       imports: [ExperienceDetailComponent],

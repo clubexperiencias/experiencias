@@ -22,7 +22,7 @@ import { FechaPipe } from '../../../shared/pipes/format.pipes';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ProviderUser } from '../../../core/models/bank-transfer.model';
-import { ExperienceAlbumPhoto } from '../../../core/models/experience.model';
+import { ALTITUDE_OPTIONS, EXPERIENCE_CATEGORY_OPTIONS, ExperienceAlbumPhoto } from '../../../core/models/experience.model';
 import { AdminStoreService } from '../../../core/services/admin-store.service';
 
 function fileToDataUrl(file: File): Promise<string> {
@@ -44,6 +44,7 @@ const DEFAULT_REQ_FORM = {
   title: '',
   kicker: 'EXPERIENCIA',
   subheading: '',
+  category: 'expediciones',
   region: '',
   difficulty: 'Baja (Sin experiencia previa)',
   duration: '4 horas (Media jornada)',
@@ -203,6 +204,24 @@ const DEFAULT_REQ_FORM = {
                         required
                       />
                     </div>
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label" for="req-category">Ubicación en la Web (Sección) *</label>
+                    <select
+                      id="req-category"
+                      class="form-input form-select"
+                      [(ngModel)]="reqForm.category"
+                      name="category"
+                    >
+                      @if (isCustomCategory(reqForm.category)) {
+                        <option [value]="reqForm.category">{{ reqForm.category }} (Personalizado)</option>
+                      }
+                      @for (cat of categoryOptions; track cat.value) {
+                        <option [value]="cat.value">{{ cat.label }}</option>
+                      }
+                    </select>
+                    <span class="field-hint">Define en qué sección del switch principal de la web se ubicará la experiencia.</span>
                   </div>
 
                   <div class="form-group">
@@ -434,20 +453,21 @@ const DEFAULT_REQ_FORM = {
                   <div class="form-row">
                     <div class="form-group">
                       <label class="form-label" for="req-altitude">Altitud (msnm)</label>
-                      <input
+                      <select
                         id="req-altitude"
-                        type="number"
-                        inputmode="numeric"
-                        min="0"
-                        max="9999"
-                        maxlength="4"
-                        class="form-input"
-                        placeholder="Ej: 850"
+                        class="form-input form-select"
                         [(ngModel)]="reqForm.altitude"
-                        (input)="onAltitudeInput($event)"
                         name="altitude"
-                      />
-                      <span class="field-hint">Metros sobre el nivel del mar (solo números, hasta 4 dígitos).</span>
+                      >
+                        <option value="">Seleccioná la altitud de la experiencia</option>
+                        @if (isCustomAltitude(reqForm.altitude)) {
+                          <option [value]="reqForm.altitude">{{ reqForm.altitude }} msnm (Personalizado)</option>
+                        }
+                        @for (opt of altitudeOptions; track opt.value) {
+                          <option [value]="opt.value">{{ opt.label }}</option>
+                        }
+                      </select>
+                      <span class="field-hint">Cota máxima de altitud alcanzada en la travesía.</span>
                     </div>
 
                     <div class="form-group">
@@ -2840,6 +2860,22 @@ export class ProviderExperienceProposalModalComponent {
     }
   }
 
+  readonly altitudeOptions = ALTITUDE_OPTIONS;
+
+  isCustomAltitude(val: any): boolean {
+    if (val === null || val === undefined || val === '') return false;
+    const num = Number(val);
+    if (isNaN(num)) return true;
+    return !this.altitudeOptions.some((opt) => opt.value === num);
+  }
+
+  readonly categoryOptions = EXPERIENCE_CATEGORY_OPTIONS;
+
+  isCustomCategory(val: string | null | undefined): boolean {
+    if (!val) return false;
+    return !this.categoryOptions.some((opt) => opt.value === val);
+  }
+
   onAltitudeInput(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (!input || input.value === null || input.value === undefined) return;
@@ -3781,6 +3817,7 @@ export class ProviderExperienceProposalModalComponent {
         title,
         kicker: this.reqForm.kicker?.trim() || 'EXPERIENCIA',
         subheading: this.reqForm.subheading?.trim() || '',
+        category: this.reqForm.category || 'expediciones',
         region,
         difficulty: this.reqForm.difficulty,
         duration: this.reqForm.duration,

@@ -5,8 +5,10 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
 import { MatIconModule } from '@angular/material/icon';
 import { ExperienceService } from '../../../core/services/experience.service';
+import { HospedajesService, INITIAL_HOSPEDAJES } from '../../../core/services/hospedajes.service';
 import { FavoritesService } from '../../../core/services/favorites.service';
 import { DEFAULT_CLUB_PROFILE, isClubExperience } from '../../../core/models/club-profile.model';
+import { Experience } from '../../../core/models/experience.model';
 import { HeaderComponent } from '../../../shared/components/header/header.component';
 import { FooterComponent } from '../../../shared/components/footer/footer.component';
 import {
@@ -34,6 +36,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
 export class ExperienceDetailComponent {
   private readonly route = inject(ActivatedRoute);
   readonly experienceService = inject(ExperienceService);
+  readonly hospedajesService = inject(HospedajesService, { optional: true });
   readonly favoritesService = inject(FavoritesService);
   readonly isClubExperience = isClubExperience;
   readonly isLoading = signal(!this.experienceService.hasRemoteExperiences());
@@ -80,6 +83,13 @@ export class ExperienceDetailComponent {
 
   readonly mobileMenuOpen = signal(false);
 
+  readonly isHospedaje = computed(() => {
+    if (typeof window !== 'undefined' && window.location.pathname.includes('/hospedajes')) {
+      return true;
+    }
+    return false;
+  });
+
   private readonly slug = toSignal(
     this.route.paramMap.pipe(
       map(
@@ -98,11 +108,54 @@ export class ExperienceDetailComponent {
   readonly exp = computed(() => {
     const s = this.slug();
     if (!s) return undefined;
-    return this.experienceService.getPublishedExperienceBySlug(s);
+    const fromExp = this.experienceService.getPublishedExperienceBySlug(s);
+    if (fromExp) return fromExp;
+    const clean = s.trim().toLowerCase();
+    const hosp =
+      this.hospedajesService?.getHospedajeBySlug(s) ||
+      INITIAL_HOSPEDAJES.find((h) => h.slug.toLowerCase() === clean);
+    if (hosp) {
+      return {
+        id: hosp.id,
+        slug: hosp.slug,
+        title: hosp.title,
+        shortTitle: hosp.title,
+        tagline: hosp.tagline,
+        description: hosp.description,
+        region: hosp.region,
+        difficulty: 'Baja',
+        durationDays: 1,
+        durationLabel: 'Por noche',
+        altitudeMeters: hosp.altitudeMeters,
+        bestSeason: 'Todo el año',
+        priceArs: hosp.priceArsPerNight,
+        priceUsd: hosp.priceUsdPerNight || 0,
+        maxSpotsPerGroup: hosp.capacityPerRoom || 4,
+        coverImage: hosp.coverImage,
+        galleryImages: hosp.galleryImages || [hosp.coverImage],
+        highlights: hosp.highlights || [],
+        included: hosp.includedServices || hosp.amenities || [],
+        providerName: hosp.hostName,
+        providerAgency: hosp.hostAgency,
+        providerPhone: hosp.contactWhatsapp || hosp.hostPhone || DEFAULT_CLUB_PROFILE.phone,
+        isExclusiveClub: true,
+        isLocked: hosp.isLocked,
+        status: 'publicada',
+      } as Experience;
+    }
+    return undefined;
   });
 
   readonly breadcrumbs = computed<BreadcrumbItem[]>(() => {
     const e = this.exp();
+    if (this.isHospedaje()) {
+      return [
+        { label: 'Inicio', url: '/' },
+        { label: 'Experiencias', url: '/experiencias' },
+        { label: 'Hospedajes', url: '/experiencias/hospedajes' },
+        { label: e?.shortTitle || e?.title || 'Detalle' },
+      ];
+    }
     return [
       { label: 'Inicio', url: '/' },
       { label: 'Experiencias', url: '/experiencias' },
@@ -112,7 +165,14 @@ export class ExperienceDetailComponent {
 
   readonly paymentRoute = computed(() => {
     const e = this.exp();
-    return e ? `/experiencias/${e.slug}/pago` : '/experiencias';
+    if (!e) return '/experiencias';
+    return this.isHospedaje() ? `/experiencias/hospedajes/${e.slug}/pago` : `/experiencias/${e.slug}/pago`;
+  });
+
+  readonly photosRoute = computed(() => {
+    const e = this.exp();
+    if (!e) return ['/experiencias'];
+    return this.isHospedaje() ? ['/experiencias/hospedajes', e.slug, 'fotos'] : ['/experiencias', e.slug, 'fotos'];
   });
 
   isUrl(value?: string): boolean {

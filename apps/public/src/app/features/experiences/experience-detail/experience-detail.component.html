@@ -272,7 +272,7 @@
             </a>
 
             @if (hasAlbumPhotos(item)) {
-            <a [routerLink]="['/experiencias', item.slug, 'fotos']" class="location-btn gallery-btn">
+            <a [routerLink]="photosRoute()" class="location-btn gallery-btn">
               <span>Fotos de Experiencias Pasadas</span>
             </a>
             }
@@ -352,8 +352,8 @@
             revisión oficial.
           </p>
           <div class="not-found-actions">
-            <a routerLink="/experiencias" class="cta-primary-btn cta-blue-btn">
-              <span>Ver Catálogo Oficial</span>
+            <a [routerLink]="isHospedaje() ? '/experiencias/hospedajes' : '/experiencias'" class="cta-primary-btn cta-blue-btn">
+              <span>{{ isHospedaje() ? 'Ver Catálogo de Hospedajes' : 'Ver Catálogo Oficial' }}</span>
             </a>
           </div>
         </div>

@@ -955,8 +955,6 @@ import {
         color: #ffffff !important;
         box-shadow: 0 4px 14px rgba(128, 179, 255, 0.4);
       }
-        color: #ffffff !important;
-      }
       .cta-save-btn:hover:not(:disabled) span {
         color: #ffffff !important;
       }
@@ -1131,8 +1129,6 @@ import {
         color: #ffffff !important;
         transform: translateY(-2px);
         box-shadow: 0 6px 20px rgba(128, 179, 255, 0.5);
-      }
-        box-shadow: 0 6px 22px rgba(0, 114, 178, 0.6), 0 0 14px rgba(0, 114, 178, 0.3);
       }
       .btn-connect-mp:hover:not(:disabled) span {
         color: #ffffff !important;
