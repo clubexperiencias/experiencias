@@ -156,7 +156,13 @@
 
   <!-- Notificación Flotante: Plataforma en Construcción (Estilo Toast Favoritos) -->
   @if (showConstructionNotice()) {
-  <aside class="fav-toast-banner is-construction-toast" role="status" aria-live="polite">
+  <aside
+    class="fav-toast-banner is-construction-toast"
+    role="status"
+    aria-live="polite"
+    (focusin)="onNoticeFocusIn($event)"
+    (focusout)="onNoticeFocusOut($event)"
+  >
     <div class="fav-toast-progress-track" aria-hidden="true">
       <div class="fav-toast-progress-fill"></div>
     </div>

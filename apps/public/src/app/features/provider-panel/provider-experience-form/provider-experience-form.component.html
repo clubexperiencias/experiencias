@@ -123,13 +123,15 @@
 
         <div class="form-group" [class.has-error]="fieldInvalid('durationLabel')">
           <label for="durationLabel" class="form-label">Duración estimada *</label>
-          <input
-            id="durationLabel"
-            type="text"
-            formControlName="durationLabel"
-            class="form-input"
-            placeholder="Ej: 4 horas / Día completo (10 h)"
-          />
+          <select id="durationLabel" formControlName="durationLabel" class="form-input form-select">
+            <option value="" disabled>Seleccioná una duración</option>
+            @if (isCustomDuration(form.get('durationLabel')?.value)) {
+              <option [value]="form.get('durationLabel')?.value">{{ form.get('durationLabel')?.value }}</option>
+            }
+            @for (d of durationOptions; track d) {
+              <option [value]="d">{{ d }}</option>
+            }
+          </select>
         </div>
       </div>
 

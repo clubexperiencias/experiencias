@@ -6,6 +6,7 @@ import {
   OnDestroy,
   ViewChild,
   computed,
+  effect,
   inject,
   signal,
 } from '@angular/core';
@@ -52,6 +53,49 @@ export class MembersComponent implements AfterViewInit, OnDestroy {
   readonly testimoniosService = inject(TestimoniosService);
   readonly favoritesService = inject(FavoritesService);
   readonly router = inject(Router);
+
+  private previousTestimoniosCount = 0;
+
+  constructor() {
+    effect(() => {
+      const testimonios = this.featuredTestimonios();
+      const currentCount = testimonios.length;
+
+      if (typeof document !== 'undefined') {
+        const activeEl = document.activeElement;
+        const addCard = document.querySelector('.showcase-add-card');
+        const isShareCardFocused =
+          Boolean(activeEl && addCard && (activeEl === addCard || addCard.contains(activeEl)));
+
+        if (isShareCardFocused && currentCount > 0 && this.previousTestimoniosCount === 0) {
+          // Preserve focus before the @if branch replaces the focused share card
+          const stableTarget =
+            document.querySelector<HTMLElement>('.section-card-header .section-main-title') ||
+            document.querySelector<HTMLElement>('.section-card-header') ||
+            document.querySelector<HTMLElement>('main');
+
+          if (stableTarget) {
+            if (!stableTarget.hasAttribute('tabindex')) {
+              stableTarget.setAttribute('tabindex', '-1');
+            }
+            stableTarget.focus();
+          }
+
+          // Once active testimonials arrive, ensure focus remains on a valid active testimonial
+          setTimeout(() => {
+            const arrivingCard = document.querySelector<HTMLElement>(
+              '.featured-carousel-wrap .featured-testimonial'
+            );
+            if (arrivingCard) {
+              arrivingCard.focus();
+            }
+          }, 0);
+        }
+      }
+
+      this.previousTestimoniosCount = currentCount;
+    });
+  }
 
   private _carouselRef?: ElementRef<HTMLDivElement>;
   private currentTrackEl: HTMLDivElement | null = null;

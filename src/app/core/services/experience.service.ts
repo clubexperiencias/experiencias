@@ -513,6 +513,12 @@ export class ExperienceService {
         }))
       : rawAlbum;
 
+    const replacementGallery = updated.galleryImages !== undefined
+      ? updated.galleryImages
+      : (updated.albumPhotos !== undefined && Array.isArray(safeAlbumPhotos)
+          ? safeAlbumPhotos.map((p) => p.url)
+          : current.galleryImages);
+
     const merged: Experience = {
       ...current,
       ...updated,
@@ -520,6 +526,7 @@ export class ExperienceService {
       coverImage: safeCoverImage,
       videoUrl: safeVideoUrl || undefined,
       albumPhotos: safeAlbumPhotos,
+      galleryImages: replacementGallery,
       detailRoute: updated.slug ? `/experiencias/${updated.slug}` : current.detailRoute,
       publicUrl: updated.slug
         ? `https://experiencias.club/experiencias/${updated.slug}`
@@ -595,7 +602,9 @@ export class ExperienceService {
         }
         if (safeAlbumPhotos) {
           payload['album_photos'] = safeAlbumPhotos;
-          payload['gallery_images'] = safeAlbumPhotos.map((p) => p.url);
+          payload['gallery_images'] = replacementGallery || safeAlbumPhotos.map((p) => p.url);
+        } else if (replacementGallery !== undefined) {
+          payload['gallery_images'] = replacementGallery;
         }
 
         if (merged.dateSlots !== undefined) {
@@ -770,6 +779,22 @@ export class ExperienceService {
         throw err;
       }
     }
+  }
+
+  /**
+   * Actualiza explícitamente el álbum de fotos de una experiencia,
+   * sincronizando la galería de imágenes (galleryImages) y removiendo fotos omitidas.
+   */
+  async updateExperienceAlbum(
+    experienceId: string,
+    photos: ExperienceAlbumPhoto[],
+  ): Promise<void> {
+    const replacementGallery = photos.map((p) => p.url);
+    await this.updateExperience({
+      id: experienceId,
+      albumPhotos: photos,
+      galleryImages: replacementGallery,
+    });
   }
 
   async createExperience(newExp: Experience): Promise<void> {
@@ -1387,6 +1412,32 @@ export class ExperienceService {
                 !existingSlugs.has(p.slug.toLowerCase()) &&
                 !existingIds.has((p.id || '').toLowerCase())
               ) {
+                const validGalleryImages = Array.isArray(p.galleryImages)
+                  ? p.galleryImages.filter(
+                      (u: any) => typeof u === 'string' && u.trim() !== '' && !u.startsWith('blob:'),
+                    )
+                  : [];
+                const validAlbumPhotos = Array.isArray(p.albumPhotos)
+                  ? p.albumPhotos
+                      .map((ph: any) => ph?.url)
+                      .filter(
+                        (u: any) => typeof u === 'string' && u.trim() !== '' && !u.startsWith('blob:'),
+                      )
+                  : [];
+                const safeCover =
+                  typeof p.coverImage === 'string' &&
+                  p.coverImage.trim() !== '' &&
+                  !p.coverImage.startsWith('blob:')
+                    ? p.coverImage
+                    : KAYAK_IMAGE;
+
+                const resolvedGallery =
+                  validGalleryImages.length > 0
+                    ? validGalleryImages
+                    : validAlbumPhotos.length > 0
+                      ? validAlbumPhotos
+                      : [safeCover];
+
                 localExperiences.push({
                   id: p.id || `exp-${p.slug}`,
                   slug: p.slug,
@@ -1410,13 +1461,8 @@ export class ExperienceService {
                   status: 'publicada',
                   publicUrl: p.publicUrl || `https://experiencias.club/experiencias/${p.slug}`,
                   detailRoute: `/experiencias/${p.slug}`,
-                  coverImage: p.coverImage || KAYAK_IMAGE,
-                  galleryImages:
-                    Array.isArray(p.galleryImages) && p.galleryImages.length > 0
-                      ? p.galleryImages
-                      : (Array.isArray(p.albumPhotos) && p.albumPhotos.length > 0
-                        ? p.albumPhotos.map((ph: any) => ph.url)
-                        : (p.coverImage ? [p.coverImage] : [KAYAK_IMAGE])),
+                  coverImage: safeCover,
+                  galleryImages: resolvedGallery,
                   isExclusiveClub: true,
                   isLocked: false,
                   providerId: p.providerId,
@@ -2077,6 +2123,7 @@ export class ExperienceService {
           const combinedGallery = rawGallery.length > 0
             ? rawGallery
             : (rawAlbum.length > 0 ? rawAlbum : [image]);
+          const persistedCover = typeof exp.cover_image === 'string' ? exp.cover_image.trim() : '';
           const combinedAlbum = Array.isArray(exp.album_photos) && exp.album_photos.length > 0
             ? exp.album_photos.map((p: any) => ({
                 ...p,
@@ -2086,7 +2133,7 @@ export class ExperienceService {
                 id: `photo_${idx + 1}`,
                 url: u,
                 title: exp.title,
-                isCover: idx === 0,
+                isCover: Boolean(persistedCover && u.trim() === persistedCover),
                 order: idx + 1,
               }));
 

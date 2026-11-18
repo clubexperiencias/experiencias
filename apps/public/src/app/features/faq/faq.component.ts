@@ -51,6 +51,7 @@ export class FaqComponent implements OnInit {
   // Notificación flotante: Plataforma en construcción (Estilo Toast Favoritos)
   readonly showConstructionNotice = signal(false);
   private constructionTimer: any = null;
+  private previousActiveElement: HTMLElement | null = null;
 
   constructor() {
     this.destroyRef.onDestroy(() => {
@@ -78,7 +79,7 @@ export class FaqComponent implements OnInit {
   triggerConstructionNotice(): void {
     this.clearConstructionTimer();
     this.showConstructionNotice.set(false);
-    setTimeout(() => {
+    this.constructionTimer = setTimeout(() => {
       this.showConstructionNotice.set(true);
       this.constructionTimer = setTimeout(() => {
         this.showConstructionNotice.set(false);
@@ -87,9 +88,88 @@ export class FaqComponent implements OnInit {
     }, 60);
   }
 
+  onNoticeFocusIn(event?: FocusEvent): void {
+    if (
+      typeof document !== 'undefined' &&
+      event?.relatedTarget instanceof HTMLElement
+    ) {
+      const notice = document.querySelector('.is-construction-toast');
+      if (!notice || !notice.contains(event.relatedTarget)) {
+        this.previousActiveElement = event.relatedTarget;
+      }
+    }
+    this.pauseConstructionTimer();
+  }
+
+  onNoticeFocusOut(event?: FocusEvent): void {
+    if (event?.currentTarget && event?.relatedTarget) {
+      const currentTarget = event.currentTarget as HTMLElement;
+      const nextTarget = event.relatedTarget as Node;
+      if (currentTarget.contains(nextTarget)) {
+        return;
+      }
+    }
+    if (this.showConstructionNotice()) {
+      this.resumeConstructionTimer();
+    }
+  }
+
+  pauseConstructionTimer(): void {
+    if (this.constructionTimer) {
+      clearTimeout(this.constructionTimer);
+      this.constructionTimer = null;
+    }
+  }
+
+  resumeConstructionTimer(): void {
+    this.pauseConstructionTimer();
+    this.constructionTimer = setTimeout(() => {
+      this.showConstructionNotice.set(false);
+      this.constructionTimer = null;
+    }, 7000);
+  }
+
   dismissConstructionNotice(): void {
+    this.restoreFocusToStableTarget();
     this.clearConstructionTimer();
     this.showConstructionNotice.set(false);
+  }
+
+  private restoreFocusToStableTarget(): void {
+    if (typeof document === 'undefined') return;
+
+    const noticeEl = document.querySelector('.is-construction-toast');
+    const isFocusInside =
+      noticeEl && document.activeElement && noticeEl.contains(document.activeElement);
+
+    if (
+      this.previousActiveElement &&
+      typeof this.previousActiveElement.focus === 'function' &&
+      document.contains(this.previousActiveElement) &&
+      (!noticeEl || !noticeEl.contains(this.previousActiveElement))
+    ) {
+      this.previousActiveElement.focus();
+      this.previousActiveElement = null;
+      return;
+    }
+
+    if (isFocusInside) {
+      const fallback =
+        document.querySelector<HTMLElement>('.faq-search-input') ||
+        document.querySelector<HTMLElement>('#faq-title') ||
+        document.querySelector<HTMLElement>('.faq-main-content');
+
+      if (fallback && typeof fallback.focus === 'function') {
+        if (
+          !fallback.hasAttribute('tabindex') &&
+          fallback.tagName !== 'INPUT' &&
+          fallback.tagName !== 'BUTTON'
+        ) {
+          fallback.setAttribute('tabindex', '-1');
+        }
+        fallback.focus();
+      }
+    }
   }
 
   private clearConstructionTimer(): void {

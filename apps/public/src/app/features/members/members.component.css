@@ -1400,10 +1400,12 @@
   transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.2s ease !important;
 }
 
-.featured-testimonial:hover {
+.featured-testimonial:hover,
+.featured-testimonial:focus-visible {
   transform: translateY(-3px) !important;
   border-color: rgba(255, 255, 255, 0.65) !important;
   box-shadow: 0 8px 22px rgba(255, 255, 255, 0.22) !important;
+  outline: none;
 }
 
 .featured-testimonial.founder,

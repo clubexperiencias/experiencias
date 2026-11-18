@@ -157,17 +157,23 @@ export interface ExperienceRankingRow {
                     <span class="exp-count-tag">{{ row.activeExperiencesCount }} experiencias</span>
                   </td>
                   <td>
-                    <span class="verified-pill">VERIFICADO</span>
+                    @if (row.provider.verified) {
+                      <span class="verified-pill">VERIFICADO</span>
+                    } @else {
+                      <span class="approved-pill">APROBADO</span>
+                    }
                   </td>
                   <td class="text-right">
-                    <a
-                      [routerLink]="['/prestadores', row.slug]"
-                      target="_blank"
-                      class="btn-action-outline"
-                    >
-                      <span>Perfil Público</span>
-                      <mat-icon class="icon-tiny">open_in_new</mat-icon>
-                    </a>
+                    @if (row.slug) {
+                      <a
+                        [routerLink]="['/prestadores', row.slug]"
+                        target="_blank"
+                        class="btn-action-outline"
+                      >
+                        <span>Perfil Público</span>
+                        <mat-icon class="icon-tiny">open_in_new</mat-icon>
+                      </a>
+                    }
                   </td>
                 </tr>
               } @empty {
@@ -579,6 +585,19 @@ export interface ExperienceRankingRow {
       white-space: nowrap;
     }
 
+    .approved-pill {
+      font-size: 0.7rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.28);
+      padding: 0.2rem 0.55rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
     .exp-cell-row {
       display: flex;
       align-items: center;
@@ -727,8 +746,15 @@ export class AdminRankingComponent {
     const seenEmails = new Set<string>();
     const seenSlugs = new Set<string>();
     const seenIds = new Set<string>();
+    const bajaEmails = new Set<string>();
+    const bajaSlugs = new Set<string>();
+    const bajaIds = new Set<string>();
 
     for (const p of officialProviders) {
+      const email = (p.email || '').toLowerCase().trim();
+      const slug = (p.slug || '').toLowerCase().trim();
+      const id = (p.id || '').toLowerCase().trim();
+
       // Excluir dados de baja, rechazados o pendientes
       const isBaja =
         p.status === 'dado_de_baja' ||
@@ -738,7 +764,14 @@ export class AdminRankingComponent {
       const isRechazado = p.status === 'rechazado';
       const isPendiente = p.status === 'pendiente';
 
-      if (isBaja || isRechazado || isPendiente) {
+      if (isBaja) {
+        if (id) bajaIds.add(id);
+        if (email) bajaEmails.add(email);
+        if (slug) bajaSlugs.add(slug);
+        continue;
+      }
+
+      if (isRechazado || isPendiente) {
         continue;
       }
 
@@ -747,10 +780,6 @@ export class AdminRankingComponent {
         continue;
       }
 
-      const email = (p.email || '').toLowerCase().trim();
-      const slug = (p.slug || '').toLowerCase().trim();
-      const id = (p.id || '').toLowerCase().trim();
-
       if (id) seenIds.add(id);
       if (email) seenEmails.add(email);
       if (slug) seenSlugs.add(slug);
@@ -758,16 +787,36 @@ export class AdminRankingComponent {
       approvedProviders.push(p);
     }
 
-    // Agregar prestadores aprobados desde solicitudes si no están ya en la lista
+    // Agregar prestadores aprobados desde solicitudes si no están ya en la lista ni pertenecen a prestadores dados de baja
     for (const app of applications) {
-      if (app.status !== 'aprobado') continue;
+      if (app.status !== 'aprobado' || (app as any).status === 'dado_de_baja') continue;
       const cleanEmail = (app.email || '').toLowerCase().trim();
-      const appSlug = ((app as any).slug || app.id || '').toLowerCase().trim();
+      const appSlug = ((app as any).slug || '').toLowerCase().trim();
       const appId = (app.id || '').toLowerCase().trim();
 
-      if (cleanEmail && seenEmails.has(cleanEmail)) continue;
-      if (appSlug && seenSlugs.has(appSlug)) continue;
-      if (appId && seenIds.has(appId)) continue;
+      if (cleanEmail && (seenEmails.has(cleanEmail) || bajaEmails.has(cleanEmail))) continue;
+      if (appSlug && (seenSlugs.has(appSlug) || bajaSlugs.has(appSlug))) continue;
+      if (appId && (seenIds.has(appId) || bajaIds.has(appId))) continue;
+
+      const matchingProvider = officialProviders.find((p) => {
+        const pEmail = (p.email || '').toLowerCase().trim();
+        const pSlug = (p.slug || '').toLowerCase().trim();
+        const pId = (p.id || '').toLowerCase().trim();
+        return (
+          (cleanEmail && pEmail && pEmail === cleanEmail) ||
+          (appSlug && pSlug && pSlug === appSlug) ||
+          (appId && pId && pId === appId)
+        );
+      });
+
+      if (matchingProvider) {
+        const isBaja =
+          matchingProvider.status === 'dado_de_baja' ||
+          (matchingProvider as any).status === 'baja' ||
+          (matchingProvider as any).isDeleted ||
+          Boolean((matchingProvider as any).deleted_at);
+        if (isBaja) continue;
+      }
 
       if (cleanEmail) seenEmails.add(cleanEmail);
       if (appSlug) seenSlugs.add(appSlug);
@@ -780,7 +829,7 @@ export class AdminRankingComponent {
         email: app.email,
         phone: app.phone,
         bio: app.description || '',
-        slug: (app as any).slug || app.id,
+        slug: (app as any).slug || '',
         verified: true,
         status: 'aprobado',
       } as ProviderUser);
@@ -804,7 +853,7 @@ export class AdminRankingComponent {
         provider: p,
         name: p.name || p.agency || 'Prestador',
         agency: p.agency || p.name || 'Agencia',
-        slug: p.slug || p.id,
+        slug: p.slug || '',
         rating,
         activeExperiencesCount: activeCount,
       };

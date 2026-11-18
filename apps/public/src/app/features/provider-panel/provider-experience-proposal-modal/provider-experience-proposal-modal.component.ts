@@ -9,6 +9,7 @@ import {
   input,
   output,
   signal,
+  untracked,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, NgForm } from '@angular/forms';
@@ -399,6 +400,8 @@ const DEFAULT_REQ_FORM = {
                         </option>
                         <option value="Moderada">Moderada</option>
                         <option value="Exigente">Exigente</option>
+                        <option value="Alta Montaña">Alta Montaña</option>
+                        <option value="Ninguna">Ninguna</option>
                       </select>
                     </div>
 
@@ -420,6 +423,10 @@ const DEFAULT_REQ_FORM = {
                         <option value="6 horas">6 horas</option>
                         <option value="7 horas">7 horas</option>
                         <option value="8 horas (Jornada completa)">8 horas (Jornada completa)</option>
+                        <option value="Día completo (10 h)">Día completo (10 h)</option>
+                        <option value="2 días">2 días</option>
+                        <option value="3 días">3 días</option>
+                        <option value="4 días o más">4 días o más</option>
                       </select>
                     </div>
                   </div>
@@ -2578,10 +2585,25 @@ export class ProviderExperienceProposalModalComponent {
         if (typeof document !== 'undefined') {
           this.previousActiveElement = document.activeElement as HTMLElement | null;
         }
-        this.loadDraft();
+        untracked(() => {
+          this.loadDraft();
+        });
         setTimeout(() => {
           this.focusInitialElement();
         }, 0);
+      }
+    });
+
+    effect(() => {
+      const rate = this.usdExchangeRate();
+      if (this.isOpen()) {
+        untracked(() => {
+          if (this.isUsdAutoCalc() && this.reqForm.priceArs) {
+            this.reqForm.priceUsd = Math.round(
+              (Number(this.reqForm.priceArs) || 0) / (rate || 1400),
+            );
+          }
+        });
       }
     });
   }
@@ -3185,13 +3207,13 @@ export class ProviderExperienceProposalModalComponent {
         }
       }
       this.syncBankingWithProvider();
-      if (this.isUsdAutoCalc() && this.reqForm.priceArs) {
-        this.reqForm.priceUsd = Math.round(
-          (Number(this.reqForm.priceArs) || 0) / (this.usdExchangeRate() || 1400),
-        );
-      }
       if (data.isUsdAutoCalc !== undefined) {
         this.isUsdAutoCalc.set(Boolean(data.isUsdAutoCalc));
+      }
+      const isAuto = untracked(() => this.isUsdAutoCalc());
+      const rate = untracked(() => this.usdExchangeRate()) || 1400;
+      if (isAuto && this.reqForm.priceArs) {
+        this.reqForm.priceUsd = Math.round((Number(this.reqForm.priceArs) || 0) / rate);
       }
       if (this.reqForm.dates) {
         const parts = this.reqForm.dates.split(',').map((p: string) => p.trim());
@@ -3533,13 +3555,13 @@ export class ProviderExperienceProposalModalComponent {
       }
       if (!coverImageUrl) {
         coverImageUrl =
-          this.coverImageDataUrl() ||
+          (this.coverImageFile() === coverFile ? this.coverImageDataUrl() : null) ||
           (await fileToDataUrl(coverFile).catch(() => '')) ||
           '';
       }
     }
     if (!coverImageUrl) {
-      if (this.coverImageDataUrl()) {
+      if (!coverFile && this.coverImageDataUrl()) {
         coverImageUrl = this.coverImageDataUrl()!;
       } else if (this.coverImagePreview()) {
         const prev = this.coverImagePreview()!;
@@ -3567,9 +3589,21 @@ export class ProviderExperienceProposalModalComponent {
       }
     }
 
-    const priceUsd =
-      Number(this.reqForm.priceUsd) ||
-      Math.round(priceArs / (this.usdExchangeRate() || 1400));
+    let priceUsd: number;
+    if (this.isUsdAutoCalc()) {
+      const rate = this.usdExchangeRate() || 1400;
+      priceUsd = Math.round(priceArs / rate);
+      this.reqForm.priceUsd = priceUsd;
+    } else {
+      const manualUsd = Number(this.reqForm.priceUsd);
+      if (Number.isFinite(manualUsd) && manualUsd > 0) {
+        priceUsd = manualUsd;
+      } else {
+        const rate = this.usdExchangeRate() || 1400;
+        priceUsd = Math.round(priceArs / rate);
+        this.reqForm.priceUsd = priceUsd;
+      }
+    }
 
     const cbuAlias = this.reqForm.cbuAlias?.trim() || '';
     const bankName = this.reqForm.bankName?.trim() || '';

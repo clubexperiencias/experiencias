@@ -770,4 +770,476 @@ describe('ExperienceService', () => {
       ).toBe(true);
     });
   });
+
+  describe('updateExperienceAlbum and gallery synchronization', () => {
+    it('should synchronize galleryImages with replacement album photos and remove omitted photos', async () => {
+      const expInitial: Experience = {
+        ...baseExp,
+        id: 'exp-album-test',
+        slug: 'exp-album-test',
+        albumPhotos: [
+          { id: 'p1', url: '/img1.jpg', title: 'Foto 1', isCover: true, order: 1 },
+          { id: 'p2', url: '/img2.jpg', title: 'Foto 2', isCover: false, order: 2 },
+          { id: 'p3', url: '/img3.jpg', title: 'Foto 3 (a eliminar)', isCover: false, order: 3 },
+        ],
+        galleryImages: ['/img1.jpg', '/img2.jpg', '/img3.jpg'],
+      };
+
+      (service as any)._experiences.set([expInitial]);
+
+      const updateQuery = {
+        eq: vi.fn().mockReturnThis(),
+        select: vi.fn().mockResolvedValue({ data: [{ id: 'exp-album-test' }], error: null }),
+      };
+      mockSupabase.from.mockReturnValue({
+        update: vi.fn().mockReturnValue(updateQuery),
+      });
+
+      // Nuevo álbum que excluye /img3.jpg y añade /img4.jpg
+      const newAlbum = [
+        { id: 'p1', url: '/img1.jpg', title: 'Foto 1', isCover: true, order: 1 },
+        { id: 'p2', url: '/img2.jpg', title: 'Foto 2', isCover: false, order: 2 },
+        { id: 'p4', url: '/img4.jpg', title: 'Foto 4', isCover: false, order: 3 },
+      ];
+
+      await service.updateExperienceAlbum('exp-album-test', newAlbum);
+
+      // Verificar que el payload a Supabase contenga el reemplazo exacto
+      const updateCall = mockSupabase.from('experiencias').update;
+      expect(updateCall).toHaveBeenCalledWith(
+        expect.objectContaining({
+          gallery_images: ['/img1.jpg', '/img2.jpg', '/img4.jpg'],
+          album_photos: newAlbum,
+        }),
+      );
+
+      // Verificar que la señal en vivo experiences() tenga galleryImages sincronizado sin la foto omitida
+      const updatedLive = service.experiences().find((e) => e.id === 'exp-album-test');
+      expect(updatedLive?.galleryImages).toEqual(['/img1.jpg', '/img2.jpg', '/img4.jpg']);
+      expect(updatedLive?.albumPhotos).toEqual(newAlbum);
+
+      // Verificar que la persistencia en localStorage contenga el reemplazo exacto
+      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      const storedExp = stored.find((e: any) => e.id === 'exp-album-test');
+      expect(storedExp?.galleryImages).toEqual(['/img1.jpg', '/img2.jpg', '/img4.jpg']);
+    });
+
+    it('should update galleryImages in updateExperience when albumPhotos is explicitly provided', async () => {
+      const expInitial: Experience = {
+        ...baseExp,
+        id: 'exp-update-album',
+        slug: 'exp-update-album',
+        albumPhotos: [
+          { id: 'old-1', url: '/old1.jpg', title: 'Vieja 1', isCover: true, order: 1 },
+          { id: 'old-2', url: '/old2.jpg', title: 'Vieja 2', isCover: false, order: 2 },
+        ],
+        galleryImages: ['/old1.jpg', '/old2.jpg'],
+      };
+
+      (service as any)._experiences.set([expInitial]);
+
+      const updateQuery = {
+        eq: vi.fn().mockReturnThis(),
+        select: vi.fn().mockResolvedValue({ data: [{ id: 'exp-update-album' }], error: null }),
+      };
+      mockSupabase.from.mockReturnValue({
+        update: vi.fn().mockReturnValue(updateQuery),
+      });
+
+      const replacementAlbum = [
+        { id: 'new-1', url: '/nueva1.jpg', title: 'Nueva 1', isCover: true, order: 1 },
+      ];
+
+      await service.updateExperience({
+        id: 'exp-update-album',
+        albumPhotos: replacementAlbum,
+      });
+
+      const updatedLive = service.experiences().find((e) => e.id === 'exp-update-album');
+      expect(updatedLive?.galleryImages).toEqual(['/nueva1.jpg']);
+
+      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      const storedExp = stored.find((e: any) => e.id === 'exp-update-album');
+      expect(storedExp?.galleryImages).toEqual(['/nueva1.jpg']);
+    });
+  });
+
+  describe('provider experience gallery selection and blob filtering', () => {
+    it('should filter unusable blob URLs from galleryImages preserving remaining valid entries', () => {
+      localStorage.setItem(
+        'catamarca_provider_experiences_v1',
+        JSON.stringify([
+          {
+            id: 'prov-exp-blob-gallery',
+            slug: 'prov-exp-blob-gallery',
+            title: 'Exp Con Blobs En Galeria',
+            status: 'publicada',
+            coverImage: '/assets/images/cover.jpg',
+            galleryImages: [
+              'blob:http://localhost:4200/expired-uuid-1',
+              '/assets/images/valid-gallery-1.jpg',
+              'blob:http://localhost:4200/expired-uuid-2',
+              '/assets/images/valid-gallery-2.jpg',
+            ],
+            albumPhotos: [
+              { url: '/assets/images/album-1.jpg' },
+            ],
+          },
+        ]),
+      );
+
+      const initial = (service as any).loadInitialExperiences();
+      const loaded = initial.find((e: Experience) => e.id === 'prov-exp-blob-gallery');
+
+      expect(loaded).toBeDefined();
+      expect(loaded.galleryImages).toEqual([
+        '/assets/images/valid-gallery-1.jpg',
+        '/assets/images/valid-gallery-2.jpg',
+      ]);
+    });
+
+    it('should fall back to usable albumPhotos when all galleryImages are expired blob URLs', () => {
+      localStorage.setItem(
+        'catamarca_provider_experiences_v1',
+        JSON.stringify([
+          {
+            id: 'prov-exp-album-fallback',
+            slug: 'prov-exp-album-fallback',
+            title: 'Exp Fallback A Album',
+            status: 'publicada',
+            coverImage: '/assets/images/cover.jpg',
+            galleryImages: [
+              'blob:http://localhost:4200/expired-uuid-1',
+            ],
+            albumPhotos: [
+              { url: 'blob:http://localhost:4200/expired-album-uuid' },
+              { url: '/assets/images/valid-album-photo.jpg' },
+            ],
+          },
+        ]),
+      );
+
+      const initial = (service as any).loadInitialExperiences();
+      const loaded = initial.find((e: Experience) => e.id === 'prov-exp-album-fallback');
+
+      expect(loaded).toBeDefined();
+      expect(loaded.galleryImages).toEqual(['/assets/images/valid-album-photo.jpg']);
+    });
+
+    it('should fall back to coverImage when neither galleryImages nor albumPhotos has usable entries', () => {
+      localStorage.setItem(
+        'catamarca_provider_experiences_v1',
+        JSON.stringify([
+          {
+            id: 'prov-exp-cover-fallback',
+            slug: 'prov-exp-cover-fallback',
+            title: 'Exp Fallback A Cover',
+            status: 'publicada',
+            coverImage: '/assets/images/custom-cover.jpg',
+            galleryImages: [
+              'blob:http://localhost:4200/expired-uuid-1',
+              'blob:http://localhost:4200/expired-uuid-2',
+            ],
+            albumPhotos: [
+              { url: 'blob:http://localhost:4200/expired-album-uuid' },
+            ],
+          },
+        ]),
+      );
+
+      const initial = (service as any).loadInitialExperiences();
+      const loaded = initial.find((e: Experience) => e.id === 'prov-exp-cover-fallback');
+
+      expect(loaded).toBeDefined();
+      expect(loaded.galleryImages).toEqual(['/assets/images/custom-cover.jpg']);
+    });
+  });
+
+  describe('updateExperienceAlbum and gallery synchronization', () => {
+    it('should synchronize galleryImages with replacement album photos and remove omitted photos', async () => {
+      const expInitial: Experience = {
+        ...baseExp,
+        id: 'exp-album-test',
+        slug: 'exp-album-test',
+        albumPhotos: [
+          { id: 'p1', url: '/img1.jpg', title: 'Foto 1', isCover: true, order: 1 },
+          { id: 'p2', url: '/img2.jpg', title: 'Foto 2', isCover: false, order: 2 },
+          { id: 'p3', url: '/img3.jpg', title: 'Foto 3 (a eliminar)', isCover: false, order: 3 },
+        ],
+        galleryImages: ['/img1.jpg', '/img2.jpg', '/img3.jpg'],
+      };
+
+      (service as any)._experiences.set([expInitial]);
+
+      const updateQuery = {
+        eq: vi.fn().mockReturnThis(),
+        select: vi.fn().mockResolvedValue({ data: [{ id: 'exp-album-test' }], error: null }),
+      };
+      mockSupabase.from.mockReturnValue({
+        update: vi.fn().mockReturnValue(updateQuery),
+      });
+
+      // Nuevo álbum que excluye /img3.jpg y añade /img4.jpg
+      const newAlbum = [
+        { id: 'p1', url: '/img1.jpg', title: 'Foto 1', isCover: true, order: 1 },
+        { id: 'p2', url: '/img2.jpg', title: 'Foto 2', isCover: false, order: 2 },
+        { id: 'p4', url: '/img4.jpg', title: 'Foto 4', isCover: false, order: 3 },
+      ];
+
+      await service.updateExperienceAlbum('exp-album-test', newAlbum);
+
+      // Verificar que el payload a Supabase contenga el reemplazo exacto
+      const updateCall = mockSupabase.from('experiencias').update;
+      expect(updateCall).toHaveBeenCalledWith(
+        expect.objectContaining({
+          gallery_images: ['/img1.jpg', '/img2.jpg', '/img4.jpg'],
+          album_photos: newAlbum,
+        }),
+      );
+
+      // Verificar que la señal en vivo experiences() tenga galleryImages sincronizado sin la foto omitida
+      const updatedLive = service.experiences().find((e) => e.id === 'exp-album-test');
+      expect(updatedLive?.galleryImages).toEqual(['/img1.jpg', '/img2.jpg', '/img4.jpg']);
+      expect(updatedLive?.albumPhotos).toEqual(newAlbum);
+
+      // Verificar que la persistencia en localStorage contenga el reemplazo exacto
+      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      const storedExp = stored.find((e: any) => e.id === 'exp-album-test');
+      expect(storedExp?.galleryImages).toEqual(['/img1.jpg', '/img2.jpg', '/img4.jpg']);
+    });
+
+    it('should update galleryImages in updateExperience when albumPhotos is explicitly provided', async () => {
+      const expInitial: Experience = {
+        ...baseExp,
+        id: 'exp-update-album',
+        slug: 'exp-update-album',
+        albumPhotos: [
+          { id: 'old-1', url: '/old1.jpg', title: 'Vieja 1', isCover: true, order: 1 },
+          { id: 'old-2', url: '/old2.jpg', title: 'Vieja 2', isCover: false, order: 2 },
+        ],
+        galleryImages: ['/old1.jpg', '/old2.jpg'],
+      };
+
+      (service as any)._experiences.set([expInitial]);
+
+      const updateQuery = {
+        eq: vi.fn().mockReturnThis(),
+        select: vi.fn().mockResolvedValue({ data: [{ id: 'exp-update-album' }], error: null }),
+      };
+      mockSupabase.from.mockReturnValue({
+        update: vi.fn().mockReturnValue(updateQuery),
+      });
+
+      const replacementAlbum = [
+        { id: 'new-1', url: '/nueva1.jpg', title: 'Nueva 1', isCover: true, order: 1 },
+      ];
+
+      await service.updateExperience({
+        id: 'exp-update-album',
+        albumPhotos: replacementAlbum,
+      });
+
+      const updatedLive = service.experiences().find((e) => e.id === 'exp-update-album');
+      expect(updatedLive?.galleryImages).toEqual(['/nueva1.jpg']);
+
+      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      const storedExp = stored.find((e: any) => e.id === 'exp-update-album');
+      expect(storedExp?.galleryImages).toEqual(['/nueva1.jpg']);
+    });
+  });
+
+  describe('provider experience gallery selection and blob filtering', () => {
+    it('should filter unusable blob URLs from galleryImages preserving remaining valid entries', () => {
+      localStorage.setItem(
+        'catamarca_provider_experiences_v1',
+        JSON.stringify([
+          {
+            id: 'prov-exp-blob-gallery',
+            slug: 'prov-exp-blob-gallery',
+            title: 'Exp Con Blobs En Galeria',
+            status: 'publicada',
+            coverImage: '/assets/images/cover.jpg',
+            galleryImages: [
+              'blob:http://localhost:4200/expired-uuid-1',
+              '/assets/images/valid-gallery-1.jpg',
+              'blob:http://localhost:4200/expired-uuid-2',
+              '/assets/images/valid-gallery-2.jpg',
+            ],
+            albumPhotos: [
+              { url: '/assets/images/album-1.jpg' },
+            ],
+          },
+        ]),
+      );
+
+      const initial = (service as any).loadInitialExperiences();
+      const loaded = initial.find((e: Experience) => e.id === 'prov-exp-blob-gallery');
+
+      expect(loaded).toBeDefined();
+      expect(loaded.galleryImages).toEqual([
+        '/assets/images/valid-gallery-1.jpg',
+        '/assets/images/valid-gallery-2.jpg',
+      ]);
+    });
+
+    it('should fall back to usable albumPhotos when all galleryImages are expired blob URLs', () => {
+      localStorage.setItem(
+        'catamarca_provider_experiences_v1',
+        JSON.stringify([
+          {
+            id: 'prov-exp-album-fallback',
+            slug: 'prov-exp-album-fallback',
+            title: 'Exp Fallback A Album',
+            status: 'publicada',
+            coverImage: '/assets/images/cover.jpg',
+            galleryImages: [
+              'blob:http://localhost:4200/expired-uuid-1',
+            ],
+            albumPhotos: [
+              { url: 'blob:http://localhost:4200/expired-album-uuid' },
+              { url: '/assets/images/valid-album-photo.jpg' },
+            ],
+          },
+        ]),
+      );
+
+      const initial = (service as any).loadInitialExperiences();
+      const loaded = initial.find((e: Experience) => e.id === 'prov-exp-album-fallback');
+
+      expect(loaded).toBeDefined();
+      expect(loaded.galleryImages).toEqual(['/assets/images/valid-album-photo.jpg']);
+    });
+
+    it('should fall back to coverImage when neither galleryImages nor albumPhotos has usable entries', () => {
+      localStorage.setItem(
+        'catamarca_provider_experiences_v1',
+        JSON.stringify([
+          {
+            id: 'prov-exp-cover-fallback',
+            slug: 'prov-exp-cover-fallback',
+            title: 'Exp Fallback A Cover',
+            status: 'publicada',
+            coverImage: '/assets/images/custom-cover.jpg',
+            galleryImages: [
+              'blob:http://localhost:4200/expired-uuid-1',
+              'blob:http://localhost:4200/expired-uuid-2',
+            ],
+            albumPhotos: [
+              { url: 'blob:http://localhost:4200/expired-album-uuid' },
+            ],
+          },
+        ]),
+      );
+
+      const initial = (service as any).loadInitialExperiences();
+      const loaded = initial.find((e: Experience) => e.id === 'prov-exp-cover-fallback');
+
+      expect(loaded).toBeDefined();
+      expect(loaded.galleryImages).toEqual(['/assets/images/custom-cover.jpg']);
+    });
+  });
+
+  describe('remote experience mapping and isCover matching', () => {
+    it('should set isCover true for the gallery photo matching cover_image rather than assuming index 0', async () => {
+      const remoteData = [
+        {
+          id: 'exp-cover-match',
+          slug: 'exp-cover-match',
+          title: 'Exp Con Cover en Posicion 1',
+          cover_image: '/assets/images/photo-cover.jpg',
+          gallery_images: [
+            '/assets/images/photo-0.jpg',
+            '/assets/images/photo-cover.jpg',
+            '/assets/images/photo-2.jpg',
+          ],
+          album_photos: null, // Sin álbum explícito para activar el mapper desde gallery_images
+          status: 'publicada',
+        },
+      ];
+
+      const selectQuery = {
+        order: vi.fn().mockResolvedValue({ data: remoteData, error: null }),
+      };
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === 'experiencias') {
+          return {
+            select: vi.fn().mockReturnValue(selectQuery),
+          };
+        }
+        return {
+          select: vi.fn().mockReturnValue({
+            order: vi.fn().mockResolvedValue({ data: [], error: null }),
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+            }),
+          }),
+        };
+      });
+
+      await (service as any).loadFromSupabase();
+
+      const exp = service.experiences().find((e) => e.id === 'exp-cover-match');
+      expect(exp).toBeDefined();
+      expect(exp?.albumPhotos).toBeDefined();
+      expect(exp?.albumPhotos?.length).toBe(3);
+
+      // Foto 0 no es la portada
+      expect(exp?.albumPhotos?.[0].url).toBe('/assets/images/photo-0.jpg');
+      expect(exp?.albumPhotos?.[0].isCover).toBeFalse();
+
+      // Foto 1 coincide exactamente con cover_image -> isCover: true
+      expect(exp?.albumPhotos?.[1].url).toBe('/assets/images/photo-cover.jpg');
+      expect(exp?.albumPhotos?.[1].isCover).toBeTrue();
+
+      // Foto 2 no es la portada
+      expect(exp?.albumPhotos?.[2].url).toBe('/assets/images/photo-2.jpg');
+      expect(exp?.albumPhotos?.[2].isCover).toBeFalse();
+    });
+
+    it('should leave every photo unmarked as cover when no gallery photo matches cover_image', async () => {
+      const remoteData = [
+        {
+          id: 'exp-cover-no-match',
+          slug: 'exp-cover-no-match',
+          title: 'Exp Sin Match En Galeria',
+          cover_image: '/assets/images/external-hero-cover.jpg',
+          gallery_images: [
+            '/assets/images/gallery-a.jpg',
+            '/assets/images/gallery-b.jpg',
+          ],
+          album_photos: null,
+          status: 'publicada',
+        },
+      ];
+
+      const selectQuery = {
+        order: vi.fn().mockResolvedValue({ data: remoteData, error: null }),
+      };
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === 'experiencias') {
+          return {
+            select: vi.fn().mockReturnValue(selectQuery),
+          };
+        }
+        return {
+          select: vi.fn().mockReturnValue({
+            order: vi.fn().mockResolvedValue({ data: [], error: null }),
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+            }),
+          }),
+        };
+      });
+
+      await (service as any).loadFromSupabase();
+
+      const exp = service.experiences().find((e) => e.id === 'exp-cover-no-match');
+      expect(exp).toBeDefined();
+      expect(exp?.albumPhotos).toBeDefined();
+      expect(exp?.albumPhotos?.length).toBe(2);
+
+      // Ninguna foto debe tener isCover: true
+      expect(exp?.albumPhotos?.every((p) => !p.isCover)).toBeTrue();
+    });
+  });
 });

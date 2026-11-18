@@ -280,11 +280,11 @@
 }
 
 .standalone-coming-soon-list {
-  margin-top: 2rem;
+  margin-top: 0;
 }
 
-.standalone-coming-soon-list:first-of-type {
-  margin-top: 0;
+.experiences-horizontal-list + .standalone-coming-soon-list {
+  margin-top: 2rem;
 }
 
 .exp-item-horizontal {

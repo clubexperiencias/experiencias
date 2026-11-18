@@ -806,7 +806,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
               <div class="delete-target-card">
                 <span class="target-label">EXPERIENCIA SELECCIONADA:</span>
                 <strong class="target-title">{{ experienceToDelete()?.title }}</strong>
-                <span class="target-id">Ruta: <code>/experiencias/{{ experienceToDelete()?.slug }}</code></span>
+                <span class="target-id">ID: <code>{{ experienceToDelete()?.id }}</code> &bull; Ruta: <code>/experiencias/{{ experienceToDelete()?.slug }}</code></span>
               </div>
 
               <div class="delete-consequences-list">
@@ -973,6 +973,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                 <option value="Moderada">Moderada</option>
                 <option value="Exigente">Exigente</option>
                 <option value="Alta Montaña">Alta Montaña</option>
+                <option value="Ninguna">Ninguna</option>
               </select>
             </div>
           </div>
@@ -1008,14 +1009,14 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
           <div class="form-grid-2">
             <div class="form-field">
               <label>Duración estimada: <span class="req-star">*</span></label>
-              <input
-                type="text"
-                class="form-input"
-                [(ngModel)]="editDurationLabel"
-                placeholder="Ej: 4 Horas (Media Jornada)"
-                maxlength="50"
-                required
-              />
+              <select class="form-select" [(ngModel)]="editDurationLabel" required>
+                @if (editDurationLabel() && !durationOptions.includes(editDurationLabel())) {
+                  <option [value]="editDurationLabel()">{{ editDurationLabel() }}</option>
+                }
+                @for (d of durationOptions; track d) {
+                  <option [value]="d">{{ d }}</option>
+                }
+              </select>
             </div>
 
             <div class="form-field">
@@ -5070,8 +5071,23 @@ export class AdminExperiencesComponent implements OnInit {
   readonly editMeetingPoint = signal('');
   readonly editMeetingPointUrl = signal('');
   readonly editItinerary = signal('');
-  readonly editDifficulty = signal<'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña'>('Baja');
-  readonly editDurationLabel = signal('');
+  readonly editDifficulty = signal<'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña' | 'Ninguna'>('Baja');
+  readonly durationOptions: readonly string[] = [
+    '30 minutos',
+    '1 hora',
+    '2 horas',
+    '3 horas',
+    '4 horas (Media jornada)',
+    '5 horas',
+    '6 horas',
+    '7 horas',
+    '8 horas (Jornada completa)',
+    'Día completo (10 h)',
+    '2 días',
+    '3 días',
+    '4 días o más',
+  ];
+  readonly editDurationLabel = signal('4 horas (Media jornada)');
   readonly editAltitude = signal(850);
   readonly editCapacity = signal(12);
   readonly editPriceArs = signal(65000);
@@ -5215,7 +5231,7 @@ export class AdminExperiencesComponent implements OnInit {
     this.editMeetingPointUrl.set(exp.meetingPointUrl || '');
     this.editItinerary.set(exp.itinerary || '');
     this.editDifficulty.set(exp.difficulty || 'Baja');
-    this.editDurationLabel.set(exp.durationLabel || '4 Horas');
+    this.editDurationLabel.set(exp.durationLabel || '4 horas (Media jornada)');
     this.editAltitude.set(exp.altitudeMeters || 850);
     this.editCapacity.set(exp.maxSpotsPerGroup || 12);
     this.editPriceArs.set(exp.priceArs || 65000);
@@ -5352,7 +5368,7 @@ export class AdminExperiencesComponent implements OnInit {
       meetingPoint: '',
       difficulty: 'Baja',
       durationDays: 1,
-      durationLabel: 'Media Jornada',
+      durationLabel: '4 horas (Media jornada)',
       altitudeMeters: 1000,
       bestSeason: '',
       priceArs: 75000,
@@ -5382,7 +5398,7 @@ export class AdminExperiencesComponent implements OnInit {
     this.editMeetingPointUrl.set('');
     this.editItinerary.set('');
     this.editDifficulty.set('Baja');
-    this.editDurationLabel.set('Media Jornada');
+    this.editDurationLabel.set('4 horas (Media jornada)');
     this.editAltitude.set(1000);
     this.editCapacity.set(10);
     this.editPriceArs.set(75000);
@@ -5775,7 +5791,7 @@ export class AdminExperiencesComponent implements OnInit {
       meetingPointUrl,
       itinerary,
       difficulty: this.editDifficulty(),
-      durationLabel: this.editDurationLabel().trim() || '4 Horas',
+      durationLabel: this.editDurationLabel().trim() || '4 horas (Media jornada)',
       altitudeMeters: Number(this.editAltitude()) || 0,
       maxSpotsPerGroup: Number(this.editCapacity()) || 12,
       priceArs,

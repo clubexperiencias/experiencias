@@ -94,7 +94,6 @@ import { environment } from '../../../../environments/environment';
                 </div>
               } @else if (accountStatus() === 'inactive') {
                 <div class="login-alert-status alert-inactive" role="alert">
-                  <mat-icon class="alert-icon">block</mat-icon>
                   <div class="alert-content">
                     <strong class="alert-title">Cuenta Inactiva o en Pausa</strong>
                     <p class="alert-text">

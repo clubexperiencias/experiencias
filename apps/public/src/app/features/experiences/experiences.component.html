@@ -89,7 +89,9 @@
                     @if (!exp.isLocked) {
                     <div class="exp-meta-row">
                       <span>{{ exp.durationLabel }}</span>
-                      <span>Dificultad: {{ exp.difficulty }}</span>
+                      @if (exp.difficulty && exp.difficulty.toLowerCase() !== 'ninguna') {
+                        <span>Dificultad: {{ exp.difficulty }}</span>
+                      }
                       @if (exp.providerName) {
                         @if (getProviderSlug(exp); as slug) {
                           <span>Prestador: <a [routerLink]="['/prestadores', slug]" class="provider-stat-link">{{ exp.providerName }}</a></span>
@@ -281,6 +283,7 @@
                     <option value="Moderada">Moderada</option>
                     <option value="Exigente">Exigente</option>
                     <option value="Alta Montaña">Alta Montaña</option>
+                    <option value="Ninguna">Ninguna</option>
                   </select>
                 </div>
               </div>
@@ -445,7 +448,9 @@
                         @if (!exp.isLocked) {
                         <div class="exp-meta-row">
                           <span>{{ exp.durationLabel }}</span>
-                          <span>Dificultad: {{ exp.difficulty }}</span>
+                          @if (exp.difficulty && exp.difficulty.toLowerCase() !== 'ninguna') {
+                            <span>Dificultad: {{ exp.difficulty }}</span>
+                          }
                           @if (exp.altitudeMeters) {
                             <span>{{ exp.altitudeMeters }} msnm</span>
                           }
@@ -604,7 +609,9 @@
                           @if (!exp.isLocked) {
                           <div class="exp-meta-row">
                             <span>{{ exp.durationLabel }}</span>
-                            <span>Dificultad: {{ exp.difficulty }}</span>
+                            @if (exp.difficulty && exp.difficulty.toLowerCase() !== 'ninguna') {
+                              <span>Dificultad: {{ exp.difficulty }}</span>
+                            }
                             @if (exp.altitudeMeters) {
                               <span>{{ exp.altitudeMeters }} msnm</span>
                             }

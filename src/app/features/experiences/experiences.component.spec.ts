@@ -73,4 +73,31 @@ describe('ExperiencesComponent (/experiencias)', () => {
     } as any;
     expect(component.getProviderSlug(expCustom)).toBe('guia-montana');
   });
+
+  it('should include Ninguna in difficulty filter options', () => {
+    const diffSelect: HTMLSelectElement = fixture.nativeElement.querySelector('#filter-difficulty');
+    expect(diffSelect).toBeTruthy();
+    const options = Array.from(diffSelect.options).map((opt) => opt.value);
+    expect(options).toContain('Ninguna');
+  });
+
+  it('should not display difficulty stat when difficulty is Ninguna', () => {
+    const exp = component.experienceService.publishedExperiences()[0];
+    (component.experienceService as any)._experiences.set([
+      {
+        ...exp,
+        id: 'test-ninguna',
+        title: 'Expedición Ninguna',
+        difficulty: 'Ninguna',
+        isLocked: false,
+        status: 'publicada',
+      },
+    ]);
+    fixture.detectChanges();
+
+    const catalogItems = fixture.nativeElement.querySelectorAll('.exp-catalog-item');
+    expect(catalogItems.length).toBeGreaterThan(0);
+    const metaRowText = catalogItems[0].querySelector('.exp-meta-row')?.textContent || '';
+    expect(metaRowText).not.toContain('Dificultad');
+  });
 });

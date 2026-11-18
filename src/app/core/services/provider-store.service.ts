@@ -2013,9 +2013,11 @@ export class ProviderStoreService {
 
     const coverPhoto = photos.find((p) => p.isCover);
     const coverUrl = coverPhoto?.url;
+    const replacementGallery = photos.map((p) => p.url);
 
     const updates: Partial<ProviderExperience> = {
       albumPhotos: photos,
+      galleryImages: replacementGallery,
       ...(coverUrl ? { coverImage: coverUrl } : {}),
     };
 
@@ -2032,6 +2034,7 @@ export class ProviderStoreService {
           id: expMatch.id,
           coverImage: coverUrl || expMatch.coverImage,
           albumPhotos: photos,
+          galleryImages: replacementGallery,
         })
         .catch((err) => {
           console.warn(
@@ -3552,7 +3555,11 @@ export class ProviderStoreService {
                       id: `photo_${idx + 1}`,
                       url: u,
                       title: row.title || 'Foto de experiencia',
-                      isCover: idx === 0,
+                      isCover: Boolean(
+                        typeof row.cover_image === 'string' &&
+                          row.cover_image.trim() !== '' &&
+                          u.trim() === row.cover_image.trim(),
+                      ),
                       order: idx + 1,
                     }))
                   : []),

@@ -334,7 +334,7 @@ export interface Database {
           kicker?: string;
           video_url?: string;
           video_poster?: string;
-          difficulty: 'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña' | string;
+          difficulty: 'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña' | 'Ninguna' | string;
           duration_label: string;
           altitude_meters?: number;
           best_season?: string;
@@ -376,7 +376,7 @@ export interface Database {
           kicker?: string;
           video_url?: string;
           video_poster?: string;
-          difficulty?: 'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña' | string;
+          difficulty?: 'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña' | 'Ninguna' | string;
           duration_label?: string;
           altitude_meters?: number;
           best_season?: string;
@@ -418,7 +418,7 @@ export interface Database {
           kicker?: string;
           video_url?: string;
           video_poster?: string;
-          difficulty?: 'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña' | string;
+          difficulty?: 'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña' | 'Ninguna' | string;
           duration_label?: string;
           altitude_meters?: number;
           best_season?: string;
@@ -459,7 +459,7 @@ export interface Database {
           region: string;
           meeting_point: string;
           cover_image: string;
-          difficulty: 'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña';
+          difficulty: 'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña' | 'Ninguna';
           duration_label: string;
           price_ars: number;
           capacity_per_date: number;
@@ -478,7 +478,7 @@ export interface Database {
           region?: string;
           meeting_point?: string;
           cover_image?: string;
-          difficulty?: 'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña';
+          difficulty?: 'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña' | 'Ninguna';
           duration_label?: string;
           price_ars?: number;
           capacity_per_date?: number;
@@ -496,7 +496,7 @@ export interface Database {
           region?: string;
           meeting_point?: string;
           cover_image?: string;
-          difficulty?: 'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña';
+          difficulty?: 'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña' | 'Ninguna';
           duration_label?: string;
           price_ars?: number;
           capacity_per_date?: number;

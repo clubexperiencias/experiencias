@@ -1301,62 +1301,68 @@ export class AdminFundadoresComponent {
     // 2. Socios registrados formalmente con tier 'fundador'
     for (const m of members) {
       if (m.membershipTier === 'fundador') {
-        // Evitar duplicar si ya vino por application
-        if (!list.some((item) => item.email.toLowerCase() === m.email.toLowerCase())) {
-          list.push({
-            id: `socio-fundador-${m.id}`,
-            sourceType: 'socio_fundador',
-            name: m.fullName || m.email.split('@')[0],
-            email: m.email,
-            phone: m.phone || '—',
-            avatar: m.avatarUrl,
-            tier: 'socio_fundador',
-            tierLabel: 'Socio Fundador',
-            endowmentAmount: 5000000,
-            status: 'vitalicio',
-            statusLabel: 'Vitalicio Confirmado',
-            motivationLetter: 'Socio fundador registrado y validado en el cuadro patrimonial del Club de Experiencias.',
-            date: m.createdAt,
-          });
+        const emailNorm = (m.email || '').trim().toLowerCase();
+        // Evitar duplicar si ya vino por application o socio previo
+        if (emailNorm && list.some((item) => (item.email || '').trim().toLowerCase() === emailNorm)) {
+          continue;
         }
+
+        list.push({
+          id: `socio-fundador-${m.id}`,
+          sourceType: 'socio_fundador',
+          name: m.fullName || (m.email ? m.email.split('@')[0] : 'Socio Fundador'),
+          email: m.email,
+          phone: m.phone || '—',
+          avatar: m.avatarUrl,
+          tier: 'socio_fundador',
+          tierLabel: 'Socio Fundador',
+          endowmentAmount: 5000000,
+          status: 'vitalicio',
+          statusLabel: 'Vitalicio Confirmado',
+          motivationLetter: 'Socio fundador registrado y validado en el cuadro patrimonial del Club de Experiencias.',
+          date: m.createdAt,
+        });
       }
     }
 
     // 3. Prestadores registrados con tier 'fundador'
     for (const p of providers) {
       if (p.tier === 'fundador') {
-        if (!list.some((item) => item.email.toLowerCase() === p.email.toLowerCase())) {
-          list.push({
-            id: `prestador-fundador-${p.id}`,
-            sourceType: 'prestador_fundador',
-            name: p.name,
-            email: p.email,
-            phone: p.phone || '—',
-            agency: p.agency,
-            avatar: p.avatar,
-            tier: 'prestador_fundador',
-            tierLabel: 'Prestador Fundador',
-            endowmentAmount: 10000000,
-            status:
-              p.status === 'rechazado'
-                ? 'rechazado'
-                : p.status === 'dado_de_baja'
-                  ? 'baja'
-                  : p.status === 'pendiente'
-                    ? 'en_evaluacion'
-                    : 'vitalicio',
-            statusLabel:
-              p.status === 'rechazado'
-                ? 'Rechazado'
-                : p.status === 'dado_de_baja'
-                  ? 'Dado de baja'
-                  : p.status === 'pendiente'
-                    ? 'En Evaluación'
-                    : 'Vitalicio Confirmado',
-            motivationLetter: p.bio || 'Prestador fundador integrante del cuadro de honor patrimonial.',
-            date: p.joinedAt || new Date().toISOString(),
-          });
+        const emailNorm = (p.email || '').trim().toLowerCase();
+        if (emailNorm && list.some((item) => (item.email || '').trim().toLowerCase() === emailNorm)) {
+          continue;
         }
+
+        list.push({
+          id: `prestador-fundador-${p.id}`,
+          sourceType: 'prestador_fundador',
+          name: p.name,
+          email: p.email,
+          phone: p.phone || '—',
+          agency: p.agency,
+          avatar: p.avatar,
+          tier: 'prestador_fundador',
+          tierLabel: 'Prestador Fundador',
+          endowmentAmount: 10000000,
+          status:
+            p.status === 'rechazado'
+              ? 'rechazado'
+              : p.status === 'dado_de_baja'
+                ? 'baja'
+                : p.status === 'pendiente'
+                  ? 'en_evaluacion'
+                  : 'vitalicio',
+          statusLabel:
+            p.status === 'rechazado'
+              ? 'Rechazado'
+              : p.status === 'dado_de_baja'
+                ? 'Dado de baja'
+                : p.status === 'pendiente'
+                  ? 'En Evaluación'
+                  : 'Vitalicio Confirmado',
+          motivationLetter: p.bio || 'Prestador fundador integrante del cuadro de honor patrimonial.',
+          date: p.joinedAt || new Date().toISOString(),
+        });
       }
     }
 
@@ -1463,9 +1469,12 @@ export class AdminFundadoresComponent {
         }
 
         if (newStatus === 'vitalicio') {
-          const member = this.store
-            .members()
-            .find((m) => m.email.toLowerCase() === row.email.toLowerCase());
+          const rowEmailNorm = (row.email || '').trim().toLowerCase();
+          const member = rowEmailNorm
+            ? this.store
+                .members()
+                .find((m) => (m.email || '').trim().toLowerCase() === rowEmailNorm)
+            : null;
           if (member) {
             void this.store.updateMemberProfile(member.id, { membershipTier: 'fundador' });
           }

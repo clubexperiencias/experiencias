@@ -295,7 +295,9 @@
                     @if (!exp.isLocked) {
                     <div class="exp-meta-row">
                       <span>{{ exp.durationLabel }}</span>
-                      <span>Dificultad: {{ exp.difficulty }}</span>
+                      @if (exp.difficulty && exp.difficulty.toLowerCase() !== 'ninguna') {
+                        <span>Dificultad: {{ exp.difficulty }}</span>
+                      }
                       @if (exp.providerName) {
                       @if (getProviderSlug(exp); as slug) {
                       <span>Prestador: <a [routerLink]="['/prestadores', slug]" class="provider-stat-link">{{

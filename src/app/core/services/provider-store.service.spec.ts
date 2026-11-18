@@ -1019,6 +1019,79 @@ describe('ProviderStoreService - Payment & Proposal Persistence', () => {
       const directPaused = requests.find((r) => r.id === 'direct-created-paused');
       expect(directPaused).toBeUndefined();
     });
+
+    it('should assign isCover to the matching cover_image in synthesized album and preserve existing album cover flags', async () => {
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === 'experiencias') {
+          return {
+            select: vi.fn().mockReturnValue({
+              in: vi.fn().mockReturnValue({
+                order: vi.fn().mockResolvedValue({
+                  data: [
+                    {
+                      id: 'row-synth-album',
+                      slug: 'row-synth-album',
+                      title: 'Album Sintetizado',
+                      provider_email: 'guia@test.com',
+                      status: 'publicada',
+                      cover_image: '/assets/images/foto-cover-2.jpg',
+                      gallery_images: [
+                        '/assets/images/foto-0.jpg',
+                        '/assets/images/foto-cover-2.jpg',
+                        '/assets/images/foto-3.jpg',
+                      ],
+                      album_photos: null,
+                      created_at: '2026-10-12T10:00:00.000Z',
+                    },
+                    {
+                      id: 'row-existing-album',
+                      slug: 'row-existing-album',
+                      title: 'Album Existente',
+                      provider_email: 'guia@test.com',
+                      status: 'publicada',
+                      cover_image: '/assets/images/otra-portada.jpg',
+                      gallery_images: ['/assets/images/g1.jpg'],
+                      album_photos: [
+                        { id: 'ap1', url: '/assets/images/a1.jpg', isCover: false, title: 'A1' },
+                        { id: 'ap2', url: '/assets/images/a2.jpg', isCover: true, title: 'A2' },
+                      ],
+                      created_at: '2026-10-12T10:00:00.000Z',
+                    },
+                  ],
+                  error: null,
+                }),
+              }),
+            }),
+          };
+        }
+        if (table === 'prestadores') {
+          return {
+            select: vi.fn().mockResolvedValue({ data: [], error: null }),
+          };
+        }
+        return { select: vi.fn().mockReturnThis() };
+      });
+
+      await store.loadProposalsFromSupabase();
+
+      const requests = store.experienceRequests();
+      const synth = requests.find((r) => r.id === 'row-synth-album');
+      expect(synth).toBeTruthy();
+      expect(synth?.albumPhotos?.length).toBe(3);
+      // Foto 0 no es cover
+      expect(synth?.albumPhotos?.[0].isCover).toBe(false);
+      // Foto 1 coincide con cover_image -> isCover es true
+      expect(synth?.albumPhotos?.[1].isCover).toBe(true);
+      expect(synth?.albumPhotos?.[1].url).toBe('/assets/images/foto-cover-2.jpg');
+      // Foto 2 no es cover
+      expect(synth?.albumPhotos?.[2].isCover).toBe(false);
+
+      // Fila con álbum existente: preserva las flags originales
+      const existing = requests.find((r) => r.id === 'row-existing-album');
+      expect(existing).toBeTruthy();
+      expect(existing?.albumPhotos?.[0].isCover).toBe(false);
+      expect(existing?.albumPhotos?.[1].isCover).toBe(true);
+    });
   });
 });
 

@@ -47,6 +47,7 @@
               @for (item of infiniteFeaturedTestimonios(); track item.key) {
               @let t = item.testimonio;
               <article class="testimonial-card featured-testimonial carousel-item"
+                tabindex="0"
                 [class.founder]="t.membershipTier === 'fundador'" [class.pleno]="t.membershipTier === 'activo'">
                 <div class="testimonial-quote-icon">
                   <mat-icon>format_quote</mat-icon>

@@ -1,10 +1,11 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, ActivatedRouteSnapshot, Router } from '@angular/router';
 import { DiscountService } from '../../../core/services/discount.service';
 import { ExperienceService } from '../../../core/services/experience.service';
+import { ProviderStoreService } from '../../../core/services/provider-store.service';
 import {
   Discount,
   DiscountType,
@@ -27,10 +28,12 @@ type PromotionCategory = 'group' | 'percentage' | 'fixed_amount';
           <mat-icon>arrow_back</mat-icon>
           <span>Volver a Descuentos</span>
         </button>
-        <div class="status-badge" [class.badge-active]="active()" [class.badge-paused]="!active()">
-          <span class="status-dot"></span>
-          <span>{{ active() ? 'Estado: Activo' : 'Estado: Pausado' }}</span>
-        </div>
+        @if (!isEditing() || discountLoaded()) {
+          <div class="status-badge" [class.badge-active]="active()" [class.badge-paused]="!active()">
+            <span class="status-dot"></span>
+            <span>{{ active() ? 'Estado: Activo' : 'Estado: Pausado' }}</span>
+          </div>
+        }
       </div>
 
       <!-- Encabezado Principal -->
@@ -44,6 +47,41 @@ type PromotionCategory = 'group' | 'percentage' | 'fixed_amount';
         </p>
       </header>
 
+      @if (isEditing() && isLoadingDiscount()) {
+        <div class="state-card state-loading">
+          <mat-icon class="state-icon">autorenew</mat-icon>
+          <h3>Cargando promoción...</h3>
+          <p>Obteniendo los datos del descuento desde la plataforma.</p>
+        </div>
+      } @else if (isEditing() && discountNotFound()) {
+        <div class="state-card state-not-found">
+          <mat-icon class="state-icon">search_off</mat-icon>
+          <h3>Descuento no encontrado</h3>
+          <p>No se encontró ninguna promoción o descuento registrado con el identificador solicitado.</p>
+          <div class="state-actions">
+            <button type="button" class="btn-back" (click)="goBack()">
+              <mat-icon>arrow_back</mat-icon>
+              <span>Volver a Descuentos</span>
+            </button>
+          </div>
+        </div>
+      } @else if (isEditing() && loadError()) {
+        <div class="state-card state-error">
+          <mat-icon class="state-icon">error_outline</mat-icon>
+          <h3>Error al cargar el descuento</h3>
+          <p>{{ loadError() }}</p>
+          <div class="state-actions">
+            <button type="button" class="btn-retry" (click)="retryLoadDiscount()">
+              <mat-icon>refresh</mat-icon>
+              <span>Reintentar</span>
+            </button>
+            <button type="button" class="btn-back" (click)="goBack()">
+              <mat-icon>arrow_back</mat-icon>
+              <span>Volver a Descuentos</span>
+            </button>
+          </div>
+        </div>
+      } @else {
       <form (ngSubmit)="savePromotion()" class="editor-layout">
         <!-- Columna Principal: Formulario Paso a Paso -->
         <main class="editor-main-col">
@@ -175,13 +213,14 @@ type PromotionCategory = 'group' | 'percentage' | 'fixed_amount';
                 <!-- Inputs explícitos NxM -->
                 <div class="group-inputs-grid">
                   <div class="field-item">
-                    <label class="field-label">
+                    <label class="field-label" for="discount-group-travelers">
                       <span>Cantidad de personas que reservan / viajan</span>
                       <mat-icon class="hint-icon" title="Cantidad total de personas que harán la actividad">help_outline</mat-icon>
                     </label>
                     <div class="stepper-input">
                       <button type="button" class="btn-step" (click)="adjustTravelers(-1)">-</button>
                       <input
+                        id="discount-group-travelers"
                         type="number"
                         [(ngModel)]="groupTravelers"
                         [ngModelOptions]="{standalone: true}"
@@ -195,13 +234,14 @@ type PromotionCategory = 'group' | 'percentage' | 'fixed_amount';
                   </div>
 
                   <div class="field-item">
-                    <label class="field-label">
+                    <label class="field-label" for="discount-group-payers">
                       <span>Cantidad de personas que abonan / pagan</span>
                       <mat-icon class="hint-icon" title="Cantidad de cupos que se cobrarán">help_outline</mat-icon>
                     </label>
                     <div class="stepper-input">
                       <button type="button" class="btn-step" (click)="adjustPayers(-1)">-</button>
                       <input
+                        id="discount-group-payers"
                         type="number"
                         [(ngModel)]="groupPayers"
                         [ngModelOptions]="{standalone: true}"
@@ -242,7 +282,7 @@ type PromotionCategory = 'group' | 'percentage' | 'fixed_amount';
             <!-- Configuración Modo Porcentaje -->
             @if (category() === 'percentage') {
               <div class="subpanel">
-                <label class="field-label">Porcentaje de Descuento (%) *</label>
+                <label class="field-label" for="discount-percent-value">Porcentaje de Descuento (%) *</label>
                 <div class="preset-pills-row">
                   @for (pct of [10, 15, 20, 25, 30, 50]; track pct) {
                     <button
@@ -257,6 +297,7 @@ type PromotionCategory = 'group' | 'percentage' | 'fixed_amount';
                 </div>
                 <div class="input-with-suffix">
                   <input
+                    id="discount-percent-value"
                     type="number"
                     [(ngModel)]="percentValue"
                     [ngModelOptions]="{standalone: true}"
@@ -274,7 +315,7 @@ type PromotionCategory = 'group' | 'percentage' | 'fixed_amount';
             <!-- Configuración Modo Monto Fijo -->
             @if (category() === 'fixed_amount') {
               <div class="subpanel">
-                <label class="field-label">Monto en Pesos ($ ARS) *</label>
+                <label class="field-label" for="discount-fixed-value">Monto en Pesos ($ ARS) *</label>
                 <div class="preset-pills-row">
                   @for (fix of [5000, 10000, 15000, 20000, 30000, 50000]; track fix) {
                     <button
@@ -290,6 +331,7 @@ type PromotionCategory = 'group' | 'percentage' | 'fixed_amount';
                 <div class="input-with-suffix">
                   <span class="input-prefix">$</span>
                   <input
+                    id="discount-fixed-value"
                     type="number"
                     [(ngModel)]="fixedValue"
                     [ngModelOptions]="{standalone: true}"
@@ -316,13 +358,14 @@ type PromotionCategory = 'group' | 'percentage' | 'fixed_amount';
             <div class="form-grid-2">
               <div class="field-item">
                 <div class="label-with-action">
-                  <label class="field-label">Código de Cupón *</label>
+                  <label class="field-label" for="discount-code">Código de Cupón *</label>
                   <button type="button" class="btn-text-action" (click)="suggestCode()">
                     <mat-icon class="icon-xs">magic_button</mat-icon>
                     <span>Sugerir Código</span>
                   </button>
                 </div>
                 <input
+                  id="discount-code"
                   type="text"
                   [(ngModel)]="code"
                   [ngModelOptions]="{standalone: true}"
@@ -335,11 +378,13 @@ type PromotionCategory = 'group' | 'percentage' | 'fixed_amount';
               </div>
 
               <div class="field-item">
-                <label class="field-label">Nombre de la Promoción *</label>
+                <label class="field-label" for="discount-name">Nombre de la Promoción *</label>
                 <input
+                  id="discount-name"
                   type="text"
                   [(ngModel)]="name"
                   [ngModelOptions]="{standalone: true}"
+                  (ngModelChange)="onNameChange($event)"
                   placeholder="Ej. Promoción 2x1 en Kayak"
                   required
                   class="text-input"
@@ -384,10 +429,12 @@ type PromotionCategory = 'group' | 'percentage' | 'fixed_amount';
 
             <!-- Descripción Pública -->
             <div class="field-item full-width mt-3">
-              <label class="field-label">Descripción o Letra Chica (Opcional)</label>
+              <label class="field-label" for="discount-description">Descripción o Letra Chica (Opcional)</label>
               <textarea
+                id="discount-description"
                 [(ngModel)]="description"
                 [ngModelOptions]="{standalone: true}"
+                (ngModelChange)="onDescriptionChange($event)"
                 rows="2"
                 placeholder="Ej. Válido reservando para 2 personas en salidas de lunes a jueves..."
                 class="text-input textarea"
@@ -440,6 +487,23 @@ type PromotionCategory = 'group' | 'percentage' | 'fixed_amount';
                 </div>
               </label>
 
+              <label class="scope-box" [class.selected]="scope() === 'provider'">
+                <input
+                  type="radio"
+                  name="scope"
+                  value="provider"
+                  [checked]="scope() === 'provider'"
+                  (change)="scope.set('provider')"
+                />
+                <div class="scope-icon text-purple">
+                  <mat-icon>storefront</mat-icon>
+                </div>
+                <div class="scope-info">
+                  <strong>Prestador Específico</strong>
+                  <span>Válido para salidas de un prestador determinado.</span>
+                </div>
+              </label>
+
               <label class="scope-box" [class.selected]="scope() === 'membership'">
                 <input
                   type="radio"
@@ -461,15 +525,22 @@ type PromotionCategory = 'group' | 'percentage' | 'fixed_amount';
             <!-- Selector de experiencia si scope === 'experience' -->
             @if (scope() === 'experience') {
               <div class="experience-picker-box">
-                <label class="field-label">Seleccionar Experiencia *</label>
+                <label class="field-label" for="discount-experience-id">Seleccionar Experiencia *</label>
                 <select
+                  id="discount-experience-id"
                   [(ngModel)]="experienceId"
                   [ngModelOptions]="{standalone: true}"
                   (ngModelChange)="onExperienceChange($event)"
                   required
                   class="text-input select-input"
                 >
-                  <option value="" disabled>Seleccioná una experiencia del catálogo...</option>
+                  @if (!experienceId() && experienceSlug()) {
+                    <option [value]="''" disabled selected>
+                      Experiencia vinculada: {{ experienceSlug() }}
+                    </option>
+                  } @else {
+                    <option value="" disabled>Seleccioná una experiencia del catálogo...</option>
+                  }
                   @for (exp of experiences(); track exp.id) {
                     <option [value]="exp.id">
                       {{ exp.title }} — {{ exp.providerAgency || exp.providerName || 'Oficial' }} (\${{ exp.priceArs | ars }})
@@ -477,6 +548,28 @@ type PromotionCategory = 'group' | 'percentage' | 'fixed_amount';
                   }
                 </select>
                 <span class="field-hint">El descuento solo podrá canjearse al reservar esta salida.</span>
+              </div>
+            }
+
+            <!-- Selector de prestador si scope === 'provider' -->
+            @if (scope() === 'provider') {
+              <div class="experience-picker-box">
+                <label class="field-label" for="discount-provider-id">Seleccionar Prestador *</label>
+                <select
+                  id="discount-provider-id"
+                  [(ngModel)]="providerId"
+                  [ngModelOptions]="{standalone: true}"
+                  required
+                  class="text-input select-input"
+                >
+                  <option value="" disabled>Seleccioná un prestador de la red...</option>
+                  @for (p of providers(); track p.id) {
+                    <option [value]="p.id">
+                      {{ p.agency || p.name }} ({{ p.name || p.id }})
+                    </option>
+                  }
+                </select>
+                <span class="field-hint">El descuento se aplicará a todas las salidas organizadas por este prestador.</span>
               </div>
             }
           </section>
@@ -493,8 +586,9 @@ type PromotionCategory = 'group' | 'percentage' | 'fixed_amount';
 
             <div class="form-grid-2">
               <div class="field-item">
-                <label class="field-label">Fecha de Inicio (Opcional)</label>
+                <label class="field-label" for="discount-starts-at">Fecha de Inicio (Opcional)</label>
                 <input
+                  id="discount-starts-at"
                   type="date"
                   [(ngModel)]="startsAt"
                   [ngModelOptions]="{standalone: true}"
@@ -504,8 +598,9 @@ type PromotionCategory = 'group' | 'percentage' | 'fixed_amount';
               </div>
 
               <div class="field-item">
-                <label class="field-label">Fecha de Expiración (Opcional)</label>
+                <label class="field-label" for="discount-ends-at">Fecha de Expiración (Opcional)</label>
                 <input
+                  id="discount-ends-at"
                   type="date"
                   [(ngModel)]="endsAt"
                   [ngModelOptions]="{standalone: true}"
@@ -515,8 +610,9 @@ type PromotionCategory = 'group' | 'percentage' | 'fixed_amount';
               </div>
 
               <div class="field-item">
-                <label class="field-label">Monto Mínimo de Compra ($ ARS)</label>
+                <label class="field-label" for="discount-min-amount">Monto Mínimo de Compra ($ ARS)</label>
                 <input
+                  id="discount-min-amount"
                   type="number"
                   [(ngModel)]="minAmountArs"
                   [ngModelOptions]="{standalone: true}"
@@ -528,8 +624,9 @@ type PromotionCategory = 'group' | 'percentage' | 'fixed_amount';
               </div>
 
               <div class="field-item">
-                <label class="field-label">Límite Máximo de Canjes Totales</label>
+                <label class="field-label" for="discount-max-uses">Límite Máximo de Canjes Totales</label>
                 <input
+                  id="discount-max-uses"
                   type="number"
                   [(ngModel)]="maxUses"
                   [ngModelOptions]="{standalone: true}"
@@ -542,8 +639,9 @@ type PromotionCategory = 'group' | 'percentage' | 'fixed_amount';
 
               @if (category() !== 'fixed_amount') {
                 <div class="field-item full-width">
-                  <label class="field-label">Tope Máximo de Descuento ($ ARS Opcional)</label>
+                  <label class="field-label" for="discount-max-discount">Tope Máximo de Descuento ($ ARS Opcional)</label>
                   <input
+                    id="discount-max-discount"
                     type="number"
                     [(ngModel)]="maxDiscountArs"
                     [ngModelOptions]="{standalone: true}"
@@ -570,7 +668,7 @@ type PromotionCategory = 'group' | 'percentage' | 'fixed_amount';
             <button type="button" class="btn-cancel" (click)="goBack()">
               Cancelar
             </button>
-            <button type="submit" class="btn-save-primary" [disabled]="saving()">
+            <button type="submit" class="btn-save-primary" [disabled]="isSaveDisabled()">
               @if (saving()) {
                 <span class="spinner-inline"></span>
                 <span>Guardando...</span>
@@ -622,8 +720,12 @@ type PromotionCategory = 'group' | 'percentage' | 'fixed_amount';
                       Toda la red
                     } @else if (scope() === 'experience') {
                       {{ getSelectedExperienceName() }}
-                    } @else {
+                    } @else if (scope() === 'provider') {
+                      {{ getSelectedProviderName() }}
+                    } @else if (scope() === 'membership') {
                       Socios Plenos
+                    } @else {
+                      Toda la red
                     }
                   </span>
                 </div>
@@ -636,7 +738,7 @@ type PromotionCategory = 'group' | 'percentage' | 'fixed_amount';
 
             <!-- Botones de Acción en Sidebar -->
             <div class="side-actions-box">
-              <button type="submit" class="btn-save-primary w-100" [disabled]="saving()">
+              <button type="submit" class="btn-save-primary w-100" [disabled]="isSaveDisabled()">
                 @if (saving()) {
                   <span>Guardando...</span>
                 } @else {
@@ -651,6 +753,7 @@ type PromotionCategory = 'group' | 'percentage' | 'fixed_amount';
           </div>
         </aside>
       </form>
+      }
     </div>
   `,
   styles: [`
@@ -688,6 +791,80 @@ type PromotionCategory = 'group' | 'percentage' | 'fixed_amount';
     .btn-back:hover {
       background: rgba(255, 255, 255, 0.12);
       border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    .state-card {
+      background: #111827;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 3.5rem 2rem;
+      text-align: center;
+      max-width: 580px;
+      margin: 3rem auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .state-card .state-icon {
+      font-size: 3.2rem;
+      width: 3.2rem;
+      height: 3.2rem;
+    }
+
+    .state-loading .state-icon {
+      color: #f59e0b;
+      animation: spin 1.2s linear infinite;
+    }
+
+    .state-not-found .state-icon {
+      color: #9ca3af;
+    }
+
+    .state-error .state-icon {
+      color: #ef4444;
+    }
+
+    .state-card h3 {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin: 0;
+    }
+
+    .state-card p {
+      font-size: 0.95rem;
+      color: #9ca3af;
+      margin: 0;
+      max-width: 440px;
+      line-height: 1.5;
+    }
+
+    .state-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-top: 0.75rem;
+    }
+
+    .btn-retry {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: #f59e0b;
+      color: #111827;
+      border: none;
+      padding: 0.55rem 1.25rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-retry:hover {
+      background: #d97706;
     }
 
     .status-badge {
@@ -858,6 +1035,7 @@ type PromotionCategory = 'group' | 'percentage' | 'fixed_amount';
     .text-gold { color: #ffd42a !important; }
     .text-blue { color: #60a5fa !important; }
     .text-emerald { color: #34d399 !important; }
+    .text-purple { color: #c084fc !important; }
 
     .cat-content {
       flex: 1;
@@ -890,7 +1068,7 @@ type PromotionCategory = 'group' | 'percentage' | 'fixed_amount';
 
     .cat-desc {
       font-size: 0.82rem;
-      color: rgba(255, 255, 255, 0.65);
+      color: #ffffff;
       margin: 0;
       line-height: 1.4;
     }
@@ -963,7 +1141,7 @@ type PromotionCategory = 'group' | 'percentage' | 'fixed_amount';
 
     .preset-btn span {
       font-size: 0.7rem;
-      color: rgba(255, 255, 255, 0.6);
+      color: #ffffff;
     }
 
     .preset-btn:hover {
@@ -977,11 +1155,11 @@ type PromotionCategory = 'group' | 'percentage' | 'fixed_amount';
     }
 
     .preset-btn.active strong {
-      color: #ffd42a;
+      color: #ffffff;
     }
 
     .preset-btn.active span {
-      color: rgba(255, 212, 42, 0.85);
+      color: #ffffff;
     }
 
     .group-inputs-grid {
@@ -1109,7 +1287,7 @@ type PromotionCategory = 'group' | 'percentage' | 'fixed_amount';
 
     .preset-pill.active {
       background: #ffd42a;
-      color: #0c121d;
+      color: #ffffff;
       border-color: #ffd42a;
     }
 
@@ -1191,7 +1369,7 @@ type PromotionCategory = 'group' | 'percentage' | 'fixed_amount';
       gap: 0.25rem;
       background: transparent;
       border: none;
-      color: #ffd42a;
+      color: #ffffff;
       font-size: 0.78rem;
       font-weight: 700;
       cursor: pointer;
@@ -1405,7 +1583,7 @@ type PromotionCategory = 'group' | 'percentage' | 'fixed_amount';
       gap: 0.5rem;
       background: #ffd42a;
       border: none;
-      color: #0c121d;
+      color: #ffffff;
       padding: 0.8rem 1.8rem;
       border-radius: 6px;
       font-size: 0.95rem;
@@ -1574,10 +1752,39 @@ type PromotionCategory = 'group' | 'percentage' | 'fixed_amount';
 export class AdminDiscountEditorComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly discountService = inject(DiscountService);
   private readonly experienceService = inject(ExperienceService);
+  private readonly providerStore = inject(ProviderStoreService, { optional: true });
+
+  private isDestroyed = false;
+
+  constructor() {
+    this.destroyRef.onDestroy(() => {
+      this.isDestroyed = true;
+    });
+  }
 
   readonly experiences = computed(() => this.experienceService.experiences());
+
+  readonly providers = computed(() => {
+    const list = this.providerStore?.allProviders?.() || this.providerStore?.providers?.() || [];
+    if (list.length > 0) {
+      return list;
+    }
+    const map = new Map<string, { id: string; name: string; agency?: string }>();
+    for (const exp of this.experiences()) {
+      const pId = exp.providerId || exp.providerSlug;
+      if (pId && !map.has(pId)) {
+        map.set(pId, {
+          id: pId,
+          name: exp.providerAgency || exp.providerName || 'Prestador',
+          agency: exp.providerAgency,
+        });
+      }
+    }
+    return Array.from(map.values());
+  });
 
   // Estado de edición
   readonly isEditing = signal<boolean>(false);
@@ -1593,10 +1800,42 @@ export class AdminDiscountEditorComponent implements OnInit {
   readonly code = signal<string>('PROMO2X1');
   readonly name = signal<string>('Promoción 2x1 en Reservas');
   readonly description = signal<string>('Viajan 2 personas y abonan únicamente 1 cupo.');
+
+  readonly codeManuallyEdited = signal<boolean>(false);
+  readonly nameManuallyEdited = signal<boolean>(false);
+  readonly descriptionManuallyEdited = signal<boolean>(false);
+
+  private lastSuggestedCode = 'PROMO2X1';
+  private lastSuggestedName = 'Promoción 2x1 en Reservas';
+  private lastSuggestedDescription = 'Viajan 2 personas y abonan únicamente 1 cupo.';
+
+  isCodeEdited(): boolean {
+    if (this.codeManuallyEdited()) return true;
+    const current = this.code();
+    return current !== this.lastSuggestedCode && current !== 'PROMO2X1';
+  }
+
+  isNameEdited(): boolean {
+    if (this.nameManuallyEdited()) return true;
+    const current = this.name();
+    return current !== this.lastSuggestedName && current !== 'Promoción 2x1 en Reservas';
+  }
+
+  isDescriptionEdited(): boolean {
+    if (this.descriptionManuallyEdited()) return true;
+    const current = this.description();
+    return (
+      current !== this.lastSuggestedDescription &&
+      current !== 'Viajan 2 personas y abonan únicamente 1 cupo.' &&
+      current !== 'Viajan 2 personas y abonan únicamente 1 cupo(s) (50% OFF).'
+    );
+  }
+
   readonly isAutomatic = signal<boolean>(false);
   readonly scope = signal<DiscountScope>('general');
   readonly experienceId = signal<string>('');
   readonly experienceSlug = signal<string>('');
+  readonly providerId = signal<string>('');
 
   readonly minAmountArs = signal<number | null>(null);
   readonly maxDiscountArs = signal<number | null>(null);
@@ -1607,6 +1846,19 @@ export class AdminDiscountEditorComponent implements OnInit {
 
   readonly saving = signal<boolean>(false);
   readonly formError = signal<string | null>(null);
+
+  readonly isLoadingDiscount = signal<boolean>(false);
+  readonly discountNotFound = signal<boolean>(false);
+  readonly loadError = signal<string | null>(null);
+  readonly discountLoaded = signal<boolean>(false);
+
+  readonly isSaveDisabled = computed(() => {
+    return (
+      this.saving() ||
+      (this.isEditing() &&
+        (this.discountNotFound() || !!this.loadError() || this.isLoadingDiscount()))
+    );
+  });
 
   // Cálculo del porcentaje en modo grupo
   readonly calculatedGroupPercentage = computed(() => {
@@ -1621,30 +1873,89 @@ export class AdminDiscountEditorComponent implements OnInit {
     if (id) {
       this.isEditing.set(true);
       this.editingId.set(id);
-      this.loadExistingDiscount(id);
+      void this.loadExistingDiscount(id);
     }
   }
 
-  private loadExistingDiscount(id: string): void {
-    const found = this.discountService.getDiscountById(id);
-    if (found) {
-      this.populateFromDiscount(found);
-    } else {
-      // Reintentar tras asegurar carga
-      void this.discountService.loadDiscounts().then((all) => {
-        const d = all.find((item) => item.id === id);
-        if (d) this.populateFromDiscount(d);
-      });
+  async loadExistingDiscount(id: string): Promise<void> {
+    this.discountNotFound.set(false);
+    this.loadError.set(null);
+    this.isLoadingDiscount.set(true);
+
+    try {
+      const found = this.discountService.getDiscountById(id);
+      if (found) {
+        this.populateFromDiscount(found);
+        this.isLoadingDiscount.set(false);
+        return;
+      }
+
+      const all = await this.discountService.loadDiscounts();
+
+      let serviceError: string | null = null;
+      if (typeof (this.discountService as any).error === 'function') {
+        serviceError = (this.discountService as any).error();
+      } else if (typeof (this.discountService as any).error === 'string') {
+        serviceError = (this.discountService as any).error;
+      }
+
+      if (serviceError && (!all || all.length === 0)) {
+        this.loadError.set(serviceError || 'Error al cargar los datos del descuento.');
+        return;
+      }
+
+      const d = all?.find((item) => item.id === id);
+      if (d) {
+        this.populateFromDiscount(d);
+      } else if (serviceError) {
+        this.loadError.set(serviceError);
+      } else {
+        this.discountNotFound.set(true);
+      }
+    } catch (err: any) {
+      this.loadError.set(err?.message || 'Error al cargar los datos del descuento.');
+    } finally {
+      this.isLoadingDiscount.set(false);
+    }
+  }
+
+  retryLoadDiscount(): void {
+    const id = this.editingId() || this.route.snapshot.paramMap.get('id');
+    if (id) {
+      void this.loadExistingDiscount(id);
     }
   }
 
   private populateFromDiscount(disc: Discount): void {
+    this.discountLoaded.set(true);
+    this.discountNotFound.set(false);
+    this.loadError.set(null);
     this.code.set(disc.code);
     this.name.set(disc.name);
     this.description.set(disc.description || '');
+    this.lastSuggestedCode = disc.code;
+    this.lastSuggestedName = disc.name;
+    this.lastSuggestedDescription = disc.description || '';
+    this.codeManuallyEdited.set(true);
+    this.nameManuallyEdited.set(true);
+    this.descriptionManuallyEdited.set(true);
     this.scope.set(disc.scope);
     this.experienceId.set(disc.experienceId || '');
     this.experienceSlug.set(disc.experienceSlug || '');
+    this.providerId.set(disc.providerId || '');
+
+    // Si experienceId es nulo pero experienceSlug existe, intentar resolverlo contra el catálogo
+    if (!disc.experienceId && disc.experienceSlug) {
+      const match = this.experiences().find(
+        (e) => (e.slug || '').toLowerCase() === disc.experienceSlug!.toLowerCase(),
+      );
+      if (match) {
+        this.experienceId.set(match.id);
+        if (match.slug) {
+          this.experienceSlug.set(match.slug);
+        }
+      }
+    }
     this.isAutomatic.set(disc.isAutomatic);
     this.minAmountArs.set(disc.minAmountArs || null);
     this.maxDiscountArs.set(disc.maxDiscountArs || null);
@@ -1688,18 +1999,14 @@ export class AdminDiscountEditorComponent implements OnInit {
     this.category.set(cat);
     this.formError.set(null);
 
-    // Auto sugerir textos si es nuevo y no se editaron
+    // Auto sugerir textos si es nuevo y no se editaron manualmente
     if (!this.isEditing()) {
       if (cat === 'group') {
-        this.applyGroupPreset(2, 1);
+        this.applyGroupPreset(this.groupTravelers() || 2, this.groupPayers() || 1);
       } else if (cat === 'percentage') {
-        this.code.set('DESCUENTO15');
-        this.name.set('15% OFF en Experiencias');
-        this.description.set('Aplica un 15% de descuento sobre el total de la reserva.');
+        this.setPercentValue(this.percentValue() || 15);
       } else {
-        this.code.set('PROMO10K');
-        this.name.set('$10.000 ARS OFF en tu Reserva');
-        this.description.set('Descuento directo de $10.000 ARS en el total.');
+        this.setFixedValue(this.fixedValue() || 10000);
       }
     }
   }
@@ -1710,11 +2017,21 @@ export class AdminDiscountEditorComponent implements OnInit {
 
     if (!this.isEditing()) {
       const codeKey = `${travelers}X${payers}`;
-      this.code.set(`PROMO${codeKey}`);
-      this.name.set(`Promoción ${codeKey} en Reservas`);
-      this.description.set(
-        `Viajan ${travelers} personas y abonan únicamente ${payers} cupo(s) (${this.calculatedGroupPercentage()}% OFF).`,
-      );
+      if (!this.isCodeEdited()) {
+        const c = `PROMO${codeKey}`;
+        this.code.set(c);
+        this.lastSuggestedCode = c;
+      }
+      if (!this.isNameEdited()) {
+        const n = `Promoción ${codeKey} en Reservas`;
+        this.name.set(n);
+        this.lastSuggestedName = n;
+      }
+      if (!this.isDescriptionEdited()) {
+        const d = `Viajan ${travelers} personas y abonan únicamente ${payers} cupo(s) (${this.calculatedGroupPercentage()}% OFF).`;
+        this.description.set(d);
+        this.lastSuggestedDescription = d;
+      }
     }
   }
 
@@ -1738,19 +2055,42 @@ export class AdminDiscountEditorComponent implements OnInit {
     if (!this.isEditing()) {
       const t = this.groupTravelers();
       const p = this.groupPayers();
-      this.code.set(`PROMO${t}X${p}`);
-      this.name.set(`Promoción ${t}x${p} en Reservas`);
-      this.description.set(
-        `Viajan ${t} personas y abonan únicamente ${p} cupo(s) (${this.calculatedGroupPercentage()}% OFF).`,
-      );
+      if (!this.isCodeEdited()) {
+        const c = `PROMO${t}X${p}`;
+        this.code.set(c);
+        this.lastSuggestedCode = c;
+      }
+      if (!this.isNameEdited()) {
+        const n = `Promoción ${t}x${p} en Reservas`;
+        this.name.set(n);
+        this.lastSuggestedName = n;
+      }
+      if (!this.isDescriptionEdited()) {
+        const d = `Viajan ${t} personas y abonan únicamente ${p} cupo(s) (${this.calculatedGroupPercentage()}% OFF).`;
+        this.description.set(d);
+        this.lastSuggestedDescription = d;
+      }
     }
   }
 
   setPercentValue(val: number): void {
     this.percentValue.set(val);
     if (!this.isEditing()) {
-      this.code.set(`DESCUENTO${val}`);
-      this.name.set(`${val}% OFF en Experiencias`);
+      if (!this.isCodeEdited()) {
+        const c = `DESCUENTO${val}`;
+        this.code.set(c);
+        this.lastSuggestedCode = c;
+      }
+      if (!this.isNameEdited()) {
+        const n = `${val}% OFF en Experiencias`;
+        this.name.set(n);
+        this.lastSuggestedName = n;
+      }
+      if (!this.isDescriptionEdited()) {
+        const d = `Aplica un ${val}% de descuento sobre el total de la reserva.`;
+        this.description.set(d);
+        this.lastSuggestedDescription = d;
+      }
     }
   }
 
@@ -1758,38 +2098,91 @@ export class AdminDiscountEditorComponent implements OnInit {
     this.fixedValue.set(val);
     if (!this.isEditing()) {
       const k = Math.round(val / 1000);
-      this.code.set(`PROMO${k}K`);
-      this.name.set(`\$${val.toLocaleString('es-AR')} ARS OFF`);
+      if (!this.isCodeEdited()) {
+        const c = `PROMO${k}K`;
+        this.code.set(c);
+        this.lastSuggestedCode = c;
+      }
+      if (!this.isNameEdited()) {
+        const n = `$${val.toLocaleString('es-AR')} ARS OFF en tu Reserva`;
+        this.name.set(n);
+        this.lastSuggestedName = n;
+      }
+      if (!this.isDescriptionEdited()) {
+        const d = `Descuento directo de $${val.toLocaleString('es-AR')} ARS en el total.`;
+        this.description.set(d);
+        this.lastSuggestedDescription = d;
+      }
     }
   }
 
   suggestCode(): void {
+    let suggested = '';
     if (this.category() === 'group') {
-      this.code.set(`PROMO${this.groupTravelers()}X${this.groupPayers()}`);
+      suggested = `PROMO${this.groupTravelers()}X${this.groupPayers()}`;
     } else if (this.category() === 'percentage') {
-      this.code.set(`DESCUENTO${this.percentValue() || 15}`);
+      suggested = `DESCUENTO${this.percentValue() || 15}`;
     } else {
       const k = Math.round((this.fixedValue() || 10000) / 1000);
-      this.code.set(`PROMO${k}K`);
+      suggested = `PROMO${k}K`;
     }
+    this.code.set(suggested);
+    this.lastSuggestedCode = suggested;
+    this.codeManuallyEdited.set(false);
   }
 
   onCodeChange(val: string): void {
+    this.codeManuallyEdited.set(true);
     if (val) {
       this.code.set(val.toUpperCase().replace(/\s+/g, ''));
+    } else {
+      this.code.set('');
     }
   }
 
+  onNameChange(val: string): void {
+    this.nameManuallyEdited.set(true);
+    this.name.set(val || '');
+  }
+
+  onDescriptionChange(val: string): void {
+    this.descriptionManuallyEdited.set(true);
+    this.description.set(val || '');
+  }
+
   onExperienceChange(expId: string): void {
+    this.experienceId.set(expId);
     const exp = this.experiences().find((e) => e.id === expId);
     if (exp) {
       this.experienceSlug.set(exp.slug || '');
+    } else if (!expId) {
+      this.experienceSlug.set('');
     }
   }
 
   getSelectedExperienceName(): string {
-    const exp = this.experiences().find((e) => e.id === this.experienceId());
-    return exp ? (exp.shortTitle || exp.title) : 'Salida seleccionada';
+    const exp = this.experiences().find(
+      (e) =>
+        (this.experienceId() && e.id === this.experienceId()) ||
+        (this.experienceSlug() && (e.slug || '').toLowerCase() === this.experienceSlug().toLowerCase()),
+    );
+    if (exp) {
+      return exp.shortTitle || exp.title;
+    }
+    if (this.experienceSlug()) {
+      return this.experienceSlug();
+    }
+    return 'Salida seleccionada';
+  }
+
+  getSelectedProviderName(): string {
+    const pId = this.providerId();
+    if (!pId) return 'Prestador específico';
+    const found = this.providers().find((p: any) => p.id === pId || p.slug === pId);
+    if (found) {
+      return found.agency || found.name || pId;
+    }
+    return `Prestador (${pId})`;
   }
 
   getVigenciaText(): string {
@@ -1797,6 +2190,30 @@ export class AdminDiscountEditorComponent implements OnInit {
     if (this.startsAt() && this.endsAt()) return `${this.startsAt()} al ${this.endsAt()}`;
     if (this.endsAt()) return `Hasta ${this.endsAt()}`;
     return `Desde ${this.startsAt()}`;
+  }
+
+  private ownsActiveRoute(): boolean {
+    if (this.isDestroyed) {
+      return false;
+    }
+
+    try {
+      let current: ActivatedRouteSnapshot | null = this.router.routerState.snapshot.root;
+      while (current) {
+        if (current === this.route.snapshot || current.component === AdminDiscountEditorComponent) {
+          return true;
+        }
+        current = current.firstChild;
+      }
+    } catch {
+      // Ignorar si routerState snapshot no está disponible
+    }
+
+    const rawPath = (this.router.url || '').split('?')[0].split('#')[0];
+    return (
+      rawPath.includes('/descuentos/nuevo') ||
+      (rawPath.includes('/descuentos/') && rawPath.endsWith('/editar'))
+    );
   }
 
   goBack(): void {
@@ -1808,6 +2225,9 @@ export class AdminDiscountEditorComponent implements OnInit {
   }
 
   async savePromotion(): Promise<void> {
+    if (this.isSaveDisabled()) {
+      return;
+    }
     this.formError.set(null);
 
     const cleanCode = (this.code() || '').trim().toUpperCase();
@@ -1846,8 +2266,34 @@ export class AdminDiscountEditorComponent implements OnInit {
       }
     }
 
-    if (this.scope() === 'experience' && !this.experienceId()) {
-      this.formError.set('Seleccioná la experiencia a la que aplica esta promoción.');
+    if (this.scope() === 'experience') {
+      // Si experienceId no está definido pero experienceSlug sí, intentar resolverlo al catálogo
+      if (!this.experienceId() && this.experienceSlug()) {
+        const matched = this.experiences().find(
+          (e) => (e.slug || '').toLowerCase() === this.experienceSlug().toLowerCase(),
+        );
+        if (matched) {
+          this.experienceId.set(matched.id);
+          if (matched.slug) {
+            this.experienceSlug.set(matched.slug);
+          }
+        }
+      }
+
+      // Debe existir al menos un target válido (catalog ID resuelto o slug preservado)
+      if (!this.experienceId() && !this.experienceSlug()) {
+        this.formError.set('Seleccioná la experiencia a la que aplica esta promoción.');
+        return;
+      }
+    }
+
+    if (this.scope() === 'provider' && !this.providerId()) {
+      this.formError.set('Seleccioná el prestador al que aplica esta promoción.');
+      return;
+    }
+
+    if (this.startsAt() && this.endsAt() && this.endsAt().trim() < this.startsAt().trim()) {
+      this.formError.set('La fecha de finalización no puede ser anterior a la fecha de inicio.');
       return;
     }
 
@@ -1860,8 +2306,9 @@ export class AdminDiscountEditorComponent implements OnInit {
         discountType,
         discountValue,
         scope: this.scope(),
-        experienceId: this.scope() === 'experience' ? this.experienceId() : null,
-        experienceSlug: this.scope() === 'experience' ? this.experienceSlug() : null,
+        experienceId: this.scope() === 'experience' ? (this.experienceId() || null) : null,
+        experienceSlug: this.scope() === 'experience' ? (this.experienceSlug() || null) : null,
+        providerId: this.scope() === 'provider' ? (this.providerId() || null) : null,
         isAutomatic: this.isAutomatic(),
         minAmountArs: Number(this.minAmountArs()) || 0,
         maxDiscountArs: this.maxDiscountArs() ? Number(this.maxDiscountArs()) : null,
@@ -1871,13 +2318,27 @@ export class AdminDiscountEditorComponent implements OnInit {
         active: this.active(),
       };
 
-      if (this.isEditing() && this.editingId()) {
-        await this.discountService.updateDiscount(this.editingId()!, payload);
-      } else {
-        await this.discountService.createDiscount(payload);
+      const saved =
+        this.isEditing() && this.editingId()
+          ? await this.discountService.updateDiscount(this.editingId()!, payload)
+          : await this.discountService.createDiscount(payload);
+
+      if (!saved) {
+        let serviceError: string | null = null;
+        if (typeof (this.discountService as any).error === 'function') {
+          serviceError = (this.discountService as any).error();
+        } else if (typeof (this.discountService as any).error === 'string') {
+          serviceError = (this.discountService as any).error;
+        }
+        this.formError.set(
+          serviceError || 'Error al guardar la promoción. Verificá los campos.',
+        );
+        return;
       }
 
-      this.goBack();
+      if (this.ownsActiveRoute()) {
+        this.goBack();
+      }
     } catch (err: any) {
       console.error('[DiscountEditor] Error guardando descuento:', err);
       this.formError.set(err?.message || 'Error al guardar la promoción. Verificá los campos.');
