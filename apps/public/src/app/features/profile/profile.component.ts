@@ -12,6 +12,7 @@ import {
   signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import {
@@ -23,6 +24,7 @@ import { PaymentReceipt } from '../../core/models/activity-history.model';
 import { ExperienceService } from '../../core/services/experience.service';
 import { FavoritesService } from '../../core/services/favorites.service';
 import { ProviderStoreService } from '../../core/services/provider-store.service';
+import { TestimoniosService } from '../../core/services/testimonios.service';
 import { Experience } from '../../core/models/experience.model';
 import { DEFAULT_CLUB_PROFILE, isClubExperience } from '../../core/models/club-profile.model';
 import { ModalType } from '../waitlist/waitlist.component';
@@ -44,6 +46,7 @@ export interface CarouselExperienceItem {
   standalone: true,
   imports: [
     CommonModule,
+    FormsModule,
     RouterLink,
     MatIconModule,
     FooterComponent,
@@ -64,6 +67,12 @@ export class ProfileComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly favoritesService = inject(FavoritesService);
   readonly router = inject(Router);
   private readonly providerStore = inject(ProviderStoreService, { optional: true });
+  readonly testimoniosService = inject(TestimoniosService);
+
+  readonly testimonialText = signal<string>('');
+  readonly testimonialSaving = signal<boolean>(false);
+  readonly testimonialSuccess = signal<boolean>(false);
+  readonly testimonialError = signal<string | null>(null);
 
   readonly favoriteExperiences = this.favoritesService.favoriteExperiences;
 
@@ -112,6 +121,13 @@ export class ProfileComponent implements OnInit, AfterViewInit, OnDestroy {
         this.scheduleCarouselInit();
       }
       wasEmpty = count === 0;
+    });
+
+    effect(() => {
+      const my = this.testimoniosService.myTestimonio();
+      if (my && !this.testimonialText()) {
+        this.testimonialText.set(my.content);
+      }
     });
   }
 
@@ -234,6 +250,7 @@ export class ProfileComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit(): void {
     void this.loadAuthenticatedEmail();
+    void this.loadTestimonioForUser();
     if (!this.newsletter.currentMember()) {
       this.newsletter.isAuthenticated().then((authed) => {
         if (!authed) {
@@ -251,9 +268,9 @@ export class ProfileComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     this.route.fragment.subscribe((frag) => {
-      if (frag === 'favoritos') {
+      if (frag === 'favoritos' || frag === 'testimonio') {
         setTimeout(() => {
-          const el = document.getElementById('favoritos');
+          const el = document.getElementById(frag);
           if (el) {
             el.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }
@@ -492,6 +509,43 @@ export class ProfileComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     if (m.experiencesOther && !this.memberOtherExperience()) {
       this.memberOtherExperience.set(m.experiencesOther);
+    }
+  }
+
+  onTestimonialInput(val: string): void {
+    this.testimonialText.set(val);
+    if (this.testimonialError()) {
+      this.testimonialError.set(null);
+    }
+  }
+
+  async onSaveTestimonial(): Promise<void> {
+    const text = this.testimonialText().trim();
+    if (text.length < 10) {
+      this.testimonialError.set('El testimonio debe contener al menos 10 caracteres.');
+      return;
+    }
+    this.testimonialSaving.set(true);
+    this.testimonialError.set(null);
+    this.testimonialSuccess.set(false);
+    const res = await this.testimoniosService.submitTestimonio(text);
+    this.testimonialSaving.set(false);
+    if (res.success) {
+      this.testimonialSuccess.set(true);
+      setTimeout(() => this.testimonialSuccess.set(false), 5000);
+    } else {
+      this.testimonialError.set(res.error || 'Ocurrió un error al guardar tu testimonio.');
+    }
+  }
+
+  private async loadTestimonioForUser(): Promise<void> {
+    const member = this.newsletter.currentMember();
+    const email = member?.email || (await this.newsletter.getAuthenticatedEmail());
+    if (email) {
+      const t = await this.testimoniosService.loadMyTestimonioFor(email);
+      if (t && !this.testimonialText()) {
+        this.testimonialText.set(t.content);
+      }
     }
   }
 

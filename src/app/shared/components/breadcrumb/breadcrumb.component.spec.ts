@@ -19,8 +19,8 @@ describe('BreadcrumbComponent', () => {
   it('should render breadcrumb with #FFCC00 yellow background and proper links', () => {
     fixture.componentRef.setInput('items', [
       { label: 'Inicio', url: '/' },
-      { label: 'Niveles de Socio', url: '/socios' },
-      { label: 'Socios Plenos' },
+      { label: 'Socios', url: '/socios' },
+      { label: 'Nivel 2: Plenos' },
     ]);
     fixture.detectChanges();
 
@@ -34,7 +34,7 @@ describe('BreadcrumbComponent', () => {
     const currentElements = fixture.nativeElement.querySelectorAll('.bc-current');
     expect(currentElements.length).toBe(2);
     expect(currentElements[0].textContent).toContain('Inicio');
-    expect(currentElements[1].textContent).toContain('Socios Plenos');
+    expect(currentElements[1].textContent).toContain('Nivel 2: Plenos');
   });
 
   it('should not render a home icon in the breadcrumb', () => {

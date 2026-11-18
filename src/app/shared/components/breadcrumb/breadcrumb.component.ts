@@ -233,7 +233,7 @@ export class BreadcrumbComponent implements OnInit {
         kicker: 'Explorar',
         steps: [
           { label: 'Experiencias & Expediciones', url: '/experiencias' },
-          { label: 'Membresías & Niveles de Socio', url: '/socios' },
+          { label: 'Socios', url: '/socios' },
           { label: 'Mi Perfil de Socio', url: '/perfil' },
           { label: 'Volver al inicio', url: '/' },
         ],
@@ -281,24 +281,28 @@ export class BreadcrumbComponent implements OnInit {
       return {
         kicker: 'Membresías',
         steps: [
-          { label: 'Socios Fundadores', url: '/socios/fundadores' },
-          { label: 'Socios Plenos Mensuales', url: '/socios/plenos' },
+          { label: 'Nivel 3: Fundadores', url: '/socios/fundadores' },
+          { label: 'Nivel 2: Plenos', url: '/socios/plenos' },
+          { label: 'Nivel 1: Emergentes', url: '/socios/emergentes' },
           { label: 'Volver atrás', url: '/' },
         ],
       };
     }
 
-    // 6. SOCIO FUNDADOR O PLENO
+    // 6. SOCIO FUNDADOR O PLENO O EMERGENTE
     if (
       labelNorm.includes('fundador') ||
       labelNorm.includes('activo') ||
-      labelNorm.includes('emergente')
+      labelNorm.includes('pleno') ||
+      labelNorm.includes('emergente') ||
+      labelNorm.includes('nivel')
     ) {
       return {
-        kicker: 'Niveles de Socio',
+        kicker: 'Socios',
         steps: [
-          { label: 'Socios Fundadores', url: '/socios/fundadores' },
-          { label: 'Socios Plenos Mensuales', url: '/socios/plenos' },
+          { label: 'Nivel 3: Fundadores', url: '/socios/fundadores' },
+          { label: 'Nivel 2: Plenos', url: '/socios/plenos' },
+          { label: 'Nivel 1: Emergentes', url: '/socios/emergentes' },
           { label: 'Volver atrás', url: '/' },
         ],
       };
@@ -314,7 +318,7 @@ export class BreadcrumbComponent implements OnInit {
         kicker: 'Socio',
         steps: [
           { label: 'Mis Actividades & Reservas', url: '/perfil/actividades' },
-          { label: 'Membresías & Niveles de Socio', url: '/socios' },
+          { label: 'Socios', url: '/socios' },
           { label: 'Volver atrás', url: '/' },
         ],
       };
@@ -325,7 +329,7 @@ export class BreadcrumbComponent implements OnInit {
       kicker: 'Explorar',
       steps: [
         { label: 'Experiencias & Expediciones', url: '/experiencias' },
-        { label: 'Membresías & Niveles de Socio', url: '/socios' },
+        { label: 'Socios', url: '/socios' },
         { label: 'Mi Perfil de Socio', url: '/perfil' },
         { label: 'Volver atrás', url: '/' },
       ],

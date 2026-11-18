@@ -12,169 +12,197 @@
     <!-- Contenido Principal de /socios -->
     <main class="members-main-content">
       <div class="members-wrapper">
-        <!-- ═══════════════ CARD 1: HERO / INTRODUCCIÓN ═══════════════ -->
-        <div class="member-section-card hero-member-card">
-          <div class="section-card-header">
-            <span class="section-kicker">PLAN DE MEMBRESÍAS Y EVOLUCIÓN</span>
-            <h1 class="section-main-title">Niveles de Socio del Club</h1>
-          </div>
-
-          <p class="section-lead-text">
-            Diseñado para exploradores comprometidos con la naturaleza, el patrimonio andino y las
-            travesías irrepetibles. Evolucioná en la comunidad para acceder a preventas exclusivas,
-            tarifas bonificadas y expediciones privadas.
-          </p>
-        </div>
-
-        <!-- ═══════════════ CARD 2: GRILLA DE LOS 3 NIVELES ═══════════════ -->
-        <div class="member-section-card">
-          <div class="card-inner-header">
-            <span class="section-kicker">CURADURÍA DE ACCESO</span>
-            <h2 class="card-heading">Elegí tu Grado de Participación</h2>
-            <p class="card-subheading">
-              Desde el registro sin cargo hasta la membresía vitalicia perpetua evaluada por el
-              Comité Directivo.
-            </p>
-          </div>
-
-          <div class="tiers-grid">
-            <!-- 1. Socio Emergente -->
-            <div class="tier-card" [class.user-current-tier]="newsletter.isSubscribed()">
-              <div class="tier-card-header">
-                @if (newsletter.isSubscribed()) {
-                <span class="tier-level-badge current">NIVEL 1: ACTUAL</span>
-                } @else {
-                <span class="tier-level-badge initial">NIVEL 1: PUNTO DE PARTIDA</span>
-                }
-                <h4 class="tier-name">Socio Emergente</h4>
-                <div class="tier-price-wrap">
-                  <span class="tier-price tier-price-free" style="color: #ffffff !important">$0</span>
-                  <span class="tier-period">Sin costo de ingreso</span>
-                </div>
-              </div>
-
-              <div class="tier-jump-card">
-                <span class="jump-tag">CÓMO ACCEDER</span>
-                <p>Creando tu perfil al vincular tu cuenta de Google.</p>
-              </div>
-
-              <ul class="tier-benefits">
-                <li>Enterarse de las nuevas experiencias y descuentos antes que nadie</li>
-                <li>Cupo asegurado prioritario en fechas de alta demanda</li>
-              </ul>
-
-              <div class="tier-card-footer">
-                @if (newsletter.isSubscribed()) {
-                <a routerLink="/perfil" class="tier-cta-btn current-achieved" title="Ir a tu perfil de socio">
-                  <span class="cta-title-row">
-                    <span>Ir a Mi Perfil</span>
-                    <mat-icon class="btn-icon">arrow_forward</mat-icon>
-                  </span>
-                  <span class="cta-sub-text" style="font-weight: 400 !important;">Socio registrado en la
-                    plataforma</span>
-                </a>
-                } @else {
-                <a routerLink="/socios/emergentes" class="tier-cta-btn default-action">
-                  <span class="cta-title-row">
-                    <span>Unirme Gratis</span>
-                    <mat-icon class="btn-icon">arrow_forward</mat-icon>
-                  </span>
-                  <span class="cta-sub-text" style="font-weight: 400 !important;">Socio registrado en la
-                    plataforma</span>
-                </a>
-                }
-              </div>
+        <!-- ═══════════════ TESTIMONIOS DE SOCIOS DEL CLUB ═══════════════ -->
+        <section class="member-section-card testimonials-showcase-card">
+          <!-- Encabezado General de Testimonios con Flechas de Navegación -->
+          <div class="testimonials-header-flex">
+            <div class="testimonials-header-text">
+              <span class="section-kicker">VOCES DE NUESTRA COMUNIDAD</span>
+              <h2 class="section-main-title">Experiencias en Primera Persona</h2>
+              <p class="section-lead-text">
+                La voz de los socios que recorren y viven Catamarca junto a los prestadores del Club.
+              </p>
             </div>
 
-            <!-- 2. Socio Pleno -->
-            <div class="tier-card featured-tier" [class.tier-card-locked]="!newsletter.isMonthlyActive()">
-              <div class="tier-featured-glow"></div>
-              <div class="tier-card-header">
-                @if (newsletter.isMonthlyActive()) {
-                <span class="tier-level-badge current">NIVEL 2: ACTUAL</span>
-                } @else {
-                <span class="tier-level-badge locked-badge">NIVEL 2: PRÓXIMAMENTE</span>
-                }
-                <h4 class="tier-name">Socio Pleno</h4>
-                <div class="tier-price-wrap">
-                  <span class="tier-price">$23.000</span>
-                  <span class="tier-period">ARS / mes</span>
-                </div>
-              </div>
+            @if (featuredTestimonios().length > 1) {
+            <div class="carousel-nav-arrows">
+              <button type="button" class="carousel-nav-btn" (click)="onUserNav('prev')"
+                aria-label="Testimonio anterior" title="Testimonio anterior">
+                <mat-icon>chevron_left</mat-icon>
+              </button>
+              <button type="button" class="carousel-nav-btn" (click)="onUserNav('next')"
+                aria-label="Testimonio siguiente" title="Testimonio siguiente">
+                <mat-icon>chevron_right</mat-icon>
+              </button>
+            </div>
+            }
+          </div>
 
-              <div class="tier-jump-card">
-                <span class="jump-tag">CÓMO ACCEDER</span>
-                <p>
-                  Suscripción mensual. <strong>Habilitada por el momento para personas
-                    elegidas por el Club</strong> con invitación.
+          <!-- Sección: Testimonios Destacados en Carrusel o Card de Compartir Testimonio -->
+          @if (featuredTestimonios().length > 0) {
+          <div class="featured-carousel-wrap" (mouseenter)="onCarouselMouseEnter()"
+            (mouseleave)="onCarouselMouseLeave()" (touchstart)="onCarouselMouseEnter()"
+            (touchend)="onCarouselMouseLeave()">
+            <div class="featured-carousel-track" #carouselRef (scroll)="onCarouselScroll()">
+              @for (item of infiniteFeaturedTestimonios(); track item.key) {
+              @let t = item.testimonio;
+              <article class="testimonial-card featured-testimonial carousel-item"
+                [class.founder]="t.membershipTier === 'fundador'" [class.pleno]="t.membershipTier === 'activo'">
+                <div class="testimonial-quote-icon">
+                  <mat-icon>format_quote</mat-icon>
+                </div>
+
+                <p class="testimonial-content">“{{ t.content }}”</p>
+
+                <div class="testimonial-footer">
+                  <div class="author-meta">
+                    <div class="author-name-row">
+                      <span class="author-name">{{ t.authorDisplay }}</span>
+                      <span class="member-tier-pill" [class.founder-pill]="t.membershipTier === 'fundador'"
+                        [class.pleno-pill]="t.membershipTier === 'activo'"
+                        [class.emergente-pill]="t.membershipTier === 'emergente'">
+                        {{ formatSimpleTier(t.membershipTier) }}
+                      </span>
+                    </div>
+                    <span class="author-since">{{ formatMemberSubtitle(t) }}</span>
+                  </div>
+                </div>
+              </article>
+              }
+
+              <!-- Card Clickeable: Compartí tu propio testimonio dentro del carrusel -->
+              <article class="testimonial-card add-testimonial-card carousel-item" (click)="onAddTestimonialClick()" role="button"
+                tabindex="0" (keydown.enter)="onAddTestimonialClick()" (keydown.space)="onAddTestimonialClick()"
+                title="Compartí tu testimonio en el Club">
+                <div class="add-testimonial-body">
+                  <h3 class="add-testimonial-title">¿Sos socio del Club?</h3>
+                  <p class="add-testimonial-desc">
+                    Compartí tu vivencia e inspirá a la comunidad.
+                  </p>
+                </div>
+
+                <div class="add-testimonial-footer">
+                  <span class="add-testimonial-cta-btn">Compartir testimonio</span>
+                </div>
+              </article>
+            </div>
+          </div>
+          } @else {
+          <!-- Sin testimonios destacados: card para compartir testimonio en la box superior -->
+          <div class="showcase-add-wrap">
+            <article class="testimonial-card add-testimonial-card showcase-add-card" (click)="onAddTestimonialClick()" role="button"
+              tabindex="0" (keydown.enter)="onAddTestimonialClick()" (keydown.space)="onAddTestimonialClick()"
+              title="Compartí tu testimonio en el Club">
+              <div class="add-testimonial-body">
+                <h3 class="add-testimonial-title">¿Sos socio del Club?</h3>
+                <p class="add-testimonial-desc">
+                  Compartí tu vivencia e inspirá a la comunidad.
                 </p>
               </div>
 
-              <ul class="tier-benefits">
-                <li>Todos los beneficios de Socio Emergente</li>
-                <li><strong>10% OFF directo</strong> en todas las expediciones y salidas</li>
-                <li>Asistencia personalizada de viaje con guías locales</li>
-              </ul>
-
-              <div class="tier-card-footer">
-                @if (newsletter.isMonthlyActive()) {
-                <a routerLink="/socios/plenos" class="tier-cta-btn current-achieved">
-                  <span class="cta-title-row">
-                    <mat-icon class="btn-icon">check</mat-icon>
-                    <span>Membresía Activa</span>
-                  </span>
-                  <span class="cta-sub-text">Gestionar suscripción</span>
-                </a>
-                } @else {
-                <a routerLink="/socios/plenos" class="tier-cta-btn default-action">
-                  <span class="cta-title-row">
-                    <span>Unirme como Socio Pleno</span>
-                    <mat-icon class="btn-icon">arrow_forward</mat-icon>
-                  </span>
-                  <span class="cta-sub-text">Primer mes bonificado con código</span>
-                </a>
-                }
+              <div class="add-testimonial-footer">
+                <span class="add-testimonial-cta-btn">Compartir testimonio</span>
               </div>
-            </div>
+            </article>
+          </div>
+          }
+        </section>
 
-            <!-- 3. Socio Fundador Vitalicio -->
-            <div class="tier-card founder-tier">
-              <div class="tier-card-header">
-                <span class="tier-level-badge founder-badge">NIVEL 3: VITALICIO</span>
-                <h4 class="tier-name">Socio Fundador</h4>
-                <div class="tier-price-wrap">
-                  <span class="tier-price">Vitalicio</span>
-                  <span class="tier-period">Aporte único</span>
+        <!-- ═══════════════ CALLOUT CONVOCATORIA DE SOCIOS 1 ═══════════════ -->
+        <section class="member-section-card join-member-card">
+          <div class="join-card-content">
+            <div class="join-text-wrap">
+              <span class="section-kicker">CONVOCATORIA ABIERTA</span>
+              <h3 class="join-title">¿Querés ser socio del Club de Experiencias?</h3>
+              <p class="join-description">
+                Sumate a nuestra comunidad de socios. Accedé a cupos prioritarios de los mejores prestadores de
+                Catamarca
+                y disfrutá los beneficios exclusivos de EXPERIENCIAS.CLUB.
+              </p>
+            </div>
+            <a routerLink="/socios/emergentes" class="join-cta-btn">
+              <span>HACETE SOCIO</span>
+            </a>
+          </div>
+        </section>
+
+        <!-- ═══════════════ FOTO DESTACADA DE LA COMUNIDAD ═══════════════ -->
+        <section class="member-section-card members-photo-box-card">
+          <div class="members-photo-frame">
+            <img src="/assets/images/fotos-33.jpg" alt="Vivencias del Club en Catamarca - Kayak en Dique El Jumeal"
+              class="members-photo-banner-img" loading="lazy" />
+          </div>
+        </section>
+
+        <!-- ═══════════════ CARD: TODAS LAS VOCES / MURO DE TESTIMONIOS ═══════════════ -->
+        <section class="member-section-card community-testimonials-card">
+          <div class="section-card-header">
+            <span class="section-kicker">TODAS LAS VOCES</span>
+            <h2 class="section-main-title">Muro de Testimonios del Club</h2>
+            <p class="section-lead-text">
+              Relatos y vivencias reales compartidos por los socios de nuestra comunidad.
+            </p>
+          </div>
+
+          <div class="community-testimonials-grid" [class.is-empty]="communityTestimonios().length === 0">
+            @for (t of communityTestimonios(); track t.id) {
+            <article class="testimonial-card community-testimonial"
+              [class.founder-border]="t.membershipTier === 'fundador'"
+              [class.pleno-border]="t.membershipTier === 'activo'"
+              [class.emergente-border]="t.membershipTier === 'emergente'">
+              <div class="testimonial-card-header">
+                <div class="author-meta">
+                  <div class="author-name-row">
+                    <span class="author-name">{{ t.authorDisplay }}</span>
+                    <span class="member-tier-pill" [class.founder-pill]="t.membershipTier === 'fundador'"
+                      [class.pleno-pill]="t.membershipTier === 'activo'"
+                      [class.emergente-pill]="t.membershipTier === 'emergente'">
+                      {{ formatSimpleTier(t.membershipTier) }}
+                    </span>
+                  </div>
+                  <span class="author-since">{{ formatMemberSubtitle(t) }}</span>
                 </div>
               </div>
 
-              <div class="tier-jump-card founder-jump">
-                <span class="jump-tag">CÓMO ACCEDER</span>
-                <p>Aporte patrimonial único evaluado por el Comité del Club.</p>
+              <p class="testimonial-content">“{{ t.content }}”</p>
+            </article>
+            }
+
+            <!-- Card Clickeable: Compartí tu propio testimonio -->
+            <article class="testimonial-card add-testimonial-card" (click)="onAddTestimonialClick()" role="button"
+              tabindex="0" (keydown.enter)="onAddTestimonialClick()" (keydown.space)="onAddTestimonialClick()"
+              title="Compartí tu testimonio en el Club">
+              <div class="add-testimonial-body">
+                <h3 class="add-testimonial-title">¿Sos socio del Club?</h3>
+                <p class="add-testimonial-desc">
+                  Compartí tu vivencia e inspirá a la comunidad.
+                </p>
               </div>
 
-              <ul class="tier-benefits">
-                <li>Todos los beneficios de Socio Emergente y Socio Pleno</li>
-                <li>
-                  <strong>20% OFF permanente</strong> en todas las expediciones para titular y
-                  acompañante
-                </li>
-                <li>Participación formal en el Consejo Consultivo del Club</li>
-                <li>Acceso prioritario a experiencias privadas de lujo del Club</li>
-              </ul>
-
-              <div class="tier-card-footer">
-                <a routerLink="/socios/fundadores" class="tier-cta-btn founder-cta">
-                  <span class="cta-title-row">
-                    <span>Postularme como Fundador</span>
-                    <mat-icon class="btn-icon">arrow_forward</mat-icon>
-                  </span>
-                  <span class="cta-sub-text" style="font-weight: 400 !important;">Carta de admisión confidencial</span>
-                </a>
+              <div class="add-testimonial-footer">
+                <span class="add-testimonial-cta-btn">Compartir testimonio</span>
               </div>
-            </div>
+            </article>
           </div>
-        </div>
+        </section>
+
+        <!-- ═══════════════ CALLOUT CONVOCATORIA DE SOCIOS 2 ═══════════════ -->
+        <section class="member-section-card join-member-card">
+          <div class="join-card-content">
+            <div class="join-text-wrap">
+              <span class="section-kicker">CONVOCATORIA ABIERTA</span>
+              <h3 class="join-title">¿Querés ser socio del Club de Experiencias?</h3>
+              <p class="join-description">
+                Sumate a nuestra comunidad de socios. Accedé a cupos prioritarios de los mejores prestadores de
+                Catamarca
+                y disfrutá los beneficios exclusivos de EXPERIENCIAS.CLUB.
+              </p>
+            </div>
+            <a routerLink="/socios/emergentes" class="join-cta-btn">
+              <span>HACETE SOCIO</span>
+            </a>
+          </div>
+        </section>
 
         <app-kayak-ad />
       </div>

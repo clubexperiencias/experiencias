@@ -47,7 +47,7 @@ describe('FoundersComponent (/fundadores)', () => {
     expect(successCard.textContent).toContain('¡Carta de Admisión en Evaluación!');
   });
 
-  it('should render breadcrumb with links to / and /socios and active Socios Fundadores', () => {
+  it('should render breadcrumb with links to / and /socios and active Nivel 3: Fundadores', () => {
     const breadcrumb = fixture.nativeElement.querySelector('.breadcrumb-bar');
     expect(breadcrumb).toBeTruthy();
 
@@ -58,7 +58,7 @@ describe('FoundersComponent (/fundadores)', () => {
 
     const current = breadcrumb.querySelector('.bc-current');
     expect(current).toBeTruthy();
-    expect(current.textContent).toContain('Socios Fundadores');
+    expect(current.textContent).toContain('Nivel 3: Fundadores');
   });
 
   it('should display the founder hero media image', () => {

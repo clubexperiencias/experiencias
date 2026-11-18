@@ -1,4 +1,6 @@
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
+import { NavigationStart, Router } from '@angular/router';
+import { filter } from 'rxjs';
 import { ExperienceService } from './experience.service';
 import { NewsletterService } from './newsletter.service';
 import { Experience } from '../models/experience.model';
@@ -12,6 +14,8 @@ export interface FavoriteToastInfo {
   slug: string;
   requireAuth?: boolean;
   action?: 'added' | 'removed';
+  heading?: string;
+  message?: string;
 }
 
 @Injectable({
@@ -21,6 +25,7 @@ export class FavoritesService {
   private readonly experienceService = inject(ExperienceService);
   private readonly newsletter = inject(NewsletterService);
   private readonly supabase = inject(SUPABASE_CLIENT, { optional: true });
+  private readonly router = inject(Router, { optional: true });
 
   private activeMemberIdentity: string | null = (() => {
     const member = this.newsletter.currentMember();
@@ -84,6 +89,30 @@ export class FavoritesService {
         }
       }
     });
+
+    // Cerrar la notificación al cambiar de ruta
+    if (this.router) {
+      this.router.events
+        .pipe(filter((event): event is NavigationStart => event instanceof NavigationStart))
+        .subscribe(() => {
+          this.dismissToast();
+        });
+    }
+
+    // Cerrar la notificación al cambiar de tab o minimizar el navegador
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+          this.dismissToast();
+        }
+      });
+    }
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('blur', () => {
+        this.dismissToast();
+      });
+    }
   }
 
   private getFavoritesStorageKey(identity?: string | null): string | null {

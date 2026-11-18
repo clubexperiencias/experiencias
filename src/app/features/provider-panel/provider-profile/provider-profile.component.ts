@@ -1179,9 +1179,9 @@ import {
         justify-content: space-between;
         gap: 1.25rem;
         padding: 0.95rem 1.35rem;
-        background: rgba(15, 23, 42, 0.94);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
+        background: rgba(15, 23, 42, 0.45) !important;
+        backdrop-filter: blur(8px) saturate(130%);
+        -webkit-backdrop-filter: blur(8px) saturate(130%);
         border: 1px solid rgba(16, 185, 129, 0.45);
         border-radius: 8px;
         box-shadow: 0 12px 35px rgba(0, 0, 0, 0.5), 0 0 20px rgba(16, 185, 129, 0.2);

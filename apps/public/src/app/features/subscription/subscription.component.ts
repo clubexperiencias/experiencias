@@ -13,6 +13,7 @@ import {
   BreadcrumbItem,
 } from '../../shared/components/breadcrumb/breadcrumb.component';
 import { FounderAdComponent } from '../../shared/components/founder-ad/founder-ad.component';
+import { MemberTiersComponent } from '../../shared/components/member-tiers/member-tiers.component';
 import { ArsPipe } from '../../shared/pipes/format.pipes';
 
 export type ManageModalType = 'change_payment' | 'pause_confirm' | 'cancel_confirm' | null;
@@ -29,6 +30,7 @@ export type ManageModalType = 'change_payment' | 'pause_confirm' | 'cancel_confi
     HeaderComponent,
     BreadcrumbComponent,
     FounderAdComponent,
+    MemberTiersComponent,
     ArsPipe,
   ],
   templateUrl: './subscription.component.html',
@@ -42,8 +44,8 @@ export class SubscriptionComponent implements OnInit {
 
   readonly breadcrumbs: BreadcrumbItem[] = [
     { label: 'Inicio', url: '/' },
-    { label: 'Niveles de Socio', url: '/socios' },
-    { label: 'Socios Plenos' },
+    { label: 'Socios', url: '/socios' },
+    { label: 'Nivel 2: Plenos' },
   ];
 
   // Menús de navegación

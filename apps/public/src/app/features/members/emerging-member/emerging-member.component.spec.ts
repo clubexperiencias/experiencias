@@ -28,7 +28,7 @@ describe('EmergingMemberComponent (/socios/emergentes)', () => {
     expect(benefitCards.length).toBe(4);
   });
 
-  it('should render breadcrumb with links to / and /socios and active Socios Emergentes', () => {
+  it('should render breadcrumb with links to / and /socios and active Nivel 1: Emergentes', () => {
     const breadcrumb = fixture.nativeElement.querySelector('.breadcrumb-bar');
     expect(breadcrumb).toBeTruthy();
 
@@ -41,7 +41,7 @@ describe('EmergingMemberComponent (/socios/emergentes)', () => {
 
     const current = breadcrumb.querySelector('.bc-current');
     expect(current).toBeTruthy();
-    expect(current.textContent).toContain('Socios Emergentes');
+    expect(current.textContent).toContain('Nivel 1: Emergentes');
   });
 
   it('should display ad banner linking to /experiencias/kayak', () => {

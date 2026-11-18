@@ -18,7 +18,7 @@ describe('SubscriptionComponent (/socios/plenos)', () => {
     fixture.detectChanges();
   });
 
-  it('should render breadcrumb with links to / and /socios and active Socios Plenos', () => {
+  it('should render breadcrumb with links to / and /socios and active Nivel 2: Plenos', () => {
     const breadcrumb = fixture.nativeElement.querySelector('.breadcrumb-bar');
     expect(breadcrumb).toBeTruthy();
 
@@ -29,7 +29,7 @@ describe('SubscriptionComponent (/socios/plenos)', () => {
 
     const current = breadcrumb.querySelector('.bc-current');
     expect(current).toBeTruthy();
-    expect(current.textContent).toContain('Socios Plenos');
+    expect(current.textContent).toContain('Nivel 2: Plenos');
   });
 
   it('should create the component and display activation title when not active', () => {
