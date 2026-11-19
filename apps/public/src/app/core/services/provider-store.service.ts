@@ -1844,19 +1844,58 @@ export class ProviderStoreService {
       this.expService.getExperienceById(id) || this.expService.getExperienceBySlug(updated.slug);
     if (expMatch) {
       try {
+        const mappedStatus =
+          updates.status === 'publicada' ||
+          updates.status === 'oculta' ||
+          updates.status === 'borrador'
+            ? updates.status
+            : updates.status === 'pendiente_publicacion'
+              ? 'pendiente'
+              : undefined;
         await this.expService.updateExperience({
           id: expMatch.id,
           title: updated.title,
           tagline: updated.tagline,
           description: updated.description,
+          category: updated.category,
           region: updated.region,
           meetingPoint: updated.meetingPoint,
           difficulty: updated.difficulty,
           durationLabel: updated.durationLabel,
+          altitudeMeters: updated.altitudeMeters,
           priceArs: updated.priceArs,
           maxSpotsPerGroup: updated.capacityPerDate,
           dates: updated.dates,
           coverImage: updated.coverImage,
+          ...(mappedStatus ? { status: mappedStatus } : {}),
+        });
+      } catch (err) {
+        this._experiences.set(snapshot);
+        this.saveExperiences();
+        throw err;
+      }
+    }
+    return updated;
+  }
+
+  async toggleExperiencePause(id: string): Promise<ProviderExperience> {
+    const exp = this.getExperienceById(id) || this.getExperienceBySlug(id);
+    if (!exp) {
+      throw new Error('Experiencia no encontrada.');
+    }
+    const nextStatus: 'publicada' | 'oculta' = exp.status === 'oculta' ? 'publicada' : 'oculta';
+    const snapshot = this._experiences();
+    const updated = this.updateExperience(exp.id, {
+      status: nextStatus,
+      moderation: undefined,
+    });
+    const expMatch =
+      this.expService.getExperienceById(exp.id) || this.expService.getExperienceBySlug(updated.slug);
+    if (expMatch) {
+      try {
+        await this.expService.updateExperience({
+          id: expMatch.id,
+          status: nextStatus,
         });
       } catch (err) {
         this._experiences.set(snapshot);

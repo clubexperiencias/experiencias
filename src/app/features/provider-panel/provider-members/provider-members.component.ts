@@ -6,6 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { ProviderStoreService } from '../../../core/services/provider-store.service';
 import { TransferSubmission } from '../../../core/models/bank-transfer.model';
 import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
+import { buildGoogleCalendarUrl } from '../../../shared/utils/google-calendar.util';
 
 @Component({
   selector: 'app-provider-members',
@@ -380,6 +381,17 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                   <dd>{{ sub.submittedAt | fecha: 'hora' }}</dd>
                 </div>
               </dl>
+
+              <a
+                [href]="getReceiptGoogleCalendarUrl(sub)"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="pay-secondary-btn rc-gcal-btn"
+                title="Agendar esta salida y reserva en tu Google Calendar"
+              >
+                <mat-icon aria-hidden="true" style="font-size: 16px; width: 16px; height: 16px;">event</mat-icon>
+                <span>Agregar a Google Calendar</span>
+              </a>
 
               @if (sub.status === 'pendiente') {
                 @if (rejecting()) {
@@ -1230,6 +1242,16 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         outline: none;
         border-color: #80b3ff;
       }
+      .rc-gcal-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.45rem;
+        width: 100%;
+        box-sizing: border-box;
+        text-decoration: none;
+        margin-bottom: 0.75rem;
+      }
       .rc-actions {
         display: flex;
         gap: 0.75rem;
@@ -1648,5 +1670,27 @@ export class ProviderMembersComponent {
       this.copied.set(true);
       setTimeout(() => this.copied.set(false), 2500);
     }
+  }
+
+  getReceiptGoogleCalendarUrl(sub: TransferSubmission): string {
+    const exp = this.store.getExperienceById(sub.experienceId);
+    const location = [exp?.meetingPoint, exp?.region].filter(Boolean).join(', ') || 'Catamarca, Argentina';
+    const cuposLabel = sub.participants === 1 ? '1 persona' : `${sub.participants} personas`;
+    const details = [
+      `Reserva de socio en Experiencias Club`,
+      `Socio: ${sub.fullName} (DNI: ${sub.dni})`,
+      `Cupos: ${cuposLabel}`,
+      `Teléfono: ${sub.phone}`,
+      `Email: ${sub.email}`,
+      `Comprobante: ${sub.reference}`,
+      `Monto: $${(sub.amountArs || 0).toLocaleString('es-AR')} ARS`,
+    ].join('\n');
+
+    return buildGoogleCalendarUrl({
+      title: `${sub.experienceTitle} · ${sub.fullName} (${cuposLabel})`,
+      date: sub.date,
+      location,
+      details,
+    });
   }
 }

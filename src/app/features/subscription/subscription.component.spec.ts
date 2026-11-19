@@ -36,7 +36,7 @@ describe('SubscriptionComponent (/socios/plenos)', () => {
     expect(component).toBeTruthy();
     const heading = fixture.nativeElement.querySelector('.section-main-title');
     expect(heading).toBeTruthy();
-    expect(heading.textContent).toContain('Activar Suscripción Mensual');
+    expect(heading.textContent).toContain('Membresía Socio Pleno');
   });
 
   it('should have Inicio button as the first item in the header nav', () => {
@@ -48,15 +48,33 @@ describe('SubscriptionComponent (/socios/plenos)', () => {
   });
 
   it('should activate monthly subscription and show management view', async () => {
-    component.subscriberEmail.set('activo@experiencias.club');
-    component.subscriberName.set('Constanza Gómez');
-    component.setPaymentMethod('mercadopago');
-
-    await component.submitSubscription();
+    await component.newsletter.activateSocioPleno({
+      email: 'activo@experiencias.club',
+      fullName: 'Constanza Gómez',
+      dni: '30123456',
+      phone: '+5493834123456',
+    });
     fixture.detectChanges();
 
     expect(component.newsletter.isMonthlyActive()).toBe(true);
     expect(fixture.nativeElement.textContent).toContain('Gestión de Membresía Mensual');
+  });
+
+  it('should not require Google login if user already has an active member session', () => {
+    vi.spyOn(component.newsletter, 'isSubscribed').mockReturnValue(true);
+    vi.spyOn(component.newsletter, 'currentMember').mockReturnValue({
+      id: 'socio-100',
+      fullName: 'Gonza Gramaglia',
+      email: 'gonzagramaglia@gmail.com',
+      membershipTier: 'emergente',
+      position: 100,
+    } as any);
+
+    fixture.detectChanges();
+
+    expect(component.requiresGoogle()).toBe(false);
+    const googleGate = fixture.nativeElement.querySelector('.google-link-gate');
+    expect(googleGate).toBeNull();
   });
 
   it('should allow pausing and cancelling active subscription', async () => {

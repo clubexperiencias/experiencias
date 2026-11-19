@@ -222,6 +222,26 @@ export class ExperienceDetailComponent {
     return item.albumPhotos.some((p) => !p.isCover) || item.albumPhotos.length > 1;
   }
 
+  /**
+   * Vista previa / portada del álbum en /experiencias/:slug:
+   * selecciona la primera foto destacada (fallback a la primera no-portada o portada general).
+   */
+  readonly albumPreviewPhoto = computed<string | null>(() => {
+    const e = this.exp();
+    if (!e || !Array.isArray(e.albumPhotos) || e.albumPhotos.length === 0) return null;
+    const firstFeatured = e.albumPhotos.find((p) => p.isFeatured && p.url);
+    if (firstFeatured) return firstFeatured.url;
+    const firstNonCover = e.albumPhotos.find((p) => !p.isCover && p.url);
+    if (firstNonCover) return firstNonCover.url;
+    return e.coverImage || e.albumPhotos[0]?.url || null;
+  });
+
+  readonly albumPhotosCount = computed<number>(() => {
+    const e = this.exp();
+    if (!e || !Array.isArray(e.albumPhotos)) return 0;
+    return e.albumPhotos.length;
+  });
+
   readonly upcomingDates = computed<string[]>(() => {
     const e = this.exp();
     if (!e || !e.dates) return [];

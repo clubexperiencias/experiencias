@@ -427,9 +427,13 @@ import { Discount } from '../../../core/models/discount.model';
                       <span class="row-date">{{ req.createdAt | fecha: 'corta' }}</span>
                     </td>
                     <td class="text-right">
-                      <button type="button" class="btn-review" (click)="openExperienceRequest(req)">
+                      <a
+                        [routerLink]="getProposalDetailRoute(req)"
+                        class="btn-review"
+                        title="Ver ficha completa de la experiencia"
+                      >
                         REVISAR
-                      </button>
+                      </a>
                     </td>
                   </tr>
                 }
@@ -1009,284 +1013,6 @@ import { Discount } from '../../../core/models/discount.model';
           (closed)="closeApplication()"
           (statusChanged)="onApplicationStatusChanged($event)"
         />
-      }
-
-      <!-- Modal de Revisión de Ficha de Nueva Experiencia -->
-      @if (selectedExperienceRequest(); as expReq) {
-        <div class="modal-backdrop" (click)="closeExperienceRequest()">
-          <div class="modal-dialog exp-req-modal-card" (click)="$event.stopPropagation()">
-            <!-- Cabecera -->
-            <div class="modal-head">
-              <div class="modal-head-info">
-                <span class="modal-kicker">{{ getProposalProviderTier(expReq) }}</span>
-                <h2 class="modal-title">{{ expReq.title }}</h2>
-                <p class="modal-sub-author">
-                  Propuesta de <strong>{{ getProposalResponsibleName(expReq) }}</strong> ({{
-                    getProposalAgencyName(expReq)
-                  }})
-                </p>
-              </div>
-              <button
-                type="button"
-                class="modal-close-btn"
-                (click)="closeExperienceRequest()"
-                aria-label="Cerrar modal"
-              >
-                ×
-              </button>
-            </div>
-
-            <!-- Cuerpo Scrolleable -->
-            <div class="modal-body">
-              <!-- Banner Multimedia -->
-              @if (expReq.coverImage || expReq.coverImageName || expReq.coverVideoName) {
-                <div class="exp-req-media-banner">
-                  <img
-                    [src]="getProposalCover(expReq.coverImage)"
-                    (error)="onImgError($event)"
-                    alt="Portada de la propuesta"
-                    class="exp-req-cover-img"
-                  />
-                  <div class="exp-req-media-tags">
-                    @if (expReq.coverImageName) {
-                      <span class="exp-media-tag"
-                        ><mat-icon>image</mat-icon> {{ expReq.coverImageName }}</span
-                      >
-                    }
-                    @if (expReq.coverVideoName) {
-                      <span class="exp-media-tag"
-                        ><mat-icon>videocam</mat-icon> Video: {{ expReq.coverVideoName }}</span
-                      >
-                    }
-                  </div>
-                </div>
-              }
-
-              <!-- 1. Síntesis descriptiva -->
-              <div class="app-desc-box quote-accent">
-                <span class="desc-heading">Síntesis descriptiva</span>
-                <p class="desc-content">{{ expReq.subheading }}</p>
-              </div>
-
-              <!-- 2. Ficha Técnica en Grid -->
-              <div class="exp-req-specs-grid">
-                <div class="spec-cell">
-                  <span class="spec-lbl">Región</span>
-                  <strong>{{ expReq.region }}</strong>
-                </div>
-                <div class="spec-cell">
-                  <span class="spec-lbl">Dificultad</span>
-                  <strong>{{ expReq.difficulty }}</strong>
-                </div>
-                <div class="spec-cell">
-                  <span class="spec-lbl">Duración</span>
-                  <strong>{{ expReq.duration }}</strong>
-                </div>
-                <div class="spec-cell">
-                  <span class="spec-lbl">Altitud</span>
-                  <strong>{{ expReq.altitude || '—' }}</strong>
-                </div>
-                <div class="spec-cell">
-                  <span class="spec-lbl">Cupo Máx.</span>
-                  <strong>{{ expReq.capacity }} personas</strong>
-                </div>
-                <div class="spec-cell">
-                  <span class="spec-lbl">Temporada</span>
-                  <strong>{{ expReq.season }}</strong>
-                </div>
-              </div>
-
-              <!-- 3. Arancel & Promociones Card Premium -->
-              <div class="exp-tariff-card">
-                <div class="tariff-main-col">
-                  <span class="tariff-kicker">Arancel por Persona</span>
-                  <div class="tariff-figures">
-                    <span class="tariff-ars">{{ expReq.priceArs | ars }}</span>
-                    @if (expReq.priceUsd) {
-                      <span class="tariff-usd-pill">Referencia: USD {{ expReq.priceUsd }}</span>
-                    }
-                  </div>
-                </div>
-
-                @if (expReq.capacity) {
-                  <div class="tariff-capacity-col">
-                    <span class="tariff-cap-lbl">Cupo Máximo</span>
-                    <strong class="tariff-cap-val">{{ expReq.capacity }} participantes</strong>
-                  </div>
-                }
-              </div>
-
-              @if (expReq.promosAndPricing) {
-                <div class="app-desc-box promo-accent">
-                  <span class="desc-heading"
-                    >Promociones, descuentos y consideraciones tarifarias</span
-                  >
-                  <p class="desc-content">{{ expReq.promosAndPricing }}</p>
-                </div>
-              }
-
-              <!-- 4. Cronograma & Itinerario -->
-              <div class="app-desc-box">
-                <span class="desc-heading">Cronograma e itinerario propuesto</span>
-                <p class="desc-content" style="white-space: pre-line;">{{ expReq.itinerary }}</p>
-              </div>
-
-              <!-- 5. Logística, Seguridad & Requisitos -->
-              <dl class="modal-dl">
-                <div>
-                  <dt>Punto de Encuentro:</dt>
-                  <dd>{{ expReq.meetingPoint }}</dd>
-                </div>
-                @if (expReq.meetingPointUrl) {
-                  <div>
-                    <dt>Ubicación (Google Maps):</dt>
-                    <dd>
-                      <a [href]="expReq.meetingPointUrl" target="_blank" rel="noopener noreferrer">{{
-                        expReq.meetingPointUrl
-                      }}</a>
-                    </dd>
-                  </div>
-                }
-                <div>
-                  <dt>Fechas / Frecuencia:</dt>
-                  <dd>{{ expReq.dates }}</dd>
-                </div>
-                <div>
-                  <dt>Provisto por el Prestador:</dt>
-                  <dd>{{ expReq.includedServices }}</dd>
-                </div>
-                <div>
-                  <dt>Requisitos del usuario:</dt>
-                  <dd>{{ expReq.participantRequirements }}</dd>
-                </div>
-                @if (expReq.notes) {
-                  <div>
-                    <dt>Notas / Enlaces:</dt>
-                    <dd>
-                      <a [href]="expReq.notes" target="_blank" rel="noopener" class="dt-link">{{
-                        expReq.notes
-                      }}</a>
-                    </dd>
-                  </div>
-                }
-                <div>
-                  <dt>Contacto prestador:</dt>
-                  <dd>
-                    <a [href]="'mailto:' + expReq.providerEmail" class="dt-link">{{
-                      expReq.providerEmail
-                    }}</a>
-                  </dd>
-                </div>
-              </dl>
-
-              @if (expReq.albumPhotos && expReq.albumPhotos.length > 0) {
-                <div class="exp-album-review-box">
-                  <span class="desc-heading">Álbum de fotos de la experiencia ({{ expReq.albumPhotos.length }})</span>
-                  <div class="exp-album-thumbnails-grid">
-                    @for (photo of expReq.albumPhotos; track $index) {
-                      <div class="album-thumb-card">
-                        <img [src]="photo.url" (error)="onImgError($event)" [alt]="photo.caption || 'Foto de propuesta'" class="album-thumb-img" />
-                        @if (photo.caption) {
-                          <span class="album-thumb-caption">{{ photo.caption }}</span>
-                        }
-                      </div>
-                    }
-                  </div>
-                </div>
-              }
-
-              <div class="exp-provider-banking-card">
-                <span class="desc-heading">Información del Prestador y Datos Bancarios</span>
-                <div class="provider-banking-grid">
-                  <div class="banking-cell">
-                    <span class="banking-lbl">Prestador</span>
-                    <strong>{{ expReq.providerName }}</strong>
-                  </div>
-                  <div class="banking-cell">
-                    <span class="banking-lbl">Emprendimiento / Agencia</span>
-                    <strong>{{ expReq.providerAgency || 'Particular' }}</strong>
-                  </div>
-                  <div class="banking-cell">
-                    <span class="banking-lbl">Email</span>
-                    <strong>{{ expReq.providerEmail }}</strong>
-                  </div>
-                  @if (expReq.providerPhone) {
-                    <div class="banking-cell">
-                      <span class="banking-lbl">Teléfono / WhatsApp</span>
-                      <strong>{{ expReq.providerPhone }}</strong>
-                    </div>
-                  }
-                  @if (expReq.providerCuitDni) {
-                    <div class="banking-cell">
-                      <span class="banking-lbl">CUIT / DNI</span>
-                      <strong>{{ expReq.providerCuitDni }}</strong>
-                    </div>
-                  }
-                  @if (expReq.providerCbuAlias) {
-                    <div class="banking-cell">
-                      <span class="banking-lbl">CBU / Alias</span>
-                      <strong>{{ expReq.providerCbuAlias }}</strong>
-                    </div>
-                  }
-                  @if (expReq.providerBankName) {
-                    <div class="banking-cell">
-                      <span class="banking-lbl">Banco / Entidad</span>
-                      <strong>{{ expReq.providerBankName }}</strong>
-                    </div>
-                  }
-                </div>
-              </div>
-            </div>
-
-            <!-- Acciones al Pie -->
-            <div class="modal-actions">
-              <div class="state-buttons">
-                @if (expReq.status === 'pendiente') {
-                  <button
-                    type="button"
-                    class="btn-state btn-approve"
-                    (click)="approveExperience(expReq.id)"
-                  >
-                    Aprobar y publicar
-                  </button>
-                  <button
-                    type="button"
-                    class="btn-state btn-reject"
-                    (click)="rejectExperience(expReq.id)"
-                  >
-                    Rechazar
-                  </button>
-                } @else {
-                  <span
-                    class="status-reviewed-tag"
-                    [class.is-approved]="expReq.status === 'aprobada'"
-                  >
-                    {{
-                      expReq.status === 'aprobada'
-                        ? '✓ Propuesta Aprobada'
-                        : '✕ Propuesta Rechazada'
-                    }}
-                  </span>
-                }
-
-                @if (expReq.providerPhone) {
-                  <a
-                    [href]="getWhatsappLink(expReq.providerPhone, expReq.providerName)"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="btn-state btn-whatsapp btn-contact-provider"
-                  >
-                    <span>Contactar prestador</span>
-                  </a>
-                }
-              </div>
-
-              <button type="button" class="btn-close" (click)="closeExperienceRequest()">
-                Cerrar
-              </button>
-            </div>
-          </div>
-        </div>
       }
     </div>
   `,
@@ -4371,6 +4097,37 @@ export class AdminDashboardComponent {
       `Hola ${sub.fullName}, te contactamos desde Experiencias Club respecto a tu comprobante de reserva para "${sub.experienceTitle}".`,
     );
     return `https://wa.me/${cleanDigits}?text=${text}`;
+  }
+
+  getProposalDetailRoute(req: ExperienceProposalRequest): string {
+    const experiences = this.experienceService.experiences();
+    const cleanReqId = req.id.replace(/^(?:exp|req)-/, '');
+    const byId = experiences.find(
+      (e) =>
+        e.id === req.id ||
+        e.id === `exp-${req.id}` ||
+        e.id.replace(/^(?:exp|req)-/, '') === cleanReqId,
+    );
+    if (byId?.slug) {
+      return `/admin/experiencias/${byId.slug}`;
+    }
+
+    if (req.slug) {
+      const byReqSlug = experiences.find((e) => e.slug === req.slug);
+      if (byReqSlug?.slug) {
+        return `/admin/experiencias/${byReqSlug.slug}`;
+      }
+      return `/admin/experiencias/${req.slug}`;
+    }
+
+    const byTitle = experiences.find(
+      (e) => e.title && e.title.trim().toLowerCase() === req.title.trim().toLowerCase(),
+    );
+    if (byTitle?.slug) {
+      return `/admin/experiencias/${byTitle.slug}`;
+    }
+
+    return `/admin/experiencias/${slugify(req.title)}`;
   }
 
   openExperienceRequest(req: ExperienceProposalRequest): void {

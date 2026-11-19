@@ -210,17 +210,40 @@ export class ExperiencePhotosComponent {
     return list;
   });
 
-  // 1 Foto de Portada
+  // 1 Foto de Portada (siempre usa la foto de portada general de la experiencia)
   readonly coverPhoto = computed<ExperienceAlbumPhoto | undefined>(() => {
+    const e = this.exp();
     const list = this.albumPhotos();
-    return list.find((p) => p.isCover) || list[0];
+    const existingCover = list.find((p) => p.isCover);
+    const generalCoverUrl = e?.coverImage?.trim();
+
+    if (generalCoverUrl) {
+      if (existingCover) {
+        return {
+          ...existingCover,
+          url: generalCoverUrl,
+          isCover: true,
+        };
+      }
+      return {
+        id: `${e?.id || 'exp'}-cover`,
+        url: generalCoverUrl,
+        title: e?.title || 'Portada',
+        caption: e?.tagline || 'Portada oficial de la experiencia',
+        isCover: true,
+        isFeatured: false,
+        order: 1,
+      };
+    }
+
+    return existingCover || list[0];
   });
 
   // 2 Fotos Destacadas
   readonly featuredPhotos = computed<ExperienceAlbumPhoto[]>(() => {
     const list = this.albumPhotos();
     const cover = this.coverPhoto();
-    const withoutCover = list.filter((p) => p.id !== cover?.id);
+    const withoutCover = list.filter((p) => p.id !== cover?.id && !p.isCover);
 
     const explicitlyFeatured = withoutCover.filter((p) => p.isFeatured);
     if (explicitlyFeatured.length >= 2) {
@@ -244,7 +267,7 @@ export class ExperiencePhotosComponent {
     const cover = this.coverPhoto();
     const featured = this.featuredPhotos();
     const excludeIds = new Set([cover?.id, ...featured.map((f) => f.id)]);
-    return list.filter((p) => !excludeIds.has(p.id));
+    return list.filter((p) => !excludeIds.has(p.id) && !p.isCover);
   });
 
   // Lista ordenada completa para el Lightbox (Portada, luego Destacadas, luego Galería)

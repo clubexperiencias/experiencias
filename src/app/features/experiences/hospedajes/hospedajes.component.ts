@@ -104,8 +104,8 @@ export class HospedajesComponent implements AfterViewInit, OnDestroy {
     'Deck privado con hidromasaje',
   ];
 
-  // Hospedajes en preparación (Nueva experiencia en Catamarca)
-  readonly comingSoonHospedajes: Hospedaje[] = INITIAL_HOSPEDAJES;
+  // Hospedajes en preparación
+  readonly comingSoonHospedajes: Hospedaje[] = [];
 
   private resolveHospedajeType(kicker?: string): HospedajeType {
     if (!kicker) return 'Hostería de Altura';
@@ -161,20 +161,16 @@ export class HospedajesComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  // Hospedajes disponibles para el catálogo (o en preparación si aún no hay en BD)
+  // Hospedajes disponibles para el catálogo
   readonly allAvailableHospedajes = computed<Hospedaje[]>(() => {
     const published = this.experienceService
       .publishedExperiences()
       .filter((e) => e.category === 'hospedajes');
 
-    const list = this.hospedajesService.hospedajes();
-    if (list.length > 0) {
-      return list;
-    }
     if (published.length > 0) {
       return published.map((e) => this.mapExperienceToHospedaje(e));
     }
-    return this.comingSoonHospedajes;
+    return this.hospedajesService.hospedajes();
   });
 
   // Regiones disponibles dinámicamente
@@ -264,11 +260,7 @@ export class HospedajesComponent implements AfterViewInit, OnDestroy {
 
   // Lista destacada para carrusel
   readonly featuredHospedajes = computed<Hospedaje[]>(() => {
-    const list = this.hospedajesService.featuredHospedajes();
-    if (list.length > 0) {
-      return [...list, this.comingSoonHospedajes[0]];
-    }
-    return this.comingSoonHospedajes;
+    return this.allAvailableHospedajes().filter((h) => h.isFeatured && !h.isLocked);
   });
 
   // Carrusel infinito con items destacados

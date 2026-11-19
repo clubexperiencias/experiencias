@@ -59,7 +59,12 @@ export class EmergingMemberComponent implements OnInit {
   readonly submitError = signal<string | null>(null);
   readonly isSubmitting = signal(false);
   readonly showSuccessNotification = signal(false);
-  readonly requiresGoogle = computed(() => !this.authReady());
+  readonly requiresGoogle = computed(() => {
+    if (this.newsletter.isSubscribed()) {
+      return false;
+    }
+    return !this.authReady();
+  });
   readonly isProfileComplete = computed(() => {
     const name = this.fullName().trim();
     const email = this.email().trim();
@@ -144,6 +149,12 @@ export class EmergingMemberComponent implements OnInit {
 
     const current = this.newsletter.currentMember();
     if (current) {
+      if (current.email && !this.email()) {
+        const clean = current.email.trim().toLowerCase();
+        this.email.set(clean);
+        this.authenticatedEmail.set(clean);
+        this.authReady.set(true);
+      }
       if (current.fullName && !this.fullName()) this.fullName.set(current.fullName);
       if (current.dni && !this.documentNumber()) this.documentNumber.set(current.dni);
       if (current.phone && !this.phone()) this.phone.set(current.phone);
@@ -165,24 +176,30 @@ export class EmergingMemberComponent implements OnInit {
 
   private async refreshGoogleAccount(): Promise<void> {
     const authenticatedEmail = await this.newsletter.getAuthenticatedEmail();
+    const current = this.newsletter.currentMember();
     if (authenticatedEmail) {
       this.email.set(authenticatedEmail);
       this.authenticatedEmail.set(authenticatedEmail);
       this.authReady.set(true);
       await this.newsletter.getAuthenticatedMember();
-      const current = this.newsletter.currentMember();
-      if (current?.email.toLowerCase() === authenticatedEmail) {
-        if (current.fullName && !this.fullName()) {
-          this.fullName.set(current.fullName);
+      const fresh = this.newsletter.currentMember();
+      if (fresh?.email.toLowerCase() === authenticatedEmail) {
+        if (fresh.fullName && !this.fullName()) {
+          this.fullName.set(fresh.fullName);
         }
-        const dni = current.dni || current.documentNumber;
+        const dni = fresh.dni || fresh.documentNumber;
         if (dni && !this.documentNumber()) {
           this.documentNumber.set(dni);
         }
-        if (current.phone && !this.phone()) {
-          this.phone.set(current.phone);
+        if (fresh.phone && !this.phone()) {
+          this.phone.set(fresh.phone);
         }
       }
+    } else if (current?.email) {
+      const clean = current.email.trim().toLowerCase();
+      this.email.set(clean);
+      this.authenticatedEmail.set(clean);
+      this.authReady.set(true);
     } else {
       this.authReady.set(!this.newsletter.isSupabaseConnected());
     }

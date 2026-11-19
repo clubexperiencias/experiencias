@@ -134,9 +134,35 @@ describe('ExperiencePhotosComponent (/experiencias/:slug/fotos)', () => {
     ).toBeNull();
   });
 
-  it('should resolve lodging experience from INITIAL_HOSPEDAJES when HospedajesService has no custom in-memory entry', () => {
-    const lodging = component.hospedajesService?.getHospedajeBySlug('proximamente-hospedaje-puna');
+  it('should resolve lodging experience from HospedajesService when custom in-memory entry exists', () => {
+    component.hospedajesService?.setHospedajes([
+      {
+        id: 'hosp-test',
+        slug: 'hosteria-el-penon',
+        title: 'Hostería El Peñón',
+        tagline: 'Base para Campo de Piedra Pómez',
+        description: 'Alojamiento de montaña en la Puna catamarqueña.',
+        type: 'Hostería de Altura',
+        region: 'Puna de Atacama',
+        locality: 'El Peñón',
+        altitudeMeters: 3400,
+        coverImage: '/assets/images/catamarca_pomez.jpg',
+        galleryImages: ['/assets/images/catamarca_pomez.jpg'],
+        priceArsPerNight: 85000,
+        priceUsdPerNight: 60,
+        capacityPerRoom: 3,
+        totalRooms: 12,
+        amenities: ['WiFi Satelital Starlink'],
+        hostName: 'Patricio Díaz',
+        isFeatured: true,
+        isVerified: true,
+        isLocked: false,
+        highlights: ['Ubicación clave'],
+        includedServices: ['Desayuno regional'],
+      },
+    ]);
+    const lodging = component.hospedajesService?.getHospedajeBySlug('hosteria-el-penon');
     expect(lodging).toBeTruthy();
-    expect(lodging?.slug).toBe('proximamente-hospedaje-puna');
+    expect(lodging?.slug).toBe('hosteria-el-penon');
   });
 });

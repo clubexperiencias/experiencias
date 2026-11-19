@@ -65,18 +65,30 @@ describe('HospedajesComponent (/experiencias/hospedajes)', () => {
     expect(activeTab.textContent).toContain('Hospedajes & Refugios');
   });
 
-  it('should display coming soon lodgings (Nueva experiencia en Catamarca) in the carousel when no active items', () => {
-    const carouselCards = fixture.nativeElement.querySelectorAll('.hosp-carousel-card');
-    expect(carouselCards.length).toBeGreaterThan(0);
-    expect(carouselCards[0].textContent).toContain('Nueva experiencia en Catamarca');
+  it('should not display placeholder boxes or carousel when no lodgings are available', () => {
+    const carousel = fixture.nativeElement.querySelector('.featured-section-card');
+    expect(carousel).toBeNull();
+    const catalogCards = fixture.nativeElement.querySelectorAll('.experiences-horizontal-list .exp-catalog-item');
+    expect(catalogCards.length).toBe(0);
+    expect(fixture.nativeElement.textContent).not.toContain('Nueva experiencia en Catamarca');
   });
 
-  it('should render coming soon cards when no active filters and catalog has no DB items', () => {
-    const list = fixture.nativeElement.querySelector('.experiences-horizontal-list');
-    expect(list).toBeTruthy();
-    const cards = list.querySelectorAll('.exp-catalog-item');
-    expect(cards.length).toBeGreaterThan(0);
-    expect(cards[0].textContent).toContain('Nueva experiencia en Catamarca');
+  it('should render empty state message when catalog has no items', () => {
+    const noResults = fixture.nativeElement.querySelector('.no-filter-results-box');
+    expect(noResults).toBeTruthy();
+    expect(noResults.textContent).toContain('Próximamente');
+  });
+
+  it('should render lodgings in the list and carousel when available', () => {
+    component.hospedajesService.setHospedajes([MOCK_HOSPEDAJE]);
+    fixture.detectChanges();
+
+    const cards = fixture.nativeElement.querySelectorAll('.experiences-horizontal-list .exp-catalog-item');
+    expect(cards.length).toBe(1);
+    expect(cards[0].textContent).toContain('Hostería El Peñón');
+
+    const carousel = fixture.nativeElement.querySelector('.featured-section-card');
+    expect(carousel).toBeTruthy();
   });
 
   it('should filter lodgings by region when lodgings are loaded', () => {

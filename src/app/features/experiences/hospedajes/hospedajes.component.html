@@ -28,6 +28,7 @@
         </div>
 
         <!-- ═══════════════ CARD 2: CARRUSEL DESTACADOS ═══════════════ -->
+        @if (featuredHospedajes().length > 0) {
         <div class="exp-section-card featured-section-card">
           <div class="card-inner-header featured-header-flex">
             <div>
@@ -121,6 +122,7 @@
             </div>
           </div>
         </div>
+        }
 
         <!-- ═══════════════ CARD 3: LISTADO COMPLETO Y FILTRADO ═══════════════ -->
         <div class="exp-section-card full-list-section-card">
@@ -133,128 +135,131 @@
           </div>
 
           <!-- Barra de Filtros y Búsqueda (Mismo diseño y clases de /experiencias) -->
-          <div class="catalog-filters-container">
-            <!-- 1. Búsqueda por Texto -->
-            <div class="filter-search-box">
-              <mat-icon class="search-box-icon">search</mat-icon>
-              <input
-                type="text"
-                class="filter-search-input"
-                placeholder="Buscar por nombre, localidad, anfitrión o descripción..."
-                [value]="searchTerm()"
-                (input)="searchTerm.set($any($event.target).value)"
-                aria-label="Buscar hospedajes"
-              />
-              @if (searchTerm()) {
-                <button
-                  type="button"
-                  class="search-clear-btn"
-                  (click)="searchTerm.set('')"
-                  aria-label="Borrar búsqueda"
-                  title="Borrar búsqueda"
-                >
-                  <mat-icon>close</mat-icon>
-                </button>
-              }
-            </div>
-
-            <!-- 2. Grid de Filtros de Stats (REGIÓN, TIPO, ALTITUD, COMODIDADES) -->
-            <div class="filter-stats-grid">
-              <!-- REGIÓN -->
-              <div class="filter-field-col">
-                <label class="filter-field-lbl" for="filter-region">REGIÓN</label>
-                <div class="filter-select-wrap">
-                  <select
-                    id="filter-region"
-                    class="filter-select"
-                    [value]="filterRegion()"
-                    (change)="filterRegion.set($any($event.target).value)"
+          @if (allAvailableHospedajes().length > 0) {
+            <div class="catalog-filters-container">
+              <!-- 1. Búsqueda por Texto -->
+              <div class="filter-search-box">
+                <mat-icon class="search-box-icon">search</mat-icon>
+                <input
+                  type="text"
+                  class="filter-search-input"
+                  placeholder="Buscar por nombre, localidad, anfitrión o descripción..."
+                  [value]="searchTerm()"
+                  (input)="searchTerm.set($any($event.target).value)"
+                  aria-label="Buscar hospedajes"
+                />
+                @if (searchTerm()) {
+                  <button
+                    type="button"
+                    class="search-clear-btn"
+                    (click)="searchTerm.set('')"
+                    aria-label="Borrar búsqueda"
+                    title="Borrar búsqueda"
                   >
-                    <option value="todas">Todas las regiones</option>
-                    @for (reg of availableRegions(); track reg) {
-                      <option [value]="reg">{{ reg }}</option>
-                    }
-                  </select>
-                </div>
-              </div>
-
-              <!-- TIPO DE HOSPEDAJE -->
-              <div class="filter-field-col">
-                <label class="filter-field-lbl" for="filter-type">TIPO DE ALOJAMIENTO</label>
-                <div class="filter-select-wrap">
-                  <select
-                    id="filter-type"
-                    class="filter-select"
-                    [value]="filterType()"
-                    (change)="filterType.set($any($event.target).value)"
-                  >
-                    <option value="todos">Todos los tipos</option>
-                    @for (t of lodgingTypes; track t) {
-                      <option [value]="t">{{ t }}</option>
-                    }
-                  </select>
-                </div>
-              </div>
-
-              <!-- ALTITUD -->
-              <div class="filter-field-col">
-                <label class="filter-field-lbl" for="filter-altitude">ALTITUD</label>
-                <div class="filter-select-wrap">
-                  <select
-                    id="filter-altitude"
-                    class="filter-select"
-                    [value]="filterAltitude()"
-                    (change)="filterAltitude.set($any($event.target).value)"
-                  >
-                    <option value="todas">Todas las altitudes</option>
-                    <option value="baja">Hasta 1.500 msnm (Valles y Yungas)</option>
-                    <option value="media">1.500 a 3.000 msnm (Pre-cordillera)</option>
-                    <option value="alta">+3.000 msnm (Puna y Seismiles)</option>
-                  </select>
-                </div>
-              </div>
-
-              <!-- COMODIDADES -->
-              <div class="filter-field-col">
-                <label class="filter-field-lbl" for="filter-amenity">COMODIDADES</label>
-                <div class="filter-select-wrap">
-                  <select
-                    id="filter-amenity"
-                    class="filter-select"
-                    [value]="filterAmenity()"
-                    (change)="filterAmenity.set($any($event.target).value)"
-                  >
-                    <option value="todas">Cualquier comodidad</option>
-                    @for (am of topAmenities; track am) {
-                      <option [value]="am">{{ am }}</option>
-                    }
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            <!-- 3. Contador y Botón Limpiar -->
-            <div class="filter-meta-bar">
-              <span class="filter-results-counter">
-                Mostrando <strong>{{ filteredHospedajes().length }}</strong> hospedajes
-                @if (hasActiveFilters()) {
-                  <span class="filter-total-ref">(de {{ allAvailableHospedajes().length }})</span>
+                    <mat-icon>close</mat-icon>
+                  </button>
                 }
-              </span>
+              </div>
 
-              @if (hasActiveFilters()) {
-                <button
-                  type="button"
-                  class="filter-reset-btn"
-                  (click)="resetFilters()"
-                  title="Restablecer todos los filtros"
-                >
-                  <mat-icon>restart_alt</mat-icon>
-                  <span>Limpiar filtros</span>
-                </button>
-              }
+              <!-- 2. Grid de Filtros de Stats (REGIÓN, TIPO, ALTITUD, COMODIDADES) -->
+              <div class="filter-stats-grid">
+                <!-- REGIÓN -->
+                <div class="filter-field-col">
+                  <label class="filter-field-lbl" for="filter-region">REGIÓN</label>
+                  <div class="filter-select-wrap">
+                    <select
+                      id="filter-region"
+                      class="filter-select"
+                      [value]="filterRegion()"
+                      (change)="filterRegion.set($any($event.target).value)"
+                    >
+                      <option value="todas">Todas las regiones</option>
+                      @for (reg of availableRegions(); track reg) {
+                        <option [value]="reg">{{ reg }}</option>
+                      }
+                    </select>
+                  </div>
+                </div>
+
+                <!-- TIPO DE HOSPEDAJE -->
+                <div class="filter-field-col">
+                  <label class="filter-field-lbl" for="filter-type">TIPO DE ALOJAMIENTO</label>
+                  <div class="filter-select-wrap">
+                    <select
+                      id="filter-type"
+                      class="filter-select"
+                      [value]="filterType()"
+                      (change)="filterType.set($any($event.target).value)"
+                    >
+                      <option value="todos">Todos los tipos</option>
+                      @for (t of lodgingTypes; track t) {
+                        <option [value]="t">{{ t }}</option>
+                      }
+                    </select>
+                  </div>
+                </div>
+
+                <!-- ALTITUD -->
+                <div class="filter-field-col">
+                  <label class="filter-field-lbl" for="filter-altitude">ALTITUD</label>
+                  <div class="filter-select-wrap">
+                    <select
+                      id="filter-altitude"
+                      class="filter-select"
+                      [value]="filterAltitude()"
+                      (change)="filterAltitude.set($any($event.target).value)"
+                    >
+                      <option value="todas">Todas las altitudes</option>
+                      <option value="baja">Hasta 1.500 msnm (Valles y Yungas)</option>
+                      <option value="media">1.500 a 3.000 msnm (Pre-cordillera)</option>
+                      <option value="alta">+3.000 msnm (Puna y Seismiles)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <!-- COMODIDADES -->
+                <div class="filter-field-col">
+                  <label class="filter-field-lbl" for="filter-amenity">COMODIDADES</label>
+                  <div class="filter-select-wrap">
+                    <select
+                      id="filter-amenity"
+                      class="filter-select"
+                      [value]="filterAmenity()"
+                      (change)="filterAmenity.set($any($event.target).value)"
+                    >
+                      <option value="todas">Cualquier comodidad</option>
+                      @for (am of topAmenities; track am) {
+                        <option [value]="am">{{ am }}</option>
+                      }
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 3. Contador y Botón Limpiar -->
+              <div class="filter-meta-bar">
+                <span class="filter-results-counter">
+                  Mostrando <strong>{{ filteredHospedajes().length }}</strong>
+                  {{ filteredHospedajes().length === 1 ? 'hospedaje' : 'hospedajes' }}
+                  @if (hasActiveFilters()) {
+                    <span class="filter-total-ref">(de {{ allAvailableHospedajes().length }})</span>
+                  }
+                </span>
+
+                @if (hasActiveFilters()) {
+                  <button
+                    type="button"
+                    class="filter-reset-btn"
+                    (click)="resetFilters()"
+                    title="Restablecer todos los filtros"
+                  >
+                    <mat-icon>restart_alt</mat-icon>
+                    <span>Limpiar filtros</span>
+                  </button>
+                }
+              </div>
             </div>
-          </div>
+          }
 
           <!-- Listado de Hospedajes Horizontal (Idéntico a /experiencias) -->
           @if (filteredHospedajes().length > 0) {
@@ -334,7 +339,7 @@
                 </div>
               }
             </div>
-          } @else {
+          } @else if (hasActiveFilters()) {
             <div class="no-filter-results-box">
               <mat-icon class="no-results-icon">travel_explore</mat-icon>
               <h4 class="no-results-title">No encontramos hospedajes con esos criterios</h4>
@@ -345,6 +350,14 @@
                 <mat-icon>restart_alt</mat-icon>
                 <span>Ver Todos los Hospedajes</span>
               </button>
+            </div>
+          } @else {
+            <div class="no-filter-results-box">
+              <mat-icon class="no-results-icon">travel_explore</mat-icon>
+              <h4 class="no-results-title">Próximamente nuevas opciones de hospedaje</h4>
+              <p class="no-results-desc">
+                Estamos relevando y seleccionando las mejores hosterías, cabañas y refugios de montaña en Catamarca para sumarlos al Club.
+              </p>
             </div>
           }
         </div>

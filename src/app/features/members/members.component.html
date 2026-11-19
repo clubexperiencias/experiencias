@@ -24,7 +24,7 @@
               </p>
             </div>
 
-            @if (featuredTestimonios().length > 1) {
+            @if (!isLoading() && featuredTestimonios().length > 1) {
             <div class="carousel-nav-arrows">
               <button type="button" class="carousel-nav-btn" (click)="onUserNav('prev')"
                 aria-label="Testimonio anterior" title="Testimonio anterior">
@@ -39,7 +39,54 @@
           </div>
 
           <!-- Sección: Testimonios Destacados en Carrusel (si existen) o Card de Compartir Testimonio (si no hay destacados) -->
-          @if (featuredTestimonios().length > 0) {
+          @if (isLoading()) {
+          <div class="testimonials-loading-state" aria-busy="true" aria-live="polite">
+            <div class="testimonials-loading-status">
+              <div class="loading-spinner-ring">
+                <div class="spinner-core"></div>
+              </div>
+              <span class="loading-status-text">Cargando vivencias de la comunidad...</span>
+            </div>
+
+            <div class="skeleton-testimonials-track" aria-hidden="true">
+              <div class="skeleton-testimonial-card">
+                <div class="skeleton-quote-icon shimmer-wave"></div>
+                <div class="skeleton-lines">
+                  <div class="skeleton-line skeleton-quote-1 shimmer-wave"></div>
+                  <div class="skeleton-line skeleton-quote-2 shimmer-wave"></div>
+                  <div class="skeleton-line skeleton-quote-3 shimmer-wave"></div>
+                </div>
+                <div class="skeleton-footer">
+                  <div class="skeleton-author-meta">
+                    <div class="skeleton-author-row">
+                      <div class="skeleton-line skeleton-author-name shimmer-wave"></div>
+                      <div class="skeleton-line skeleton-tier-pill shimmer-wave"></div>
+                    </div>
+                    <div class="skeleton-line skeleton-author-since shimmer-wave"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="skeleton-testimonial-card hide-mobile">
+                <div class="skeleton-quote-icon shimmer-wave"></div>
+                <div class="skeleton-lines">
+                  <div class="skeleton-line skeleton-quote-1 shimmer-wave"></div>
+                  <div class="skeleton-line skeleton-quote-2 shimmer-wave"></div>
+                  <div class="skeleton-line skeleton-quote-3 shimmer-wave"></div>
+                </div>
+                <div class="skeleton-footer">
+                  <div class="skeleton-author-meta">
+                    <div class="skeleton-author-row">
+                      <div class="skeleton-line skeleton-author-name shimmer-wave"></div>
+                      <div class="skeleton-line skeleton-tier-pill shimmer-wave"></div>
+                    </div>
+                    <div class="skeleton-line skeleton-author-since shimmer-wave"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          } @else if (featuredTestimonios().length > 0) {
           <div class="featured-carousel-wrap" (mouseenter)="onCarouselMouseEnter()"
             (mouseleave)="onCarouselMouseLeave()" (touchstart)="onCarouselMouseEnter()"
             (touchend)="onCarouselMouseLeave()">

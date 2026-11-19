@@ -1129,22 +1129,29 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
       }
 
       .filter-select-input {
-        background: rgba(0, 0, 0, 0.4);
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        background-color: rgba(0, 0, 0, 0.4);
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.7)' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 0.85rem center;
+        background-size: 12px 12px;
         border: 1px solid rgba(255, 255, 255, 0.15);
         color: #ffffff;
         font-size: 0.78rem;
         font-weight: 600;
-        padding: 0.4rem 0.75rem;
+        padding: 0.4rem 2.2rem 0.4rem 0.75rem;
         border-radius: 2px;
         outline: none;
         cursor: pointer;
-        transition: border-color 0.2s ease, background 0.2s ease;
+        transition: border-color 0.2s ease, background-color 0.2s ease;
       }
 
       .filter-select-input:focus,
       .filter-select-input:hover {
         border-color: #ff5f00;
-        background: rgba(0, 0, 0, 0.6);
+        background-color: rgba(0, 0, 0, 0.6);
       }
 
       .filter-select-input option {
@@ -2424,6 +2431,19 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
       .form-input:focus {
         border-color: #ff5f00;
         background: rgba(255, 255, 255, 0.05);
+      }
+
+      select.form-input {
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        background-color: rgba(0, 0, 0, 0.35);
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.7)' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 0.85rem center;
+        background-size: 13px 13px;
+        padding-right: 2.2rem;
+        cursor: pointer;
       }
 
       .slug-input-wrapper {

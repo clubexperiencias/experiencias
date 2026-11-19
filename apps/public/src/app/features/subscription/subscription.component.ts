@@ -6,6 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { NewsletterService } from '../../core/services/newsletter.service';
 import { DiscountService } from '../../core/services/discount.service';
 import { Discount } from '../../core/models/discount.model';
+import { WaitlistEntry } from '../../core/models/waitlist.model';
 import { FooterComponent } from '../../shared/components/footer/footer.component';
 import { HeaderComponent } from '../../shared/components/header/header.component';
 import {
@@ -51,10 +52,17 @@ export class SubscriptionComponent implements OnInit {
   // Menús de navegación
   readonly mobileMenuOpen = signal(false);
 
-  // Autenticación con Google
-  readonly authReady = signal(!this.newsletter.isSupabaseConnected());
+  // Autenticación con Google o Sesión de Socio Existente
+  readonly authReady = signal(
+    !this.newsletter.isSupabaseConnected() || this.newsletter.isSubscribed()
+  );
   readonly authError = signal<string | null>(null);
-  readonly requiresGoogle = computed(() => !this.authReady());
+  readonly requiresGoogle = computed(() => {
+    if (this.newsletter.isSubscribed() && (this.authenticatedEmail() || this.email().trim().length > 0)) {
+      return false;
+    }
+    return !this.authReady();
+  });
 
   // Datos del Socio
   readonly fullName = signal('');
@@ -109,6 +117,15 @@ export class SubscriptionComponent implements OnInit {
   ];
 
   ngOnInit(): void {
+    const current = this.newsletter.currentMember();
+    if (current) {
+      this.populateFromMember(current);
+      if (current.email) {
+        this.authenticatedEmail.set(current.email.trim().toLowerCase());
+        this.authReady.set(true);
+      }
+    }
+
     void this.refreshGoogleAccount();
 
     this.route.queryParams.subscribe((params) => {
@@ -120,72 +137,59 @@ export class SubscriptionComponent implements OnInit {
     });
   }
 
+  private populateFromMember(member: WaitlistEntry): void {
+    if (member.email && !this.email()) {
+      this.email.set(member.email.trim().toLowerCase());
+    }
+    if (member.fullName && !this.fullName()) {
+      this.fullName.set(member.fullName);
+    }
+    const dni = member.dni || member.documentNumber;
+    if (dni && !this.documentNumber()) {
+      this.documentNumber.set(dni);
+    }
+    if (member.phone && !this.phone()) {
+      this.phone.set(member.phone);
+    }
+    if (
+      member.experiencesWishlist &&
+      member.experiencesWishlist.length > 0 &&
+      this.selectedExperiences().length === 0
+    ) {
+      this.selectedExperiences.set(member.experiencesWishlist);
+    }
+    if (member.experiencesOther && !this.otherExperience()) {
+      this.otherExperience.set(member.experiencesOther);
+      if (!this.selectedExperiences().includes('otros')) {
+        this.selectedExperiences.update((list) => [...list, 'otros']);
+      }
+    }
+  }
+
   private async refreshGoogleAccount(): Promise<void> {
     const authenticatedEmail = await this.newsletter.getAuthenticatedEmail();
+    const current = this.newsletter.currentMember();
+
     if (authenticatedEmail) {
       const cleanAuthEmail = authenticatedEmail.trim().toLowerCase();
       this.email.set(cleanAuthEmail);
       this.authenticatedEmail.set(cleanAuthEmail);
       this.authReady.set(true);
       await this.newsletter.getAuthenticatedMember();
-      const current = this.newsletter.currentMember();
-      if (current?.email && current.email.trim().toLowerCase() === cleanAuthEmail) {
-        if (current.fullName && !this.fullName()) {
-          this.fullName.set(current.fullName);
-        }
-        const dni = current.dni || current.documentNumber;
-        if (dni && !this.documentNumber()) {
-          this.documentNumber.set(dni);
-        }
-        if (current.phone && !this.phone()) {
-          this.phone.set(current.phone);
-        }
-        if (
-          current.experiencesWishlist &&
-          current.experiencesWishlist.length > 0 &&
-          this.selectedExperiences().length === 0
-        ) {
-          this.selectedExperiences.set(current.experiencesWishlist);
-        }
-        if (current.experiencesOther && !this.otherExperience()) {
-          this.otherExperience.set(current.experiencesOther);
-          if (!this.selectedExperiences().includes('otros')) {
-            this.selectedExperiences.update((list) => [...list, 'otros']);
-          }
-        }
+      const freshCurrent = this.newsletter.currentMember();
+      if (freshCurrent) {
+        this.populateFromMember(freshCurrent);
       }
+    } else if (current?.email) {
+      const cleanEmail = current.email.trim().toLowerCase();
+      this.email.set(cleanEmail);
+      this.authenticatedEmail.set(cleanEmail);
+      this.authReady.set(true);
+      this.populateFromMember(current);
     } else {
       this.authReady.set(!this.newsletter.isSupabaseConnected());
-      if (!this.newsletter.isSupabaseConnected()) {
-        const current = this.newsletter.currentMember();
-        if (current) {
-          if (current.email && !this.email()) {
-            this.email.set(current.email);
-          }
-          if (current.fullName && !this.fullName()) {
-            this.fullName.set(current.fullName);
-          }
-          const dni = current.dni || current.documentNumber;
-          if (dni && !this.documentNumber()) {
-            this.documentNumber.set(dni);
-          }
-          if (current.phone && !this.phone()) {
-            this.phone.set(current.phone);
-          }
-          if (
-            current.experiencesWishlist &&
-            current.experiencesWishlist.length > 0 &&
-            this.selectedExperiences().length === 0
-          ) {
-            this.selectedExperiences.set(current.experiencesWishlist);
-          }
-          if (current.experiencesOther && !this.otherExperience()) {
-            this.otherExperience.set(current.experiencesOther);
-            if (!this.selectedExperiences().includes('otros')) {
-              this.selectedExperiences.update((list) => [...list, 'otros']);
-            }
-          }
-        }
+      if (!this.newsletter.isSupabaseConnected() && current) {
+        this.populateFromMember(current);
       }
     }
   }
@@ -261,7 +265,7 @@ export class SubscriptionComponent implements OnInit {
   }
 
   async submit(): Promise<void> {
-    if (this.requiresGoogle()) {
+    if (!this.newsletter.isSubscribed() && this.requiresGoogle()) {
       this.submitError.set('Primero vinculá tu cuenta de Google para continuar.');
       return;
     }

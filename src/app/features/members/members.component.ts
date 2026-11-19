@@ -143,6 +143,7 @@ export class MembersComponent implements OnInit, AfterViewInit, OnDestroy {
 
   readonly featuredTestimonios = this.testimoniosService.featuredTestimonios;
   readonly communityTestimonios = this.testimoniosService.communityTestimonios;
+  readonly isLoading = this.testimoniosService.isLoading;
 
   onAddTestimonialClick(): void {
     if (this.newsletter.isSubscribed()) {

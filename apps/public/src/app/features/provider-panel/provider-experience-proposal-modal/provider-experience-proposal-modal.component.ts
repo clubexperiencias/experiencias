@@ -1,5 +1,6 @@
 import {
   Component,
+  DestroyRef,
   ElementRef,
   HostListener,
   ViewChild,
@@ -24,6 +25,14 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ProviderUser } from '../../../core/models/bank-transfer.model';
 import { ALTITUDE_OPTIONS, EXPERIENCE_CATEGORY_OPTIONS, ExperienceAlbumPhoto } from '../../../core/models/experience.model';
 import { AdminStoreService } from '../../../core/services/admin-store.service';
+import {
+  PersistedMediaDraft,
+  PersistedMediaFile,
+  blobToFile,
+  clearMediaDraftFromDb,
+  loadMediaDraftFromDb,
+  saveMediaDraftToDb,
+} from '../../../shared/utils/media-draft-db.util';
 
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -398,10 +407,210 @@ const DEFAULT_REQ_FORM = {
                   </div>
                 </div>
 
-                <!-- 3. Especificaciones Técnicas (Specs Rápidas) -->
-                <div class="form-section">
+                <!-- 3. Álbum de Fotos de la Experiencia (Opcional) -->
+                <div class="form-section album-form-section">
                   <div class="form-section-header">
                     <span class="form-section-num">3</span>
+                    <div class="section-title-wrap">
+                      <h4 class="form-section-title">
+                        Álbum de Fotos de la Experiencia <span class="badge-optional">(Opcional)</span>
+                      </h4>
+                      <p class="form-section-desc">
+                        La foto de portada general se usa automáticamente como portada del álbum. La primera foto destacada se mostrará como vista previa en la ficha de la experiencia.
+                      </p>
+                    </div>
+                  </div>
+
+                  <!-- Resumen visual de estado -->
+                  <div class="album-counters-bar">
+                    <div class="counter-badge" [class.is-valid]="featuredCount() === 2">
+                      <span>Destacadas: <strong>{{ featuredCount() }} / 2</strong></span>
+                    </div>
+                    <div class="counter-badge" [class.is-valid]="galleryPhotos().length > 0">
+                      <span>Galería común: <strong>{{ galleryPhotos().length }} / 9</strong></span>
+                    </div>
+                  </div>
+
+                  <!-- Bloque 1: Dos Fotos Destacadas -->
+                  <div class="album-slot-block">
+                    <div class="slot-block-header">
+                      <span class="slot-role-tag role-featured">FOTOS DESTACADAS (2 FOTOS)</span>
+                      <span class="slot-hint">Dos imágenes principales que encabezan la galería. La primera se usa como vista previa del álbum.</span>
+                    </div>
+
+                    <div class="featured-slots-grid">
+                      <!-- Destacada 1 -->
+                      <div class="featured-slot-item">
+                        @if (featuredPhoto1Preview()) {
+                          <div class="album-photo-card is-featured-card">
+                            <div class="card-thumb-wrap">
+                              <img [src]="featuredPhoto1Preview()" alt="Foto destacada 1" class="card-thumb-img" />
+                            </div>
+                            <div class="card-info-col">
+                              <span class="card-file-name" [title]="featuredPhoto1File()?.name || 'Foto destacada 1'">
+                                {{ featuredPhoto1File()?.name || 'foto-destacada-1.jpg' }}
+                              </span>
+                              <div class="card-actions">
+                                <label class="btn-card-action">
+                                  <span>Cambiar</span>
+                                  <input
+                                    type="file"
+                                    class="sr-only"
+                                    accept="image/*"
+                                    (change)="onFeaturedPhotoSelected($event, 1)"
+                                  />
+                                </label>
+                                <button
+                                  type="button"
+                                  class="btn-card-action btn-danger"
+                                  (click)="removeFeaturedPhoto(1)"
+                                >
+                                  Quitar
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        } @else {
+                          <label
+                            class="album-dropzone dropzone-sm"
+                            (dragover)="$event.preventDefault()"
+                            (drop)="onFeaturedPhotoDrop($event, 1)"
+                          >
+                            <input
+                              type="file"
+                              class="sr-only"
+                              accept="image/*"
+                              (change)="onFeaturedPhotoSelected($event, 1)"
+                            />
+                            <div class="dropzone-body">
+                              <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                              </svg>
+                              <span class="dropzone-text-main">Subir foto destacada 1</span>
+                              <span class="dropzone-text-sub">Vista previa del álbum · JPG, PNG, WEBP</span>
+                            </div>
+                          </label>
+                        }
+                      </div>
+
+                      <!-- Destacada 2 -->
+                      <div class="featured-slot-item">
+                        @if (featuredPhoto2Preview()) {
+                          <div class="album-photo-card is-featured-card">
+                            <div class="card-thumb-wrap">
+                              <img [src]="featuredPhoto2Preview()" alt="Foto destacada 2" class="card-thumb-img" />
+                            </div>
+                            <div class="card-info-col">
+                              <span class="card-file-name" [title]="featuredPhoto2File()?.name || 'Foto destacada 2'">
+                                {{ featuredPhoto2File()?.name || 'foto-destacada-2.jpg' }}
+                              </span>
+                              <div class="card-actions">
+                                <label class="btn-card-action">
+                                  <span>Cambiar</span>
+                                  <input
+                                    type="file"
+                                    class="sr-only"
+                                    accept="image/*"
+                                    (change)="onFeaturedPhotoSelected($event, 2)"
+                                  />
+                                </label>
+                                <button
+                                  type="button"
+                                  class="btn-card-action btn-danger"
+                                  (click)="removeFeaturedPhoto(2)"
+                                >
+                                  Quitar
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        } @else {
+                          <label
+                            class="album-dropzone dropzone-sm"
+                            (dragover)="$event.preventDefault()"
+                            (drop)="onFeaturedPhotoDrop($event, 2)"
+                          >
+                            <input
+                              type="file"
+                              class="sr-only"
+                              accept="image/*"
+                              (change)="onFeaturedPhotoSelected($event, 2)"
+                            />
+                            <div class="dropzone-body">
+                              <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                              </svg>
+                              <span class="dropzone-text-main">Subir foto destacada 2</span>
+                              <span class="dropzone-text-sub">JPG, PNG, WEBP</span>
+                            </div>
+                          </label>
+                        }
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Bloque 2: Galería Común (Hasta 9 Fotos) -->
+                  <div class="album-slot-block">
+                    <div class="slot-block-header">
+                      <span class="slot-role-tag role-gallery">FOTOS DE GALERÍA COMÚN (HASTA 9)</span>
+                      <span class="slot-hint">Imágenes del entorno o participantes (quedan {{ 9 - galleryPhotos().length }} lugares).</span>
+                    </div>
+
+                    @if (galleryPhotos().length < 9) {
+                      <label
+                        class="album-dropzone dropzone-gallery"
+                        (dragover)="$event.preventDefault()"
+                        (drop)="onGalleryPhotosDrop($event)"
+                      >
+                        <input
+                          type="file"
+                          class="sr-only"
+                          accept="image/*"
+                          multiple
+                          (change)="onGalleryPhotosSelected($event)"
+                        />
+                        <div class="dropzone-body">
+                          <span class="dropzone-text-main">Agregar Fotos a la Galería ({{ galleryPhotos().length }} / 9)</span>
+                          <span class="dropzone-text-sub">
+                            Podés seleccionar o arrastrar múltiples fotos a la vez
+                          </span>
+                        </div>
+                      </label>
+                    }
+
+                    @if (galleryPhotoError()) {
+                      <span class="field-error-text">{{ galleryPhotoError() }}</span>
+                    }
+
+                    @if (galleryPhotos().length > 0) {
+                      <div class="gallery-thumbs-grid">
+                        @for (item of galleryPhotos(); track item.id; let idx = $index) {
+                          <div class="gallery-thumb-item">
+                            <img [src]="item.previewUrl" [alt]="item.name" class="gallery-thumb-img" />
+                            <span class="thumb-index-pill">#{{ idx + 1 }}</span>
+                            <button
+                              type="button"
+                              class="btn-thumb-remove"
+                              (click)="removeGalleryPhoto(item.id)"
+                              title="Quitar foto de galería"
+                              aria-label="Quitar foto"
+                            >
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                                <line x1="18" y1="6" x2="6" y2="18" />
+                                <line x1="6" y1="6" x2="18" y2="18" />
+                              </svg>
+                            </button>
+                          </div>
+                        }
+                      </div>
+                    }
+                  </div>
+                </div>
+
+                <!-- 4. Especificaciones Técnicas (Specs Rápidas) -->
+                <div class="form-section">
+                  <div class="form-section-header">
+                    <span class="form-section-num">4</span>
                     <h4 class="form-section-title">Especificaciones Técnicas</h4>
                   </div>
 
@@ -443,6 +652,7 @@ const DEFAULT_REQ_FORM = {
                         <option value="7 horas">7 horas</option>
                         <option value="8 horas (Jornada completa)">8 horas (Jornada completa)</option>
                         <option value="Día completo (10 h)">Día completo (10 h)</option>
+                        <option value="Día y noche (24hs)">Día y noche (24hs)</option>
                         <option value="2 días">2 días</option>
                         <option value="3 días">3 días</option>
                         <option value="4 días o más">4 días o más</option>
@@ -493,7 +703,7 @@ const DEFAULT_REQ_FORM = {
                 <!-- 4. Arancel & Tarifas -->
                 <div class="form-section">
                   <div class="form-section-header">
-                    <span class="form-section-num">4</span>
+                    <span class="form-section-num">5</span>
                     <h4 class="form-section-title">Arancel por Persona</h4>
                   </div>
 
@@ -546,7 +756,7 @@ const DEFAULT_REQ_FORM = {
                 <!-- 5. Cronograma & Itinerario -->
                 <div class="form-section">
                   <div class="form-section-header">
-                    <span class="form-section-num">5</span>
+                    <span class="form-section-num">6</span>
                     <h4 class="form-section-title">Cronograma e Itinerario</h4>
                   </div>
 
@@ -581,6 +791,7 @@ const DEFAULT_REQ_FORM = {
                           [min]="todayIso"
                           [ngModel]="newScheduledDate()"
                           (ngModelChange)="newScheduledDate.set($event)"
+                          (change)="onScheduledDatePicked($any($event.target).value)"
                           name="newScheduledDate"
                           class="form-input datepicker-input"
                         />
@@ -633,7 +844,7 @@ const DEFAULT_REQ_FORM = {
                 <!-- 6. Equipamiento, Seguridad & Logística -->
                 <div class="form-section">
                   <div class="form-section-header">
-                    <span class="form-section-num">6</span>
+                    <span class="form-section-num">7</span>
                     <h4 class="form-section-title">Equipamiento, Seguridad & Punto de Encuentro</h4>
                   </div>
 
@@ -739,272 +950,6 @@ const DEFAULT_REQ_FORM = {
                         name="participantRequirements"
                       ></textarea>
                     </div>
-                  </div>
-                </div>
-
-                <!-- 7. Álbum de Fotos de la Experiencia (Opcional) -->
-                <div class="form-section album-form-section">
-                  <div class="form-section-header">
-                    <span class="form-section-num">7</span>
-                    <div class="section-title-wrap">
-                      <h4 class="form-section-title">
-                        Álbum de Fotos de la Experiencia <span class="badge-optional">(Opcional)</span>
-                      </h4>
-                    </div>
-                  </div>
-
-                  <!-- Resumen visual de estado -->
-                  <div class="album-counters-bar">
-                    <div class="counter-badge" [class.is-valid]="!!(coverImagePreview() || coverImageFile())">
-                      <span>Portada: <strong>{{ (coverImagePreview() || coverImageFile()) ? '1 / 1' : '0 / 1' }}</strong></span>
-                    </div>
-                    <div class="counter-badge" [class.is-valid]="featuredCount() === 2">
-                      <span>Destacadas: <strong>{{ featuredCount() }} / 2</strong></span>
-                    </div>
-                    <div class="counter-badge" [class.is-valid]="galleryPhotos().length > 0">
-                      <span>Galería común: <strong>{{ galleryPhotos().length }} / 9</strong></span>
-                    </div>
-                  </div>
-
-                  <!-- Bloque 1: Portada (1 foto) -->
-                  <div class="album-slot-block">
-                    <div class="slot-block-header">
-                      <span class="slot-role-tag role-cover">PORTADA PRINCIPAL (1/1)</span>
-                      <span class="slot-hint">Imagen de portada del catálogo y presentación principal.</span>
-                    </div>
-
-                    @if (coverImagePreview()) {
-                      <div class="album-photo-card is-cover-card">
-                        <div class="card-thumb-wrap">
-                          <img [src]="coverImagePreview()" alt="Foto de portada" class="card-thumb-img" />
-                          <span class="card-role-indicator">Portada activa</span>
-                        </div>
-                        <div class="card-meta">
-                          <span class="card-file-name" [title]="coverImageFile()?.name || 'Foto de portada'">
-                            {{ coverImageFile()?.name || 'Foto de portada principal' }}
-                          </span>
-                          @if (coverImageFile()) {
-                            <span class="card-file-size">{{ formatFileSize(coverImageFile()?.size) }}</span>
-                          }
-                        </div>
-                        <div class="card-actions">
-                          <label class="btn-card-action">
-                            <span>Cambiar</span>
-                            <input
-                              type="file"
-                              class="sr-only"
-                              accept="image/*"
-                              (change)="onCoverImageSelected($event)"
-                            />
-                          </label>
-                          <button
-                            type="button"
-                            class="btn-card-action btn-danger"
-                            (click)="removeCoverImage()"
-                          >
-                            Quitar
-                          </button>
-                        </div>
-                      </div>
-                    } @else {
-                      <label
-                        class="album-dropzone"
-                        [class.dropzone-error]="coverImageError()"
-                        (dragover)="$event.preventDefault()"
-                        (drop)="onCoverImageDrop($event)"
-                      >
-                        <input
-                          type="file"
-                          class="sr-only"
-                          accept="image/*"
-                          (change)="onCoverImageSelected($event)"
-                        />
-                        <div class="dropzone-body">
-                          <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                            <circle cx="8.5" cy="8.5" r="1.5" />
-                            <polyline points="21 15 16 10 5 21" />
-                          </svg>
-                          <span class="dropzone-text-main">Subir Foto de Portada *</span>
-                          <span class="dropzone-text-sub">Arrastrá o hacé click para seleccionar (JPG, PNG, WEBP)</span>
-                        </div>
-                      </label>
-                    }
-                  </div>
-
-                  <!-- Bloque 2: Dos Fotos Destacadas -->
-                  <div class="album-slot-block">
-                    <div class="slot-block-header">
-                      <span class="slot-role-tag role-featured">FOTOS DESTACADAS (2 FOTOS)</span>
-                      <span class="slot-hint">Dos imágenes de gran atractivo visual que encabezan la galería.</span>
-                    </div>
-
-                    <div class="featured-slots-grid">
-                      <!-- Destacada 1 -->
-                      <div class="featured-slot-item">
-                        @if (featuredPhoto1Preview()) {
-                          <div class="album-photo-card is-featured-card">
-                            <div class="card-thumb-wrap">
-                              <img [src]="featuredPhoto1Preview()" alt="Foto destacada 1" class="card-thumb-img" />
-                            </div>
-                            <div class="card-meta">
-                              <span class="card-file-name" [title]="featuredPhoto1File()?.name || 'Foto destacada 1'">
-                                {{ featuredPhoto1File()?.name || 'foto-destacada-1.jpg' }}
-                              </span>
-                            </div>
-                            <div class="card-actions">
-                              <label class="btn-card-action">
-                                <span>Cambiar</span>
-                                <input
-                                  type="file"
-                                  class="sr-only"
-                                  accept="image/*"
-                                  (change)="onFeaturedPhotoSelected($event, 1)"
-                                />
-                              </label>
-                              <button
-                                type="button"
-                                class="btn-card-action btn-danger"
-                                (click)="removeFeaturedPhoto(1)"
-                              >
-                                Quitar
-                              </button>
-                            </div>
-                          </div>
-                        } @else {
-                          <label
-                            class="album-dropzone dropzone-sm"
-                            (dragover)="$event.preventDefault()"
-                            (drop)="onFeaturedPhotoDrop($event, 1)"
-                          >
-                            <input
-                              type="file"
-                              class="sr-only"
-                              accept="image/*"
-                              (change)="onFeaturedPhotoSelected($event, 1)"
-                            />
-                            <div class="dropzone-body">
-                              <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                              </svg>
-                              <span class="dropzone-text-main">Subir foto destacada</span>
-                              <span class="dropzone-text-sub">JPG, PNG, WEBP</span>
-                            </div>
-                          </label>
-                        }
-                      </div>
-
-                      <!-- Destacada 2 -->
-                      <div class="featured-slot-item">
-                        @if (featuredPhoto2Preview()) {
-                          <div class="album-photo-card is-featured-card">
-                            <div class="card-thumb-wrap">
-                              <img [src]="featuredPhoto2Preview()" alt="Foto destacada 2" class="card-thumb-img" />
-                            </div>
-                            <div class="card-meta">
-                              <span class="card-file-name" [title]="featuredPhoto2File()?.name || 'Foto destacada 2'">
-                                {{ featuredPhoto2File()?.name || 'foto-destacada-2.jpg' }}
-                              </span>
-                            </div>
-                            <div class="card-actions">
-                              <label class="btn-card-action">
-                                <span>Cambiar</span>
-                                <input
-                                  type="file"
-                                  class="sr-only"
-                                  accept="image/*"
-                                  (change)="onFeaturedPhotoSelected($event, 2)"
-                                />
-                              </label>
-                              <button
-                                type="button"
-                                class="btn-card-action btn-danger"
-                                (click)="removeFeaturedPhoto(2)"
-                              >
-                                Quitar
-                              </button>
-                            </div>
-                          </div>
-                        } @else {
-                          <label
-                            class="album-dropzone dropzone-sm"
-                            (dragover)="$event.preventDefault()"
-                            (drop)="onFeaturedPhotoDrop($event, 2)"
-                          >
-                            <input
-                              type="file"
-                              class="sr-only"
-                              accept="image/*"
-                              (change)="onFeaturedPhotoSelected($event, 2)"
-                            />
-                            <div class="dropzone-body">
-                              <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                              </svg>
-                              <span class="dropzone-text-main">Subir foto destacada</span>
-                              <span class="dropzone-text-sub">JPG, PNG, WEBP</span>
-                            </div>
-                          </label>
-                        }
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Bloque 3: Galería Común (Hasta 9 Fotos) -->
-                  <div class="album-slot-block">
-                    <div class="slot-block-header">
-                      <span class="slot-role-tag role-gallery">FOTOS DE GALERÍA COMÚN (HASTA 9)</span>
-                      <span class="slot-hint">Imágenes del entorno o participantes (quedan {{ 9 - galleryPhotos().length }} lugares).</span>
-                    </div>
-
-                    @if (galleryPhotos().length < 9) {
-                      <label
-                        class="album-dropzone dropzone-gallery"
-                        (dragover)="$event.preventDefault()"
-                        (drop)="onGalleryPhotosDrop($event)"
-                      >
-                        <input
-                          type="file"
-                          class="sr-only"
-                          accept="image/*"
-                          multiple
-                          (change)="onGalleryPhotosSelected($event)"
-                        />
-                        <div class="dropzone-body">
-                          <span class="dropzone-text-main">Agregar Fotos a la Galería ({{ galleryPhotos().length }} / 9)</span>
-                          <span class="dropzone-text-sub">
-                            Podés seleccionar o arrastrar múltiples fotos a la vez
-                          </span>
-                        </div>
-                      </label>
-                    }
-
-                    @if (galleryPhotoError()) {
-                      <span class="field-error-text">{{ galleryPhotoError() }}</span>
-                    }
-
-                    @if (galleryPhotos().length > 0) {
-                      <div class="gallery-thumbs-grid">
-                        @for (item of galleryPhotos(); track item.id; let idx = $index) {
-                          <div class="gallery-thumb-item">
-                            <img [src]="item.previewUrl" [alt]="item.name" class="gallery-thumb-img" />
-                            <span class="thumb-index-pill">#{{ idx + 1 }}</span>
-                            <button
-                              type="button"
-                              class="btn-thumb-remove"
-                              (click)="removeGalleryPhoto(item.id)"
-                              title="Quitar foto de galería"
-                              aria-label="Quitar foto"
-                            >
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                                <line x1="18" y1="6" x2="6" y2="18" />
-                                <line x1="6" y1="6" x2="18" y2="18" />
-                              </svg>
-                            </button>
-                          </div>
-                        }
-                      </div>
-                    }
                   </div>
                 </div>
 
@@ -2101,18 +2046,26 @@ const DEFAULT_REQ_FORM = {
       }
       .featured-slots-grid {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 1rem;
+        width: 100%;
+        box-sizing: border-box;
       }
       .featured-slot-item {
         display: flex;
         flex-direction: column;
+        min-width: 0;
+        width: 100%;
+        overflow: hidden;
       }
       .album-dropzone {
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
         padding: 1.15rem;
         border: 1.5px dashed rgba(128, 179, 255, 0.35);
         border-radius: 4px;
@@ -2140,6 +2093,8 @@ const DEFAULT_REQ_FORM = {
         flex-direction: column;
         align-items: center;
         gap: 0.3rem;
+        min-width: 0;
+        max-width: 100%;
       }
       .dropzone-text-main {
         font-size: 0.8rem;
@@ -2154,6 +2109,11 @@ const DEFAULT_REQ_FORM = {
         display: flex;
         align-items: center;
         gap: 0.85rem;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        overflow: hidden;
+        box-sizing: border-box;
         padding: 0.65rem 0.85rem;
         background: rgba(10, 18, 38, 0.85);
         border: 1px solid rgba(128, 179, 255, 0.3);
@@ -2162,21 +2122,41 @@ const DEFAULT_REQ_FORM = {
       .album-photo-card.is-featured-card {
         height: 105px;
         min-height: 105px;
+        max-height: 105px;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        overflow: hidden;
         box-sizing: border-box;
       }
       .card-thumb-wrap {
         position: relative;
-        width: 82px;
-        height: 58px;
+        width: 88px;
+        height: 72px;
+        min-width: 88px;
+        max-width: 88px;
         border-radius: 3px;
         overflow: hidden;
         flex-shrink: 0;
         background: #000000;
       }
       .card-thumb-img {
+        display: block;
         width: 100%;
         height: 100%;
+        max-width: 100%;
+        max-height: 100%;
         object-fit: cover;
+        object-position: center;
+      }
+      .card-info-col {
+        flex: 1 1 0;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 0.45rem;
+        overflow: hidden;
       }
       .card-role-indicator {
         position: absolute;
@@ -2199,6 +2179,8 @@ const DEFAULT_REQ_FORM = {
         gap: 0.2rem;
       }
       .card-file-name {
+        display: block;
+        max-width: 100%;
         font-size: 0.75rem;
         font-weight: 600;
         color: #ffffff;
@@ -2213,6 +2195,7 @@ const DEFAULT_REQ_FORM = {
       .card-actions {
         display: flex;
         align-items: center;
+        flex-wrap: wrap;
         gap: 0.45rem;
         flex-shrink: 0;
       }
@@ -2552,6 +2535,9 @@ export class ProviderExperienceProposalModalComponent {
   @ViewChild('modalDialog') modalDialog?: ElementRef<HTMLElement>;
   private previousActiveElement: HTMLElement | null = null;
 
+  private readonly destroyRef = inject(DestroyRef);
+  private mediaDraftVersion = 0;
+
   static readonly DRAFT_STORAGE_KEY = 'experiencias_provider_proposal_draft';
   static readonly MEDIA_STORAGE_KEY = 'experiencias_provider_proposal_media';
   readonly hasDraft = signal<boolean>(false);
@@ -2560,17 +2546,50 @@ export class ProviderExperienceProposalModalComponent {
     this.loadDraft();
 
     if (typeof window !== 'undefined') {
-      window.addEventListener('focus', () => {
+      const onFocus = () => {
         if (this.isOpen()) {
           void this.store.restoreSupabaseSession(true);
         }
+      };
+      const onMessage = (event: MessageEvent) => {
+        if (event.origin !== window.location.origin) return;
+        if (event.data?.type === 'MP_OAUTH_CONNECTED') {
+          this.mpToast.set('¡Tu cuenta de Mercado Pago fue vinculada exitosamente!');
+          void this.store.restoreSupabaseSession(true);
+        } else if (event.data?.type === 'MP_OAUTH_ERROR') {
+          this.mpError.set(
+            'No se pudo vincular la cuenta de Mercado Pago. Podés intentarlo nuevamente.',
+          );
+          setTimeout(() => this.mpError.set(null), 6000);
+        }
+      };
+      window.addEventListener('focus', onFocus);
+      window.addEventListener('message', onMessage);
+      this.destroyRef.onDestroy(() => {
+        window.removeEventListener('focus', onFocus);
+        window.removeEventListener('message', onMessage);
       });
     }
 
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
       if (params.get('mp_connected') === 'true') {
+        if (
+          typeof window !== 'undefined' &&
+          window.opener &&
+          !window.opener.closed &&
+          window.opener !== window
+        ) {
+          try {
+            window.opener.postMessage({ type: 'MP_OAUTH_CONNECTED' }, window.location.origin);
+            window.close();
+            return;
+          } catch {
+            // Si el navegador bloquea window.close, continuamos normalmente en esta pestaña
+          }
+        }
         this.mpToast.set('¡Tu cuenta de Mercado Pago fue vinculada exitosamente!');
         void this.store.restoreSupabaseSession(true);
+        void this.restoreMediaDraft();
         void this.router.navigate([], {
           relativeTo: this.route,
           queryParams: { mp_connected: null, collector_id: null },
@@ -2578,9 +2597,24 @@ export class ProviderExperienceProposalModalComponent {
           replaceUrl: true,
         });
       } else if (params.get('mp_error')) {
+        if (
+          typeof window !== 'undefined' &&
+          window.opener &&
+          !window.opener.closed &&
+          window.opener !== window
+        ) {
+          try {
+            window.opener.postMessage({ type: 'MP_OAUTH_ERROR' }, window.location.origin);
+            window.close();
+            return;
+          } catch {
+            // Continuar en esta pestaña
+          }
+        }
         this.mpError.set(
           'No se pudo vincular la cuenta de Mercado Pago. Podés intentarlo nuevamente.',
         );
+        void this.restoreMediaDraft();
         void this.router.navigate([], {
           relativeTo: this.route,
           queryParams: { mp_error: null },
@@ -2668,7 +2702,8 @@ export class ProviderExperienceProposalModalComponent {
       const data = await res.json();
       if (res.ok && data?.url) {
         if (typeof window !== 'undefined') {
-          this.persistMediaDraft();
+          this.saveDraft();
+          await this.persistMediaDraft();
           // Abrir en ventana emergente o nueva pestaña para mantener el formulario y medios intactos
           const authWindow = window.open(data.url, '_blank', 'width=650,height=750');
           if (!authWindow || authWindow.closed || typeof authWindow.closed === 'undefined') {
@@ -2937,6 +2972,8 @@ export class ProviderExperienceProposalModalComponent {
     const objectUrl = URL.createObjectURL(file);
     this.coverImagePreview.set(objectUrl);
     this.finalSuccessCoverUrl.set(objectUrl);
+    this.saveDraft();
+    void this.persistMediaDraft();
 
     // Also read as DataURL to guarantee bulletproof thumbnail display
     if (typeof FileReader !== 'undefined') {
@@ -2946,6 +2983,7 @@ export class ProviderExperienceProposalModalComponent {
           this.coverImageDataUrl.set(reader.result);
           this.finalSuccessCoverUrl.set(reader.result);
           this.saveDraft();
+          void this.persistMediaDraft();
         }
       };
       reader.readAsDataURL(file);
@@ -2962,6 +3000,7 @@ export class ProviderExperienceProposalModalComponent {
     this.finalSuccessCoverUrl.set(null);
     this.coverImageError.set(null);
     this.saveDraft();
+    void this.persistMediaDraft();
   }
 
   onCoverVideoSelected(event: Event): void {
@@ -2996,6 +3035,8 @@ export class ProviderExperienceProposalModalComponent {
     }
     this.coverVideoFile.set(file);
     this.coverVideoPreview.set(URL.createObjectURL(file));
+    this.saveDraft();
+    void this.persistMediaDraft();
   }
 
   removeCoverVideo(): void {
@@ -3005,6 +3046,8 @@ export class ProviderExperienceProposalModalComponent {
     this.coverVideoFile.set(null);
     this.coverVideoPreview.set(null);
     this.coverVideoError.set(null);
+    this.saveDraft();
+    void this.persistMediaDraft();
   }
 
   onFeaturedPhotoSelected(event: Event, slot: 1 | 2): void {
@@ -3038,6 +3081,8 @@ export class ProviderExperienceProposalModalComponent {
       this.featuredPhoto2Preview.set(objectUrl);
       this.featuredPhoto2DataUrl.set(null);
     }
+    this.saveDraft();
+    void this.persistMediaDraft();
 
     if (typeof FileReader !== 'undefined') {
       const reader = new FileReader();
@@ -3047,11 +3092,13 @@ export class ProviderExperienceProposalModalComponent {
             if (this.featuredPhoto1File() === file) {
               this.featuredPhoto1DataUrl.set(reader.result);
               this.saveDraft();
+              void this.persistMediaDraft();
             }
           } else {
             if (this.featuredPhoto2File() === file) {
               this.featuredPhoto2DataUrl.set(reader.result);
               this.saveDraft();
+              void this.persistMediaDraft();
             }
           }
         }
@@ -3073,6 +3120,7 @@ export class ProviderExperienceProposalModalComponent {
       this.featuredPhoto2DataUrl.set(null);
     }
     this.saveDraft();
+    void this.persistMediaDraft();
   }
 
   onGalleryPhotosSelected(event: Event): void {
@@ -3129,12 +3177,14 @@ export class ProviderExperienceProposalModalComponent {
               list.map((item) => (item.id === id ? { ...item, dataUrl: reader.result as string } : item)),
             );
             this.saveDraft();
+            void this.persistMediaDraft();
           }
         };
         reader.readAsDataURL(file);
       }
     }
     this.saveDraft();
+    void this.persistMediaDraft();
   }
 
   removeGalleryPhoto(id: string): void {
@@ -3145,6 +3195,7 @@ export class ProviderExperienceProposalModalComponent {
     this.galleryPhotos.update((list) => list.filter((p) => p.id !== id));
     this.galleryPhotoError.set(null);
     this.saveDraft();
+    void this.persistMediaDraft();
   }
 
   onPriceArsChange(val: number): void {
@@ -3187,6 +3238,13 @@ export class ProviderExperienceProposalModalComponent {
     this.saveDraft();
   }
 
+  onScheduledDatePicked(val: string): void {
+    this.newScheduledDate.set(val);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+      this.addScheduledDate();
+    }
+  }
+
   addScheduledDate(): void {
     const val = this.newScheduledDate();
     if (!val) return;
@@ -3216,16 +3274,21 @@ export class ProviderExperienceProposalModalComponent {
   }
 
   loadDraft(): void {
-    if (typeof localStorage === 'undefined') return;
+    if (typeof localStorage === 'undefined') {
+      void this.restoreMediaDraft();
+      return;
+    }
     try {
       const raw = localStorage.getItem(ProviderExperienceProposalModalComponent.DRAFT_STORAGE_KEY);
       if (!raw) {
         this.hasDraft.set(false);
+        void this.restoreMediaDraft();
         return;
       }
       const data = JSON.parse(raw);
       if (!data || typeof data !== 'object') {
         this.hasDraft.set(false);
+        void this.restoreMediaDraft();
         return;
       }
       if (data.reqForm && typeof data.reqForm === 'object') {
@@ -3263,7 +3326,7 @@ export class ProviderExperienceProposalModalComponent {
         this.coverImagePreview.set(data.coverImageDataUrl);
         this.finalSuccessCoverUrl.set(data.coverImageDataUrl);
       }
-      this.restoreMediaDraft();
+      void this.restoreMediaDraft();
       this.hasDraft.set(true);
     } catch (err) {
       console.warn('[ProposalModal] Error al cargar borrador:', err);
@@ -3271,45 +3334,252 @@ export class ProviderExperienceProposalModalComponent {
     }
   }
 
-  private persistMediaDraft(): void {
-    if (typeof sessionStorage === 'undefined') return;
+  private buildPersistedMediaFile(
+    file: File | null,
+    dataUrl: string | null,
+    previewUrl: string | null,
+    fallbackName: string,
+  ): PersistedMediaFile | null {
+    const safeDataUrl =
+      dataUrl || (previewUrl && !previewUrl.startsWith('blob:') ? previewUrl : undefined);
+    if (!file && !safeDataUrl) return null;
+    return {
+      blob: file || undefined,
+      name: file?.name || fallbackName,
+      type: file?.type || 'image/jpeg',
+      lastModified: file?.lastModified || Date.now(),
+      dataUrl: safeDataUrl,
+    };
+  }
+
+  private async persistMediaDraft(): Promise<void> {
     try {
-      const mediaPayload = {
-        coverImageDataUrl:
-          this.coverImageDataUrl() ||
-          (this.coverImagePreview() && !this.coverImagePreview()!.startsWith('blob:')
-            ? this.coverImagePreview()
-            : null),
-        featuredPhoto1DataUrl:
-          this.featuredPhoto1DataUrl() ||
-          (this.featuredPhoto1Preview() && !this.featuredPhoto1Preview()!.startsWith('blob:')
-            ? this.featuredPhoto1Preview()
-            : null),
-        featuredPhoto2DataUrl:
-          this.featuredPhoto2DataUrl() ||
-          (this.featuredPhoto2Preview() && !this.featuredPhoto2Preview()!.startsWith('blob:')
-            ? this.featuredPhoto2Preview()
-            : null),
-        galleryPhotos: this.galleryPhotos()
-          .map((p) => ({
+      const coverImage = this.buildPersistedMediaFile(
+        this.coverImageFile(),
+        this.coverImageDataUrl(),
+        this.coverImagePreview(),
+        'portada.jpg',
+      );
+      const coverVideo = this.buildPersistedMediaFile(
+        this.coverVideoFile(),
+        null,
+        this.coverVideoPreview(),
+        'video-portada.mp4',
+      );
+      const featuredPhoto1 = this.buildPersistedMediaFile(
+        this.featuredPhoto1File(),
+        this.featuredPhoto1DataUrl(),
+        this.featuredPhoto1Preview(),
+        'foto-destacada-1.jpg',
+      );
+      const featuredPhoto2 = this.buildPersistedMediaFile(
+        this.featuredPhoto2File(),
+        this.featuredPhoto2DataUrl(),
+        this.featuredPhoto2Preview(),
+        'foto-destacada-2.jpg',
+      );
+      const galleryPhotos = this.galleryPhotos()
+        .map((p) => {
+          const safeDataUrl =
+            p.dataUrl || (!p.previewUrl.startsWith('blob:') ? p.previewUrl : undefined);
+          return {
             id: p.id,
             name: p.name,
-            dataUrl:
-              p.dataUrl || (!p.previewUrl.startsWith('blob:') ? p.previewUrl : undefined),
-          }))
-          .filter((p) => p.dataUrl),
-      };
-      sessionStorage.setItem(
-        ProviderExperienceProposalModalComponent.MEDIA_STORAGE_KEY,
-        JSON.stringify(mediaPayload),
+            blob: p.file || undefined,
+            type: p.file?.type || 'image/jpeg',
+            lastModified: p.file?.lastModified || Date.now(),
+            dataUrl: safeDataUrl,
+          };
+        })
+        .filter((p) => Boolean(p.blob || p.dataUrl));
+
+      const hasAnyMedia = Boolean(
+        coverImage || coverVideo || featuredPhoto1 || featuredPhoto2 || galleryPhotos.length > 0,
       );
+
+      if (!hasAnyMedia) {
+        await clearMediaDraftFromDb(ProviderExperienceProposalModalComponent.MEDIA_STORAGE_KEY);
+        if (typeof sessionStorage !== 'undefined') {
+          try {
+            sessionStorage.removeItem(ProviderExperienceProposalModalComponent.MEDIA_STORAGE_KEY);
+          } catch {
+            // ignore
+          }
+        }
+        return;
+      }
+
+      const dbPayload: PersistedMediaDraft = {
+        coverImage,
+        coverVideo,
+        featuredPhoto1,
+        featuredPhoto2,
+        galleryPhotos,
+        updatedAt: Date.now(),
+      };
+
+      const savedToDb = await saveMediaDraftToDb(
+        ProviderExperienceProposalModalComponent.MEDIA_STORAGE_KEY,
+        dbPayload,
+      );
+
+      // Fallback liviano a sessionStorage solo si IndexedDB no está disponible
+      if (!savedToDb && typeof sessionStorage !== 'undefined') {
+        try {
+          const fallbackPayload = {
+            coverImageDataUrl: coverImage?.dataUrl || null,
+            featuredPhoto1DataUrl: featuredPhoto1?.dataUrl || null,
+            featuredPhoto2DataUrl: featuredPhoto2?.dataUrl || null,
+            galleryPhotos: galleryPhotos
+              .filter((p) => p.dataUrl)
+              .map((p) => ({ id: p.id, name: p.name, dataUrl: p.dataUrl })),
+          };
+          sessionStorage.setItem(
+            ProviderExperienceProposalModalComponent.MEDIA_STORAGE_KEY,
+            JSON.stringify(fallbackPayload),
+          );
+        } catch (err) {
+          console.warn('[ProposalModal] No se pudieron persistir medios en sessionStorage:', err);
+        }
+      }
     } catch (err) {
-      console.warn('[ProposalModal] No se pudieron persistir medios en sessionStorage:', err);
+      console.warn('[ProposalModal] No se pudieron persistir medios del borrador:', err);
     }
   }
 
-  private restoreMediaDraft(): void {
-    if (typeof sessionStorage === 'undefined') return;
+  private async restoreMediaDraft(): Promise<void> {
+    const versionAtStart = this.mediaDraftVersion;
+    let restoredAny = false;
+
+    try {
+      const dbData = await loadMediaDraftFromDb(
+        ProviderExperienceProposalModalComponent.MEDIA_STORAGE_KEY,
+      );
+      if (versionAtStart !== this.mediaDraftVersion) return;
+
+      if (dbData) {
+        if (dbData.coverImage && !this.coverImageFile() && !this.coverImagePreview()) {
+          if (dbData.coverImage.blob) {
+            const file = blobToFile(
+              dbData.coverImage.blob,
+              dbData.coverImage.name,
+              dbData.coverImage.type,
+              dbData.coverImage.lastModified,
+            );
+            const objUrl = URL.createObjectURL(file);
+            this.coverImageFile.set(file);
+            this.coverImagePreview.set(objUrl);
+            this.finalSuccessCoverUrl.set(dbData.coverImage.dataUrl || objUrl);
+            if (dbData.coverImage.dataUrl) {
+              this.coverImageDataUrl.set(dbData.coverImage.dataUrl);
+            }
+            restoredAny = true;
+          } else if (dbData.coverImage.dataUrl) {
+            this.coverImageDataUrl.set(dbData.coverImage.dataUrl);
+            this.coverImagePreview.set(dbData.coverImage.dataUrl);
+            this.finalSuccessCoverUrl.set(dbData.coverImage.dataUrl);
+            restoredAny = true;
+          }
+        }
+
+        if (dbData.coverVideo && !this.coverVideoFile() && !this.coverVideoPreview()) {
+          if (dbData.coverVideo.blob) {
+            const file = blobToFile(
+              dbData.coverVideo.blob,
+              dbData.coverVideo.name,
+              dbData.coverVideo.type,
+              dbData.coverVideo.lastModified,
+            );
+            this.coverVideoFile.set(file);
+            this.coverVideoPreview.set(URL.createObjectURL(file));
+            restoredAny = true;
+          }
+        }
+
+        if (dbData.featuredPhoto1 && !this.featuredPhoto1File() && !this.featuredPhoto1Preview()) {
+          if (dbData.featuredPhoto1.blob) {
+            const file = blobToFile(
+              dbData.featuredPhoto1.blob,
+              dbData.featuredPhoto1.name,
+              dbData.featuredPhoto1.type,
+              dbData.featuredPhoto1.lastModified,
+            );
+            this.featuredPhoto1File.set(file);
+            this.featuredPhoto1Preview.set(URL.createObjectURL(file));
+            if (dbData.featuredPhoto1.dataUrl) {
+              this.featuredPhoto1DataUrl.set(dbData.featuredPhoto1.dataUrl);
+            }
+            restoredAny = true;
+          } else if (dbData.featuredPhoto1.dataUrl) {
+            this.featuredPhoto1DataUrl.set(dbData.featuredPhoto1.dataUrl);
+            this.featuredPhoto1Preview.set(dbData.featuredPhoto1.dataUrl);
+            restoredAny = true;
+          }
+        }
+
+        if (dbData.featuredPhoto2 && !this.featuredPhoto2File() && !this.featuredPhoto2Preview()) {
+          if (dbData.featuredPhoto2.blob) {
+            const file = blobToFile(
+              dbData.featuredPhoto2.blob,
+              dbData.featuredPhoto2.name,
+              dbData.featuredPhoto2.type,
+              dbData.featuredPhoto2.lastModified,
+            );
+            this.featuredPhoto2File.set(file);
+            this.featuredPhoto2Preview.set(URL.createObjectURL(file));
+            if (dbData.featuredPhoto2.dataUrl) {
+              this.featuredPhoto2DataUrl.set(dbData.featuredPhoto2.dataUrl);
+            }
+            restoredAny = true;
+          } else if (dbData.featuredPhoto2.dataUrl) {
+            this.featuredPhoto2DataUrl.set(dbData.featuredPhoto2.dataUrl);
+            this.featuredPhoto2Preview.set(dbData.featuredPhoto2.dataUrl);
+            restoredAny = true;
+          }
+        }
+
+        if (Array.isArray(dbData.galleryPhotos) && this.galleryPhotos().length === 0) {
+          const restored = dbData.galleryPhotos
+            .map((p) => {
+              const id = p.id || `gal_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+              if (p.blob) {
+                const file = blobToFile(p.blob, p.name || 'foto.jpg', p.type, p.lastModified);
+                return {
+                  id,
+                  file,
+                  previewUrl: URL.createObjectURL(file),
+                  dataUrl: p.dataUrl,
+                  name: p.name || file.name || 'foto.jpg',
+                };
+              }
+              if (p.dataUrl) {
+                return {
+                  id,
+                  previewUrl: p.dataUrl,
+                  dataUrl: p.dataUrl,
+                  name: p.name || 'foto.jpg',
+                };
+              }
+              return null;
+            })
+            .filter((item): item is NonNullable<typeof item> => item !== null);
+          if (restored.length > 0) {
+            this.galleryPhotos.set(restored);
+            restoredAny = true;
+          }
+        }
+
+        if (restoredAny) {
+          this.hasDraft.set(true);
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('[ProposalModal] Error al restaurar medios desde IndexedDB:', err);
+    }
+
+    // Fallback a sessionStorage si existiera un borrador previo allí
+    if (typeof sessionStorage === 'undefined' || versionAtStart !== this.mediaDraftVersion) return;
     try {
       const raw = sessionStorage.getItem(
         ProviderExperienceProposalModalComponent.MEDIA_STORAGE_KEY,
@@ -3320,14 +3590,17 @@ export class ProviderExperienceProposalModalComponent {
         this.coverImageDataUrl.set(data.coverImageDataUrl);
         this.coverImagePreview.set(data.coverImageDataUrl);
         this.finalSuccessCoverUrl.set(data.coverImageDataUrl);
+        restoredAny = true;
       }
       if (data?.featuredPhoto1DataUrl && !this.featuredPhoto1Preview()) {
         this.featuredPhoto1DataUrl.set(data.featuredPhoto1DataUrl);
         this.featuredPhoto1Preview.set(data.featuredPhoto1DataUrl);
+        restoredAny = true;
       }
       if (data?.featuredPhoto2DataUrl && !this.featuredPhoto2Preview()) {
         this.featuredPhoto2DataUrl.set(data.featuredPhoto2DataUrl);
         this.featuredPhoto2Preview.set(data.featuredPhoto2DataUrl);
+        restoredAny = true;
       }
       if (Array.isArray(data?.galleryPhotos) && this.galleryPhotos().length === 0) {
         const restored = data.galleryPhotos.map((p: any) => ({
@@ -3337,6 +3610,10 @@ export class ProviderExperienceProposalModalComponent {
           name: p.name || 'foto.jpg',
         }));
         this.galleryPhotos.set(restored);
+        if (restored.length > 0) restoredAny = true;
+      }
+      if (restoredAny) {
+        this.hasDraft.set(true);
       }
     } catch (err) {
       console.warn('[ProposalModal] Error al restaurar medios de sessionStorage:', err);
@@ -3363,7 +3640,12 @@ export class ProviderExperienceProposalModalComponent {
         this.reqForm.accountHolder?.trim() ||
         this.reqForm.cuitDni?.trim() ||
         this.scheduledDates().length > 0 ||
-        this.coverImageDataUrl()
+        this.coverImageDataUrl() ||
+        this.coverImageFile() ||
+        this.coverVideoFile() ||
+        this.featuredPhoto1File() ||
+        this.featuredPhoto2File() ||
+        this.galleryPhotos().length > 0
       );
 
       if (!hasMeaningfulContent) {
@@ -3371,7 +3653,7 @@ export class ProviderExperienceProposalModalComponent {
       }
 
       // No guardamos base64 pesados en localStorage para evitar QuotaExceededError.
-      // Se guarda solo el estado del formulario y configuraciones; las imágenes quedan en memoria.
+      // El texto y configuración se guardan en localStorage; las imágenes y videos en IndexedDB.
       const payload = {
         reqForm: this.reqForm,
         usdExchangeRate: this.usdExchangeRate(),
@@ -3394,6 +3676,7 @@ export class ProviderExperienceProposalModalComponent {
   }
 
   clearDraft(): void {
+    this.mediaDraftVersion++;
     if (typeof localStorage !== 'undefined') {
       try {
         localStorage.removeItem(ProviderExperienceProposalModalComponent.DRAFT_STORAGE_KEY);
@@ -3408,11 +3691,11 @@ export class ProviderExperienceProposalModalComponent {
         // ignore
       }
     }
+    void clearMediaDraftFromDb(ProviderExperienceProposalModalComponent.MEDIA_STORAGE_KEY);
     this.hasDraft.set(false);
   }
 
   discardDraft(): void {
-    this.clearDraft();
     this.reqForm = { ...DEFAULT_REQ_FORM };
     this.syncBankingWithProvider();
     this.scheduledDates.set([]);
@@ -3429,6 +3712,7 @@ export class ProviderExperienceProposalModalComponent {
     }
     this.galleryPhotos.set([]);
     this.galleryPhotoError.set(null);
+    this.clearDraft();
   }
 
   onClose(): void {

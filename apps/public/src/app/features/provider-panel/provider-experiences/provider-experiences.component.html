@@ -337,12 +337,38 @@
 
     <!-- Experience Actions - Botones rectangulares limpios sin iconos excesivos -->
     <div class="exp-actions">
-      <!-- Botón directo Editar a /experiencias/:id/editar -->
-      <a [routerLink]="getEditExperienceLink(row.experience.id)"
+      <!-- Botón directo Ver Ficha a /experiencias/:slug -->
+      <a [routerLink]="getDetailExperienceLink(row.experience)"
+        class="pay-copy-btn btn-view-fiche"
+        title="Abrir la ficha completa de esta experiencia">
+        Ver Ficha
+      </a>
+
+      <!-- Botón directo Editar a /experiencias/:slug/editar -->
+      <a [routerLink]="getEditExperienceLink(row.experience.slug || row.experience.id)"
         class="pay-copy-btn btn-edit"
         title="Editar datos, logística y tarifas de esta experiencia">
         Editar
       </a>
+
+      <!-- Pausar / Reactivar Experiencia -->
+      @if (row.experience.status === 'publicada' || row.experience.status === 'oculta') {
+      <button type="button"
+        class="pay-copy-btn"
+        [class.btn-pause-exp]="row.experience.status === 'publicada'"
+        [class.btn-resume-exp]="row.experience.status === 'oculta'"
+        [disabled]="togglingPauseId() === row.experience.id"
+        (click)="onTogglePause(row.experience)"
+        [title]="row.experience.status === 'oculta' ? 'Reactivar experiencia en el catálogo público' : 'Pausar experiencia temporalmente'">
+        {{
+          togglingPauseId() === row.experience.id
+            ? 'Actualizando...'
+            : row.experience.status === 'oculta'
+              ? 'Reactivar'
+              : 'Pausar'
+        }}
+      </button>
+      }
 
       <!-- View Enrolled Members and Receipts filtrando por esta experiencia -->
       <a routerLink="/socios" [queryParams]="{ experiencia: row.experience.id }" class="pay-copy-btn"
@@ -366,7 +392,7 @@
       }
 
       <!-- Publish Moderation Request for drafts -->
-      @if (row.experience.status === 'borrador' || row.experience.status === 'oculta') {
+      @if (row.experience.status === 'borrador') {
       <button type="button" class="pay-copy-btn btn-highlight" (click)="onRequestPublish(row.experience)">
         Solicitar Publicación
       </button>

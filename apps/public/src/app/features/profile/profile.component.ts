@@ -20,7 +20,7 @@ import {
   NewsletterService,
 } from '../../core/services/newsletter.service';
 import { ActivityHistoryService } from '../../core/services/activity-history.service';
-import { PaymentReceipt } from '../../core/models/activity-history.model';
+import { ActivityRecord, PaymentReceipt } from '../../core/models/activity-history.model';
 import { ExperienceService } from '../../core/services/experience.service';
 import { FavoritesService } from '../../core/services/favorites.service';
 import { ProviderStoreService } from '../../core/services/provider-store.service';
@@ -35,6 +35,7 @@ import {
   BreadcrumbItem,
 } from '../../shared/components/breadcrumb/breadcrumb.component';
 import { ReceiptModalComponent } from '../../shared/components/receipt-modal/receipt-modal.component';
+import { buildGoogleCalendarUrl } from '../../shared/utils/google-calendar.util';
 
 export interface CarouselExperienceItem {
   key: string;
@@ -983,6 +984,25 @@ export class ProfileComponent implements OnInit, AfterViewInit, OnDestroy {
 
   closeReceipt(): void {
     this.activityService.closeReceipt();
+  }
+
+  getActivityGoogleCalendarUrl(act: ActivityRecord): string {
+    const details = [
+      `Experiencia reservada en Experiencias Club.`,
+      act.receipt?.receiptNumber ? `Recibo Nº: ${act.receipt.receiptNumber}` : '',
+      act.provider?.name ? `Prestador: ${act.provider.name}` : '',
+      act.provider?.contactPhone ? `Contacto: ${act.provider.contactPhone}` : '',
+      act.slug ? `Ficha: https://experiencias.club/experiencias/${act.slug}` : '',
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    return buildGoogleCalendarUrl({
+      title: act.title,
+      date: act.dateLabel,
+      location: act.region || 'Catamarca, Argentina',
+      details,
+    });
   }
 
   copyCoupon(code: string): void {

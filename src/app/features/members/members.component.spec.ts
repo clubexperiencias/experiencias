@@ -9,11 +9,13 @@ describe('MembersComponent (/socios)', () => {
   let fixture: ComponentFixture<MembersComponent>;
   let featuredSignal: WritableSignal<any[]>;
   let communitySignal: WritableSignal<any[]>;
+  let isLoadingSignal: WritableSignal<boolean>;
 
   beforeEach(async () => {
     localStorage.clear();
     featuredSignal = signal<any[]>([]);
     communitySignal = signal<any[]>([]);
+    isLoadingSignal = signal<boolean>(false);
 
     await TestBed.configureTestingModule({
       imports: [MembersComponent],
@@ -24,7 +26,7 @@ describe('MembersComponent (/socios)', () => {
           useValue: {
             featuredTestimonios: featuredSignal,
             communityTestimonios: communitySignal,
-            isLoading: signal(false),
+            isLoading: isLoadingSignal,
           },
         },
       ],
@@ -141,5 +143,40 @@ describe('MembersComponent (/socios)', () => {
       fixture.detectChanges();
       expect(component.showConstructionNotice()).toBeFalse();
     }));
+  });
+
+  it('should render the loader and skeleton preview in Experiencias en Primera Persona while loading', () => {
+    isLoadingSignal.set(true);
+    fixture.detectChanges();
+
+    const loader = fixture.nativeElement.querySelector('.testimonials-loading-state');
+    expect(loader).toBeTruthy();
+    expect(loader.getAttribute('aria-busy')).toBe('true');
+
+    const spinner = loader.querySelector('.loading-spinner-ring');
+    expect(spinner).toBeTruthy();
+
+    const statusText = loader.querySelector('.loading-status-text');
+    expect(statusText).toBeTruthy();
+    expect(statusText.textContent).toContain('Cargando vivencias de la comunidad');
+
+    const skeletonCards = loader.querySelectorAll('.skeleton-testimonial-card');
+    expect(skeletonCards.length).toBeGreaterThanOrEqual(1);
+
+    // When loading finishes and testimonials are available, loader is removed
+    isLoadingSignal.set(false);
+    featuredSignal.set([
+      {
+        id: 't-1',
+        authorDisplay: 'Lucía M.',
+        membershipTier: 'fundador',
+        content: 'Una experiencia inolvidable.',
+        createdAt: '2026-01-01',
+      },
+    ]);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.testimonials-loading-state')).toBeFalsy();
+    expect(fixture.nativeElement.querySelector('.featured-carousel-wrap')).toBeTruthy();
   });
 });

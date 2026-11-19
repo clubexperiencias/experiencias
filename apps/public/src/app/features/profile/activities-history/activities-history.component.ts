@@ -10,6 +10,7 @@ import {
 import { HeaderComponent } from '../../../shared/components/header/header.component';
 import { FooterComponent } from '../../../shared/components/footer/footer.component';
 import { ReceiptModalComponent } from '../../../shared/components/receipt-modal/receipt-modal.component';
+import { buildGoogleCalendarUrl } from '../../../shared/utils/google-calendar.util';
 
 export type ActivitySort = 'desc' | 'asc';
 
@@ -59,6 +60,25 @@ export class ActivitiesHistoryComponent {
 
   openReceipt(receipt: PaymentReceipt): void {
     this.activityService.viewReceipt(receipt);
+  }
+
+  getActivityGoogleCalendarUrl(act: ActivityRecord): string {
+    const details = [
+      `Experiencia reservada en Experiencias Club.`,
+      act.receipt?.receiptNumber ? `Recibo Nº: ${act.receipt.receiptNumber}` : '',
+      act.provider?.name ? `Prestador: ${act.provider.name}` : '',
+      act.provider?.contactPhone ? `Contacto: ${act.provider.contactPhone}` : '',
+      act.slug ? `Ficha: https://experiencias.club/experiencias/${act.slug}` : '',
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    return buildGoogleCalendarUrl({
+      title: act.title,
+      date: act.dateLabel,
+      location: act.region || 'Catamarca, Argentina',
+      details,
+    });
   }
 
   readonly filteredActivities = computed<ActivityRecord[]>(() => {

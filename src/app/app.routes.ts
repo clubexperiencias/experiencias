@@ -15,14 +15,19 @@ if (isBrowser) {
     sessionStorage.setItem('detected_portal', 'admin');
   } else if (search.includes('portal=prestador') || search.includes('prestador=true')) {
     sessionStorage.setItem('detected_portal', 'prestador');
+  } else if (search.includes('portal=public') || search.includes('portal=web')) {
+    sessionStorage.removeItem('detected_portal');
   }
 }
 
 // Detección estricta de subdominios (y soporte para pruebas locales con subdominio o ?portal=admin/prestador)
+const isPublicSearch = search.includes('portal=public') || search.includes('portal=web');
 const isAdminHost =
-  host.startsWith('admin.') ||
-  host.includes('admin.experiencias') ||
-  (isLocalHost && (search.includes('portal=admin') || search.includes('admin=true') || storedPortal === 'admin'));
+  !isPublicSearch && (
+    host.startsWith('admin.') ||
+    host.includes('admin.experiencias') ||
+    (isLocalHost && (search.includes('portal=admin') || search.includes('admin=true') || storedPortal === 'admin'))
+  );
 
 const isProviderHost =
   host.startsWith('prestadores.') ||
@@ -116,6 +121,16 @@ const adminRoutes: Routes = [
       },
       {
         path: 'propuestas',
+        redirectTo: 'experiencias',
+        pathMatch: 'full',
+      },
+      {
+        path: 'admin/experiencias/:slug',
+        redirectTo: 'experiencias/:slug',
+        pathMatch: 'full',
+      },
+      {
+        path: 'admin/experiencias',
         redirectTo: 'experiencias',
         pathMatch: 'full',
       },
@@ -299,6 +314,14 @@ const providerRoutes: Routes = [
         loadComponent: () =>
           import('./features/provider-panel/provider-experience-form/provider-experience-form.component').then(
             (m) => m.ProviderExperienceFormComponent,
+          ),
+      },
+      {
+        path: 'experiencias/:slug',
+        title: 'Ficha de Experiencia - Portal de Prestadores',
+        loadComponent: () =>
+          import('./features/provider-panel/provider-experience-detail/provider-experience-detail.component').then(
+            (m) => m.ProviderExperienceDetailComponent,
           ),
       },
       {
@@ -702,6 +725,16 @@ const publicRoutes: Routes = [
         pathMatch: 'full',
       },
       {
+        path: 'admin/experiencias/:slug',
+        redirectTo: 'experiencias/:slug',
+        pathMatch: 'full',
+      },
+      {
+        path: 'admin/experiencias',
+        redirectTo: 'experiencias',
+        pathMatch: 'full',
+      },
+      {
         path: 'postulaciones',
         redirectTo: 'prestadores',
         pathMatch: 'full',
@@ -870,6 +903,14 @@ const publicRoutes: Routes = [
         loadComponent: () =>
           import('./features/provider-panel/provider-experience-form/provider-experience-form.component').then(
             (m) => m.ProviderExperienceFormComponent,
+          ),
+      },
+      {
+        path: 'experiencias/:slug',
+        title: 'Ficha de Experiencia - Portal de Prestadores',
+        loadComponent: () =>
+          import('./features/provider-panel/provider-experience-detail/provider-experience-detail.component').then(
+            (m) => m.ProviderExperienceDetailComponent,
           ),
       },
       {

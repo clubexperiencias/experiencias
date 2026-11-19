@@ -61,6 +61,7 @@ export class ProviderExperienceFormComponent implements OnInit {
     '7 horas',
     '8 horas (Jornada completa)',
     'Día completo (10 h)',
+    'Día y noche (24hs)',
     '2 días',
     '3 días',
     '4 días o más',
@@ -128,21 +129,25 @@ export class ProviderExperienceFormComponent implements OnInit {
   readonly saveError = signal<string | null>(null);
   readonly loadError = signal(false);
 
+  readonly editingExpSlug = signal<string | null>(null);
+
   async ngOnInit(): Promise<void> {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.isEditMode.set(true);
       this.editingExpId.set(id);
-      let exp = this.store.getExperienceById(id);
+      let exp = this.store.getExperienceById(id) || this.store.getExperienceBySlug(id);
       if (!exp) {
         const loadOk = await this.expService.remoteLoadPromise;
-        exp = this.store.getExperienceById(id);
+        exp = this.store.getExperienceById(id) || this.store.getExperienceBySlug(id);
         if (!exp && !loadOk) {
           this.loadError.set(true);
           return;
         }
       }
       if (exp) {
+        this.editingExpId.set(exp.id);
+        this.editingExpSlug.set(exp.slug || exp.id);
         this.populateForm(exp);
       } else {
         this.notFound.set(true);
@@ -189,6 +194,13 @@ export class ProviderExperienceFormComponent implements OnInit {
       this.loadError.set(true);
     } else {
       this.notFound.set(true);
+    }
+  }
+
+  onDatePicked(value: string): void {
+    this.newDate.set(value);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      this.addDate();
     }
   }
 
@@ -407,7 +419,11 @@ export class ProviderExperienceFormComponent implements OnInit {
         this.clearDraft();
       }
 
-      this.router.navigate([this.backLink()]);
+      if (this.isEditMode() && (this.editingExpSlug() || this.editingExpId())) {
+        this.router.navigate([this.backLink(), this.editingExpSlug() || this.editingExpId()]);
+      } else {
+        this.router.navigate([this.backLink()]);
+      }
     } catch (err) {
       console.error('[ProviderExperienceForm] Error guardando experiencia:', err);
       this.saveError.set(

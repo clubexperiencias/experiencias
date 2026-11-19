@@ -243,6 +243,7 @@
             class="form-input"
             [value]="newDate()"
             (input)="newDate.set($any($event.target).value)"
+            (change)="onDatePicked($any($event.target).value)"
           />
         </div>
         <button type="button" class="add-date-btn" (click)="addDate()">Agregar fecha</button>
