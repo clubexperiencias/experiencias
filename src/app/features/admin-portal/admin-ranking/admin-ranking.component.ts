@@ -1,6 +1,6 @@
 import { Component, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { AdminStoreService } from '../../../core/services/admin-store.service';
@@ -10,6 +10,7 @@ import { FavoritesService } from '../../../core/services/favorites.service';
 import { ProviderUser } from '../../../core/models/bank-transfer.model';
 import { Experience } from '../../../core/models/experience.model';
 import { ArsPipe } from '../../../shared/pipes/format.pipes';
+import { getPublicExperienceUrl } from '../../../shared/utils/csv.util';
 
 export interface ProviderRankingRow {
   rank: number;
@@ -166,12 +167,14 @@ export interface ExperienceRankingRow {
                   <td class="text-right">
                     @if (row.slug) {
                       <a
-                        [routerLink]="['/prestadores', row.slug]"
+                        [href]="getPublicProviderUrl(row.slug)"
                         target="_blank"
+                        rel="noopener noreferrer"
                         class="btn-action-outline"
+                        title="Ver perfil público"
                       >
-                        <span>Perfil Público</span>
                         <mat-icon class="icon-tiny">open_in_new</mat-icon>
+                        <span>IR AL PERFIL PÚBLICO</span>
                       </a>
                     }
                   </td>
@@ -256,16 +259,18 @@ export interface ExperienceRankingRow {
                   </td>
                   <td class="text-right">
                     <div class="action-btn-group">
-                      <a [routerLink]="['/admin/experiencias', row.slug]" class="btn-action-outline">
-                        <span>Ficha Admin</span>
+                      <a [routerLink]="getExperienceFicheRoute(row.slug)" class="btn-action-outline">
+                        <span>VER FICHA</span>
                       </a>
                       <a
-                        [routerLink]="['/experiencias', row.slug]"
+                        [href]="getPublicUrl(row.experience || { slug: row.slug })"
                         target="_blank"
+                        rel="noopener noreferrer"
                         class="btn-action-outline btn-web-link"
-                        title="Ver página pública"
+                        title="Ver en la web pública"
                       >
                         <mat-icon class="icon-tiny">open_in_new</mat-icon>
+                        <span>VER EN LA WEB</span>
                       </a>
                     </div>
                   </td>
@@ -353,15 +358,15 @@ export interface ExperienceRankingRow {
     }
 
     .sum-value {
-      font-size: 1.35rem;
+      font-size: 1.25rem;
       font-weight: 800;
       color: #ffffff !important;
-      line-height: 1.15;
+      line-height: 1.2;
     }
 
     .sum-value.num-lg {
-      font-size: 2.35rem;
-      letter-spacing: -0.02em;
+      font-size: 1.65rem;
+      letter-spacing: -0.01em;
     }
 
     .text-truncate-val {
@@ -681,8 +686,12 @@ export interface ExperienceRankingRow {
     .btn-action-outline {
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 0.35rem;
-      padding: 0.4rem 0.75rem;
+      padding: 0 0.75rem;
+      height: 32px;
+      line-height: 30px;
+      box-sizing: border-box;
       background: rgba(255, 255, 255, 0.05);
       border: 1px solid rgba(255, 255, 255, 0.15);
       border-radius: 4px;
@@ -701,13 +710,19 @@ export interface ExperienceRankingRow {
     }
 
     .btn-web-link {
-      padding: 0.4rem 0.55rem;
+      padding: 0 0.75rem;
+      height: 32px;
+      box-sizing: border-box;
     }
 
     .icon-tiny {
       font-size: 14px;
       width: 14px;
       height: 14px;
+      line-height: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .empty-table-cell {
@@ -729,10 +744,33 @@ export interface ExperienceRankingRow {
   `],
 })
 export class AdminRankingComponent {
+  private readonly router = inject(Router);
   private readonly adminStore = inject(AdminStoreService);
   private readonly experienceService = inject(ExperienceService);
   private readonly ratingService = inject(ProviderRatingService);
   private readonly favoritesService = inject(FavoritesService);
+
+  getExperienceFicheRoute(slug?: string): string {
+    const rawPath = this.router.url.split('?')[0].split('#')[0];
+    const segments = rawPath.split('/').filter(Boolean);
+    const base = segments[0] === 'admin' ? '/admin/experiencias' : '/experiencias';
+    return `${base}/${slug || ''}`;
+  }
+
+  getPublicUrl(exp: { publicUrl?: string; slug?: string; detailRoute?: string }): string {
+    return getPublicExperienceUrl(exp);
+  }
+
+  getPublicProviderUrl(slug?: string | null): string {
+    const cleanSlug = encodeURIComponent((slug || '').trim());
+    if (typeof window !== 'undefined' && window.location) {
+      const origin = window.location.origin;
+      if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+        return `${origin}/prestadores/${cleanSlug}?portal=public`;
+      }
+    }
+    return `https://experiencias.club/prestadores/${cleanSlug}`;
+  }
 
   // Ranking ordenado de prestadores activos aprobados por puntaje y cantidad de votos
   readonly providerRanking = computed<ProviderRankingRow[]>(() => {

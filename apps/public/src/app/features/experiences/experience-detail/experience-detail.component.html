@@ -247,6 +247,33 @@
         </div>
         }
 
+        <!-- ═══════════════ CARD: ÁLBUM DE FOTOS (VISTA PREVIA) ═══════════════ -->
+        @if (hasAlbumPhotos(item) && albumPreviewPhoto()) {
+        <div class="exp-detail-section-card album-preview-section-card">
+          <div class="card-inner-header">
+            <span class="section-kicker">REGISTRO VISUAL</span>
+            <h2 class="card-heading">Álbum de Fotos</h2>
+            <p class="card-subheading">
+              Mirá postales reales de esta experiencia en Catamarca ({{ albumPhotosCount() }} fotos).
+            </p>
+          </div>
+
+          <a [routerLink]="photosRoute()" class="album-preview-card-link" aria-label="Abrir álbum de fotos completo">
+            <img
+              [src]="albumPreviewPhoto()"
+              [alt]="'Vista previa del álbum de ' + item.title"
+              class="album-preview-img"
+              loading="lazy"
+              decoding="async"
+            />
+            <div class="album-preview-overlay">
+              <span class="album-preview-count">{{ albumPhotosCount() }} fotos en el álbum</span>
+              <span class="album-preview-cta">Ver Álbum Completo →</span>
+            </div>
+          </a>
+        </div>
+        }
+
         <!-- ═══════════════ CARD: PUNTO DE ENCUENTRO & LOGÍSTICA ═══════════════ -->
         @if (item.meetingPoint || item.region) {
         <div class="exp-detail-section-card">

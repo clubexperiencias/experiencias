@@ -54,4 +54,32 @@ describe('EmergingMemberComponent (/socios/emergentes)', () => {
     expect(adImg).toBeTruthy();
     expect(adImg.getAttribute('src')).toContain('ad-kayak.png');
   });
+
+  it('should not show google-link-gate when member is already confirmed', () => {
+    // Simulate confirmed member
+    component.fullName.set('Martín Rodríguez');
+    component.email.set('martin@ejemplo.com');
+    component.documentNumber.set('30123456');
+    component.phone.set('+5493834123456');
+    vi.spyOn(component.newsletter, 'isSubscribed').mockReturnValue(true);
+    vi.spyOn(component.newsletter, 'currentMember').mockReturnValue({
+      id: 'm-1',
+      fullName: 'Martín Rodríguez',
+      email: 'martin@ejemplo.com',
+      dni: '30123456',
+      phone: '+5493834123456',
+      membershipTier: 'emergente',
+      position: 100,
+      active: true,
+      createdAt: '2026-01-01',
+    } as any);
+
+    fixture.detectChanges();
+
+    const confirmedBox = fixture.nativeElement.querySelector('.emerging-confirmed-box');
+    expect(confirmedBox).toBeTruthy();
+
+    const googleGate = fixture.nativeElement.querySelector('.google-link-gate');
+    expect(googleGate).toBeNull();
+  });
 });

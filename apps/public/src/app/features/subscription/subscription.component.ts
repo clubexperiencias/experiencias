@@ -1,4 +1,4 @@
-import { Component, HostListener, inject, signal, computed, OnInit } from '@angular/core';
+import { Component, HostListener, inject, signal, computed, effect, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -6,6 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { NewsletterService } from '../../core/services/newsletter.service';
 import { DiscountService } from '../../core/services/discount.service';
 import { Discount } from '../../core/models/discount.model';
+import { WaitlistEntry } from '../../core/models/waitlist.model';
 import { FooterComponent } from '../../shared/components/footer/footer.component';
 import { HeaderComponent } from '../../shared/components/header/header.component';
 import {
@@ -51,10 +52,41 @@ export class SubscriptionComponent implements OnInit {
   // Menús de navegación
   readonly mobileMenuOpen = signal(false);
 
-  // Autenticación con Google
-  readonly authReady = signal(!this.newsletter.isSupabaseConnected());
+  // Autenticación con Google o Sesión de Socio Existente
+  readonly authReady = signal(
+    !this.newsletter.isSupabaseConnected() || this.newsletter.isSubscribed()
+  );
   readonly authError = signal<string | null>(null);
-  readonly requiresGoogle = computed(() => !this.authReady());
+  private hadCurrentMember = false;
+  private populatedMemberKey: string | null = null;
+
+  constructor() {
+    effect(() => {
+      const current = this.newsletter.currentMember();
+      if (current) {
+        this.hadCurrentMember = true;
+        if (current.email) {
+          const clean = current.email.trim().toLowerCase();
+          if (!this.email()) {
+            this.email.set(clean);
+          }
+          this.authenticatedEmail.set(clean);
+          this.authReady.set(true);
+        }
+      } else if (this.hadCurrentMember) {
+        this.hadCurrentMember = false;
+        this.populatedMemberKey = null;
+        this.authenticatedEmail.set(null);
+        this.authReady.set(false);
+      }
+    });
+  }
+  readonly requiresGoogle = computed(() => {
+    if (this.newsletter.isSubscribed() && (this.authenticatedEmail() || this.email().trim().length > 0)) {
+      return false;
+    }
+    return !this.authReady();
+  });
 
   // Datos del Socio
   readonly fullName = signal('');
@@ -120,72 +152,82 @@ export class SubscriptionComponent implements OnInit {
     });
   }
 
+  private clearAutofilledMemberFields(): void {
+    this.fullName.set('');
+    this.documentNumber.set('');
+    this.phone.set('');
+    this.selectedExperiences.set([]);
+    this.otherExperience.set('');
+  }
+
+  private populateFromMember(member: WaitlistEntry): void {
+    const nextKey =
+      (member.authUserId || member.email || member.id || '').trim().toLowerCase() || null;
+    const identityChanged = Boolean(
+      this.populatedMemberKey && nextKey && this.populatedMemberKey !== nextKey,
+    );
+    if (identityChanged) {
+      this.clearAutofilledMemberFields();
+      this.email.set('');
+    }
+    this.populatedMemberKey = nextKey;
+
+    if (member.email && (identityChanged || !this.email())) {
+      this.email.set(member.email.trim().toLowerCase());
+    }
+    if (member.fullName && (identityChanged || !this.fullName())) {
+      this.fullName.set(member.fullName);
+    }
+    const dni = member.dni || member.documentNumber;
+    if (dni && (identityChanged || !this.documentNumber())) {
+      this.documentNumber.set(dni);
+    }
+    if (member.phone && (identityChanged || !this.phone())) {
+      this.phone.set(member.phone);
+    }
+    if (
+      member.experiencesWishlist &&
+      member.experiencesWishlist.length > 0 &&
+      (identityChanged || this.selectedExperiences().length === 0)
+    ) {
+      this.selectedExperiences.set(member.experiencesWishlist);
+    }
+    if (member.experiencesOther && (identityChanged || !this.otherExperience())) {
+      this.otherExperience.set(member.experiencesOther);
+      if (!this.selectedExperiences().includes('otros')) {
+        this.selectedExperiences.update((list) => [...list, 'otros']);
+      }
+    }
+  }
+
   private async refreshGoogleAccount(): Promise<void> {
     const authenticatedEmail = await this.newsletter.getAuthenticatedEmail();
+    const current = this.newsletter.currentMember();
+
     if (authenticatedEmail) {
       const cleanAuthEmail = authenticatedEmail.trim().toLowerCase();
       this.email.set(cleanAuthEmail);
       this.authenticatedEmail.set(cleanAuthEmail);
       this.authReady.set(true);
       await this.newsletter.getAuthenticatedMember();
-      const current = this.newsletter.currentMember();
-      if (current?.email && current.email.trim().toLowerCase() === cleanAuthEmail) {
-        if (current.fullName && !this.fullName()) {
-          this.fullName.set(current.fullName);
-        }
-        const dni = current.dni || current.documentNumber;
-        if (dni && !this.documentNumber()) {
-          this.documentNumber.set(dni);
-        }
-        if (current.phone && !this.phone()) {
-          this.phone.set(current.phone);
-        }
-        if (
-          current.experiencesWishlist &&
-          current.experiencesWishlist.length > 0 &&
-          this.selectedExperiences().length === 0
-        ) {
-          this.selectedExperiences.set(current.experiencesWishlist);
-        }
-        if (current.experiencesOther && !this.otherExperience()) {
-          this.otherExperience.set(current.experiencesOther);
-          if (!this.selectedExperiences().includes('otros')) {
-            this.selectedExperiences.update((list) => [...list, 'otros']);
-          }
-        }
+      const freshCurrent = this.newsletter.currentMember();
+      if (freshCurrent?.email?.trim().toLowerCase() === cleanAuthEmail) {
+        this.populateFromMember(freshCurrent);
+      } else if (this.populatedMemberKey && this.populatedMemberKey !== cleanAuthEmail) {
+        this.clearAutofilledMemberFields();
+        this.populatedMemberKey = cleanAuthEmail;
       }
+    } else if (!this.newsletter.isSupabaseConnected() && current?.email) {
+      const cleanEmail = current.email.trim().toLowerCase();
+      this.email.set(cleanEmail);
+      this.authenticatedEmail.set(cleanEmail);
+      this.authReady.set(true);
+      this.populateFromMember(current);
     } else {
+      this.authenticatedEmail.set(null);
       this.authReady.set(!this.newsletter.isSupabaseConnected());
-      if (!this.newsletter.isSupabaseConnected()) {
-        const current = this.newsletter.currentMember();
-        if (current) {
-          if (current.email && !this.email()) {
-            this.email.set(current.email);
-          }
-          if (current.fullName && !this.fullName()) {
-            this.fullName.set(current.fullName);
-          }
-          const dni = current.dni || current.documentNumber;
-          if (dni && !this.documentNumber()) {
-            this.documentNumber.set(dni);
-          }
-          if (current.phone && !this.phone()) {
-            this.phone.set(current.phone);
-          }
-          if (
-            current.experiencesWishlist &&
-            current.experiencesWishlist.length > 0 &&
-            this.selectedExperiences().length === 0
-          ) {
-            this.selectedExperiences.set(current.experiencesWishlist);
-          }
-          if (current.experiencesOther && !this.otherExperience()) {
-            this.otherExperience.set(current.experiencesOther);
-            if (!this.selectedExperiences().includes('otros')) {
-              this.selectedExperiences.update((list) => [...list, 'otros']);
-            }
-          }
-        }
+      if (!this.newsletter.isSupabaseConnected() && current) {
+        this.populateFromMember(current);
       }
     }
   }
@@ -261,7 +303,7 @@ export class SubscriptionComponent implements OnInit {
   }
 
   async submit(): Promise<void> {
-    if (this.requiresGoogle()) {
+    if (!this.newsletter.isSubscribed() && this.requiresGoogle()) {
       this.submitError.set('Primero vinculá tu cuenta de Google para continuar.');
       return;
     }

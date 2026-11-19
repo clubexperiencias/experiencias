@@ -1834,33 +1834,124 @@ export class ProviderStoreService {
     return updatedExperience;
   }
 
+  private rollbackExperienceFields(
+    targetId: string,
+    previousExp: ProviderExperience | undefined,
+    wasInLocalList: boolean,
+    appliedExp: ProviderExperience,
+    ownedKeys: ReadonlyArray<keyof ProviderExperience>,
+  ): void {
+    this._experiences.update((list) => {
+      if (!wasInLocalList) {
+        return list.flatMap((e) => {
+          if (e.id !== targetId) return [e];
+          if (e.updatedAt === appliedExp.updatedAt) return [];
+          if (!previousExp) return [e];
+          const reverted: ProviderExperience = { ...e };
+          for (const key of ownedKeys) {
+            if (e[key] === appliedExp[key]) {
+              (reverted as unknown as Record<string, unknown>)[key as string] = previousExp[key];
+            }
+          }
+          return [reverted];
+        });
+      }
+      if (!previousExp) return list;
+      return list.map((e) => {
+        if (e.id !== targetId) return e;
+        const reverted: ProviderExperience = { ...e };
+        for (const key of ownedKeys) {
+          if (e[key] === appliedExp[key]) {
+            (reverted as unknown as Record<string, unknown>)[key as string] = previousExp[key];
+          }
+        }
+        if (e.updatedAt === appliedExp.updatedAt) {
+          reverted.updatedAt = previousExp.updatedAt;
+        }
+        return reverted;
+      });
+    });
+    this.saveExperiences();
+  }
+
   async saveExperienceChanges(
     id: string,
     updates: Partial<Omit<ProviderExperience, 'id' | 'createdAt' | 'providerId'>>,
   ): Promise<ProviderExperience> {
-    const snapshot = this._experiences();
+    const localBefore = this._experiences().find((e) => e.id === id || e.slug === id);
+    const previousExp = localBefore ?? this.getExperienceById(id) ?? this.getExperienceBySlug(id);
     const updated = this.updateExperience(id, updates);
     const expMatch =
       this.expService.getExperienceById(id) || this.expService.getExperienceBySlug(updated.slug);
     if (expMatch) {
       try {
+        const mappedStatus =
+          updates.status === 'publicada' ||
+          updates.status === 'oculta' ||
+          updates.status === 'borrador'
+            ? updates.status
+            : updates.status === 'pendiente_publicacion'
+              ? 'pendiente'
+              : undefined;
         await this.expService.updateExperience({
           id: expMatch.id,
           title: updated.title,
           tagline: updated.tagline,
           description: updated.description,
+          category: updated.category,
           region: updated.region,
           meetingPoint: updated.meetingPoint,
           difficulty: updated.difficulty,
           durationLabel: updated.durationLabel,
+          altitudeMeters: updated.altitudeMeters,
           priceArs: updated.priceArs,
           maxSpotsPerGroup: updated.capacityPerDate,
           dates: updated.dates,
           coverImage: updated.coverImage,
+          ...(mappedStatus ? { status: mappedStatus } : {}),
         });
       } catch (err) {
-        this._experiences.set(snapshot);
-        this.saveExperiences();
+        this.rollbackExperienceFields(
+          updated.id,
+          previousExp,
+          Boolean(localBefore),
+          updated,
+          Object.keys(updates) as Array<keyof ProviderExperience>,
+        );
+        throw err;
+      }
+    }
+    return updated;
+  }
+
+  async toggleExperiencePause(id: string): Promise<ProviderExperience> {
+    const exp = this.getExperienceById(id) || this.getExperienceBySlug(id);
+    if (!exp) {
+      throw new Error('Experiencia no encontrada.');
+    }
+    const nextStatus: 'publicada' | 'oculta' = exp.status === 'oculta' ? 'publicada' : 'oculta';
+    const localBefore = this._experiences().find((e) => e.id === exp.id);
+    const previousExp = localBefore ?? exp;
+    const updated = this.updateExperience(exp.id, {
+      status: nextStatus,
+      moderation: undefined,
+    });
+    const expMatch =
+      this.expService.getExperienceById(exp.id) || this.expService.getExperienceBySlug(updated.slug);
+    if (expMatch) {
+      try {
+        await this.expService.updateExperience({
+          id: expMatch.id,
+          status: nextStatus,
+        });
+      } catch (err) {
+        this.rollbackExperienceFields(
+          updated.id,
+          previousExp,
+          Boolean(localBefore),
+          updated,
+          ['status', 'moderation'],
+        );
         throw err;
       }
     }

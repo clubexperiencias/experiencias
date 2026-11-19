@@ -109,7 +109,6 @@ export interface PlenoRow {
         <div class="filters-row">
           <!-- Segment Tabs -->
           <div class="filter-group">
-            <span class="filter-label">Segmento:</span>
             <div class="pill-tabs">
               <button
                 type="button"
@@ -137,45 +136,6 @@ export interface PlenoRow {
               </button>
             </div>
           </div>
-
-          <!-- Status Tabs -->
-          <div class="filter-group">
-            <span class="filter-label">Estado:</span>
-            <div class="pill-tabs">
-              <button
-                type="button"
-                class="pill-tab"
-                [class.is-active]="statusFilter() === 'todas'"
-                (click)="statusFilter.set('todas')"
-              >
-                Todas
-              </button>
-              <button
-                type="button"
-                class="pill-tab"
-                [class.is-active]="statusFilter() === 'activas'"
-                (click)="statusFilter.set('activas')"
-              >
-                Activas ({{ stats().activeCount }})
-              </button>
-              <button
-                type="button"
-                class="pill-tab"
-                [class.is-active]="statusFilter() === 'pendientes'"
-                (click)="statusFilter.set('pendientes')"
-              >
-                Pendientes ({{ stats().pendingCount }})
-              </button>
-              <button
-                type="button"
-                class="pill-tab"
-                [class.is-active]="statusFilter() === 'bajas'"
-                (click)="statusFilter.set('bajas')"
-              >
-                Bajas ({{ stats().bajasCount }})
-              </button>
-            </div>
-          </div>
         </div>
       </section>
 
@@ -192,7 +152,6 @@ export interface PlenoRow {
 
           @if (filteredRows().length === 0) {
             <div class="empty-state">
-              <mat-icon class="empty-icon">search_off</mat-icon>
               <h3 class="empty-title">No se encontraron membresías plenas</h3>
               <p class="empty-sub">Probá modificando los filtros o el texto de búsqueda.</p>
             </div>

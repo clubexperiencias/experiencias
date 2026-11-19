@@ -43,10 +43,9 @@ export interface FundadorRow {
         </div>
       }
 
-      <!-- Header Principal con Kicker Dorado #ffcc00 -->
+      <!-- Header Principal -->
       <header class="fundadores-header">
         <div>
-          <span class="header-kicker text-gold">NIVEL 3: VITALICIO</span>
           <h1 class="header-title">Círculo de Fundadores: Socios & Prestadores Vitalicios</h1>
           <p class="header-sub">
             Gestión de membresías vitalicias de honor, evaluación de cartas de motivación y cartas de intención por el
@@ -103,7 +102,6 @@ export interface FundadorRow {
         <div class="filters-row">
           <!-- Segment Tabs -->
           <div class="filter-group">
-            <span class="filter-label">Segmento:</span>
             <div class="pill-tabs">
               <button
                 type="button"
@@ -131,45 +129,6 @@ export interface FundadorRow {
               </button>
             </div>
           </div>
-
-          <!-- Status Tabs -->
-          <div class="filter-group">
-            <span class="filter-label">Estado:</span>
-            <div class="pill-tabs">
-              <button
-                type="button"
-                class="pill-tab"
-                [class.is-active]="statusFilter() === 'todos'"
-                (click)="statusFilter.set('todos')"
-              >
-                Todos
-              </button>
-              <button
-                type="button"
-                class="pill-tab"
-                [class.is-active]="statusFilter() === 'vitalicios'"
-                (click)="statusFilter.set('vitalicios')"
-              >
-                Vitalicios ({{ stats().activeCount }})
-              </button>
-              <button
-                type="button"
-                class="pill-tab"
-                [class.is-active]="statusFilter() === 'evaluacion'"
-                (click)="statusFilter.set('evaluacion')"
-              >
-                En Evaluación ({{ stats().pendingCount }})
-              </button>
-              <button
-                type="button"
-                class="pill-tab"
-                [class.is-active]="statusFilter() === 'rechazados'"
-                (click)="statusFilter.set('rechazados')"
-              >
-                Rechazados ({{ stats().rejectedCount }})
-              </button>
-            </div>
-          </div>
         </div>
       </section>
 
@@ -186,7 +145,6 @@ export interface FundadorRow {
 
           @if (filteredRows().length === 0) {
             <div class="empty-state">
-              <mat-icon class="empty-icon">military_tech</mat-icon>
               <h3 class="empty-title">No se encontraron aspirantes ni fundadores</h3>
               <p class="empty-sub">Modificá los filtros o ingresá otro término de búsqueda.</p>
             </div>
@@ -239,7 +197,7 @@ export interface FundadorRow {
                       <!-- Aporte Patrimonial -->
                       <td>
                         <div class="fee-cell">
-                          <strong class="fee-amount text-gold">{{ row.endowmentAmount | ars }}</strong>
+                          <strong class="fee-amount text-white">{{ row.endowmentAmount | ars }}</strong>
                           <span class="fee-sub">aporte único</span>
                         </div>
                       </td>
@@ -424,6 +382,10 @@ export interface FundadorRow {
         color: #ffcc00 !important;
       }
 
+      .text-white {
+        color: #ffffff !important;
+      }
+
       .toast-banner {
         position: fixed;
         bottom: 1.5rem;
@@ -459,6 +421,7 @@ export interface FundadorRow {
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
+        padding-top: 1.25rem;
       }
 
       .header-kicker {
@@ -673,9 +636,9 @@ export interface FundadorRow {
         font-weight: 700;
         padding: 0.25rem 0.65rem;
         border-radius: 4px;
-        background: rgba(255, 204, 0, 0.15);
-        color: #ffcc00;
-        border: 1px solid rgba(255, 204, 0, 0.3);
+        background: rgba(255, 255, 255, 0.08);
+        color: #ffffff;
+        border: 1px solid rgba(255, 255, 255, 0.2);
       }
 
       .empty-state {
@@ -807,9 +770,9 @@ export interface FundadorRow {
       }
 
       .badge-socio-fundador {
-        background: rgba(255, 204, 0, 0.15);
-        color: #ffcc00;
-        border: 1px solid rgba(255, 204, 0, 0.4);
+        background: rgba(128, 179, 255, 0.15);
+        color: #80b3ff;
+        border: 1px solid rgba(128, 179, 255, 0.4);
       }
 
       .badge-prestador-fundador {
@@ -827,6 +790,7 @@ export interface FundadorRow {
       .fee-amount {
         font-weight: 800;
         font-size: 0.95rem;
+        color: #ffffff;
       }
 
       .fee-sub {
@@ -852,9 +816,9 @@ export interface FundadorRow {
       }
 
       .status-badge[data-status='en_evaluacion'] {
-        background: rgba(56, 189, 248, 0.15);
-        color: #38bdf8;
-        border: 1px solid rgba(56, 189, 248, 0.4);
+        background: rgba(255, 95, 0, 0.15);
+        color: #ff5f00;
+        border: 1px solid rgba(255, 95, 0, 0.4);
       }
 
       .status-badge[data-status='rechazado'],
@@ -928,9 +892,9 @@ export interface FundadorRow {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        background: rgba(255, 204, 0, 0.1);
-        border: 1px solid rgba(255, 204, 0, 0.3);
-        color: #ffcc00;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        color: #ffffff;
         padding: 0.35rem 0.85rem;
         border-radius: 4px;
         font-size: 0.75rem;
@@ -941,8 +905,9 @@ export interface FundadorRow {
       }
 
       .btn-action-eval:hover {
-        background: rgba(255, 204, 0, 0.22);
-        border-color: #ffcc00;
+        background: rgba(255, 255, 255, 0.18);
+        border-color: #ffffff;
+        color: #ffffff;
       }
 
       .icon-sm {

@@ -4,6 +4,7 @@ import {
   NewsletterService,
 } from '../../../core/services/newsletter.service';
 import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
+import { buildGoogleCalendarUrl } from '../../../shared/utils/google-calendar.util';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
@@ -1241,5 +1242,26 @@ export class ExperiencePaymentComponent implements OnInit {
       (exp?.providerEmail ? this.store.getProviderByEmail(exp.providerEmail) : undefined);
     const customPhone = exp?.providerPhone || provider?.phone;
     return this.notificationService.getWhatsAppNotificationUrl(sub, customPhone);
+  }
+
+  getGoogleCalendarUrl(sub: TransferSubmission): string {
+    const exp = this.experience();
+    const location = [exp?.meetingPoint, exp?.region].filter(Boolean).join(', ') || 'Catamarca, Argentina';
+    const details = [
+      `Reserva confirmada en Experiencias Club.`,
+      `Código de reserva: ${sub.reference}`,
+      `Participantes: ${sub.participants}`,
+      exp?.providerName ? `Prestador: ${exp.providerName}` : '',
+      exp?.slug ? `Ficha: https://experiencias.club/experiencias/${exp.slug}` : '',
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    return buildGoogleCalendarUrl({
+      title: sub.experienceTitle || exp?.title || 'Experiencia · Experiencias Club',
+      date: sub.date,
+      location,
+      details,
+    });
   }
 }

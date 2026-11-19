@@ -147,7 +147,7 @@ describe('AdminRankingComponent', () => {
     expect(rows.length).toBe(0);
   });
 
-  it('should not fallback to application id for slug and show Perfil Público only when slug is present', () => {
+  it('should not fallback to application id for slug and show IR AL PERFIL PÚBLICO only when slug is present', () => {
     applicationsSignal.set([
       {
         id: 'app-no-slug-123',

@@ -45,10 +45,38 @@ export class ProviderExperiencesComponent implements OnInit {
       typeof window !== 'undefined' && window.location.pathname.includes('/prestadores/panel');
     return isPanel ? '/prestadores/panel/experiencias/nueva' : '/experiencias/nueva';
   });
-  getEditExperienceLink(id: string): string {
+  getDetailExperienceLink(exp: ProviderExperience): string {
     const isPanel =
       typeof window !== 'undefined' && window.location.pathname.includes('/prestadores/panel');
-    return isPanel ? `/prestadores/panel/experiencias/${id}/editar` : `/experiencias/${id}/editar`;
+    const key = exp.slug || exp.id;
+    return isPanel ? `/prestadores/panel/experiencias/${key}` : `/experiencias/${key}`;
+  }
+
+  getEditExperienceLink(idOrSlug: string): string {
+    const isPanel =
+      typeof window !== 'undefined' && window.location.pathname.includes('/prestadores/panel');
+    return isPanel ? `/prestadores/panel/experiencias/${idOrSlug}/editar` : `/experiencias/${idOrSlug}/editar`;
+  }
+
+  readonly togglingPauseId = signal<string | null>(null);
+
+  async onTogglePause(exp: ProviderExperience): Promise<void> {
+    if (this.togglingPauseId()) return;
+    this.togglingPauseId.set(exp.id);
+    try {
+      const updated = await this.store.toggleExperiencePause(exp.id);
+      this.showToast(
+        updated.status === 'oculta'
+          ? `"${exp.title}" pausada. Ya no aparecerá en el catálogo público.`
+          : `"${exp.title}" reactivada y visible nuevamente en el catálogo público.`,
+      );
+    } catch (err: unknown) {
+      this.showToast(
+        err instanceof Error ? err.message : 'No se pudo actualizar el estado de la experiencia.',
+      );
+    } finally {
+      this.togglingPauseId.set(null);
+    }
   }
   readonly albumModalExp = signal<ProviderExperience | null>(null);
   readonly selectedExpForDelete = signal<ProviderExperience | null>(null);

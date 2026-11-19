@@ -1106,6 +1106,8 @@ $$;
 GRANT EXECUTE ON FUNCTION public.check_provider_status(TEXT) TO anon, authenticated, service_role;
 
 -- 4.8 Postulación atómica de prestadores (canal seguro con SECURITY DEFINER)
+DROP FUNCTION IF EXISTS public.submit_provider_application(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT);
+
 CREATE OR REPLACE FUNCTION public.submit_provider_application(
   p_name TEXT,
   p_email TEXT,
@@ -1114,7 +1116,9 @@ CREATE OR REPLACE FUNCTION public.submit_provider_application(
   p_region TEXT DEFAULT 'Puna & Fiambalá',
   p_website TEXT DEFAULT '',
   p_description TEXT DEFAULT '',
-  p_agency TEXT DEFAULT ''
+  p_agency TEXT DEFAULT '',
+  p_auto_approve BOOLEAN DEFAULT false,
+  p_tier TEXT DEFAULT 'emergente'
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -1123,8 +1127,16 @@ SET search_path = public
 AS $$
 DECLARE
   v_email TEXT := LOWER(TRIM(COALESCE(p_email, '')));
+  v_jwt_email TEXT := LOWER(TRIM(COALESCE(auth.jwt() ->> 'email', '')));
   v_status TEXT;
   v_active BOOLEAN;
+  v_tier TEXT := COALESCE(NULLIF(TRIM(p_tier), ''), 'emergente');
+  v_auto BOOLEAN := COALESCE(p_auto_approve, false)
+    AND v_tier = 'emergente'
+    AND v_jwt_email <> ''
+    AND v_jwt_email = v_email;
+  v_slug_base TEXT;
+  v_slug TEXT := NULL;
 BEGIN
   IF v_email = '' OR position('@' IN v_email) = 0 THEN
     RETURN jsonb_build_object('success', false, 'error', 'invalid_email', 'message', 'El correo electrónico ingresado no es válido.');
@@ -1160,15 +1172,31 @@ BEGIN
     END IF;
   END IF;
 
+  IF v_auto THEN
+    v_slug_base := regexp_replace(
+      lower(COALESCE(NULLIF(TRIM(p_agency), ''), NULLIF(TRIM(p_name), ''), split_part(v_email, '@', 1))),
+      '[^a-z0-9]+',
+      '-',
+      'g'
+    );
+    v_slug_base := trim(both '-' from left(v_slug_base, 55));
+    IF v_slug_base = '' THEN
+      v_slug_base := 'prestador';
+    END IF;
+    v_slug := v_slug_base || '-' || substr(md5(v_email || clock_timestamp()::text), 1, 5);
+  END IF;
+
   INSERT INTO public.prestadores (
     email,
     name,
     agency,
+    slug,
     phone,
     category,
     region,
     website,
     description,
+    tier,
     status,
     active
   )
@@ -1176,16 +1204,18 @@ BEGIN
     v_email,
     TRIM(COALESCE(p_name, '')),
     TRIM(COALESCE(p_agency, '')),
+    COALESCE(v_slug, ''),
     TRIM(COALESCE(p_phone, '')),
     COALESCE(NULLIF(TRIM(p_category), ''), 'guia_montaña'),
     COALESCE(NULLIF(TRIM(p_region), ''), 'Puna & Fiambalá'),
     TRIM(COALESCE(p_website, '')),
     TRIM(COALESCE(p_description, '')),
-    'pendiente',
-    false
+    v_tier,
+    CASE WHEN v_auto THEN 'aprobado' ELSE 'pendiente' END,
+    v_auto
   );
 
-  RETURN jsonb_build_object('success', true);
+  RETURN jsonb_build_object('success', true, 'approved', v_auto);
 EXCEPTION
   WHEN unique_violation THEN
     RETURN jsonb_build_object(
@@ -1200,7 +1230,7 @@ EXCEPTION
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.submit_provider_application(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.submit_provider_application(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, BOOLEAN, TEXT) TO anon, authenticated, service_role;
 
 CREATE OR REPLACE FUNCTION public.get_socio_by_session_or_token(
   p_email TEXT,
@@ -2978,17 +3008,26 @@ CREATE POLICY "Permitir postularse como prestador"
   FOR INSERT
   TO anon, authenticated
   WITH CHECK (
-    status = 'pendiente'
-    AND active = false
-    AND (
-      (auth.role() = 'authenticated' OR (auth.jwt() ->> 'email') IS NOT NULL)
-      OR (
-        (slug IS NULL OR slug = '')
-        AND (cbu_alias IS NULL OR cbu_alias = '')
-        AND (cuit_dni IS NULL OR cuit_dni = '')
-        AND (bank_name IS NULL OR bank_name = '')
-        AND (account_holder IS NULL OR account_holder = '')
+    (
+      status = 'pendiente'
+      AND active = false
+      AND (
+        (auth.role() = 'authenticated' OR (auth.jwt() ->> 'email') IS NOT NULL)
+        OR (
+          (slug IS NULL OR slug = '')
+          AND (cbu_alias IS NULL OR cbu_alias = '')
+          AND (cuit_dni IS NULL OR cuit_dni = '')
+          AND (bank_name IS NULL OR bank_name = '')
+          AND (account_holder IS NULL OR account_holder = '')
+        )
       )
+    )
+    OR (
+      status = 'aprobado'
+      AND active = true
+      AND COALESCE(tier, 'emergente') = 'emergente'
+      AND (auth.role() = 'authenticated' OR (auth.jwt() ->> 'email') IS NOT NULL)
+      AND LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
     )
   );
 

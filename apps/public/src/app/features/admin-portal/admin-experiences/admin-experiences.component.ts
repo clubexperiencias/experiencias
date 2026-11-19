@@ -103,6 +103,25 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                       >
                         Publicada
                       </button>
+                    } @else if (exp.status === 'pendiente') {
+                      <button
+                        type="button"
+                        class="status-pill is-pending is-clickable"
+                        [disabled]="isProposalProcessing(exp.id)"
+                        (click)="approveProposal(exp)"
+                        title="Click para aprobar esta nueva experiencia y publicarla"
+                      >
+                        Postulación
+                      </button>
+                    } @else if (exp.status === 'borrador' || !exp.status) {
+                      <button
+                        type="button"
+                        class="status-pill is-draft is-clickable"
+                        (click)="toggleStatus(exp, 'publicada')"
+                        title="Click para aprobar nueva experiencia y publicarla"
+                      >
+                        Borrador
+                      </button>
                     } @else {
                       <button
                         type="button"
@@ -110,7 +129,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                         (click)="toggleStatus(exp, 'publicada')"
                         title="Click para activar y publicar esta experiencia"
                       >
-                        Pausada
+                        {{ exp.status === 'rechazada' ? 'Rechazada' : 'Pausada' }}
                       </button>
                     }
                   </div>
@@ -427,36 +446,91 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                 }
               </div>
               <div class="cta-bar-right">
-                <a [routerLink]="getEditRoute(exp)" class="btn-action-edit-orange">
-                  <span>Editar Experiencia</span>
-                </a>
-                @if (exp.status === 'publicada') {
+                @if (exp.status === 'pendiente') {
                   <button
                     type="button"
-                    class="btn-pause-exp-bottom"
-                    (click)="toggleStatus(exp, 'oculta')"
-                    title="Pausar ruta y ocultarla de la web pública"
+                    class="btn-approve"
+                    [disabled]="isProposalProcessing(exp.id)"
+                    (click)="approveProposal(exp)"
+                    title="Aprobar nueva experiencia y publicarla en la web"
                   >
-                    <span>Pausar</span>
+                    <span>Aprobar nueva experiencia</span>
                   </button>
+                  <button
+                    type="button"
+                    class="btn-reject"
+                    [disabled]="isProposalProcessing(exp.id)"
+                    (click)="rejectProposal(exp)"
+                    title="Rechazar propuesta"
+                  >
+                    <span>Rechazar</span>
+                  </button>
+                  @if (getExpProviderPhone(exp)) {
+                    <a
+                      [href]="getWhatsappLink(getExpProviderPhone(exp), getExpProviderName(exp))"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="btn-whatsapp btn-contact-provider"
+                      title="Contactar al prestador por WhatsApp"
+                    >
+                      <span>Contactar prestador</span>
+                    </a>
+                  }
+                  <a [routerLink]="getEditRoute(exp)" class="btn-action-edit-orange">
+                    <span>Editar Experiencia</span>
+                  </a>
                 } @else {
+                  <a [routerLink]="getEditRoute(exp)" class="btn-action-edit-orange">
+                    <span>Editar Experiencia</span>
+                  </a>
+                  @if (exp.status === 'publicada') {
+                    <button
+                      type="button"
+                      class="btn-pause-exp-bottom"
+                      (click)="toggleStatus(exp, 'oculta')"
+                      title="Pausar ruta y ocultarla de la web pública"
+                    >
+                      <span>Pausar</span>
+                    </button>
+                  } @else if (exp.status === 'oculta') {
+                    <button
+                      type="button"
+                      class="btn-activate-exp-bottom"
+                      (click)="toggleStatus(exp, 'publicada')"
+                      title="Activar y publicar en la web pública"
+                    >
+                      <span>Activar</span>
+                    </button>
+                  } @else {
+                    <button
+                      type="button"
+                      class="btn-activate-exp-bottom"
+                      (click)="toggleStatus(exp, 'publicada')"
+                      title="Aprobar nueva experiencia y publicarla en la web pública"
+                    >
+                      <span>Aprobar nueva experiencia</span>
+                    </button>
+                  }
                   <button
                     type="button"
-                    class="btn-activate-exp-bottom"
-                    (click)="toggleStatus(exp, 'publicada')"
-                    title="Activar y publicar en la web pública"
+                    class="btn-delete-exp-bottom"
+                    (click)="openDeleteModal(exp)"
+                    title="Eliminar experiencia del catálogo"
                   >
-                    <span>Activar</span>
+                    <span>Borrar</span>
                   </button>
+                  @if (getExpProviderPhone(exp)) {
+                    <a
+                      [href]="getWhatsappLink(getExpProviderPhone(exp), getExpProviderName(exp))"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="btn-whatsapp btn-contact-provider"
+                      title="Contactar al prestador por WhatsApp"
+                    >
+                      <span>Contactar prestador</span>
+                    </a>
+                  }
                 }
-                <button
-                  type="button"
-                  class="btn-delete-exp-bottom"
-                  (click)="openDeleteModal(exp)"
-                  title="Eliminar experiencia del catálogo"
-                >
-                  <span>Borrar</span>
-                </button>
               </div>
             </div>
           </div>
@@ -1114,6 +1188,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                     [min]="todayIso"
                     [ngModel]="newAdminScheduledDate()"
                     (ngModelChange)="newAdminScheduledDate.set($event)"
+                    (change)="onAdminDatePicked($any($event.target).value)"
                     name="newAdminScheduledDate"
                     class="form-input datepicker-input"
                   />
@@ -2362,7 +2437,10 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
       .cta-bar-right .btn-cancel-edit,
       .cta-bar-right .btn-action-edit-orange,
       .cta-bar-right .btn-pause-exp-bottom,
-      .cta-bar-right .btn-activate-exp-bottom {
+      .cta-bar-right .btn-activate-exp-bottom,
+      .cta-bar-right .btn-approve,
+      .cta-bar-right .btn-reject,
+      .cta-bar-right .btn-whatsapp {
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -2375,6 +2453,43 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         box-sizing: border-box;
         line-height: 1;
         transition: all 0.2s ease;
+        text-decoration: none;
+        cursor: pointer;
+      }
+
+      .cta-bar-right .btn-approve {
+        background: #00cc88;
+        border: 1px solid #00cc88;
+        color: #0b0704;
+      }
+
+      .cta-bar-right .btn-approve:hover:not(:disabled) {
+        background: #33ffaa;
+        border-color: #33ffaa;
+      }
+
+      .cta-bar-right .btn-reject {
+        background: rgba(255, 77, 77, 0.15);
+        border: 1px solid rgba(255, 77, 77, 0.4);
+        color: #ff6666;
+      }
+
+      .cta-bar-right .btn-reject:hover:not(:disabled) {
+        background: #ff4d4d;
+        border-color: #ff4d4d;
+        color: #ffffff;
+      }
+
+      .cta-bar-right .btn-whatsapp {
+        background: #25d366;
+        border: 1px solid #25d366;
+        color: #ffffff;
+      }
+
+      .cta-bar-right .btn-whatsapp:hover {
+        background: #1ebe5d;
+        border-color: #1ebe5d;
+        color: #ffffff;
       }
 
       .btn-pause-exp-bottom {
@@ -4768,6 +4883,29 @@ export class AdminExperiencesComponent implements OnInit {
     return rawExpProviderName || 'Club de Experiencias';
   }
 
+  getExpProviderPhone(exp?: Partial<Experience> | null): string {
+    if (!exp) return '';
+    if (exp.providerPhone) return exp.providerPhone;
+    if (exp.id) {
+      const matching = this.findMatchingProposal({ id: exp.id, slug: exp.slug, title: exp.title });
+      if (matching?.providerPhone) return matching.providerPhone;
+    }
+    if (exp.providerId) {
+      const p = this.adminStore.providerStore.providers().find((pr) => pr.id === exp.providerId);
+      if (p?.phone) return p.phone;
+    }
+    return '';
+  }
+
+  getWhatsappLink(phone?: string, name?: string): string {
+    if (!phone) return '#';
+    const cleanDigits = phone.replace(/\D/g, '');
+    const text = encodeURIComponent(
+      `Hola ${name || ''}, te contactamos desde el equipo de Experiencias Club respecto a tu postulación.`,
+    );
+    return `https://wa.me/${cleanDigits}?text=${text}`;
+  }
+
   readonly isCurrentExperienceClub = computed(() => {
     const inputName = this.editProviderName().trim().toLowerCase();
     if (inputName && inputName !== 'club de experiencias' && inputName !== 'club') {
@@ -5098,6 +5236,7 @@ export class AdminExperiencesComponent implements OnInit {
     '7 horas',
     '8 horas (Jornada completa)',
     'Día completo (10 h)',
+    'Día y noche (24hs)',
     '2 días',
     '3 días',
     '4 días o más',
@@ -5130,6 +5269,13 @@ export class AdminExperiencesComponent implements OnInit {
   readonly newAdminScheduledDate = signal<string>('');
   readonly adminScheduledDateError = signal<string | null>(null);
   readonly editDatesRaw = signal('');
+
+  onAdminDatePicked(val: string): void {
+    this.newAdminScheduledDate.set(val);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+      this.addAdminScheduledDate();
+    }
+  }
 
   addAdminScheduledDate(): void {
     const val = this.newAdminScheduledDate();
@@ -6114,14 +6260,14 @@ export class AdminExperiencesComponent implements OnInit {
         req = this.findMatchingProposal(exp);
       }
 
-      let ok = false;
       if (req) {
-        ok = await this.adminStore.rejectExperienceRequest(req.id);
-      }
-
-      if (!ok) {
+        const ok = await this.adminStore.rejectExperienceRequest(req.id);
+        if (!ok) {
+          this.showToast(`No se pudo rechazar la propuesta "${exp.title}". Intentá nuevamente.`);
+          return;
+        }
+      } else {
         await this.experienceService.toggleExperienceStatus(exp.id, 'rechazada');
-        ok = true;
       }
 
       this.adminStore.providerStore.reloadFromStorage();
@@ -6231,8 +6377,8 @@ export class AdminExperiencesComponent implements OnInit {
     this.isDeletingExp.set(true);
     try {
       await this.experienceService.deleteExperience(exp.id);
+      this.experienceToDelete.set(null);
       this.showToast(`La experiencia "${exp.title}" fue eliminada del catálogo.`);
-      this.closeDeleteModal();
       this.router.navigateByUrl(this.backToListLink());
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error al eliminar la experiencia';

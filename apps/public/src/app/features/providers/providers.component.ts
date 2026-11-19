@@ -138,6 +138,8 @@ export class ProvidersComponent implements OnInit {
       }
       if (member) {
         this.applyMemberProfile(member);
+      } else if (this.authenticatedMember()) {
+        this.authenticatedMember.set(null);
       }
     } catch {
       // non-blocking
@@ -240,6 +242,8 @@ export class ProvidersComponent implements OnInit {
       phone: this.providerPhone(),
       website: this.providerWebsite(),
       description: this.providerDescription(),
+      autoApprove: true,
+      tier: 'emergente',
     });
 
     this.isSubmitting.set(false);
@@ -251,6 +255,16 @@ export class ProvidersComponent implements OnInit {
           'El sistema no pudo registrar la postulación en este momento por un inconveniente técnico de recepción. Por favor intentá nuevamente.',
       );
     }
+  }
+
+  getProviderPortalUrl(): string {
+    if (typeof window !== 'undefined' && window.location) {
+      const host = window.location.hostname.toLowerCase();
+      if (host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local')) {
+        return `${window.location.origin}/prestadores/panel/dashboard`;
+      }
+    }
+    return 'https://prestadores.experiencias.club';
   }
 
   resetForm(): void {

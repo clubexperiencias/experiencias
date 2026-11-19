@@ -1752,3 +1752,214 @@
     flex-shrink: 0;
   }
 }
+
+/* ═══════════════ LOADER / SKELETON: EXPERIENCIAS EN PRIMERA PERSONA ═══════════════ */
+.testimonials-loading-state {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+  width: 100%;
+  animation: fadeIn 0.3s ease-out;
+  margin-top: 0.25rem;
+}
+
+.testimonials-loading-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.35rem 0.2rem;
+}
+
+.loading-spinner-ring {
+  position: relative;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.loading-spinner-ring::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2.5px solid rgba(128, 179, 255, 0.2);
+  border-top-color: #80b3ff;
+  border-right-color: #80b3ff;
+  animation: spin 0.85s cubic-bezier(0.6, 0.2, 0.4, 0.8) infinite;
+  box-shadow: 0 0 10px rgba(128, 179, 255, 0.35);
+}
+
+.spinner-core {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #80b3ff;
+  box-shadow: 0 0 8px #80b3ff;
+  animation: pulseCore 1.5s ease-in-out infinite alternate;
+}
+
+.loading-status-text {
+  font-family: var(--font-sans);
+  font-size: 0.84rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.skeleton-testimonials-track {
+  display: flex;
+  gap: 1.25rem;
+  overflow: hidden;
+  width: 100%;
+}
+
+.skeleton-testimonial-card {
+  flex: 0 0 calc(50% - 0.65rem);
+  min-width: 280px;
+  min-height: 200px;
+  box-sizing: border-box;
+  background: rgba(15, 23, 42, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 2px;
+  padding: 1.4rem;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1.1rem;
+}
+
+.skeleton-quote-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.skeleton-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  flex: 1;
+}
+
+.skeleton-line {
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.skeleton-quote-1 {
+  width: 95%;
+  height: 14px;
+}
+
+.skeleton-quote-2 {
+  width: 88%;
+  height: 14px;
+}
+
+.skeleton-quote-3 {
+  width: 70%;
+  height: 14px;
+}
+
+.skeleton-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.skeleton-author-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.skeleton-author-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.skeleton-author-name {
+  width: 120px;
+  height: 16px;
+}
+
+.skeleton-tier-pill {
+  width: 75px;
+  height: 20px;
+  border-radius: 50px;
+}
+
+.skeleton-author-since {
+  width: 160px;
+  height: 12px;
+}
+
+/* Shimmer Wave (Efecto prestadores) */
+.shimmer-wave {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    rgba(128, 179, 255, 0.12) 50%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmerAnim 1.8s infinite;
+}
+
+@keyframes shimmerAnim {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulseCore {
+  from {
+    transform: scale(0.8);
+    opacity: 0.6;
+  }
+  to {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .skeleton-testimonial-card {
+    flex: 0 0 100%;
+    min-width: 0;
+  }
+
+  .skeleton-testimonial-card.hide-mobile {
+    display: none;
+  }
+}

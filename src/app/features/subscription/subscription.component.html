@@ -159,7 +159,7 @@
           </div>
 
           <!-- Paso 1: Vinculación con Google -->
-          @if (requiresGoogle()) {
+          @if (!newsletter.isSubscribed() && requiresGoogle()) {
           <section class="google-link-gate" aria-live="polite">
             <div class="google-link-gate-head">
               <h2>Vincular cuenta con Google</h2>
@@ -191,7 +191,7 @@
           }
 
           <!-- Formulario de Registro / Elevación a Socio Pleno -->
-          <form class="signup-form" [class.signup-form-locked]="requiresGoogle()" novalidate
+          <form class="signup-form" [class.signup-form-locked]="!newsletter.isSubscribed() && requiresGoogle()" novalidate
             (submit)="$event.preventDefault(); submit()">
             @if (submitError()) {
             <div class="signup-alert-error" role="alert">
@@ -341,7 +341,7 @@
               }
 
               <button type="submit" class="signup-submit-btn"
-                [disabled]="isSubmitting() || requiresGoogle() || !appliedDiscount() || totalToPayArs() > 0">
+                [disabled]="isSubmitting() || (!newsletter.isSubscribed() && requiresGoogle()) || !appliedDiscount() || totalToPayArs() > 0">
                 <span>{{
                   isSubmitting()
                   ? 'Activando tu membresía...'

@@ -778,6 +778,19 @@
   color: #80b3ff;
 }
 
+.btn-view-fiche {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.35) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+.btn-view-fiche:hover {
+  background: #ffffff !important;
+  border-color: #ffffff !important;
+  color: #070d18 !important;
+}
+
 .btn-edit {
   background: rgba(128, 179, 255, 0.16) !important;
   border-color: rgba(128, 179, 255, 0.5) !important;
@@ -789,6 +802,32 @@
   background: #80b3ff !important;
   border-color: #80b3ff !important;
   color: #070d18 !important;
+}
+
+.btn-pause-exp {
+  background: rgba(245, 158, 11, 0.14) !important;
+  border-color: rgba(245, 158, 11, 0.45) !important;
+  color: #fbbf24 !important;
+  font-weight: 700 !important;
+}
+
+.btn-pause-exp:hover {
+  background: rgba(245, 158, 11, 0.28) !important;
+  border-color: #fbbf24 !important;
+  color: #ffffff !important;
+}
+
+.btn-resume-exp {
+  background: rgba(34, 197, 94, 0.16) !important;
+  border-color: rgba(34, 197, 94, 0.45) !important;
+  color: #4ade80 !important;
+  font-weight: 700 !important;
+}
+
+.btn-resume-exp:hover {
+  background: rgba(34, 197, 94, 0.3) !important;
+  border-color: #4ade80 !important;
+  color: #ffffff !important;
 }
 
 .btn-highlight {

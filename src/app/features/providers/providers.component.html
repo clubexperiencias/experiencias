@@ -185,15 +185,20 @@
           } @else {
           <div class="provider-success-banner wide-success">
             <div class="success-content">
-              <span class="success-kicker">POSTULACIÓN RECIBIDA</span>
-              <h3>¡Gracias por sumarte, {{ providerName() }}!</h3>
+              <span class="success-kicker">PRESTADOR EMERGENTE HABILITADO</span>
+              <h3>¡Bienvenido como Prestador Emergente, {{ providerName() }}!</h3>
               <p>
-                Recibimos tu postulación asociada a <strong>{{ providerEmail() }}</strong> correctamente.
-                Nuestro equipo ya la está analizando y te avisaremos por email cuando se habilite tu perfil oficial.
+                Tu cuenta de prestador asociada a <strong>{{ providerEmail() }}</strong> fue aprobada automáticamente.
+                Ya podés ingresar al Portal de Prestadores para completar tu perfil y cargar tu primera experiencia.
               </p>
-              <button type="button" class="secondary-btn" (click)="resetForm()">
-                Enviar otra postulación
-              </button>
+              <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: center;">
+                <a [href]="getProviderPortalUrl()" class="submit-provider-btn" style="text-decoration: none; color: #ffffff !important;">
+                  Ir al Portal de Prestadores
+                </a>
+                <button type="button" class="secondary-btn" (click)="resetForm()">
+                  Volver al formulario
+                </button>
+              </div>
             </div>
           </div>
           }

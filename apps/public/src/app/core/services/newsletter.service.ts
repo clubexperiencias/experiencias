@@ -1866,8 +1866,22 @@ export class NewsletterService {
     phone: string;
     website: string;
     description: string;
-  }): Promise<{ success: boolean; alreadyRegistered?: boolean; message?: string }> {
+    autoApprove?: boolean;
+    tier?: 'emergente' | 'pleno' | 'fundador';
+  }): Promise<{ success: boolean; alreadyRegistered?: boolean; approved?: boolean; message?: string }> {
     const cleanEmail = data.email.trim().toLowerCase();
+    const shouldAutoApprove = Boolean(data.autoApprove);
+    const resolvedTier = data.tier || 'emergente';
+    const rawSlugBase = (data.agency || data.fullName || cleanEmail.split('@')[0] || 'prestador')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 60);
+    const generatedSlug = shouldAutoApprove
+      ? `${rawSlugBase || 'prestador'}-${Math.random().toString(36).slice(2, 6)}`
+      : '';
 
     if (this.isSupabaseConnected()) {
       try {
@@ -1910,7 +1924,7 @@ export class NewsletterService {
         }
 
         // 2. Ruta insert-only para nuevas postulaciones (evita upsert que requiere SELECT/UPDATE)
-        const accessPayload = {
+        const accessPayload: Record<string, unknown> = {
           email: cleanEmail,
           name: data.fullName.trim(),
           agency: (data.agency || '').trim(),
@@ -1919,8 +1933,10 @@ export class NewsletterService {
           region: data.region.trim() || 'Puna & Fiambalá',
           website: data.website.trim(),
           description: data.description.trim(),
-          status: 'pendiente',
-          active: false,
+          status: shouldAutoApprove ? 'aprobado' : 'pendiente',
+          active: shouldAutoApprove,
+          tier: resolvedTier,
+          ...(generatedSlug ? { slug: generatedSlug } : {}),
         };
 
         const { error: paError } = await (this.supabase.from('prestadores') as any).insert(
@@ -1944,7 +1960,7 @@ export class NewsletterService {
           let rpcErr: any = null;
           let rpcRes: any = null;
           try {
-            const rpcResult = await (this.supabase as any).rpc(
+            let rpcResult = await (this.supabase as any).rpc(
               'submit_provider_application',
               {
                 p_name: data.fullName.trim(),
@@ -1955,8 +1971,26 @@ export class NewsletterService {
                 p_region: data.region.trim() || 'Puna & Fiambalá',
                 p_website: data.website.trim(),
                 p_description: data.description.trim(),
+                p_auto_approve: shouldAutoApprove,
+                p_tier: resolvedTier,
               },
             );
+            // Si la función remota aún no tiene los parámetros p_auto_approve/p_tier, reintentar firma anterior
+            if (rpcResult?.error && /function.*submit_provider_application|PGRST202/i.test(rpcResult.error.message || rpcResult.error.code || '')) {
+              rpcResult = await (this.supabase as any).rpc(
+                'submit_provider_application',
+                {
+                  p_name: data.fullName.trim(),
+                  p_email: cleanEmail,
+                  p_agency: (data.agency || '').trim(),
+                  p_phone: data.phone.trim(),
+                  p_category: data.category.trim() || 'guia_montaña',
+                  p_region: data.region.trim() || 'Puna & Fiambalá',
+                  p_website: data.website.trim(),
+                  p_description: data.description.trim(),
+                },
+              );
+            }
             rpcRes = rpcResult?.data;
             rpcErr = rpcResult?.error;
 
@@ -2021,7 +2055,7 @@ export class NewsletterService {
         console.warn('[NewsletterService] Error enviando notificación de postulación:', notifyErr);
       });
 
-    return { success: true };
+    return { success: true, approved: shouldAutoApprove };
   }
 
   async submitFounderApplication(data: {
