@@ -133,11 +133,13 @@ export class ProvidersComponent implements OnInit {
   private async checkAuthenticatedMember(): Promise<void> {
     try {
       let member = await this.newsletter.getAuthenticatedMember();
-      if (!member) {
+      if (!member && !this.newsletter.isSupabaseConnected()) {
         member = this.newsletter.currentMember();
       }
       if (member) {
         this.applyMemberProfile(member);
+      } else if (this.authenticatedMember()) {
+        this.authenticatedMember.set(null);
       }
     } catch {
       // non-blocking

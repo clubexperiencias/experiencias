@@ -427,13 +427,14 @@ import { Discount } from '../../../core/models/discount.model';
                       <span class="row-date">{{ req.createdAt | fecha: 'corta' }}</span>
                     </td>
                     <td class="text-right">
-                      <a
-                        [routerLink]="getProposalDetailRoute(req)"
+                      <button
+                        type="button"
                         class="btn-review"
-                        title="Ver ficha completa de la experiencia"
+                        (click)="openExperienceRequest(req)"
+                        title="Revisar propuesta de experiencia"
                       >
                         REVISAR
-                      </a>
+                      </button>
                     </td>
                   </tr>
                 }
@@ -1013,6 +1014,93 @@ import { Discount } from '../../../core/models/discount.model';
           (closed)="closeApplication()"
           (statusChanged)="onApplicationStatusChanged($event)"
         />
+      }
+
+      <!-- Modal de Revisión de Solicitud de Nueva Experiencia -->
+      @if (selectedExperienceRequest(); as expReq) {
+        <div class="modal-backdrop" (click)="closeExperienceRequest()">
+          <div class="modal-dialog exp-req-modal-card" (click)="$event.stopPropagation()">
+            <div class="modal-head">
+              <div class="modal-head-info">
+                <span class="modal-kicker">{{ getProposalProviderTier(expReq) }}</span>
+                <h2 class="modal-title">{{ expReq.title }}</h2>
+                <p class="modal-sub-author">
+                  Propuesta de <strong>{{ getProposalResponsibleName(expReq) }}</strong> ({{
+                    getProposalAgencyName(expReq)
+                  }})
+                </p>
+              </div>
+              <button
+                type="button"
+                class="modal-close-btn"
+                (click)="closeExperienceRequest()"
+                aria-label="Cerrar modal"
+              >
+                ×
+              </button>
+            </div>
+
+            <div class="modal-body">
+              @if (expReq.subheading) {
+                <div class="app-desc-box quote-accent">
+                  <span class="desc-heading">Síntesis descriptiva</span>
+                  <p class="desc-content">{{ expReq.subheading }}</p>
+                </div>
+              }
+
+              <div class="exp-req-specs-grid">
+                <div class="spec-cell">
+                  <span class="spec-lbl">Región</span>
+                  <strong>{{ expReq.region || 'Sin especificar' }}</strong>
+                </div>
+                <div class="spec-cell">
+                  <span class="spec-lbl">Dificultad</span>
+                  <strong>{{ expReq.difficulty || 'Moderada' }}</strong>
+                </div>
+                <div class="spec-cell">
+                  <span class="spec-lbl">Arancel ARS</span>
+                  <strong>{{ expReq.priceArs | ars }}</strong>
+                </div>
+                @if (expReq.dates) {
+                  <div class="spec-cell">
+                    <span class="spec-lbl">Fechas propuestas</span>
+                    <strong>{{ expReq.dates }}</strong>
+                  </div>
+                }
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              @if (getMatchingExperienceRoute(expReq); as ficheRoute) {
+                <a
+                  [routerLink]="ficheRoute"
+                  class="btn-review"
+                  (click)="closeExperienceRequest()"
+                >
+                  Ver ficha completa
+                </a>
+              }
+              @if (expReq.status === 'pendiente') {
+                <button
+                  type="button"
+                  class="btn-reject"
+                  [disabled]="processingExperienceRequestId() === expReq.id"
+                  (click)="rejectExperience(expReq.id)"
+                >
+                  Rechazar
+                </button>
+                <button
+                  type="button"
+                  class="btn-approve"
+                  [disabled]="processingExperienceRequestId() === expReq.id"
+                  (click)="approveExperience(expReq.id)"
+                >
+                  Aprobar nueva experiencia
+                </button>
+              }
+            </div>
+          </div>
+        </div>
       }
     </div>
   `,
@@ -3649,6 +3737,7 @@ export class AdminDashboardComponent {
   readonly rejectionReason = signal<string>('');
   readonly selectedApplication = signal<AdminApplication | null>(null);
   readonly selectedExperienceRequest = signal<ExperienceProposalRequest | null>(null);
+  readonly processingExperienceRequestId = signal<string | null>(null);
   readonly expPublicUrlInput = signal<string>('');
 
   readonly providerAccountHolder = signal<string>('');
@@ -4099,7 +4188,7 @@ export class AdminDashboardComponent {
     return `https://wa.me/${cleanDigits}?text=${text}`;
   }
 
-  getProposalDetailRoute(req: ExperienceProposalRequest): string {
+  getMatchingExperienceRoute(req: ExperienceProposalRequest): string | null {
     const experiences = this.experienceService.experiences();
     const cleanReqId = req.id.replace(/^(?:exp|req)-/, '');
     const byId = experiences.find(
@@ -4117,17 +4206,16 @@ export class AdminDashboardComponent {
       if (byReqSlug?.slug) {
         return `/admin/experiencias/${byReqSlug.slug}`;
       }
-      return `/admin/experiencias/${req.slug}`;
     }
 
-    const byTitle = experiences.find(
-      (e) => e.title && e.title.trim().toLowerCase() === req.title.trim().toLowerCase(),
+    return null;
+  }
+
+  getProposalDetailRoute(req: ExperienceProposalRequest): string {
+    return (
+      this.getMatchingExperienceRoute(req) ||
+      `/admin/experiencias/${req.slug || slugify(req.title)}`
     );
-    if (byTitle?.slug) {
-      return `/admin/experiencias/${byTitle.slug}`;
-    }
-
-    return `/admin/experiencias/${slugify(req.title)}`;
   }
 
   openExperienceRequest(req: ExperienceProposalRequest): void {
@@ -4311,6 +4399,8 @@ export class AdminDashboardComponent {
   }
 
   async approveExperience(id: string): Promise<void> {
+    if (this.processingExperienceRequestId() === id) return;
+    this.processingExperienceRequestId.set(id);
     try {
       const ok = await this.store.approveExperienceRequest(id);
       if (ok) {
@@ -4324,9 +4414,15 @@ export class AdminDashboardComponent {
         }
         this.refreshAll();
         this.closeExperienceRequest();
+      } else {
+        alert('No se pudo aprobar la propuesta en el servidor. Por favor, reintentá.');
       }
     } catch (err) {
       console.error('[AdminDashboard] Error al aprobar propuesta de experiencia:', err);
+    } finally {
+      if (this.processingExperienceRequestId() === id) {
+        this.processingExperienceRequestId.set(null);
+      }
     }
   }
 
@@ -4354,21 +4450,29 @@ export class AdminDashboardComponent {
   }
 
   async rejectExperience(id: string): Promise<void> {
-    const success = await this.store.rejectExperienceRequest(id);
-    if (!success) {
-      alert('No se pudo rechazar la propuesta en el servidor. Por favor, reintentá.');
-      return;
+    if (this.processingExperienceRequestId() === id) return;
+    this.processingExperienceRequestId.set(id);
+    try {
+      const success = await this.store.rejectExperienceRequest(id);
+      if (!success) {
+        alert('No se pudo rechazar la propuesta en el servidor. Por favor, reintentá.');
+        return;
+      }
+      const current = this.selectedExperienceRequest();
+      if (current && current.id === id) {
+        this.selectedExperienceRequest.set({
+          ...current,
+          status: 'rechazada',
+          reviewedAt: new Date().toISOString(),
+        });
+      }
+      this.refreshAll();
+      this.closeExperienceRequest();
+    } finally {
+      if (this.processingExperienceRequestId() === id) {
+        this.processingExperienceRequestId.set(null);
+      }
     }
-    const current = this.selectedExperienceRequest();
-    if (current && current.id === id) {
-      this.selectedExperienceRequest.set({
-        ...current,
-        status: 'rechazada',
-        reviewedAt: new Date().toISOString(),
-      });
-    }
-    this.refreshAll();
-    this.closeExperienceRequest();
   }
 
   async quickApprove(id: string): Promise<void> {

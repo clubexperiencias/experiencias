@@ -1106,6 +1106,8 @@ $$;
 GRANT EXECUTE ON FUNCTION public.check_provider_status(TEXT) TO anon, authenticated, service_role;
 
 -- 4.8 Postulación atómica de prestadores (canal seguro con SECURITY DEFINER)
+DROP FUNCTION IF EXISTS public.submit_provider_application(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT);
+
 CREATE OR REPLACE FUNCTION public.submit_provider_application(
   p_name TEXT,
   p_email TEXT,
@@ -1125,10 +1127,14 @@ SET search_path = public
 AS $$
 DECLARE
   v_email TEXT := LOWER(TRIM(COALESCE(p_email, '')));
+  v_jwt_email TEXT := LOWER(TRIM(COALESCE(auth.jwt() ->> 'email', '')));
   v_status TEXT;
   v_active BOOLEAN;
-  v_auto BOOLEAN := COALESCE(p_auto_approve, false) AND COALESCE(NULLIF(TRIM(p_tier), ''), 'emergente') = 'emergente';
   v_tier TEXT := COALESCE(NULLIF(TRIM(p_tier), ''), 'emergente');
+  v_auto BOOLEAN := COALESCE(p_auto_approve, false)
+    AND v_tier = 'emergente'
+    AND v_jwt_email <> ''
+    AND v_jwt_email = v_email;
   v_slug_base TEXT;
   v_slug TEXT := NULL;
 BEGIN
@@ -1198,7 +1204,7 @@ BEGIN
     v_email,
     TRIM(COALESCE(p_name, '')),
     TRIM(COALESCE(p_agency, '')),
-    v_slug,
+    COALESCE(v_slug, ''),
     TRIM(COALESCE(p_phone, '')),
     COALESCE(NULLIF(TRIM(p_category), ''), 'guia_montaña'),
     COALESCE(NULLIF(TRIM(p_region), ''), 'Puna & Fiambalá'),
@@ -1224,7 +1230,7 @@ EXCEPTION
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.submit_provider_application(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.submit_provider_application(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, BOOLEAN, TEXT) TO anon, authenticated, service_role;
 
 CREATE OR REPLACE FUNCTION public.get_socio_by_session_or_token(
   p_email TEXT,

@@ -6260,14 +6260,14 @@ export class AdminExperiencesComponent implements OnInit {
         req = this.findMatchingProposal(exp);
       }
 
-      let ok = false;
       if (req) {
-        ok = await this.adminStore.rejectExperienceRequest(req.id);
-      }
-
-      if (!ok) {
+        const ok = await this.adminStore.rejectExperienceRequest(req.id);
+        if (!ok) {
+          this.showToast(`No se pudo rechazar la propuesta "${exp.title}". Intentá nuevamente.`);
+          return;
+        }
+      } else {
         await this.experienceService.toggleExperienceStatus(exp.id, 'rechazada');
-        ok = true;
       }
 
       this.adminStore.providerStore.reloadFromStorage();

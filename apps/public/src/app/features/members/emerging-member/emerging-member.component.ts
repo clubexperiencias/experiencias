@@ -1,4 +1,4 @@
-import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
@@ -47,6 +47,28 @@ export class EmergingMemberComponent implements OnInit {
   readonly mobileMenuOpen = signal(false);
   readonly authReady = signal(!this.newsletter.isSupabaseConnected());
   readonly authError = signal<string | null>(null);
+  private hadCurrentMember = false;
+
+  constructor() {
+    effect(() => {
+      const current = this.newsletter.currentMember();
+      if (current) {
+        this.hadCurrentMember = true;
+        if (current.email) {
+          const clean = current.email.trim().toLowerCase();
+          if (!this.email()) {
+            this.email.set(clean);
+          }
+          this.authenticatedEmail.set(clean);
+          this.authReady.set(true);
+        }
+      } else if (this.hadCurrentMember) {
+        this.hadCurrentMember = false;
+        this.authenticatedEmail.set(null);
+        this.authReady.set(false);
+      }
+    });
+  }
 
   // Form Signals
   readonly fullName = signal('');
@@ -201,6 +223,7 @@ export class EmergingMemberComponent implements OnInit {
       this.authenticatedEmail.set(clean);
       this.authReady.set(true);
     } else {
+      this.authenticatedEmail.set(null);
       this.authReady.set(!this.newsletter.isSupabaseConnected());
     }
   }

@@ -1834,11 +1834,52 @@ export class ProviderStoreService {
     return updatedExperience;
   }
 
+  private rollbackExperienceFields(
+    targetId: string,
+    previousExp: ProviderExperience | undefined,
+    wasInLocalList: boolean,
+    appliedExp: ProviderExperience,
+    ownedKeys: ReadonlyArray<keyof ProviderExperience>,
+  ): void {
+    this._experiences.update((list) => {
+      if (!wasInLocalList) {
+        return list.flatMap((e) => {
+          if (e.id !== targetId) return [e];
+          if (e.updatedAt === appliedExp.updatedAt) return [];
+          if (!previousExp) return [e];
+          const reverted: ProviderExperience = { ...e };
+          for (const key of ownedKeys) {
+            if (e[key] === appliedExp[key]) {
+              (reverted as unknown as Record<string, unknown>)[key as string] = previousExp[key];
+            }
+          }
+          return [reverted];
+        });
+      }
+      if (!previousExp) return list;
+      return list.map((e) => {
+        if (e.id !== targetId) return e;
+        const reverted: ProviderExperience = { ...e };
+        for (const key of ownedKeys) {
+          if (e[key] === appliedExp[key]) {
+            (reverted as unknown as Record<string, unknown>)[key as string] = previousExp[key];
+          }
+        }
+        if (e.updatedAt === appliedExp.updatedAt) {
+          reverted.updatedAt = previousExp.updatedAt;
+        }
+        return reverted;
+      });
+    });
+    this.saveExperiences();
+  }
+
   async saveExperienceChanges(
     id: string,
     updates: Partial<Omit<ProviderExperience, 'id' | 'createdAt' | 'providerId'>>,
   ): Promise<ProviderExperience> {
-    const snapshot = this._experiences();
+    const localBefore = this._experiences().find((e) => e.id === id || e.slug === id);
+    const previousExp = localBefore ?? this.getExperienceById(id) ?? this.getExperienceBySlug(id);
     const updated = this.updateExperience(id, updates);
     const expMatch =
       this.expService.getExperienceById(id) || this.expService.getExperienceBySlug(updated.slug);
@@ -1870,8 +1911,13 @@ export class ProviderStoreService {
           ...(mappedStatus ? { status: mappedStatus } : {}),
         });
       } catch (err) {
-        this._experiences.set(snapshot);
-        this.saveExperiences();
+        this.rollbackExperienceFields(
+          updated.id,
+          previousExp,
+          Boolean(localBefore),
+          updated,
+          Object.keys(updates) as Array<keyof ProviderExperience>,
+        );
         throw err;
       }
     }
@@ -1884,7 +1930,8 @@ export class ProviderStoreService {
       throw new Error('Experiencia no encontrada.');
     }
     const nextStatus: 'publicada' | 'oculta' = exp.status === 'oculta' ? 'publicada' : 'oculta';
-    const snapshot = this._experiences();
+    const localBefore = this._experiences().find((e) => e.id === exp.id);
+    const previousExp = localBefore ?? exp;
     const updated = this.updateExperience(exp.id, {
       status: nextStatus,
       moderation: undefined,
@@ -1898,8 +1945,13 @@ export class ProviderStoreService {
           status: nextStatus,
         });
       } catch (err) {
-        this._experiences.set(snapshot);
-        this.saveExperiences();
+        this.rollbackExperienceFields(
+          updated.id,
+          previousExp,
+          Boolean(localBefore),
+          updated,
+          ['status', 'moderation'],
+        );
         throw err;
       }
     }

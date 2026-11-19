@@ -1,4 +1,4 @@
-import { Component, HostListener, inject, signal, computed, OnInit } from '@angular/core';
+import { Component, HostListener, inject, signal, computed, effect, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -57,6 +57,30 @@ export class SubscriptionComponent implements OnInit {
     !this.newsletter.isSupabaseConnected() || this.newsletter.isSubscribed()
   );
   readonly authError = signal<string | null>(null);
+  private hadCurrentMember = false;
+  private populatedMemberKey: string | null = null;
+
+  constructor() {
+    effect(() => {
+      const current = this.newsletter.currentMember();
+      if (current) {
+        this.hadCurrentMember = true;
+        if (current.email) {
+          const clean = current.email.trim().toLowerCase();
+          if (!this.email()) {
+            this.email.set(clean);
+          }
+          this.authenticatedEmail.set(clean);
+          this.authReady.set(true);
+        }
+      } else if (this.hadCurrentMember) {
+        this.hadCurrentMember = false;
+        this.populatedMemberKey = null;
+        this.authenticatedEmail.set(null);
+        this.authReady.set(false);
+      }
+    });
+  }
   readonly requiresGoogle = computed(() => {
     if (this.newsletter.isSubscribed() && (this.authenticatedEmail() || this.email().trim().length > 0)) {
       return false;
@@ -117,15 +141,6 @@ export class SubscriptionComponent implements OnInit {
   ];
 
   ngOnInit(): void {
-    const current = this.newsletter.currentMember();
-    if (current) {
-      this.populateFromMember(current);
-      if (current.email) {
-        this.authenticatedEmail.set(current.email.trim().toLowerCase());
-        this.authReady.set(true);
-      }
-    }
-
     void this.refreshGoogleAccount();
 
     this.route.queryParams.subscribe((params) => {
@@ -137,28 +152,47 @@ export class SubscriptionComponent implements OnInit {
     });
   }
 
+  private clearAutofilledMemberFields(): void {
+    this.fullName.set('');
+    this.documentNumber.set('');
+    this.phone.set('');
+    this.selectedExperiences.set([]);
+    this.otherExperience.set('');
+  }
+
   private populateFromMember(member: WaitlistEntry): void {
-    if (member.email && !this.email()) {
+    const nextKey =
+      (member.authUserId || member.email || member.id || '').trim().toLowerCase() || null;
+    const identityChanged = Boolean(
+      this.populatedMemberKey && nextKey && this.populatedMemberKey !== nextKey,
+    );
+    if (identityChanged) {
+      this.clearAutofilledMemberFields();
+      this.email.set('');
+    }
+    this.populatedMemberKey = nextKey;
+
+    if (member.email && (identityChanged || !this.email())) {
       this.email.set(member.email.trim().toLowerCase());
     }
-    if (member.fullName && !this.fullName()) {
+    if (member.fullName && (identityChanged || !this.fullName())) {
       this.fullName.set(member.fullName);
     }
     const dni = member.dni || member.documentNumber;
-    if (dni && !this.documentNumber()) {
+    if (dni && (identityChanged || !this.documentNumber())) {
       this.documentNumber.set(dni);
     }
-    if (member.phone && !this.phone()) {
+    if (member.phone && (identityChanged || !this.phone())) {
       this.phone.set(member.phone);
     }
     if (
       member.experiencesWishlist &&
       member.experiencesWishlist.length > 0 &&
-      this.selectedExperiences().length === 0
+      (identityChanged || this.selectedExperiences().length === 0)
     ) {
       this.selectedExperiences.set(member.experiencesWishlist);
     }
-    if (member.experiencesOther && !this.otherExperience()) {
+    if (member.experiencesOther && (identityChanged || !this.otherExperience())) {
       this.otherExperience.set(member.experiencesOther);
       if (!this.selectedExperiences().includes('otros')) {
         this.selectedExperiences.update((list) => [...list, 'otros']);
@@ -177,16 +211,20 @@ export class SubscriptionComponent implements OnInit {
       this.authReady.set(true);
       await this.newsletter.getAuthenticatedMember();
       const freshCurrent = this.newsletter.currentMember();
-      if (freshCurrent) {
+      if (freshCurrent?.email?.trim().toLowerCase() === cleanAuthEmail) {
         this.populateFromMember(freshCurrent);
+      } else if (this.populatedMemberKey && this.populatedMemberKey !== cleanAuthEmail) {
+        this.clearAutofilledMemberFields();
+        this.populatedMemberKey = cleanAuthEmail;
       }
-    } else if (current?.email) {
+    } else if (!this.newsletter.isSupabaseConnected() && current?.email) {
       const cleanEmail = current.email.trim().toLowerCase();
       this.email.set(cleanEmail);
       this.authenticatedEmail.set(cleanEmail);
       this.authReady.set(true);
       this.populateFromMember(current);
     } else {
+      this.authenticatedEmail.set(null);
       this.authReady.set(!this.newsletter.isSupabaseConnected());
       if (!this.newsletter.isSupabaseConnected() && current) {
         this.populateFromMember(current);
