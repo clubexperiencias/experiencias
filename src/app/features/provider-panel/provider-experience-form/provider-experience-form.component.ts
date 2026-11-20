@@ -250,6 +250,13 @@ export class ProviderExperienceFormComponent implements OnInit {
     }
   }
 
+  onPricingPacksChange(packs: ExperiencePricingPack[]): void {
+    this.pricingPacks.set(packs);
+    if (!this.isEditMode()) {
+      this.saveDraft();
+    }
+  }
+
   loadDraft(): void {
     if (typeof localStorage === 'undefined') return;
     try {
@@ -268,6 +275,9 @@ export class ProviderExperienceFormComponent implements OnInit {
       }
       if (Array.isArray(data.dates)) {
         this.dates.set(data.dates);
+      }
+      if (Array.isArray(data.pricingPacks)) {
+        this.pricingPacks.set(data.pricingPacks);
       }
       if (typeof data.selectedCoverImage === 'string') {
         this.selectedCoverImage.set(data.selectedCoverImage);
@@ -289,7 +299,8 @@ export class ProviderExperienceFormComponent implements OnInit {
         val.description?.trim() ||
         val.meetingPoint?.trim() ||
         val.durationLabel?.trim() ||
-        this.dates().length > 0
+        this.dates().length > 0 ||
+        this.pricingPacks().length > 0
       );
 
       if (!hasContent) {
@@ -299,6 +310,7 @@ export class ProviderExperienceFormComponent implements OnInit {
       const payload = {
         formValue: val,
         dates: this.dates(),
+        pricingPacks: this.pricingPacks(),
         selectedCoverImage: this.selectedCoverImage(),
         updatedAt: Date.now(),
       };
@@ -322,6 +334,7 @@ export class ProviderExperienceFormComponent implements OnInit {
 
   discardDraft(): void {
     this.clearDraft();
+    this.pricingPacks.set([]);
     this.form.reset({
       title: '',
       tagline: '',

@@ -205,7 +205,7 @@
           [packs]="pricingPacks()"
           [unitPriceArs]="form.controls.priceArs.value || 0"
           [availableDates]="dates()"
-          (packsChange)="pricingPacks.set($event)"
+          (packsChange)="onPricingPacksChange($event)"
         />
       </div>
     </fieldset>

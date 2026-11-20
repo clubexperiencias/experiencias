@@ -90,14 +90,18 @@ export class ProfileComponent implements OnInit, AfterViewInit, OnDestroy {
   });
 
   readonly favoriteExperiences = this.favoritesService.favoriteExperiences;
+  private readonly nowMs = signal<number>(Date.now());
+  private clockTimer: ReturnType<typeof setInterval> | null = null;
 
   readonly emergingTenureLabel = computed<string | null>(() => {
+    const nowMs = this.nowMs();
     const member = this.newsletter.currentMember();
     if (!member?.createdAt) return null;
-    return this.formatElapsedSince(member.createdAt);
+    return this.formatElapsedSince(member.createdAt, nowMs);
   });
 
   readonly plenoTenureLabel = computed<string | null>(() => {
+    const nowMs = this.nowMs();
     const member = this.newsletter.currentMember();
     if (!member) return null;
     const isPlenoOrFounder =
@@ -106,10 +110,11 @@ export class ProfileComponent implements OnInit, AfterViewInit, OnDestroy {
       member.membershipTier === 'fundador';
     const startIso = member.plenoActivatedAt || member.subscription?.startedAt || null;
     if (!isPlenoOrFounder || !startIso) return null;
-    return this.formatElapsedSince(startIso);
+    return this.formatElapsedSince(startIso, nowMs);
   });
 
   readonly plenoRemainingInfo = computed<{ label: string; expiresDateText: string; code?: string | null } | null>(() => {
+    const nowMs = this.nowMs();
     const member = this.newsletter.currentMember();
     if (!member) return null;
     const isPleno = this.newsletter.isMonthlyActive() || member.membershipTier === 'activo';
@@ -117,7 +122,7 @@ export class ProfileComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!isPleno || !expiresIso) return null;
     const targetMs = Date.parse(expiresIso);
     if (!Number.isFinite(targetMs)) return null;
-    const diffMs = targetMs - Date.now();
+    const diffMs = targetMs - nowMs;
     const totalDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
     const expiresDateText = new Date(targetMs).toLocaleDateString('es-AR', {
       day: '2-digit',
@@ -144,10 +149,10 @@ export class ProfileComponent implements OnInit, AfterViewInit, OnDestroy {
     };
   });
 
-  private formatElapsedSince(dateLike: Date | string): string {
+  private formatElapsedSince(dateLike: Date | string, nowMs: number): string {
     const startMs = dateLike instanceof Date ? dateLike.getTime() : Date.parse(String(dateLike));
     if (!Number.isFinite(startMs)) return 'Desde hoy';
-    const diffDays = Math.max(0, Math.floor((Date.now() - startMs) / (1000 * 60 * 60 * 24)));
+    const diffDays = Math.max(0, Math.floor((nowMs - startMs) / (1000 * 60 * 60 * 24)));
     if (diffDays === 0) return 'Desde hoy';
     if (diffDays === 1) return '1 día';
     if (diffDays < 30) return `${diffDays} días`;
@@ -174,8 +179,12 @@ export class ProfileComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly onVisibilityChangeBound = () => {
     if (document.hidden) {
       this.stopAutoplay();
-    } else if (!this.isUserHovering && !this.selectedExperience()) {
-      this.startAutoplay();
+    } else {
+      this.nowMs.set(Date.now());
+      this.newsletter.enforcePlenoExpiration();
+      if (!this.isUserHovering && !this.selectedExperience()) {
+        this.startAutoplay();
+      }
     }
   };
 
@@ -386,6 +395,11 @@ export class ProfileComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.nowMs.set(Date.now());
+    this.newsletter.enforcePlenoExpiration();
+    this.clockTimer = setInterval(() => {
+      this.nowMs.set(Date.now());
+    }, 60_000);
     void this.loadAuthenticatedEmail();
     void this.loadTestimonioForUser();
     if (!this.newsletter.currentMember()) {
@@ -423,6 +437,10 @@ export class ProfileComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.isDestroyed = true;
+    if (this.clockTimer) {
+      clearInterval(this.clockTimer);
+      this.clockTimer = null;
+    }
     if (this.carouselInitTimer) {
       clearTimeout(this.carouselInitTimer);
       this.carouselInitTimer = null;

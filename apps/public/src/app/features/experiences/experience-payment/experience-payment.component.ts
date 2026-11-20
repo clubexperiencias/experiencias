@@ -131,6 +131,7 @@ export class ExperiencePaymentComponent implements OnInit {
           shortTitle: liveExp.shortTitle || liveExp.title,
           priceArs: liveExp.priceArs,
           priceUsd: liveExp.priceUsd,
+          pricingPacks: liveExp.pricingPacks ?? [],
           capacityPerDate: liveExp.maxSpotsPerGroup,
           dates: liveExp.dates || [],
           status: liveExp.status,
@@ -176,6 +177,7 @@ export class ExperiencePaymentComponent implements OnInit {
           altitudeMeters: canonicalRecord.altitudeMeters || hosp.altitudeMeters,
           priceArs: canonicalRecord.priceArs || hosp.priceArsPerNight,
           priceUsd: (canonicalRecord as any).priceUsd || hosp.priceUsdPerNight || 0,
+          pricingPacks: canonicalRecord.pricingPacks ?? [],
           capacityPerDate:
             (canonicalRecord as any).maxSpotsPerGroup ||
             (canonicalRecord as any).capacityPerDate ||
@@ -444,8 +446,9 @@ export class ExperiencePaymentComponent implements OnInit {
     }
 
     const subtotal = this.subtotal();
-    const memberTier =
-      this.checkoutMember()?.membershipTier || this.newsletter.currentMember()?.membershipTier || null;
+    const memberTier = this.newsletter.getEffectiveMemberTier(
+      this.checkoutMember() ?? this.newsletter.currentMember(),
+    );
     const auto = this.discountService.getAutomaticDiscountForExperience(
       exp.id,
       exp.slug,
@@ -487,8 +490,10 @@ export class ExperiencePaymentComponent implements OnInit {
     const exp = this.experience();
     const subtotal = this.subtotal();
 
-    const memberTier =
-      this.checkoutMember()?.membershipTier || this.newsletter.currentMember()?.membershipTier || null;
+    this.newsletter.enforcePlenoExpiration();
+    const memberTier = this.newsletter.getEffectiveMemberTier(
+      this.checkoutMember() ?? this.newsletter.currentMember(),
+    );
 
     // 1. Validar dinámicamente con DiscountService (Supabase)
     const result = await this.discountService.validateDiscount(
@@ -601,6 +606,12 @@ export class ExperiencePaymentComponent implements OnInit {
 
     const participants = Number(value.participants);
     const activePack = this.selectedPricingPack();
+    const selectedPackIdSnapshot = activePack?.id || null;
+    const appliedDiscountSnapshot = this.appliedDiscount();
+    const discountArsSnapshot = this.discountArs();
+    const baseTotalSnapshot = this.baseTotal();
+    const surchargeArsSnapshot = this.mercadoPagoSurchargeArs();
+    const totalSnapshot = this.total();
     const maxParticipantsAllowed = Math.max(
       MAX_PARTICIPANTS_PER_BOOKING,
       activePack?.seats ?? 0,
@@ -706,10 +717,11 @@ export class ExperiencePaymentComponent implements OnInit {
           experienceSlug: exp.slug,
           date: value.date,
           participants,
-          baseAmountArs: this.baseTotal(),
-          surchargeArs: this.mercadoPagoSurchargeArs(),
-          totalAmountArs: this.total(),
-          discountCode: this.appliedDiscount()?.code,
+          pricingPackId: selectedPackIdSnapshot,
+          baseAmountArs: baseTotalSnapshot,
+          surchargeArs: surchargeArsSnapshot,
+          totalAmountArs: totalSnapshot,
+          discountCode: appliedDiscountSnapshot?.code,
           bookingReference: bookingRef,
           payer: {
             name: value.fullName,
@@ -740,11 +752,11 @@ export class ExperiencePaymentComponent implements OnInit {
         experienceId: exp.id,
         date: value.date,
         participants,
-        amountArs: this.total(),
-        baseAmountArs: this.baseTotal(),
-        surchargeArs: this.mercadoPagoSurchargeArs(),
-        discountCode: this.appliedDiscount()?.code,
-        discountArs: this.discountArs(),
+        amountArs: totalSnapshot,
+        baseAmountArs: baseTotalSnapshot,
+        surchargeArs: surchargeArsSnapshot,
+        discountCode: appliedDiscountSnapshot?.code,
+        discountArs: discountArsSnapshot,
         fullName: value.fullName.trim(),
         email: (authenticatedMember?.email ?? normalizedEmail).trim().toLowerCase(),
         dni: value.dni.trim(),
@@ -760,11 +772,12 @@ export class ExperiencePaymentComponent implements OnInit {
           experienceSlug: exp.slug,
           date: value.date,
           participants,
-          baseAmountArs: this.baseTotal(),
-          surchargeArs: this.mercadoPagoSurchargeArs(),
-          totalAmountArs: this.total(),
-          discountCode: this.appliedDiscount()?.code,
-          discountArs: this.discountArs(),
+          pricingPackId: selectedPackIdSnapshot,
+          baseAmountArs: baseTotalSnapshot,
+          surchargeArs: surchargeArsSnapshot,
+          totalAmountArs: totalSnapshot,
+          discountCode: appliedDiscountSnapshot?.code,
+          discountArs: discountArsSnapshot,
           fullName: value.fullName.trim(),
           email: (authenticatedMember?.email ?? normalizedEmail).trim().toLowerCase(),
           dni: value.dni.trim(),
@@ -1145,6 +1158,7 @@ export class ExperiencePaymentComponent implements OnInit {
   }
 
   selectPricingPack(pack: ExperiencePricingPack | null): void {
+    if (this.submitting()) return;
     if (!pack) {
       this.selectedPricingPackId.set(null);
       this.form.controls.participants.setValidators([
@@ -1284,6 +1298,7 @@ export class ExperiencePaymentComponent implements OnInit {
         discountCode: applied?.code,
         discountArs: this.discountArs(),
         validatedDiscount: applied?.rawDiscount,
+        pricingPackId: this.selectedPricingPack()?.id,
         receiptFile: file,
       });
       if (applied?.code) {

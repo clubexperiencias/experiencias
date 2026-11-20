@@ -315,7 +315,7 @@ import { ArsPipe } from '../../pipes/format.pipes';
         font-weight: 700;
         background: rgba(239, 68, 68, 0.14);
         border: 1px solid rgba(239, 68, 68, 0.45);
-        color: #fca5a5;
+        color: #ffffff;
         border-radius: 2px;
         cursor: pointer;
         height: 36px;
@@ -372,7 +372,7 @@ import { ArsPipe } from '../../pipes/format.pipes';
         font-weight: 700;
         background: rgba(255, 255, 255, 0.05);
         border: 1px solid rgba(255, 255, 255, 0.18);
-        color: rgba(255, 255, 255, 0.78);
+        color: #ffffff;
         border-radius: 2px;
         cursor: pointer;
       }
@@ -417,7 +417,7 @@ import { ArsPipe } from '../../pipes/format.pipes';
       .pill-x {
         background: none;
         border: none;
-        color: inherit;
+        color: #ffffff;
         cursor: pointer;
         font-size: 0.85rem;
         line-height: 1;

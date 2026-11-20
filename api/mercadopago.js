@@ -794,6 +794,7 @@ module.exports = async function handler(req, res) {
         experienceSlug,
         date,
         participants,
+        pricingPackId,
         discountCode,
         baseAmountArs,
         surchargeArs,
@@ -1061,9 +1062,52 @@ module.exports = async function handler(req, res) {
 
       const count = parsedCount;
 
+      // Resolver y validar pack promocional si se envió pricingPackId
+      let matchedPack = null;
+      const cleanPricingPackId = pricingPackId ? String(pricingPackId).trim() : '';
+      if (cleanPricingPackId) {
+        let pricingPacks = [];
+        if (Array.isArray(expData?.pricing_packs)) {
+          pricingPacks = expData.pricing_packs;
+        } else if (typeof expData?.pricing_packs === 'string') {
+          try {
+            pricingPacks = JSON.parse(expData.pricing_packs);
+          } catch {
+            pricingPacks = [];
+          }
+        }
+
+        if (Array.isArray(pricingPacks)) {
+          matchedPack = pricingPacks.find((p) => {
+            if (!p || String(p.id) !== cleanPricingPackId) return false;
+            if (p.active === false) return false;
+            if (Number(p.seats) !== count) return false;
+            const hasDates = Array.isArray(p.validDates) && p.validDates.length > 0;
+            const hasWeekdays = Array.isArray(p.validWeekdays) && p.validWeekdays.length > 0;
+            if (!hasDates && !hasWeekdays) return true;
+            if (!selectedDate || !/^\d{4}-\d{2}-\d{2}$/.test(selectedDate)) return false;
+            if (hasDates && p.validDates.includes(selectedDate)) return true;
+            if (hasWeekdays) {
+              const [y, m, d] = selectedDate.split('-').map(Number);
+              const weekday = new Date(y, m - 1, d).getDay();
+              if (p.validWeekdays.map(Number).includes(weekday)) return true;
+            }
+            return false;
+          }) || null;
+        }
+
+        if (!matchedPack) {
+          return res.status(400).json({
+            error: 'El pack promocional seleccionado no es válido para esta fecha o cantidad de cupos.',
+          });
+        }
+      }
+
       // Calcular montos confiables desde los datos del servidor
       const pricePerPerson = expData ? Number(expData.price_ars) || 0 : (Number(baseAmountArs) || 65000);
-      const subtotal = pricePerPerson * count;
+      const subtotal = matchedPack
+        ? Math.max(0, Math.round(Number(matchedPack.totalPriceArs) || 0))
+        : pricePerPerson * count;
 
       let discountArs = 0;
       if (discountCode) {

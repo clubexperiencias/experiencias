@@ -605,8 +605,6 @@ export class ExperienceService {
         }
         if (Object.prototype.hasOwnProperty.call(updated, 'pricingPacks')) {
           payload['pricing_packs'] = updated.pricingPacks ?? [];
-        } else if (merged.pricingPacks !== undefined) {
-          payload['pricing_packs'] = merged.pricingPacks;
         }
         if (safeAlbumPhotos) {
           payload['album_photos'] = safeAlbumPhotos;
@@ -725,6 +723,18 @@ export class ExperienceService {
           if (hasCategoryErr && updated.category !== undefined) {
             // An explicit category change was supplied: reject the update rather than committing without it
             throw error;
+          }
+
+          if (
+            hasPricingPacksErr &&
+            Object.prototype.hasOwnProperty.call(updated, 'pricingPacks') &&
+            Array.isArray(updated.pricingPacks) &&
+            updated.pricingPacks.length > 0
+          ) {
+            // An explicit non-empty pricingPacks change was supplied: reject rather than dropping it silently
+            throw new Error(
+              'No se pudieron guardar los packs promocionales: la columna pricing_packs no está disponible en la base de datos remota.',
+            );
           }
 
           // Columna aún no migrada en la base remota: reintenta omitiendo solo el campo rechazado
@@ -2051,10 +2061,14 @@ export class ExperienceService {
           .select(columns)
           .order('created_at', { ascending: true }) as any;
 
+      let includePricingPacks = true;
+      const pricingCol = () => (includePricingPacks ? ', pricing_packs' : '');
+
       let { data, error } = await fetchExperiences(
-        `${publicColumns}, category, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing, pricing_packs, provider_agency, participant_requirements, notes, reviewed_at, display_location`,
+        `${publicColumns}, category, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing${pricingCol()}, provider_agency, participant_requirements, notes, reviewed_at, display_location`,
       );
       if (error && /pricing_packs/.test(error.message || '')) {
+        includePricingPacks = false;
         ({ data, error } = await fetchExperiences(
           `${publicColumns}, category, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing, provider_agency, participant_requirements, notes, reviewed_at, display_location`,
         ));
@@ -2064,43 +2078,43 @@ export class ExperienceService {
         if (isDisplayLocationErr) {
           // Si falló por display_location, reintentar preservando las demás columnas opcionales
           ({ data, error } = await fetchExperiences(
-            `${publicColumns}, category, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing, provider_agency, participant_requirements, notes, reviewed_at`,
+            `${publicColumns}, category, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing${pricingCol()}, provider_agency, participant_requirements, notes, reviewed_at`,
           ));
         } else {
           // Si falló por otra columna opcional (ej: reviewed_at), preservar display_location y notes
           ({ data, error } = await fetchExperiences(
-            `${publicColumns}, category, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing, notes, display_location`,
+            `${publicColumns}, category, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing${pricingCol()}, notes, display_location`,
           ));
         }
       }
       if (error) {
         ({ data, error } = await fetchExperiences(
-          `${publicColumns}, category, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing, notes`,
+          `${publicColumns}, category, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing${pricingCol()}, notes`,
         ));
       }
       if (error) {
         // Reintento con fallback progresivo si alguna columna nueva no existe aún
-        ({ data, error } = await fetchExperiences(`${publicColumns}, category, meeting_point_url, notes`));
+        ({ data, error } = await fetchExperiences(`${publicColumns}, category, meeting_point_url${pricingCol()}, notes`));
         if (error && /meeting_point_url/.test(error.message || '')) {
-          ({ data, error } = await fetchExperiences(`${publicColumns}, category, notes`));
+          ({ data, error } = await fetchExperiences(`${publicColumns}, category${pricingCol()}, notes`));
         }
       }
       if (error && /notes/.test(error.message || '')) {
         // Último recurso solo si la columna notes no estuviera disponible en el esquema remoto
-        ({ data, error } = await fetchExperiences(`${publicColumns}, category, meeting_point_url`));
+        ({ data, error } = await fetchExperiences(`${publicColumns}, category, meeting_point_url${pricingCol()}`));
         if (error && /meeting_point_url/.test(error.message || '')) {
-          ({ data, error } = await fetchExperiences(`${publicColumns}, category`));
+          ({ data, error } = await fetchExperiences(`${publicColumns}, category${pricingCol()}`));
         }
       }
       if (error && /category/.test(error.message || '')) {
         // Si falló porque la columna category no existe aún en el esquema remoto, reintentar sin category
         ({ data, error } = await fetchExperiences(
-          `${publicColumns}, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing, notes, display_location`,
+          `${publicColumns}, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing${pricingCol()}, notes, display_location`,
         ));
         if (error) {
-          ({ data, error } = await fetchExperiences(`${publicColumns}, meeting_point_url, notes`));
+          ({ data, error } = await fetchExperiences(`${publicColumns}, meeting_point_url${pricingCol()}, notes`));
           if (error && /meeting_point_url/.test(error.message || '')) {
-            ({ data, error } = await fetchExperiences(`${publicColumns}, notes`));
+            ({ data, error } = await fetchExperiences(`${publicColumns}${pricingCol()}, notes`));
           }
         }
         if (error && /notes/.test(error.message || '')) {

@@ -1,4 +1,4 @@
-import { Injectable, signal, computed, inject } from '@angular/core';
+import { Injectable, DestroyRef, signal, computed, effect, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { MembershipTier, WaitlistEntry, WaitlistSubmissionDto, WaitlistStats } from '../models/waitlist.model';
 import { DiscountCode } from '../models/bank-transfer.model';
@@ -14,6 +14,23 @@ const PROSPECT_EMAIL_KEY = 'catamarca_club_prospect_email';
 export const AUTH_RETURN_URL_KEY = 'ce_auth_return_url';
 export const AUTH_RETURN_URL_EXPIRY_MS = 30 * 60 * 1000; // 30 minutos de vigencia para el flujo de autenticación
 export const AUTH_SUCCESS_FEEDBACK_DURATION_MS = 3000;
+
+function addMonthsClamped(baseDate: Date, months: number): Date {
+  const targetMonthIndex = baseDate.getMonth() + months;
+  const targetYear = baseDate.getFullYear() + Math.floor(targetMonthIndex / 12);
+  const normalizedMonth = ((targetMonthIndex % 12) + 12) % 12;
+  const lastDayOfTargetMonth = new Date(targetYear, normalizedMonth + 1, 0).getDate();
+  const clampedDay = Math.min(baseDate.getDate(), lastDayOfTargetMonth);
+  return new Date(
+    targetYear,
+    normalizedMonth,
+    clampedDay,
+    baseDate.getHours(),
+    baseDate.getMinutes(),
+    baseDate.getSeconds(),
+    baseDate.getMilliseconds(),
+  );
+}
 
 function mapDbRowToEntry(row: any): WaitlistEntry {
   const rawTier = (row.membership_tier || 'emergente') as MembershipTier;
@@ -59,6 +76,7 @@ export class NewsletterService {
   private readonly supabase = inject(SUPABASE_CLIENT);
   private readonly notificationService = inject(NotificationService);
   private readonly router = inject(Router, { optional: true });
+  private readonly destroyRef = inject(DestroyRef);
   private readonly baseWaitlistCount = 100;
 
   readonly isSupabaseConnected = signal<boolean>(isSupabaseConfigured());
@@ -77,9 +95,100 @@ export class NewsletterService {
   private _activeAuthEmail: string | null = this.loadCurrentMember()?.email?.toLowerCase() || null;
 
   readonly profileSuccessHighlight = signal<boolean>(false);
+  private readonly _expiryTick = signal<number>(Date.now());
+  private plenoExpiryTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     this.initSupabaseData();
+    effect(() => {
+      const member = this._currentMember();
+      this.schedulePlenoExpirationCheck(member);
+    });
+    this.destroyRef.onDestroy(() => {
+      if (this.plenoExpiryTimer) {
+        clearTimeout(this.plenoExpiryTimer);
+        this.plenoExpiryTimer = null;
+      }
+    });
+  }
+
+  private isPlenoExpired(
+    member: WaitlistEntry | null | undefined,
+    nowMs: number = Date.now(),
+  ): boolean {
+    if (!member) return false;
+    const expiresIso = member.plenoExpiresAt || member.subscription?.expiresAt || null;
+    if (!expiresIso) return false;
+    const expiresMs = Date.parse(expiresIso);
+    return Number.isFinite(expiresMs) && expiresMs <= nowMs;
+  }
+
+  private schedulePlenoExpirationCheck(member: WaitlistEntry | null): void {
+    if (this.plenoExpiryTimer) {
+      clearTimeout(this.plenoExpiryTimer);
+      this.plenoExpiryTimer = null;
+    }
+    if (!member) return;
+    const isPleno =
+      member.membershipTier === 'activo' ||
+      (member.membershipTier as string) === 'pleno' ||
+      member.subscription?.status === 'active';
+    if (!isPleno) return;
+
+    const expiresIso = member.plenoExpiresAt || member.subscription?.expiresAt || null;
+    if (!expiresIso) return;
+    const expiresMs = Date.parse(expiresIso);
+    if (!Number.isFinite(expiresMs)) return;
+
+    const remainingMs = expiresMs - Date.now();
+    if (remainingMs <= 0) {
+      this.enforcePlenoExpiration();
+      return;
+    }
+
+    const MAX_SAFE_TIMEOUT_MS = 2_147_483_647;
+    const delayMs = Math.min(remainingMs + 50, MAX_SAFE_TIMEOUT_MS);
+    this.plenoExpiryTimer = setTimeout(() => {
+      this.plenoExpiryTimer = null;
+      this.enforcePlenoExpiration();
+      this.schedulePlenoExpirationCheck(this._currentMember());
+    }, delayMs);
+  }
+
+  getEffectiveMemberTier(member?: WaitlistEntry | null): MembershipTier | null {
+    const nowMs = this._expiryTick();
+    const target = member ?? this._currentMember();
+    if (!target) return null;
+    const tier = target.membershipTier || 'emergente';
+    if (
+      (tier === 'activo' || (tier as string) === 'pleno') &&
+      this.isPlenoExpired(target, nowMs)
+    ) {
+      return 'emergente';
+    }
+    return tier;
+  }
+
+  enforcePlenoExpiration(): void {
+    const nowMs = Date.now();
+    this._expiryTick.set(nowMs);
+    const member = this._currentMember();
+    if (!member) return;
+    const isPleno =
+      member.membershipTier === 'activo' ||
+      (member.membershipTier as string) === 'pleno' ||
+      member.subscription?.status === 'active';
+    if (isPleno && this.isPlenoExpired(member, nowMs)) {
+      const downgraded: WaitlistEntry = {
+        ...member,
+        membershipTier: 'emergente',
+        subscription: member.subscription
+          ? { ...member.subscription, status: 'cancelled' }
+          : undefined,
+      };
+      this._currentMember.set(downgraded);
+      this.persistCurrentMember(downgraded);
+    }
   }
 
   private async initSupabaseData(): Promise<void> {
@@ -449,8 +558,10 @@ export class NewsletterService {
   }
 
   readonly isMonthlyActive = computed(() => {
+    const nowMs = this._expiryTick();
     const member = this._currentMember();
-    return member?.membershipTier === 'activo' || member?.subscription?.status === 'active';
+    if (!member || this.isPlenoExpired(member, nowMs)) return false;
+    return member.membershipTier === 'activo' || member.subscription?.status === 'active';
   });
   readonly activeSubscription = computed(() => this._currentMember()?.subscription || null);
 
@@ -465,6 +576,7 @@ export class NewsletterService {
   });
 
   findMemberDiscount(rawCode: string): DiscountCode | undefined {
+    this.enforcePlenoExpiration();
     const code = rawCode.trim().toUpperCase();
     const member = this._currentMember();
     if (!member || this.usedMemberDiscounts.has(code)) return undefined;
@@ -473,7 +585,7 @@ export class NewsletterService {
       return { code, percentOff: 20, label: '20% socios fundadores' };
     }
 
-    if (member.membershipTier === 'activo' && code === 'SOCIO10') {
+    if (member.membershipTier === 'activo' && !this.isPlenoExpired(member) && code === 'SOCIO10') {
       return { code, percentOff: 10, label: '10% socios' };
     }
 
@@ -1045,44 +1157,38 @@ export class NewsletterService {
           const today = new Date();
           const durationMonths =
             dto.durationMonths && Number(dto.durationMonths) > 0 ? Number(dto.durationMonths) : null;
-          const expiresDate = durationMonths ? new Date(today) : null;
-          if (expiresDate && durationMonths) {
-            expiresDate.setMonth(expiresDate.getMonth() + durationMonths);
-          }
-          const expiresAtIso = expiresDate ? expiresDate.toISOString() : null;
-          const nextMonth = new Date(today);
-          nextMonth.setMonth(nextMonth.getMonth() + (durationMonths || 1));
+          const rpcActivatedAt: string | null = rpcPayload.socio?.pleno_activated_at || null;
+          const rpcExpiresAt: string | null = rpcPayload.socio?.pleno_expires_at || null;
+          const rpcDiscountCode: string | null = rpcPayload.socio?.pleno_discount_code || null;
+
+          const resolvedActivatedAt = rpcActivatedAt || today.toISOString();
+          const resolvedExpiresAt = rpcExpiresAt;
+          const resolvedDiscountCode = rpcDiscountCode || cleanDiscountCode || null;
+
+          const nextMonth = addMonthsClamped(new Date(resolvedActivatedAt), durationMonths || 1);
 
           entry.membershipTier = 'activo';
-          entry.plenoActivatedAt = today.toISOString();
-          entry.plenoExpiresAt = expiresAtIso;
-          entry.plenoDiscountCode = cleanDiscountCode || null;
+          entry.plenoActivatedAt = resolvedActivatedAt;
+          entry.plenoExpiresAt = resolvedExpiresAt;
+          entry.plenoDiscountCode = resolvedDiscountCode;
           entry.subscription = {
             status: 'active',
             tier: 'activo',
             amountArs: 23000,
-            paymentMethod: cleanDiscountCode ? `Cupón Promocional (${cleanDiscountCode})` : 'Bonificación de Adquisición',
-            startedAt: today.toISOString(),
+            paymentMethod: resolvedDiscountCode
+              ? `Cupón Promocional (${resolvedDiscountCode})`
+              : 'Bonificación de Adquisición',
+            startedAt: resolvedActivatedAt,
             nextBillingDate: nextMonth.toLocaleDateString('es-AR', {
               day: 'numeric',
               month: 'long',
               year: 'numeric',
             }),
-            expiresAt: expiresAtIso,
-            discountCode: cleanDiscountCode || null,
-            autoRenew: !expiresAtIso,
+            expiresAt: resolvedExpiresAt,
+            discountCode: resolvedDiscountCode,
+            autoRenew: !resolvedExpiresAt,
             lastPaymentReceipt: 'REC-' + Math.floor(100000 + Math.random() * 900000),
           };
-
-          // Persistir metadatos de vigencia del Socio Pleno en public.socios (no bloqueante si aún no se migraron columnas)
-          void (this.supabase.from('socios') as any)
-            .update({
-              pleno_activated_at: today.toISOString(),
-              pleno_expires_at: expiresAtIso,
-              pleno_discount_code: cleanDiscountCode || null,
-            })
-            .eq('email', cleanEmail)
-            .then(() => undefined, () => undefined);
 
           const updatedEntries = [
             entry,
@@ -1161,13 +1267,9 @@ export class NewsletterService {
     const today = new Date();
     const durationMonths =
       dto.durationMonths && Number(dto.durationMonths) > 0 ? Number(dto.durationMonths) : null;
-    const expiresDate = durationMonths ? new Date(today) : null;
-    if (expiresDate && durationMonths) {
-      expiresDate.setMonth(expiresDate.getMonth() + durationMonths);
-    }
+    const expiresDate = durationMonths ? addMonthsClamped(today, durationMonths) : null;
     const expiresAtIso = expiresDate ? expiresDate.toISOString() : null;
-    const nextMonth = new Date(today);
-    nextMonth.setMonth(nextMonth.getMonth() + (durationMonths || 1));
+    const nextMonth = addMonthsClamped(today, durationMonths || 1);
 
     const fallbackEntry: WaitlistEntry = {
       id: existing?.id || 'socio-' + Date.now(),

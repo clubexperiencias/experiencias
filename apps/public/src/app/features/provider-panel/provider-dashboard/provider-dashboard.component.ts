@@ -1727,7 +1727,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
       .req-row-edit {
         background: rgba(255, 95, 0, 0.16);
         border: 1px solid rgba(255, 95, 0, 0.55);
-        color: #ffb07a;
+        color: #ffffff;
       }
 
       .req-row-edit:hover {

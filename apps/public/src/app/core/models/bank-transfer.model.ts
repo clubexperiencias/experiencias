@@ -155,6 +155,7 @@ export interface NewTransferSubmission {
   discountCode?: string;
   discountArs?: number;
   validatedDiscount?: Discount;
+  pricingPackId?: string;
   receiptFile: File;
   paymentMethod?: 'transfer' | 'mercadopago';
   surchargeArs?: number;
