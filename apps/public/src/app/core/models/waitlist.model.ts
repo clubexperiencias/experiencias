@@ -7,6 +7,8 @@ export interface SubscriptionDetails {
   paymentMethod: string;
   startedAt: string;
   nextBillingDate: string;
+  expiresAt?: string | null;
+  discountCode?: string | null;
   autoRenew: boolean;
   lastPaymentReceipt?: string;
 }
@@ -25,6 +27,9 @@ export interface WaitlistEntry {
   status: 'pending' | 'confirmed' | 'invited';
   source: string;
   membershipTier?: MembershipTier;
+  plenoActivatedAt?: string | null;
+  plenoExpiresAt?: string | null;
+  plenoDiscountCode?: string | null;
   subscription?: SubscriptionDetails;
   authUserId?: string;
   googleLinked?: boolean;

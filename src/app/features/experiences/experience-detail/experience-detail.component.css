@@ -818,3 +818,39 @@
     gap: 0.5rem;
   }
 }
+
+/* ── Pricing Packs / Promos strip on Experience Detail ────────────────────── */
+.detail-packs-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.detail-pack-pill {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  padding: 0.35rem 0.65rem;
+  background: rgba(128, 179, 255, 0.14);
+  border: 1px solid rgba(128, 179, 255, 0.45);
+  border-radius: 2px;
+  font-size: 0.78rem;
+  color: #ffffff;
+}
+
+.detail-pack-name {
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.detail-pack-info {
+  font-weight: 700;
+  color: #80b3ff;
+}
+
+.detail-pack-sched {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.72);
+}

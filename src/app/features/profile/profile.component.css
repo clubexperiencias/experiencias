@@ -2666,3 +2666,49 @@
   height: 18px;
 }
 
+
+/* ── Membership Tenure & Pleno Expiry Strip ───────────────────────────────── */
+.membership-tenure-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.tenure-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.7rem 0.9rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 2px;
+}
+
+.tenure-tile.is-pleno {
+  border-color: rgba(128, 179, 255, 0.45);
+  background: rgba(128, 179, 255, 0.1);
+}
+
+.tenure-tile.is-expiry {
+  border-color: rgba(255, 95, 0, 0.48);
+  background: rgba(255, 95, 0, 0.1);
+}
+
+.tenure-label {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.64);
+}
+
+.tenure-value {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.tenure-sub {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.72);
+}

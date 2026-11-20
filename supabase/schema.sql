@@ -54,6 +54,10 @@ EXCEPTION
 END;
 $$;
 
+ALTER TABLE public.socios ADD COLUMN IF NOT EXISTS pleno_activated_at TIMESTAMPTZ;
+ALTER TABLE public.socios ADD COLUMN IF NOT EXISTS pleno_expires_at TIMESTAMPTZ;
+ALTER TABLE public.socios ADD COLUMN IF NOT EXISTS pleno_discount_code TEXT;
+
 -- 2.3 administradores (Nómina de Administradores con Rol)
 CREATE TABLE IF NOT EXISTS public.administradores (
   id                   UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -253,6 +257,7 @@ CREATE TABLE IF NOT EXISTS public.experiencias (
   included                 JSONB DEFAULT '[]'::jsonb,
   not_included             JSONB DEFAULT '[]'::jsonb,
   promos_and_pricing       TEXT DEFAULT '',
+  pricing_packs            JSONB DEFAULT '[]'::jsonb,
   participant_requirements TEXT NOT NULL DEFAULT '',
   notes                    TEXT,
   reviewed_at              TIMESTAMPTZ,
@@ -276,6 +281,7 @@ CREATE TABLE IF NOT EXISTS public.experiencias (
 
 ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
 ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT 'expediciones';
+ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS pricing_packs JSONB DEFAULT '[]'::jsonb;
 
 CREATE INDEX IF NOT EXISTS idx_experiencias_slug ON public.experiencias(slug);
 CREATE INDEX IF NOT EXISTS idx_experiencias_category ON public.experiencias(category);
@@ -397,6 +403,34 @@ EXCEPTION WHEN OTHERS THEN
   NULL;
 END;
 $$;
+
+ALTER TABLE public.descuentos ADD COLUMN IF NOT EXISTS duration_months INTEGER CHECK (duration_months IS NULL OR duration_months > 0);
+ALTER TABLE public.descuentos ADD COLUMN IF NOT EXISTS pleno_only BOOLEAN NOT NULL DEFAULT false;
+
+-- Baja automática de Socios Plenos con membresía promocional vencida
+CREATE OR REPLACE FUNCTION public.expire_overdue_pleno_memberships()
+RETURNS INTEGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_count INTEGER := 0;
+BEGIN
+  UPDATE public.socios
+  SET
+    membership_tier = 'emergente',
+    updated_at = now()
+  WHERE membership_tier IN ('activo', 'pleno')
+    AND pleno_expires_at IS NOT NULL
+    AND pleno_expires_at <= now();
+
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  RETURN v_count;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.expire_overdue_pleno_memberships() TO authenticated, service_role;
 
 -- ==============================================================================
 -- 3. VISTAS
@@ -668,10 +702,14 @@ DECLARE
   v_is_admin BOOLEAN := false;
   v_context TEXT := '';
   v_is_registration_rpc BOOLEAN := false;
+  v_is_expiry_rpc BOOLEAN := false;
 BEGIN
   GET DIAGNOSTICS v_context = PG_CONTEXT;
   IF v_context LIKE '%register_socio%' OR v_context LIKE '%activate_socio_pleno%' THEN
     v_is_registration_rpc := true;
+  END IF;
+  IF v_context LIKE '%expire_overdue_pleno_memberships%' THEN
+    v_is_expiry_rpc := true;
   END IF;
 
   -- Si es ejecución interna/sistema sin contexto JWT, permitir
@@ -731,9 +769,20 @@ BEGIN
     IF NEW.position IS NULL AND OLD.position IS NULL THEN
       NEW.position := nextval('public.socios_position_seq');
     END IF;
+  ELSIF v_is_expiry_rpc AND OLD.membership_tier IN ('activo', 'pleno') AND NEW.membership_tier = 'emergente' THEN
+    -- Permitir baja automática por vencimiento desde expire_overdue_pleno_memberships
+    NULL;
   ELSIF NEW.position IS DISTINCT FROM OLD.position OR
         NEW.membership_tier IS DISTINCT FROM OLD.membership_tier THEN
     RAISE EXCEPTION 'Acceso denegado: solo administradores pueden modificar la categoría o posición del socio.';
+  END IF;
+
+  IF NOT v_is_registration_rpc AND (
+       NEW.pleno_expires_at IS DISTINCT FROM OLD.pleno_expires_at OR
+       NEW.pleno_activated_at IS DISTINCT FROM OLD.pleno_activated_at OR
+       NEW.pleno_discount_code IS DISTINCT FROM OLD.pleno_discount_code
+     ) THEN
+    RAISE EXCEPTION 'Acceso denegado: solo administradores o la RPC de activación pueden modificar la vigencia de Socio Pleno.';
   END IF;
 
   IF NEW.email IS DISTINCT FROM OLD.email OR
@@ -1519,6 +1568,10 @@ BEGIN
 END;
 $$;
 
+DROP FUNCTION IF EXISTS public.submit_experience_transfer(
+  TEXT, TEXT, TEXT, TEXT, INTEGER, INTEGER, TEXT, INTEGER, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER, TEXT, TEXT, TEXT
+);
+
 CREATE OR REPLACE FUNCTION public.submit_experience_transfer(
   p_reference TEXT,
   p_experience_id TEXT,
@@ -1537,7 +1590,8 @@ CREATE OR REPLACE FUNCTION public.submit_experience_transfer(
   p_receipt_size_bytes INTEGER DEFAULT 1,
   p_receipt_url TEXT DEFAULT '',
   p_receipt_storage_key TEXT DEFAULT NULL,
-  p_receipt_storage_provider TEXT DEFAULT 'supabase'
+  p_receipt_storage_provider TEXT DEFAULT 'supabase',
+  p_pricing_pack_id TEXT DEFAULT NULL
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -1548,12 +1602,19 @@ DECLARE
   v_email TEXT := LOWER(TRIM(COALESCE(p_email, '')));
   v_dni TEXT := regexp_replace(COALESCE(p_dni, ''), '\D', '', 'g');
   v_socio_id UUID := NULL;
+  v_member_tier TEXT := 'emergente';
   v_capacity INTEGER := 12;
   v_unit_price INTEGER := 0;
   v_dates JSONB := '[]'::jsonb;
   v_date_slots JSONB := '[]'::jsonb;
+  v_pricing_packs JSONB := '[]'::jsonb;
   v_provider_email TEXT := '';
   v_slot JSONB;
+  v_pack JSONB;
+  v_matched_pack JSONB := NULL;
+  v_pack_has_dates BOOLEAN := false;
+  v_pack_has_weekdays BOOLEAN := false;
+  v_pack_date_valid BOOLEAN := false;
   v_expected_subtotal INTEGER := 0;
   v_expected_discount INTEGER := 0;
   v_expected_total INTEGER := 0;
@@ -1569,12 +1630,26 @@ BEGIN
     RETURN jsonb_build_object('status', 'unauthorized');
   END IF;
 
-  SELECT capacity_per_date, price_ars, dates, COALESCE(date_slots, '[]'::jsonb), COALESCE(provider_email, '')
-  INTO v_capacity, v_unit_price, v_dates, v_date_slots, v_provider_email
+  SELECT capacity_per_date, price_ars, dates, COALESCE(date_slots, '[]'::jsonb), COALESCE(pricing_packs, '[]'::jsonb), COALESCE(provider_email, '')
+  INTO v_capacity, v_unit_price, v_dates, v_date_slots, v_pricing_packs, v_provider_email
   FROM public.experiencias
   WHERE id = p_experience_id
   LIMIT 1
   FOR UPDATE;
+
+  SELECT
+    id,
+    CASE
+      WHEN LOWER(COALESCE(membership_tier, 'emergente')) IN ('activo', 'pleno')
+           AND pleno_expires_at IS NOT NULL
+           AND pleno_expires_at <= now()
+      THEN 'emergente'
+      ELSE COALESCE(membership_tier, 'emergente')
+    END
+  INTO v_socio_id, v_member_tier
+  FROM public.socios
+  WHERE email = v_email
+  LIMIT 1;
 
   IF v_capacity IS NULL THEN
     v_capacity := 12;
@@ -1607,14 +1682,64 @@ BEGIN
     END LOOP;
   END IF;
 
-  IF v_unit_price IS NOT NULL AND v_unit_price > 0 THEN
-    v_expected_subtotal := v_unit_price * p_participants;
+  IF p_pricing_pack_id IS NOT NULL AND TRIM(p_pricing_pack_id) <> '' THEN
+    IF v_pricing_packs IS NOT NULL AND jsonb_typeof(v_pricing_packs) = 'array' THEN
+      FOR v_pack IN SELECT * FROM jsonb_array_elements(v_pricing_packs)
+      LOOP
+        IF (v_pack ->> 'id') = TRIM(p_pricing_pack_id)
+           AND COALESCE((v_pack ->> 'active')::boolean, true) IS TRUE
+           AND COALESCE((v_pack ->> 'seats')::integer, 0) = p_participants THEN
+          v_pack_has_dates := jsonb_typeof(v_pack -> 'validDates') = 'array' AND jsonb_array_length(v_pack -> 'validDates') > 0;
+          v_pack_has_weekdays := jsonb_typeof(v_pack -> 'validWeekdays') = 'array' AND jsonb_array_length(v_pack -> 'validWeekdays') > 0;
+          v_pack_date_valid := false;
+          IF NOT v_pack_has_dates AND NOT v_pack_has_weekdays THEN
+            v_pack_date_valid := true;
+          ELSIF p_date ~ '^\d{4}-\d{2}-\d{2}$' THEN
+            IF v_pack_has_dates AND (v_pack -> 'validDates') ? p_date THEN
+              v_pack_date_valid := true;
+            END IF;
+            IF NOT v_pack_date_valid AND v_pack_has_weekdays THEN
+              SELECT EXISTS (
+                SELECT 1
+                FROM jsonb_array_elements_text(v_pack -> 'validWeekdays') AS wd
+                WHERE wd::integer = EXTRACT(DOW FROM p_date::date)::integer
+              ) INTO v_pack_date_valid;
+            END IF;
+          END IF;
+
+          IF v_pack_date_valid THEN
+            v_matched_pack := v_pack;
+            EXIT;
+          END IF;
+        END IF;
+      END LOOP;
+    END IF;
+
+    IF v_matched_pack IS NULL THEN
+      RETURN jsonb_build_object(
+        'status', 'invalid_amount',
+        'message', 'El pack promocional seleccionado no es válido para esta fecha o cantidad de cupos.'
+      );
+    END IF;
+  END IF;
+
+  IF (v_unit_price IS NOT NULL AND v_unit_price > 0) OR v_matched_pack IS NOT NULL THEN
+    IF v_matched_pack IS NOT NULL THEN
+      v_expected_subtotal := GREATEST(0, COALESCE((v_matched_pack ->> 'totalPriceArs')::integer, 0));
+    ELSE
+      v_expected_subtotal := v_unit_price * p_participants;
+    END IF;
 
     IF p_discount_code IS NOT NULL AND TRIM(p_discount_code) <> '' THEN
       SELECT
         CASE
           WHEN discount_type = 'percentage' THEN
-            ROUND((v_expected_subtotal * discount_value) / 100)
+            CASE
+              WHEN max_discount_ars IS NOT NULL AND max_discount_ars > 0 THEN
+                LEAST(ROUND((v_expected_subtotal * discount_value) / 100)::integer, max_discount_ars::integer)
+              ELSE
+                ROUND((v_expected_subtotal * discount_value) / 100)::integer
+            END
           WHEN discount_type = 'fixed_amount' THEN
             LEAST(v_expected_subtotal, discount_value::integer)
           ELSE 0
@@ -1623,6 +1748,7 @@ BEGIN
       FROM public.descuentos
       WHERE UPPER(code) = UPPER(TRIM(p_discount_code))
         AND active = true
+        AND (COALESCE(pleno_only, false) = false OR LOWER(v_member_tier) IN ('activo', 'pleno', 'fundador'))
         AND (starts_at IS NULL OR starts_at <= now())
         AND (ends_at IS NULL OR ends_at >= now())
         AND (min_amount_ars IS NULL OR min_amount_ars <= v_expected_subtotal)
@@ -1674,11 +1800,6 @@ BEGIN
   IF (v_reserved + p_participants) > v_capacity THEN
     RETURN jsonb_build_object('status', 'no_seats_available', 'available', GREATEST(0, v_capacity - v_reserved));
   END IF;
-
-  SELECT id INTO v_socio_id
-  FROM public.socios
-  WHERE email = v_email
-  LIMIT 1;
 
   INSERT INTO public.pagos_transferencias (
     reference,
@@ -2654,6 +2775,7 @@ DECLARE
   v_socio public.socios%ROWTYPE;
   v_discount public.descuentos%ROWTYPE;
   v_now TIMESTAMPTZ := now();
+  v_pleno_expires_at TIMESTAMPTZ := NULL;
   v_subtotal NUMERIC := 23000;
   v_discount_ars NUMERIC := 0;
   v_remaining_balance NUMERIC := 23000;
@@ -2744,6 +2866,10 @@ BEGIN
         'message', 'Por el momento, la activación inmediata requiere un cupón que cubra el 100% de la membresía.'
       );
     END IF;
+
+    IF v_discount.duration_months IS NOT NULL AND v_discount.duration_months > 0 THEN
+      v_pleno_expires_at := v_now + make_interval(months => v_discount.duration_months);
+    END IF;
   END IF;
 
   -- 4. Registrar o actualizar socio con categoría 'activo' (Socio Pleno)
@@ -2768,6 +2894,9 @@ BEGIN
       dni = v_dni,
       phone = v_phone,
       membership_tier = 'activo',
+      pleno_activated_at = v_now,
+      pleno_expires_at = v_pleno_expires_at,
+      pleno_discount_code = NULLIF(v_code, ''),
       position = CASE WHEN position IS NULL THEN nextval('public.socios_position_seq') ELSE position END,
       experiences_wishlist = CASE WHEN p_experiences_wishlist IS NOT NULL THEN p_experiences_wishlist ELSE experiences_wishlist END,
       experiences_other = CASE WHEN p_experiences_other IS NOT NULL AND TRIM(p_experiences_other) <> '' THEN TRIM(p_experiences_other) ELSE experiences_other END,
@@ -2789,6 +2918,9 @@ BEGIN
       experiences_wishlist,
       experiences_other,
       membership_tier,
+      pleno_activated_at,
+      pleno_expires_at,
+      pleno_discount_code,
       position,
       auth_user_id,
       created_at,
@@ -2801,6 +2933,9 @@ BEGIN
       COALESCE(p_experiences_wishlist, '[]'::jsonb),
       TRIM(p_experiences_other),
       'activo',
+      v_now,
+      v_pleno_expires_at,
+      NULLIF(v_code, ''),
       nextval('public.socios_position_seq'),
       v_auth_uid,
       v_now,

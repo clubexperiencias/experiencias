@@ -19,6 +19,8 @@ export interface Discount {
   endsAt?: string | null;
   maxUses?: number | null;
   usesCount: number;
+  durationMonths?: number | null; // Duración en meses de Socio Pleno (ej. 1, 3, 6) para baja automática
+  plenoOnly?: boolean; // Exclusivo para Socios Plenos activos (y Fundadores)
   active: boolean;
   createdAt: string;
   updatedAt: string;
@@ -57,6 +59,8 @@ export function mapSupabaseDiscount(row: any): Discount {
     endsAt: row.ends_at ?? null,
     maxUses: row.max_uses != null ? Number(row.max_uses) : null,
     usesCount: Number(row.uses_count) || 0,
+    durationMonths: row.duration_months != null ? Number(row.duration_months) : null,
+    plenoOnly: Boolean(row.pleno_only),
     active: row.active ?? true,
     createdAt: row.created_at || new Date().toISOString(),
     updatedAt: row.updated_at || new Date().toISOString(),

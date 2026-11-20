@@ -9,7 +9,8 @@ import { ExperienceService } from '../../../core/services/experience.service';
 import { StorageService } from '../../../core/services/storage.service';
 import { AdminStoreService } from '../../../core/services/admin-store.service';
 import { ExperienceProposalRequest, parseConfirmedProposalDates, slugify } from '../../../core/services/provider-store.service';
-import { ALTITUDE_OPTIONS, EXPERIENCE_CATEGORY_OPTIONS, Experience, ExperienceAlbumPhoto } from '../../../core/models/experience.model';
+import { ALTITUDE_OPTIONS, EXPERIENCE_CATEGORY_OPTIONS, Experience, ExperienceAlbumPhoto, ExperiencePricingPack } from '../../../core/models/experience.model';
+import { ExperiencePricingPacksEditorComponent } from '../../../shared/components/experience-pricing-packs-editor/experience-pricing-packs-editor.component';
 import { ProviderUser } from '../../../core/models/bank-transfer.model';
 import { isClubExperience } from '../../../core/models/club-profile.model';
 import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
@@ -23,7 +24,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
 @Component({
   selector: 'app-admin-experiences',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule, MatIconModule, ArsPipe, FechaPipe],
+  imports: [CommonModule, RouterLink, FormsModule, MatIconModule, ArsPipe, FechaPipe, ExperiencePricingPacksEditorComponent],
   template: `
     <div class="experiences-admin-container">
       <!-- Toast Feedback -->
@@ -1235,6 +1236,15 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                 }
               </span>
             </div>
+          </div>
+
+          <div style="margin-top: 1.15rem;">
+            <app-experience-pricing-packs-editor
+              [packs]="editPricingPacks()"
+              [unitPriceArs]="editPriceArs()"
+              [availableDates]="editScheduledDates()"
+              (packsChange)="editPricingPacks.set($event)"
+            />
           </div>
         </div>
 
@@ -5256,6 +5266,7 @@ export class AdminExperiencesComponent implements OnInit {
   }
   readonly editCapacity = signal(12);
   readonly editPriceArs = signal(65000);
+  readonly editPricingPacks = signal<ExperiencePricingPack[]>([]);
   readonly usdExchangeRate = computed(() => this.adminStore.usdExchangeRate() || 1400);
   readonly calculatedUsd = computed(() => {
     const rate = this.usdExchangeRate();
@@ -5418,6 +5429,7 @@ export class AdminExperiencesComponent implements OnInit {
     this.editAltitude.set(resolvedAltitude);
     this.editCapacity.set(exp.maxSpotsPerGroup || 12);
     this.editPriceArs.set(exp.priceArs || 65000);
+    this.editPricingPacks.set(exp.pricingPacks ? exp.pricingPacks.map((p) => ({ ...p })) : []);
     const rawCover = exp.coverImage || '';
     const safeCover = rawCover.startsWith('blob:') ? '/assets/images/kayak-club-de-experiencias.jpg' : rawCover;
     this.editCoverImage.set(safeCover);
@@ -5586,6 +5598,7 @@ export class AdminExperiencesComponent implements OnInit {
     this.editAltitude.set(1000);
     this.editCapacity.set(10);
     this.editPriceArs.set(75000);
+    this.editPricingPacks.set([]);
     this.editCoverImage.set('/assets/images/kayak-club-de-experiencias.jpg');
     this.editVideoUrl.set('');
     this.editVideoPoster.set('');
@@ -5981,6 +5994,7 @@ export class AdminExperiencesComponent implements OnInit {
       maxSpotsPerGroup: Number(this.editCapacity()) || 12,
       priceArs,
       priceUsd,
+      pricingPacks: this.editPricingPacks(),
       coverImage,
       albumPhotos: safeAlbumPhotos,
       galleryImages:

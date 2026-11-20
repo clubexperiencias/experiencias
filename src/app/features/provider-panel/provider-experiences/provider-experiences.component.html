@@ -102,10 +102,22 @@
             }
             <span class="request-date">Enviada: {{ req.createdAt | fecha: 'corta' }}</span>
           </div>
-          <a [href]="getRequestWhatsappLink(req)" target="_blank" rel="noopener noreferrer" class="req-wa-btn"
-            title="Consultar al equipo de administración por WhatsApp sobre esta propuesta">
-            CONSULTAR ESTADO
-          </a>
+          <div class="request-badge-actions">
+            <a [routerLink]="getDetailExperienceLink({ id: req.id, slug: req.slug || req.id })"
+              class="req-action-btn req-action-view"
+              title="Ver ficha completa de esta experiencia">
+              VER FICHA
+            </a>
+            <a [routerLink]="getEditExperienceLink(req.slug || req.id)"
+              class="req-action-btn req-action-edit"
+              title="Editar datos, logística y tarifas de esta experiencia">
+              EDITAR
+            </a>
+            <a [href]="getRequestWhatsappLink(req)" target="_blank" rel="noopener noreferrer" class="req-wa-btn"
+              title="Consultar al equipo de administración por WhatsApp sobre esta propuesta">
+              CONSULTAR ESTADO
+            </a>
+          </div>
         </div>
         <h4 class="request-exp-title">{{ req.title }}</h4>
         <p class="request-kicker-tag">{{ req.kicker }}</p>

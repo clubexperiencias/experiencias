@@ -1,6 +1,6 @@
-import type { ExperienceAlbumPhoto } from './experience.model';
+import type { ExperienceAlbumPhoto, ExperiencePricingPack } from './experience.model';
 import type { Discount } from './discount.model';
-export type { ExperienceAlbumPhoto };
+export type { ExperienceAlbumPhoto, ExperiencePricingPack };
 
 export type ExperienceStatus =
   | 'borrador'
@@ -95,6 +95,7 @@ export interface ProviderExperience {
   coverImage?: string;
   galleryImages?: string[];
   albumPhotos?: ExperienceAlbumPhoto[];
+  pricingPacks?: ExperiencePricingPack[];
   createdAt: string;
   updatedAt?: string;
 }
@@ -154,6 +155,7 @@ export interface NewTransferSubmission {
   discountCode?: string;
   discountArs?: number;
   validatedDiscount?: Discount;
+  pricingPackId?: string;
   receiptFile: File;
   paymentMethod?: 'transfer' | 'mercadopago';
   surchargeArs?: number;

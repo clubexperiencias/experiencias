@@ -42,6 +42,32 @@
                 como
                 <strong>{{ newsletter.isMonthlyActive() ? 'Socio Pleno' : 'Socio Emergente' }}</strong>.
               </p>
+
+              @if (emergingTenureLabel() || plenoTenureLabel() || plenoRemainingInfo()) {
+              <div class="membership-tenure-strip">
+                @if (emergingTenureLabel(); as emergingTenure) {
+                <div class="tenure-tile">
+                  <span class="tenure-label">ANTIGÜEDAD SOCIO EMERGENTE</span>
+                  <strong class="tenure-value">{{ emergingTenure }}</strong>
+                </div>
+                }
+                @if (plenoTenureLabel(); as plenoTenure) {
+                <div class="tenure-tile is-pleno">
+                  <span class="tenure-label">ANTIGÜEDAD SOCIO PLENO</span>
+                  <strong class="tenure-value">{{ plenoTenure }}</strong>
+                </div>
+                }
+                @if (plenoRemainingInfo(); as remaining) {
+                <div class="tenure-tile is-expiry">
+                  <span class="tenure-label">VENCIMIENTO SOCIO PLENO</span>
+                  <strong class="tenure-value">{{ remaining.label }}</strong>
+                  <span class="tenure-sub">
+                    Vence {{ remaining.expiresDateText }}@if (remaining.code) { · Código {{ remaining.code }} }
+                  </span>
+                </div>
+                }
+              </div>
+              }
             </div>
 
             <form class="profile-completion-form" (submit)="$event.preventDefault(); saveMemberProfile()">

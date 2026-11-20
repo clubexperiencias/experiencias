@@ -8,7 +8,11 @@ import { ExperienceService } from '../../../core/services/experience.service';
 import { HospedajesService, INITIAL_HOSPEDAJES } from '../../../core/services/hospedajes.service';
 import { FavoritesService } from '../../../core/services/favorites.service';
 import { DEFAULT_CLUB_PROFILE, isClubExperience } from '../../../core/models/club-profile.model';
-import { Experience } from '../../../core/models/experience.model';
+import {
+  Experience,
+  ExperiencePricingPack,
+  formatPricingPackSchedule,
+} from '../../../core/models/experience.model';
 import { HeaderComponent } from '../../../shared/components/header/header.component';
 import { FooterComponent } from '../../../shared/components/footer/footer.component';
 import {
@@ -39,7 +43,12 @@ export class ExperienceDetailComponent {
   readonly hospedajesService = inject(HospedajesService, { optional: true });
   readonly favoritesService = inject(FavoritesService);
   readonly isClubExperience = isClubExperience;
+  readonly formatPricingPackSchedule = formatPricingPackSchedule;
   readonly isLoading = signal(!this.experienceService.hasRemoteExperiences());
+
+  getActivePricingPacks(exp: Experience): ExperiencePricingPack[] {
+    return (exp.pricingPacks || []).filter((p) => p.active !== false && p.seats >= 1);
+  }
 
   isFavorite(exp: any): boolean {
     return this.favoritesService.isFavorite(exp);

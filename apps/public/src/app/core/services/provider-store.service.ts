@@ -19,7 +19,7 @@ import {
   discountAmount,
   findDiscountCode,
 } from '../models/bank-transfer.model';
-import { Experience } from '../models/experience.model';
+import { Experience, isPricingPackValidForDate } from '../models/experience.model';
 import { calculateDiscountAmount } from '../models/discount.model';
 import { DiscountService } from './discount.service';
 import { TransactionalEmailService } from './transactional-email.service';
@@ -162,6 +162,7 @@ export function mapLiveExperienceToProvider(live: Experience): ProviderExperienc
     coverImage: live.coverImage,
     galleryImages: live.galleryImages,
     albumPhotos: live.albumPhotos,
+    pricingPacks: live.pricingPacks,
     highlights: live.highlights,
     included: live.included,
     notIncluded: live.notIncluded,
@@ -1663,12 +1664,65 @@ export class ProviderStoreService {
     return Array.from(mergedLocal.values());
   }
 
+  private mapProposalRequestToProviderExperience(
+    req: ExperienceProposalRequest,
+  ): ProviderExperience {
+    const cleanAlt = Number(String(req.altitude || '').replace(/\D/g, ''));
+    const diffRaw = (req.difficulty || 'Moderada').split('(')[0].trim();
+    const validDifficulties: ReadonlyArray<ProviderExperience['difficulty']> = [
+      'Baja',
+      'Moderada',
+      'Exigente',
+      'Alta Montaña',
+      'Ninguna',
+    ];
+    const difficulty = validDifficulties.includes(diffRaw as ProviderExperience['difficulty'])
+      ? (diffRaw as ProviderExperience['difficulty'])
+      : 'Moderada';
+
+    return {
+      id: req.id,
+      providerId: req.providerId || this.currentProvider()?.id || '',
+      providerName: req.providerName || this.currentProvider()?.name || '',
+      slug: req.slug || slugify(req.title) || req.id,
+      title: req.title,
+      tagline: req.subheading || req.title,
+      description: req.subheading || '',
+      category: req.category || 'expediciones',
+      region: req.region || 'Catamarca',
+      meetingPoint: req.meetingPoint || '',
+      difficulty,
+      durationLabel: req.duration || 'Medio día',
+      altitudeMeters: Number.isFinite(cleanAlt) && cleanAlt > 0 ? cleanAlt : 850,
+      priceArs: req.priceArs || 0,
+      capacityPerDate: req.capacity || 12,
+      dates: parseConfirmedProposalDates(req.dates),
+      status: req.status === 'aprobada' ? 'publicada' : 'pendiente_publicacion',
+      coverImage: req.coverImage || '/assets/images/kayak-club-de-experiencias.jpg',
+      albumPhotos: req.albumPhotos,
+      createdAt: req.createdAt,
+      updatedAt: req.reviewedAt || req.createdAt,
+    };
+  }
+
+  private findProposalRequestByKey(key: string): ExperienceProposalRequest | undefined {
+    const requests = this._experienceRequests();
+    return (
+      requests.find((r) => r.id === key || r.slug === key) ??
+      requests.find((r) => slugify(r.title) === key)
+    );
+  }
+
   getExperienceById(id: string): ProviderExperience | undefined {
     const fromStore = this._experiences().find((e) => e.id === id || e.slug === id);
     if (fromStore) return fromStore;
     const live = this.expService.getExperienceById(id) || this.expService.getExperienceBySlug(id);
     if (live) {
       return mapLiveExperienceToProvider(live);
+    }
+    const req = this.findProposalRequestByKey(id);
+    if (req) {
+      return this.mapProposalRequestToProviderExperience(req);
     }
     return undefined;
   }
@@ -1679,6 +1733,10 @@ export class ProviderStoreService {
     const live = this.expService.getExperienceBySlug(slug);
     if (live) {
       return mapLiveExperienceToProvider(live);
+    }
+    const req = this.findProposalRequestByKey(slug);
+    if (req) {
+      return this.mapProposalRequestToProviderExperience(req);
     }
     return undefined;
   }
@@ -1826,8 +1884,55 @@ export class ProviderStoreService {
         };
         this._experiences.update((list) => [...list, updatedExperience!]);
       } else {
-        throw new Error('Experiencia no encontrada.');
+        const req = this.findProposalRequestByKey(id);
+        if (req) {
+          const mapped = this.mapProposalRequestToProviderExperience(req);
+          updatedExperience = {
+            ...mapped,
+            ...updates,
+            updatedAt: new Date().toISOString(),
+          };
+          this._experiences.update((list) => [...list, updatedExperience!]);
+        } else {
+          throw new Error('Experiencia no encontrada.');
+        }
       }
+    }
+
+    // Sincronizar también la propuesta vinculada si existe en _experienceRequests
+    const finalExp = updatedExperience;
+    let proposalUpdated = false;
+    this._experienceRequests.update((list) =>
+      list.map((r) => {
+        if (r.id !== id && r.id !== finalExp.id && r.slug !== finalExp.slug) return r;
+        proposalUpdated = true;
+        return {
+          ...r,
+          title: finalExp.title,
+          subheading: finalExp.description || finalExp.tagline || r.subheading,
+          category: finalExp.category || r.category,
+          region: finalExp.region || r.region,
+          meetingPoint: finalExp.meetingPoint ?? r.meetingPoint,
+          difficulty: finalExp.difficulty || r.difficulty,
+          duration: finalExp.durationLabel || r.duration,
+          altitude:
+            finalExp.altitudeMeters !== undefined ? `${finalExp.altitudeMeters} msnm` : r.altitude,
+          priceArs: finalExp.priceArs ?? r.priceArs,
+          capacity: finalExp.capacityPerDate ?? r.capacity,
+          dates:
+            updates.dates !== undefined
+              ? finalExp.dates.length > 0
+                ? finalExp.dates.join(', ')
+                : 'A coordinar'
+              : finalExp.dates?.length
+                ? finalExp.dates.join(', ')
+                : r.dates,
+          coverImage: finalExp.coverImage || r.coverImage,
+        };
+      }),
+    );
+    if (proposalUpdated) {
+      this.saveRequests();
     }
 
     this.saveExperiences();
@@ -1880,7 +1985,52 @@ export class ProviderStoreService {
   ): Promise<ProviderExperience> {
     const localBefore = this._experiences().find((e) => e.id === id || e.slug === id);
     const previousExp = localBefore ?? this.getExperienceById(id) ?? this.getExperienceBySlug(id);
+    const proposalBefore = this.findProposalRequestByKey(id);
     const updated = this.updateExperience(id, updates);
+    const proposalApplied = proposalBefore
+      ? this._experienceRequests().find((r) => r.id === proposalBefore.id)
+      : undefined;
+
+    const rollbackAll = (): void => {
+      this.rollbackExperienceFields(
+        updated.id,
+        previousExp,
+        Boolean(localBefore),
+        updated,
+        Object.keys(updates) as Array<keyof ProviderExperience>,
+      );
+      if (proposalBefore && proposalApplied) {
+        const proposalKeys: ReadonlyArray<keyof ExperienceProposalRequest> = [
+          'title',
+          'subheading',
+          'category',
+          'region',
+          'meetingPoint',
+          'difficulty',
+          'duration',
+          'altitude',
+          'priceArs',
+          'capacity',
+          'dates',
+          'coverImage',
+        ];
+        this._experienceRequests.update((list) =>
+          list.map((r) => {
+            if (r.id !== proposalBefore.id) return r;
+            const reverted: ExperienceProposalRequest = { ...r };
+            for (const key of proposalKeys) {
+              if (r[key] === proposalApplied[key]) {
+                (reverted as unknown as Record<string, unknown>)[key as string] =
+                  proposalBefore[key];
+              }
+            }
+            return reverted;
+          }),
+        );
+        this.saveRequests();
+      }
+    };
+
     const expMatch =
       this.expService.getExperienceById(id) || this.expService.getExperienceBySlug(updated.slug);
     if (expMatch) {
@@ -1908,16 +2058,61 @@ export class ProviderStoreService {
           maxSpotsPerGroup: updated.capacityPerDate,
           dates: updated.dates,
           coverImage: updated.coverImage,
+          ...(updates.pricingPacks !== undefined ? { pricingPacks: updated.pricingPacks } : {}),
           ...(mappedStatus ? { status: mappedStatus } : {}),
         });
       } catch (err) {
-        this.rollbackExperienceFields(
-          updated.id,
-          previousExp,
-          Boolean(localBefore),
-          updated,
-          Object.keys(updates) as Array<keyof ProviderExperience>,
-        );
+        rollbackAll();
+        throw err;
+      }
+    } else if (proposalBefore && isSupabaseConfigured()) {
+      try {
+        const proposalPayload: Record<string, any> = {
+          title: updated.title,
+          tagline: updated.tagline,
+          description: updated.description,
+          category: updated.category || 'expediciones',
+          region: updated.region,
+          meeting_point: updated.meetingPoint,
+          difficulty: updated.difficulty,
+          duration_label: updated.durationLabel,
+          altitude_meters: updated.altitudeMeters ?? 850,
+          price_ars: updated.priceArs,
+          capacity_per_date: updated.capacityPerDate,
+          dates: updated.dates,
+          cover_image: updated.coverImage,
+          updated_at: new Date().toISOString(),
+        };
+        if (updates.pricingPacks !== undefined) {
+          proposalPayload['pricing_packs'] = updated.pricingPacks ?? [];
+        }
+
+        let { data, error } = await (this.supabase.from('experiencias') as any)
+          .update(proposalPayload)
+          .eq('id', proposalBefore.id)
+          .select('id');
+
+        if (error && /pricing_packs/.test(error.message || '')) {
+          if (Array.isArray(updates.pricingPacks) && updates.pricingPacks.length > 0) {
+            throw new Error(
+              'No se pudieron guardar los packs promocionales: la columna pricing_packs no está disponible en la base de datos remota.',
+            );
+          }
+          delete proposalPayload['pricing_packs'];
+          ({ data, error } = await (this.supabase.from('experiencias') as any)
+            .update(proposalPayload)
+            .eq('id', proposalBefore.id)
+            .select('id'));
+        }
+
+        if (error) {
+          throw error;
+        }
+        if (!Array.isArray(data) || data.length === 0) {
+          throw new Error('No se pudo actualizar la propuesta en el servidor.');
+        }
+      } catch (err) {
+        rollbackAll();
         throw err;
       }
     }
@@ -2387,10 +2582,31 @@ export class ProviderStoreService {
     if (input.date !== 'A coordinar' && this.isDateClosed(experience, input.date)) {
       throw new Error('La fecha elegida se encuentra cerrada para nuevas reservas.');
     }
+    const selectedPack = input.pricingPackId
+      ? (experience.pricingPacks || []).find((p) => p.id === input.pricingPackId)
+      : undefined;
+    if (input.pricingPackId) {
+      const validForDate =
+        selectedPack &&
+        (experience.dates.length === 0 || input.date === 'A coordinar'
+          ? selectedPack.active !== false &&
+            selectedPack.seats >= 1 &&
+            (!selectedPack.validDates || selectedPack.validDates.length === 0) &&
+            (!selectedPack.validWeekdays || selectedPack.validWeekdays.length === 0)
+          : isPricingPackValidForDate(selectedPack, input.date));
+      if (!selectedPack || !validForDate || selectedPack.seats !== input.participants) {
+        throw new Error('El pack promocional seleccionado no es válido para esta fecha o cantidad de cupos.');
+      }
+    }
+
+    const maxParticipantsAllowed = Math.max(
+      MAX_PARTICIPANTS_PER_BOOKING,
+      selectedPack?.seats ?? 0,
+    );
     if (
       !Number.isInteger(input.participants) ||
       input.participants < 1 ||
-      input.participants > MAX_PARTICIPANTS_PER_BOOKING
+      input.participants > maxParticipantsAllowed
     ) {
       throw new Error('Cantidad de personas inválida.');
     }
@@ -2408,7 +2624,9 @@ export class ProviderStoreService {
     if (fileError) {
       throw new Error(fileError);
     }
-    const subtotal = experience.priceArs * input.participants;
+    const subtotal = selectedPack
+      ? selectedPack.totalPriceArs
+      : experience.priceArs * input.participants;
     let discountArs = 0;
     let discountCode: string | undefined = undefined;
 
@@ -2426,12 +2644,14 @@ export class ProviderStoreService {
         let dbValidated = false;
         if (this.discountService) {
           try {
+            this.newsletter.enforcePlenoExpiration();
             const valRes = await this.discountService.validateDiscount(
               input.discountCode,
               experience.id,
               experience.slug,
               subtotal,
               experience.providerId,
+              { memberTier: this.newsletter.getEffectiveMemberTier(this.newsletter.currentMember()) },
             );
             if (valRes.valid && valRes.discount) {
               discountArs = valRes.discountArs;
@@ -2491,6 +2711,7 @@ export class ProviderStoreService {
             p_receipt_url: receiptUrl,
             p_receipt_storage_key: storageKey || null,
             p_receipt_storage_provider: storageProvider,
+            p_pricing_pack_id: selectedPack?.id || null,
           },
         );
 
@@ -3679,7 +3900,10 @@ export class ProviderStoreService {
             altitude: row.altitude_meters ? `${row.altitude_meters} msnm` : '',
             capacity: row.capacity_per_date || 12,
             season: row.best_season || 'Todo el año',
-            dates: Array.isArray(row.dates) && row.dates.length > 0 ? row.dates[0] : 'A coordinar',
+            dates:
+              Array.isArray(row.dates) && row.dates.length > 0
+                ? row.dates.join(', ')
+                : 'A coordinar',
             priceArs: row.price_ars,
             priceUsd: row.price_usd,
             promosAndPricing: row.promos_and_pricing || '',

@@ -352,6 +352,7 @@ export class SubscriptionComponent implements OnInit {
         dni,
         phone,
         discountCode,
+        durationMonths: this.appliedDiscount()?.durationMonths ?? null,
         experiencesWishlist: this.selectedExperiences(),
         experiencesOther: otherText,
       });

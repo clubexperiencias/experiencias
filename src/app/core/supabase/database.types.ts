@@ -340,6 +340,7 @@ export interface Database {
           best_season?: string;
           itinerary?: string;
           promos_and_pricing?: string;
+          pricing_packs?: any;
           price_ars: number;
           price_usd?: number;
           capacity_per_date: number;
@@ -382,6 +383,7 @@ export interface Database {
           best_season?: string;
           itinerary?: string;
           promos_and_pricing?: string;
+          pricing_packs?: any;
           price_ars?: number;
           price_usd?: number;
           capacity_per_date?: number;
@@ -424,6 +426,7 @@ export interface Database {
           best_season?: string;
           itinerary?: string;
           promos_and_pricing?: string;
+          pricing_packs?: any;
           price_ars?: number;
           price_usd?: number;
           capacity_per_date?: number;

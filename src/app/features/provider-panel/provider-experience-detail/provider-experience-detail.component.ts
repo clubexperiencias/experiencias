@@ -825,8 +825,9 @@ export class ProviderExperienceDetailComponent implements OnInit {
   readonly experience = computed<ProviderExperience | undefined>(() => {
     const key = this.slugParam();
     if (!key) return undefined;
-    // Trigger reactive updates when provider experiences or live experiences change
+    // Trigger reactive updates when provider experiences, proposals, or live experiences change
     this.store.providerExperiences();
+    this.store.providerExperienceRequests();
     this.expService.experiences();
     return this.store.getExperienceBySlug(key) || this.store.getExperienceById(key);
   });
@@ -870,7 +871,10 @@ export class ProviderExperienceDetailComponent implements OnInit {
     if (key && !this.experience()) {
       this.isLoading.set(true);
       try {
-        await this.expService.reloadFromSupabase();
+        await Promise.all([
+          this.expService.reloadFromSupabase(),
+          this.store.loadProposalsFromSupabase(),
+        ]);
       } finally {
         this.isLoading.set(false);
       }

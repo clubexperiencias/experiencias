@@ -572,9 +572,41 @@ type PromotionCategory = 'group' | 'percentage' | 'fixed_amount';
                 <span class="field-hint">El descuento se aplicará a todas las salidas organizadas por este prestador.</span>
               </div>
             }
+            @if (scope() === 'membership') {
+              <div class="experience-picker-box">
+                <label class="field-label" for="discount-duration-months">Baja Automática de Socio Pleno (Opcional)</label>
+                <select
+                  id="discount-duration-months"
+                  [ngModel]="durationMonths()"
+                  (ngModelChange)="durationMonths.set($event ? +$event : null)"
+                  [ngModelOptions]="{standalone: true}"
+                  class="text-input select-input"
+                >
+                  <option [ngValue]="null">Sin baja automática (permanente)</option>
+                  <option [ngValue]="1">1 mes (se da de baja automáticamente al mes)</option>
+                  <option [ngValue]="3">3 meses (se da de baja automáticamente a los 3 meses)</option>
+                  <option [ngValue]="6">6 meses (se da de baja automáticamente a los 6 meses)</option>
+                </select>
+                <span class="field-hint">
+                  Al vencer el plazo, el socio vuelve automáticamente a Socio Emergente.
+                </span>
+              </div>
+            } @else {
+              <div class="experience-picker-box">
+                <label class="pleno-only-toggle">
+                  <input
+                    type="checkbox"
+                    [checked]="plenoOnly()"
+                    (change)="plenoOnly.set($any($event.target).checked)"
+                  />
+                  <span>Exclusivo para Socios Plenos (y Fundadores)</span>
+                </label>
+                <span class="field-hint">
+                  Si está activo, solo los socios con membresía Plena activa podrán canjear o recibir este descuento.
+                </span>
+              </div>
+            }
           </section>
-
-          <!-- PASO 4: Condiciones y Vigencia (Opcional) -->
           <section class="form-card">
             <div class="card-header-row">
               <div class="step-num">4</div>
@@ -1531,6 +1563,23 @@ type PromotionCategory = 'group' | 'percentage' | 'fixed_amount';
       border-radius: 8px;
     }
 
+    .pleno-only-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #ffffff;
+      cursor: pointer;
+    }
+
+    .pleno-only-toggle input[type='checkbox'] {
+      width: 16px;
+      height: 16px;
+      accent-color: #80b3ff;
+      cursor: pointer;
+    }
+
     .select-input option {
       background: #0f172a;
       color: #ffffff;
@@ -1842,6 +1891,8 @@ export class AdminDiscountEditorComponent implements OnInit {
   readonly startsAt = signal<string>('');
   readonly endsAt = signal<string>('');
   readonly maxUses = signal<number | null>(null);
+  readonly durationMonths = signal<number | null>(null);
+  readonly plenoOnly = signal<boolean>(false);
   readonly active = signal<boolean>(true);
 
   readonly saving = signal<boolean>(false);
@@ -1962,6 +2013,8 @@ export class AdminDiscountEditorComponent implements OnInit {
     this.startsAt.set(disc.startsAt ? disc.startsAt.split('T')[0] : '');
     this.endsAt.set(disc.endsAt ? disc.endsAt.split('T')[0] : '');
     this.maxUses.set(disc.maxUses || null);
+    this.durationMonths.set(disc.durationMonths ?? null);
+    this.plenoOnly.set(Boolean(disc.plenoOnly));
     this.active.set(disc.active);
 
     // Detectar si fue grupo o porcentaje o monto fijo
@@ -2315,6 +2368,8 @@ export class AdminDiscountEditorComponent implements OnInit {
         startsAt: this.startsAt() ? new Date(this.startsAt()).toISOString() : null,
         endsAt: this.endsAt() ? new Date(this.endsAt() + 'T23:59:59Z').toISOString() : null,
         maxUses: this.maxUses() ? Number(this.maxUses()) : null,
+        durationMonths: this.scope() === 'membership' ? this.durationMonths() : null,
+        plenoOnly: this.scope() === 'membership' ? false : this.plenoOnly(),
         active: this.active(),
       };
 

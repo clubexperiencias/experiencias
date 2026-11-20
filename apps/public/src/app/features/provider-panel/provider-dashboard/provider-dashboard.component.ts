@@ -393,7 +393,8 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                   <th>Dificultad</th>
                   <th class="col-th-amount">Arancel</th>
                   <th>Fecha</th>
-                  <th class="col-th-action">Estado</th>
+                  <th>Estado</th>
+                  <th class="col-th-action">Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -417,7 +418,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                     <td>
                       <span class="cell-date">{{ req.createdAt | fecha: 'corta' }}</span>
                     </td>
-                    <td class="text-right">
+                    <td>
                       <span
                         class="req-status-pill"
                         [class.pill-aprobada]="req.status === 'aprobada'"
@@ -432,6 +433,24 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
                               : 'PENDIENTE'
                         }}
                       </span>
+                    </td>
+                    <td class="text-right">
+                      <div class="req-row-actions">
+                        <a
+                          [routerLink]="['../experiencias', req.slug || req.id]"
+                          class="req-row-btn req-row-view"
+                          title="Ver ficha completa de esta experiencia"
+                        >
+                          VER FICHA
+                        </a>
+                        <a
+                          [routerLink]="['../experiencias', req.slug || req.id, 'editar']"
+                          class="req-row-btn req-row-edit"
+                          title="Editar esta experiencia"
+                        >
+                          EDITAR
+                        </a>
+                      </div>
                     </td>
                   </tr>
                 }
@@ -1671,6 +1690,50 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
         background: rgba(255, 60, 60, 0.12);
         border: 1px solid rgba(255, 60, 60, 0.35);
         color: #ff5f5f;
+      }
+
+      .req-row-actions {
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.45rem;
+      }
+
+      .req-row-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.28rem 0.65rem;
+        border-radius: 2px;
+        font-size: 0.68rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-decoration: none;
+        white-space: nowrap;
+        transition: all 0.15s ease;
+      }
+
+      .req-row-view {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        color: #ffffff;
+      }
+
+      .req-row-view:hover {
+        background: rgba(255, 255, 255, 0.16);
+        border-color: #ffffff;
+      }
+
+      .req-row-edit {
+        background: rgba(255, 95, 0, 0.16);
+        border: 1px solid rgba(255, 95, 0, 0.55);
+        color: #ffffff;
+      }
+
+      .req-row-edit:hover {
+        background: #ff5f00;
+        border-color: #ff5f00;
+        color: #ffffff;
       }
 
       /* Mobile Responsiveness */
