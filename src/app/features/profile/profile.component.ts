@@ -91,6 +91,78 @@ export class ProfileComponent implements OnInit, AfterViewInit, OnDestroy {
 
   readonly favoriteExperiences = this.favoritesService.favoriteExperiences;
 
+  readonly emergingTenureLabel = computed<string | null>(() => {
+    const member = this.newsletter.currentMember();
+    if (!member?.createdAt) return null;
+    return this.formatElapsedSince(member.createdAt);
+  });
+
+  readonly plenoTenureLabel = computed<string | null>(() => {
+    const member = this.newsletter.currentMember();
+    if (!member) return null;
+    const isPlenoOrFounder =
+      this.newsletter.isMonthlyActive() ||
+      member.membershipTier === 'activo' ||
+      member.membershipTier === 'fundador';
+    const startIso = member.plenoActivatedAt || member.subscription?.startedAt || null;
+    if (!isPlenoOrFounder || !startIso) return null;
+    return this.formatElapsedSince(startIso);
+  });
+
+  readonly plenoRemainingInfo = computed<{ label: string; expiresDateText: string; code?: string | null } | null>(() => {
+    const member = this.newsletter.currentMember();
+    if (!member) return null;
+    const isPleno = this.newsletter.isMonthlyActive() || member.membershipTier === 'activo';
+    const expiresIso = member.plenoExpiresAt || member.subscription?.expiresAt || null;
+    if (!isPleno || !expiresIso) return null;
+    const targetMs = Date.parse(expiresIso);
+    if (!Number.isFinite(targetMs)) return null;
+    const diffMs = targetMs - Date.now();
+    const totalDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    const expiresDateText = new Date(targetMs).toLocaleDateString('es-AR', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+    let label: string;
+    if (totalDays <= 0) {
+      label = 'Vence hoy';
+    } else if (totalDays === 1) {
+      label = 'Queda 1 día';
+    } else if (totalDays < 30) {
+      label = `Quedan ${totalDays} días`;
+    } else {
+      const months = Math.floor(totalDays / 30);
+      const remDays = totalDays % 30;
+      const mText = months === 1 ? '1 mes' : `${months} meses`;
+      label = remDays > 0 ? `Quedan ${mText} y ${remDays} ${remDays === 1 ? 'día' : 'días'}` : `Queda ${mText}`;
+    }
+    return {
+      label,
+      expiresDateText,
+      code: member.plenoDiscountCode || member.subscription?.discountCode || null,
+    };
+  });
+
+  private formatElapsedSince(dateLike: Date | string): string {
+    const startMs = dateLike instanceof Date ? dateLike.getTime() : Date.parse(String(dateLike));
+    if (!Number.isFinite(startMs)) return 'Desde hoy';
+    const diffDays = Math.max(0, Math.floor((Date.now() - startMs) / (1000 * 60 * 60 * 24)));
+    if (diffDays === 0) return 'Desde hoy';
+    if (diffDays === 1) return '1 día';
+    if (diffDays < 30) return `${diffDays} días`;
+    if (diffDays < 365) {
+      const months = Math.floor(diffDays / 30);
+      const remDays = diffDays % 30;
+      const mText = months === 1 ? '1 mes' : `${months} meses`;
+      return remDays > 0 ? `${mText} y ${remDays} ${remDays === 1 ? 'día' : 'días'}` : mText;
+    }
+    const years = Math.floor(diffDays / 365);
+    const remMonths = Math.floor((diffDays % 365) / 30);
+    const yText = years === 1 ? '1 año' : `${years} años`;
+    return remMonths > 0 ? `${yText} y ${remMonths} ${remMonths === 1 ? 'mes' : 'meses'}` : yText;
+  }
+
   private scrollDebounceTimer: ReturnType<typeof setTimeout> | null = null;
   private carouselInitTimer: ReturnType<typeof setTimeout> | null = null;
   private isDestroyed = false;

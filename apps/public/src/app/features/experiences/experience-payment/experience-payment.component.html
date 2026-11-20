@@ -171,6 +171,9 @@
                         {{ option.available }} lugares
                         }
                       </span>
+                      @if (getDatePromoLabel(option.date); as promoLabel) {
+                      <span class="pay-date-promo-tag">{{ promoLabel }}</span>
+                      }
                     </button>
                     } @empty {
                     @if (hasNoFixedDates()) {
@@ -204,8 +207,57 @@
                   }
                 </fieldset>
 
+                @if (availablePacksForSelectedDate().length > 0) {
+                <div class="pay-field pay-packs-field">
+                  <span class="pay-label">Elegí tu tarifa o pack promocional</span>
+                  <div class="pay-packs-grid">
+                    <button
+                      type="button"
+                      class="pay-pack-card"
+                      [class.is-selected]="!selectedPricingPack()"
+                      (click)="selectPricingPack(null)"
+                    >
+                      <div class="pack-card-top">
+                        <strong class="pack-card-title">Tarifa Individual</strong>
+                        <span class="pack-card-price">{{ exp.priceArs | ars }}</span>
+                      </div>
+                      <span class="pack-card-meta">Por persona · elegí la cantidad de cupos</span>
+                    </button>
+
+                    @for (pack of availablePacksForSelectedDate(); track pack.id) {
+                    <button
+                      type="button"
+                      class="pay-pack-card is-promo"
+                      [class.is-selected]="selectedPricingPack()?.id === pack.id"
+                      [disabled]="!hasNoFixedDates() && seatsForSelectedDate() < pack.seats"
+                      (click)="selectPricingPack(pack)"
+                    >
+                      <div class="pack-card-top">
+                        <strong class="pack-card-title">{{ pack.label }}</strong>
+                        <span class="pack-card-price">{{ pack.totalPriceArs | ars }}</span>
+                      </div>
+                      <div class="pack-card-bottom">
+                        <span class="pack-card-meta">Incluye {{ pack.seats }} cupos</span>
+                        @if (!hasNoFixedDates() && seatsForSelectedDate() < pack.seats) {
+                        <span class="pack-card-warn">Requiere {{ pack.seats }} lugares</span>
+                        } @else if (getPackSavingsArs(pack) > 0) {
+                        <span class="pack-card-save">Ahorrás {{ getPackSavingsArs(pack) | ars }}</span>
+                        }
+                      </div>
+                    </button>
+                    }
+                  </div>
+                </div>
+                }
+
                 <div class="pay-field">
                   <label for="pay-participants" class="pay-label">Cantidad de personas</label>
+                  @if (selectedPricingPack(); as activePack) {
+                  <div class="pay-pack-locked-seats">
+                    <strong>{{ activePack.seats }} {{ activePack.seats === 1 ? 'cupo reservado' : 'cupos reservados' }}</strong>
+                    <span>({{ activePack.label }})</span>
+                  </div>
+                  } @else {
                   <select id="pay-participants" class="pay-input pay-select-plain" formControlName="participants">
                     @for (n of participantOptions(); track n) {
                     <option [ngValue]="n">
@@ -213,6 +265,7 @@
                     </option>
                     }
                   </select>
+                  }
                 </div>
               </section>
 
@@ -467,6 +520,26 @@
                       }}
                     </dd>
                   </div>
+                  @if (selectedPricingPack(); as activePack) {
+                  <div>
+                    <dt>Tarifa elegida</dt>
+                    <dd>{{ activePack.label }}</dd>
+                  </div>
+                  <div>
+                    <dt>Precio del pack</dt>
+                    <dd>{{ activePack.totalPriceArs | ars }}</dd>
+                  </div>
+                  <div>
+                    <dt>Cupos incluidos</dt>
+                    <dd>{{ activePack.seats }} {{ activePack.seats === 1 ? 'persona' : 'personas' }}</dd>
+                  </div>
+                  @if (getPackSavingsArs(activePack) > 0) {
+                  <div class="pay-discount-line">
+                    <dt>Ahorro pack</dt>
+                    <dd>- {{ getPackSavingsArs(activePack) | ars }}</dd>
+                  </div>
+                  }
+                  } @else {
                   <div>
                     <dt>Arancel por persona</dt>
                     <dd>{{ exp.priceArs | ars }}</dd>
@@ -475,6 +548,7 @@
                     <dt>Personas</dt>
                     <dd>{{ form.controls.participants.value }}</dd>
                   </div>
+                  }
                   <div>
                     <dt>Punto de encuentro</dt>
                     <dd>{{ exp.meetingPoint }}</dd>

@@ -54,6 +54,10 @@ EXCEPTION
 END;
 $$;
 
+ALTER TABLE public.socios ADD COLUMN IF NOT EXISTS pleno_activated_at TIMESTAMPTZ;
+ALTER TABLE public.socios ADD COLUMN IF NOT EXISTS pleno_expires_at TIMESTAMPTZ;
+ALTER TABLE public.socios ADD COLUMN IF NOT EXISTS pleno_discount_code TEXT;
+
 -- 2.3 administradores (Nómina de Administradores con Rol)
 CREATE TABLE IF NOT EXISTS public.administradores (
   id                   UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -253,6 +257,7 @@ CREATE TABLE IF NOT EXISTS public.experiencias (
   included                 JSONB DEFAULT '[]'::jsonb,
   not_included             JSONB DEFAULT '[]'::jsonb,
   promos_and_pricing       TEXT DEFAULT '',
+  pricing_packs            JSONB DEFAULT '[]'::jsonb,
   participant_requirements TEXT NOT NULL DEFAULT '',
   notes                    TEXT,
   reviewed_at              TIMESTAMPTZ,
@@ -276,6 +281,7 @@ CREATE TABLE IF NOT EXISTS public.experiencias (
 
 ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
 ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT 'expediciones';
+ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS pricing_packs JSONB DEFAULT '[]'::jsonb;
 
 CREATE INDEX IF NOT EXISTS idx_experiencias_slug ON public.experiencias(slug);
 CREATE INDEX IF NOT EXISTS idx_experiencias_category ON public.experiencias(category);
@@ -397,6 +403,34 @@ EXCEPTION WHEN OTHERS THEN
   NULL;
 END;
 $$;
+
+ALTER TABLE public.descuentos ADD COLUMN IF NOT EXISTS duration_months INTEGER CHECK (duration_months IS NULL OR duration_months > 0);
+ALTER TABLE public.descuentos ADD COLUMN IF NOT EXISTS pleno_only BOOLEAN NOT NULL DEFAULT false;
+
+-- Baja automática de Socios Plenos con membresía promocional vencida
+CREATE OR REPLACE FUNCTION public.expire_overdue_pleno_memberships()
+RETURNS INTEGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_count INTEGER := 0;
+BEGIN
+  UPDATE public.socios
+  SET
+    membership_tier = 'emergente',
+    updated_at = now()
+  WHERE membership_tier IN ('activo', 'pleno')
+    AND pleno_expires_at IS NOT NULL
+    AND pleno_expires_at <= now();
+
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  RETURN v_count;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.expire_overdue_pleno_memberships() TO authenticated, service_role;
 
 -- ==============================================================================
 -- 3. VISTAS

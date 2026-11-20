@@ -45,7 +45,7 @@ export class ProviderExperiencesComponent implements OnInit {
       typeof window !== 'undefined' && window.location.pathname.includes('/prestadores/panel');
     return isPanel ? '/prestadores/panel/experiencias/nueva' : '/experiencias/nueva';
   });
-  getDetailExperienceLink(exp: ProviderExperience): string {
+  getDetailExperienceLink(exp: { id: string; slug?: string }): string {
     const isPanel =
       typeof window !== 'undefined' && window.location.pathname.includes('/prestadores/panel');
     const key = exp.slug || exp.id;

@@ -8,6 +8,65 @@ export interface ExperienceAlbumPhoto {
   order?: number;
 }
 
+export interface ExperiencePricingPack {
+  id: string;
+  label: string; // Ej: "Promo 2x1", "Pack Grupo x4 (pagan 3)"
+  seats: number; // Cupos reales que reserva (ej. 2 para 2x1, 4 para 4x3)
+  totalPriceArs: number; // Precio total del pack en ARS
+  validWeekdays?: number[]; // 0=Dom .. 6=Sáb (vacío = todos los días)
+  validDates?: string[]; // Fechas exactas YYYY-MM-DD (vacío = todas las fechas)
+  active?: boolean;
+}
+
+export const PRICING_WEEKDAY_OPTIONS: ReadonlyArray<{ value: number; short: string; label: string }> = [
+  { value: 1, short: 'Lun', label: 'Lunes' },
+  { value: 2, short: 'Mar', label: 'Martes' },
+  { value: 3, short: 'Mié', label: 'Miércoles' },
+  { value: 4, short: 'Jue', label: 'Jueves' },
+  { value: 5, short: 'Vie', label: 'Viernes' },
+  { value: 6, short: 'Sáb', label: 'Sábado' },
+  { value: 0, short: 'Dom', label: 'Domingo' },
+];
+
+export function isPricingPackValidForDate(
+  pack: ExperiencePricingPack,
+  isoDate?: string | null,
+): boolean {
+  if (pack.active === false) return false;
+  if (!pack.seats || pack.seats < 1 || pack.totalPriceArs < 0) return false;
+  const hasDates = Array.isArray(pack.validDates) && pack.validDates.length > 0;
+  const hasWeekdays = Array.isArray(pack.validWeekdays) && pack.validWeekdays.length > 0;
+  if (!hasDates && !hasWeekdays) return true;
+  if (!isoDate || !/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return false;
+  if (hasDates && pack.validDates!.includes(isoDate)) return true;
+  if (hasWeekdays) {
+    const [y, m, d] = isoDate.split('-').map(Number);
+    const weekday = new Date(y, m - 1, d).getDay();
+    if (pack.validWeekdays!.includes(weekday)) return true;
+  }
+  return false;
+}
+
+export function formatPricingPackSchedule(pack: ExperiencePricingPack): string {
+  const parts: string[] = [];
+  if (pack.validWeekdays && pack.validWeekdays.length > 0) {
+    const labels = PRICING_WEEKDAY_OPTIONS
+      .filter((w) => pack.validWeekdays!.includes(w.value))
+      .map((w) => w.short);
+    if (labels.length > 0) {
+      parts.push(labels.join(', '));
+    }
+  }
+  if (pack.validDates && pack.validDates.length > 0) {
+    const formatted = pack.validDates.map((d) => {
+      const segs = d.split('-');
+      return segs.length === 3 ? `${segs[2]}/${segs[1]}` : d;
+    });
+    parts.push(formatted.join(', '));
+  }
+  return parts.length > 0 ? parts.join(' · ') : 'Todas las fechas';
+}
+
 export interface AltitudeOption {
   value: number;
   label: string;
@@ -61,6 +120,7 @@ export interface Experience {
   altitudeMeters: number;
   bestSeason?: string;
   promosAndPricing?: string;
+  pricingPacks?: ExperiencePricingPack[];
   priceArs: number;
   priceUsd: number;
   maxSpotsPerGroup: number;

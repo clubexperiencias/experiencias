@@ -5,7 +5,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { ProviderStoreService } from '../../../core/services/provider-store.service';
 import { ExperienceService } from '../../../core/services/experience.service';
 import { ExperienceStatus, ProviderExperience } from '../../../core/models/bank-transfer.model';
-import { ALTITUDE_OPTIONS, EXPERIENCE_CATEGORY_OPTIONS } from '../../../core/models/experience.model';
+import { ALTITUDE_OPTIONS, EXPERIENCE_CATEGORY_OPTIONS, ExperiencePricingPack } from '../../../core/models/experience.model';
+import { ExperiencePricingPacksEditorComponent } from '../../../shared/components/experience-pricing-packs-editor/experience-pricing-packs-editor.component';
 import { FechaPipe } from '../../../shared/pipes/format.pipes';
 
 const MAX_DATES = 25;
@@ -18,7 +19,7 @@ interface PresetImage {
 @Component({
   selector: 'app-provider-experience-form',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink, MatIconModule, FechaPipe],
+  imports: [ReactiveFormsModule, RouterLink, MatIconModule, FechaPipe, ExperiencePricingPacksEditorComponent],
   templateUrl: './provider-experience-form.component.html',
   styleUrl: './provider-experience-form.component.css',
 })
@@ -123,6 +124,7 @@ export class ProviderExperienceFormComponent implements OnInit {
   });
 
   readonly dates = signal<string[]>([]);
+  readonly pricingPacks = signal<ExperiencePricingPack[]>([]);
   readonly newDate = signal('');
   readonly datesError = signal<string | null>(null);
   readonly saving = signal(false);
@@ -138,7 +140,10 @@ export class ProviderExperienceFormComponent implements OnInit {
       this.editingExpId.set(id);
       let exp = this.store.getExperienceById(id) || this.store.getExperienceBySlug(id);
       if (!exp) {
-        const loadOk = await this.expService.remoteLoadPromise;
+        const [loadOk] = await Promise.all([
+          this.expService.remoteLoadPromise,
+          this.store.loadProposalsFromSupabase(),
+        ]);
         exp = this.store.getExperienceById(id) || this.store.getExperienceBySlug(id);
         if (!exp && !loadOk) {
           this.loadError.set(true);
@@ -166,6 +171,7 @@ export class ProviderExperienceFormComponent implements OnInit {
     this.currentStatus.set(exp.status);
     this.selectedCoverImage.set(exp.coverImage || this.presetImages[0].url);
     this.dates.set([...exp.dates]);
+    this.pricingPacks.set(exp.pricingPacks ? exp.pricingPacks.map((p) => ({ ...p })) : []);
     this.form.patchValue({
       title: exp.title,
       tagline: exp.tagline,
@@ -186,8 +192,11 @@ export class ProviderExperienceFormComponent implements OnInit {
     if (!id) return;
     this.loadError.set(false);
     this.notFound.set(false);
-    const loadOk = await this.expService.reloadFromSupabase();
-    const exp = this.store.getExperienceById(id);
+    const [loadOk] = await Promise.all([
+      this.expService.reloadFromSupabase(),
+      this.store.loadProposalsFromSupabase(),
+    ]);
+    const exp = this.store.getExperienceById(id) || this.store.getExperienceBySlug(id);
     if (exp) {
       this.populateForm(exp);
     } else if (!loadOk) {
@@ -383,6 +392,7 @@ export class ProviderExperienceFormComponent implements OnInit {
       priceArs: Math.round(Number(value.priceArs)),
       capacityPerDate: Math.round(Number(value.capacityPerDate)),
       dates: this.dates(),
+      pricingPacks: this.pricingPacks(),
       coverImage: this.selectedCoverImage(),
     };
 

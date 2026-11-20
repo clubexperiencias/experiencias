@@ -1251,3 +1251,119 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Pricing Packs / Promos Selector ──────────────────────────────────────── */
+.pay-date-promo-tag {
+  display: inline-block;
+  margin-top: 0.2rem;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: rgba(128, 179, 255, 0.2);
+  border: 1px solid rgba(128, 179, 255, 0.55);
+  color: #ffffff;
+  border-radius: 2px;
+}
+
+.pay-packs-field {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.pay-packs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.65rem;
+  margin-top: 0.45rem;
+}
+
+.pay-pack-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.85rem 0.95rem;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 3px;
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pay-pack-card:hover:not(:disabled) {
+  border-color: rgba(128, 179, 255, 0.6);
+  background: rgba(128, 179, 255, 0.08);
+}
+
+.pay-pack-card.is-selected {
+  border-color: #80b3ff;
+  background: rgba(128, 179, 255, 0.16);
+  box-shadow: 0 0 0 1px rgba(128, 179, 255, 0.45);
+}
+
+.pay-pack-card:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+
+.pack-card-top,
+.pack-card-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.pack-card-title {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.pack-card-price {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #80b3ff;
+}
+
+.pack-card-meta {
+  font-size: 0.76rem;
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.pack-card-save {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #86efac;
+  background: rgba(34, 197, 94, 0.14);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  padding: 0.12rem 0.42rem;
+  border-radius: 2px;
+}
+
+.pack-card-warn {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #fca5a5;
+}
+
+.pay-pack-locked-seats {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 0.9rem;
+  background: rgba(128, 179, 255, 0.1);
+  border: 1px solid rgba(128, 179, 255, 0.4);
+  border-radius: 3px;
+  font-size: 0.88rem;
+  color: #ffffff;
+}
+
+.pay-pack-locked-seats span {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.82rem;
+}

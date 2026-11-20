@@ -133,6 +133,17 @@
                 }
               </div>
               <span class="price-note">{{ item.promosAndPricing || 'Prioridad para socios de nuestro Club de Experiencias' }}</span>
+              @if (getActivePricingPacks(item).length > 0) {
+              <div class="detail-packs-strip">
+                @for (pack of getActivePricingPacks(item); track pack.id) {
+                <div class="detail-pack-pill">
+                  <strong class="detail-pack-name">{{ pack.label }}</strong>
+                  <span class="detail-pack-info">{{ pack.seats }} cupos · {{ pack.totalPriceArs | ars }}</span>
+                  <span class="detail-pack-sched">{{ formatPricingPackSchedule(pack) }}</span>
+                </div>
+                }
+              </div>
+              }
             </div>
 
             <div class="action-btns-group">
@@ -345,6 +356,17 @@
                 }
               </div>
               <span class="price-note">{{ item.promosAndPricing || 'Prioridad para socios de nuestro Club de Experiencias' }}</span>
+              @if (getActivePricingPacks(item).length > 0) {
+              <div class="detail-packs-strip">
+                @for (pack of getActivePricingPacks(item); track pack.id) {
+                <div class="detail-pack-pill">
+                  <strong class="detail-pack-name">{{ pack.label }}</strong>
+                  <span class="detail-pack-info">{{ pack.seats }} cupos · {{ pack.totalPriceArs | ars }}</span>
+                  <span class="detail-pack-sched">{{ formatPricingPackSchedule(pack) }}</span>
+                </div>
+                }
+              </div>
+              }
             </div>
 
             <div class="action-btns-group">

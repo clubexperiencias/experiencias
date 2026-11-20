@@ -1075,11 +1075,51 @@
   font-size: 0.75rem;
   color: rgba(255, 255, 255, 0.6);
 }
+.request-badge-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+.req-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.32rem 0.85rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-radius: 2px;
+  text-decoration: none;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+.req-action-view {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+.req-action-view:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: #ffffff;
+}
+.req-action-edit {
+  background: rgba(255, 95, 0, 0.16);
+  border: 1px solid rgba(255, 95, 0, 0.55);
+  color: #ffb07a;
+}
+.req-action-edit:hover {
+  background: #ff5f00;
+  border-color: #ff5f00;
+  color: #ffffff;
+}
 .req-wa-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin-left: auto;
   padding: 0.32rem 0.85rem;
   font-size: 0.72rem;
   font-weight: 800;

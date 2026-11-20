@@ -1,6 +1,6 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { WaitlistEntry, WaitlistSubmissionDto, WaitlistStats } from '../models/waitlist.model';
+import { MembershipTier, WaitlistEntry, WaitlistSubmissionDto, WaitlistStats } from '../models/waitlist.model';
 import { DiscountCode } from '../models/bank-transfer.model';
 import { SUPABASE_CLIENT, isSupabaseConfigured } from '../supabase/supabase.client';
 import { NotificationService } from './notification.service';
@@ -16,6 +16,14 @@ export const AUTH_RETURN_URL_EXPIRY_MS = 30 * 60 * 1000; // 30 minutos de vigenc
 export const AUTH_SUCCESS_FEEDBACK_DURATION_MS = 3000;
 
 function mapDbRowToEntry(row: any): WaitlistEntry {
+  const rawTier = (row.membership_tier || 'emergente') as MembershipTier;
+  const plenoExpiresAt: string | null = row.pleno_expires_at || null;
+  const isExpiredPleno =
+    (rawTier === 'activo' || (rawTier as string) === 'pleno') &&
+    Boolean(plenoExpiresAt) &&
+    Number.isFinite(Date.parse(plenoExpiresAt!)) &&
+    Date.parse(plenoExpiresAt!) <= Date.now();
+
   return {
     id: row.id,
     email: row.email,
@@ -29,7 +37,10 @@ function mapDbRowToEntry(row: any): WaitlistEntry {
     createdAt: row.created_at ? new Date(row.created_at) : new Date(),
     status: 'confirmed',
     source: 'web_minimal_landing',
-    membershipTier: row.membership_tier || 'emergente',
+    membershipTier: isExpiredPleno ? 'emergente' : rawTier,
+    plenoActivatedAt: row.pleno_activated_at || null,
+    plenoExpiresAt,
+    plenoDiscountCode: row.pleno_discount_code || null,
     authUserId: row.auth_user_id || undefined,
     googleLinked: Boolean(row.auth_user_id),
     registrationToken: row.registration_token || undefined,
@@ -73,6 +84,11 @@ export class NewsletterService {
 
   private async initSupabaseData(): Promise<void> {
     if (!this.isSupabaseConnected()) return;
+
+    void (this.supabase.rpc('expire_overdue_pleno_memberships' as any) as any).then(
+      () => undefined,
+      () => undefined,
+    );
 
     try {
       const { data: statsData } = await this.supabase
@@ -903,6 +919,7 @@ export class NewsletterService {
     dni: string;
     phone: string;
     discountCode?: string;
+    durationMonths?: number | null;
     experiencesWishlist?: string[];
     experiencesOther?: string;
   }): Promise<{
@@ -1026,10 +1043,20 @@ export class NewsletterService {
 
           const entry = mapDbRowToEntry(rpcPayload.socio);
           const today = new Date();
+          const durationMonths =
+            dto.durationMonths && Number(dto.durationMonths) > 0 ? Number(dto.durationMonths) : null;
+          const expiresDate = durationMonths ? new Date(today) : null;
+          if (expiresDate && durationMonths) {
+            expiresDate.setMonth(expiresDate.getMonth() + durationMonths);
+          }
+          const expiresAtIso = expiresDate ? expiresDate.toISOString() : null;
           const nextMonth = new Date(today);
-          nextMonth.setMonth(nextMonth.getMonth() + 1);
+          nextMonth.setMonth(nextMonth.getMonth() + (durationMonths || 1));
 
           entry.membershipTier = 'activo';
+          entry.plenoActivatedAt = today.toISOString();
+          entry.plenoExpiresAt = expiresAtIso;
+          entry.plenoDiscountCode = cleanDiscountCode || null;
           entry.subscription = {
             status: 'active',
             tier: 'activo',
@@ -1041,9 +1068,21 @@ export class NewsletterService {
               month: 'long',
               year: 'numeric',
             }),
-            autoRenew: true,
+            expiresAt: expiresAtIso,
+            discountCode: cleanDiscountCode || null,
+            autoRenew: !expiresAtIso,
             lastPaymentReceipt: 'REC-' + Math.floor(100000 + Math.random() * 900000),
           };
+
+          // Persistir metadatos de vigencia del Socio Pleno en public.socios (no bloqueante si aún no se migraron columnas)
+          void (this.supabase.from('socios') as any)
+            .update({
+              pleno_activated_at: today.toISOString(),
+              pleno_expires_at: expiresAtIso,
+              pleno_discount_code: cleanDiscountCode || null,
+            })
+            .eq('email', cleanEmail)
+            .then(() => undefined, () => undefined);
 
           const updatedEntries = [
             entry,
@@ -1120,8 +1159,15 @@ export class NewsletterService {
     }
     const position = existing?.position || this._entries().length + 1;
     const today = new Date();
+    const durationMonths =
+      dto.durationMonths && Number(dto.durationMonths) > 0 ? Number(dto.durationMonths) : null;
+    const expiresDate = durationMonths ? new Date(today) : null;
+    if (expiresDate && durationMonths) {
+      expiresDate.setMonth(expiresDate.getMonth() + durationMonths);
+    }
+    const expiresAtIso = expiresDate ? expiresDate.toISOString() : null;
     const nextMonth = new Date(today);
-    nextMonth.setMonth(nextMonth.getMonth() + 1);
+    nextMonth.setMonth(nextMonth.getMonth() + (durationMonths || 1));
 
     const fallbackEntry: WaitlistEntry = {
       id: existing?.id || 'socio-' + Date.now(),
@@ -1133,6 +1179,9 @@ export class NewsletterService {
       experiencesOther: dto.experiencesOther || existing?.experiencesOther || '',
       position,
       membershipTier: 'activo',
+      plenoActivatedAt: today.toISOString(),
+      plenoExpiresAt: expiresAtIso,
+      plenoDiscountCode: cleanDiscountCode || null,
       subscription: {
         status: 'active',
         tier: 'activo',
@@ -1144,7 +1193,9 @@ export class NewsletterService {
           month: 'long',
           year: 'numeric',
         }),
-        autoRenew: true,
+        expiresAt: expiresAtIso,
+        discountCode: cleanDiscountCode || null,
+        autoRenew: !expiresAtIso,
         lastPaymentReceipt: 'REC-' + Math.floor(100000 + Math.random() * 900000),
       },
       createdAt: existing?.createdAt ? new Date(existing.createdAt) : new Date(),
@@ -2142,7 +2193,26 @@ export class NewsletterService {
   private loadCurrentMember(): WaitlistEntry | null {
     try {
       const data = localStorage.getItem(SUBSCRIBED_KEY);
-      return data ? JSON.parse(data) : null;
+      if (!data) return null;
+      const parsed: WaitlistEntry = JSON.parse(data);
+      const expiresIso = parsed.plenoExpiresAt || parsed.subscription?.expiresAt || null;
+      if (
+        (parsed.membershipTier === 'activo' || (parsed.membershipTier as string) === 'pleno') &&
+        expiresIso &&
+        Number.isFinite(Date.parse(expiresIso)) &&
+        Date.parse(expiresIso) <= Date.now()
+      ) {
+        const downgraded: WaitlistEntry = {
+          ...parsed,
+          membershipTier: 'emergente',
+          subscription: parsed.subscription
+            ? { ...parsed.subscription, status: 'cancelled' }
+            : undefined,
+        };
+        localStorage.setItem(SUBSCRIBED_KEY, JSON.stringify(downgraded));
+        return downgraded;
+      }
+      return parsed;
     } catch {
       return null;
     }

@@ -199,6 +199,15 @@
           />
         </div>
       </div>
+
+      <div style="margin-top: 1rem;">
+        <app-experience-pricing-packs-editor
+          [packs]="pricingPacks()"
+          [unitPriceArs]="form.controls.priceArs.value || 0"
+          [availableDates]="dates()"
+          (packsChange)="pricingPacks.set($event)"
+        />
+      </div>
     </fieldset>
 
     <!-- Cover Image Selection -->

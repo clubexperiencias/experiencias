@@ -96,14 +96,27 @@ export class DiscountService {
         starts_at: dto.startsAt || null,
         ends_at: dto.endsAt || null,
         max_uses: dto.maxUses || null,
+        duration_months: dto.scope === 'membership' ? (dto.durationMonths || null) : null,
+        pleno_only: dto.scope === 'membership' ? false : Boolean(dto.plenoOnly),
         active: dto.active,
       };
 
-      const { data, error } = await this.supabase
+      let { data, error } = await this.supabase
         .from('descuentos')
         .insert(payload as any)
         .select()
         .single();
+
+      if (error && (/duration_months/.test(error.message || '') || /pleno_only/.test(error.message || ''))) {
+        const fallbackPayload = { ...payload };
+        delete (fallbackPayload as Record<string, any>)['duration_months'];
+        delete (fallbackPayload as Record<string, any>)['pleno_only'];
+        ({ data, error } = await this.supabase
+          .from('descuentos')
+          .insert(fallbackPayload as any)
+          .select()
+          .single());
+      }
 
       if (error) {
         console.error('[DiscountService] Error al crear descuento:', error.message);
@@ -164,14 +177,28 @@ export class DiscountService {
       if (dto.startsAt !== undefined) payload['starts_at'] = dto.startsAt;
       if (dto.endsAt !== undefined) payload['ends_at'] = dto.endsAt;
       if (dto.maxUses !== undefined) payload['max_uses'] = dto.maxUses;
+      if (dto.durationMonths !== undefined) payload['duration_months'] = dto.durationMonths;
+      if (dto.plenoOnly !== undefined) payload['pleno_only'] = dto.plenoOnly;
       if (dto.active !== undefined) payload['active'] = dto.active;
 
-      const { data, error } = await this.supabase
+      let { data, error } = await this.supabase
         .from('descuentos')
         .update(payload as any)
         .eq('id', id)
         .select()
         .single();
+
+      if (error && (/duration_months/.test(error.message || '') || /pleno_only/.test(error.message || ''))) {
+        const fallbackPayload = { ...payload };
+        delete fallbackPayload['duration_months'];
+        delete fallbackPayload['pleno_only'];
+        ({ data, error } = await this.supabase
+          .from('descuentos')
+          .update(fallbackPayload as any)
+          .eq('id', id)
+          .select()
+          .single());
+      }
 
       if (error) {
         console.error('[DiscountService] Error al actualizar descuento:', error.message);
@@ -222,6 +249,11 @@ export class DiscountService {
     }
   }
 
+  private isPlenoOrHigher(memberTier?: string | null): boolean {
+    const clean = (memberTier || '').trim().toLowerCase();
+    return clean === 'activo' || clean === 'pleno' || clean === 'fundador';
+  }
+
   /**
    * Obtiene descuento automático si existe para una experiencia específica
    */
@@ -229,12 +261,15 @@ export class DiscountService {
     experienceId?: string | null,
     experienceSlug?: string | null,
     providerId?: string | null,
+    memberTier?: string | null,
   ): Discount | null {
     const now = new Date();
+    const isPleno = this.isPlenoOrHigher(memberTier);
     const list = this._discounts().filter(
       (d) =>
         d.active &&
         d.isAutomatic &&
+        (!d.plenoOnly || isPleno) &&
         (!d.startsAt || new Date(d.startsAt) <= now) &&
         (!d.endsAt || new Date(d.endsAt) >= now) &&
         (d.maxUses == null || d.usesCount < d.maxUses),
@@ -275,7 +310,7 @@ export class DiscountService {
     experienceSlug?: string | null,
     subtotalArs: number = 0,
     providerId?: string | null,
-    options?: { isMembership?: boolean },
+    options?: { isMembership?: boolean; memberTier?: string | null },
   ): Promise<DiscountValidationResult> {
     const cleanCode = (rawCode || '').trim().toUpperCase();
     if (!cleanCode) {
@@ -366,6 +401,17 @@ export class DiscountService {
     // Validar límite de usos
     if (discount.maxUses != null && discount.usesCount >= discount.maxUses) {
       return { valid: false, discount, discountArs: 0, error: 'Este código ha alcanzado el límite máximo de usos.', codeExists: true };
+    }
+
+    // Validar exclusividad para Socios Plenos
+    if (!options?.isMembership && discount.plenoOnly && !this.isPlenoOrHigher(options?.memberTier)) {
+      return {
+        valid: false,
+        discount,
+        discountArs: 0,
+        error: 'Este código de descuento es exclusivo para Socios Plenos activos.',
+        codeExists: true,
+      };
     }
 
     // Validar alcance (scope)

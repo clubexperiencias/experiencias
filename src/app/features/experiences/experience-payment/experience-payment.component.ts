@@ -27,6 +27,10 @@ import { AdminStoreService } from '../../../core/services/admin-store.service';
 import { isClubExperience } from '../../../core/models/club-profile.model';
 import { NotificationService } from '../../../core/services/notification.service';
 import { isSupabaseConfigured } from '../../../core/supabase/supabase.client';
+import {
+  ExperiencePricingPack,
+  isPricingPackValidForDate,
+} from '../../../core/models/experience.model';
 import { DiscountService } from '../../../core/services/discount.service';
 import { Discount, calculateDiscountAmount } from '../../../core/models/discount.model';
 import {
@@ -313,9 +317,39 @@ export class ExperiencePaymentComponent implements OnInit {
     return Array.from({ length: max }, (_, i) => i + 1);
   });
 
-  readonly subtotal = computed(
-    () => (this.experience()?.priceArs ?? 0) * (Number(this.formValue().participants) || 1),
-  );
+  readonly selectedPricingPackId = signal<string | null>(null);
+
+  readonly availablePacksForSelectedDate = computed<ExperiencePricingPack[]>(() => {
+    const exp = this.experience();
+    const packs = exp?.pricingPacks || [];
+    if (packs.length === 0) return [];
+    const selectedDate = this.hasNoFixedDates() ? null : this.formValue().date;
+    return packs.filter((p) => {
+      if (this.hasNoFixedDates()) {
+        return (
+          p.active !== false &&
+          p.seats >= 1 &&
+          (!p.validDates || p.validDates.length === 0) &&
+          (!p.validWeekdays || p.validWeekdays.length === 0)
+        );
+      }
+      return isPricingPackValidForDate(p, selectedDate);
+    });
+  });
+
+  readonly selectedPricingPack = computed<ExperiencePricingPack | null>(() => {
+    const id = this.selectedPricingPackId();
+    if (!id) return null;
+    return this.availablePacksForSelectedDate().find((p) => p.id === id) ?? null;
+  });
+
+  readonly subtotal = computed(() => {
+    const pack = this.selectedPricingPack();
+    if (pack) {
+      return pack.totalPriceArs;
+    }
+    return (this.experience()?.priceArs ?? 0) * (Number(this.formValue().participants) || 1);
+  });
 
   readonly discountInput = signal('');
   readonly appliedDiscount = signal<{
@@ -410,7 +444,14 @@ export class ExperiencePaymentComponent implements OnInit {
     }
 
     const subtotal = this.subtotal();
-    const auto = this.discountService.getAutomaticDiscountForExperience(exp.id, exp.slug, exp.providerId);
+    const memberTier =
+      this.checkoutMember()?.membershipTier || this.newsletter.currentMember()?.membershipTier || null;
+    const auto = this.discountService.getAutomaticDiscountForExperience(
+      exp.id,
+      exp.slug,
+      exp.providerId,
+      memberTier,
+    );
     const isEligible = auto && (!auto.minAmountArs || subtotal >= auto.minAmountArs);
 
     if (isEligible && auto) {
@@ -446,6 +487,9 @@ export class ExperiencePaymentComponent implements OnInit {
     const exp = this.experience();
     const subtotal = this.subtotal();
 
+    const memberTier =
+      this.checkoutMember()?.membershipTier || this.newsletter.currentMember()?.membershipTier || null;
+
     // 1. Validar dinámicamente con DiscountService (Supabase)
     const result = await this.discountService.validateDiscount(
       raw,
@@ -453,6 +497,7 @@ export class ExperiencePaymentComponent implements OnInit {
       exp?.slug,
       subtotal,
       exp?.providerId,
+      { memberTier },
     );
 
     if (result.valid && result.discount) {
@@ -555,10 +600,15 @@ export class ExperiencePaymentComponent implements OnInit {
     }
 
     const participants = Number(value.participants);
+    const activePack = this.selectedPricingPack();
+    const maxParticipantsAllowed = Math.max(
+      MAX_PARTICIPANTS_PER_BOOKING,
+      activePack?.seats ?? 0,
+    );
     if (
       !Number.isInteger(participants) ||
       participants < 1 ||
-      participants > MAX_PARTICIPANTS_PER_BOOKING
+      participants > maxParticipantsAllowed
     ) {
       this.submitError.set('Cantidad de personas inválida.');
       this.submitting.set(false);
@@ -1080,9 +1130,57 @@ export class ExperiencePaymentComponent implements OnInit {
   selectDate(date: string): void {
     this.form.controls.date.setValue(date);
     const available = this.seatsForSelectedDate();
+    const currentPackId = this.selectedPricingPackId();
+    if (currentPackId) {
+      const stillValid = this.availablePacksForSelectedDate().find(
+        (p) => p.id === currentPackId && (this.hasNoFixedDates() || available >= p.seats),
+      );
+      if (!stillValid) {
+        this.selectPricingPack(null);
+      }
+    }
     if (this.form.controls.participants.value > available) {
       this.form.controls.participants.setValue(Math.max(1, available));
     }
+  }
+
+  selectPricingPack(pack: ExperiencePricingPack | null): void {
+    if (!pack) {
+      this.selectedPricingPackId.set(null);
+      this.form.controls.participants.setValidators([
+        Validators.required,
+        Validators.min(1),
+        Validators.max(MAX_PARTICIPANTS_PER_BOOKING),
+      ]);
+      if (this.form.controls.participants.value > MAX_PARTICIPANTS_PER_BOOKING) {
+        this.form.controls.participants.setValue(MAX_PARTICIPANTS_PER_BOOKING);
+      }
+      this.form.controls.participants.updateValueAndValidity();
+      return;
+    }
+    if (!this.hasNoFixedDates() && this.seatsForSelectedDate() < pack.seats) {
+      return;
+    }
+    this.selectedPricingPackId.set(pack.id);
+    this.form.controls.participants.setValidators([
+      Validators.required,
+      Validators.min(1),
+      Validators.max(Math.max(MAX_PARTICIPANTS_PER_BOOKING, pack.seats)),
+    ]);
+    this.form.controls.participants.setValue(pack.seats);
+    this.form.controls.participants.updateValueAndValidity();
+  }
+
+  getPackSavingsArs(pack: ExperiencePricingPack): number {
+    const unit = this.experience()?.priceArs ?? 0;
+    if (unit <= 0 || pack.seats < 1) return 0;
+    return Math.max(0, unit * pack.seats - pack.totalPriceArs);
+  }
+
+  getDatePromoLabel(isoDate: string): string | null {
+    const packs = this.experience()?.pricingPacks || [];
+    const matching = packs.find((p) => isPricingPackValidForDate(p, isoDate));
+    return matching ? matching.label : null;
   }
 
   onFileInput(event: Event): void {

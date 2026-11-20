@@ -603,6 +603,11 @@ export class ExperienceService {
         } else if (merged.promosAndPricing !== undefined) {
           payload['promos_and_pricing'] = merged.promosAndPricing;
         }
+        if (Object.prototype.hasOwnProperty.call(updated, 'pricingPacks')) {
+          payload['pricing_packs'] = updated.pricingPacks ?? [];
+        } else if (merged.pricingPacks !== undefined) {
+          payload['pricing_packs'] = merged.pricingPacks;
+        }
         if (safeAlbumPhotos) {
           payload['album_photos'] = safeAlbumPhotos;
           payload['gallery_images'] = replacementGallery || safeAlbumPhotos.map((p) => p.url);
@@ -699,10 +704,11 @@ export class ExperienceService {
           .eq('id', merged.id)
           .select();
 
-        if (error && (/meeting_point_url/.test(error.message || '') || /display_location/.test(error.message || '') || /category/.test(error.message || ''))) {
+        if (error && (/meeting_point_url/.test(error.message || '') || /display_location/.test(error.message || '') || /category/.test(error.message || '') || /pricing_packs/.test(error.message || ''))) {
           const hasMeetingPointUrlErr = /meeting_point_url/.test(error.message || '');
           const hasDisplayLocationErr = /display_location/.test(error.message || '');
           const hasCategoryErr = /category/.test(error.message || '');
+          const hasPricingPacksErr = /pricing_packs/.test(error.message || '');
 
           if (hasMeetingPointUrlErr && updated.meetingPointUrl !== undefined && String(updated.meetingPointUrl).trim() !== '') {
             // A non-empty value was supplied: reject the update rather than committing without it
@@ -730,6 +736,9 @@ export class ExperienceService {
           }
           if (hasCategoryErr) {
             delete payloadToUse['category'];
+          }
+          if (hasPricingPacksErr) {
+            delete payloadToUse['pricing_packs'];
           }
 
           ({ data, error } = (await this.supabase
@@ -902,6 +911,7 @@ export class ExperienceService {
           best_season: experience.bestSeason || '',
           itinerary: experience.itinerary || '',
           promos_and_pricing: experience.promosAndPricing || '',
+          pricing_packs: experience.pricingPacks || [],
           dates: experience.dates || [],
           highlights: experience.highlights || [],
           included: experience.included || [],
@@ -960,6 +970,7 @@ export class ExperienceService {
           'kicker',
           'best_season',
           'promos_and_pricing',
+          'pricing_packs',
           'display_location',
           'category',
         ];
@@ -2041,8 +2052,13 @@ export class ExperienceService {
           .order('created_at', { ascending: true }) as any;
 
       let { data, error } = await fetchExperiences(
-        `${publicColumns}, category, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing, provider_agency, participant_requirements, notes, reviewed_at, display_location`,
+        `${publicColumns}, category, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing, pricing_packs, provider_agency, participant_requirements, notes, reviewed_at, display_location`,
       );
+      if (error && /pricing_packs/.test(error.message || '')) {
+        ({ data, error } = await fetchExperiences(
+          `${publicColumns}, category, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing, provider_agency, participant_requirements, notes, reviewed_at, display_location`,
+        ));
+      }
       if (error) {
         const isDisplayLocationErr = /display_location/.test(error.message || '');
         if (isDisplayLocationErr) {
@@ -2237,6 +2253,7 @@ export class ExperienceService {
             bestSeason: exp.best_season || '',
             itinerary: exp.itinerary || undefined,
             promosAndPricing: exp.promos_and_pricing || undefined,
+            pricingPacks: Array.isArray(exp.pricing_packs) && exp.pricing_packs.length > 0 ? exp.pricing_packs : undefined,
             priceArs: exp.price_ars,
             priceUsd: exp.price_usd ?? 70,
             maxSpotsPerGroup: exp.capacity_per_date || 12,

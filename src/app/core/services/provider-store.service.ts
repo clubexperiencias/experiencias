@@ -162,6 +162,7 @@ export function mapLiveExperienceToProvider(live: Experience): ProviderExperienc
     coverImage: live.coverImage,
     galleryImages: live.galleryImages,
     albumPhotos: live.albumPhotos,
+    pricingPacks: live.pricingPacks,
     highlights: live.highlights,
     included: live.included,
     notIncluded: live.notIncluded,
@@ -1663,12 +1664,63 @@ export class ProviderStoreService {
     return Array.from(mergedLocal.values());
   }
 
+  private mapProposalRequestToProviderExperience(
+    req: ExperienceProposalRequest,
+  ): ProviderExperience {
+    const cleanAlt = Number(String(req.altitude || '').replace(/\D/g, ''));
+    const diffRaw = (req.difficulty || 'Moderada').split('(')[0].trim();
+    const validDifficulties: ReadonlyArray<ProviderExperience['difficulty']> = [
+      'Baja',
+      'Moderada',
+      'Exigente',
+      'Alta Montaña',
+      'Ninguna',
+    ];
+    const difficulty = validDifficulties.includes(diffRaw as ProviderExperience['difficulty'])
+      ? (diffRaw as ProviderExperience['difficulty'])
+      : 'Moderada';
+
+    return {
+      id: req.id,
+      providerId: req.providerId || this.currentProvider()?.id || '',
+      providerName: req.providerName || this.currentProvider()?.name || '',
+      slug: req.slug || slugify(req.title) || req.id,
+      title: req.title,
+      tagline: req.subheading || req.title,
+      description: req.subheading || '',
+      category: req.category || 'expediciones',
+      region: req.region || 'Catamarca',
+      meetingPoint: req.meetingPoint || '',
+      difficulty,
+      durationLabel: req.duration || 'Medio día',
+      altitudeMeters: Number.isFinite(cleanAlt) && cleanAlt > 0 ? cleanAlt : 850,
+      priceArs: req.priceArs || 0,
+      capacityPerDate: req.capacity || 12,
+      dates: parseConfirmedProposalDates(req.dates),
+      status: req.status === 'aprobada' ? 'publicada' : 'pendiente_publicacion',
+      coverImage: req.coverImage || '/assets/images/kayak-club-de-experiencias.jpg',
+      albumPhotos: req.albumPhotos,
+      createdAt: req.createdAt,
+      updatedAt: req.reviewedAt || req.createdAt,
+    };
+  }
+
+  private findProposalRequestByKey(key: string): ExperienceProposalRequest | undefined {
+    return this._experienceRequests().find(
+      (r) => r.id === key || r.slug === key || slugify(r.title) === key,
+    );
+  }
+
   getExperienceById(id: string): ProviderExperience | undefined {
     const fromStore = this._experiences().find((e) => e.id === id || e.slug === id);
     if (fromStore) return fromStore;
     const live = this.expService.getExperienceById(id) || this.expService.getExperienceBySlug(id);
     if (live) {
       return mapLiveExperienceToProvider(live);
+    }
+    const req = this.findProposalRequestByKey(id);
+    if (req) {
+      return this.mapProposalRequestToProviderExperience(req);
     }
     return undefined;
   }
@@ -1679,6 +1731,10 @@ export class ProviderStoreService {
     const live = this.expService.getExperienceBySlug(slug);
     if (live) {
       return mapLiveExperienceToProvider(live);
+    }
+    const req = this.findProposalRequestByKey(slug);
+    if (req) {
+      return this.mapProposalRequestToProviderExperience(req);
     }
     return undefined;
   }
@@ -1826,8 +1882,48 @@ export class ProviderStoreService {
         };
         this._experiences.update((list) => [...list, updatedExperience!]);
       } else {
-        throw new Error('Experiencia no encontrada.');
+        const req = this.findProposalRequestByKey(id);
+        if (req) {
+          const mapped = this.mapProposalRequestToProviderExperience(req);
+          updatedExperience = {
+            ...mapped,
+            ...updates,
+            updatedAt: new Date().toISOString(),
+          };
+          this._experiences.update((list) => [...list, updatedExperience!]);
+        } else {
+          throw new Error('Experiencia no encontrada.');
+        }
       }
+    }
+
+    // Sincronizar también la propuesta vinculada si existe en _experienceRequests
+    const finalExp = updatedExperience;
+    let proposalUpdated = false;
+    this._experienceRequests.update((list) =>
+      list.map((r) => {
+        if (r.id !== id && r.id !== finalExp.id && r.slug !== finalExp.slug) return r;
+        proposalUpdated = true;
+        return {
+          ...r,
+          title: finalExp.title,
+          subheading: finalExp.description || finalExp.tagline || r.subheading,
+          category: finalExp.category || r.category,
+          region: finalExp.region || r.region,
+          meetingPoint: finalExp.meetingPoint ?? r.meetingPoint,
+          difficulty: finalExp.difficulty || r.difficulty,
+          duration: finalExp.durationLabel || r.duration,
+          altitude:
+            finalExp.altitudeMeters !== undefined ? `${finalExp.altitudeMeters} msnm` : r.altitude,
+          priceArs: finalExp.priceArs ?? r.priceArs,
+          capacity: finalExp.capacityPerDate ?? r.capacity,
+          dates: finalExp.dates?.length ? finalExp.dates.join(', ') : r.dates,
+          coverImage: finalExp.coverImage || r.coverImage,
+        };
+      }),
+    );
+    if (proposalUpdated) {
+      this.saveRequests();
     }
 
     this.saveExperiences();
@@ -1908,6 +2004,7 @@ export class ProviderStoreService {
           maxSpotsPerGroup: updated.capacityPerDate,
           dates: updated.dates,
           coverImage: updated.coverImage,
+          ...(updates.pricingPacks !== undefined ? { pricingPacks: updated.pricingPacks } : {}),
           ...(mappedStatus ? { status: mappedStatus } : {}),
         });
       } catch (err) {
