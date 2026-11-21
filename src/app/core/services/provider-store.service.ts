@@ -150,6 +150,10 @@ export function mapLiveExperienceToProvider(live: Experience): ProviderExperienc
     description: live.description,
     region: live.region,
     meetingPoint: live.meetingPoint,
+    meetingPointUrl: live.meetingPointUrl,
+    videoUrl: live.videoUrl,
+    coverVideoUrl: live.videoUrl,
+    itinerary: live.itinerary,
     difficulty: live.difficulty as any,
     durationDays: live.durationDays,
     durationLabel: live.durationLabel,
@@ -1691,6 +1695,18 @@ export class ProviderStoreService {
       category: req.category || 'expediciones',
       region: req.region || 'Catamarca',
       meetingPoint: req.meetingPoint || '',
+      meetingPointUrl: req.meetingPointUrl || '',
+      videoUrl: req.coverVideoUrl || '',
+      coverVideoUrl: req.coverVideoUrl || '',
+      itinerary: req.itinerary || '',
+      included: req.includedServices
+        ? req.includedServices.split('\n').map((s) => s.trim()).filter(Boolean)
+        : undefined,
+      includedServices: req.includedServices,
+      highlights: req.participantRequirements
+        ? req.participantRequirements.split('\n').map((s) => s.trim()).filter(Boolean)
+        : undefined,
+      participantRequirements: req.participantRequirements,
       difficulty,
       durationLabel: req.duration || 'Medio día',
       altitudeMeters: Number.isFinite(cleanAlt) && cleanAlt > 0 ? cleanAlt : 850,
@@ -2059,7 +2075,7 @@ export class ProviderStoreService {
           maxSpotsPerGroup: updated.capacityPerDate,
           dates: updated.dates,
           coverImage: updated.coverImage,
-          videoUrl: updated.videoUrl || updated.coverVideoUrl,
+          videoUrl: updated.videoUrl !== undefined ? updated.videoUrl : updated.coverVideoUrl,
           albumPhotos: updated.albumPhotos,
           galleryImages: updated.galleryImages || (updated.albumPhotos ? updated.albumPhotos.map((p) => p.url) : undefined),
           itinerary: updated.itinerary,
@@ -2091,12 +2107,59 @@ export class ProviderStoreService {
           cover_image: updated.coverImage,
           updated_at: new Date().toISOString(),
         };
-        if (updated.meetingPointUrl) proposalPayload['meeting_point_url'] = updated.meetingPointUrl;
-        if (updated.itinerary) proposalPayload['itinerary'] = updated.itinerary;
-        if (updated.albumPhotos) proposalPayload['album_photos'] = updated.albumPhotos;
-        if (updated.videoUrl || updated.coverVideoUrl) proposalPayload['video_url'] = updated.videoUrl || updated.coverVideoUrl;
-        if (updated.included) proposalPayload['included_services'] = Array.isArray(updated.included) ? updated.included.join('\n') : updated.included;
-        if (updated.highlights) proposalPayload['participant_requirements'] = Array.isArray(updated.highlights) ? updated.highlights.join('\n') : updated.highlights;
+        if (updated.meetingPointUrl !== undefined) {
+          proposalPayload['meeting_point_url'] = updated.meetingPointUrl;
+        }
+        if (updated.itinerary !== undefined) {
+          proposalPayload['itinerary'] = updated.itinerary;
+        }
+        if (updated.albumPhotos !== undefined) {
+          proposalPayload['album_photos'] = updated.albumPhotos;
+          proposalPayload['gallery_images'] =
+            updated.galleryImages !== undefined
+              ? updated.galleryImages
+              : updated.albumPhotos.map((p) => p.url);
+        } else if (updated.galleryImages !== undefined) {
+          proposalPayload['gallery_images'] = updated.galleryImages;
+        }
+        if (updated.videoUrl !== undefined) {
+          proposalPayload['video_url'] = updated.videoUrl;
+        } else if (updated.coverVideoUrl !== undefined) {
+          proposalPayload['video_url'] = updated.coverVideoUrl;
+        }
+        let includedArray: string[] | undefined = undefined;
+        if (Array.isArray(updated.included)) {
+          includedArray = updated.included;
+        } else if (typeof updated.includedServices === 'string') {
+          includedArray = updated.includedServices
+            .split('\n')
+            .map((s) => s.trim())
+            .filter(Boolean);
+        }
+        if (includedArray !== undefined) {
+          proposalPayload['included'] = includedArray;
+          proposalPayload['included_services'] =
+            typeof updated.includedServices === 'string'
+              ? updated.includedServices
+              : includedArray.join('\n');
+        }
+
+        let highlightsArray: string[] | undefined = undefined;
+        if (Array.isArray(updated.highlights)) {
+          highlightsArray = updated.highlights;
+        } else if (typeof updated.participantRequirements === 'string') {
+          highlightsArray = updated.participantRequirements
+            .split('\n')
+            .map((s) => s.trim())
+            .filter(Boolean);
+        }
+        if (highlightsArray !== undefined) {
+          proposalPayload['highlights'] = highlightsArray;
+          proposalPayload['participant_requirements'] =
+            typeof updated.participantRequirements === 'string'
+              ? updated.participantRequirements
+              : highlightsArray.join('\n');
+        }
         if (updates.pricingPacks !== undefined) {
           proposalPayload['pricing_packs'] = updated.pricingPacks ?? [];
         }

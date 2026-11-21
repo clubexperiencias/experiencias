@@ -126,13 +126,15 @@ export class ProviderExperienceFormComponent implements OnInit {
   readonly albumPhotos = signal<ExperienceAlbumPhoto[]>([]);
   readonly uploadingAlbum = signal<boolean>(false);
   readonly newAlbumPhotoUrl = signal<string>('');
+  private albumUploadQueue: Promise<void> = Promise.resolve();
 
   readonly featuredPhotos = computed(() => this.albumPhotos().filter((p) => p.isFeatured));
   readonly galleryPhotos = computed(() => this.albumPhotos().filter((p) => !p.isFeatured && !p.isCover));
   readonly totalAlbumCount = computed(() => this.albumPhotos().length);
 
-  // Additional details (Services, Requirements, Itinerary)
+  // Additional details (Services, Highlights, Requirements, Itinerary)
   readonly includedRaw = signal<string>('');
+  readonly highlightsRaw = signal<string>('');
   readonly requirementsRaw = signal<string>('');
   readonly itinerary = signal<string>('');
 
@@ -214,9 +216,21 @@ export class ProviderExperienceFormComponent implements OnInit {
     this.coverImageUrl.set(exp.coverImage || '');
     this.videoUrl.set(exp.videoUrl || exp.coverVideoUrl || '');
     this.albumPhotos.set(
-      Array.isArray(exp.albumPhotos)
+      Array.isArray(exp.albumPhotos) && exp.albumPhotos.length > 0
         ? exp.albumPhotos.map((p: any) => ({ ...p }))
-        : [],
+        : (Array.isArray(exp.galleryImages) && exp.galleryImages.length > 0
+          ? exp.galleryImages.map((u: string, idx: number) => ({
+              id: `photo_${idx + 1}`,
+              url: u,
+              title: exp.title || 'Foto de experiencia',
+              isCover: Boolean(
+                typeof exp.coverImage === 'string' &&
+                  exp.coverImage.trim() !== '' &&
+                  u.trim() === exp.coverImage.trim(),
+              ),
+              order: idx + 1,
+            }))
+          : []),
     );
     this.dates.set(Array.isArray(exp.dates) ? [...exp.dates] : []);
     this.pricingPacks.set(
@@ -225,7 +239,7 @@ export class ProviderExperienceFormComponent implements OnInit {
         : [],
     );
 
-    // Populate Included & Requirements & Itinerary
+    // Populate Included & Highlights & Requirements & Itinerary
     if (Array.isArray(exp.included) && exp.included.length > 0) {
       this.includedRaw.set(exp.included.join('\n'));
     } else if (typeof exp.includedServices === 'string') {
@@ -235,9 +249,17 @@ export class ProviderExperienceFormComponent implements OnInit {
     }
 
     if (Array.isArray(exp.highlights) && exp.highlights.length > 0) {
-      this.requirementsRaw.set(exp.highlights.join('\n'));
-    } else if (typeof exp.participantRequirements === 'string') {
+      this.highlightsRaw.set(exp.highlights.join('\n'));
+    } else if (typeof exp.highlights === 'string') {
+      this.highlightsRaw.set(exp.highlights);
+    } else {
+      this.highlightsRaw.set('');
+    }
+
+    if (typeof exp.participantRequirements === 'string') {
       this.requirementsRaw.set(exp.participantRequirements);
+    } else if (Array.isArray(exp.participantRequirements)) {
+      this.requirementsRaw.set((exp.participantRequirements as string[]).join('\n'));
     } else {
       this.requirementsRaw.set('');
     }
@@ -367,52 +389,92 @@ export class ProviderExperienceFormComponent implements OnInit {
   async onUploadAlbumPhotos(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
     const files = Array.from(input.files || []);
+    input.value = '';
     if (!files.length) return;
 
-    const currentGalleryCount = this.galleryPhotos().length;
-    const remainingGallerySlots = 9 - currentGalleryCount;
+    this.albumUploadQueue = this.albumUploadQueue
+      .then(async () => {
+        const currentGalleryCount = this.galleryPhotos().length;
+        const currentTotalCount = this.albumPhotos().length;
+        const remainingGallerySlots = Math.max(0, 9 - currentGalleryCount);
+        const remainingTotalSlots = Math.max(0, 12 - currentTotalCount);
+        const availableSlots = Math.min(remainingGallerySlots, remainingTotalSlots);
 
-    if (remainingGallerySlots <= 0) {
-      this.showToast('La galería común ya alcanzó el límite máximo de 9 fotos.');
-      input.value = '';
-      return;
-    }
+        if (availableSlots <= 0) {
+          this.showToast('El álbum ya alcanzó el límite máximo de fotos disponibles.');
+          return;
+        }
 
-    let filesToUpload = files;
-    if (files.length > remainingGallerySlots) {
-      filesToUpload = files.slice(0, remainingGallerySlots);
-      this.showToast(
-        `Se seleccionaron ${files.length} fotos. Solo se subirán las primeras ${remainingGallerySlots} para respetar el límite de 9 de galería.`,
-      );
-    }
+        let filesToUpload = files;
+        if (files.length > availableSlots) {
+          filesToUpload = files.slice(0, availableSlots);
+          this.showToast(
+            `Se seleccionaron ${files.length} fotos. Solo se procesarán las primeras ${availableSlots} para respetar los límites del álbum.`,
+          );
+        }
 
-    this.uploadingAlbum.set(true);
-    try {
-      const slug = this.editingExpSlug() || 'exp';
-      const newPhotos: ExperienceAlbumPhoto[] = [];
-      for (const file of filesToUpload) {
-        const res = await this.storageService.uploadFile(file, `ALBUM-${slug}`);
-        newPhotos.push({
-          id: `photo-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-          url: res.url,
-          caption: '',
-          isCover: false,
-          isFeatured: false,
-          order: this.albumPhotos().length + newPhotos.length + 1,
-        });
-      }
-      this.albumPhotos.update((current) => [...current, ...newPhotos]);
-      this.showToast(`${newPhotos.length} foto(s) agregada(s) al álbum.`);
-      if (!this.isEditMode()) {
-        this.saveDraft();
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Error al subir fotos al álbum';
-      this.showToast(msg);
-    } finally {
-      this.uploadingAlbum.set(false);
-      input.value = '';
-    }
+        this.uploadingAlbum.set(true);
+        try {
+          const slug = this.editingExpSlug() || 'exp';
+          const newPhotos: ExperienceAlbumPhoto[] = [];
+          for (const file of filesToUpload) {
+            const res = await this.storageService.uploadFile(file, `ALBUM-${slug}`);
+            newPhotos.push({
+              id: `photo-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+              url: res.url,
+              caption: '',
+              isCover: false,
+              isFeatured: false,
+              order: 0,
+            });
+          }
+
+          let addedCount = 0;
+          this.albumPhotos.update((current) => {
+            const currentGallery = current.filter((p) => !p.isFeatured && !p.isCover).length;
+            const currentTotal = current.length;
+            const freeGallery = Math.max(0, 9 - currentGallery);
+            const freeTotal = Math.max(0, 12 - currentTotal);
+            const maxAllowed = Math.min(freeGallery, freeTotal);
+
+            if (maxAllowed <= 0) {
+              addedCount = 0;
+              return current;
+            }
+
+            const accepted = newPhotos.slice(0, maxAllowed).map((p, idx) => ({
+              ...p,
+              order: currentTotal + idx + 1,
+            }));
+            addedCount = accepted.length;
+            return [...current, ...accepted];
+          });
+
+          if (addedCount > 0) {
+            this.showToast(`${addedCount} foto(s) agregada(s) al álbum.`);
+            if (addedCount < newPhotos.length) {
+              this.showToast(
+                `Se omitieron ${newPhotos.length - addedCount} foto(s) porque se completó la capacidad del álbum durante la subida.`,
+              );
+            }
+            if (!this.isEditMode()) {
+              this.saveDraft();
+            }
+          } else if (newPhotos.length > 0) {
+            this.showToast('No se pudieron agregar fotos: se alcanzó el límite máximo de capacidad.');
+          }
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : 'Error al subir fotos al álbum';
+          this.showToast(msg);
+        } finally {
+          this.uploadingAlbum.set(false);
+        }
+      })
+      .catch((err) => {
+        console.error('[ExperienceForm] Error en cola de subida de álbum:', err);
+      });
+
+    await this.albumUploadQueue;
   }
 
   addAlbumPhotoFromUrl(): void {
@@ -420,6 +482,10 @@ export class ProviderExperienceFormComponent implements OnInit {
     if (!url) return;
     if (this.albumPhotos().length >= 12) {
       this.showToast('Se alcanzó el límite máximo de 12 fotos en el álbum.');
+      return;
+    }
+    if (this.galleryPhotos().length >= 9) {
+      this.showToast('La galería común ya alcanzó el límite máximo de 9 fotos.');
       return;
     }
     const newPhoto: ExperienceAlbumPhoto = {
@@ -482,6 +548,34 @@ export class ProviderExperienceFormComponent implements OnInit {
   removeAlbumPhoto(index: number): void {
     this.albumPhotos.update((photos) => photos.filter((_, i) => i !== index));
     this.showToast('Foto eliminada del álbum.');
+    if (!this.isEditMode()) {
+      this.saveDraft();
+    }
+  }
+
+  onIncludedChange(value: string): void {
+    this.includedRaw.set(value);
+    if (!this.isEditMode()) {
+      this.saveDraft();
+    }
+  }
+
+  onHighlightsChange(value: string): void {
+    this.highlightsRaw.set(value);
+    if (!this.isEditMode()) {
+      this.saveDraft();
+    }
+  }
+
+  onRequirementsChange(value: string): void {
+    this.requirementsRaw.set(value);
+    if (!this.isEditMode()) {
+      this.saveDraft();
+    }
+  }
+
+  onItineraryChange(value: string): void {
+    this.itinerary.set(value);
     if (!this.isEditMode()) {
       this.saveDraft();
     }
@@ -565,6 +659,9 @@ export class ProviderExperienceFormComponent implements OnInit {
       if (typeof data.includedRaw === 'string') {
         this.includedRaw.set(data.includedRaw);
       }
+      if (typeof data.highlightsRaw === 'string') {
+        this.highlightsRaw.set(data.highlightsRaw);
+      }
       if (typeof data.requirementsRaw === 'string') {
         this.requirementsRaw.set(data.requirementsRaw);
       }
@@ -587,11 +684,17 @@ export class ProviderExperienceFormComponent implements OnInit {
         val.tagline?.trim() ||
         val.description?.trim() ||
         val.meetingPoint?.trim() ||
+        val.meetingPointUrl?.trim() ||
         val.durationLabel?.trim() ||
-        this.coverImageUrl() ||
+        this.coverImageUrl()?.trim() ||
+        this.videoUrl()?.trim() ||
         this.albumPhotos().length > 0 ||
         this.dates().length > 0 ||
-        this.pricingPacks().length > 0
+        this.pricingPacks().length > 0 ||
+        this.includedRaw()?.trim() ||
+        this.highlightsRaw()?.trim() ||
+        this.requirementsRaw()?.trim() ||
+        this.itinerary()?.trim()
       );
 
       if (!hasContent) {
@@ -606,6 +709,7 @@ export class ProviderExperienceFormComponent implements OnInit {
         videoUrl: this.videoUrl(),
         albumPhotos: this.albumPhotos(),
         includedRaw: this.includedRaw(),
+        highlightsRaw: this.highlightsRaw(),
         requirementsRaw: this.requirementsRaw(),
         itinerary: this.itinerary(),
         updatedAt: Date.now(),
@@ -629,29 +733,33 @@ export class ProviderExperienceFormComponent implements OnInit {
   }
 
   discardDraft(): void {
-    this.clearDraft();
+    this.form.reset(
+      {
+        title: '',
+        tagline: '',
+        description: '',
+        category: 'expediciones',
+        region: this.regions[0],
+        meetingPoint: '',
+        meetingPointUrl: '',
+        difficulty: 'Ninguna',
+        durationLabel: '',
+        altitudeMeters: 850,
+        priceArs: 65000,
+        capacityPerDate: 12,
+      },
+      { emitEvent: false },
+    );
     this.pricingPacks.set([]);
-    this.form.reset({
-      title: '',
-      tagline: '',
-      description: '',
-      category: 'expediciones',
-      region: this.regions[0],
-      meetingPoint: '',
-      meetingPointUrl: '',
-      difficulty: 'Ninguna',
-      durationLabel: '',
-      altitudeMeters: 850,
-      priceArs: 65000,
-      capacityPerDate: 12,
-    });
     this.dates.set([]);
     this.coverImageUrl.set('');
     this.videoUrl.set('');
     this.albumPhotos.set([]);
     this.includedRaw.set('');
+    this.highlightsRaw.set('');
     this.requirementsRaw.set('');
     this.itinerary.set('');
+    this.clearDraft();
   }
 
   fieldInvalid(name: keyof typeof this.form.controls): boolean {
@@ -698,7 +806,7 @@ export class ProviderExperienceFormComponent implements OnInit {
       .map((i) => i.trim())
       .filter((i) => i.length > 0);
 
-    const highlights = this.requirementsRaw()
+    const highlights = this.highlightsRaw()
       .split('\n')
       .map((i) => i.trim())
       .filter((i) => i.length > 0);

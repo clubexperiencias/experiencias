@@ -316,7 +316,7 @@ import { ArsPipe } from '../../pipes/format.pipes';
         border-radius: 2px;
         border: 1px solid rgba(239, 68, 68, 0.4);
         background: rgba(239, 68, 68, 0.15);
-        color: #fca5a5;
+        color: #ffffff;
         cursor: pointer;
         transition: all 0.15s ease;
         height: 34px;

@@ -489,7 +489,7 @@
             rows="4"
             class="form-input form-textarea"
             [value]="includedRaw()"
-            (input)="includedRaw.set($any($event.target).value)"
+            (input)="onIncludedChange($any($event.target).value)"
             placeholder="Kayaks de travesía y remos de carbono&#10;Chaleco salvavidas reglamentario PFD&#10;Guía náutico certificado&#10;Seguro de accidentes personales"
           ></textarea>
         </div>
@@ -501,22 +501,36 @@
             rows="4"
             class="form-input form-textarea"
             [value]="requirementsRaw()"
-            (input)="requirementsRaw.set($any($event.target).value)"
+            (input)="onRequirementsChange($any($event.target).value)"
             placeholder="Ropa cómoda para mojar y muda seca de recambio&#10;Protector solar y lentes con cordín&#10;Botella de agua recargable (1.5L)&#10;Calzado cerrado apto para agua"
           ></textarea>
         </div>
       </div>
 
-      <div class="form-group">
-        <label for="itinerary" class="form-label">Itinerario o Cronograma Estimado (opcional)</label>
-        <textarea
-          id="itinerary"
-          rows="3"
-          class="form-input form-textarea"
-          [value]="itinerary()"
-          (input)="itinerary.set($any($event.target).value)"
-          placeholder="09:00 Encuentro y charla de seguridad.&#10;09:30 Inicio de navegación y travesía.&#10;13:00 Almuerzo agreste y descanso.&#10;16:30 Regreso al punto de partida."
-        ></textarea>
+      <div class="form-row form-row-2">
+        <div class="form-group">
+          <label for="highlightsRaw" class="form-label">Puntos Destacados / Lo Mejor de la Experiencia (un ítem por línea)</label>
+          <textarea
+            id="highlightsRaw"
+            rows="3"
+            class="form-input form-textarea"
+            [value]="highlightsRaw()"
+            (input)="onHighlightsChange($any($event.target).value)"
+            placeholder="Vistas panorámicas a la cordillera&#10;Guías de montaña certificados&#10;Grupos reducidos y atención personalizada"
+          ></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="itinerary" class="form-label">Itinerario o Cronograma Estimado (opcional)</label>
+          <textarea
+            id="itinerary"
+            rows="3"
+            class="form-input form-textarea"
+            [value]="itinerary()"
+            (input)="onItineraryChange($any($event.target).value)"
+            placeholder="09:00 Encuentro y charla de seguridad.&#10;09:30 Inicio de navegación y travesía.&#10;13:00 Almuerzo agreste y descanso.&#10;16:30 Regreso al punto de partida."
+          ></textarea>
+        </div>
       </div>
     </fieldset>
 
