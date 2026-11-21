@@ -96,6 +96,14 @@ export interface ProviderExperience {
   galleryImages?: string[];
   albumPhotos?: ExperienceAlbumPhoto[];
   pricingPacks?: ExperiencePricingPack[];
+  meetingPointUrl?: string;
+  videoUrl?: string;
+  coverVideoUrl?: string;
+  included?: string[];
+  includedServices?: string;
+  highlights?: string[];
+  participantRequirements?: string;
+  itinerary?: string;
   createdAt: string;
   updatedAt?: string;
 }
