@@ -623,13 +623,13 @@ const DEFAULT_REQ_FORM = {
                         [(ngModel)]="reqForm.difficulty"
                         name="difficulty"
                       >
+                        <option value="Ninguna">Ninguna</option>
                         <option value="Baja (Sin experiencia previa)">
                           Baja (Sin experiencia previa)
                         </option>
                         <option value="Moderada">Moderada</option>
                         <option value="Exigente">Exigente</option>
                         <option value="Alta Montaña">Alta Montaña</option>
-                        <option value="Ninguna">Ninguna</option>
                       </select>
                     </div>
 

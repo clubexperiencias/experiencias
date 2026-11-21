@@ -1059,11 +1059,11 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
             <div class="form-field">
               <label>Nivel de Dificultad: <span class="req-star">*</span></label>
               <select class="form-select" [(ngModel)]="editDifficulty" required>
+                <option value="Ninguna">Ninguna</option>
                 <option value="Baja">Baja</option>
                 <option value="Moderada">Moderada</option>
                 <option value="Exigente">Exigente</option>
                 <option value="Alta Montaña">Alta Montaña</option>
-                <option value="Ninguna">Ninguna</option>
               </select>
             </div>
           </div>

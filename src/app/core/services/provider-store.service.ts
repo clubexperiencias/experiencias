@@ -2051,6 +2051,7 @@ export class ProviderStoreService {
           category: updated.category,
           region: updated.region,
           meetingPoint: updated.meetingPoint,
+          meetingPointUrl: updated.meetingPointUrl,
           difficulty: updated.difficulty,
           durationLabel: updated.durationLabel,
           altitudeMeters: updated.altitudeMeters,
@@ -2058,6 +2059,13 @@ export class ProviderStoreService {
           maxSpotsPerGroup: updated.capacityPerDate,
           dates: updated.dates,
           coverImage: updated.coverImage,
+          videoUrl: updated.videoUrl || updated.coverVideoUrl,
+          albumPhotos: updated.albumPhotos,
+          galleryImages: updated.galleryImages || (updated.albumPhotos ? updated.albumPhotos.map((p) => p.url) : undefined),
+          itinerary: updated.itinerary,
+          included: updated.included,
+          highlights: updated.highlights,
+          participantRequirements: updated.participantRequirements,
           ...(updates.pricingPacks !== undefined ? { pricingPacks: updated.pricingPacks } : {}),
           ...(mappedStatus ? { status: mappedStatus } : {}),
         });
@@ -2083,6 +2091,12 @@ export class ProviderStoreService {
           cover_image: updated.coverImage,
           updated_at: new Date().toISOString(),
         };
+        if (updated.meetingPointUrl) proposalPayload['meeting_point_url'] = updated.meetingPointUrl;
+        if (updated.itinerary) proposalPayload['itinerary'] = updated.itinerary;
+        if (updated.albumPhotos) proposalPayload['album_photos'] = updated.albumPhotos;
+        if (updated.videoUrl || updated.coverVideoUrl) proposalPayload['video_url'] = updated.videoUrl || updated.coverVideoUrl;
+        if (updated.included) proposalPayload['included_services'] = Array.isArray(updated.included) ? updated.included.join('\n') : updated.included;
+        if (updated.highlights) proposalPayload['participant_requirements'] = Array.isArray(updated.highlights) ? updated.highlights.join('\n') : updated.highlights;
         if (updates.pricingPacks !== undefined) {
           proposalPayload['pricing_packs'] = updated.pricingPacks ?? [];
         }

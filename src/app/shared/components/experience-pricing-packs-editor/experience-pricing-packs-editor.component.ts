@@ -1,4 +1,4 @@
-import { Component, input, output } from '@angular/core';
+import { Component, computed, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   ExperiencePricingPack,
@@ -23,7 +23,7 @@ import { ArsPipe } from '../../pipes/format.pipes';
         <div class="packs-presets">
           <button
             type="button"
-            class="preset-btn preset-accent"
+            class="preset-btn"
             (click)="addPreset('Promo 2x1', 2, 1)"
           >
             + 2x1
@@ -63,56 +63,68 @@ import { ArsPipe } from '../../pipes/format.pipes';
             <div class="pack-card">
               <div class="pack-top-row">
                 <div class="pack-field pack-field-label">
-                  <label>Nombre del pack</label>
+                  <label class="field-caption">NOMBRE DEL PACK</label>
                   <input
                     type="text"
+                    class="pack-input"
                     [value]="pack.label"
                     (input)="updatePackField(pack.id, 'label', $any($event.target).value)"
-                    placeholder="Ej: Promo 2x1, Pack Pareja, Grupo x4"
+                    placeholder="Ej: Promo 2x1, Pack Amigos"
                   />
                 </div>
-                <div class="pack-field pack-field-num">
-                  <label>Cupos</label>
+
+                <div class="pack-field pack-field-seats">
+                  <label class="field-caption">CUPOS</label>
                   <input
                     type="number"
                     min="1"
-                    max="30"
+                    max="999"
+                    class="pack-input"
                     [value]="pack.seats"
                     (input)="updatePackNumber(pack.id, 'seats', $any($event.target).value, 1)"
                   />
                 </div>
+
                 <div class="pack-field pack-field-price">
-                  <label>Precio total (ARS)</label>
+                  <label class="field-caption">PRECIO TOTAL (ARS)</label>
                   <input
                     type="number"
                     min="0"
                     step="500"
+                    class="pack-input"
                     [value]="pack.totalPriceArs"
                     (input)="updatePackNumber(pack.id, 'totalPriceArs', $any($event.target).value, 0)"
                   />
                 </div>
-                <button
-                  type="button"
-                  class="pack-remove-btn"
-                  (click)="removePack(pack.id)"
-                  title="Quitar pack"
-                >
-                  Quitar
-                </button>
+
+                <div class="pack-actions">
+                  <button
+                    type="button"
+                    class="pack-remove-btn"
+                    (click)="removePack(pack.id)"
+                    title="Eliminar este pack"
+                  >
+                    Quitar
+                  </button>
+                </div>
               </div>
 
+              <!-- Savings preview badge -->
               @if (getSavingsArs(pack) > 0) {
-                <div class="pack-savings-strip">
-                  Incluye <strong>{{ pack.seats }} cupos</strong> · Ahorro de
-                  <strong>{{ getSavingsArs(pack) | ars }}</strong> ({{ getSavingsPercent(pack) }}%
-                  OFF sobre la tarifa individual)
+                <div class="pack-savings-row">
+                  <span class="pack-savings-pill">
+                    Incluye <strong>{{ pack.seats }} cupos</strong> · Ahorro de
+                    <strong>{{ getSavingsArs(pack) | ars }}</strong>
+                    ({{ getSavingsPercent(pack) }}% OFF sobre la tarifa individual)
+                  </span>
                 </div>
               }
 
+              <!-- Schedule restrictions -->
               <div class="pack-schedule-row">
                 <div class="schedule-block">
                   <span class="schedule-label">Días habilitados (opcional)</span>
-                  <div class="weekday-chips">
+                  <div class="day-chips">
                     @for (day of weekdayOptions; track day.value) {
                       <button
                         type="button"
@@ -135,9 +147,9 @@ import { ArsPipe } from '../../pipes/format.pipes';
                       class="pack-date-input"
                       (change)="onAddSpecificDate(pack.id, $event)"
                     />
-                    @if (availableDates().length > 0) {
+                    @if (sanitizedAvailableDates().length > 0) {
                       <div class="quick-exp-dates">
-                        @for (d of availableDates(); track d) {
+                        @for (d of sanitizedAvailableDates(); track d) {
                           <button
                             type="button"
                             class="date-chip"
@@ -236,18 +248,6 @@ import { ArsPipe } from '../../pipes/format.pipes';
         border-color: #ffffff;
       }
 
-      .preset-btn.preset-accent {
-        background: rgba(128, 179, 255, 0.16);
-        border-color: rgba(128, 179, 255, 0.55);
-        color: #ffffff;
-      }
-
-      .preset-btn.preset-accent:hover {
-        background: rgba(128, 179, 255, 0.3);
-        border-color: #80b3ff;
-        color: #ffffff;
-      }
-
       .packs-empty {
         font-size: 0.8rem;
         color: rgba(255, 255, 255, 0.5);
@@ -259,114 +259,121 @@ import { ArsPipe } from '../../pipes/format.pipes';
       .packs-list {
         display: flex;
         flex-direction: column;
-        gap: 0.85rem;
+        gap: 0.75rem;
       }
 
       .pack-card {
+        background: rgba(10, 18, 38, 0.7);
+        border: 1px solid rgba(128, 179, 255, 0.28);
+        border-radius: 3px;
+        padding: 0.85rem 1rem;
         display: flex;
         flex-direction: column;
-        gap: 0.75rem;
-        padding: 0.9rem;
-        background: rgba(0, 0, 0, 0.28);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 3px;
+        gap: 0.7rem;
       }
 
       .pack-top-row {
         display: grid;
-        grid-template-columns: 1fr 90px 150px auto;
+        grid-template-columns: 2fr 100px 140px auto;
         gap: 0.65rem;
-        align-items: end;
+        align-items: flex-end;
       }
 
       .pack-field {
         display: flex;
         flex-direction: column;
-        gap: 0.3rem;
+        gap: 0.25rem;
       }
 
-      .pack-field label {
-        font-size: 0.7rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        color: rgba(255, 255, 255, 0.68);
+      .field-caption {
+        font-size: 0.68rem;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        color: rgba(255, 255, 255, 0.7);
       }
 
-      .pack-field input {
-        width: 100%;
-        padding: 0.5rem 0.65rem;
+      .pack-input {
+        padding: 0.45rem 0.6rem;
+        font-size: 0.85rem;
         background: rgba(255, 255, 255, 0.06);
-        border: 1px solid rgba(255, 255, 255, 0.18);
+        border: 1px solid rgba(255, 255, 255, 0.22);
         border-radius: 2px;
         color: #ffffff;
-        font-size: 0.85rem;
-        box-sizing: border-box;
+        font-family: inherit;
+        outline: none;
+        transition: border-color 0.15s ease;
       }
 
-      .pack-field input:focus {
-        outline: none;
+      .pack-input:focus {
         border-color: #80b3ff;
+        background: rgba(255, 255, 255, 0.1);
       }
 
       .pack-remove-btn {
-        padding: 0.5rem 0.75rem;
-        font-size: 0.74rem;
+        padding: 0.45rem 0.75rem;
+        font-size: 0.78rem;
         font-weight: 700;
-        background: rgba(239, 68, 68, 0.14);
-        border: 1px solid rgba(239, 68, 68, 0.45);
-        color: #ffffff;
         border-radius: 2px;
+        border: 1px solid rgba(239, 68, 68, 0.4);
+        background: rgba(239, 68, 68, 0.15);
+        color: #fca5a5;
         cursor: pointer;
-        height: 36px;
+        transition: all 0.15s ease;
+        height: 34px;
       }
 
       .pack-remove-btn:hover {
-        background: rgba(239, 68, 68, 0.28);
+        background: rgba(239, 68, 68, 0.35);
+        border-color: #ef4444;
         color: #ffffff;
       }
 
-      .pack-savings-strip {
-        font-size: 0.78rem;
-        color: #86efac;
-        background: rgba(34, 197, 94, 0.1);
-        border: 1px solid rgba(34, 197, 94, 0.28);
-        padding: 0.4rem 0.65rem;
+      .pack-savings-row {
+        display: flex;
+        align-items: center;
+      }
+
+      .pack-savings-pill {
+        display: inline-block;
+        padding: 0.25rem 0.6rem;
+        font-size: 0.74rem;
+        background: rgba(16, 185, 129, 0.15);
+        border: 1px solid rgba(16, 185, 129, 0.4);
+        color: #6ee7b7;
         border-radius: 2px;
+        width: 100%;
+        box-sizing: border-box;
       }
 
       .pack-schedule-row {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 0.85rem;
-        padding-top: 0.45rem;
-        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        padding-top: 0.4rem;
+        border-top: 1px dashed rgba(255, 255, 255, 0.1);
       }
 
       .schedule-block {
         display: flex;
         flex-direction: column;
-        gap: 0.4rem;
+        gap: 0.35rem;
       }
 
       .schedule-label {
         font-size: 0.7rem;
-        font-weight: 700;
-        text-transform: uppercase;
+        font-weight: 800;
         letter-spacing: 0.04em;
-        color: rgba(255, 255, 255, 0.6);
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.65);
       }
 
-      .weekday-chips,
-      .quick-exp-dates,
-      .selected-dates-pills {
+      .day-chips {
         display: flex;
         flex-wrap: wrap;
-        gap: 0.35rem;
+        gap: 0.3rem;
       }
 
-      .day-chip,
-      .date-chip {
+      .day-chip {
         padding: 0.28rem 0.52rem;
         font-size: 0.72rem;
         font-weight: 700;
@@ -391,14 +398,42 @@ import { ArsPipe } from '../../pipes/format.pipes';
         gap: 0.45rem;
       }
 
+      .quick-exp-dates {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        flex-wrap: wrap;
+      }
+
       .pack-date-input {
-        padding: 0.3rem 0.5rem;
+        height: 32px;
+        box-sizing: border-box;
+        padding: 0 0.5rem;
         font-size: 0.76rem;
         background: rgba(255, 255, 255, 0.06);
         border: 1px solid rgba(255, 255, 255, 0.18);
         border-radius: 2px;
         color: #ffffff;
         color-scheme: dark;
+        display: inline-flex;
+        align-items: center;
+      }
+
+      .date-chip {
+        height: 32px;
+        box-sizing: border-box;
+        padding: 0 0.6rem;
+        font-size: 0.75rem;
+        font-weight: 700;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        color: #ffffff;
+        border-radius: 2px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s ease;
       }
 
       .selected-date-pill {
@@ -445,6 +480,23 @@ export class ExperiencePricingPacksEditorComponent {
   readonly packsChange = output<ExperiencePricingPack[]>();
 
   readonly weekdayOptions = PRICING_WEEKDAY_OPTIONS;
+
+  readonly sanitizedAvailableDates = computed(() => {
+    const raw = this.availableDates() || [];
+    const result: string[] = [];
+    for (const item of raw) {
+      if (!item) continue;
+      const matches = String(item).match(/\b\d{4}-\d{2}-\d{2}\b/g);
+      if (matches) {
+        for (const m of matches) {
+          if (!result.includes(m)) {
+            result.push(m);
+          }
+        }
+      }
+    }
+    return result.sort();
+  });
 
   addPreset(label: string, seats: number, payCount: number): void {
     const unit = Math.max(0, Number(this.unitPriceArs()) || 0);
@@ -541,8 +593,10 @@ export class ExperiencePricingPacksEditorComponent {
   }
 
   formatShortDate(iso: string): string {
-    const segs = iso.split('-');
-    return segs.length === 3 ? `${segs[2]}/${segs[1]}/${segs[0].slice(2)}` : iso;
+    const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (m) {
+      return `${m[3]}/${m[2]}/${m[1].slice(2)}`;
+    }
+    return iso;
   }
 }
-
