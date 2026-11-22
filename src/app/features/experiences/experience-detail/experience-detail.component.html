@@ -39,11 +39,11 @@
           <!-- Specs Rápidas -->
           <div class="detail-specs-grid">
             <div class="spec-tile">
-              <span class="spec-label">DIFICULTAD</span>
-              <span class="spec-value">{{ item.difficulty }}</span>
+              <span class="spec-label">{{ isHospedaje() ? 'PERFIL' : 'DIFICULTAD' }}</span>
+              <span class="spec-value">{{ isHospedaje() ? 'Accesible / Familiar' : item.difficulty }}</span>
             </div>
             <div class="spec-tile">
-              <span class="spec-label">DURACIÓN</span>
+              <span class="spec-label">{{ isHospedaje() ? 'ESTADÍA MÍNIMA' : 'DURACIÓN' }}</span>
               <span class="spec-value">{{ item.durationLabel }}</span>
             </div>
             <div class="spec-tile">
@@ -66,19 +66,19 @@
               class="spec-tile spec-tile-clickable"
               title="Abrir ubicación en Google Maps"
             >
-              <span class="spec-label">PUNTO DE ENCUENTRO</span>
+              <span class="spec-label">{{ isHospedaje() ? 'DIRECCIÓN' : 'PUNTO DE ENCUENTRO' }}</span>
               <span class="spec-value spec-value-link">Ver ubicación en Maps</span>
             </a>
             } @else {
             <div class="spec-tile">
-              <span class="spec-label">PUNTO DE ENCUENTRO</span>
+              <span class="spec-label">{{ isHospedaje() ? 'DIRECCIÓN' : 'PUNTO DE ENCUENTRO' }}</span>
               <span class="spec-value">{{ item.meetingPoint || item.region }}</span>
             </div>
             }
             @if (item.maxSpotsPerGroup) {
             <div class="spec-tile">
-              <span class="spec-label">CUPO MÁXIMO</span>
-              <span class="spec-value">{{ item.maxSpotsPerGroup }} personas</span>
+              <span class="spec-label">{{ isHospedaje() ? 'CAPACIDAD MÁXIMA' : 'CUPO MÁXIMO' }}</span>
+              <span class="spec-value">{{ item.maxSpotsPerGroup }} {{ isHospedaje() ? (item.maxSpotsPerGroup === 1 ? 'huésped' : 'huéspedes') : (item.maxSpotsPerGroup === 1 ? 'persona' : 'personas') }}</span>
             </div>
             }
             @if (item.bestSeason) {
@@ -125,7 +125,7 @@
         <div class="exp-detail-section-card pricing-action-card pricing-top-card">
           <div class="pricing-card-flex">
             <div class="price-data">
-              <span class="price-title">ARANCEL POR PERSONA</span>
+              <span class="price-title">{{ isHospedaje() ? 'TARIFA POR NOCHE' : 'ARANCEL POR PERSONA' }}</span>
               <div class="price-figures">
                 <span class="ars-price">{{ item.priceArs | ars }}</span>
                 @if (item.priceUsd) {
@@ -138,7 +138,7 @@
                 @for (pack of getActivePricingPacks(item); track pack.id) {
                 <div class="detail-pack-pill">
                   <strong class="detail-pack-name">{{ pack.label }}</strong>
-                  <span class="detail-pack-info">{{ pack.seats }} cupos · {{ pack.totalPriceArs | ars }}</span>
+                  <span class="detail-pack-info">Válido para {{ pack.seats }} {{ pack.seats === 1 ? 'persona' : 'personas' }} · {{ pack.totalPriceArs | ars }}</span>
                   <span class="detail-pack-sched">{{ formatPricingPackSchedule(pack) }}</span>
                 </div>
                 }
@@ -279,7 +279,7 @@
             />
             <div class="album-preview-overlay">
               <span class="album-preview-count">{{ albumPhotosCount() }} fotos en el álbum</span>
-              <span class="album-preview-cta">Ver Álbum Completo →</span>
+              <span class="album-preview-cta">VER ÁLBUM COMPLETO</span>
             </div>
           </a>
         </div>
@@ -308,12 +308,6 @@
             <a [href]="getGoogleMapsUrl(item.meetingPoint, item.region, item.meetingPointUrl)" target="_blank" rel="noopener noreferrer" class="location-btn maps-btn">
               <span>Abrir en Google Maps</span>
             </a>
-
-            @if (hasAlbumPhotos(item)) {
-            <a [routerLink]="photosRoute()" class="location-btn gallery-btn">
-              <span>Fotos de Experiencias Pasadas</span>
-            </a>
-            }
 
             <button
               type="button"
@@ -348,7 +342,7 @@
         <div class="exp-detail-section-card pricing-action-card">
           <div class="pricing-card-flex">
             <div class="price-data">
-              <span class="price-title">ARANCEL POR PERSONA</span>
+              <span class="price-title">{{ isHospedaje() ? 'TARIFA POR NOCHE' : 'ARANCEL POR PERSONA' }}</span>
               <div class="price-figures">
                 <span class="ars-price">{{ item.priceArs | ars }}</span>
                 @if (item.priceUsd) {
@@ -361,7 +355,7 @@
                 @for (pack of getActivePricingPacks(item); track pack.id) {
                 <div class="detail-pack-pill">
                   <strong class="detail-pack-name">{{ pack.label }}</strong>
-                  <span class="detail-pack-info">{{ pack.seats }} cupos · {{ pack.totalPriceArs | ars }}</span>
+                  <span class="detail-pack-info">Válido para {{ pack.seats }} {{ pack.seats === 1 ? 'persona' : 'personas' }} · {{ pack.totalPriceArs | ars }}</span>
                   <span class="detail-pack-sched">{{ formatPricingPackSchedule(pack) }}</span>
                 </div>
                 }
@@ -381,10 +375,10 @@
         <aside class="mobile-sticky-booking-bar" aria-label="Reserva rápida móvil">
           <div class="sticky-bar-info">
             <span class="sticky-bar-price">{{ item.priceArs | ars }}</span>
-            <span class="sticky-bar-note">por persona</span>
+            <span class="sticky-bar-note">{{ isHospedaje() ? 'por noche' : 'por persona' }}</span>
           </div>
           <a [routerLink]="paymentRoute()" class="sticky-bar-cta">
-            <span>RESERVAR AHORA</span>
+            <span>{{ isHospedaje() ? 'RESERVAR ESTADÍA' : 'RESERVAR AHORA' }}</span>
           </a>
         </aside>
         } @else if (isLoading()) {

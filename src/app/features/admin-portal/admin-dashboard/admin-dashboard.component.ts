@@ -404,7 +404,7 @@ import { Discount } from '../../../core/models/discount.model';
                           class="exp-cell-thumb"
                         />
                         <div class="exp-cell-text">
-                          <strong class="exp-title-cell">{{ req.title }}</strong>
+                          <a [routerLink]="getProposalDetailRoute(req)" class="exp-title-cell exp-title-link">{{ req.title }}</a>
                           <span class="exp-kicker-sub">{{ getProposalProviderTier(req) }}</span>
                         </div>
                       </div>
@@ -427,14 +427,13 @@ import { Discount } from '../../../core/models/discount.model';
                       <span class="row-date">{{ req.createdAt | fecha: 'corta' }}</span>
                     </td>
                     <td class="text-right">
-                      <button
-                        type="button"
+                      <a
+                        [routerLink]="getProposalDetailRoute(req)"
                         class="btn-review"
-                        (click)="openExperienceRequest(req)"
                         title="Revisar propuesta de experiencia"
                       >
                         REVISAR
-                      </button>
+                      </a>
                     </td>
                   </tr>
                 }
@@ -1014,93 +1013,6 @@ import { Discount } from '../../../core/models/discount.model';
           (closed)="closeApplication()"
           (statusChanged)="onApplicationStatusChanged($event)"
         />
-      }
-
-      <!-- Modal de Revisión de Solicitud de Nueva Experiencia -->
-      @if (selectedExperienceRequest(); as expReq) {
-        <div class="modal-backdrop" (click)="closeExperienceRequest()">
-          <div class="modal-dialog exp-req-modal-card" (click)="$event.stopPropagation()">
-            <div class="modal-head">
-              <div class="modal-head-info">
-                <span class="modal-kicker">{{ getProposalProviderTier(expReq) }}</span>
-                <h2 class="modal-title">{{ expReq.title }}</h2>
-                <p class="modal-sub-author">
-                  Propuesta de <strong>{{ getProposalResponsibleName(expReq) }}</strong> ({{
-                    getProposalAgencyName(expReq)
-                  }})
-                </p>
-              </div>
-              <button
-                type="button"
-                class="modal-close-btn"
-                (click)="closeExperienceRequest()"
-                aria-label="Cerrar modal"
-              >
-                ×
-              </button>
-            </div>
-
-            <div class="modal-body">
-              @if (expReq.subheading) {
-                <div class="app-desc-box quote-accent">
-                  <span class="desc-heading">Síntesis descriptiva</span>
-                  <p class="desc-content">{{ expReq.subheading }}</p>
-                </div>
-              }
-
-              <div class="exp-req-specs-grid">
-                <div class="spec-cell">
-                  <span class="spec-lbl">Región</span>
-                  <strong>{{ expReq.region || 'Sin especificar' }}</strong>
-                </div>
-                <div class="spec-cell">
-                  <span class="spec-lbl">Dificultad</span>
-                  <strong>{{ expReq.difficulty || 'Moderada' }}</strong>
-                </div>
-                <div class="spec-cell">
-                  <span class="spec-lbl">Arancel ARS</span>
-                  <strong>{{ expReq.priceArs | ars }}</strong>
-                </div>
-                @if (expReq.dates) {
-                  <div class="spec-cell">
-                    <span class="spec-lbl">Fechas propuestas</span>
-                    <strong>{{ expReq.dates }}</strong>
-                  </div>
-                }
-              </div>
-            </div>
-
-            <div class="modal-footer">
-              @if (getMatchingExperienceRoute(expReq); as ficheRoute) {
-                <a
-                  [routerLink]="ficheRoute"
-                  class="btn-review"
-                  (click)="closeExperienceRequest()"
-                >
-                  Ver ficha completa
-                </a>
-              }
-              @if (expReq.status === 'pendiente') {
-                <button
-                  type="button"
-                  class="btn-reject"
-                  [disabled]="processingExperienceRequestId() === expReq.id"
-                  (click)="rejectExperience(expReq.id)"
-                >
-                  Rechazar
-                </button>
-                <button
-                  type="button"
-                  class="btn-approve"
-                  [disabled]="processingExperienceRequestId() === expReq.id"
-                  (click)="approveExperience(expReq.id)"
-                >
-                  Aprobar nueva experiencia
-                </button>
-              }
-            </div>
-          </div>
-        </div>
       }
     </div>
   `,
@@ -1685,6 +1597,11 @@ import { Discount } from '../../../core/models/discount.model';
       .exp-title-cell {
         color: #ffffff;
         font-weight: 500;
+        text-decoration: none;
+      }
+
+      .exp-title-link:hover {
+        color: #ff5f00;
       }
 
       .exp-title-row {
@@ -2818,9 +2735,9 @@ import { Discount } from '../../../core/models/discount.model';
         gap: 0.4rem;
         height: 34px;
         padding: 0 1rem;
-        background: rgba(255, 255, 255, 0.06);
-        border: 1px solid rgba(255, 255, 255, 0.22);
-        color: rgba(255, 255, 255, 0.85);
+        background: transparent;
+        border: 1px solid #ffffff;
+        color: #ffffff;
         font-size: 0.76rem;
         font-weight: 700;
         letter-spacing: 0.04em;
@@ -2832,8 +2749,8 @@ import { Discount } from '../../../core/models/discount.model';
 
       .btn-whatsapp:hover,
       .btn-contact-provider:hover {
-        background: rgba(255, 255, 255, 0.16);
-        border-color: rgba(255, 255, 255, 0.45);
+        background: rgba(255, 255, 255, 0.15);
+        border-color: #ffffff;
         color: #ffffff;
       }
 
@@ -2929,16 +2846,16 @@ import { Discount } from '../../../core/models/discount.model';
       }
 
       .btn-approve {
-        background: rgba(0, 204, 136, 0.16) !important;
-        border: 1px solid rgba(0, 204, 136, 0.45) !important;
-        color: #33ffaa !important;
+        background: transparent !important;
+        border: 1px solid #00cc88 !important;
+        color: #00cc88 !important;
         font-weight: 700 !important;
       }
 
       .btn-approve:hover:not(:disabled) {
-        background: #00cc88 !important;
-        border-color: #00cc88 !important;
-        color: #0b0704 !important;
+        background: rgba(0, 204, 136, 0.15) !important;
+        border-color: #33ffaa !important;
+        color: #33ffaa !important;
       }
 
       .provider-banking-card {
@@ -4219,9 +4136,7 @@ export class AdminDashboardComponent {
   }
 
   openExperienceRequest(req: ExperienceProposalRequest): void {
-    this.selectedExperienceRequest.set(req);
-    const slug = slugify(req.title);
-    this.expPublicUrlInput.set(`https://experiencias.club/experiencias/${slug}`);
+    void this.router.navigateByUrl(this.getProposalDetailRoute(req));
   }
 
   closeExperienceRequest(): void {

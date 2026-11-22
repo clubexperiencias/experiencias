@@ -645,16 +645,21 @@ export class AdminPanelComponent {
         items.push({ label: 'EXPERIENCIAS' });
       } else {
         const slug = cleanSegments[1];
-        const exp = this.experienceService.getExperienceBySlug(slug);
-        const expTitle = exp ? (exp.shortTitle || exp.title).toUpperCase() : slug.toUpperCase();
-
-        if (cleanSegments.includes('editar')) {
+        if (slug === 'nueva') {
           items.push({ label: 'EXPERIENCIAS', link: `${basePath}/experiencias` });
-          items.push({ label: expTitle, link: `${basePath}/experiencias/${slug}` });
-          items.push({ label: 'EDITAR' });
+          items.push({ label: 'NUEVA EXPERIENCIA' });
         } else {
-          items.push({ label: 'EXPERIENCIAS', link: `${basePath}/experiencias` });
-          items.push({ label: expTitle });
+          const exp = this.experienceService.getExperienceBySlug(slug);
+          const expTitle = exp ? (exp.shortTitle || exp.title).toUpperCase() : slug.toUpperCase();
+
+          if (cleanSegments.includes('editar')) {
+            items.push({ label: 'EXPERIENCIAS', link: `${basePath}/experiencias` });
+            items.push({ label: expTitle, link: `${basePath}/experiencias/${slug}` });
+            items.push({ label: 'EDITAR' });
+          } else {
+            items.push({ label: 'EXPERIENCIAS', link: `${basePath}/experiencias` });
+            items.push({ label: expTitle });
+          }
         }
       }
       return items;

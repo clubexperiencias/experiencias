@@ -11,12 +11,13 @@ import { ArsPipe } from '../../pipes/format.pipes';
   standalone: true,
   imports: [CommonModule, ArsPipe],
   template: `
-    <div class="packs-editor">
+    <div class="packs-editor" [class.is-disabled]="disabled()">
       <div class="packs-editor-head">
         <div class="packs-editor-titles">
           <span class="packs-kicker">PACKS &amp; PROMOCIONES GRUPALES</span>
           <p class="packs-sub">
-            Creá tarifas por pack (2x1, 3x2, 4x3 o precio grupal). Podés limitarlas a días de la
+            Creá tarifas especiales por grupo o promociones (ej: 2x1 donde van 2 personas y pagan 1, 3x2 o precio grupal).
+            Indicá cuántas personas incluye el pack y el precio total final. Podés limitarlas a días de la
             semana o fechas puntuales; si no elegís ninguno, aplican a todas las salidas.
           </p>
         </div>
@@ -74,7 +75,7 @@ import { ArsPipe } from '../../pipes/format.pipes';
                 </div>
 
                 <div class="pack-field pack-field-seats">
-                  <label class="field-caption">CUPOS</label>
+                  <label class="field-caption">PERSONAS INCLUIDAS</label>
                   <input
                     type="number"
                     min="1"
@@ -82,6 +83,7 @@ import { ArsPipe } from '../../pipes/format.pipes';
                     class="pack-input"
                     [value]="pack.seats"
                     (input)="updatePackNumber(pack.id, 'seats', $any($event.target).value, 1)"
+                    title="Cantidad de personas o lugares cubiertos por este pack (ej: 2 en un 2x1)"
                   />
                 </div>
 
@@ -113,7 +115,7 @@ import { ArsPipe } from '../../pipes/format.pipes';
               @if (getSavingsArs(pack) > 0) {
                 <div class="pack-savings-row">
                   <span class="pack-savings-pill">
-                    Incluye <strong>{{ pack.seats }} cupos</strong> · Ahorro de
+                    Válido para <strong>{{ pack.seats }} {{ pack.seats === 1 ? 'persona' : 'personas' }}</strong> · Ahorro de
                     <strong>{{ getSavingsArs(pack) | ars }}</strong>
                     ({{ getSavingsPercent(pack) }}% OFF sobre la tarifa individual)
                   </span>
@@ -274,7 +276,7 @@ import { ArsPipe } from '../../pipes/format.pipes';
 
       .pack-top-row {
         display: grid;
-        grid-template-columns: 2fr 100px 140px auto;
+        grid-template-columns: 2fr 150px 140px auto;
         gap: 0.65rem;
         align-items: flex-end;
       }
@@ -374,14 +376,20 @@ import { ArsPipe } from '../../pipes/format.pipes';
       }
 
       .day-chip {
-        padding: 0.28rem 0.52rem;
-        font-size: 0.72rem;
+        height: 32px;
+        box-sizing: border-box;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 0.65rem;
+        font-size: 0.75rem;
         font-weight: 700;
         background: rgba(255, 255, 255, 0.05);
         border: 1px solid rgba(255, 255, 255, 0.18);
         color: #ffffff;
         border-radius: 2px;
         cursor: pointer;
+        transition: all 0.15s ease;
       }
 
       .day-chip.is-selected,
@@ -459,6 +467,12 @@ import { ArsPipe } from '../../pipes/format.pipes';
         padding: 0;
       }
 
+      .packs-editor.is-disabled {
+        opacity: 0.65;
+        pointer-events: none;
+        cursor: not-allowed;
+      }
+
       @media (max-width: 720px) {
         .pack-top-row {
           grid-template-columns: 1fr 1fr;
@@ -477,6 +491,7 @@ export class ExperiencePricingPacksEditorComponent {
   readonly packs = input<ExperiencePricingPack[]>([]);
   readonly unitPriceArs = input<number>(0);
   readonly availableDates = input<string[]>([]);
+  readonly disabled = input<boolean>(false);
   readonly packsChange = output<ExperiencePricingPack[]>();
 
   readonly weekdayOptions = PRICING_WEEKDAY_OPTIONS;

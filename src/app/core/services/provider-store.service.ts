@@ -109,7 +109,7 @@ export const MP_PENDING_HOLD_MS = MP_PENDING_HOLD_MINUTES * 60 * 1000;
 export function parseConfirmedProposalDates(datesStr?: string): string[] {
   if (!datesStr) return [];
   const trimmed = datesStr.trim();
-  if (!trimmed || trimmed.toLowerCase().includes('a coordinar')) {
+  if (!trimmed) {
     return [];
   }
   const matches = trimmed.match(/\b\d{4}-\d{2}-\d{2}\b/g);
@@ -4084,24 +4084,30 @@ export class ProviderStoreService {
     if (RESERVED_EXPERIENCE_SLUGS.has(baseSlug.toLowerCase())) {
       baseSlug = `${baseSlug}-exp`;
     }
-    let generatedSlug = baseSlug;
+
+    // Identificar si la experiencia ya existe en catálogo
+    const matchedExistingExp =
+      this.expService.experiences().find((e) => e.id === requestId || (storedSlug && e.slug.toLowerCase() === storedSlug)) ||
+      this._experiences().find((e) => e.id === requestId || (storedSlug && e.slug.toLowerCase() === storedSlug));
+
+    let generatedSlug = matchedExistingExp?.slug || baseSlug;
     let suffix = 2;
     const existingSlugs = new Set([
       ...this.expService
         .experiences()
-        .filter((e) => e.id !== requestId)
+        .filter((e) => e.id !== requestId && (!matchedExistingExp || e.id !== matchedExistingExp.id))
         .map((e) => e.slug.toLowerCase()),
       ...this._experiences()
-        .filter((e) => e.id !== requestId)
+        .filter((e) => e.id !== requestId && (!matchedExistingExp || e.id !== matchedExistingExp.id))
         .map((e) => e.slug.toLowerCase()),
     ]);
     const existingIds = new Set([
       ...this.expService
         .experiences()
-        .filter((e) => e.id !== requestId)
+        .filter((e) => e.id !== requestId && (!matchedExistingExp || e.id !== matchedExistingExp.id))
         .map((e) => e.id.toLowerCase()),
       ...this._experiences()
-        .filter((e) => e.id !== requestId)
+        .filter((e) => e.id !== requestId && (!matchedExistingExp || e.id !== matchedExistingExp.id))
         .map((e) => e.id.toLowerCase()),
     ]);
     while (
@@ -4110,7 +4116,7 @@ export class ProviderStoreService {
     ) {
       generatedSlug = `${baseSlug}-${suffix++}`;
     }
-    const finalId = 'exp-' + generatedSlug;
+    const finalId = matchedExistingExp ? matchedExistingExp.id : 'exp-' + generatedSlug;
     const resolvedUrl = publicUrl?.trim() || `https://experiencias.club/experiencias/${generatedSlug}`;
 
     // Solo usar fechas confirmadas por el prestador o administrador.
@@ -4161,7 +4167,7 @@ export class ProviderStoreService {
     }
 
     // 1. Preservar o crear en el catálogo oficial de ExperienceService antes de reportar aprobación
-    const existingInService = this.expService
+    const existingInService = matchedExistingExp || this.expService
       .experiences()
       .find((e) => e.id === requestId || e.id === finalId || e.slug === generatedSlug);
 

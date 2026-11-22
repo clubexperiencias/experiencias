@@ -345,12 +345,90 @@ export class ExperiencePaymentComponent implements OnInit {
     return this.availablePacksForSelectedDate().find((p) => p.id === id) ?? null;
   });
 
+  readonly isLodging = computed(() => {
+    const exp = this.experience();
+    if (exp?.category === 'hospedajes') return true;
+    if (typeof window !== 'undefined' && window.location.pathname.includes('/hospedajes')) return true;
+    return false;
+  });
+
+  readonly todayIso = new Date().toISOString().split('T')[0];
+  readonly checkInDate = signal<string>('');
+  readonly checkOutDate = signal<string>('');
+
+  readonly minCheckOutDate = computed(() => {
+    const checkIn = this.checkInDate();
+    if (!checkIn) {
+      const d = new Date();
+      d.setDate(d.getDate() + 1);
+      return d.toISOString().split('T')[0];
+    }
+    const d = new Date(checkIn);
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().split('T')[0];
+  });
+
+  readonly selectedNights = computed<number>(() => {
+    const inDate = this.checkInDate();
+    const outDate = this.checkOutDate();
+    if (!inDate || !outDate) return 1;
+    const tIn = new Date(inDate).getTime();
+    const tOut = new Date(outDate).getTime();
+    const diff = Math.round((tOut - tIn) / (1000 * 60 * 60 * 24));
+    return diff > 0 ? diff : 1;
+  });
+
+  private readonly initLodgingDates = effect(() => {
+    const isHosp = this.isLodging();
+    const exp = this.experience();
+    if (isHosp && exp && !this.checkInDate()) {
+      const today = new Date();
+      const tomorrow = new Date(today);
+      tomorrow.setDate(today.getDate() + 1);
+      const inStr = today.toISOString().split('T')[0];
+      const outStr = tomorrow.toISOString().split('T')[0];
+      this.checkInDate.set(inStr);
+      this.checkOutDate.set(outStr);
+      this.form.controls.date.setValue(`${inStr} al ${outStr} (1 noche)`);
+    }
+  });
+
+  onCheckInInput(val: string): void {
+    this.checkInDate.set(val);
+    if (!this.checkOutDate() || this.checkOutDate() <= val) {
+      this.checkOutDate.set(this.minCheckOutDate());
+    }
+    this.syncLodgingDateForm();
+  }
+
+  onCheckOutInput(val: string): void {
+    this.checkOutDate.set(val);
+    this.syncLodgingDateForm();
+  }
+
+  private syncLodgingDateForm(): void {
+    if (!this.isLodging()) return;
+    const inD = this.checkInDate();
+    const outD = this.checkOutDate();
+    if (inD && outD) {
+      const nights = this.selectedNights();
+      const nightsLabel = nights === 1 ? '1 noche' : `${nights} noches`;
+      this.form.controls.date.setValue(`${inD} al ${outD} (${nightsLabel})`);
+      this.form.controls.date.markAsDirty();
+      this.form.controls.date.markAsTouched();
+    }
+  }
+
   readonly subtotal = computed(() => {
     const pack = this.selectedPricingPack();
     if (pack) {
       return pack.totalPriceArs;
     }
-    return (this.experience()?.priceArs ?? 0) * (Number(this.formValue().participants) || 1);
+    const basePrice = this.experience()?.priceArs ?? 0;
+    if (this.isLodging()) {
+      return basePrice * this.selectedNights();
+    }
+    return basePrice * (Number(this.formValue().participants) || 1);
   });
 
   readonly discountInput = signal('');

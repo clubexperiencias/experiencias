@@ -93,6 +93,10 @@ export class ExperienceDetailComponent {
   readonly mobileMenuOpen = signal(false);
 
   readonly isHospedaje = computed(() => {
+    const exp = this.exp();
+    if (exp?.category === 'hospedajes') {
+      return true;
+    }
     if (typeof window !== 'undefined' && window.location.pathname.includes('/hospedajes')) {
       return true;
     }
