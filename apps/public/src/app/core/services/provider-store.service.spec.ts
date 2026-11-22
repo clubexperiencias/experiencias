@@ -432,6 +432,131 @@ describe('ProviderStoreService - Payment & Proposal Persistence', () => {
       expect(createdExpCatalog.publicUrl).toBe(customUrl);
     });
 
+    it('should not treat matching slug as identity in approveExperienceRequest and should suffix collision', async () => {
+      const existingCatalogExp = {
+        id: 'exp-different-id',
+        slug: 'travesia-conflict',
+        title: 'Travesía Existente',
+        status: 'publicada',
+      } as any;
+      vi.spyOn(expService, 'experiences').mockReturnValue([existingCatalogExp]);
+      let createdExpCatalog: any = null;
+      vi.spyOn(expService, 'createExperience').mockImplementation(async (exp: any) => {
+        createdExpCatalog = exp;
+      });
+
+      const req = await store.submitExperienceRequest({
+        providerId: 'prov-new',
+        providerName: 'New Provider',
+        providerAgency: 'Agency',
+        providerEmail: 'new@provider.com',
+        title: 'Travesía Conflicto',
+        slug: 'travesia-conflict',
+        kicker: 'EXPERIENCIA',
+        subheading: 'Subheading',
+        region: 'Valle Central',
+        difficulty: 'Baja',
+        duration: '2 horas',
+        capacity: 8,
+        season: 'Todo el año',
+        dates: '2026-11-20',
+        priceArs: 40000,
+        itinerary: 'Itinerario',
+        meetingPoint: 'Punto',
+        includedServices: 'Servicios',
+        participantRequirements: 'Requisitos',
+      } as any);
+
+      const ok = await store.approveExperienceRequest(req.id);
+      expect(ok).toBe(true);
+      expect(createdExpCatalog).toBeDefined();
+      expect(createdExpCatalog.id).not.toBe('exp-different-id');
+      expect(createdExpCatalog.slug).toBe('travesia-conflict-2');
+    });
+
+    it('should reuse existing experience by same ID in approveExperienceRequest', async () => {
+      const reqId = 'req-same-id-test';
+      const existingCatalogExp = {
+        id: reqId,
+        slug: 'travesia-existing-id',
+        title: 'Travesía Existente Mismo ID',
+        status: 'pendiente',
+      } as any;
+      vi.spyOn(expService, 'experiences').mockReturnValue([existingCatalogExp]);
+      let updatedExpCatalog: any = null;
+      vi.spyOn(expService, 'updateExperience').mockImplementation(async (exp: any) => {
+        updatedExpCatalog = exp;
+      });
+
+      (store as any)._experienceRequests.update((list: any) => [
+        {
+          id: reqId,
+          slug: 'travesia-existing-id',
+          title: 'Travesía Existente Mismo ID',
+          providerEmail: 'same@provider.com',
+          status: 'pendiente',
+          createdAt: new Date().toISOString(),
+          difficulty: 'Baja',
+          duration: '2 horas',
+          priceArs: 40000,
+          capacity: 8,
+          dates: '2026-11-20',
+          subheading: 'Desc',
+        },
+        ...list,
+      ]);
+
+      const ok = await store.approveExperienceRequest(reqId);
+      expect(ok).toBe(true);
+      expect(updatedExpCatalog).toBeDefined();
+      expect(updatedExpCatalog.id).toBe(reqId);
+      expect(updatedExpCatalog.slug).toBe('travesia-existing-id');
+    });
+
+    it('should take non-update createExperience path when matchedExistingExp is only in provider store and not in ExperienceService', async () => {
+      const reqId = 'req-provider-store-only';
+      const providerStoreExp = {
+        id: reqId,
+        slug: 'req-provider-store-only-slug',
+        title: 'Solo en Provider Store',
+        status: 'pendiente',
+      } as any;
+      (store as any)._experiences.set([providerStoreExp]);
+      vi.spyOn(expService, 'experiences').mockReturnValue([]);
+
+      const updateSpy = vi.spyOn(expService, 'updateExperience');
+      let createdExp: any = null;
+      const createSpy = vi.spyOn(expService, 'createExperience').mockImplementation(async (exp: any) => {
+        createdExp = exp;
+      });
+
+      (store as any)._experienceRequests.update((list: any) => [
+        {
+          id: reqId,
+          slug: 'req-provider-store-only-slug',
+          title: 'Solo en Provider Store',
+          providerEmail: 'prov@test.com',
+          status: 'pendiente',
+          createdAt: new Date().toISOString(),
+          difficulty: 'Baja',
+          duration: '2 horas',
+          priceArs: 40000,
+          capacity: 8,
+          dates: '2026-11-20',
+          subheading: 'Desc',
+        },
+        ...list,
+      ]);
+
+      const ok = await store.approveExperienceRequest(reqId);
+      expect(ok).toBe(true);
+      expect(updateSpy).not.toHaveBeenCalled();
+      expect(createSpy).toHaveBeenCalled();
+      expect(createdExp).toBeDefined();
+      expect(createdExp.id).toBe(reqId);
+      expect(createdExp.status).toBe('publicada');
+    });
+
     it('should rollback local state, save requests, and return false when expService.updateExperience fails during rejection', async () => {
       const testExp = {
         id: 'req-fail-test',

@@ -10,11 +10,14 @@ import {
   inject,
   signal,
 } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { map, startWith } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { StorageService } from '../../../core/services/storage.service';
+import { RESERVED_EXPERIENCE_SLUGS } from '../../../core/services/experience.service';
 import {
   ALTITUDE_OPTIONS,
   EXPERIENCE_CATEGORY_OPTIONS,
@@ -42,6 +45,7 @@ export interface ExperienceFormPayload {
   priceArs: number;
   capacityPerDate: number;
   dates: string[];
+  datesOnRequest?: boolean;
   pricingPacks: ExperiencePricingPack[];
   coverImage: string;
   videoUrl: string;
@@ -84,6 +88,7 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
   @Input() mode: 'admin' | 'provider' = 'provider';
   @Input() initialExperience: Partial<Experience> | Partial<ProviderExperience> | null = null;
   @Input() saving = false;
+  @Input() saveDisabled = false;
   @Input() cancelRoute = '';
   @Input() isCreateMode = false;
   @Input() isClubExperience = false;
@@ -99,6 +104,7 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
     requestPublication?: boolean;
   }>();
   @Output() cancel = new EventEmitter<void>();
+  @Output() draftChange = new EventEmitter<void>();
 
   readonly categoryOptions = EXPERIENCE_CATEGORY_OPTIONS;
   readonly altitudeOptions = ALTITUDE_OPTIONS;
@@ -135,6 +141,7 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
   readonly savingAction = signal<'save' | 'publish' | null>(null);
 
   readonly dates = signal<string[]>([]);
+  readonly datesOnRequest = signal<boolean>(false);
   readonly pricingPacks = signal<ExperiencePricingPack[]>([]);
   readonly newDate = signal('');
   readonly datesError = signal<string | null>(null);
@@ -150,6 +157,10 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
   readonly albumPhotos = signal<ExperienceAlbumPhoto[]>([]);
   readonly newAlbumPhotoUrl = signal<string>('');
   readonly uploadingAlbum = signal(false);
+
+  readonly isMediaUploading = computed(
+    () => this.uploadingCover() || this.uploadingVideo() || this.uploadingAlbum(),
+  );
 
   readonly includedRaw = signal<string>('');
   readonly requirementsRaw = signal<string>('');
@@ -180,24 +191,52 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
     displayLocation: ['destacada'],
   });
 
-  readonly isLodging = computed(() => this.form.get('category')?.value === 'hospedajes');
+  readonly isLodging = toSignal(
+    this.form.controls.category.valueChanges.pipe(
+      startWith(this.form.controls.category.value),
+      map((cat) => cat === 'hospedajes'),
+    ),
+    { initialValue: this.form.controls.category.value === 'hospedajes' },
+  );
 
-  readonly calculatedUsd = computed(() => {
-    const ars = this.form.get('priceArs')?.value || 0;
-    return Math.round(ars / 1300);
-  });
+  readonly calculatedUsd = toSignal(
+    this.form.controls.priceArs.valueChanges.pipe(
+      startWith(this.form.controls.priceArs.value),
+      map((ars) => Math.round((Number(ars) || 0) / 1300)),
+    ),
+    { initialValue: Math.round((Number(this.form.controls.priceArs.value) || 0) / 1300) },
+  );
 
   readonly featuredPhotos = computed(() => this.albumPhotos().filter((p) => p.isFeatured));
   readonly galleryPhotos = computed(() => this.albumPhotos().filter((p) => !p.isFeatured));
   readonly totalAlbumCount = computed(() => this.albumPhotos().length);
 
   ngOnInit(): void {
+    if (this.mode === 'provider') {
+      this.form.controls.slug.clearValidators();
+      this.form.controls.slug.updateValueAndValidity();
+    } else {
+      this.form.controls.slug.setValidators([Validators.maxLength(40)]);
+      this.form.controls.slug.updateValueAndValidity();
+    }
+
     if (this.initialExperience) {
       this.populateForm(this.initialExperience);
     }
+    this.form.valueChanges.subscribe(() => {
+      this.draftChange.emit();
+    });
   }
 
   ngOnChanges(changes: SimpleChanges): void {
+    if (changes['mode']) {
+      if (this.mode === 'provider') {
+        this.form.controls.slug.clearValidators();
+      } else {
+        this.form.controls.slug.setValidators([Validators.maxLength(40)]);
+      }
+      this.form.controls.slug.updateValueAndValidity();
+    }
     if (changes['initialExperience'] && this.initialExperience) {
       this.populateForm(this.initialExperience);
     }
@@ -283,11 +322,29 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
 
     // Dates
     const rawDates = exp.dates || exp.scheduledDates || [];
+    let hasCoordinar = false;
     if (Array.isArray(rawDates)) {
-      this.dates.set([...rawDates]);
+      hasCoordinar = rawDates.some(
+        (d: any) => typeof d === 'string' && d.toLowerCase().includes('coordinar'),
+      );
+      const parsedDates = rawDates.filter(
+        (d: any) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d),
+      );
+      this.dates.set(parsedDates);
     } else if (typeof rawDates === 'string') {
+      hasCoordinar = rawDates.toLowerCase().includes('coordinar');
       const parsed = rawDates.match(/\b\d{4}-\d{2}-\d{2}\b/g) || [];
       this.dates.set(parsed);
+    } else {
+      this.dates.set([]);
+    }
+
+    if (exp.datesOnRequest !== undefined) {
+      this.datesOnRequest.set(Boolean(exp.datesOnRequest));
+    } else if (hasCoordinar) {
+      this.datesOnRequest.set(true);
+    } else {
+      this.datesOnRequest.set(false);
     }
 
     // Pricing packs
@@ -308,12 +365,12 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
       this.includedRaw.set('');
     }
 
-    if (Array.isArray(exp.requirements)) {
+    if (typeof exp.participantRequirements === 'string') {
+      this.requirementsRaw.set(exp.participantRequirements);
+    } else if (Array.isArray(exp.requirements)) {
       this.requirementsRaw.set(exp.requirements.join('\n'));
     } else if (Array.isArray(exp.notIncluded)) {
       this.requirementsRaw.set(exp.notIncluded.join('\n'));
-    } else if (typeof exp.participantRequirements === 'string') {
-      this.requirementsRaw.set(exp.participantRequirements);
     } else {
       this.requirementsRaw.set('');
     }
@@ -323,6 +380,46 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
     } else {
       this.highlightsRaw.set('');
     }
+  }
+
+  resetForm(): void {
+    this.form.reset(
+      {
+        title: '',
+        slug: '',
+        category: 'expediciones',
+        region: this.regions[0],
+        tagline: '',
+        description: '',
+        difficulty: 'Ninguna',
+        altitudeMeters: 850,
+        durationLabel: '',
+        meetingPoint: '',
+        meetingPointUrl: '',
+        priceArs: 65000,
+        capacityPerDate: 12,
+        providerName: '',
+        providerPhone: '',
+        providerCbuAlias: '',
+        providerCuitDni: '',
+        providerBankName: '',
+        status: 'publicada',
+        displayLocation: 'destacada',
+      },
+    );
+    this.dates.set([]);
+    this.datesOnRequest.set(false);
+    this.pricingPacks.set([]);
+    this.coverImageUrl.set('');
+    this.coverUrlInput.set('');
+    this.videoUrl.set('');
+    this.videoUrlInput.set('');
+    this.albumPhotos.set([]);
+    this.newAlbumPhotoUrl.set('');
+    this.includedRaw.set('');
+    this.requirementsRaw.set('');
+    this.highlightsRaw.set('');
+    this.itinerary.set('');
   }
 
   showToast(msg: string): void {
@@ -349,6 +446,7 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
     this.datesError.set(null);
     this.dates.update((prev) => [...prev, d].sort());
     this.newDate.set('');
+    this.draftChange.emit();
   }
 
   onDatePicked(val: string): void {
@@ -360,6 +458,15 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
 
   removeDate(d: string): void {
     this.dates.update((prev) => prev.filter((x) => x !== d));
+    this.draftChange.emit();
+  }
+
+  toggleDatesOnRequest(checked: boolean): void {
+    this.datesOnRequest.set(checked);
+    if (checked) {
+      this.datesError.set(null);
+    }
+    this.draftChange.emit();
   }
 
   // Cover image
@@ -373,6 +480,7 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
       const slug = this.form.controls.slug.value || 'exp';
       const res = await this.storageService.uploadFile(file, `COVER-${slug}`);
       this.coverImageUrl.set(res.url);
+      this.draftChange.emit();
       this.showToast('Foto de portada subida con éxito.');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error al subir imagen de portada';
@@ -388,11 +496,13 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
     if (!url) return;
     this.coverImageUrl.set(url);
     this.coverUrlInput.set('');
+    this.draftChange.emit();
     this.showToast('Portada actualizada desde URL.');
   }
 
   removeCoverImage(): void {
     this.coverImageUrl.set('');
+    this.draftChange.emit();
     this.showToast('Foto de portada removida.');
   }
 
@@ -407,6 +517,7 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
       const slug = this.form.controls.slug.value || 'exp';
       const res = await this.storageService.uploadFile(file, `VIDEO-${slug}`);
       this.videoUrl.set(res.url);
+      this.draftChange.emit();
       this.showToast('Video subido con éxito.');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error al subir video';
@@ -422,11 +533,13 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
     if (!url) return;
     this.videoUrl.set(url);
     this.videoUrlInput.set('');
+    this.draftChange.emit();
     this.showToast('Video actualizado.');
   }
 
   removeVideo(): void {
     this.videoUrl.set('');
+    this.draftChange.emit();
     this.showToast('Video removido.');
   }
 
@@ -461,6 +574,7 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
         this.albumPhotos.update((prev) => [...prev, newPhoto]);
         added++;
       }
+      this.draftChange.emit();
       this.showToast(`${added} foto(s) agregada(s) al álbum.`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error al subir fotos al álbum';
@@ -487,6 +601,7 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
     };
     this.albumPhotos.update((prev) => [...prev, newPhoto]);
     this.newAlbumPhotoUrl.set('');
+    this.draftChange.emit();
     this.showToast('Foto sumada al álbum.');
   }
 
@@ -498,10 +613,12 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
       }
       return updated;
     });
+    this.draftChange.emit();
   }
 
   removeAlbumPhoto(idx: number): void {
     this.albumPhotos.update((photos) => photos.filter((_, i) => i !== idx));
+    this.draftChange.emit();
     this.showToast('Foto eliminada del álbum.');
   }
 
@@ -515,6 +632,7 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
         updated[idx] = { ...updated[idx], isFeatured: false };
         return updated;
       });
+      this.draftChange.emit();
       this.showToast('Foto desmarcada como destacada.');
     } else {
       if (this.featuredPhotos().length >= 2) {
@@ -526,18 +644,19 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
         updated[idx] = { ...updated[idx], isFeatured: true };
         return updated;
       });
+      this.draftChange.emit();
       this.showToast('Foto fijada como destacada.');
     }
   }
 
   onSubmit(requestPublication = false): void {
-    if (this.saving) return;
+    if (this.saving || this.isMediaUploading() || this.saveDisabled) return;
     this.savingAction.set(requestPublication ? 'publish' : 'save');
     this.form.markAllAsTouched();
 
-    if (this.mode === 'provider' && requestPublication && this.dates().length === 0) {
-      this.datesError.set('Agregá al menos una fecha futura para solicitar publicación.');
-      this.showToast('Por favor agregá al menos una fecha disponible.');
+    if (this.mode === 'provider' && requestPublication && this.dates().length === 0 && !this.datesOnRequest()) {
+      this.datesError.set('Agregá al menos una fecha futura o seleccioná fechas a coordinar para solicitar publicación.');
+      this.showToast('Por favor agregá al menos una fecha disponible o seleccioná fechas a coordinar.');
       return;
     }
 
@@ -558,12 +677,16 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
     const value = this.form.getRawValue();
 
     const rawSlug = (value.slug || value.title).trim();
-    const cleanSlug = rawSlug
+    let cleanSlug = rawSlug
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)/g, '');
+
+    if (RESERVED_EXPERIENCE_SLUGS.has(cleanSlug.toLowerCase())) {
+      cleanSlug = `${cleanSlug}-exp`;
+    }
 
     const included = this.includedRaw()
       .split('\n')
@@ -602,6 +725,7 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
       priceArs: Math.round(Number(value.priceArs)),
       capacityPerDate: Math.round(Number(value.capacityPerDate)),
       dates: this.dates(),
+      datesOnRequest: this.datesOnRequest(),
       pricingPacks: this.pricingPacks(),
       coverImage: cover,
       videoUrl: this.videoUrl().trim(),

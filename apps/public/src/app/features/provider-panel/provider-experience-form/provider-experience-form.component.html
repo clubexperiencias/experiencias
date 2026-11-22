@@ -35,6 +35,23 @@
       </div>
     </div>
   } @else {
+    @if (!isEditMode() && hasDraft()) {
+      <div class="draft-notice-banner" role="status">
+        <div class="draft-notice-info">
+          <mat-icon class="draft-notice-icon">save</mat-icon>
+          <span>Borrador guardado en este navegador. Se conservará hasta que envíes la propuesta.</span>
+        </div>
+        <button
+          type="button"
+          class="draft-notice-discard-btn"
+          (click)="discardDraft()"
+          title="Borrar borrador y reiniciar formulario"
+        >
+          Descartar borrador
+        </button>
+      </div>
+    }
+
     @if (saveError()) {
       <div class="save-error-banner" style="padding: 0.75rem 1rem; margin-bottom: 1.25rem; border-radius: 4px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5; font-size: 0.875rem;">
         {{ saveError() }}
@@ -46,9 +63,11 @@
       [initialExperience]="loadedExperience()"
       [isCreateMode]="!isEditMode()"
       [saving]="saving()"
+      [saveDisabled]="isEditMode() && !loadedExperience()"
       [cancelRoute]="backLink()"
       (saveExperience)="onSave($event)"
       (cancel)="onCancel()"
+      (draftChange)="onDraftChange()"
     />
   }
 </div>

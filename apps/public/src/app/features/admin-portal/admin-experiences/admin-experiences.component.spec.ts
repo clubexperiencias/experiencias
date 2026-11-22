@@ -14,9 +14,13 @@ describe('AdminExperiencesComponent - Mercado Pago Precedence', () => {
       providers: ReturnType<typeof signal<ProviderUser[]>>;
       experienceRequests: ReturnType<typeof signal<any[]>>;
       loadProposalsFromSupabase: () => Promise<void>;
+      experiences?: ReturnType<typeof signal<any[]>>;
+      reloadFromStorage?: () => void;
     };
     clubProfile: ReturnType<typeof signal<any>>;
     experiences: ReturnType<typeof signal<Experience[]>>;
+    approveExperienceRequest?: (id: string, publicUrl?: string, dates?: string[]) => Promise<boolean>;
+    rejectExperienceRequest?: (id: string) => Promise<boolean>;
   };
 
   const sampleConnectedProvider: ProviderUser = {
@@ -45,6 +49,8 @@ describe('AdminExperiencesComponent - Mercado Pago Precedence', () => {
         providers: signal<ProviderUser[]>([sampleConnectedProvider, sampleDisconnectedProvider]),
         experienceRequests: signal<any[]>([]),
         loadProposalsFromSupabase: () => Promise.resolve(),
+        experiences: signal<any[]>([]),
+        reloadFromStorage: () => {},
       },
       clubProfile: signal({
         name: 'Club de Experiencias',
@@ -54,6 +60,8 @@ describe('AdminExperiencesComponent - Mercado Pago Precedence', () => {
         bankName: 'Banco Nacion',
       }),
       experiences: signal<Experience[]>([]),
+      approveExperienceRequest: () => Promise.resolve(true),
+      rejectExperienceRequest: () => Promise.resolve(true),
     };
 
     await TestBed.configureTestingModule({
@@ -66,6 +74,7 @@ describe('AdminExperiencesComponent - Mercado Pago Precedence', () => {
 
     fixture = TestBed.createComponent(AdminExperiencesComponent);
     component = fixture.componentInstance;
+    (component as any).experienceService.remoteLoadPromise = Promise.resolve(true);
   });
 
   describe('getExpMpConnected', () => {
@@ -263,6 +272,137 @@ describe('AdminExperiencesComponent - Mercado Pago Precedence', () => {
       };
       component.openEditModal(exp as Experience);
       expect(component.editCategory()).toBe('hospedajes');
+    });
+  });
+
+  describe('proposal resolution without catalog record', () => {
+    it('should resolve pending proposal from providerStore when not in catalog', async () => {
+      const proposal = {
+        id: 'req-pending-only-1',
+        slug: 'travesia-sierra-puna',
+        title: 'Travesía Sierra Puna',
+        subheading: 'Aventura única',
+        region: 'Catamarca',
+        difficulty: 'Moderada',
+        duration: '1 día',
+        priceArs: 50000,
+        capacity: 10,
+        dates: '2026-12-01',
+        status: 'pendiente',
+        providerName: 'Guía Juan',
+        providerEmail: 'juan@test.com',
+      };
+      mockAdminStore.providerStore.experienceRequests.set([proposal]);
+
+      await (component as any).syncRouteState('/admin/experiencias/travesia-sierra-puna', 'travesia-sierra-puna');
+
+      expect(component.notFound()).toBe(false);
+      expect(component.isRouteDetailMode()).toBe(true);
+      const editing = component.editingExperience();
+      expect(editing).toBeTruthy();
+      expect(editing?.id).toBe('req-pending-only-1');
+      expect(editing?.slug).toBe('travesia-sierra-puna');
+      expect(editing?.status).toBe('pendiente');
+    });
+
+    it('should resolve pending proposal by request ID when slug is not matched in catalog', async () => {
+      const proposal = {
+        id: 'req-uuid-12345',
+        title: 'Cabalgata en la Puna',
+        subheading: 'Cabalgata increíble',
+        region: 'Catamarca',
+        difficulty: 'Baja',
+        duration: '2 horas',
+        priceArs: 30000,
+        capacity: 8,
+        status: 'pendiente',
+      };
+      mockAdminStore.providerStore.experienceRequests.set([proposal]);
+
+      await (component as any).syncRouteState('/admin/experiencias/req-uuid-12345', 'req-uuid-12345');
+
+      expect(component.notFound()).toBe(false);
+      expect(component.editingExperience()?.id).toBe('req-uuid-12345');
+    });
+
+    it('should resolve providerPhone in initialExperience from matching request for external proposal', () => {
+      const proposal = {
+        id: 'req-ext-1',
+        slug: 'exp-ext-1',
+        title: 'Travesía Externa',
+        providerName: 'Carlos Guía',
+        providerPhone: '+5493834112233',
+        status: 'pendiente',
+      };
+      mockAdminStore.providerStore.experienceRequests.set([proposal]);
+
+      const exp: Partial<Experience> = {
+        id: 'req-ext-1',
+        slug: 'exp-ext-1',
+        title: 'Travesía Externa',
+        providerName: 'Carlos Guía',
+      };
+
+      component.openEditModal(exp as Experience);
+      const initExp = component.initialExperience();
+      expect(initExp).toBeTruthy();
+      expect(initExp?.providerPhone).toBe('+5493834112233');
+      expect(component.editProviderPhone()).toBe('+5493834112233');
+    });
+
+    it('should not overwrite resolved phone when onSaveAdminExperience receives an untouched empty phone', async () => {
+      const proposal = {
+        id: 'req-ext-2',
+        slug: 'exp-ext-2',
+        title: 'Travesía Externa 2',
+        providerName: 'Carlos Guía',
+        providerPhone: '+5493834998877',
+        status: 'pendiente',
+      };
+      mockAdminStore.providerStore.experienceRequests.set([proposal]);
+
+      const exp: Partial<Experience> = {
+        id: 'req-ext-2',
+        slug: 'exp-ext-2',
+        title: 'Travesía Externa 2',
+        providerName: 'Carlos Guía',
+      };
+
+      component.openEditModal(exp as Experience);
+      expect(component.editProviderPhone()).toBe('+5493834998877');
+
+      vi.spyOn(component as any, 'saveExperience').mockReturnValue(Promise.resolve());
+
+      await component.onSaveAdminExperience({
+        payload: {
+          title: 'Travesía Externa 2',
+          slug: 'exp-ext-2',
+          tagline: 'Tagline',
+          description: 'Desc',
+          category: 'expediciones',
+          region: 'Catamarca',
+          meetingPoint: 'Plaza',
+          meetingPointUrl: '',
+          itinerary: '',
+          difficulty: 'Moderada',
+          durationLabel: '1 día',
+          altitudeMeters: 850,
+          capacityPerDate: 10,
+          priceArs: 50000,
+          dates: ['2026-12-01'],
+          pricingPacks: [],
+          coverImage: '',
+          videoUrl: '',
+          albumPhotos: [],
+          includedServices: '',
+          participantRequirements: '',
+          highlights: [],
+          providerName: 'Carlos Guía',
+          providerPhone: '', // Untouched empty field
+        } as any,
+      });
+
+      expect(component.editProviderPhone()).toBe('+5493834998877');
     });
   });
 });

@@ -942,6 +942,7 @@ export interface Database {
           p_receipt_url?: string;
           p_receipt_storage_key?: string | null;
           p_receipt_storage_provider?: string;
+          p_stay_length?: number | null;
         };
         Returns: Json;
       };

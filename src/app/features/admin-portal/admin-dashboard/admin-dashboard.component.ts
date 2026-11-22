@@ -427,13 +427,33 @@ import { Discount } from '../../../core/models/discount.model';
                       <span class="row-date">{{ req.createdAt | fecha: 'corta' }}</span>
                     </td>
                     <td class="text-right">
-                      <a
-                        [routerLink]="getProposalDetailRoute(req)"
-                        class="btn-review"
-                        title="Revisar propuesta de experiencia"
-                      >
-                        REVISAR
-                      </a>
+                      <div class="proposal-row-actions">
+                        <a
+                          [routerLink]="getProposalDetailRoute(req)"
+                          class="btn-review"
+                          title="Revisar propuesta de experiencia"
+                        >
+                          REVISAR
+                        </a>
+                        <button
+                          type="button"
+                          class="btn-approve btn-action-sm"
+                          [disabled]="processingExperienceRequestId() === req.id"
+                          (click)="approveExperience(req.id)"
+                          title="Aprobar nueva experiencia y publicarla"
+                        >
+                          APROBAR
+                        </button>
+                        <button
+                          type="button"
+                          class="btn-reject btn-action-sm"
+                          [disabled]="processingExperienceRequestId() === req.id"
+                          (click)="rejectExperience(req.id)"
+                          title="Rechazar propuesta"
+                        >
+                          RECHAZAR
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 }
@@ -1783,6 +1803,30 @@ import { Discount } from '../../../core/models/discount.model';
       .btn-save-banking:hover:not(:disabled) {
         background: #80b3ff;
         color: #070d18;
+      }
+
+      .proposal-row-actions {
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.4rem;
+        flex-wrap: nowrap;
+      }
+
+      .btn-action-sm {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.35rem 0.65rem;
+        font-size: 0.72rem;
+        font-weight: 700;
+        border-radius: 2px;
+        cursor: pointer;
+        white-space: nowrap;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        line-height: 1;
+        transition: all 0.2s ease;
       }
 
       .btn-review {
@@ -3840,12 +3884,12 @@ export class AdminDashboardComponent {
   }
 
   refreshAll(): void {
-    this.store.providerStore.reloadFromStorage();
-    void this.store.providerStore.loadProposalsFromSupabase();
-    void this.store.loadAllMembers();
-    void this.store.loadAllSubmissions();
-    void this.store.loadAllApplications();
-    void this.experienceService.reloadFromSupabase();
+    this.store.providerStore.reloadFromStorage?.();
+    void this.store.providerStore.loadProposalsFromSupabase?.();
+    void this.store.loadAllMembers?.();
+    void this.store.loadAllSubmissions?.();
+    void this.store.loadAllApplications?.();
+    void this.experienceService.reloadFromSupabase?.();
   }
 
   async openReceipt(sub: TransferSubmission): Promise<void> {
@@ -4125,13 +4169,24 @@ export class AdminDashboardComponent {
       }
     }
 
+    const provExperiences = this.store.providerStore.experiences?.() || [];
+    const byProvId = provExperiences.find(
+      (e) =>
+        e.id === req.id ||
+        e.id === `exp-${req.id}` ||
+        e.id.replace(/^(?:exp|req)-/, '') === cleanReqId,
+    );
+    if (byProvId?.slug) {
+      return `/admin/experiencias/${byProvId.slug}`;
+    }
+
     return null;
   }
 
   getProposalDetailRoute(req: ExperienceProposalRequest): string {
     return (
       this.getMatchingExperienceRoute(req) ||
-      `/admin/experiencias/${req.slug || slugify(req.title)}`
+      `/admin/experiencias/${req.slug || slugify(req.title) || req.id}`
     );
   }
 
