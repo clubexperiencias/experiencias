@@ -78,6 +78,7 @@ export interface ProviderExperience {
   priceArs: number;
   capacityPerDate: number;
   dates: string[];
+  datesOnRequest?: boolean;
   dateSlots?: ExperienceDateSlot[];
   status: ExperienceStatus;
   moderation?: ExperienceModerationLog;
@@ -126,6 +127,7 @@ export interface TransferSubmission {
   experienceTitle: string;
   date: string;
   participants: number;
+  stayLength?: number;
   amountArs: number;
   discountCode?: string;
   discountArs?: number;
@@ -156,6 +158,7 @@ export interface NewTransferSubmission {
   experienceId: string;
   date: string;
   participants: number;
+  stayLength?: number;
   fullName: string;
   email: string;
   dni: string;
@@ -173,6 +176,7 @@ export interface MercadoPagoPaymentInput {
   experienceId: string;
   date: string;
   participants: number;
+  stayLength?: number;
   amountArs: number;
   baseAmountArs?: number;
   surchargeArs?: number;

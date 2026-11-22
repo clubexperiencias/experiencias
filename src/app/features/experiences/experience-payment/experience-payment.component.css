@@ -699,6 +699,97 @@
   cursor: pointer;
 }
 
+/* Estilos específicos para selección de estadías en Hospedajes */
+.pay-lodging-dates-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 1.25rem;
+}
+
+.lodging-stay-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+
+@media (max-width: 640px) {
+  .lodging-stay-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.lodging-date-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.lodging-date-lbl {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.lodging-time-badge {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #ff9933;
+  background: rgba(255, 153, 51, 0.12);
+  padding: 0.15rem 0.5rem;
+  border-radius: 3px;
+}
+
+.pay-date-native {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: #110d08;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  color-scheme: dark;
+}
+
+.pay-date-native:focus {
+  outline: none;
+  border-color: #ff5f00;
+  box-shadow: 0 0 0 2px rgba(255, 95, 0, 0.25);
+}
+
+.lodging-nights-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.85rem 1.15rem;
+  background: rgba(255, 95, 0, 0.1);
+  border: 1px solid rgba(255, 95, 0, 0.3);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  color: #ffffff;
+}
+
+.lodging-nights-banner .nights-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #ffffff;
+}
+
+.lodging-nights-banner .nights-calc strong {
+  color: #00cc88;
+  font-size: 1.05rem;
+}
+
 .pay-discount {
   display: flex;
   flex-direction: column;

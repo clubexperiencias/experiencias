@@ -1,608 +1,73 @@
-<div class="kayak-section-card form-card">
-  <header class="form-header">
+<div class="panel-container form-card">
+  <div class="form-header">
+    <a [routerLink]="backLink()" class="btn-back-panel">
+      &larr; Volver a Mis Experiencias
+    </a>
     <h1 class="card-heading">
-      {{ isEditMode() ? 'Editar Experiencia' : 'Nueva Experiencia para el Club' }}
+      {{ isEditMode() ? 'Editar Experiencia' : 'Nueva Propuesta de Experiencia' }}
     </h1>
     <p class="card-subheading">
-      Completá la información técnica, multimedia, fechas y tarifas. Las publicaciones pasan por la revisión y
-      aprobación del equipo editorial antes de salir al público.
+      {{
+        isEditMode()
+          ? 'Actualizá los datos de tu experiencia. Los cambios en fechas y aranceles se actualizan para nuevas reservas.'
+          : 'Completá los datos de la actividad para que el equipo de Experiencias Catamarca la revise y apruebe en la plataforma.'
+      }}
     </p>
-  </header>
+  </div>
 
-  @if (isEditMode() && notFound()) {
-    <div class="empty-state-card" style="margin-top: 1.5rem; text-align: center; padding: 2.5rem 1.5rem;">
+  @if (notFound()) {
+    <div class="empty-state-box">
       <h2 class="card-heading">Experiencia no encontrada</h2>
-      <p class="card-subheading">No pudimos encontrar la experiencia que intentás editar en el catálogo.</p>
-      <a [routerLink]="backLink()" class="btn-back-panel" style="margin-top: 1.25rem; display: inline-flex;">
-        Volver a Experiencias
+      <p class="empty-sub">La experiencia que intentás editar no existe o no tenés permisos para gestionarla.</p>
+      <a [routerLink]="backLink()" class="btn-back-panel" style="margin-top: 1rem;">
+        Volver a mis experiencias
       </a>
     </div>
-  } @else if (isEditMode() && loadError()) {
-    <div class="empty-state-card" style="margin-top: 1.5rem; text-align: center; padding: 2.5rem 1.5rem;">
+  } @else if (loadError()) {
+    <div class="empty-state-box">
       <h2 class="card-heading">Error al cargar la experiencia</h2>
-      <p class="card-subheading">Hubo un problema de conexión al consultar el catálogo. Podés reintentar la carga.</p>
-      <div style="display: flex; gap: 0.75rem; justify-content: center; margin-top: 1.25rem;">
-        <button type="button" class="btn-back-panel" (click)="retryLoad()" style="display: inline-flex;">
-          Reintentar
-        </button>
-        <a [routerLink]="backLink()" class="cancel-btn" style="display: inline-flex; align-items: center;">
+      <p class="empty-sub">Hubo un problema de conexión con el servidor.</p>
+      <div style="display: flex; gap: 0.75rem; justify-content: center; margin-top: 1rem;">
+        <button type="button" class="btn-back-panel" (click)="retryLoad()">Reintentar</button>
+        <a [routerLink]="backLink()" class="btn-back-panel" style="background: transparent; border-color: rgba(255, 255, 255, 0.4);">
           Volver
         </a>
       </div>
     </div>
   } @else {
-  @if (!isEditMode() && hasDraft()) {
-    <div class="draft-notice-banner" role="status">
-      <div class="draft-notice-info">
-        <mat-icon class="draft-notice-icon">save</mat-icon>
-        <span>Borrador guardado en este navegador. Se conservará hasta que envíes la propuesta.</span>
+    @if (!isEditMode() && hasDraft()) {
+      <div class="draft-notice-banner" role="status">
+        <div class="draft-notice-info">
+          <mat-icon class="draft-notice-icon">save</mat-icon>
+          <span>Borrador guardado en este navegador. Se conservará hasta que envíes la propuesta.</span>
+        </div>
+        <button
+          type="button"
+          class="draft-notice-discard-btn"
+          (click)="discardDraft()"
+          title="Borrar borrador y reiniciar formulario"
+        >
+          Descartar borrador
+        </button>
       </div>
-      <button
-        type="button"
-        class="draft-notice-discard-btn"
-        (click)="discardDraft()"
-        title="Borrar borrador y reiniciar formulario"
-      >
-        Descartar borrador
-      </button>
-    </div>
-  }
+    }
 
-  @if (toastMessage()) {
-    <div class="form-toast-banner" role="status">
-      <span>{{ toastMessage() }}</span>
-    </div>
-  }
-
-  <form [formGroup]="form" class="panel-form">
-    <!-- 1. Información General -->
-    <fieldset class="form-fieldset">
-      <legend class="fieldset-legend">1. Información General</legend>
-
-      <div class="form-group" [class.has-error]="fieldInvalid('title')">
-        <label for="title" class="form-label">Título principal de la experiencia *</label>
-        <input
-          id="title"
-          type="text"
-          formControlName="title"
-          class="form-input"
-          placeholder="Ej: Expedición 4x4 al Campo de Piedra Pómez & Volcanes"
-        />
-        @if (fieldInvalid('title')) {
-          <span class="field-error">Ingresá un título descriptivo (entre 6 y 100 caracteres).</span>
-        }
-      </div>
-
-      <div class="form-row form-row-2">
-        <div class="form-group" [class.has-error]="fieldInvalid('category')">
-          <label for="category" class="form-label">Ubicación en la Web (Sección) *</label>
-          <select id="category" formControlName="category" class="form-input form-select">
-            @if (isCustomCategory(form.get('category')?.value)) {
-              <option [value]="form.get('category')?.value">{{ form.get('category')?.value }} (Personalizado)</option>
-            }
-            @for (cat of categoryOptions; track cat.value) {
-              <option [value]="cat.value">{{ cat.label }}</option>
-            }
-          </select>
-        </div>
-
-        <div class="form-group" [class.has-error]="fieldInvalid('region')">
-          <label for="region" class="form-label">Región turística de Catamarca *</label>
-          <select id="region" formControlName="region" class="form-input form-select">
-            @if (isCustomRegion(form.get('region')?.value)) {
-              <option [value]="form.get('region')?.value">{{ form.get('region')?.value }}</option>
-            }
-            @for (r of regions; track r) {
-              <option [value]="r">{{ r }}</option>
-            }
-          </select>
-        </div>
-      </div>
-
-      <div class="form-group" [class.has-error]="fieldInvalid('tagline')">
-        <label for="tagline" class="form-label">Bajada o síntesis atractiva (1 frase) *</label>
-        <input
-          id="tagline"
-          type="text"
-          formControlName="tagline"
-          class="form-input"
-          placeholder="Ej: Travesía andina en el laberinto blanco de la Puna a más de 3.000 msnm."
-        />
-        @if (fieldInvalid('tagline')) {
-          <span class="field-error">La bajada es obligatoria (hasta 160 caracteres).</span>
-        }
-      </div>
-
-      <div class="form-group" [class.has-error]="fieldInvalid('description')">
-        <label for="description" class="form-label">Descripción detallada de la propuesta *</label>
-        <textarea
-          id="description"
-          rows="5"
-          formControlName="description"
-          class="form-input form-textarea"
-          placeholder="Describí el itinerario, qué incluye la actividad (equipo, refrigerio, guía certificado), recomendaciones de vestimenta y qué esperar de la experiencia..."
-        ></textarea>
-        @if (fieldInvalid('description')) {
-          <span class="field-error">La descripción debe tener al menos 30 caracteres.</span>
-        }
-      </div>
-    </fieldset>
-
-    <!-- 2. Ubicación y Logística -->
-    <fieldset class="form-fieldset">
-      <legend class="fieldset-legend">2. Ubicación y Logística</legend>
-
-      <div class="form-row form-row-2">
-        <div class="form-group" [class.has-error]="fieldInvalid('meetingPoint')">
-          <label for="meetingPoint" class="form-label">Punto de encuentro y salida *</label>
-          <input
-            id="meetingPoint"
-            type="text"
-            formControlName="meetingPoint"
-            class="form-input"
-            placeholder="Ej: Plaza Principal de El Peñón / Club Náutico"
-          />
-          @if (fieldInvalid('meetingPoint')) {
-            <span class="field-error">Indicá el punto de encuentro o partida.</span>
-          }
-        </div>
-
-        <div class="form-group">
-          <label for="meetingPointUrl" class="form-label">Enlace de Google Maps del punto (opcional)</label>
-          <input
-            id="meetingPointUrl"
-            type="url"
-            formControlName="meetingPointUrl"
-            class="form-input"
-            placeholder="https://maps.app.goo.gl/..."
-          />
-        </div>
-      </div>
-    </fieldset>
-
-    <!-- 3. Dificultad, Duración, Cupos y Tarifas -->
-    <fieldset class="form-fieldset">
-      <legend class="fieldset-legend">3. Dificultad, Duración y Tarifas</legend>
-
-      <div class="form-row form-row-3">
-        <div class="form-group" [class.has-error]="fieldInvalid('difficulty')">
-          <label for="difficulty" class="form-label">Nivel de exigencia física *</label>
-          <select id="difficulty" formControlName="difficulty" class="form-input form-select">
-            @for (d of difficulties; track d) {
-              <option [value]="d">{{ d }}</option>
-            }
-          </select>
-        </div>
-
-        <div class="form-group" [class.has-error]="fieldInvalid('altitudeMeters')">
-          <label for="altitudeMeters" class="form-label">Altitud (msnm) *</label>
-          <select id="altitudeMeters" formControlName="altitudeMeters" class="form-input form-select">
-            @if (isCustomAltitude(form.get('altitudeMeters')?.value)) {
-              <option [value]="form.get('altitudeMeters')?.value">{{ form.get('altitudeMeters')?.value }} msnm (Personalizado)</option>
-            }
-            @for (opt of altitudeOptions; track opt.value) {
-              <option [value]="opt.value">{{ opt.label }}</option>
-            }
-          </select>
-        </div>
-
-        <div class="form-group" [class.has-error]="fieldInvalid('durationLabel')">
-          <label for="durationLabel" class="form-label">Duración estimada *</label>
-          <select id="durationLabel" formControlName="durationLabel" class="form-input form-select">
-            <option value="" disabled>Seleccioná una duración</option>
-            @if (isCustomDuration(form.get('durationLabel')?.value)) {
-              <option [value]="form.get('durationLabel')?.value">{{ form.get('durationLabel')?.value }}</option>
-            }
-            @for (d of durationOptions; track d) {
-              <option [value]="d">{{ d }}</option>
-            }
-          </select>
-        </div>
-      </div>
-
-      <div class="form-row form-row-2">
-        <div class="form-group" [class.has-error]="fieldInvalid('priceArs')">
-          <label for="priceArs" class="form-label">Tarifa por persona ($ ARS) *</label>
-          <input
-            id="priceArs"
-            type="number"
-            formControlName="priceArs"
-            class="form-input"
-            step="500"
-            min="1000"
-          />
-        </div>
-
-        <div class="form-group" [class.has-error]="fieldInvalid('capacityPerDate')">
-          <label for="capacityPerDate" class="form-label">Cupo máximo por fecha *</label>
-          <input
-            id="capacityPerDate"
-            type="number"
-            formControlName="capacityPerDate"
-            class="form-input"
-            min="1"
-            max="999"
-            maxlength="3"
-          />
-        </div>
-      </div>
-
-      <div style="margin-top: 1rem;">
-        <app-experience-pricing-packs-editor
-          [packs]="pricingPacks()"
-          [unitPriceArs]="form.controls.priceArs.value || 0"
-          [availableDates]="dates()"
-          (packsChange)="onPricingPacksChange($event)"
-        />
-      </div>
-    </fieldset>
-
-    <!-- 4. Álbum de Fotos y Contenido Multimedia -->
-    <fieldset class="form-fieldset">
-      <legend class="fieldset-legend">4. Fotografía de Portada y Álbum Oficial</legend>
-      <p class="fieldset-hint">
-        Gestioná la fotografía de portada principal y el álbum de fotos (hasta 2 fotos destacadas y hasta 9 fotos de galería común).
-      </p>
-
-      <!-- Portada Principal -->
-      <div class="media-block-section">
-        <label class="form-label">Fotografía de Portada Principal</label>
-        <div class="media-upload-toolbar">
-          <label class="btn-upload-file" [class.is-uploading]="uploadingCover()">
-            <input
-              type="file"
-              accept="image/*"
-              (change)="onUploadCoverImage($event)"
-              style="display: none"
-            />
-            <span>{{ uploadingCover() ? 'Subiendo portada...' : (coverImageUrl() ? 'Cambiar Portada' : 'Subir Portada desde tu equipo') }}</span>
-          </label>
-
-          <div class="url-input-group">
-            <input
-              type="url"
-              class="form-input input-url-media"
-              placeholder="O ingresá URL de imagen (https://...)"
-              [value]="coverUrlInput()"
-              (input)="coverUrlInput.set($any($event.target).value)"
-            />
-            <button
-              type="button"
-              class="btn-apply-url"
-              (click)="applyCoverFromUrl()"
-              [disabled]="!coverUrlInput().trim()"
-            >
-              Aplicar
-            </button>
-          </div>
-
-          @if (coverImageUrl()) {
-            <button
-              type="button"
-              class="btn-remove-media"
-              (click)="removeCoverImage()"
-              title="Quitar foto de portada"
-            >
-              Quitar
-            </button>
-          }
-        </div>
-
-        @if (coverImageUrl()) {
-          <div class="cover-preview-box">
-            <img [src]="coverImageUrl()" alt="Vista previa de portada" class="cover-preview-img" referrerpolicy="no-referrer" />
-          </div>
-        }
-      </div>
-
-      <!-- Álbum Oficial de Fotos -->
-      <div class="media-block-section" style="margin-top: 1.5rem;">
-        <div class="album-header-row">
-          <div>
-            <label class="form-label">Álbum de Fotos de la Experiencia</label>
-            <span class="fieldset-hint">
-              Elegí 2 fotos como destacadas para encabezar la galería y hasta 9 fotos comunes.
-            </span>
-          </div>
-
-          <div class="album-counters-bar">
-            <span class="album-counter-pill is-featured-pill">
-              Destacadas: <strong>{{ featuredPhotos().length }} / 2</strong>
-            </span>
-            <span
-              class="album-counter-pill is-gallery-pill"
-              [class.is-limit-reached]="galleryPhotos().length >= 9"
-            >
-              Galería: <strong>{{ galleryPhotos().length }} / 9</strong>
-            </span>
-            <span class="album-counter-pill">
-              Total: <strong>{{ totalAlbumCount() }} / 12</strong>
-            </span>
-          </div>
-        </div>
-
-        <div class="media-upload-toolbar">
-          <label
-            class="btn-upload-file"
-            [class.is-uploading]="uploadingAlbum()"
-            [class.is-disabled]="galleryPhotos().length >= 9"
-            [title]="galleryPhotos().length >= 9 ? 'Límite de galería alcanzado' : 'Subir fotos'"
-          >
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              [disabled]="galleryPhotos().length >= 9"
-              (change)="onUploadAlbumPhotos($event)"
-              style="display: none"
-            />
-            <span>
-              {{
-                uploadingAlbum()
-                  ? 'Subiendo fotos...'
-                  : galleryPhotos().length >= 9
-                    ? 'Límite de Galería (9/9) Alcanzado'
-                    : 'Subir Fotos al Álbum'
-              }}
-            </span>
-          </label>
-
-          <div class="url-input-group">
-            <input
-              type="url"
-              class="form-input input-url-media"
-              placeholder="https://ejemplo.com/foto.jpg"
-              [value]="newAlbumPhotoUrl()"
-              (input)="newAlbumPhotoUrl.set($any($event.target).value)"
-              [disabled]="totalAlbumCount() >= 12"
-            />
-            <button
-              type="button"
-              class="btn-apply-url"
-              (click)="addAlbumPhotoFromUrl()"
-              [disabled]="!newAlbumPhotoUrl().trim() || totalAlbumCount() >= 12"
-            >
-              Sumar al Álbum
-            </button>
-          </div>
-        </div>
-
-        @if (albumPhotos().length > 0) {
-          <div class="album-photos-grid">
-            @for (photo of albumPhotos(); track photo.id; let idx = $index) {
-              <div
-                class="album-photo-item"
-                [class.is-featured-item]="photo.isFeatured"
-                [class.is-cover-item]="photo.isCover"
-              >
-                <div class="photo-badge-overlay">
-                  @if (photo.isFeatured) {
-                    <span class="photo-badge badge-featured">Destacada</span>
-                  }
-                  @if (photo.isCover) {
-                    <span class="photo-badge badge-cover">Portada</span>
-                  }
-                </div>
-
-                <img [src]="photo.url" [alt]="photo.caption || 'Foto del álbum'" class="album-thumb" referrerpolicy="no-referrer" />
-
-                <div class="album-item-meta">
-                  <input
-                    type="text"
-                    class="album-caption-input"
-                    [value]="photo.caption || ''"
-                    (input)="updatePhotoCaption(idx, $any($event.target).value)"
-                    placeholder="Epígrafe o título..."
-                  />
-                  <button
-                    type="button"
-                    class="album-delete-btn"
-                    (click)="removeAlbumPhoto(idx)"
-                    title="Eliminar foto del álbum"
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                <div class="album-photo-actions">
-                  <button
-                    type="button"
-                    class="btn-photo-action btn-action-featured"
-                    [class.is-active-featured]="photo.isFeatured"
-                    (click)="toggleFeaturedPhoto(idx)"
-                    [title]="photo.isFeatured ? 'Quitar condición de destacada' : 'Fijar como foto destacada (máx 2)'"
-                  >
-                    {{ photo.isFeatured ? 'Destacada' : 'Destacar' }}
-                  </button>
-                </div>
-              </div>
-            }
-          </div>
-        } @else {
-          <div class="album-empty-placeholder">
-            <span>No hay fotos cargadas en el álbum. Podés subir imágenes para la galería (hasta 2 destacadas y hasta 9 de galería común).</span>
-          </div>
-        }
-      </div>
-
-      <!-- Video Oficial (Opcional) -->
-      <div class="media-block-section" style="margin-top: 1.5rem;">
-        <label class="form-label">Video Oficial (.mp4 o enlace promocional - Opcional)</label>
-        <div class="media-upload-toolbar">
-          <label class="btn-upload-file" [class.is-uploading]="uploadingVideo()">
-            <input
-              type="file"
-              accept="video/mp4,video/*"
-              (change)="onUploadVideo($event)"
-              style="display: none"
-            />
-            <span>{{ uploadingVideo() ? 'Subiendo video...' : (videoUrl() ? 'Cambiar Video' : 'Subir Video (.mp4)') }}</span>
-          </label>
-
-          <div class="url-input-group">
-            <input
-              type="url"
-              class="form-input input-url-media"
-              placeholder="https://ejemplo.com/video.mp4"
-              [value]="videoUrlInput()"
-              (input)="videoUrlInput.set($any($event.target).value)"
-            />
-            <button
-              type="button"
-              class="btn-apply-url"
-              (click)="applyVideoFromUrl()"
-              [disabled]="!videoUrlInput().trim()"
-            >
-              Aplicar Video
-            </button>
-          </div>
-
-          @if (videoUrl()) {
-            <button
-              type="button"
-              class="btn-remove-media"
-              (click)="removeVideo()"
-              title="Quitar video oficial"
-            >
-              Quitar
-            </button>
-          }
-        </div>
-
-        @if (videoUrl()) {
-          <div class="video-preview-box">
-            <video [src]="videoUrl()" controls class="video-preview-player"></video>
-          </div>
-        }
-      </div>
-    </fieldset>
-
-    <!-- 5. Servicios, Requisitos y Cronograma -->
-    <fieldset class="form-fieldset">
-      <legend class="fieldset-legend">5. Servicios, Requisitos y Cronograma</legend>
-
-      <div class="form-row form-row-2">
-        <div class="form-group">
-          <label for="includedRaw" class="form-label">Servicios e Indumentaria Provista (un ítem por línea)</label>
-          <textarea
-            id="includedRaw"
-            rows="4"
-            class="form-input form-textarea"
-            [value]="includedRaw()"
-            (input)="onIncludedChange($any($event.target).value)"
-            placeholder="Kayaks de travesía y remos de carbono&#10;Chaleco salvavidas reglamentario PFD&#10;Guía náutico certificado&#10;Seguro de accidentes personales"
-          ></textarea>
-        </div>
-
-        <div class="form-group">
-          <label for="requirementsRaw" class="form-label">Qué Debes Traer / Requisitos del Participante (un ítem por línea)</label>
-          <textarea
-            id="requirementsRaw"
-            rows="4"
-            class="form-input form-textarea"
-            [value]="requirementsRaw()"
-            (input)="onRequirementsChange($any($event.target).value)"
-            placeholder="Ropa cómoda para mojar y muda seca de recambio&#10;Protector solar y lentes con cordín&#10;Botella de agua recargable (1.5L)&#10;Calzado cerrado apto para agua"
-          ></textarea>
-        </div>
-      </div>
-
-      <div class="form-row form-row-2">
-        <div class="form-group">
-          <label for="highlightsRaw" class="form-label">Puntos Destacados / Lo Mejor de la Experiencia (un ítem por línea)</label>
-          <textarea
-            id="highlightsRaw"
-            rows="3"
-            class="form-input form-textarea"
-            [value]="highlightsRaw()"
-            (input)="onHighlightsChange($any($event.target).value)"
-            placeholder="Vistas panorámicas a la cordillera&#10;Guías de montaña certificados&#10;Grupos reducidos y atención personalizada"
-          ></textarea>
-        </div>
-
-        <div class="form-group">
-          <label for="itinerary" class="form-label">Itinerario o Cronograma Estimado (opcional)</label>
-          <textarea
-            id="itinerary"
-            rows="3"
-            class="form-input form-textarea"
-            [value]="itinerary()"
-            (input)="onItineraryChange($any($event.target).value)"
-            placeholder="09:00 Encuentro y charla de seguridad.&#10;09:30 Inicio de navegación y travesía.&#10;13:00 Almuerzo agreste y descanso.&#10;16:30 Regreso al punto de partida."
-          ></textarea>
-        </div>
-      </div>
-    </fieldset>
-
-    <!-- 6. Fechas de Salida Programadas -->
-    <fieldset class="form-fieldset">
-      <legend class="fieldset-legend">6. Fechas de Salida Programadas</legend>
-
-      <div class="dates-input-row">
-        <div class="date-picker-box">
-          <label for="newDateInput" class="form-label">Seleccionar fecha:</label>
-          <input
-            id="newDateInput"
-            type="date"
-            class="form-input"
-            [value]="newDate()"
-            (input)="newDate.set($any($event.target).value)"
-            (change)="onDatePicked($any($event.target).value)"
-          />
-        </div>
-        <button type="button" class="add-date-btn" (click)="addDate()">Agregar fecha</button>
-      </div>
-
-      @if (datesError()) {
-        <span class="dates-error">{{ datesError() }}</span>
-      }
-
-      <div class="dates-chips-container">
-        @if (dates().length === 0) {
-          <p class="dates-empty-hint">
-            No hay fechas cargadas aún. Agregá al menos una fecha para poder solicitar publicación.
-          </p>
-        } @else {
-          <div class="chips-list">
-            @for (date of dates(); track date) {
-              <div class="date-chip">
-                <span>{{ date | fecha }}</span>
-                <button
-                  type="button"
-                  class="chip-remove"
-                  (click)="removeDate(date)"
-                  title="Quitar fecha"
-                >
-                  ✕
-                </button>
-              </div>
-            }
-          </div>
-        }
-      </div>
-    </fieldset>
-
-    <!-- Error Banner -->
     @if (saveError()) {
-      <div class="save-error-banner" style="padding: 0.75rem 1rem; margin-bottom: 1rem; border-radius: 4px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5; font-size: 0.875rem;">
+      <div class="save-error-banner" style="padding: 0.75rem 1rem; margin-bottom: 1.25rem; border-radius: 4px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5; font-size: 0.875rem;">
         {{ saveError() }}
       </div>
     }
 
-    <!-- Action Buttons -->
-    <div class="form-actions-strip">
-      <a [routerLink]="backLink()" class="cancel-btn"> Cancelar </a>
-
-      <div class="save-buttons-group">
-        <button type="button" class="draft-btn" (click)="save(false)" [disabled]="saving()">
-          {{ saving() ? 'Guardando...' : (isEditMode() ? 'Guardar Cambios' : 'Guardar como Borrador') }}
-        </button>
-
-        <button type="button" class="publish-request-btn" (click)="save(true)" [disabled]="saving()">
-          {{ saving() ? 'Guardando...' : 'Guardar y Solicitar Publicación al Admin' }}
-        </button>
-      </div>
-    </div>
-  </form>
+    <app-experience-form
+      [mode]="'provider'"
+      [initialExperience]="loadedExperience()"
+      [isCreateMode]="!isEditMode()"
+      [saving]="saving()"
+      [saveDisabled]="isEditMode() && !loadedExperience()"
+      [cancelRoute]="backLink()"
+      (saveExperience)="onSave($event)"
+      (cancel)="onCancel()"
+      (draftChange)="onDraftChange()"
+    />
   }
 </div>

@@ -598,6 +598,12 @@ export class ExperienceService {
           payload['itinerary'] = merged.itinerary;
         }
 
+        if (Object.prototype.hasOwnProperty.call(updated, 'participantRequirements')) {
+          payload['participant_requirements'] = updated.participantRequirements;
+        } else if (merged.participantRequirements !== undefined) {
+          payload['participant_requirements'] = merged.participantRequirements;
+        }
+
         if (Object.prototype.hasOwnProperty.call(updated, 'promosAndPricing')) {
           payload['promos_and_pricing'] = updated.promosAndPricing;
         } else if (merged.promosAndPricing !== undefined) {
@@ -920,6 +926,7 @@ export class ExperienceService {
           altitude_meters: experience.altitudeMeters || 0,
           best_season: experience.bestSeason || '',
           itinerary: experience.itinerary || '',
+          participant_requirements: experience.participantRequirements || '',
           promos_and_pricing: experience.promosAndPricing || '',
           pricing_packs: experience.pricingPacks || [],
           dates: experience.dates || [],

@@ -149,9 +149,58 @@
               <section class="kayak-section-card" aria-labelledby="step-1-title">
                 <div class="pay-step-head">
                   <span class="pay-step-index" aria-hidden="true">1</span>
-                  <h2 id="step-1-title" class="pay-step-title">Fecha y personas</h2>
+                  <h2 id="step-1-title" class="pay-step-title">
+                    {{ isLodging() ? 'Fechas de estadía y huéspedes' : 'Fecha y personas' }}
+                  </h2>
                 </div>
 
+                @if (isLodging()) {
+                  <fieldset class="pay-fieldset pay-lodging-dates-card">
+                    <legend class="pay-label">Fechas de Check-in (Entrada) y Check-out (Salida)</legend>
+                    <div class="lodging-stay-grid">
+                      <div class="lodging-date-input-group">
+                        <label for="lodging-check-in" class="lodging-date-lbl">
+                          <span>📅 Check-in (Entrada)</span>
+                          <span class="lodging-time-badge">A partir de las 14:00 hs</span>
+                        </label>
+                        <input
+                          id="lodging-check-in"
+                          type="date"
+                          class="pay-input pay-date-native"
+                          [min]="todayIso"
+                          [value]="checkInDate()"
+                          (change)="onCheckInInput($any($event.target).value)"
+                          required
+                        />
+                      </div>
+
+                      <div class="lodging-date-input-group">
+                        <label for="lodging-check-out" class="lodging-date-lbl">
+                          <span>📅 Check-out (Salida)</span>
+                          <span class="lodging-time-badge">Hasta las 10:00 hs</span>
+                        </label>
+                        <input
+                          id="lodging-check-out"
+                          type="date"
+                          class="pay-input pay-date-native"
+                          [min]="minCheckOutDate()"
+                          [value]="checkOutDate()"
+                          (change)="onCheckOutInput($any($event.target).value)"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div class="lodging-nights-banner">
+                      <div class="nights-pill">
+                        🌙 Estadía: <strong>{{ selectedNights() }} {{ selectedNights() === 1 ? 'noche' : 'noches' }}</strong>
+                      </div>
+                      <div class="nights-calc">
+                        {{ selectedNights() }} × {{ exp.priceArs | ars }} = <strong>{{ subtotal() | ars }}</strong>
+                      </div>
+                    </div>
+                  </fieldset>
+                } @else {
                 <fieldset class="pay-fieldset">
                   <legend class="pay-label">Fecha de salida</legend>
                   <div class="pay-date-grid">
@@ -206,6 +255,7 @@
                   <p class="pay-error">Elegí una fecha.</p>
                   }
                 </fieldset>
+                }
 
                 @if (availablePacksForSelectedDate().length > 0) {
                 <div class="pay-field pay-packs-field">
@@ -222,7 +272,7 @@
                         <strong class="pack-card-title">Tarifa Individual</strong>
                         <span class="pack-card-price">{{ exp.priceArs | ars }}</span>
                       </div>
-                      <span class="pack-card-meta">Por persona · elegí la cantidad de cupos</span>
+                      <span class="pack-card-meta">Por persona · elegí la cantidad de personas</span>
                     </button>
 
                     @for (pack of availablePacksForSelectedDate(); track pack.id) {
@@ -238,9 +288,9 @@
                         <span class="pack-card-price">{{ pack.totalPriceArs | ars }}</span>
                       </div>
                       <div class="pack-card-bottom">
-                        <span class="pack-card-meta">Incluye {{ pack.seats }} cupos</span>
+                        <span class="pack-card-meta">Válido para {{ pack.seats }} {{ pack.seats === 1 ? 'persona' : 'personas' }}</span>
                         @if (!hasNoFixedDates() && seatsForSelectedDate() < pack.seats) {
-                        <span class="pack-card-warn">Requiere {{ pack.seats }} lugares</span>
+                        <span class="pack-card-warn">Requiere disponibilidad para {{ pack.seats }} personas</span>
                         } @else if (getPackSavingsArs(pack) > 0) {
                         <span class="pack-card-save">Ahorrás {{ getPackSavingsArs(pack) | ars }}</span>
                         }
@@ -252,17 +302,19 @@
                 }
 
                 <div class="pay-field">
-                  <label for="pay-participants" class="pay-label">Cantidad de personas</label>
+                  <label for="pay-participants" class="pay-label">
+                    {{ isLodging() ? 'Cantidad de huéspedes' : 'Cantidad de personas' }}
+                  </label>
                   @if (selectedPricingPack(); as activePack) {
                   <div class="pay-pack-locked-seats">
-                    <strong>{{ activePack.seats }} {{ activePack.seats === 1 ? 'cupo reservado' : 'cupos reservados' }}</strong>
-                    <span>({{ activePack.label }})</span>
+                    <strong>Pase para {{ activePack.seats }} {{ activePack.seats === 1 ? (isLodging() ? 'huésped' : 'persona') : (isLodging() ? 'huéspedes' : 'personas') }}</strong>
+                    <span>({{ activePack.label }} - total por la estadía)</span>
                   </div>
                   } @else {
                   <select id="pay-participants" class="pay-input pay-select-plain" formControlName="participants">
                     @for (n of participantOptions(); track n) {
                     <option [ngValue]="n">
-                      {{ n }} {{ n === 1 ? 'persona' : 'personas' }}
+                      {{ n }} {{ isLodging() ? (n === 1 ? 'huésped' : 'huéspedes') : (n === 1 ? 'persona' : 'personas') }}
                     </option>
                     }
                   </select>
@@ -512,12 +564,12 @@
                 <span class="section-kicker">RESUMEN</span>
                 <dl class="pay-summary-list">
                   <div>
-                    <dt>Fecha</dt>
+                    <dt>{{ isLodging() ? 'Estadía' : 'Fecha' }}</dt>
                     <dd>
                       {{
-                      form.controls.date.value
-                      ? (form.controls.date.value | fecha: 'larga')
-                      : 'A elegir'
+                      isLodging() && checkInDate() && checkOutDate()
+                      ? (checkInDate() | fecha: 'corta') + ' al ' + (checkOutDate() | fecha: 'corta') + ' (' + selectedNights() + (selectedNights() === 1 ? ' noche)' : ' noches)')
+                      : (form.controls.date.value ? (form.controls.date.value | fecha: 'larga') : 'A elegir')
                       }}
                     </dd>
                   </div>
@@ -531,8 +583,8 @@
                     <dd>{{ activePack.totalPriceArs | ars }}</dd>
                   </div>
                   <div>
-                    <dt>Cupos incluidos</dt>
-                    <dd>{{ activePack.seats }} {{ activePack.seats === 1 ? 'persona' : 'personas' }}</dd>
+                    <dt>{{ isLodging() ? 'Huéspedes incluidos' : 'Personas que asisten' }}</dt>
+                    <dd>{{ activePack.seats }} {{ activePack.seats === 1 ? (isLodging() ? 'huésped' : 'persona') : (isLodging() ? 'huéspedes' : 'personas') }}</dd>
                   </div>
                   @if (getPackSavingsArs(activePack) > 0) {
                   <div class="pay-discount-line">
@@ -542,16 +594,27 @@
                   }
                   } @else {
                   <div>
-                    <dt>Arancel por persona</dt>
+                    <dt>{{ isLodging() ? 'Tarifa por noche' : 'Arancel por persona' }}</dt>
                     <dd>{{ exp.priceArs | ars }}</dd>
                   </div>
+                  @if (isLodging()) {
+                  <div>
+                    <dt>Noches de estadía</dt>
+                    <dd>{{ selectedNights() }} {{ selectedNights() === 1 ? 'noche' : 'noches' }}</dd>
+                  </div>
+                  <div>
+                    <dt>Huéspedes</dt>
+                    <dd>{{ form.controls.participants.value }} {{ form.controls.participants.value === 1 ? 'huésped' : 'huéspedes' }}</dd>
+                  </div>
+                  } @else {
                   <div>
                     <dt>Personas</dt>
                     <dd>{{ form.controls.participants.value }}</dd>
                   </div>
                   }
+                  }
                   <div>
-                    <dt>Punto de encuentro</dt>
+                    <dt>{{ isLodging() ? 'Ubicación' : 'Punto de encuentro' }}</dt>
                     <dd>{{ exp.meetingPoint }}</dd>
                   </div>
                   @if (appliedDiscount(); as discount) {

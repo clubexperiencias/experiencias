@@ -125,6 +125,11 @@ const adminRoutes: Routes = [
         pathMatch: 'full',
       },
       {
+        path: 'admin/experiencias/nueva',
+        redirectTo: 'experiencias/nueva',
+        pathMatch: 'full',
+      },
+      {
         path: 'admin/experiencias/:slug',
         redirectTo: 'experiencias/:slug',
         pathMatch: 'full',
@@ -138,6 +143,14 @@ const adminRoutes: Routes = [
         path: 'postulaciones',
         redirectTo: 'prestadores',
         pathMatch: 'full',
+      },
+      {
+        path: 'experiencias/nueva',
+        title: 'Crear Nueva Experiencia - Portal de Admin',
+        loadComponent: () =>
+          import('./features/admin-portal/admin-experiences/admin-experiences.component').then(
+            (m) => m.AdminExperiencesComponent,
+          ),
       },
       {
         path: 'experiencias',
@@ -304,9 +317,9 @@ const providerRoutes: Routes = [
         path: 'experiencias/nueva',
         title: 'Nueva Propuesta de Experiencia - Experiencias Club',
         loadComponent: () =>
-          import(
-            './features/provider-panel/provider-experience-proposal-modal/provider-experience-proposal-modal.component'
-          ).then((m) => m.ProviderExperienceProposalModalComponent),
+          import('./features/provider-panel/provider-experience-form/provider-experience-form.component').then(
+            (m) => m.ProviderExperienceFormComponent,
+          ),
       },
       {
         path: 'experiencias/:id/editar',
@@ -725,6 +738,11 @@ const publicRoutes: Routes = [
         pathMatch: 'full',
       },
       {
+        path: 'admin/experiencias/nueva',
+        redirectTo: 'experiencias/nueva',
+        pathMatch: 'full',
+      },
+      {
         path: 'admin/experiencias/:slug',
         redirectTo: 'experiencias/:slug',
         pathMatch: 'full',
@@ -738,6 +756,14 @@ const publicRoutes: Routes = [
         path: 'postulaciones',
         redirectTo: 'prestadores',
         pathMatch: 'full',
+      },
+      {
+        path: 'experiencias/nueva',
+        title: 'Crear Nueva Experiencia - Portal de Admin',
+        loadComponent: () =>
+          import('./features/admin-portal/admin-experiences/admin-experiences.component').then(
+            (m) => m.AdminExperiencesComponent,
+          ),
       },
       {
         path: 'experiencias',
@@ -893,9 +919,9 @@ const publicRoutes: Routes = [
         path: 'experiencias/nueva',
         title: 'Nueva Propuesta de Experiencia - Experiencias Club',
         loadComponent: () =>
-          import(
-            './features/provider-panel/provider-experience-proposal-modal/provider-experience-proposal-modal.component'
-          ).then((m) => m.ProviderExperienceProposalModalComponent),
+          import('./features/provider-panel/provider-experience-form/provider-experience-form.component').then(
+            (m) => m.ProviderExperienceFormComponent,
+          ),
       },
       {
         path: 'experiencias/:id/editar',

@@ -68,6 +68,7 @@ export interface ExperienceProposalRequest {
   capacity: number;
   season: string;
   dates: string;
+  datesOnRequest?: boolean;
   priceArs: number;
   priceUsd?: number | null;
   promosAndPricing?: string;
@@ -109,7 +110,7 @@ export const MP_PENDING_HOLD_MS = MP_PENDING_HOLD_MINUTES * 60 * 1000;
 export function parseConfirmedProposalDates(datesStr?: string): string[] {
   if (!datesStr) return [];
   const trimmed = datesStr.trim();
-  if (!trimmed || trimmed.toLowerCase().includes('a coordinar')) {
+  if (!trimmed) {
     return [];
   }
   const matches = trimmed.match(/\b\d{4}-\d{2}-\d{2}\b/g);
@@ -1230,32 +1231,33 @@ export class ProviderStoreService {
           updates.mpEmail !== undefined;
 
         let remoteNotes: string | null = null;
-        if (hasMpUpdates || updates.notes !== undefined) {
-          // Cargar notas remotas actuales antes de aplicar la actualización para preservar
-          // metadatos persistidos (como pausedByBajaExpIds) si el registro local no los tenía cargados.
-          try {
-            const { data: remoteRow, error: fetchErr } = await (this.supabase.from('prestadores') as any)
-              .select('notes')
-              .eq('email', email)
-              .maybeSingle();
-            if (fetchErr) {
-              console.error('[ProviderStore] Error consultando notas remotas del prestador:', fetchErr);
+        try {
+          const { data: remoteRow, error: fetchErr } = await (this.supabase.from('prestadores') as any)
+            .select('notes')
+            .eq('email', email)
+            .maybeSingle();
+          if (fetchErr) {
+            console.error('[ProviderStore] Error consultando notas remotas del prestador:', fetchErr);
+            if (hasMpUpdates || updates.notes !== undefined) {
               return {
                 success: false,
                 message: 'No se pudieron verificar los datos actuales del prestador en el servidor. Intente nuevamente.',
               };
             }
-            if (remoteRow) {
-              remoteNotes = typeof remoteRow.notes === 'string' ? remoteRow.notes : '';
-            }
-          } catch (fetchErr) {
-            console.error('[ProviderStore] Excepción al consultar notas remotas del prestador:', fetchErr);
+          }
+          if (remoteRow) {
+            remoteNotes = typeof remoteRow.notes === 'string' ? remoteRow.notes : '';
+          }
+        } catch (fetchErr) {
+          if (hasMpUpdates || updates.notes !== undefined) {
             return {
               success: false,
               message: 'Error de comunicación al consultar los datos del prestador en el servidor.',
             };
           }
+        }
 
+        if (hasMpUpdates || updates.notes !== undefined) {
           if (remoteNotes === null) {
             return {
               success: false,
@@ -1279,22 +1281,56 @@ export class ProviderStoreService {
           }
 
           if (updates.notes !== undefined) {
+            let localObj: Record<string, any> | null = null;
+            if (current.notes) {
+              try {
+                const parsedLocal = JSON.parse(current.notes);
+                if (parsedLocal && typeof parsedLocal === 'object' && !Array.isArray(parsedLocal)) {
+                  localObj = parsedLocal;
+                }
+              } catch {
+                localObj = null;
+              }
+            }
+
+            const localHadBajaIds = !!(localObj && 'pausedByBajaExpIds' in localObj);
+            const shouldPreserveBajaIds = !localHadBajaIds && 'pausedByBajaExpIds' in notesObj;
+
             if (typeof updates.notes === 'string' && updates.notes.trim()) {
               try {
                 const parsedUpdates = JSON.parse(updates.notes);
                 if (parsedUpdates && typeof parsedUpdates === 'object' && !Array.isArray(parsedUpdates)) {
-                  notesObj = {
-                    ...notesObj,
-                    ...parsedUpdates,
-                  };
+                  if (shouldPreserveBajaIds) {
+                    notesObj = {
+                      ...notesObj,
+                      ...parsedUpdates,
+                      ...(!('pausedByBajaExpIds' in parsedUpdates)
+                        ? { pausedByBajaExpIds: notesObj['pausedByBajaExpIds'] }
+                        : {}),
+                    };
+                  } else {
+                    notesObj = { ...parsedUpdates };
+                  }
                 } else {
-                  notesObj['text'] = updates.notes.trim();
+                  if (shouldPreserveBajaIds) {
+                    notesObj['text'] = updates.notes.trim();
+                  } else {
+                    notesObj = { text: updates.notes.trim() };
+                  }
                 }
               } catch {
-                notesObj['text'] = updates.notes.trim();
+                if (shouldPreserveBajaIds) {
+                  notesObj['text'] = updates.notes.trim();
+                } else {
+                  notesObj = { text: updates.notes.trim() };
+                }
               }
             } else if (typeof updates.notes === 'string') {
-              delete notesObj['text'];
+              if (shouldPreserveBajaIds) {
+                delete notesObj['text'];
+              } else {
+                notesObj = {};
+              }
             }
           }
 
@@ -2649,14 +2685,22 @@ export class ProviderStoreService {
     if (!experience || experience.status !== 'publicada') {
       throw new Error('La experiencia no está disponible.');
     }
+    const isLodgingExp =
+      experience.category === 'hospedajes' ||
+      (typeof input.date === 'string' && input.date.includes('noche'));
+    const checkDate =
+      isLodgingExp && typeof input.date === 'string' && input.date.includes(' al ')
+        ? input.date.split(' al ')[0].trim()
+        : input.date;
+
     if (
       experience.dates.length > 0 &&
-      !experience.dates.includes(input.date) &&
+      !experience.dates.includes(checkDate) &&
       input.date !== 'A coordinar'
     ) {
       throw new Error('La fecha elegida no está disponible.');
     }
-    if (input.date !== 'A coordinar' && this.isDateClosed(experience, input.date)) {
+    if (input.date !== 'A coordinar' && this.isDateClosed(experience, checkDate)) {
       throw new Error('La fecha elegida se encuentra cerrada para nuevas reservas.');
     }
     const selectedPack = input.pricingPackId
@@ -2701,9 +2745,12 @@ export class ProviderStoreService {
     if (fileError) {
       throw new Error(fileError);
     }
+    const stayLength = input.stayLength && input.stayLength > 0 ? input.stayLength : 1;
     const subtotal = selectedPack
       ? selectedPack.totalPriceArs
-      : experience.priceArs * input.participants;
+      : isLodgingExp
+        ? experience.priceArs * stayLength
+        : experience.priceArs * input.participants;
     let discountArs = 0;
     let discountCode: string | undefined = undefined;
 
@@ -2789,6 +2836,7 @@ export class ProviderStoreService {
             p_receipt_storage_key: storageKey || null,
             p_receipt_storage_provider: storageProvider,
             p_pricing_pack_id: selectedPack?.id || null,
+            p_stay_length: isLodgingExp ? stayLength : null,
           },
         );
 
@@ -2842,6 +2890,7 @@ export class ProviderStoreService {
       experienceTitle: experience.title,
       date: input.date,
       participants: input.participants,
+      stayLength: isLodgingExp ? stayLength : undefined,
       amountArs,
       ...(discountCode ? { discountCode, discountArs } : {}),
       fullName: input.fullName.trim(),
@@ -3030,6 +3079,7 @@ export class ProviderStoreService {
     experienceId: string;
     date: string;
     participants: number;
+    stayLength?: number;
     amountArs: number;
     baseAmountArs: number;
     surchargeArs: number;
@@ -3057,14 +3107,22 @@ export class ProviderStoreService {
     if (!experience || experience.status !== 'publicada') {
       throw new Error('La experiencia no está disponible.');
     }
+    const isLodgingExp =
+      experience.category === 'hospedajes' ||
+      (typeof input.date === 'string' && input.date.includes('noche'));
+    const checkDate =
+      isLodgingExp && typeof input.date === 'string' && input.date.includes(' al ')
+        ? input.date.split(' al ')[0].trim()
+        : input.date;
+
     if (
       experience.dates.length > 0 &&
-      !experience.dates.includes(input.date) &&
+      !experience.dates.includes(checkDate) &&
       input.date !== 'A coordinar'
     ) {
       throw new Error('La fecha elegida no está disponible.');
     }
-    if (input.date !== 'A coordinar' && this.isDateClosed(experience, input.date)) {
+    if (input.date !== 'A coordinar' && this.isDateClosed(experience, checkDate)) {
       throw new Error('La fecha elegida se encuentra cerrada para nuevas reservas.');
     }
     if (
@@ -3084,6 +3142,8 @@ export class ProviderStoreService {
     ) {
       throw new Error('No quedan cupos suficientes para esa fecha.');
     }
+
+    const stayLength = input.stayLength && input.stayLength > 0 ? input.stayLength : 1;
 
     const discount = input.discountCode
       ? (findDiscountCode(input.discountCode) ??
@@ -3112,6 +3172,7 @@ export class ProviderStoreService {
           p_receipt_url: MP_TRANSFER_RECEIPT.url,
           p_receipt_storage_key: input.reference,
           p_receipt_storage_provider: 'mercadopago',
+          p_stay_length: isLodgingExp ? stayLength : null,
         },
       );
 
@@ -3144,6 +3205,7 @@ export class ProviderStoreService {
       experienceTitle: experience.title,
       date: input.date,
       participants: input.participants,
+      stayLength: isLodgingExp ? stayLength : undefined,
       amountArs: input.amountArs,
       ...(discount ? { discountCode: discount.code, discountArs: input.discountArs } : {}),
       surchargeArs: input.surchargeArs,
@@ -4084,24 +4146,30 @@ export class ProviderStoreService {
     if (RESERVED_EXPERIENCE_SLUGS.has(baseSlug.toLowerCase())) {
       baseSlug = `${baseSlug}-exp`;
     }
-    let generatedSlug = baseSlug;
+
+    // Identificar si la experiencia ya existe en catálogo por asociación estable de ID
+    const matchedExistingExp =
+      this.expService.experiences().find((e) => e.id === requestId) ||
+      this._experiences().find((e) => e.id === requestId);
+
+    let generatedSlug = matchedExistingExp?.slug || baseSlug;
     let suffix = 2;
     const existingSlugs = new Set([
       ...this.expService
         .experiences()
-        .filter((e) => e.id !== requestId)
+        .filter((e) => e.id !== requestId && (!matchedExistingExp || e.id !== matchedExistingExp.id))
         .map((e) => e.slug.toLowerCase()),
       ...this._experiences()
-        .filter((e) => e.id !== requestId)
+        .filter((e) => e.id !== requestId && (!matchedExistingExp || e.id !== matchedExistingExp.id))
         .map((e) => e.slug.toLowerCase()),
     ]);
     const existingIds = new Set([
       ...this.expService
         .experiences()
-        .filter((e) => e.id !== requestId)
+        .filter((e) => e.id !== requestId && (!matchedExistingExp || e.id !== matchedExistingExp.id))
         .map((e) => e.id.toLowerCase()),
       ...this._experiences()
-        .filter((e) => e.id !== requestId)
+        .filter((e) => e.id !== requestId && (!matchedExistingExp || e.id !== matchedExistingExp.id))
         .map((e) => e.id.toLowerCase()),
     ]);
     while (
@@ -4110,7 +4178,7 @@ export class ProviderStoreService {
     ) {
       generatedSlug = `${baseSlug}-${suffix++}`;
     }
-    const finalId = 'exp-' + generatedSlug;
+    const finalId = matchedExistingExp ? matchedExistingExp.id : 'exp-' + generatedSlug;
     const resolvedUrl = publicUrl?.trim() || `https://experiencias.club/experiencias/${generatedSlug}`;
 
     // Solo usar fechas confirmadas por el prestador o administrador.
@@ -4163,9 +4231,9 @@ export class ProviderStoreService {
     // 1. Preservar o crear en el catálogo oficial de ExperienceService antes de reportar aprobación
     const existingInService = this.expService
       .experiences()
-      .find((e) => e.id === requestId || e.id === finalId || e.slug === generatedSlug);
+      .find((e) => e.id === requestId);
 
-    const publishedId = existingInService ? existingInService.id : requestId;
+    const publishedId = matchedExistingExp ? matchedExistingExp.id : (existingInService ? (existingInService as any).id : requestId);
 
     let remoteRow: any = null;
     if (isSupabaseConfigured()) {
@@ -4363,10 +4431,7 @@ export class ProviderStoreService {
 
     if (req) {
       const existsIndex = this._experiences().findIndex(
-        (e) =>
-          e.id === publishedId ||
-          e.slug === generatedSlug ||
-          e.title.toLowerCase() === req.title.toLowerCase(),
+        (e) => e.id === publishedId,
       );
       if (existsIndex === -1) {
         const newExp: ProviderExperience = {

@@ -123,15 +123,15 @@ import { ProviderExperienceAlbumModalComponent } from '../provider-experience-al
 
               <div class="specs-grid">
                 <div class="spec-box">
-                  <span class="spec-lbl">ARANCEL POR PERSONA</span>
+                  <span class="spec-lbl">{{ exp.category === 'hospedajes' ? 'TARIFA POR NOCHE' : 'ARANCEL POR PERSONA' }}</span>
                   <strong class="spec-val text-accent">{{ exp.priceArs | ars }}</strong>
                 </div>
                 <div class="spec-box">
-                  <span class="spec-lbl">DIFICULTAD</span>
+                  <span class="spec-lbl">{{ exp.category === 'hospedajes' ? 'ACCESIBILIDAD / PERFIL' : 'DIFICULTAD' }}</span>
                   <strong class="spec-val">{{ exp.difficulty || '—' }}</strong>
                 </div>
                 <div class="spec-box">
-                  <span class="spec-lbl">DURACIÓN</span>
+                  <span class="spec-lbl">{{ exp.category === 'hospedajes' ? 'ESTADÍA MÍNIMA' : 'DURACIÓN' }}</span>
                   <strong class="spec-val">{{ exp.durationLabel || '—' }}</strong>
                 </div>
                 <div class="spec-box">
@@ -141,15 +141,15 @@ import { ProviderExperienceAlbumModalComponent } from '../provider-experience-al
                   </strong>
                 </div>
                 <div class="spec-box">
-                  <span class="spec-lbl">CUPO POR SALIDA</span>
+                  <span class="spec-lbl">{{ exp.category === 'hospedajes' ? 'CAPACIDAD MÁXIMA' : 'CUPO POR SALIDA' }}</span>
                   <strong class="spec-val">
-                    {{ exp.capacityPerDate >= 999 ? 'Ilimitado' : exp.capacityPerDate + ' personas' }}
+                    {{ exp.capacityPerDate >= 999 ? 'Ilimitado' : (exp.category === 'hospedajes' ? exp.capacityPerDate + ' huéspedes' : exp.capacityPerDate + ' personas') }}
                   </strong>
                 </div>
                 <div class="spec-box">
-                  <span class="spec-lbl">INSCRIPTOS / INGRESOS</span>
+                  <span class="spec-lbl">{{ exp.category === 'hospedajes' ? 'RESERVAS / INGRESOS' : 'INSCRIPTOS / INGRESOS' }}</span>
                   <strong class="spec-val">
-                    {{ enrolledCount() }} socios · {{ confirmedRevenue() | ars }}
+                    {{ enrolledCount() }} {{ exp.category === 'hospedajes' ? (enrolledCount() === 1 ? 'huésped' : 'huéspedes') : (enrolledCount() === 1 ? 'socio' : 'socios') }} · {{ confirmedRevenue() | ars }}
                   </strong>
                 </div>
               </div>
@@ -159,7 +159,7 @@ import { ProviderExperienceAlbumModalComponent } from '../provider-experience-al
 
         <!-- 2. Descripción y Logística -->
         <section class="fiche-card">
-          <h2 class="section-heading">Descripción y Punto de Encuentro</h2>
+          <h2 class="section-heading">{{ exp.category === 'hospedajes' ? 'Descripción y Ubicación' : 'Descripción y Punto de Encuentro' }}</h2>
           <p class="fiche-description">{{ exp.description || 'Sin descripción cargada.' }}</p>
 
           <div class="logistics-meta-row">
@@ -168,7 +168,7 @@ import { ProviderExperienceAlbumModalComponent } from '../provider-experience-al
               <span class="logistics-val">{{ exp.region || 'Catamarca' }}</span>
             </div>
             <div class="logistics-item">
-              <span class="spec-lbl">PUNTO DE ENCUENTRO</span>
+              <span class="spec-lbl">{{ exp.category === 'hospedajes' ? 'DIRECCIÓN / UBICACIÓN' : 'PUNTO DE ENCUENTRO' }}</span>
               <span class="logistics-val">{{ exp.meetingPoint || 'A coordinar con el prestador' }}</span>
             </div>
             <div class="logistics-item">
@@ -182,9 +182,11 @@ import { ProviderExperienceAlbumModalComponent } from '../provider-experience-al
         <section class="fiche-card">
           <div class="section-head-row">
             <div>
-              <h2 class="section-heading">Fechas de Salida Programadas</h2>
+              <h2 class="section-heading">{{ exp.category === 'hospedajes' ? 'Disponibilidad & Noches Habilitadas' : 'Fechas de Salida Programadas' }}</h2>
               <p class="section-sub">
-                Elegí una fecha en el calendario para sumarla automáticamente o pausá salidas puntuales.
+                {{ exp.category === 'hospedajes'
+                  ? 'Elegí una fecha en el calendario para sumarla a la disponibilidad o pausá noches puntuales.'
+                  : 'Elegí una fecha en el calendario para sumarla automáticamente o pausá salidas puntuales.' }}
               </p>
             </div>
             <div class="quick-date-picker">

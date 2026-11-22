@@ -1571,6 +1571,12 @@ $$;
 DROP FUNCTION IF EXISTS public.submit_experience_transfer(
   TEXT, TEXT, TEXT, TEXT, INTEGER, INTEGER, TEXT, INTEGER, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER, TEXT, TEXT, TEXT
 );
+DROP FUNCTION IF EXISTS public.submit_experience_transfer(
+  TEXT, TEXT, TEXT, TEXT, INTEGER, INTEGER, TEXT, INTEGER, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER, TEXT, TEXT, TEXT, TEXT
+);
+DROP FUNCTION IF EXISTS public.submit_experience_transfer(
+  TEXT, TEXT, TEXT, TEXT, INTEGER, INTEGER, TEXT, INTEGER, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER, TEXT, TEXT, TEXT, TEXT, INTEGER
+);
 
 CREATE OR REPLACE FUNCTION public.submit_experience_transfer(
   p_reference TEXT,
@@ -1591,7 +1597,8 @@ CREATE OR REPLACE FUNCTION public.submit_experience_transfer(
   p_receipt_url TEXT DEFAULT '',
   p_receipt_storage_key TEXT DEFAULT NULL,
   p_receipt_storage_provider TEXT DEFAULT 'supabase',
-  p_pricing_pack_id TEXT DEFAULT NULL
+  p_pricing_pack_id TEXT DEFAULT NULL,
+  p_stay_length INTEGER DEFAULT NULL
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -1609,6 +1616,8 @@ DECLARE
   v_date_slots JSONB := '[]'::jsonb;
   v_pricing_packs JSONB := '[]'::jsonb;
   v_provider_email TEXT := '';
+  v_category TEXT := 'expediciones';
+  v_check_date TEXT := p_date;
   v_slot JSONB;
   v_pack JSONB;
   v_matched_pack JSONB := NULL;
@@ -1630,8 +1639,8 @@ BEGIN
     RETURN jsonb_build_object('status', 'unauthorized');
   END IF;
 
-  SELECT capacity_per_date, price_ars, dates, COALESCE(date_slots, '[]'::jsonb), COALESCE(pricing_packs, '[]'::jsonb), COALESCE(provider_email, '')
-  INTO v_capacity, v_unit_price, v_dates, v_date_slots, v_pricing_packs, v_provider_email
+  SELECT capacity_per_date, price_ars, dates, COALESCE(date_slots, '[]'::jsonb), COALESCE(pricing_packs, '[]'::jsonb), COALESCE(provider_email, ''), category
+  INTO v_capacity, v_unit_price, v_dates, v_date_slots, v_pricing_packs, v_provider_email, v_category
   FROM public.experiencias
   WHERE id = p_experience_id
   LIMIT 1
@@ -1655,7 +1664,13 @@ BEGIN
     v_capacity := 12;
   END IF;
 
-  IF v_dates IS NOT NULL AND jsonb_array_length(v_dates) > 0 AND NOT (v_dates ? p_date) THEN
+  IF p_date ~* '^\d{4}-\d{2}-\d{2}\s+al\s+' THEN
+    v_check_date := (regexp_match(p_date, '^(\d{4}-\d{2}-\d{2})'))[1];
+  ELSE
+    v_check_date := p_date;
+  END IF;
+
+  IF v_dates IS NOT NULL AND jsonb_array_length(v_dates) > 0 AND NOT (v_dates ? v_check_date) THEN
     RETURN jsonb_build_object(
       'status', 'invalid_date',
       'message', 'La fecha seleccionada no está disponible.'
@@ -1666,7 +1681,7 @@ BEGIN
   IF v_date_slots IS NOT NULL AND jsonb_array_length(v_date_slots) > 0 THEN
     FOR v_slot IN SELECT * FROM jsonb_array_elements(v_date_slots)
     LOOP
-      IF (v_slot ->> 'date') = p_date THEN
+      IF (v_slot ->> 'date') = v_check_date THEN
         IF (v_slot ->> 'closed')::boolean IS TRUE THEN
           RETURN jsonb_build_object(
             'status', 'date_closed',
@@ -1726,6 +1741,8 @@ BEGIN
   IF (v_unit_price IS NOT NULL AND v_unit_price > 0) OR v_matched_pack IS NOT NULL THEN
     IF v_matched_pack IS NOT NULL THEN
       v_expected_subtotal := GREATEST(0, COALESCE((v_matched_pack ->> 'totalPriceArs')::integer, 0));
+    ELSIF v_category = 'hospedajes' OR p_date ~* '\d+\s*noche' THEN
+      v_expected_subtotal := v_unit_price * GREATEST(1, COALESCE(p_stay_length, (regexp_match(p_date, '(\d+)\s*noche', 'i'))[1]::integer, 1));
     ELSE
       v_expected_subtotal := v_unit_price * p_participants;
     END IF;

@@ -5,13 +5,16 @@ import { ActivatedRoute, NavigationEnd, Router, RouterLink } from '@angular/rout
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { filter } from 'rxjs';
-import { ExperienceService } from '../../../core/services/experience.service';
+import { ExperienceService, RESERVED_EXPERIENCE_SLUGS } from '../../../core/services/experience.service';
 import { StorageService } from '../../../core/services/storage.service';
 import { AdminStoreService } from '../../../core/services/admin-store.service';
 import { ExperienceProposalRequest, parseConfirmedProposalDates, slugify } from '../../../core/services/provider-store.service';
 import { ALTITUDE_OPTIONS, EXPERIENCE_CATEGORY_OPTIONS, Experience, ExperienceAlbumPhoto, ExperiencePricingPack } from '../../../core/models/experience.model';
-import { ExperiencePricingPacksEditorComponent } from '../../../shared/components/experience-pricing-packs-editor/experience-pricing-packs-editor.component';
-import { ProviderUser } from '../../../core/models/bank-transfer.model';
+import {
+  ExperienceFormComponent,
+  ExperienceFormPayload,
+} from '../../../shared/components/experience-form/experience-form.component';
+import { ProviderExperience, ProviderUser } from '../../../core/models/bank-transfer.model';
 import { isClubExperience } from '../../../core/models/club-profile.model';
 import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
 import {
@@ -24,7 +27,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
 @Component({
   selector: 'app-admin-experiences',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule, MatIconModule, ArsPipe, FechaPipe, ExperiencePricingPacksEditorComponent],
+  imports: [CommonModule, RouterLink, FormsModule, MatIconModule, ArsPipe, FechaPipe, ExperienceFormComponent],
   template: `
     <div class="experiences-admin-container">
       <!-- Toast Feedback -->
@@ -43,35 +46,36 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
             Volver a Experiencias
           </a>
         </div>
-      } @else if (isRouteEditMode() && editingExperience(); as exp) {
-        <!-- Modo Edición en Subruta: /experiencias/:slug/editar -->
+      } @else if ((isRouteEditMode() || isRouteCreateMode()) && editingExperience(); as exp) {
+        <!-- Modo Edición / Creación en Subruta: /experiencias/:slug/editar o /experiencias/nueva -->
         <div class="edit-page-card">
           <div class="admin-page-header">
             <div class="header-titles">
               <span class="section-kicker">GESTIÓN DE CATÁLOGO & RUTAS WEB</span>
               <div class="title-row">
-                <h1 class="card-heading">Editar Experiencia: {{ editTitle() }}</h1>
+                <h1 class="card-heading">{{ isRouteCreateMode() ? 'Crear Nueva Experiencia' : ('Editar Experiencia: ' + editTitle()) }}</h1>
               </div>
               <p class="card-subheading">
-                Como administrador, podés actualizar el slug de publicación oficial, tarifas, cupos y contenidos de la experiencia.
+                {{ isRouteCreateMode()
+                  ? 'Como administrador, podés cargar una nueva experiencia oficial para el catálogo de experiencias.club definiendo su slug, tarifas, cupos y contenidos.'
+                  : 'Como administrador, podés actualizar el slug de publicación oficial, tarifas, cupos y contenidos de la experiencia.' }}
               </p>
             </div>
           </div>
 
           <div class="edit-page-body">
-            <ng-container *ngTemplateOutlet="experienceFormSections" />
-          </div>
-
-          <div class="edit-page-footer">
-            <a [routerLink]="getDetailRoute(exp)" class="btn-cancel-edit">Cancelar</a>
-            <button
-              type="button"
-              class="btn-save-orange"
-              [disabled]="saving()"
-              (click)="saveExperience()"
-            >
-              {{ saving() ? 'Guardando cambios...' : 'Guardar experiencia' }}
-            </button>
+            <app-experience-form
+              [mode]="'admin'"
+              [initialExperience]="initialExperience()"
+              [isCreateMode]="isRouteCreateMode()"
+              [isClubExperience]="isCurrentExperienceClub()"
+              [clubConfigRoute]="getConfigRoute()"
+              [providerMpInfo]="currentAdminMpInfo()"
+              [saving]="saving()"
+              [cancelRoute]="isRouteCreateMode() ? backToListLink() : getDetailRoute(exp)"
+              (saveExperience)="onSaveAdminExperience($event)"
+              (cancel)="onCancelAdminEdit()"
+            />
           </div>
         </div>
       } @else if (isRouteDetailMode() && editingExperience(); as exp) {
@@ -148,11 +152,11 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
               <!-- Specs Técnicas Rápidas -->
               <div class="fiche-specs-grid">
                 <div class="spec-tile">
-                  <span class="spec-label">DIFICULTAD</span>
-                  <span class="spec-value">{{ exp.difficulty }}</span>
+                  <span class="spec-label">{{ isLodging() ? 'ACCESIBILIDAD / PERFIL' : 'DIFICULTAD' }}</span>
+                  <span class="spec-value">{{ isLodging() ? 'Accesible / Familiar' : exp.difficulty }}</span>
                 </div>
                 <div class="spec-tile">
-                  <span class="spec-label">DURACIÓN</span>
+                  <span class="spec-label">{{ isLodging() ? 'ESTADÍA MÍNIMA' : 'DURACIÓN' }}</span>
                   <span class="spec-value">{{ exp.durationLabel }}</span>
                 </div>
                 <div class="spec-tile">
@@ -160,8 +164,8 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                   <span class="spec-value">{{ exp.altitudeMeters > 0 ? (exp.altitudeMeters + ' msnm') : 'N/A' }}</span>
                 </div>
                 <div class="spec-tile">
-                  <span class="spec-label">CUPO MÁXIMO</span>
-                  <span class="spec-value">{{ exp.maxSpotsPerGroup }} personas</span>
+                  <span class="spec-label">{{ isLodging() ? 'CAPACIDAD MÁXIMA' : 'CUPO MÁXIMO' }}</span>
+                  <span class="spec-value">{{ exp.maxSpotsPerGroup }} {{ isLodging() ? (exp.maxSpotsPerGroup === 1 ? 'huésped' : 'huéspedes') : 'personas' }}</span>
                 </div>
                 <div class="spec-tile">
                   <span class="spec-label">REGIÓN</span>
@@ -378,7 +382,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
 
             <!-- 6. PUNTO DE ENCUENTRO & UBICACIÓN -->
             <div class="fiche-section-card" [class.is-club-card]="isClub(exp)">
-              <h3 class="fiche-card-title">Logística & Punto de Encuentro</h3>
+              <h3 class="fiche-card-title">{{ isLodging() ? 'Ubicación & Acceso al Alojamiento' : 'Logística & Punto de Encuentro' }}</h3>
               <p class="meeting-point-desc">
                 {{ exp.meetingPoint || 'Lugar a coordinar con los exploradores inscriptos' }} ({{ exp.region }})
               </p>
@@ -543,9 +547,9 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
             <span class="section-kicker">GESTIÓN DE CATÁLOGO & RUTAS WEB</span>
             <div class="title-row">
               <h1 class="card-heading">Experiencias de la Web</h1>
-              <button type="button" class="btn-create-exp-yellow" (click)="openCreateModal()">
+              <a [routerLink]="newExperienceRoute()" class="btn-create-exp-yellow">
                 <span>Crear Nueva Experiencia</span>
-              </button>
+              </a>
             </div>
             <p class="card-subheading">
               Administrá y editá toda la información de las rutas públicas de experiencias.club en
@@ -828,43 +832,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
           </button>
         </div>
       </div>
-
-        <!-- MODAL: Solo para Crear Nueva Experiencia cuando no estamos en subruta -->
-        @if (editingExperience() && isCreating()) {
-          <div class="modal-backdrop" (click)="closeEditModal()">
-            <div class="modal-container-large" (click)="$event.stopPropagation()">
-              <div class="modal-header">
-                <div>
-                  <span class="modal-kicker">EDICIÓN DE RUTA PÚBLICA</span>
-                  <h2 class="modal-title">Nueva Experiencia</h2>
-                  <p class="modal-sub">
-                    Ruta oficial: <code>/experiencias/{{ editSlug() }}</code>
-                  </p>
-                </div>
-                <button type="button" class="modal-close-icon-btn" (click)="closeEditModal()">
-                  ×
-                </button>
-              </div>
-
-              <div class="modal-body-scrollable">
-                <ng-container *ngTemplateOutlet="experienceFormSections" />
-              </div>
-
-              <div class="modal-footer">
-                <button type="button" class="btn-cancel" (click)="closeEditModal()">Cancelar</button>
-                <button
-                  type="button"
-                  class="btn-save-orange"
-                  [disabled]="saving()"
-                  (click)="saveExperience()"
-                >
-                  {{ saving() ? 'Guardando cambios...' : 'Crear Experiencia' }}
-                </button>
-              </div>
-            </div>
-          </div>
-        }
-      }
+    }
 
       <!-- MODAL DE CONFIRMACIÓN DE BORRADO -->
       @if (experienceToDelete()) {
@@ -921,737 +889,6 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
           </div>
         </div>
       }
-
-      <ng-template #experienceFormSections>
-        <!-- Banner Experiencia Oficial del Club de Experiencias -->
-        @if (isCurrentExperienceClub()) {
-          <div class="club-experience-banner">
-            <div class="club-banner-icon">
-              <mat-icon>shield</mat-icon>
-            </div>
-            <div class="club-banner-text">
-              <div class="club-banner-header">
-                <span class="club-banner-title">Experiencia Creada por el Club de Experiencias</span>
-                <span class="club-banner-badge">Prestador Oficial</span>
-              </div>
-              <p class="club-banner-desc">
-                Esta experiencia pertenece a la cuenta oficial del <strong>Club de Experiencias</strong>.
-                La asignación de prestador y los datos de cobro (CBU / Alias) están vinculados al perfil central del Club administrado conjuntamente por todos los administradores.
-              </p>
-            </div>
-            <a
-              [routerLink]="getConfigRoute()"
-              class="btn-edit-club-profile"
-              title="Ir a Configuración del Club de Experiencias"
-            >
-              <mat-icon>settings</mat-icon>
-              <span>Configuración del Club</span>
-            </a>
-          </div>
-        }
-
-        <!-- SECCIÓN 1: Identificación y Rutas -->
-        <div class="form-section-card">
-          <h4 class="form-section-title">1. Identificación & Ruta Pública</h4>
-          <div class="form-grid-2">
-            <!-- Título principal a la izquierda -->
-            <div class="form-field">
-              <div class="field-label-row">
-                <label>Título principal de la Experiencia: <span class="req-star">*</span></label>
-                <span class="char-counter">{{ editTitle().length }}/70</span>
-              </div>
-              <input
-                type="text"
-                class="form-input"
-                [(ngModel)]="editTitle"
-                placeholder="Ej: Travesía en Kayak & Sunset en el Dique El Jumeal"
-                maxlength="70"
-                required
-              />
-            </div>
-
-            <!-- Slug oficial a la derecha -->
-            <div class="form-field">
-              <div class="field-label-row">
-                <label>Ruta / Slug oficial (URL final en la web pública): <span class="req-star">*</span></label>
-                <span class="char-counter">{{ editSlug().length }}/40</span>
-              </div>
-              <div class="slug-input-wrap">
-                <span class="slug-prefix">https://experiencias.club/experiencias/</span>
-                <input
-                  type="text"
-                  class="form-input slug-field"
-                  [(ngModel)]="editSlug"
-                  placeholder="ej: kayak"
-                  maxlength="40"
-                  required
-                />
-              </div>
-              <span class="field-hint">
-                Control exclusivo del administrador para actualizar la ruta web pública oficial de la experiencia.
-              </span>
-            </div>
-          </div>
-
-          <div class="form-field">
-            <label>Ubicación en la Web (Switch de Cabecera): <span class="req-star">*</span></label>
-            <select class="form-select" [(ngModel)]="editCategory" required>
-              @if (isCustomCategory(editCategory())) {
-                <option [value]="editCategory()">{{ editCategory() }} (Personalizado)</option>
-              }
-              @for (cat of categoryOptions; track cat.value) {
-                <option [value]="cat.value">{{ cat.label }}</option>
-              }
-            </select>
-            <span class="field-hint">
-              Define en qué sección del switch superior se mostrará esta experiencia (Expediciones o Hospedajes).
-            </span>
-          </div>
-
-          <div class="form-field">
-            <div class="field-label-row">
-              <label>Subtítulo / Bajada destacada (Tagline): <span class="req-star">*</span></label>
-              <span class="char-counter">{{ editTagline().length }}/160</span>
-            </div>
-            <input
-              type="text"
-              class="form-input"
-              [(ngModel)]="editTagline"
-              placeholder="Remada guiada al atardecer con brindis de productos catamarqueños."
-              maxlength="160"
-              required
-            />
-          </div>
-
-          <div class="form-field">
-            <div class="field-label-row">
-              <label>Descripción atractiva de la Experiencia: <span class="req-star">*</span></label>
-              <span class="char-counter">{{ editDescription().length }}/500</span>
-            </div>
-            <textarea
-              class="form-textarea"
-              rows="3"
-              [(ngModel)]="editDescription"
-              maxlength="500"
-              placeholder="Escribí una síntesis atractiva de hasta 2 párrafos concisos para los exploradores..."
-              required
-            ></textarea>
-            <span class="field-hint">Máximo 2 párrafos concisos y atractivos (hasta 500 caracteres).</span>
-          </div>
-        </div>
-
-        <!-- SECCIÓN 2: Ficha Técnica & Parámetros -->
-        <div class="form-section-card">
-          <h4 class="form-section-title">2. Ficha Técnica & Parámetros de Operación</h4>
-          <div class="form-grid-2">
-            <div class="form-field">
-              <label>Región de Catamarca: <span class="req-star">*</span></label>
-              <input
-                type="text"
-                class="form-input"
-                [(ngModel)]="editRegion"
-                placeholder="Ej: Valle Central y Ambato"
-                maxlength="40"
-                required
-              />
-            </div>
-
-            <div class="form-field">
-              <label>Nivel de Dificultad: <span class="req-star">*</span></label>
-              <select class="form-select" [(ngModel)]="editDifficulty" required>
-                <option value="Ninguna">Ninguna</option>
-                <option value="Baja">Baja</option>
-                <option value="Moderada">Moderada</option>
-                <option value="Exigente">Exigente</option>
-                <option value="Alta Montaña">Alta Montaña</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="form-grid-2">
-            <div class="form-field">
-              <label>Punto de Encuentro: <span class="req-star">*</span></label>
-              <input
-                type="text"
-                class="form-input"
-                [(ngModel)]="editMeetingPoint"
-                placeholder="Ej: Club Náutico Dique El Jumeal"
-                maxlength="160"
-                required
-              />
-              <span class="field-hint">Lugar o referencia física de encuentro para los socios.</span>
-            </div>
-
-            <div class="form-field">
-              <label>Ubicación (Link de Google Maps): <span class="req-star">*</span></label>
-              <input
-                type="url"
-                class="form-input"
-                [(ngModel)]="editMeetingPointUrl"
-                placeholder="Ej: https://maps.app.goo.gl/... o https://www.google.com/maps/..."
-                maxlength="300"
-                required
-              />
-              <span class="field-hint">Enlace oficial de Google Maps para el botón 'Cómo llegar' de la ficha.</span>
-            </div>
-          </div>
-
-          <div class="form-grid-2">
-            <div class="form-field">
-              <label>Duración estimada: <span class="req-star">*</span></label>
-              <select class="form-select" [(ngModel)]="editDurationLabel" required>
-                @if (editDurationLabel() && !durationOptions.includes(editDurationLabel())) {
-                  <option [value]="editDurationLabel()">{{ editDurationLabel() }}</option>
-                }
-                @for (d of durationOptions; track d) {
-                  <option [value]="d">{{ d }}</option>
-                }
-              </select>
-            </div>
-
-            <div class="form-field">
-              <label>Altitud (msnm):</label>
-              <select class="form-select" [(ngModel)]="editAltitude">
-                @if (isCustomAltitude(editAltitude())) {
-                  <option [value]="editAltitude()">{{ editAltitude() }} msnm (Personalizado)</option>
-                }
-                @for (opt of altitudeOptions; track opt.value) {
-                  <option [value]="opt.value">{{ opt.label }}</option>
-                }
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <!-- SECCIÓN 3: Cronograma e Itinerario de la Jornada -->
-        <div class="form-section-card">
-          <div class="section-title-row">
-            <h4 class="form-section-title">3. Cronograma e Itinerario de la Jornada <span class="req-star">*</span></h4>
-            <span class="char-counter" [class.counter-warn]="editItinerary().length > 1400">
-              {{ editItinerary().length }} / 1500 caracteres
-            </span>
-          </div>
-          <p class="section-subtext">
-            Detallá el cronograma horario o etapas de la vivencia (una por renglón). Esto se renderiza con formato de línea de tiempo interactiva en la página pública de la experiencia.
-          </p>
-          <div class="form-field">
-            <textarea
-              rows="5"
-              maxlength="1500"
-              class="form-input form-textarea"
-              [(ngModel)]="editItinerary"
-              placeholder="Ej:&#10;15:30 hs - Recepción de participantes y entrega de chalecos/equipamiento&#10;16:15 hs - Charla de técnica de remo y seguridad en tierra firme&#10;16:45 hs - Zarpada al espejo de agua y recorrido guiado por las bahías&#10;18:15 hs - Pausa Sunset, hidratación y merienda en la costa&#10;19:30 hs - Cierre de jornada y despedida"
-              required
-            ></textarea>
-          </div>
-        </div>
-
-        <!-- SECCIÓN 4: Arancel Oficial & Fechas Programadas (Unificados) -->
-        <div class="form-section-card">
-          <h4 class="form-section-title">4. Arancel Oficial & Fechas Programadas</h4>
-          <div class="form-grid-arancel">
-            <div class="form-field">
-              <label>Arancel en Pesos Argentinos (ARS): <span class="req-star">*</span></label>
-              <input
-                type="number"
-                class="form-input"
-                [(ngModel)]="editPriceArs"
-                placeholder="65000"
-                min="1000"
-                required
-              />
-              <span class="field-hint">
-                Equivalente estimado: ~&#36;{{ calculatedUsd() }} USD (calculado a &#36;{{ usdExchangeRate() | number:'1.0-0' }}/USD).
-              </span>
-            </div>
-
-            <div class="form-field">
-              <label>Cupo Máximo por Salida: <span class="req-star">*</span></label>
-              <input
-                type="number"
-                class="form-input"
-                [(ngModel)]="editCapacity"
-                placeholder="12"
-                min="1"
-                max="999"
-                maxlength="3"
-                required
-              />
-              <span class="field-hint">Capacidad de socios por fecha.</span>
-            </div>
-
-            <div class="form-field field-dates-col">
-              <label>Fechas programadas o disponibilidad:</label>
-              <div class="dates-add-controls">
-                <div class="dates-input-row">
-                  <input
-                    type="date"
-                    [min]="todayIso"
-                    [ngModel]="newAdminScheduledDate()"
-                    (ngModelChange)="newAdminScheduledDate.set($event)"
-                    (change)="onAdminDatePicked($any($event.target).value)"
-                    name="newAdminScheduledDate"
-                    class="form-input datepicker-input"
-                  />
-                  <button
-                    type="button"
-                    class="btn-add-date-chip"
-                    (click)="addAdminScheduledDate()"
-                    [disabled]="!newAdminScheduledDate()"
-                  >
-                    + Agregar Fecha
-                  </button>
-                </div>
-                @if (adminScheduledDateError()) {
-                  <span class="field-error-text">{{ adminScheduledDateError() }}</span>
-                }
-              </div>
-
-              @if (editScheduledDates().length > 0) {
-                <div class="scheduled-chips-container">
-                  <span class="chips-title">Fechas fijas programadas ({{ editScheduledDates().length }}):</span>
-                  <div class="chips-list">
-                    @for (date of editScheduledDates(); track date) {
-                      <div class="date-chip">
-                        <span>{{ date | fecha }}</span>
-                        <button
-                          type="button"
-                          class="chip-remove"
-                          (click)="removeAdminScheduledDate(date)"
-                          title="Quitar fecha"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    }
-                  </div>
-                </div>
-              }
-
-              <span class="field-hint">
-                @if (editScheduledDates().length === 0) {
-                  Sin fechas fijas programadas (Salidas a coordinar / Todo el año).
-                } @else {
-                  Resumen guardado: <strong>{{ editDatesRaw() }}</strong>
-                }
-              </span>
-            </div>
-          </div>
-
-          <div style="margin-top: 1.15rem;">
-            <app-experience-pricing-packs-editor
-              [packs]="editPricingPacks()"
-              [unitPriceArs]="editPriceArs()"
-              [availableDates]="editScheduledDates()"
-              (packsChange)="editPricingPacks.set($event)"
-            />
-          </div>
-        </div>
-
-        <!-- SECCIÓN: Prestador Asignado & Datos de Cobro (CBU / Liquidación) -->
-        <div class="form-section-card" [class.is-club-section]="isCurrentExperienceClub()">
-          <div class="section-title-row">
-            <h4 class="form-section-title">Prestador Asignado & Datos de Cobro (CBU)</h4>
-            @if (isCurrentExperienceClub()) {
-              <span class="club-locked-chip">
-                Club de Experiencias
-              </span>
-            } @else {
-              <span class="provider-external-chip">
-                Prestador Emergente
-              </span>
-            }
-          </div>
-
-          @if (isCurrentExperienceClub()) {
-            <div class="club-locked-notice">
-              <mat-icon class="locked-info-icon">info</mat-icon>
-              <div class="notice-text">
-                <span>
-                  Experiencia del <strong>Club de Experiencias</strong>. Si corresponde a otro prestador, podés cambiar el nombre y datos de contacto a continuación.
-                </span>
-                <a [routerLink]="getConfigRoute()" class="btn-text-edit-club">
-                  Perfil del Club en Configuración &rarr;
-                </a>
-              </div>
-            </div>
-          }
-
-          <div class="form-grid-2">
-            <div class="form-field">
-              <label>Nombre / Prestador Asignado: <span class="req-star">*</span></label>
-              <input
-                type="text"
-                class="form-input"
-                [(ngModel)]="editProviderName"
-                placeholder="Ej: Catamarca Kayak o Club de Experiencias"
-                maxlength="70"
-                required
-              />
-            </div>
-
-            <div class="form-field">
-              <label>
-                Teléfono / WhatsApp de Contacto:
-                @if (!isCurrentExperienceClub()) {
-                  <span class="req-star">*</span>
-                }
-              </label>
-              <input
-                type="tel"
-                class="form-input"
-                [(ngModel)]="editProviderPhone"
-                placeholder="Ej: +54 9 383 4567890"
-                maxlength="30"
-                [required]="!isCurrentExperienceClub()"
-              />
-            </div>
-          </div>
-
-          <div class="form-grid-3">
-            <div class="form-field">
-              <label>
-                CBU / CVU o Alias:
-                @if (!isCurrentExperienceClub()) {
-                  <span class="req-star">*</span>
-                }
-              </label>
-              <input
-                type="text"
-                class="form-input text-blue-input"
-                [(ngModel)]="editProviderCbuAlias"
-                placeholder="Ej: ALIAS.PROVEEDOR.MP"
-                maxlength="22"
-                [required]="!isCurrentExperienceClub()"
-              />
-            </div>
-
-            <div class="form-field">
-              <label>
-                CUIT / CUIL:
-                @if (!isCurrentExperienceClub()) {
-                  <span class="req-star">*</span>
-                }
-              </label>
-              <input
-                type="text"
-                class="form-input"
-                [(ngModel)]="editProviderCuitDni"
-                placeholder="Ej: 20-33445566-7"
-                maxlength="13"
-                [required]="!isCurrentExperienceClub()"
-              />
-            </div>
-
-            <div class="form-field">
-              <label>
-                Banco / Entidad:
-                @if (!isCurrentExperienceClub()) {
-                  <span class="req-star">*</span>
-                }
-              </label>
-              <input
-                type="text"
-                class="form-input"
-                [(ngModel)]="editProviderBankName"
-                placeholder="Ej: Banco Nación / Mercado Pago"
-                maxlength="60"
-                [required]="!isCurrentExperienceClub()"
-              />
-            </div>
-          </div>
-        </div>
-
-        <!-- SECCIÓN: Integración con Mercado Pago -->
-        <div class="form-section-card" [class.is-club-section]="isCurrentExperienceClub()">
-          <div class="section-title-row">
-            <h4 class="form-section-title">Cobros con Mercado Pago (Acreditación Instantánea)</h4>
-            @if (editMpConnected()) {
-              <span class="mp-status-pill connected">
-                Cuenta Vinculada
-              </span>
-            } @else {
-              <span class="mp-status-pill disconnected">
-                No Vinculada
-              </span>
-            }
-          </div>
-
-          <div class="form-grid-3">
-            <div class="form-field">
-              <label>Estado de Integración MP:</label>
-              <select
-                class="form-select"
-                [ngModel]="editMpConnected()"
-                (ngModelChange)="editMpConnected.set($event)"
-              >
-                <option [ngValue]="true">Habilitada (Acreditación instantánea)</option>
-                <option [ngValue]="false">Deshabilitada (Solo transferencias CBU)</option>
-              </select>
-            </div>
-
-            <div class="form-field">
-              <label>ID de Cobrador (Collector ID):</label>
-              <input
-                type="text"
-                class="form-input text-blue-input"
-                [(ngModel)]="editMpCollectorId"
-                placeholder="Ej: 438943731"
-                maxlength="30"
-              />
-              <span class="field-hint">Identificador de cuenta de Mercado Pago del prestador.</span>
-            </div>
-
-            <div class="form-field">
-              <label>Titular / Nickname de MP:</label>
-              <input
-                type="text"
-                class="form-input"
-                [(ngModel)]="editMpNickname"
-                placeholder="Ej: JUAN_PEREZ_MP"
-                maxlength="70"
-              />
-              <span class="field-hint">Nombre de usuario o titular asociado en Mercado Pago.</span>
-            </div>
-          </div>
-
-          @if (currentEditingProvider()?.mpConnected && !editMpConnected()) {
-            <div class="mp-sync-hint-row">
-              <span class="hint-text">
-                El prestador asignado (<strong>{{ currentEditingProvider()?.name }}</strong>) tiene una cuenta de Mercado Pago vinculada (ID: <code>{{ currentEditingProvider()?.mpCollectorId }}</code>).
-              </span>
-              <button
-                type="button"
-                class="btn-sync-mp-provider"
-                (click)="syncMpFromProvider()"
-              >
-                Cargar datos del prestador
-              </button>
-            </div>
-          }
-        </div>
-
-        <!-- SECCIÓN 5: Multimedia, Video & Portada (con subida a Supabase Storage y Álbum) -->
-        <div class="form-section-card">
-          <h4 class="form-section-title">5. Multimedia, Video & Portada</h4>
-          <div class="form-grid-2">
-            <div class="form-field">
-              <label>Imagen de Portada Principal: <span class="req-star">*</span></label>
-              <div class="media-upload-row">
-                <label class="btn-upload-file" [class.is-uploading]="uploadingCover()">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    (change)="onUploadCoverImage($event)"
-                    style="display: none"
-                  />
-                  <span>{{ uploadingCover() ? 'Subiendo...' : (editCoverImage() ? 'Cambiar Portada' : 'Subir Portada') }}</span>
-                </label>
-                @if (editCoverImage()) {
-                  <button
-                    type="button"
-                    class="btn-remove-media"
-                    (click)="editCoverImage.set('')"
-                    title="Quitar imagen de portada"
-                  >
-                    <span>Quitar</span>
-                  </button>
-                }
-              </div>
-              @if (editCoverImage()) {
-                <div class="media-preview-box">
-                  <img [src]="editCoverImage()" alt="Preview Portada" class="media-preview-img" />
-                </div>
-              }
-            </div>
-
-            <div class="form-field">
-              <label>Video Oficial (.mp4):</label>
-              <div class="media-upload-row">
-                <label class="btn-upload-file" [class.is-uploading]="uploadingVideo()">
-                  <input
-                    type="file"
-                    accept="video/mp4,video/*"
-                    (change)="onUploadVideo($event)"
-                    style="display: none"
-                  />
-                  <span>{{ uploadingVideo() ? 'Subiendo...' : (editVideoUrl() ? 'Cambiar Video' : 'Subir Video') }}</span>
-                </label>
-                @if (editVideoUrl()) {
-                  <button
-                    type="button"
-                    class="btn-remove-media"
-                    (click)="editVideoUrl.set('')"
-                    title="Quitar video oficial"
-                  >
-                    <span>Quitar</span>
-                  </button>
-                }
-              </div>
-              @if (editVideoUrl()) {
-                <div class="media-preview-box video-preview-box">
-                  <video [src]="editVideoUrl()" controls class="media-preview-img"></video>
-                </div>
-              }
-              <span class="field-hint">Video promocional reproducido en la ficha de la experiencia.</span>
-            </div>
-          </div>
-
-          <!-- Álbum de Fotos Oficial de la Experiencia -->
-          <div class="album-upload-section">
-            <div class="album-header-row">
-              <div>
-                <label class="album-section-label">Álbum Oficial de Fotos</label>
-                <span class="field-hint">
-                  Configurá hasta 2 fotos destacadas y hasta 9 fotos para la galería.
-                </span>
-                <div class="album-counters-bar">
-                  <span class="album-counter-pill is-featured-pill">
-                    Destacadas: <strong>{{ featuredPhotos().length }} / 2</strong>
-                  </span>
-                  <span
-                    class="album-counter-pill is-gallery-pill"
-                    [class.is-limit-reached]="galleryPhotos().length >= 9"
-                  >
-                    Galería: <strong>{{ galleryPhotos().length }} / 9</strong>
-                  </span>
-                </div>
-              </div>
-
-              <label
-                class="btn-upload-album-file"
-                [class.is-uploading]="uploadingAlbum()"
-                [class.is-disabled]="galleryPhotos().length >= 9"
-                [title]="galleryPhotos().length >= 9 ? 'Límite de 9 fotos de galería alcanzado' : 'Subir fotos al álbum'"
-              >
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  [disabled]="galleryPhotos().length >= 9"
-                  (change)="onUploadAlbumPhotos($event)"
-                  style="display: none"
-                />
-                <span>
-                  {{
-                    uploadingAlbum()
-                      ? 'Subiendo...'
-                      : galleryPhotos().length >= 9
-                        ? 'Límite de Galería (9/9) Alcanzado'
-                        : 'Subir Fotos al Álbum'
-                  }}
-                </span>
-              </label>
-            </div>
-
-            @if (editAlbumPhotos().length > 0) {
-              <div class="album-photos-grid">
-                @for (photo of editAlbumPhotos(); track photo.id; let idx = $index) {
-                  <div
-                    class="album-photo-item"
-                    [class.is-featured-item]="photo.isFeatured"
-                  >
-                    <div class="photo-badge-overlay">
-                      @if (photo.isFeatured) {
-                        <span class="photo-badge badge-featured">Destacada</span>
-                      }
-                    </div>
-                    <img [src]="photo.url" [alt]="photo.caption || 'Foto de álbum'" class="album-thumb" />
-                    <div class="album-item-meta">
-                      <input
-                        type="text"
-                        class="album-caption-input"
-                        [value]="photo.caption || ''"
-                        (input)="updatePhotoCaption(idx, $any($event.target).value)"
-                        placeholder="Epígrafe o título..."
-                      />
-                      <button
-                        type="button"
-                        class="album-delete-btn"
-                        (click)="removeAlbumPhoto(idx)"
-                        title="Eliminar foto del álbum"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                    <div class="album-photo-actions">
-                      <button
-                        type="button"
-                        class="btn-photo-action btn-action-featured"
-                        [class.is-active-featured]="photo.isFeatured"
-                        (click)="toggleFeaturedPhoto(idx)"
-                        [title]="photo.isFeatured ? 'Quitar condición de destacada' : 'Fijar como foto destacada (máx 2)'"
-                      >
-                        {{ photo.isFeatured ? 'Destacada' : 'Destacar' }}
-                      </button>
-                    </div>
-                  </div>
-                }
-              </div>
-            } @else {
-              <div class="album-empty-placeholder">
-                <span>No hay fotos cargadas en el álbum. Podés subir imágenes para la galería (máximo 9 de galería y 2 destacadas).</span>
-              </div>
-            }
-          </div>
-        </div>
-
-        <!-- SECCIÓN 6: Detalles de la Experiencia -->
-        <div class="form-section-card">
-          <h4 class="form-section-title">6. Detalles de la Experiencia</h4>
-          <div class="form-grid-2">
-            <div class="form-field">
-              <label>Servicios e Indumentaria Provista (un ítem por línea):</label>
-              <textarea
-                class="form-textarea"
-                rows="4"
-                [(ngModel)]="editIncludedRaw"
-                maxlength="1000"
-                placeholder="Kayaks de travesía y remos de carbono&#10;Chaleco salvavidas reglamentario PFD&#10;Guía náutico certificado&#10;Seguro de accidentes"
-              ></textarea>
-            </div>
-
-            <div class="form-field">
-              <label>Qué Debes Traer (un ítem por línea):</label>
-              <textarea
-                class="form-textarea"
-                rows="4"
-                [(ngModel)]="editHighlightsRaw"
-                maxlength="1000"
-                placeholder="Muda de ropa cómoda&#10;Protector solar y gorra&#10;Botella de agua personal"
-              ></textarea>
-            </div>
-          </div>
-        </div>
-
-        <!-- SECCIÓN 7: Estado de Publicación -->
-        <div class="form-section-card">
-          <h4 class="form-section-title">7. Estado de Publicación</h4>
-          <div [class.form-grid-2]="editStatus() === 'publicada'">
-            <div class="form-field">
-              <label>Estado en experiencias.club: <span class="req-star">*</span></label>
-              <select class="form-select" [(ngModel)]="editStatus" required>
-                <option value="publicada">Publicada (Visible a todos los exploradores)</option>
-                <option value="oculta">Oculta / Pausada (Dada de baja temporalmente)</option>
-                <option value="borrador">Borrador (En edición interna)</option>
-                <option value="pendiente">Pendiente (Propuesta / Postulación a evaluar)</option>
-                <option value="rechazada">Rechazada (No aprobada)</option>
-              </select>
-            </div>
-
-            @if (editStatus() === 'publicada') {
-              <div class="form-field">
-                <label>Ubicación en experiencias.club/experiencias: <span class="req-star">*</span></label>
-                <select class="form-select" [(ngModel)]="editDisplayLocation">
-                  <option value="destacada">Destacada (Carrusel superior)</option>
-                  <option value="catalogo">Abajo de destacadas (Box siguiente)</option>
-                  <option value="no_listada">No listada (Solo con enlace directo)</option>
-                </select>
-              </div>
-            }
-          </div>
-        </div>
-      </ng-template>
     </div>
   `,
   styles: [
@@ -1867,7 +1104,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         background: rgba(0, 204, 136, 0.16);
         border: 1px solid rgba(0, 204, 136, 0.4);
         border-radius: 4px;
-        color: #33ffaa;
+        color: #ffffff;
         font-size: 0.78rem;
         font-weight: 800;
         cursor: pointer;
@@ -2450,7 +1687,8 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
       .cta-bar-right .btn-activate-exp-bottom,
       .cta-bar-right .btn-approve,
       .cta-bar-right .btn-reject,
-      .cta-bar-right .btn-whatsapp {
+      .cta-bar-right .btn-whatsapp,
+      .cta-bar-right .btn-contact-provider {
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -2468,14 +1706,15 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
       }
 
       .cta-bar-right .btn-approve {
-        background: #00cc88;
+        background: transparent;
         border: 1px solid #00cc88;
-        color: #0b0704;
+        color: #ffffff;
       }
 
       .cta-bar-right .btn-approve:hover:not(:disabled) {
-        background: #33ffaa;
+        background: rgba(0, 204, 136, 0.15);
         border-color: #33ffaa;
+        color: #ffffff;
       }
 
       .cta-bar-right .btn-reject {
@@ -2490,15 +1729,17 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         color: #ffffff;
       }
 
-      .cta-bar-right .btn-whatsapp {
-        background: #25d366;
-        border: 1px solid #25d366;
+      .cta-bar-right .btn-whatsapp,
+      .cta-bar-right .btn-contact-provider {
+        background: transparent;
+        border: 1px solid #ffffff;
         color: #ffffff;
       }
 
-      .cta-bar-right .btn-whatsapp:hover {
-        background: #1ebe5d;
-        border-color: #1ebe5d;
+      .cta-bar-right .btn-whatsapp:hover,
+      .cta-bar-right .btn-contact-provider:hover {
+        background: rgba(255, 255, 255, 0.15);
+        border-color: #ffffff;
         color: #ffffff;
       }
 
@@ -2516,15 +1757,15 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
       }
 
       .btn-activate-exp-bottom {
-        background: rgba(0, 204, 136, 0.16);
-        border: 1px solid rgba(0, 204, 136, 0.4);
-        color: #33ffaa;
+        background: transparent;
+        border: 1px solid #00cc88;
+        color: #ffffff;
         cursor: pointer;
       }
 
       .btn-activate-exp-bottom:hover {
-        background: rgba(0, 204, 136, 0.28);
-        border-color: #00cc88;
+        background: rgba(0, 204, 136, 0.15);
+        border-color: #33ffaa;
         color: #ffffff;
       }
 
@@ -2734,12 +1975,13 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         gap: 0.45rem;
         padding: 0.52rem 1.25rem;
         background: #ffcc00 !important;
-        color: #000000 !important;
+        color: #ffffff !important;
         border: 1px solid #ffcc00 !important;
         border-radius: 4px;
         font-size: 0.85rem;
         font-weight: 800;
         cursor: pointer;
+        text-decoration: none;
         transition: all 0.2s ease;
         white-space: nowrap;
         box-shadow: 0 4px 15px rgba(255, 204, 0, 0.3);
@@ -2748,7 +1990,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
       .btn-create-exp-yellow:hover {
         background: #ffd633 !important;
         border-color: #ffd633 !important;
-        color: #000000 !important;
+        color: #ffffff !important;
         transform: translateY(-1px);
         box-shadow: 0 6px 18px rgba(255, 204, 0, 0.45);
       }
@@ -3336,7 +2578,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         background: rgba(0, 204, 136, 0.12);
         border: 1px solid rgba(0, 204, 136, 0.38);
         border-radius: 3px;
-        color: #33ffaa;
+        color: #ffffff;
         font-size: 0.75rem;
         font-weight: 700;
         cursor: pointer;
@@ -4996,6 +4238,7 @@ export class AdminExperiencesComponent implements OnInit {
   }
 
   readonly isRouteEditMode = signal(false);
+  readonly isRouteCreateMode = signal(false);
   readonly isRouteDetailMode = signal(false);
   readonly notFound = signal(false);
   readonly currentUrl = signal(this.router.url);
@@ -5008,6 +4251,14 @@ export class AdminExperiencesComponent implements OnInit {
 
   readonly backToListLink = computed(() => {
     return this.isAdminRoute() ? '/admin/experiencias' : '/experiencias';
+  });
+
+  readonly newExperienceRoute = computed(() => {
+    return this.isAdminRoute() ? '/admin/experiencias/nueva' : '/experiencias/nueva';
+  });
+
+  readonly isLodging = computed(() => {
+    return this.editCategory() === 'hospedajes';
   });
 
   getDetailRoute(exp: Experience | { slug?: string }): string {
@@ -5136,9 +4387,20 @@ export class AdminExperiencesComponent implements OnInit {
 
   private async syncRouteState(url: string, slugParam?: string | null): Promise<void> {
     const rawPath = url.split('?')[0].split('#')[0];
+    const isNew = rawPath.endsWith('/nueva');
     const isEdit = rawPath.endsWith('/editar');
     const slug = slugParam !== undefined ? slugParam : this.route.snapshot.paramMap.get('slug');
 
+    if (isNew || slug === 'nueva') {
+      this.notFound.set(false);
+      this.isRouteDetailMode.set(false);
+      this.isRouteEditMode.set(false);
+      this.isRouteCreateMode.set(true);
+      this.openCreateModal();
+      return;
+    }
+
+    this.isRouteCreateMode.set(false);
     if (slug) {
       this.notFound.set(false);
       await this.experienceService.remoteLoadPromise;
@@ -5146,9 +4408,40 @@ export class AdminExperiencesComponent implements OnInit {
       if (currentSlug && currentSlug !== slug) {
         return;
       }
-      const exp =
+      let exp =
         this.experienceService.getExperienceBySlug(slug) ||
         this.experienceService.getExperienceById(slug);
+
+      if (!exp) {
+        let matchingReq = this.findMatchingProposal({ id: slug, slug, title: slug });
+        if (!matchingReq) {
+          try {
+            await this.adminStore.providerStore.loadProposalsFromSupabase();
+          } catch {
+            // fallback si supabase no está disponible
+          }
+          matchingReq = this.findMatchingProposal({ id: slug, slug, title: slug });
+        }
+        if (!matchingReq && this.adminStore.providerStore.experiences) {
+          const cleanSlug = slug.replace(/^(?:exp|req)-/, '').toLowerCase();
+          const provExp = this.adminStore.providerStore.experiences().find(
+            (p) =>
+              p.id === slug ||
+              p.slug === slug ||
+              p.id.replace(/^(?:exp|req)-/, '').toLowerCase() === cleanSlug ||
+              (p.title && slugify(p.title) === cleanSlug),
+          );
+          if (provExp) {
+            matchingReq = this.findMatchingProposal({ id: provExp.id, slug: provExp.slug, title: provExp.title });
+            if (!matchingReq) {
+              exp = this.mapProviderExpToExperience(provExp);
+            }
+          }
+        }
+        if (matchingReq && !exp) {
+          exp = this.mapProposalToExperience(matchingReq);
+        }
+      }
 
       if (exp) {
         this.editingExperience.set(exp);
@@ -5195,6 +4488,38 @@ export class AdminExperiencesComponent implements OnInit {
 
   // Modal State
   readonly editingExperience = signal<Experience | null>(null);
+  readonly initialExperience = computed<Experience | null>(() => {
+    const exp = this.editingExperience();
+    if (!exp) return null;
+    const matching = this.findMatchingProposal(exp);
+    const resolvedPhone = (
+      this.editProviderPhone() ||
+      exp.providerPhone ||
+      matching?.providerPhone ||
+      this.getExpProviderPhone(exp) ||
+      ''
+    ).trim();
+    const resolvedName = (
+      this.editProviderName() ||
+      exp.providerName ||
+      matching?.providerAgency ||
+      matching?.providerName ||
+      this.getExpProviderName(exp) ||
+      ''
+    ).trim();
+    const resolvedCbu = (this.editProviderCbuAlias() || exp.providerCbuAlias || matching?.providerCbuAlias || '').trim();
+    const resolvedCuit = (this.editProviderCuitDni() || exp.providerCuitDni || matching?.providerCuitDni || '').trim();
+    const resolvedBank = (this.editProviderBankName() || exp.providerBankName || matching?.providerBankName || '').trim();
+
+    return {
+      ...exp,
+      providerName: resolvedName || exp.providerName,
+      providerPhone: resolvedPhone || exp.providerPhone,
+      providerCbuAlias: resolvedCbu || exp.providerCbuAlias,
+      providerCuitDni: resolvedCuit || exp.providerCuitDni,
+      providerBankName: resolvedBank || exp.providerBankName,
+    };
+  });
   readonly isCreating = signal(false);
 
   // Uploading state
@@ -5308,6 +4633,7 @@ export class AdminExperiencesComponent implements OnInit {
     this.editDatesRaw.set(updated.length > 0 ? updated.join(', ') : 'A coordinar');
   }
   readonly editHighlightsRaw = signal('');
+  readonly editRequirementsRaw = signal('');
   readonly editIncludedRaw = signal('');
   readonly editStatus = signal<'publicada' | 'oculta' | 'borrador' | 'pendiente' | 'rechazada'>('publicada');
   readonly editDisplayLocation = signal<'destacada' | 'catalogo' | 'no_listada'>('destacada');
@@ -5400,6 +4726,74 @@ export class AdminExperiencesComponent implements OnInit {
     this.showToast(`Datos de Mercado Pago cargados desde el perfil de ${prov.name}.`);
   }
 
+  readonly currentAdminMpInfo = computed(() => {
+    const exp = this.editingExperience();
+    const isClub = exp ? this.isClub(exp) : false;
+    const prov = exp ? this.getProviderForExperience(exp) : null;
+    return {
+      connected: isClub ? true : Boolean(prov?.mpConnected || this.editMpConnected()),
+      collectorId: isClub ? 'CLUB_MP_OFICIAL' : (prov?.mpCollectorId || this.editMpCollectorId()),
+      nickname: isClub ? 'Club de Experiencias' : (prov?.mpNickname || this.editMpNickname()),
+    };
+  });
+
+  async onSaveAdminExperience(event: { payload: ExperienceFormPayload }): Promise<void> {
+    try {
+      const p = event.payload;
+      this.editTitle.set(p.title);
+      if (p.slug) this.editSlug.set(p.slug);
+      this.editTagline.set(p.tagline);
+      this.editDescription.set(p.description);
+      this.editCategory.set(p.category);
+      this.editRegion.set(p.region);
+      this.editMeetingPoint.set(p.meetingPoint);
+      this.editMeetingPointUrl.set(p.meetingPointUrl);
+      this.editItinerary.set(p.itinerary);
+      this.editDifficulty.set(p.difficulty as any);
+      this.editDurationLabel.set(p.durationLabel);
+      this.editAltitude.set(p.altitudeMeters);
+      this.editCapacity.set(p.capacityPerDate);
+      this.editPriceArs.set(p.priceArs);
+      this.editScheduledDates.set(p.dates);
+      this.editDatesRaw.set(p.dates.length > 0 ? p.dates.join(', ') : 'A coordinar');
+      this.editPricingPacks.set(p.pricingPacks);
+      this.editCoverImage.set(p.coverImage);
+      this.editVideoUrl.set(p.videoUrl);
+      this.editAlbumPhotos.set(p.albumPhotos);
+      this.editIncludedRaw.set(p.includedServices);
+      this.editRequirementsRaw.set(p.participantRequirements);
+      this.editHighlightsRaw.set(p.highlights.join('\n'));
+      if (p.providerName !== undefined) this.editProviderName.set(p.providerName);
+      if (p.providerPhone !== undefined) {
+        const submittedPhone = (p.providerPhone || '').trim();
+        const currentExp = this.editingExperience();
+        const matchingProposal = currentExp ? this.findMatchingProposal(currentExp) : undefined;
+        const currentResolvedPhone = (
+          this.editProviderPhone() ||
+          currentExp?.providerPhone ||
+          matchingProposal?.providerPhone ||
+          this.getExpProviderPhone(currentExp) ||
+          ''
+        ).trim();
+        const finalPhone = submittedPhone || currentResolvedPhone;
+        this.editProviderPhone.set(finalPhone);
+      }
+      if (p.providerCbuAlias !== undefined) this.editProviderCbuAlias.set(p.providerCbuAlias);
+      if (p.providerCuitDni !== undefined) this.editProviderCuitDni.set(p.providerCuitDni);
+      if (p.providerBankName !== undefined) this.editProviderBankName.set(p.providerBankName);
+      if (p.status !== undefined) this.editStatus.set(p.status as any);
+      if (p.displayLocation !== undefined) this.editDisplayLocation.set(p.displayLocation as any);
+
+      await this.saveExperience();
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
+  onCancelAdminEdit(): void {
+    this.closeEditModal();
+  }
+
   openEditModal(exp: Experience): void {
     this.isCreating.set(false);
     this.editingExperience.set(exp);
@@ -5457,13 +4851,19 @@ export class AdminExperiencesComponent implements OnInit {
     const resolvedHighlights =
       exp.highlights && exp.highlights.length > 0
         ? exp.highlights.join('\n')
-        : matchingProposal?.participantRequirements || '';
+        : ((matchingProposal as any)?.highlights && (matchingProposal as any).highlights.length > 0
+            ? (matchingProposal as any).highlights.join('\n')
+            : '');
+    const resolvedRequirements =
+      matchingProposal?.participantRequirements ||
+      (exp.notIncluded && exp.notIncluded.length > 0 ? exp.notIncluded.join('\n') : '');
     const resolvedIncluded =
       exp.included && exp.included.length > 0
         ? exp.included.join('\n')
-        : matchingProposal?.includedServices || '';
+        : (matchingProposal?.includedServices || '');
 
     this.editHighlightsRaw.set(resolvedHighlights);
+    this.editRequirementsRaw.set(resolvedRequirements);
     this.editIncludedRaw.set(resolvedIncluded);
 
     const rawAlbum = exp.albumPhotos || [];
@@ -5504,7 +4904,7 @@ export class AdminExperiencesComponent implements OnInit {
     const resolvedProviderPhone =
       (hasExternalProposalCreator && isExpProviderClub)
         ? (matchingProposal?.providerPhone || '')
-        : (expCreatorPhone || matchingProposal?.providerPhone || '');
+        : (expCreatorPhone || matchingProposal?.providerPhone || this.getExpProviderPhone(exp) || '');
 
     const resolvedProviderCbu =
       (hasExternalProposalCreator && isExpProviderClub)
@@ -5526,20 +4926,35 @@ export class AdminExperiencesComponent implements OnInit {
       resolvedProviderName.toLowerCase() === 'club de experiencias' ||
       resolvedProviderName.toLowerCase() === 'club';
 
+    let finalProviderName = resolvedProviderName;
+    let finalProviderPhone = resolvedProviderPhone;
+    let finalProviderCbu = resolvedProviderCbu;
+    let finalProviderCuit = resolvedProviderCuit;
+    let finalProviderBank = resolvedProviderBank;
+
     if (this.isClub(exp) && isExplicitClub) {
       const club = this.adminStore.clubProfile();
-      this.editProviderName.set(club.name || 'Club de Experiencias');
-      this.editProviderPhone.set(club.phone || '');
-      this.editProviderCbuAlias.set(club.cbuAlias || '');
-      this.editProviderCuitDni.set(club.cuitDni || '');
-      this.editProviderBankName.set(club.bankName || '');
-    } else {
-      this.editProviderName.set(resolvedProviderName);
-      this.editProviderPhone.set(resolvedProviderPhone);
-      this.editProviderCbuAlias.set(resolvedProviderCbu);
-      this.editProviderCuitDni.set(resolvedProviderCuit);
-      this.editProviderBankName.set(resolvedProviderBank);
+      finalProviderName = club.name || 'Club de Experiencias';
+      finalProviderPhone = club.phone || '';
+      finalProviderCbu = club.cbuAlias || '';
+      finalProviderCuit = club.cuitDni || '';
+      finalProviderBank = club.bankName || '';
     }
+
+    this.editProviderName.set(finalProviderName);
+    this.editProviderPhone.set(finalProviderPhone);
+    this.editProviderCbuAlias.set(finalProviderCbu);
+    this.editProviderCuitDni.set(finalProviderCuit);
+    this.editProviderBankName.set(finalProviderBank);
+
+    this.editingExperience.set({
+      ...exp,
+      providerName: finalProviderName,
+      providerPhone: finalProviderPhone,
+      providerCbuAlias: finalProviderCbu,
+      providerCuitDni: finalProviderCuit,
+      providerBankName: finalProviderBank,
+    });
 
     const hasMp = this.getExpMpConnected(exp);
     const colId = this.getExpMpCollectorId(exp);
@@ -5607,6 +5022,7 @@ export class AdminExperiencesComponent implements OnInit {
     this.adminScheduledDateError.set(null);
     this.editDatesRaw.set('A coordinar');
     this.editHighlightsRaw.set('');
+    this.editRequirementsRaw.set('');
     this.editIncludedRaw.set('');
     this.editAlbumPhotos.set([]);
     this.editStatus.set('publicada');
@@ -5625,8 +5041,8 @@ export class AdminExperiencesComponent implements OnInit {
     const currentExp = this.editingExperience();
     this.editingExperience.set(null);
     this.isCreating.set(false);
-    if (this.isRouteEditMode()) {
-      if (currentExp?.slug) {
+    if (this.isRouteEditMode() || this.isRouteCreateMode()) {
+      if (this.isRouteEditMode() && currentExp?.slug) {
         this.router.navigateByUrl(this.getDetailRoute(currentExp));
       } else {
         this.router.navigateByUrl(this.backToListLink());
@@ -5781,7 +5197,7 @@ export class AdminExperiencesComponent implements OnInit {
     }
 
     const rawSlug = this.editSlug().trim() || title;
-    const slug = rawSlug
+    let slug = rawSlug
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
@@ -5791,6 +5207,11 @@ export class AdminExperiencesComponent implements OnInit {
     if (!slug) {
       this.showToast('La ruta o slug oficial no puede estar vacía.');
       return;
+    }
+
+    if (RESERVED_EXPERIENCE_SLUGS.has(slug.toLowerCase())) {
+      slug = `${slug}-exp`;
+      this.editSlug.set(slug);
     }
 
     if (slug.length > 40) {
@@ -5880,6 +5301,11 @@ export class AdminExperiencesComponent implements OnInit {
       .map((h) => h.trim())
       .filter((h) => h.length > 0);
 
+    const notIncluded = this.editRequirementsRaw()
+      .split('\n')
+      .map((r) => r.trim())
+      .filter((r) => r.length > 0);
+
     let coverImage = this.editCoverImage().trim();
     if (!coverImage || coverImage.startsWith('blob:')) {
       coverImage = '/assets/images/kayak-club-de-experiencias.jpg';
@@ -5891,7 +5317,12 @@ export class AdminExperiencesComponent implements OnInit {
     const currentExp = this.editingExperience();
     const matchingProposal = currentExp ? this.findMatchingProposal(currentExp) : undefined;
     const inputProviderName = this.editProviderName().trim();
-    const inputProviderPhone = this.editProviderPhone().trim();
+    const inputProviderPhone = (
+      this.editProviderPhone().trim() ||
+      (currentExp ? this.getExpProviderPhone(currentExp) : '') ||
+      matchingProposal?.providerPhone ||
+      ''
+    ).trim();
     const inputProviderCbu = this.editProviderCbuAlias().trim();
     const inputProviderCuit = this.editProviderCuitDni().trim();
     const inputProviderBank = this.editProviderBankName().trim();
@@ -6016,7 +5447,7 @@ export class AdminExperiencesComponent implements OnInit {
       dates,
       highlights,
       included,
-      notIncluded: highlights,
+      notIncluded,
       status: this.editStatus(),
       displayLocation: this.editStatus() === 'publicada' ? this.editDisplayLocation() : (this.editDisplayLocation() || 'destacada'),
       publicUrl: `https://experiencias.club/experiencias/${slug}`,
@@ -6077,11 +5508,17 @@ export class AdminExperiencesComponent implements OnInit {
             payload.dates = isUnscheduledProposal ? [] : confirmedDates;
 
             if (req) {
-              await this.adminStore.approveExperienceRequest(
+              const approvedOk = await this.adminStore.approveExperienceRequest(
                 req.id,
                 payload.publicUrl,
                 confirmedDates.length > 0 ? confirmedDates : undefined,
               );
+              if (!approvedOk) {
+                this.showToast(
+                  `No se pudo confirmar la aprobación de la propuesta "${title}" (ID: ${payload.id}).`,
+                );
+                return;
+              }
             }
             // Preserve and apply the other form edits as part of the same save
             await this.experienceService.updateExperience(payload);
@@ -6110,7 +5547,7 @@ export class AdminExperiencesComponent implements OnInit {
       if (updated && this.editingExperience()?.id === payload.id) {
         this.editingExperience.set(updated);
       }
-      if (this.isRouteEditMode()) {
+      if (this.isRouteEditMode() || this.isRouteCreateMode()) {
         this.router.navigateByUrl(this.getDetailRoute({ slug } as Experience));
       } else {
         this.closeEditModal();
@@ -6189,6 +5626,120 @@ export class AdminExperiencesComponent implements OnInit {
     return undefined;
   }
 
+  private mapProposalToExperience(req: ExperienceProposalRequest): Experience {
+    const generatedSlug = req.slug || slugify(req.title);
+    const rawDates = Array.isArray(req.dates)
+      ? req.dates
+      : typeof req.dates === 'string'
+        ? parseConfirmedProposalDates(req.dates)
+        : [];
+
+    return {
+      id: req.id,
+      slug: generatedSlug,
+      title: req.title,
+      shortTitle: req.title.split('&')[0].trim(),
+      kicker: req.kicker || 'EXPERIENCIA',
+      tagline:
+        req.subheading && req.subheading.length > 90
+          ? req.subheading.slice(0, 90) + '...'
+          : req.subheading || req.title,
+      description: req.subheading || req.title,
+      region: req.region || 'Catamarca',
+      meetingPoint: req.meetingPoint || '',
+      meetingPointUrl: req.meetingPointUrl,
+      difficulty:
+        (req.difficulty && (req.difficulty.split('(')[0].trim() as any)) || 'Moderada',
+      durationDays: 1,
+      durationLabel: req.duration || '1 día',
+      altitudeMeters: Number(req.altitude?.replace(/\D/g, '')) || 850,
+      bestSeason: req.season || 'Todo el año',
+      priceArs: req.priceArs,
+      priceUsd: req.priceUsd ?? 70,
+      promosAndPricing: req.promosAndPricing || undefined,
+      maxSpotsPerGroup: req.capacity || 12,
+      dates: rawDates,
+      status: (req.status as any) || 'pendiente',
+      category: (req.category as any) || 'expediciones',
+      detailRoute:
+        req.category === 'hospedajes'
+          ? `/experiencias/hospedajes/${generatedSlug}`
+          : `/experiencias/${generatedSlug}`,
+      itinerary: req.itinerary || '',
+      included: req.includedServices
+        ? req.includedServices.split('\n').filter((l) => l.trim())
+        : [],
+      highlights: req.participantRequirements
+        ? req.participantRequirements.split('\n').filter((l) => l.trim())
+        : [],
+      notes: req.notes,
+      coverImage: req.coverImage || '/assets/images/kayak-club-de-experiencias.jpg',
+      coverImageName: req.coverImageName,
+      videoUrl: req.coverVideoUrl,
+      videoPoster: req.coverImage,
+      albumPhotos: req.albumPhotos || [],
+      galleryImages: req.galleryImages || [],
+      providerId: req.providerId,
+      providerName: req.providerAgency || req.providerName,
+      providerAgency: req.providerAgency,
+      providerEmail: req.providerEmail,
+      providerPhone: req.providerPhone,
+      isExclusiveClub: false,
+      reviewedAt: req.reviewedAt,
+    };
+  }
+
+  private mapProviderExpToExperience(p: ProviderExperience): Experience {
+    return {
+      id: p.id,
+      slug: p.slug,
+      title: p.title,
+      shortTitle: p.shortTitle || p.title.split('&')[0].trim(),
+      kicker: 'EXPERIENCIA',
+      tagline: p.tagline,
+      description: p.description,
+      region: p.region,
+      meetingPoint: p.meetingPoint,
+      meetingPointUrl: p.meetingPointUrl,
+      difficulty: p.difficulty,
+      durationDays: 1,
+      durationLabel: p.durationLabel,
+      altitudeMeters: p.altitudeMeters || 850,
+      bestSeason: 'Todo el año',
+      priceArs: p.priceArs,
+      priceUsd: 70,
+      pricingPacks: p.pricingPacks,
+      maxSpotsPerGroup: p.capacityPerDate || 12,
+      dates: p.dates || [],
+      status: (p.status as any) || 'pendiente',
+      category: (p.category as any) || 'expediciones',
+      detailRoute:
+        p.category === 'hospedajes'
+          ? `/experiencias/hospedajes/${p.slug}`
+          : `/experiencias/${p.slug}`,
+      publicUrl: p.publicUrl,
+      itinerary: p.itinerary || '',
+      included:
+        p.included ||
+        (p.includedServices ? p.includedServices.split('\n').filter((l) => l.trim()) : []),
+      highlights:
+        p.highlights ||
+        (p.participantRequirements
+          ? p.participantRequirements.split('\n').filter((l) => l.trim())
+          : []),
+      coverImage: p.coverImage || '/assets/images/kayak-club-de-experiencias.jpg',
+      videoUrl: p.videoUrl || p.coverVideoUrl,
+      videoPoster: p.coverImage,
+      albumPhotos: p.albumPhotos || [],
+      galleryImages: p.galleryImages || [],
+      providerId: p.providerId,
+      providerName: p.providerName,
+      providerEmail: p.providerEmail,
+      providerPhone: p.providerPhone,
+      isExclusiveClub: false,
+    };
+  }
+
   async approveProposal(exp: Experience): Promise<void> {
     if (this.isProposalProcessing(exp.id)) {
       return;
@@ -6208,47 +5759,85 @@ export class AdminExperiencesComponent implements OnInit {
         : typeof exp.dates === 'string'
           ? exp.dates
           : req?.dates || '';
-      const isUnscheduled =
-        datesRaw.toLowerCase().includes('a coordinar') ||
-        !datesRaw.trim();
+
+      const rawTrimmed = (datesRaw || '').trim();
+      const isExplicitCoordinating = /coordinar/i.test(rawTrimmed);
       const confirmedDates = parseConfirmedProposalDates(datesRaw);
 
-      if (!isUnscheduled && confirmedDates.length === 0) {
-        this.showToast(
-          'No se puede aprobar la propuesta: las fechas no tienen formato válido (YYYY-MM-DD). Para salidas flexibles usá "A coordinar".',
-        );
+      if (rawTrimmed && !isExplicitCoordinating && confirmedDates.length === 0) {
+        this.showToast('No se puede aprobar: las fechas no tienen un formato válido (AAAA-MM-DD o "A coordinar").');
         return;
       }
 
-      let ok = false;
-      if (req) {
-        ok = await this.adminStore.approveExperienceRequest(
-          req.id,
-          exp.publicUrl,
-          confirmedDates.length > 0 ? confirmedDates : undefined,
-        );
-      }
+      const reviewedAt = new Date().toISOString();
 
-      if (!ok) {
+      if (req) {
+        let approvedOk = false;
+        try {
+          approvedOk = await this.adminStore.approveExperienceRequest(
+            req.id,
+            exp.publicUrl,
+            confirmedDates.length > 0 ? confirmedDates : undefined,
+          );
+        } catch (provErr) {
+          console.error('[AdminExperiences] Excepción al confirmar aprobación en ProviderStore:', provErr);
+          approvedOk = false;
+        }
+
+        if (!approvedOk) {
+          this.showToast(
+            `No se pudo confirmar la aprobación del prestador para "${exp.title}" (ID: ${exp.id}).`,
+          );
+          return;
+        }
+
+        try {
+          await this.experienceService.updateExperience({
+            id: exp.id,
+            slug: exp.slug,
+            status: 'publicada',
+            dates: confirmedDates,
+            reviewedAt,
+          });
+        } catch {
+          // Ya fue creado/actualizado en ExperienceService por approveExperienceRequest
+        }
+      } else {
+        // Experiencia de catálogo directo
         await this.experienceService.updateExperience({
           id: exp.id,
+          slug: exp.slug,
           status: 'publicada',
-          dates: isUnscheduled ? [] : confirmedDates,
+          dates: confirmedDates,
+          reviewedAt,
         });
-        ok = true;
       }
+
+      // Actualizar inmediatamente el estado en memoria para que la UI reaccione en tiempo real
+      this.editingExperience.update((curr) => {
+        if (!curr) return null;
+        return {
+          ...curr,
+          status: 'publicada',
+          dates: confirmedDates,
+          reviewedAt,
+        };
+      });
 
       this.adminStore.providerStore.reloadFromStorage();
       await this.adminStore.providerStore.loadProposalsFromSupabase();
       await this.experienceService.reloadFromSupabase();
 
-      const updated = this.experienceService.getExperienceById(exp.id);
-      if (updated && this.editingExperience()?.id === exp.id) {
+      const updated =
+        this.experienceService.getExperienceById(exp.id) ||
+        (exp.slug ? this.experienceService.getExperienceBySlug(exp.slug) : undefined);
+      if (updated) {
         this.editingExperience.set(updated);
       }
 
       this.showToast(`La propuesta "${exp.title}" fue aprobada y publicada.`);
     } catch (err: unknown) {
+      console.error('[AdminExperiences] Error al aprobar propuesta:', err);
       const msg = err instanceof Error ? err.message : 'Error al aprobar propuesta';
       this.showToast(msg);
     } finally {
@@ -6274,27 +5863,54 @@ export class AdminExperiencesComponent implements OnInit {
         req = this.findMatchingProposal(exp);
       }
 
+      // 1. Si hay propuesta en ProviderStore, rechazarla primero y verificar resultado
       if (req) {
-        const ok = await this.adminStore.rejectExperienceRequest(req.id);
-        if (!ok) {
-          this.showToast(`No se pudo rechazar la propuesta "${exp.title}". Intentá nuevamente.`);
+        const rejectedOk = await this.adminStore.rejectExperienceRequest(req.id);
+        if (!rejectedOk) {
+          this.showToast('No se pudo rechazar la propuesta. Por favor verificá la conexión e intentá nuevamente.');
           return;
         }
-      } else {
-        await this.experienceService.toggleExperienceStatus(exp.id, 'rechazada');
       }
+
+      const reviewedAt = new Date().toISOString();
+
+      // 2. Actualizar catálogo oficial solo si la experiencia existe en catálogo
+      const existsInCatalog = this.experienceService.experiences().some(
+        (e) => e.id === exp.id || e.slug === exp.slug,
+      );
+      if (existsInCatalog) {
+        await this.experienceService.updateExperience({
+          id: exp.id,
+          slug: exp.slug,
+          status: 'rechazada',
+          reviewedAt,
+        });
+      }
+
+      // 3. Actualizar inmediatamente en memoria
+      this.editingExperience.update((curr) => {
+        if (!curr) return null;
+        return {
+          ...curr,
+          status: 'rechazada',
+          reviewedAt,
+        };
+      });
 
       this.adminStore.providerStore.reloadFromStorage();
       await this.adminStore.providerStore.loadProposalsFromSupabase();
       await this.experienceService.reloadFromSupabase();
 
-      const updated = this.experienceService.getExperienceById(exp.id);
-      if (updated && this.editingExperience()?.id === exp.id) {
+      const updated =
+        this.experienceService.getExperienceById(exp.id) ||
+        (exp.slug ? this.experienceService.getExperienceBySlug(exp.slug) : undefined);
+      if (updated) {
         this.editingExperience.set(updated);
       }
 
       this.showToast(`La propuesta "${exp.title}" fue rechazada.`);
     } catch (err: unknown) {
+      console.error('[AdminExperiences] Error al rechazar propuesta:', err);
       const msg = err instanceof Error ? err.message : 'Error al rechazar propuesta';
       this.showToast(msg);
     } finally {
@@ -6320,9 +5936,13 @@ export class AdminExperiencesComponent implements OnInit {
     }
     try {
       await this.experienceService.toggleExperienceStatus(exp.id, newStatus);
-      const updated = this.experienceService.getExperienceById(exp.id);
-      if (updated && this.editingExperience()?.id === exp.id) {
+      const updated =
+        this.experienceService.getExperienceById(exp.id) ||
+        (exp.slug ? this.experienceService.getExperienceBySlug(exp.slug) : undefined);
+      if (updated) {
         this.editingExperience.set(updated);
+      } else {
+        this.editingExperience.update((curr) => (curr ? { ...curr, status: newStatus } : null));
       }
       if (newStatus === 'oculta') {
         this.showToast(`La ruta /experiencias/${exp.slug} fue dada de baja y pausada.`);

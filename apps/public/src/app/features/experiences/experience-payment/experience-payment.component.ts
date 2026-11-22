@@ -129,6 +129,7 @@ export class ExperiencePaymentComponent implements OnInit {
           slug: liveExp.slug,
           title: liveExp.title,
           shortTitle: liveExp.shortTitle || liveExp.title,
+          category: liveExp.category || storeExp?.category,
           priceArs: liveExp.priceArs,
           priceUsd: liveExp.priceUsd,
           pricingPacks: liveExp.pricingPacks ?? [],
@@ -165,6 +166,7 @@ export class ExperiencePaymentComponent implements OnInit {
           ...(canonicalStore || {}),
           id: canonicalRecord.id,
           slug: canonicalRecord.slug,
+          category: (canonicalRecord as any)?.category || canonicalStore?.category || 'hospedajes',
           title: canonicalRecord.title || hosp.title,
           shortTitle: (canonicalRecord as any).shortTitle || hosp.title,
           tagline: canonicalRecord.tagline || hosp.tagline,
@@ -298,6 +300,7 @@ export class ExperiencePaymentComponent implements OnInit {
   });
 
   readonly hasNoFixedDates = computed(() => {
+    if (this.isLodging()) return false;
     const exp = this.experience();
     return Boolean(exp && (!exp.dates || exp.dates.length === 0));
   });
@@ -325,7 +328,9 @@ export class ExperiencePaymentComponent implements OnInit {
     const exp = this.experience();
     const packs = exp?.pricingPacks || [];
     if (packs.length === 0) return [];
-    const selectedDate = this.hasNoFixedDates() ? null : this.formValue().date;
+    const selectedDate = this.isLodging()
+      ? this.checkInDate()
+      : (this.hasNoFixedDates() ? null : this.formValue().date);
     return packs.filter((p) => {
       if (this.hasNoFixedDates()) {
         return (
@@ -345,12 +350,111 @@ export class ExperiencePaymentComponent implements OnInit {
     return this.availablePacksForSelectedDate().find((p) => p.id === id) ?? null;
   });
 
+  readonly isLodging = computed(() => {
+    const exp = this.experience();
+    if (exp?.category === 'hospedajes') return true;
+    if (typeof window !== 'undefined' && window.location.pathname.includes('/hospedajes')) return true;
+    return false;
+  });
+
+  readonly todayIso = new Date().toISOString().split('T')[0];
+  readonly checkInDate = signal<string>('');
+  readonly checkOutDate = signal<string>('');
+
+  readonly minCheckOutDate = computed(() => {
+    const checkIn = this.checkInDate();
+    if (!checkIn) {
+      const d = new Date();
+      d.setDate(d.getDate() + 1);
+      return d.toISOString().split('T')[0];
+    }
+    const d = new Date(checkIn);
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().split('T')[0];
+  });
+
+  readonly isCheckOutValid = computed<boolean>(() => {
+    if (!this.isLodging()) return true;
+    const inD = this.checkInDate();
+    const outD = this.checkOutDate();
+    if (!inD || !outD) return false;
+    return outD > inD;
+  });
+
+  readonly selectedNights = computed<number>(() => {
+    const inDate = this.checkInDate();
+    const outDate = this.checkOutDate();
+    if (!inDate || !outDate) return 0;
+    const tIn = new Date(inDate).getTime();
+    const tOut = new Date(outDate).getTime();
+    const diff = Math.round((tOut - tIn) / (1000 * 60 * 60 * 24));
+    return diff > 0 ? diff : 0;
+  });
+
+  private readonly initLodgingDates = effect(() => {
+    const isHosp = this.isLodging();
+    const exp = this.experience();
+    if (isHosp && exp && !this.checkInDate()) {
+      const today = new Date();
+      const tomorrow = new Date(today);
+      tomorrow.setDate(today.getDate() + 1);
+      const inStr = today.toISOString().split('T')[0];
+      const outStr = tomorrow.toISOString().split('T')[0];
+      this.checkInDate.set(inStr);
+      this.checkOutDate.set(outStr);
+      this.form.controls.date.setValue(`${inStr} al ${outStr} (1 noche)`);
+    }
+  });
+
+  onCheckInInput(val: string): void {
+    this.checkInDate.set(val);
+    if (!this.checkOutDate() || this.checkOutDate() <= val) {
+      this.checkOutDate.set(this.minCheckOutDate());
+    }
+    this.syncLodgingDateForm();
+  }
+
+  onCheckOutInput(val: string): void {
+    this.checkOutDate.set(val);
+    this.syncLodgingDateForm();
+  }
+
+  private syncLodgingDateForm(): void {
+    if (!this.isLodging()) return;
+    const inD = this.checkInDate();
+    const outD = this.checkOutDate();
+    if (!inD || !outD) {
+      this.form.controls.date.setValue('');
+      this.form.controls.date.setErrors({ required: true });
+      this.form.controls.date.markAsDirty();
+      this.form.controls.date.markAsTouched();
+      return;
+    }
+    if (outD <= inD) {
+      this.form.controls.date.setValue('');
+      this.form.controls.date.setErrors({ invalidCheckOut: true });
+      this.form.controls.date.markAsDirty();
+      this.form.controls.date.markAsTouched();
+      return;
+    }
+    const nights = this.selectedNights();
+    const nightsLabel = nights === 1 ? '1 noche' : `${nights} noches`;
+    this.form.controls.date.setValue(`${inD} al ${outD} (${nightsLabel})`);
+    this.form.controls.date.setErrors(null);
+    this.form.controls.date.markAsDirty();
+    this.form.controls.date.markAsTouched();
+  }
+
   readonly subtotal = computed(() => {
     const pack = this.selectedPricingPack();
     if (pack) {
       return pack.totalPriceArs;
     }
-    return (this.experience()?.priceArs ?? 0) * (Number(this.formValue().participants) || 1);
+    const basePrice = this.experience()?.priceArs ?? 0;
+    if (this.isLodging()) {
+      return basePrice * this.selectedNights();
+    }
+    return basePrice * (Number(this.formValue().participants) || 1);
   });
 
   readonly discountInput = signal('');
@@ -579,6 +683,11 @@ export class ExperiencePaymentComponent implements OnInit {
   });
 
   readonly canSubmit = computed(() => {
+    if (this.isLodging()) {
+      if (!this.isCheckOutValid() || !this.form.controls.date.value) {
+        return false;
+      }
+    }
     if (this.paymentMethod() === 'mercadopago') {
       return this.formStatus() === 'VALID';
     }
@@ -586,6 +695,25 @@ export class ExperiencePaymentComponent implements OnInit {
   });
 
   async submitMercadoPago(): Promise<void> {
+    this.form.markAllAsTouched();
+    if (this.isLodging()) {
+      const inD = this.checkInDate();
+      const outD = this.checkOutDate();
+      if (!inD || !outD) {
+        this.form.controls.date.setValue('');
+        this.form.controls.date.setErrors({ required: true });
+        this.form.controls.date.markAsTouched();
+        this.submitError.set('Por favor seleccioná las fechas de check-in y check-out de la estadía.');
+        return;
+      }
+      if (outD <= inD) {
+        this.form.controls.date.setValue('');
+        this.form.controls.date.setErrors({ invalidCheckOut: true });
+        this.form.controls.date.markAsTouched();
+        this.submitError.set('La fecha de check-out debe ser posterior a la fecha de check-in.');
+        return;
+      }
+    }
     if (this.form.invalid || this.submitting()) return;
     this.submitting.set(true);
     this.submitError.set(null);
@@ -626,32 +754,54 @@ export class ExperiencePaymentComponent implements OnInit {
       return;
     }
 
-    if (
-      exp.dates &&
-      exp.dates.length > 0 &&
-      !exp.dates.includes(value.date) &&
-      value.date !== 'A coordinar'
-    ) {
-      this.submitError.set('La fecha elegida no está disponible.');
-      this.submitting.set(false);
-      return;
-    }
+    if (this.isLodging()) {
+      const inD = this.checkInDate();
+      if (
+        exp.dates &&
+        exp.dates.length > 0 &&
+        !exp.dates.includes(inD)
+      ) {
+        this.submitError.set('La fecha elegida no está disponible.');
+        this.submitting.set(false);
+        return;
+      }
 
-    if (value.date !== 'A coordinar' && this.store.isDateClosed(exp, value.date)) {
-      this.submitError.set('La fecha elegida se encuentra cerrada para nuevas reservas.');
-      this.submitting.set(false);
-      return;
-    }
+      if (this.store.isDateClosed(exp, inD)) {
+        this.submitError.set('La fecha elegida se encuentra cerrada para nuevas reservas.');
+        this.submitting.set(false);
+        return;
+      }
+    } else {
+      if (
+        exp.dates &&
+        exp.dates.length > 0 &&
+        !exp.dates.includes(value.date) &&
+        value.date !== 'A coordinar'
+      ) {
+        this.submitError.set('La fecha elegida no está disponible.');
+        this.submitting.set(false);
+        return;
+      }
 
-    if (
-      exp.dates &&
-      exp.dates.length > 0 &&
-      value.date !== 'A coordinar' &&
-      participants > this.seatsForSelectedDate()
-    ) {
-      this.submitError.set('No quedan cupos suficientes para esa fecha.');
-      this.submitting.set(false);
-      return;
+      if (
+        value.date !== 'A coordinar' &&
+        this.store.isDateClosed(exp, value.date)
+      ) {
+        this.submitError.set('La fecha elegida se encuentra cerrada para nuevas reservas.');
+        this.submitting.set(false);
+        return;
+      }
+
+      if (
+        exp.dates &&
+        exp.dates.length > 0 &&
+        value.date !== 'A coordinar' &&
+        participants > this.seatsForSelectedDate()
+      ) {
+        this.submitError.set('No quedan cupos suficientes para esa fecha.');
+        this.submitting.set(false);
+        return;
+      }
     }
 
     let bookingRef = '';
@@ -717,6 +867,7 @@ export class ExperiencePaymentComponent implements OnInit {
           experienceSlug: exp.slug,
           date: value.date,
           participants,
+          stayLength: this.isLodging() ? this.selectedNights() : undefined,
           pricingPackId: selectedPackIdSnapshot,
           baseAmountArs: baseTotalSnapshot,
           surchargeArs: surchargeArsSnapshot,
@@ -772,6 +923,7 @@ export class ExperiencePaymentComponent implements OnInit {
           experienceSlug: exp.slug,
           date: value.date,
           participants,
+          stayLength: this.isLodging() ? this.selectedNights() : undefined,
           pricingPackId: selectedPackIdSnapshot,
           baseAmountArs: baseTotalSnapshot,
           surchargeArs: surchargeArsSnapshot,
@@ -838,6 +990,7 @@ export class ExperiencePaymentComponent implements OnInit {
 
   constructor() {
     effect(() => {
+      if (this.isLodging()) return;
       const noFixed = this.hasNoFixedDates();
       const currentVal = this.form.controls.date.value;
       if (noFixed) {
@@ -1049,6 +1202,7 @@ export class ExperiencePaymentComponent implements OnInit {
                 experienceId: targetExpId || 'exp',
                 date: targetDate,
                 participants: targetParticipants,
+                stayLength: pendingBooking?.stayLength,
                 amountArs: targetTotal,
                 baseAmountArs: targetBase,
                 surchargeArs: targetSurcharge,
@@ -1252,6 +1406,36 @@ export class ExperiencePaymentComponent implements OnInit {
     if (!file) {
       this.receiptError.set('Adjuntá el comprobante de la transferencia.');
     }
+    if (this.isLodging()) {
+      const inD = this.checkInDate();
+      const outD = this.checkOutDate();
+      if (!inD || !outD) {
+        this.form.controls.date.setValue('');
+        this.form.controls.date.setErrors({ required: true });
+        this.form.controls.date.markAsTouched();
+        this.submitError.set('Por favor seleccioná las fechas de check-in y check-out de la estadía.');
+        return;
+      }
+      if (outD <= inD) {
+        this.form.controls.date.setValue('');
+        this.form.controls.date.setErrors({ invalidCheckOut: true });
+        this.form.controls.date.markAsTouched();
+        this.submitError.set('La fecha de check-out debe ser posterior a la fecha de check-in.');
+        return;
+      }
+      if (
+        exp?.dates &&
+        exp.dates.length > 0 &&
+        !exp.dates.includes(inD)
+      ) {
+        this.submitError.set('La fecha elegida no está disponible.');
+        return;
+      }
+      if (exp && this.store.isDateClosed(exp, inD)) {
+        this.submitError.set('La fecha elegida se encuentra cerrada para nuevas reservas.');
+        return;
+      }
+    }
     if (!exp || this.form.invalid || !file) return;
 
     this.submitting.set(true);
@@ -1291,6 +1475,7 @@ export class ExperiencePaymentComponent implements OnInit {
         experienceId: exp.id,
         date: value.date,
         participants: Number(value.participants),
+        stayLength: this.isLodging() ? this.selectedNights() : undefined,
         fullName: value.fullName,
         email: authenticatedMember?.email ?? normalizedEmail,
         dni: value.dni,
