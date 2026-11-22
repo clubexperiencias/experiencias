@@ -1,6 +1,6 @@
 <div class="members-page-container">
   <!-- Barra Superior Unificada -->
-  <app-header [(mobileMenuOpen)]="mobileMenuOpen" (loginClick)="openModal('login')"></app-header>
+  <app-header [(mobileMenuOpen)]="mobileMenuOpen"></app-header>
 
   <!-- Breadcrumb debajo del Header con fondo #FFCC00 -->
   <app-breadcrumb [items]="breadcrumbs"></app-breadcrumb>
@@ -242,36 +242,6 @@
 
   <!-- Footer Compartido -->
   <app-footer />
-
-  <!-- Modal: Iniciar Sesión (si se abre desde el header) -->
-  @if (activeModal() === 'login') {
-  <div class="modal-backdrop" (click)="closeModal()">
-    <div class="modal-card" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <div>
-          <span class="modal-kicker">ACCESO DE SOCIOS</span>
-          <h3 class="modal-heading">Iniciar Sesión</h3>
-        </div>
-        <button class="modal-close-btn" (click)="closeModal()" aria-label="Cerrar modal">
-          <mat-icon>close</mat-icon>
-        </button>
-      </div>
-
-      <p class="modal-lead">
-        Iniciá sesión con Google para acceder a tu perfil de socio y comprobantes:
-      </p>
-
-      <div class="login-modal-box">
-        <div class="modal-footer" style="margin-top: 1.4rem">
-          <button class="pill-action-btn secondary" (click)="closeModal()">Cancelar</button>
-          <a routerLink="/ingresar" class="pill-action-btn" (click)="closeModal()">
-            Iniciar sesión con Google
-          </a>
-        </div>
-      </div>
-    </div>
-  </div>
-  }
 
   <!-- Notificación Flotante: Plataforma en Construcción (Estilo Toast Favoritos) -->
   @if (showConstructionNotice()) {

@@ -421,9 +421,19 @@ export class ExperienceService {
   }
 
   getExperienceBySlug(slug: string): Experience | undefined {
-    return this._experiences().find(
-      (e) => e.slug === slug || e.id === slug || e.id === `exp-${slug}`,
+    if (!slug) return undefined;
+    const clean = slug.trim().toLowerCase();
+    const matches = this._experiences().filter(
+      (e) =>
+        (e.slug || '').trim().toLowerCase() === clean ||
+        e.id === clean ||
+        e.id === `exp-${clean}`,
     );
+    if (matches.length === 0) return undefined;
+    if (matches.length === 1) return matches[0];
+    // Si hay colisión con registros duplicados o históricos, priorizar la versión activa/publicada
+    const published = matches.find((e) => e.status === 'publicada');
+    return published || matches[0];
   }
 
   getExperienceById(id: string): Experience | undefined {
@@ -542,6 +552,21 @@ export class ExperienceService {
     } else {
       nextList.push(merged);
     }
+
+    // Si se actualizó el slug, resolver colisiones con registros duplicados o históricos
+    if (merged.slug) {
+      const targetSlug = merged.slug.trim().toLowerCase();
+      const targetIdx = index !== -1 ? index : nextList.length - 1;
+      for (let i = 0; i < nextList.length; i++) {
+        if (i !== targetIdx && (nextList[i].slug || '').trim().toLowerCase() === targetSlug) {
+          nextList[i] = {
+            ...nextList[i],
+            slug: `${nextList[i].slug}-archived-${nextList[i].id}`,
+          };
+        }
+      }
+    }
+
     this._experiences.set(nextList);
     this.persistToLocalStorage(nextList);
 
@@ -1289,7 +1314,7 @@ export class ExperienceService {
     if (isSupabaseConfigured()) {
       const escapedEmail = (profile.email || '').trim().replace(/["\\]/g, '\\$&');
       const emailFilter = escapedEmail ? `,provider_email.eq."${escapedEmail}"` : '';
-      const orFilter = `slug.eq.kayak,slug.eq.exp-kayak,provider_slug.eq.club-de-experiencias${emailFilter}`;
+      const orFilter = `provider_slug.eq.club-de-experiencias,provider_slug.eq.club${emailFilter}`;
 
       (this.supabase.from('experiencias') as any)
         .update({

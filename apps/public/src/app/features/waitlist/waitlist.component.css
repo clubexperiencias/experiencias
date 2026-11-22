@@ -1537,7 +1537,6 @@ mat-icon.arrow-icon {
 
 .modal-card.experiences-modal-card .exp-card.focused,
 .modal-card.experiences-modal-card .exp-card-wrapper.is-expanded .exp-card,
-.modal-card.experiences-modal-card .exp-lateral-panel,
 .modal-card.experiences-modal-card .exp-card-details-panel {
   background: rgba(10, 24, 46, 0.45) !important;
   backdrop-filter: blur(16px);
@@ -1899,79 +1898,6 @@ mat-icon.arrow-icon {
   background: var(--color-gold);
   color: #0d0f14;
   font-weight: 700;
-}
-
-/* Panel lateral de detalles de experiencias - UNIFICADO CON LA CARD (SIN CORTE) */
-.exp-lateral-panel {
-  background: rgba(10, 24, 46, 0.45);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  padding: 1.25rem 1.35rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  overflow-y: auto;
-  max-height: 100%;
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-gold) transparent;
-}
-
-/* Si la card está a la izquierda -> se expande hacia la derecha directamente pegada a la card (CERO GAP) */
-.exp-lateral-panel.expand-right {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: calc(100% - 1.5px);
-  width: calc(100% + 1.35rem);
-  height: 100%;
-  box-sizing: border-box;
-  z-index: 35;
-  border-radius: 0 2px 2px 0;
-  border: 1.5px solid var(--color-gold);
-  border-left: none;
-  box-shadow: none;
-  transform-origin: left center;
-  animation: expandRightAnim 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/* Si la card está a la derecha -> se expande hacia la izquierda directamente pegada a la card (CERO GAP) */
-.exp-lateral-panel.expand-left {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  right: calc(100% - 1.5px);
-  width: calc(100% + 1.35rem);
-  height: 100%;
-  box-sizing: border-box;
-  z-index: 35;
-  border-radius: 2px 0 0 2px;
-  border: 1.5px solid var(--color-gold);
-  border-right: none;
-  box-shadow: none;
-  transform-origin: right center;
-  animation: expandLeftAnim 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-@keyframes expandRightAnim {
-  0% {
-    opacity: 0;
-    transform: scaleX(0.92);
-  }
-  100% {
-    opacity: 1;
-    transform: scaleX(1);
-  }
-}
-
-@keyframes expandLeftAnim {
-  0% {
-    opacity: 0;
-    transform: scaleX(0.92);
-  }
-  100% {
-    opacity: 1;
-    transform: scaleX(1);
-  }
 }
 
 /* Botones Call To Action del Modal Niveles de Socio */
@@ -2703,13 +2629,6 @@ mat-icon.arrow-icon {
   border-color: var(--color-gold);
   color: var(--color-gold);
   transform: scale(1.1);
-}
-
-.exp-lateral-panel .details-desc {
-  font-size: 0.82rem;
-  line-height: 1.45;
-  color: var(--color-text-soft);
-  margin: 0;
 }
 
 .highlights-list strong {
@@ -4440,18 +4359,6 @@ mat-icon.arrow-icon {
     border-top: 1.5px solid var(--color-gold) !important;
     border-left: 1.5px solid var(--color-gold) !important;
     border-right: 1.5px solid var(--color-gold) !important;
-  }
-
-  .exp-lateral-panel.expand-right,
-  .exp-lateral-panel.expand-left {
-    position: static;
-    width: 100%;
-    height: auto;
-    margin-top: -1px;
-    animation: fadeIn 0.3s ease-out forwards;
-    transform: none;
-    border-radius: 0 0 2px 2px !important;
-    border: 1.5px solid var(--color-gold) !important;
   }
 
   /* Historial de Actividad & Recibos en Mobile */

@@ -305,10 +305,14 @@ export class HospedajesComponent implements AfterViewInit, OnDestroy {
     if (!el) return;
     const card = el.querySelector<HTMLElement>('.carousel-item');
     const step = (card?.offsetWidth || 340) + 20;
-    el.scrollBy({
-      left: direction === 'next' ? step : -step,
-      behavior: 'smooth',
-    });
+    if (typeof el.scrollBy === 'function') {
+      el.scrollBy({
+        left: direction === 'next' ? step : -step,
+        behavior: 'smooth',
+      });
+    } else {
+      el.scrollLeft += direction === 'next' ? step : -step;
+    }
   }
 
   onCarouselScroll(): void {

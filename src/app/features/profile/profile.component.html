@@ -1,6 +1,6 @@
 <div class="profile-page-container">
   <!-- Barra Superior Unificada -->
-  <app-header [(mobileMenuOpen)]="mobileMenuOpen" (loginClick)="openLoginModal()"></app-header>
+  <app-header [(mobileMenuOpen)]="mobileMenuOpen"></app-header>
 
   <!-- Notificación en Verde (3 segundos) que reemplaza al Breadcrumb -->
   @if (showSuccessNotification()) {
@@ -297,155 +297,15 @@
             (touchend)="onCarouselMouseLeave()">
             <div class="featured-carousel-track fav-carousel-track" #carouselRef (scroll)="onCarouselScroll()">
               @for (item of carouselFavoriteExperiences(); track item.key) {
-              @let exp = item.exp;
-              <div class="exp-catalog-item carousel-item" [class.is-expanded]="selectedExperience()?.id === exp.id"
-                [class.is-locked-card]="exp.isLocked">
-                <div class="exp-card-main">
-                  <div class="exp-card-media">
-                    <img [src]="exp.coverImage" [alt]="exp.title" class="exp-card-img" loading="lazy"
-                      decoding="async" />
-                    <span class="exp-region-tag" [class.is-enabled-tag]="!exp.isLocked">{{ exp.region }}</span>
-                    <button type="button" class="fav-btn-circle" [class.is-favorited]="isFavorite(exp)"
-                      [class.is-disabled-fav]="exp.isLocked" [disabled]="exp.isLocked"
-                      (click)="exp.isLocked ? $event.stopPropagation() : toggleFavorite(exp, $event)"
-                      [attr.aria-label]="exp.isLocked ? 'Próximamente disponible' : (isFavorite(exp) ? 'Quitar de favoritos' : 'Agregar a favoritos')"
-                      [title]="exp.isLocked ? 'Próximamente disponible' : (isFavorite(exp) ? 'Quitar de favoritos' : 'Agregar a favoritos')">
-                      <mat-icon class="fav-icon" [class.is-favorited]="isFavorite(exp)">
-                        {{ isFavorite(exp) ? 'favorite' : 'favorite_border' }}
-                      </mat-icon>
-                    </button>
-                  </div>
-
-                  <div class="exp-card-content">
-                    <h3 class="exp-title">
-                      @if (!exp.isLocked) {
-                      <a [routerLink]="exp.detailRoute || ['/experiencias', exp.slug || exp.id]" class="exp-title-link">
-                        {{ exp.title }}
-                      </a>
-                      } @else {
-                      {{ exp.title }}
-                      }
-                    </h3>
-                    <p class="exp-tagline">{{ exp.tagline }}</p>
-
-                    @if (!exp.isLocked) {
-                    <div class="exp-meta-row">
-                      <span>{{ exp.durationLabel }}</span>
-                      @if (exp.difficulty && exp.difficulty.toLowerCase() !== 'ninguna') {
-                        <span>Dificultad: {{ exp.difficulty }}</span>
-                      }
-                      @if (exp.providerName) {
-                      @if (getProviderSlug(exp); as slug) {
-                      <span>Prestador: <a [routerLink]="['/prestadores', slug]" class="provider-stat-link">{{
-                          exp.providerName }}</a></span>
-                      } @else {
-                      <span>Prestador: <strong class="provider-stat-name">{{ exp.providerName }}</strong></span>
-                      }
-                      }
-                    </div>
-                    }
-
-                    <div class="exp-price-action-row" [class.is-locked-footer]="exp.isLocked">
-                      @if (exp.isLocked) {
-                      <button type="button" disabled class="exp-locked-btn is-blocked-btn"
-                        title="Próximamente disponible">
-                        <span>Próximamente</span>
-                      </button>
-                      } @else {
-                      <div class="price-box">
-                        <span class="price-val">${{ exp.priceArs.toLocaleString('es-AR') }} ARS</span>
-                        <span class="price-usd">o ${{ exp.priceUsd }} USD</span>
-                      </div>
-                      @if (exp.detailRoute) {
-                      <a [routerLink]="exp.detailRoute" class="exp-toggle-details-btn exp-cta-link"
-                        style="color: #ffffff !important;">
-                        <span style="color: #ffffff !important;">Saber Más</span>
-                      </a>
-                      } @else {
-                      <button class="exp-toggle-details-btn" [class.active]="selectedExperience()?.id === exp.id"
-                        (click)="toggleExperienceDetails(exp)" style="color: #ffffff !important;">
-                        @if (selectedExperience()?.id === exp.id) {
-                        <span style="color: #ffffff !important;">Ocultar detalles</span>
-                        } @else {
-                        <span style="color: #ffffff !important;">Saber Más</span>
-                        }
-                      </button>
-                      }
-                      }
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Panel expandible de detalles técnicos -->
-                @if (selectedExperience()?.id === exp.id) {
-                <div class="exp-details-panel">
-                  <div class="details-panel-header">
-                    <div>
-                      <span class="details-kicker">FICHA TÉCNICA Y PROTOCOLO</span>
-                      <h4 class="details-title">{{ exp.title }}</h4>
-                    </div>
-                    <button class="details-close-btn" (click)="closeExperienceDetails()" aria-label="Cerrar detalles">
-                      <mat-icon>close</mat-icon>
-                    </button>
-                  </div>
-
-                  <p class="details-description">{{ exp.description }}</p>
-
-                  <div class="details-columns-grid">
-                    @if (exp.highlights && exp.highlights.length > 0) {
-                    <div class="details-col">
-                      <span class="col-kicker">PUNTOS DESTACADOS</span>
-                      <ul class="highlights-list">
-                        @for (h of exp.highlights; track h) {
-                        <li>{{ h }}</li>
-                        }
-                      </ul>
-                    </div>
-                    }
-
-                    @if (exp.included && exp.included.length > 0) {
-                    <div class="details-col">
-                      <span class="col-kicker">SERVICIOS INCLUIDOS</span>
-                      <div class="included-pills-wrap">
-                        @for (inc of exp.included; track inc) {
-                        <span class="inc-pill">✓ {{ inc }}</span>
-                        }
-                      </div>
-                    </div>
-                    }
-
-                    @if (exp.providerName) {
-                    <div class="details-col">
-                      <span class="col-kicker">PRESTADOR</span>
-                      @if (getProviderSlug(exp); as slug) {
-                      <p style="margin: 0.25rem 0 0; font-size: 0.88rem;">
-                        <a [routerLink]="['/prestadores', slug]" class="provider-stat-link" style="color: #ffffff;">
-                          {{ exp.providerName }}
-                        </a>
-                      </p>
-                      } @else {
-                      <p style="color: #ffffff; font-weight: 600; margin: 0.25rem 0 0; font-size: 0.88rem;">
-                        {{ exp.providerName }}
-                      </p>
-                      }
-                    </div>
-                    }
-                  </div>
-
-                  <div class="details-footer-row">
-                    <div class="footer-hint">
-                      <mat-icon class="hint-icon">verified</mat-icon>
-                      <span>Experiencia guardada en tus favoritos</span>
-                    </div>
-                    <a [routerLink]="exp.detailRoute || ['/experiencias', exp.slug || exp.id]"
-                      class="participate-cta-btn" style="color: #ffffff !important;">
-                      <span style="color: #ffffff !important;">Ver Ficha Completa</span>
-                      <mat-icon class="btn-icon">arrow_forward</mat-icon>
-                    </a>
-                  </div>
-                </div>
-                }
-              </div>
+                @let exp = item.exp;
+                <app-experience-card
+                  [experience]="exp"
+                  variant="carousel"
+                  footerAction="fiche"
+                  [isExpanded]="selectedExperience()?.id === exp.id"
+                  (toggleDetails)="toggleExperienceDetails($event)"
+                  (closeDetails)="closeExperienceDetails()"
+                />
               }
             </div>
           </div>
@@ -529,45 +389,6 @@
   <!-- ═══════════════ MODALES INTERACTIVOS EN LA MISMA PÁGINA DE PERFIL ═══════════════ -->
   @if (activeModal()) {
   <div class="modal-backdrop" (click)="closeModal()">
-    <!-- Modal: Iniciar Sesión -->
-    @if (activeModal() === 'login') {
-    <div class="modal-card" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <div>
-          <span class="modal-kicker">ACCESO DE SOCIOS</span>
-          <h3 class="modal-heading">Iniciar Sesión</h3>
-        </div>
-        <button class="modal-close-btn" (click)="closeModal()" aria-label="Cerrar modal">
-          <mat-icon>close</mat-icon>
-        </button>
-      </div>
-
-      <p class="modal-lead login-lead">
-        Ingresá tu correo electrónico para acceder a tu perfil de socio y comprobantes:
-      </p>
-
-      <div class="login-modal-box">
-        <div class="login-input-wrap">
-          <label for="login-modal-email" class="login-field-lbl">Correo Electrónico</label>
-          <input id="login-modal-email" type="email" class="login-modal-input" placeholder="tu-correo@ejemplo.com"
-            [value]="loginEmail()" (input)="loginEmail.set($any($event.target).value)" (keyup.enter)="submitLogin()" />
-        </div>
-
-        @if (loginError()) {
-        <p class="error-text" style="margin-top: 0.6rem">{{ loginError() }}</p>
-        }
-
-        <div class="modal-footer" style="margin-top: 1.4rem">
-          <button class="pill-action-btn secondary" (click)="closeModal()">Cancelar</button>
-          <button class="pill-action-btn" (click)="submitLogin()"
-            [disabled]="!loginEmail().trim() || newsletter.isLoading()">
-            Ingresar
-          </button>
-        </div>
-      </div>
-    </div>
-    }
-
     <!-- Modal: Niveles de Socio y Membresías -->
     @if (activeModal() === 'tiers') {
     <div class="modal-card wide tiers-modal-card" (click)="$event.stopPropagation()">
@@ -975,43 +796,11 @@
 
           <!-- Box de detalles que se expande lateralmente unido a la card -->
           @if (selectedExperience()?.id === exp.id) {
-          <div class="exp-lateral-panel" [class.expand-right]="idx % 2 === 0" [class.expand-left]="idx % 2 !== 0">
-            <div class="lateral-header-row">
-              <div class="lateral-kicker-group">
-                <span class="lateral-kicker">
-                  {{
-                  idx % 2 === 0
-                  ? 'FICHA TÉCNICA Y RECORRIDO →'
-                  : '← FICHA TÉCNICA Y RECORRIDO'
-                  }}
-                </span>
-                <h4 class="lateral-title">{{ exp.title }}</h4>
-              </div>
-              <button class="close-details-pill" (click)="selectedExperience.set(null)" aria-label="Cerrar detalles">
-                ✕
-              </button>
-            </div>
-
-            <p class="details-desc">{{ exp.description }}</p>
-
-            <div class="highlights-list">
-              <strong>Puntos destacados de la travesía:</strong>
-              <ul>
-                @for (h of exp.highlights; track h) {
-                <li>{{ h }}</li>
-                }
-              </ul>
-            </div>
-
-            <div class="included-services">
-              <strong>Servicios incluidos por el prestador:</strong>
-              <div class="included-tags-row">
-                @for (inc of exp.included; track inc) {
-                <span class="inc-pill">✓ {{ inc }}</span>
-                }
-              </div>
-            </div>
-          </div>
+            <app-experience-drawer
+              [experience]="exp"
+              [direction]="idx % 2 === 0 ? 'right' : 'left'"
+              (close)="selectedExperience.set(null)"
+            />
           }
         </div>
         }

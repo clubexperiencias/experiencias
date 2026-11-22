@@ -558,7 +558,7 @@ import { Discount } from '../../../core/models/discount.model';
                       </span>
                     </td>
                     <td class="text-right">
-                      <a [routerLink]="getExperienceFicheRoute(exp.slug)" class="btn-review">
+                      <a [routerLink]="getExperienceFicheRoute(exp)" class="btn-review">
                         VER FICHA
                       </a>
                     </td>
@@ -4402,7 +4402,17 @@ export class AdminDashboardComponent {
     return segments[0] === 'admin' ? '/admin/ranking' : '/ranking';
   }
 
-  getExperienceFicheRoute(slug?: string): string {
+  getExperienceFicheRoute(expOrSlug?: string | { id?: string; slug?: string }): string {
+    let slug = '';
+    if (typeof expOrSlug === 'string') {
+      const latest = this.experienceService.getExperienceBySlug(expOrSlug) ||
+                     this.experienceService.getExperienceById(expOrSlug);
+      slug = latest?.slug || expOrSlug;
+    } else if (expOrSlug) {
+      const latest = (expOrSlug.id ? this.experienceService.getExperienceById(expOrSlug.id) : null) ||
+                     (expOrSlug.slug ? this.experienceService.getExperienceBySlug(expOrSlug.slug) : null);
+      slug = latest?.slug || expOrSlug.slug || expOrSlug.id || '';
+    }
     const rawPath = this.router.url.split('?')[0].split('#')[0];
     const segments = rawPath.split('/').filter(Boolean);
     const base = segments[0] === 'admin' ? '/admin/experiencias' : '/experiencias';

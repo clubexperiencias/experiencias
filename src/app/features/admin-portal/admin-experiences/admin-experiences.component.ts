@@ -4446,6 +4446,9 @@ export class AdminExperiencesComponent implements OnInit {
       if (exp) {
         this.editingExperience.set(exp);
         this.openEditModal(exp);
+        if (exp.slug && exp.slug !== slug) {
+          void this.router.navigateByUrl(isEdit ? this.getEditRoute(exp) : this.getDetailRoute(exp), { replaceUrl: true });
+        }
         if (isEdit) {
           this.isRouteEditMode.set(true);
           this.isRouteDetailMode.set(false);
@@ -4475,8 +4478,8 @@ export class AdminExperiencesComponent implements OnInit {
   readonly publicSlugs = computed(() => this.experiences().map((e) => `/${e.slug}`));
 
   readonly primaryArsPrice = computed(() => {
-    const kayak = this.experienceService.getExperienceBySlug('kayak');
-    return kayak?.priceArs || 65000;
+    const firstWithPrice = this.experiences().find((e) => e.priceArs && e.priceArs > 0);
+    return firstWithPrice?.priceArs || 65000;
   });
 
   readonly avgCapacity = computed(() => {
@@ -5344,23 +5347,40 @@ export class AdminExperiencesComponent implements OnInit {
       finalProviderName.toLowerCase() === 'club de experiencias' ||
       finalProviderName.toLowerCase() === 'club';
 
-    const isClub = isExplicitClub && (this.isClub(currentExp) || this.isCreating());
+    const isExternalExperience = Boolean(currentExp && !this.isClub(currentExp) && !this.isCreating());
+    const isClub = !isExternalExperience && isExplicitClub && (this.isClub(currentExp) || this.isCreating());
     const club = this.adminStore.clubProfile();
 
+    const resolvedProviderPhone = isClub
+      ? (club.phone || '')
+      : (inputProviderPhone || currentExp?.providerPhone || matchingProposal?.providerPhone || '');
+
+    const resolvedProviderCbu = isClub
+      ? (club.cbuAlias || '')
+      : (inputProviderCbu || currentExp?.providerCbuAlias || matchingProposal?.providerCbuAlias || '');
+
+    const resolvedProviderCuit = isClub
+      ? (club.cuitDni || '')
+      : (inputProviderCuit || currentExp?.providerCuitDni || matchingProposal?.providerCuitDni || '');
+
+    const resolvedProviderBank = isClub
+      ? (club.bankName || '')
+      : (inputProviderBank || currentExp?.providerBankName || matchingProposal?.providerBankName || '');
+
     if (!isClub) {
-      if (!inputProviderPhone) {
+      if (!resolvedProviderPhone) {
         this.showToast('Por favor ingresá el teléfono o WhatsApp de contacto del prestador.');
         return;
       }
-      if (!inputProviderCbu) {
+      if (!resolvedProviderCbu) {
         this.showToast('Por favor ingresá el CBU / CVU o Alias de cobro del prestador.');
         return;
       }
-      if (!inputProviderCuit) {
+      if (!resolvedProviderCuit) {
         this.showToast('Por favor ingresá el CUIT o DNI del prestador.');
         return;
       }
-      if (!inputProviderBank) {
+      if (!resolvedProviderBank) {
         this.showToast('Por favor ingresá el banco o entidad financiera del prestador.');
         return;
       }
@@ -5369,22 +5389,6 @@ export class AdminExperiencesComponent implements OnInit {
     const resolvedProviderName = isClub
       ? (club.name || 'Club de Experiencias')
       : finalProviderName;
-
-    const resolvedProviderPhone = isClub
-      ? (club.phone || '')
-      : inputProviderPhone;
-
-    const resolvedProviderCbu = isClub
-      ? (club.cbuAlias || '')
-      : inputProviderCbu;
-
-    const resolvedProviderCuit = isClub
-      ? (club.cuitDni || '')
-      : inputProviderCuit;
-
-    const resolvedProviderBank = isClub
-      ? (club.bankName || '')
-      : inputProviderBank;
 
     const proposalAgency = matchingProposal?.providerAgency || matchingProposal?.providerName;
     const fallbackSlug = (proposalAgency && !isClub ? slugify(proposalAgency) : undefined) || (resolvedProviderName && !isClub ? slugify(resolvedProviderName) : undefined);
@@ -5540,6 +5544,22 @@ export class AdminExperiencesComponent implements OnInit {
           await this.experienceService.updateExperience(payload);
           await this.experienceService.reloadFromSupabase();
           this.showToast(`Información de la ruta /experiencias/${slug} actualizada con éxito.`);
+        }
+      }
+
+      // Propagar actualización de slug y publicUrl a providerStore para consistencia global
+      if (this.adminStore?.providerStore) {
+        try {
+          this.adminStore.providerStore.updateExperiencePublicUrl?.(payload.id, payload.publicUrl || `https://experiencias.club/experiencias/${slug}`);
+          if (typeof (this.adminStore.providerStore as any).updateExperience === 'function') {
+            (this.adminStore.providerStore as any).updateExperience(payload.id, {
+              slug,
+              publicUrl: payload.publicUrl,
+              detailRoute: payload.detailRoute,
+            });
+          }
+        } catch {
+          // ignore
         }
       }
 

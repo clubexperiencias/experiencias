@@ -40,7 +40,7 @@ describe('AdminDiscountsComponent', () => {
     }).compileComponents();
 
     router = TestBed.inject(Router);
-    spyOn(router, 'navigateByUrl');
+    vi.spyOn(router, 'navigateByUrl');
 
     fixture = TestBed.createComponent(AdminDiscountsComponent);
     component = fixture.componentInstance;

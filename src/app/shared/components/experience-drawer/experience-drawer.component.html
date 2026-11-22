@@ -1,0 +1,82 @@
+<div
+  class="exp-lateral-panel"
+  [class.expand-right]="direction === 'right'"
+  [class.expand-left]="direction === 'left'"
+  (click)="$event.stopPropagation()"
+>
+  <div class="lateral-header-row">
+    <div class="lateral-kicker-group">
+      <span class="lateral-kicker">{{ kickerText }}</span>
+      <h4 class="lateral-title">{{ experience.title }}</h4>
+    </div>
+    <button class="close-details-pill" (click)="onClose($event)" aria-label="Cerrar detalles">
+      ✕
+    </button>
+  </div>
+
+  @if (experience.itinerary) {
+    <div class="drawer-tabs">
+      <button
+        type="button"
+        class="drawer-tab-btn"
+        [class.active]="activeTab() === 'details'"
+        (click)="activeTab.set('details')"
+      >
+        Detalles
+      </button>
+      <button
+        type="button"
+        class="drawer-tab-btn"
+        [class.active]="activeTab() === 'itinerary'"
+        (click)="activeTab.set('itinerary')"
+      >
+        Itinerario
+      </button>
+    </div>
+  }
+
+  @if (activeTab() === 'details') {
+    <p class="details-desc">{{ experience.description }}</p>
+
+    @if (experience.highlights && experience.highlights.length > 0) {
+      <div class="highlights-list">
+        <strong>Puntos destacados de la travesía:</strong>
+        <ul>
+          @for (h of experience.highlights; track h) {
+            <li>{{ h }}</li>
+          }
+        </ul>
+      </div>
+    }
+
+    @if (experience.included && experience.included.length > 0) {
+      <div class="included-services">
+        <strong>Servicios incluidos por el prestador:</strong>
+        <div class="included-tags-row">
+          @for (inc of experience.included; track inc) {
+            <span class="inc-pill">✓ {{ inc }}</span>
+          }
+        </div>
+      </div>
+    }
+  } @else {
+    <div class="drawer-itinerary-content">
+      <strong class="itinerary-heading">Recorrido e Itinerario:</strong>
+      <p class="itinerary-text">{{ experience.itinerary }}</p>
+    </div>
+  }
+
+  @if (showFullFicheLink) {
+    <div class="drawer-footer-action">
+      <a
+        [routerLink]="['/experiencias', experience.slug || experience.id]"
+        class="drawer-fiche-link"
+        (click)="onClose()"
+      >
+        <span>Ver Ficha Completa</span>
+        <mat-icon class="link-icon">arrow_forward</mat-icon>
+      </a>
+    </div>
+  }
+</div>
+

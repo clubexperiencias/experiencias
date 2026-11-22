@@ -251,8 +251,13 @@ export class ExperienceDetailComponent {
 
   readonly albumPhotosCount = computed<number>(() => {
     const e = this.exp();
-    if (!e || !Array.isArray(e.albumPhotos)) return 0;
-    return e.albumPhotos.length;
+    if (!e) return 0;
+    const album = Array.isArray(e.albumPhotos) ? e.albumPhotos : [];
+    const hasCoverImage = Boolean(e.coverImage?.trim());
+    const coverAlreadyInAlbum =
+      album.some((p) => p.isCover) ||
+      (hasCoverImage && album.some((p) => p.url?.trim() === e.coverImage?.trim()));
+    return album.length + (hasCoverImage && !coverAlreadyInAlbum ? 1 : 0);
   });
 
   readonly upcomingDates = computed<string[]>(() => {

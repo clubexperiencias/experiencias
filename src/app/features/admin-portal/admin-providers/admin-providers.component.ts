@@ -3490,7 +3490,17 @@ export class AdminProvidersComponent implements OnInit {
     return CLUB_PROVIDER_SLUGS.has(slug) || email === CLUB_PROVIDER_EMAIL;
   }
 
-  getExperienceFicheRoute(slug?: string): string {
+  getExperienceFicheRoute(expOrSlug?: string | { id?: string; slug?: string }): string {
+    let slug = '';
+    if (typeof expOrSlug === 'string') {
+      const latest = this.expService.getExperienceBySlug(expOrSlug) ||
+                     this.expService.getExperienceById(expOrSlug);
+      slug = latest?.slug || expOrSlug;
+    } else if (expOrSlug) {
+      const latest = (expOrSlug.id ? this.expService.getExperienceById(expOrSlug.id) : null) ||
+                     (expOrSlug.slug ? this.expService.getExperienceBySlug(expOrSlug.slug) : null);
+      slug = latest?.slug || expOrSlug.slug || expOrSlug.id || '';
+    }
     const base = this.isAdminRoute() ? '/admin/experiencias' : '/experiencias';
     return `${base}/${slug || ''}`;
   }

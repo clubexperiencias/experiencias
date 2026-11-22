@@ -10,8 +10,6 @@ import {
   BreadcrumbItem,
 } from '../../shared/components/breadcrumb/breadcrumb.component';
 
-export type NotFoundModalType = 'login' | null;
-
 @Component({
   selector: 'app-not-found',
   standalone: true,
@@ -30,17 +28,12 @@ export class NotFoundComponent {
   readonly newsletter = inject(NewsletterService);
   readonly router = inject(Router);
 
-  readonly bg = signal('/assets/images/laguna_blanca.jpg');
-
   readonly breadcrumbs: BreadcrumbItem[] = [
     { label: 'Inicio', url: '/' },
     { label: 'Página no encontrada' },
   ];
 
   readonly mobileMenuOpen = signal(false);
-  readonly activeModal = signal<NotFoundModalType>(null);
-  readonly loginEmail = signal('');
-  readonly loginError = signal<string | null>(null);
 
   toggleMobileMenu(event: Event): void {
     event.stopPropagation();
@@ -52,46 +45,9 @@ export class NotFoundComponent {
     this.mobileMenuOpen.set(false);
   }
 
-  openModal(modal: NotFoundModalType): void {
-    this.mobileMenuOpen.set(false);
-    this.activeModal.set(modal);
-  }
-
-  closeModal(): void {
-    this.activeModal.set(null);
-    this.loginError.set(null);
-  }
-
   @HostListener('window:keydown.escape')
   onEscape(): void {
-    if (this.activeModal()) {
-      this.closeModal();
-    }
     this.mobileMenuOpen.set(false);
-  }
-
-  submitLogin(): void {
-    const email = this.loginEmail().trim();
-    if (!email) return;
-
-    if (
-      this.newsletter.isSubscribed() &&
-      this.newsletter.currentMember()?.email.toLowerCase() === email.toLowerCase()
-    ) {
-      this.closeModal();
-      this.router.navigate(['/perfil']);
-      return;
-    }
-
-    this.newsletter
-      .joinWaitlist({ email })
-      .then(() => {
-        this.closeModal();
-        this.router.navigate(['/perfil']);
-      })
-      .catch(() => {
-        this.loginError.set('Ocurrió un error al ingresar. Intentá nuevamente.');
-      });
   }
 
   logout(): void {

@@ -1185,15 +1185,15 @@ describe('ExperienceService', () => {
 
       // Foto 0 no es la portada
       expect(exp?.albumPhotos?.[0].url).toBe('/assets/images/photo-0.jpg');
-      expect(exp?.albumPhotos?.[0].isCover).toBeFalse();
+      expect(exp?.albumPhotos?.[0].isCover).toBe(false);
 
       // Foto 1 coincide exactamente con cover_image -> isCover: true
       expect(exp?.albumPhotos?.[1].url).toBe('/assets/images/photo-cover.jpg');
-      expect(exp?.albumPhotos?.[1].isCover).toBeTrue();
+      expect(exp?.albumPhotos?.[1].isCover).toBe(true);
 
       // Foto 2 no es la portada
       expect(exp?.albumPhotos?.[2].url).toBe('/assets/images/photo-2.jpg');
-      expect(exp?.albumPhotos?.[2].isCover).toBeFalse();
+      expect(exp?.albumPhotos?.[2].isCover).toBe(false);
     });
 
     it('should leave every photo unmarked as cover when no gallery photo matches cover_image', async () => {
@@ -1239,7 +1239,7 @@ describe('ExperienceService', () => {
       expect(exp?.albumPhotos?.length).toBe(2);
 
       // Ninguna foto debe tener isCover: true
-      expect(exp?.albumPhotos?.every((p) => !p.isCover)).toBeTrue();
+      expect(exp?.albumPhotos?.every((p) => !p.isCover)).toBe(true);
     });
   });
 });

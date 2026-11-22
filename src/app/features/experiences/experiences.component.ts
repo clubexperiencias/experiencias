@@ -22,8 +22,7 @@ import { HeaderComponent } from '../../shared/components/header/header.component
 import { BreadcrumbComponent, BreadcrumbItem } from '../../shared/components/breadcrumb/breadcrumb.component';
 import { FounderAdComponent } from '../../shared/components/founder-ad/founder-ad.component';
 import { ExperiencesSubrouteSwitchComponent } from './components/experiences-subroute-switch/experiences-subroute-switch.component';
-
-export type ExperiencesModalType = 'login' | null;
+import { ExperienceCardComponent } from '../../shared/components/experience-card/experience-card.component';
 
 export interface CarouselExperienceItem {
   key: string;
@@ -43,6 +42,7 @@ export interface CarouselExperienceItem {
     BreadcrumbComponent,
     FounderAdComponent,
     ExperiencesSubrouteSwitchComponent,
+    ExperienceCardComponent,
   ],
   templateUrl: './experiences.component.html',
   styleUrl: './experiences.component.css',
@@ -99,9 +99,6 @@ export class ExperiencesComponent implements AfterViewInit, OnDestroy {
   // Menús de navegación y estado de selección
   readonly mobileMenuOpen = signal(false);
   readonly selectedExperience = signal<Experience | null>(null);
-  readonly activeModal = signal<ExperiencesModalType>(null);
-  readonly loginEmail = signal('');
-  readonly loginError = signal<string | null>(null);
 
   @ViewChild('carouselRef') carouselRef?: ElementRef<HTMLDivElement>;
 
@@ -497,10 +494,14 @@ export class ExperiencesComponent implements AfterViewInit, OnDestroy {
     const step = items[1]
       ? items[1].offsetLeft - items[0].offsetLeft
       : container.clientWidth * 0.45;
-    container.scrollBy({
-      left: direction === 'next' ? step : -step,
-      behavior: 'smooth',
-    });
+    if (typeof container.scrollBy === 'function') {
+      container.scrollBy({
+        left: direction === 'next' ? step : -step,
+        behavior: 'smooth',
+      });
+    } else {
+      container.scrollLeft += direction === 'next' ? step : -step;
+    }
   }
 
   onCarouselScroll(): void {
@@ -551,47 +552,10 @@ export class ExperiencesComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  openModal(modal: ExperiencesModalType): void {
-    this.mobileMenuOpen.set(false);
-    this.activeModal.set(modal);
-  }
-
-  closeModal(): void {
-    this.activeModal.set(null);
-    this.loginError.set(null);
-  }
-
   @HostListener('window:keydown.escape')
   onEscape(): void {
-    if (this.activeModal()) {
-      this.closeModal();
-    }
     this.closeExperienceDetails();
     this.mobileMenuOpen.set(false);
-  }
-
-  submitLogin(): void {
-    const email = this.loginEmail().trim();
-    if (!email) return;
-
-    if (
-      this.newsletter.isSubscribed() &&
-      this.newsletter.currentMember()?.email.toLowerCase() === email.toLowerCase()
-    ) {
-      this.closeModal();
-      this.router.navigate(['/perfil']);
-      return;
-    }
-
-    this.newsletter
-      .joinWaitlist({ email })
-      .then(() => {
-        this.closeModal();
-        this.router.navigate(['/perfil']);
-      })
-      .catch(() => {
-        this.loginError.set('Ocurrió un error al ingresar. Intentá nuevamente.');
-      });
   }
 
   logout(): void {

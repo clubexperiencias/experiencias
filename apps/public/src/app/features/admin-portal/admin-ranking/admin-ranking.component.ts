@@ -750,7 +750,17 @@ export class AdminRankingComponent {
   private readonly ratingService = inject(ProviderRatingService);
   private readonly favoritesService = inject(FavoritesService);
 
-  getExperienceFicheRoute(slug?: string): string {
+  getExperienceFicheRoute(expOrSlug?: string | { id?: string; slug?: string }): string {
+    let slug = '';
+    if (typeof expOrSlug === 'string') {
+      const latest = this.experienceService.getExperienceBySlug(expOrSlug) ||
+                     this.experienceService.getExperienceById(expOrSlug);
+      slug = latest?.slug || expOrSlug;
+    } else if (expOrSlug) {
+      const latest = (expOrSlug.id ? this.experienceService.getExperienceById(expOrSlug.id) : null) ||
+                     (expOrSlug.slug ? this.experienceService.getExperienceBySlug(expOrSlug.slug) : null);
+      slug = latest?.slug || expOrSlug.slug || expOrSlug.id || '';
+    }
     const rawPath = this.router.url.split('?')[0].split('#')[0];
     const segments = rawPath.split('/').filter(Boolean);
     const base = segments[0] === 'admin' ? '/admin/experiencias' : '/experiencias';

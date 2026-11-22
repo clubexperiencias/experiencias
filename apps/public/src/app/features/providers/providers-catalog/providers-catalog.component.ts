@@ -459,10 +459,14 @@ export class ProvidersCatalogComponent implements OnInit, AfterViewInit, OnDestr
     const step = items[1]
       ? items[1].offsetLeft - items[0].offsetLeft
       : container.clientWidth * 0.45;
-    container.scrollBy({
-      left: direction === 'next' ? step : -step,
-      behavior: 'smooth',
-    });
+    if (typeof container.scrollBy === 'function') {
+      container.scrollBy({
+        left: direction === 'next' ? step : -step,
+        behavior: 'smooth',
+      });
+    } else {
+      container.scrollLeft += direction === 'next' ? step : -step;
+    }
   }
 
   onCarouselScroll(): void {

@@ -194,7 +194,7 @@ export class NewsletterService {
   private async initSupabaseData(): Promise<void> {
     if (!this.isSupabaseConnected()) return;
 
-    void (this.supabase.rpc('expire_overdue_pleno_memberships' as any) as any).then(
+    void (this.supabase.rpc('expire_overdue_pleno_memberships' as any) as any)?.then?.(
       () => undefined,
       () => undefined,
     );

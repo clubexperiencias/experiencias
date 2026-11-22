@@ -35,6 +35,8 @@ import {
   BreadcrumbItem,
 } from '../../shared/components/breadcrumb/breadcrumb.component';
 import { ReceiptModalComponent } from '../../shared/components/receipt-modal/receipt-modal.component';
+import { ExperienceCardComponent } from '../../shared/components/experience-card/experience-card.component';
+import { ExperienceDrawerComponent } from '../../shared/components/experience-drawer/experience-drawer.component';
 import { buildGoogleCalendarUrl } from '../../shared/utils/google-calendar.util';
 
 export interface CarouselExperienceItem {
@@ -54,6 +56,8 @@ export interface CarouselExperienceItem {
     HeaderComponent,
     BreadcrumbComponent,
     ReceiptModalComponent,
+    ExperienceCardComponent,
+    ExperienceDrawerComponent,
   ],
   templateUrl: './profile.component.html',
   styleUrl: './profile.component.css',
@@ -567,10 +571,14 @@ export class ProfileComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     }
 
-    container.scrollBy({
-      left: direction === 'next' ? step : -step,
-      behavior: 'smooth',
-    });
+    if (typeof container.scrollBy === 'function') {
+      container.scrollBy({
+        left: direction === 'next' ? step : -step,
+        behavior: 'smooth',
+      });
+    } else {
+      container.scrollLeft += direction === 'next' ? step : -step;
+    }
   }
 
   onCarouselScroll(): void {
@@ -758,39 +766,6 @@ export class ProfileComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly founderLetter = signal('');
   readonly founderAgreedToPrice = signal(false);
   readonly founderSuccess = signal(false);
-
-  // Suscripción de Membresía Mensual
-  // Acceso de Socios (Login Modal)
-  readonly loginEmail = signal('');
-  readonly loginError = signal<string | null>(null);
-
-  openLoginModal(): void {
-    this.loginError.set(null);
-    this.loginEmail.set('');
-    this.openModal('login');
-  }
-
-  submitLogin(): void {
-    const email = this.loginEmail().trim().toLowerCase();
-    if (!email) return;
-
-    if (
-      this.newsletter.isSubscribed() &&
-      this.newsletter.currentMember()?.email?.toLowerCase() === email
-    ) {
-      this.closeModal();
-      return;
-    }
-
-    this.newsletter
-      .joinWaitlist({ email })
-      .then(() => {
-        this.closeModal();
-      })
-      .catch(() => {
-        this.loginError.set('Ocurrió un error al ingresar. Intentá nuevamente.');
-      });
-  }
 
   closeMobileMenu(): void {
     this.mobileMenuOpen.set(false);

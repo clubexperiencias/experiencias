@@ -58,6 +58,4 @@ export class ActivityDetailComponent implements OnInit {
   printReceipt(): void {
     window.print();
   }
-
-  openLoginModal(): void {}
 }

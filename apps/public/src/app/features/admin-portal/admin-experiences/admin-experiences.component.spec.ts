@@ -67,7 +67,7 @@ describe('AdminExperiencesComponent - Mercado Pago Precedence', () => {
     await TestBed.configureTestingModule({
       imports: [AdminExperiencesComponent],
       providers: [
-        provideRouter([]),
+        provideRouter([{ path: '**', component: AdminExperiencesComponent }]),
         { provide: AdminStoreService, useValue: mockAdminStore },
       ],
     }).compileComponents();
