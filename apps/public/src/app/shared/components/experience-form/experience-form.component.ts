@@ -17,6 +17,7 @@ import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angu
 import { RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { StorageService } from '../../../core/services/storage.service';
+import { AdminStoreService } from '../../../core/services/admin-store.service';
 import { RESERVED_EXPERIENCE_SLUGS } from '../../../core/services/experience.service';
 import {
   ALTITUDE_OPTIONS,
@@ -44,6 +45,7 @@ export interface ExperienceFormPayload {
   durationLabel: string;
   altitudeMeters: number;
   priceArs: number;
+  priceUsd?: number;
   capacityPerDate: number;
   dates: string[];
   datesOnRequest?: boolean;
@@ -87,6 +89,7 @@ export interface ExperienceFormPayload {
 export class ExperienceFormComponent implements OnInit, OnChanges {
   private readonly fb = inject(FormBuilder);
   private readonly storageService = inject(StorageService);
+  private readonly adminStore = inject(AdminStoreService, { optional: true });
 
   @Input() mode: 'admin' | 'provider' = 'provider';
   @Input() initialExperience: Partial<Experience> | Partial<ProviderExperience> | null = null;
@@ -96,22 +99,47 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
   @Input() isCreateMode = false;
   @Input() isClubExperience = false;
   @Input() clubConfigRoute = '/admin/configuracion';
+  private readonly _usdExchangeRateInput = signal<number | undefined>(undefined);
+  @Input() set usdExchangeRate(val: number | undefined) {
+    this._usdExchangeRateInput.set(val);
+  }
+  get usdExchangeRate(): number | undefined {
+    return this._usdExchangeRateInput();
+  }
+
   @Input() providerMpInfo?: {
     connected?: boolean;
     collectorId?: string;
     nickname?: string;
   };
   @Input() registeredProviders: ProviderUser[] = [];
-  @Input() clubProfile?: {
+
+  private readonly _clubProfileInput = signal<{
     name?: string;
     phone?: string;
     cbuAlias?: string;
     cuitDni?: string;
     bankName?: string;
     email?: string;
-  } | null = null;
+    usdExchangeRate?: number;
+  } | null>(null);
+  @Input() set clubProfile(val: {
+    name?: string;
+    phone?: string;
+    cbuAlias?: string;
+    cuitDni?: string;
+    bankName?: string;
+    email?: string;
+    usdExchangeRate?: number;
+  } | null | undefined) {
+    this._clubProfileInput.set(val ?? null);
+  }
+  get clubProfile() {
+    return this._clubProfileInput();
+  }
 
   readonly selectedProviderId = signal<string>('custom');
+  readonly isProviderFieldsLocked = computed(() => this.selectedProviderId() !== 'custom');
   private hasUserSelectedProvider = false;
 
   @Output() saveExperience = new EventEmitter<{
@@ -215,17 +243,44 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
     { initialValue: this.form.controls.category.value === 'hospedajes' },
   );
 
-  readonly calculatedUsd = toSignal(
+  readonly currentUsdRate = computed(() => {
+    const inputRate = this._usdExchangeRateInput();
+    if (inputRate && inputRate > 0) {
+      return inputRate;
+    }
+    const adminRate = this.adminStore?.usdExchangeRate();
+    if (adminRate && adminRate > 0) {
+      return adminRate;
+    }
+    const profileRate =
+      this._clubProfileInput()?.usdExchangeRate ||
+      this.adminStore?.clubProfile()?.usdExchangeRate;
+    if (profileRate && profileRate > 0) {
+      return profileRate;
+    }
+    return 1400;
+  });
+
+  private readonly priceArsValue = toSignal(
     this.form.controls.priceArs.valueChanges.pipe(
       startWith(this.form.controls.priceArs.value),
-      map((ars) => Math.round((Number(ars) || 0) / 1300)),
     ),
-    { initialValue: Math.round((Number(this.form.controls.priceArs.value) || 0) / 1300) },
+    { initialValue: this.form.controls.priceArs.value },
   );
+
+  readonly calculatedUsd = computed(() => {
+    const ars = Number(this.priceArsValue()) || 0;
+    const rate = this.currentUsdRate();
+    return Math.round(ars / rate);
+  });
 
   readonly featuredPhotos = computed(() => this.albumPhotos().filter((p) => p.isFeatured));
   readonly galleryPhotos = computed(() => this.albumPhotos().filter((p) => !p.isFeatured));
-  readonly totalAlbumCount = computed(() => this.albumPhotos().length);
+  readonly hasCoverImage = computed(() => Boolean(this.coverImageUrl()?.trim()));
+  readonly totalAlbumCount = computed(() => {
+    const coverCount = this.hasCoverImage() ? 1 : 0;
+    return this.albumPhotos().length + coverCount;
+  });
 
   ngOnInit(): void {
     if (this.mode === 'provider') {
@@ -316,11 +371,22 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
     return !this.durationOptions.includes(val);
   }
 
+  normalizeDifficulty(val: string | null | undefined): string {
+    if (!val || typeof val !== 'string') return 'Ninguna';
+    const trimmed = val.trim();
+    if (!trimmed) return 'Ninguna';
+    const cleaned = trimmed.split('(')[0].trim();
+    const match = this.difficulties.find(
+      (d) => d.toLowerCase() === cleaned.toLowerCase() || d.toLowerCase() === trimmed.toLowerCase(),
+    );
+    return match || 'Ninguna';
+  }
+
   populateForm(exp: Partial<Experience> | Partial<ProviderExperience> | any): void {
     this.hasUserSelectedProvider = false;
     const category = exp.category || 'expediciones';
     const region = exp.region || this.regions[0];
-    const difficulty = exp.difficulty || 'Ninguna';
+    const difficulty = this.normalizeDifficulty(exp.difficulty);
     const rawDuration = exp.durationLabel || (exp.duration ? String(exp.duration) : '');
     const durationLabel = rawDuration === '1 a 2 horas (Paseo express)' ? '1 a 2 horas' : rawDuration;
     const altitudeMeters = exp.altitudeMeters ?? (exp.altitude ? Number(exp.altitude) : 850);
@@ -670,6 +736,30 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
   }
 
   // Fechas
+  onAddDateClick(dateInput?: HTMLInputElement): void {
+    if (this.newDate()?.trim()) {
+      this.addDate();
+      return;
+    }
+    this.openDatePicker(dateInput);
+  }
+
+  openDatePicker(dateInput?: HTMLInputElement): void {
+    const input = dateInput || (typeof document !== 'undefined' ? (document.getElementById('newDateInput') as HTMLInputElement | null) : null);
+    if (input) {
+      if (typeof input.showPicker === 'function') {
+        try {
+          input.showPicker();
+          return;
+        } catch {
+          // Fallback en caso de restricciones de eventos en el navegador
+        }
+      }
+      input.focus();
+      input.click();
+    }
+  }
+
   addDate(): void {
     const d = this.newDate().trim();
     if (!d) return;
@@ -996,6 +1086,7 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
       durationLabel: value.durationLabel.trim(),
       altitudeMeters: Math.round(Number(value.altitudeMeters) || 0),
       priceArs: Math.round(Number(value.priceArs)),
+      priceUsd: this.calculatedUsd(),
       capacityPerDate: Math.round(Number(value.capacityPerDate)),
       dates: this.dates(),
       datesOnRequest: this.datesOnRequest(),

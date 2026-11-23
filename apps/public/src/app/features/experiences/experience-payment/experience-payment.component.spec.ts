@@ -490,4 +490,24 @@ describe('ExperiencePaymentComponent - Lodging Stay Date Handling and Submission
     expect(testComponent.experience()?.category).toBe('hospedajes');
     expect(testComponent.isLodging()).toBe(true);
   });
+
+  it('should compute and render USD equivalent for transfer and total', () => {
+    // Ensure auth is marked ready so checkout shell renders
+    component.authReady.set(true);
+    fixture.detectChanges();
+
+    // Total is calculated from stay dates or base price (e.g., 45000 * 2 nights = 90000)
+    expect(component.total()).toBeGreaterThan(0);
+    const expectedUsd = Math.round(component.total() / (component.usdExchangeRate() || 1400));
+    expect(component.totalUsd()).toBe(expectedUsd);
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const usdEquivalentEl = compiled.querySelector('.pay-usd-equivalent');
+    expect(usdEquivalentEl).toBeTruthy();
+    expect(usdEquivalentEl?.textContent).toContain(`o ~\$${expectedUsd} USD`);
+
+    const usdSubEl = compiled.querySelector('.pay-usd-sub');
+    expect(usdSubEl).toBeTruthy();
+    expect(usdSubEl?.textContent).toContain(`o ~\$${expectedUsd} USD`);
+  });
 });

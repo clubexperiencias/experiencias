@@ -55,7 +55,7 @@ const DEFAULT_REQ_FORM = {
   subheading: '',
   category: 'expediciones',
   region: '',
-  difficulty: 'Baja (Sin experiencia previa)',
+  difficulty: 'Ninguna',
   duration: '4 horas (Media jornada)',
   altitude: '',
   capacity: 12,
@@ -624,7 +624,7 @@ const DEFAULT_REQ_FORM = {
                         name="difficulty"
                       >
                         <option value="Ninguna">Ninguna</option>
-                        <option value="Baja (Sin experiencia previa)">
+                        <option value="Baja">
                           Baja (Sin experiencia previa)
                         </option>
                         <option value="Moderada">Moderada</option>
@@ -793,7 +793,7 @@ const DEFAULT_REQ_FORM = {
                           (click)="addScheduledDate()"
                           [disabled]="!newScheduledDate()"
                         >
-                          + Agregar Fecha
+                          Agregar Fecha
                         </button>
                       </div>
                       @if (scheduledDateError()) {

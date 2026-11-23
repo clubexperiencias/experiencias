@@ -528,6 +528,14 @@ export class ExperiencePaymentComponent implements OnInit {
 
   readonly total = computed(() => this.baseTotal() + this.mercadoPagoSurchargeArs());
 
+  readonly usdExchangeRate = computed(() => this.adminStore.usdExchangeRate() || 1400);
+
+  readonly totalUsd = computed(() => {
+    const rate = this.usdExchangeRate();
+    if (!rate || rate <= 0) return 0;
+    return Math.round(this.total() / rate);
+  });
+
   private readonly autoDiscountEffect = effect(() => {
     const exp = this.experience();
     const currentApplied = this.appliedDiscount();

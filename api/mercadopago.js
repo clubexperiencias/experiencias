@@ -1255,13 +1255,17 @@ module.exports = async function handler(req, res) {
         });
       }
 
+      if (!payer?.email || !String(payer.email).trim()) {
+        return res.status(400).json({ error: 'El email del pagador es obligatorio para generar la reserva.' });
+      }
+
       try {
         // En marketplace: si el vendedor está autorizado en el servidor y hay recargo, retener marketplace_fee para el Club
         const preferencePayload = {
           items,
           payer: {
             name: payer?.name || 'Explorador',
-            email: payer?.email || 'explorador@experiencias.club',
+            email: String(payer.email).trim().toLowerCase(),
             phone: {
               number: payer?.phone || '',
             },
@@ -1937,7 +1941,12 @@ module.exports = async function handler(req, res) {
                 full_name:
                   `${paymentData.payer?.first_name || ''} ${paymentData.payer?.last_name || ''}`.trim() ||
                   'Cliente Mercado Pago',
-                email: paymentData.payer?.email || 'explorador@experiencias.club',
+                email:
+                  paymentData.payer?.email ||
+                  paymentData.metadata?.user_email ||
+                  paymentData.metadata?.email ||
+                  paymentData.additional_info?.payer?.email ||
+                  (bookingRef ? `${bookingRef.toLowerCase()}@mercadopago.reserva` : 'checkout@mercadopago.reserva'),
                 selected_date: 'A coordinar',
                 participants: 1,
                 amount_ars: Math.round(paymentData.transaction_amount || 0),

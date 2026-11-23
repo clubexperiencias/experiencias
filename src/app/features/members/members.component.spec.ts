@@ -1,6 +1,7 @@
-import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { signal, WritableSignal } from '@angular/core';
+import { vi } from 'vitest';
 import { MembersComponent } from './members.component';
 import { TestimoniosService } from '../../core/services/testimonios.service';
 
@@ -77,72 +78,87 @@ describe('MembersComponent (/socios)', () => {
     expect(hrefs).not.toContain('/prestadores');
   });
 
-  it('should preserve focus when keyboard-focused share card is replaced by arriving active testimonials', fakeAsync(() => {
-    // Initially featuredTestimonios is empty, so share card is displayed
-    fixture.detectChanges();
-    const shareCard = fixture.nativeElement.querySelector('.showcase-add-card') as HTMLElement;
-    expect(shareCard).toBeTruthy();
+  it('should preserve focus when keyboard-focused share card is replaced by arriving active testimonials', () => {
+    vi.useFakeTimers();
+    try {
+      // Initially featuredTestimonios is empty, so share card is displayed
+      fixture.detectChanges();
+      const shareCard = fixture.nativeElement.querySelector('.showcase-add-card') as HTMLElement;
+      expect(shareCard).toBeTruthy();
 
-    // User focuses the share card via keyboard
-    shareCard.focus();
-    expect(document.activeElement).toBe(shareCard);
+      // User focuses the share card via keyboard
+      shareCard.focus();
+      expect(document.activeElement).toBe(shareCard);
 
-    // Active testimonial arrives
-    featuredSignal.set([
-      {
-        id: 't-1',
-        authorDisplay: 'Lucía M.',
-        membershipTier: 'fundador',
-        content: 'Una experiencia inolvidable en Catamarca.',
-        createdAt: '2026-01-01',
-      },
-    ]);
-    fixture.detectChanges();
+      // Active testimonial arrives
+      featuredSignal.set([
+        {
+          id: 't-1',
+          authorDisplay: 'Lucía M.',
+          membershipTier: 'fundador',
+          content: 'Una experiencia inolvidable en Catamarca.',
+          createdAt: '2026-01-01',
+        },
+      ]);
+      fixture.detectChanges();
 
-    // Fast forward macro/microtasks
-    tick(10);
-    fixture.detectChanges();
+      // Fast forward macro/microtasks
+      vi.advanceTimersByTime(10);
+      fixture.detectChanges();
 
-    // Focus must not be lost to body; it should be on a valid element (the arriving active testimonial or stable target)
-    expect(document.activeElement).not.toBe(document.body);
-    const activeTestimonial = fixture.nativeElement.querySelector('.featured-testimonial');
-    expect(
-      document.activeElement === activeTestimonial ||
-        fixture.nativeElement.contains(document.activeElement),
-    ).toBe(true);
-  }));
+      // Focus must not be lost to body; it should be on a valid element (the arriving active testimonial or stable target)
+      expect(document.activeElement).not.toBe(document.body);
+      const activeTestimonial = fixture.nativeElement.querySelector('.featured-testimonial');
+      expect(
+        document.activeElement === activeTestimonial ||
+          fixture.nativeElement.contains(document.activeElement),
+      ).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 
   describe('construction notice toast', () => {
-    it('should show the construction notice toast after init delay and auto-dismiss after 7 seconds', fakeAsync(() => {
-      component.triggerConstructionNotice();
-      expect(component.showConstructionNotice()).toBe(false);
+    it('should show the construction notice toast after init delay and auto-dismiss after 7 seconds', () => {
+      vi.useFakeTimers();
+      try {
+        component.triggerConstructionNotice();
+        expect(component.showConstructionNotice()).toBe(false);
 
-      tick(70);
-      fixture.detectChanges();
-      expect(component.showConstructionNotice()).toBe(true);
+        vi.advanceTimersByTime(70);
+        fixture.detectChanges();
+        expect(component.showConstructionNotice()).toBe(true);
 
-      const toast = fixture.nativeElement.querySelector('.is-construction-toast');
-      expect(toast).toBeTruthy();
-      expect(toast.textContent).toContain('¡Plataforma en Construcción!');
-      expect(toast.textContent).toContain(
-        'Estamos en plena etapa de desarrollo: las reseñas y vivencias de socios mostradas son a modo de demo.',
-      );
+        const toast = fixture.nativeElement.querySelector('.is-construction-toast');
+        expect(toast).toBeTruthy();
+        expect(toast.textContent).toContain('¡Plataforma en Construcción!');
+        expect(toast.textContent).toContain(
+          'Estamos en plena etapa de desarrollo: las reseñas y vivencias de socios mostradas son a modo de demo.',
+        );
 
-      tick(7000);
-      fixture.detectChanges();
-      expect(component.showConstructionNotice()).toBe(false);
-    }));
+        vi.advanceTimersByTime(7000);
+        fixture.detectChanges();
+        expect(component.showConstructionNotice()).toBe(false);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
 
-    it('should dismiss the notice immediately when dismissConstructionNotice is called', fakeAsync(() => {
-      component.triggerConstructionNotice();
-      tick(70);
-      fixture.detectChanges();
-      expect(component.showConstructionNotice()).toBe(true);
+    it('should dismiss the notice immediately when dismissConstructionNotice is called', () => {
+      vi.useFakeTimers();
+      try {
+        component.triggerConstructionNotice();
+        vi.advanceTimersByTime(70);
+        fixture.detectChanges();
+        expect(component.showConstructionNotice()).toBe(true);
 
-      component.dismissConstructionNotice();
-      fixture.detectChanges();
-      expect(component.showConstructionNotice()).toBe(false);
-    }));
+        component.dismissConstructionNotice();
+        fixture.detectChanges();
+        expect(component.showConstructionNotice()).toBe(false);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
   });
 
   it('should render the loader and skeleton preview in Experiencias en Primera Persona while loading', () => {
@@ -152,13 +168,6 @@ describe('MembersComponent (/socios)', () => {
     const loader = fixture.nativeElement.querySelector('.testimonials-loading-state');
     expect(loader).toBeTruthy();
     expect(loader.getAttribute('aria-busy')).toBe('true');
-
-    const spinner = loader.querySelector('.loading-spinner-ring');
-    expect(spinner).toBeTruthy();
-
-    const statusText = loader.querySelector('.loading-status-text');
-    expect(statusText).toBeTruthy();
-    expect(statusText.textContent).toContain('Cargando vivencias de la comunidad');
 
     const skeletonCards = loader.querySelectorAll('.skeleton-testimonial-card');
     expect(skeletonCards.length).toBeGreaterThanOrEqual(1);

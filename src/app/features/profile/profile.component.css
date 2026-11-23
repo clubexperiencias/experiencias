@@ -2118,20 +2118,28 @@
 
 /* ── Membership Tenure & Pleno Expiry Strip ───────────────────────────────── */
 .membership-tenure-strip {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: stretch;
   gap: 0.65rem;
   margin-top: 1rem;
+  width: 100%;
+  align-self: stretch;
 }
 
 .tenure-tile {
+  flex: 1 1 130px;
+  min-width: 0;
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: 0.2rem;
   padding: 0.7rem 0.9rem;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 2px;
+  box-sizing: border-box;
 }
 
 .tenure-tile.is-pleno {
@@ -2142,6 +2150,7 @@
 .tenure-tile.is-expiry {
   border-color: rgba(255, 95, 0, 0.48);
   background: rgba(255, 95, 0, 0.1);
+  flex: 1 1 200px;
 }
 
 .tenure-label {

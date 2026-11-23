@@ -276,12 +276,11 @@
         </label>
         <div class="dates-input-row">
           <div class="date-picker-box">
-            <input id="newDateInput" type="date" class="form-input datepicker-input" [value]="newDate()"
+            <input #datePickerInput id="newDateInput" type="date" class="form-input datepicker-input" [value]="newDate()"
               [disabled]="saving" (input)="newDate.set($any($event.target).value)"
               (change)="onDatePicked($any($event.target).value)" />
           </div>
-          <button type="button" class="add-date-btn" (click)="addDate()" [disabled]="saving || !newDate()">+ Agregar
-            fecha</button>
+          <button type="button" class="add-date-btn" (click)="onAddDateClick(datePickerInput)" [disabled]="saving">Agregar fecha</button>
         </div>
 
         @if (datesError()) {
@@ -338,8 +337,7 @@
       <!-- Selector rápido de Asignación / Transferencia de Prestador -->
       <div class="form-group provider-transfer-box">
         <label for="providerSelector" class="form-label provider-transfer-label">
-          <mat-icon class="label-icon">swap_horiz</mat-icon>
-          <span>Asignar o Transferir a Prestador / Cuenta Oficial</span>
+          Asignar o Transferir a Prestador / Cuenta Oficial
         </label>
         <select
           id="providerSelector"
@@ -348,17 +346,17 @@
           (ngModelChange)="onSelectProvider($event)"
           [ngModelOptions]="{ standalone: true }"
         >
-          <option value="club">🏢 Cuenta Oficial del Club de Experiencias</option>
+          <option value="club">Cuenta Oficial del Club de Experiencias</option>
           @if (registeredProviders && registeredProviders.length > 0) {
             <optgroup label="Prestadores Registrados">
               @for (p of registeredProviders; track p.id) {
                 <option [value]="p.id">
-                  👤 {{ p.name || p.agency }} {{ p.agency && p.name && p.agency !== p.name ? '(' + p.agency + ')' : '' }} &mdash; {{ p.email }}
+                  {{ p.name || p.agency }} {{ p.agency && p.name && p.agency !== p.name ? '(' + p.agency + ')' : '' }} &mdash; {{ p.email }}
                 </option>
               }
             </optgroup>
           }
-          <option value="custom">✏️ Prestador manual / Personalizado</option>
+          <option value="custom">Prestador manual / Personalizado</option>
         </select>
         <span class="field-hint">
           Seleccioná un prestador para autocompletar automáticamente su nombre, teléfono y datos de cobro, o elegí la Cuenta Oficial del Club.
@@ -370,12 +368,20 @@
         <mat-icon class="locked-info-icon">info</mat-icon>
         <div class="notice-text">
           <span>
-            Experiencia del <strong>Club de Experiencias</strong>. Si corresponde a otro prestador, podés cambiar el
-            nombre y datos de contacto a continuación.
+            Experiencia de la <strong>Cuenta Oficial del Club de Experiencias</strong>. Los datos de contacto y cobro institucionales se gestionan desde la configuración del Club.
           </span>
           <a [routerLink]="clubConfigRoute" class="btn-text-edit-club">
             Perfil del Club en Configuración &rarr;
           </a>
+        </div>
+      </div>
+      } @else if (isProviderFieldsLocked()) {
+      <div class="provider-locked-notice">
+        <mat-icon class="locked-info-icon">lock</mat-icon>
+        <div class="notice-text">
+          <span>
+            Los datos de contacto y cobro están vinculados al perfil del prestador seleccionado y están bloqueados. Para editarlos manualmente, seleccioná <strong>Prestador manual / Personalizado</strong> en el selector de arriba.
+          </span>
         </div>
       </div>
       }
@@ -384,12 +390,16 @@
         <div class="form-group">
           <label for="providerName" class="form-label">Nombre / Prestador Asignado *</label>
           <input id="providerName" type="text" formControlName="providerName" class="form-input"
+            [readonly]="isProviderFieldsLocked()"
+            [class.is-locked]="isProviderFieldsLocked()"
             placeholder="Ej: Catamarca Kayak o Club de Experiencias" maxlength="70" />
         </div>
 
         <div class="form-group">
           <label for="providerPhone" class="form-label">Teléfono / WhatsApp de Contacto</label>
           <input id="providerPhone" type="tel" formControlName="providerPhone" class="form-input"
+            [readonly]="isProviderFieldsLocked()"
+            [class.is-locked]="isProviderFieldsLocked()"
             placeholder="Ej: +54 9 383 4567890" maxlength="30" />
         </div>
       </div>
@@ -398,18 +408,24 @@
         <div class="form-group">
           <label for="providerCbuAlias" class="form-label">CBU / CVU o Alias</label>
           <input id="providerCbuAlias" type="text" formControlName="providerCbuAlias" class="form-input text-blue-input"
+            [readonly]="isProviderFieldsLocked()"
+            [class.is-locked]="isProviderFieldsLocked()"
             placeholder="Ej: ALIAS.PROVEEDOR.MP" maxlength="22" />
         </div>
 
         <div class="form-group">
           <label for="providerCuitDni" class="form-label">CUIT / CUIL</label>
           <input id="providerCuitDni" type="text" formControlName="providerCuitDni" class="form-input"
+            [readonly]="isProviderFieldsLocked()"
+            [class.is-locked]="isProviderFieldsLocked()"
             placeholder="Ej: 20-33445566-7" maxlength="13" />
         </div>
 
         <div class="form-group">
           <label for="providerBankName" class="form-label">Banco / Entidad</label>
           <input id="providerBankName" type="text" formControlName="providerBankName" class="form-input"
+            [readonly]="isProviderFieldsLocked()"
+            [class.is-locked]="isProviderFieldsLocked()"
             placeholder="Ej: Banco Nación / Mercado Pago" maxlength="60" />
         </div>
       </div>
@@ -525,7 +541,7 @@
             <span class="album-counter-pill is-gallery-pill" [class.is-limit-reached]="galleryPhotos().length >= 9">
               Galería: <strong>{{ galleryPhotos().length }} / 9</strong>
             </span>
-            <span class="album-counter-pill">
+            <span class="album-counter-pill" [class.is-limit-reached]="totalAlbumCount() >= 12">
               Total: <strong>{{ totalAlbumCount() }} / 12</strong>
             </span>
           </div>
@@ -595,7 +611,7 @@
 
       <!-- Video Oficial (Opcional) -->
       <div class="media-block-section" style="margin-top: 1.5rem;">
-        <label class="form-label">Video Oficial (.mp4 o enlace promocional - Opcional)</label>
+        <label class="form-label">Video Oficial (.mp4 - Opcional)</label>
         <div class="media-upload-toolbar">
           <label class="btn-upload-file" [class.is-uploading]="uploadingVideo()" [class.is-disabled]="saving">
             <input type="file" accept="video/mp4,video/*" [disabled]="saving" (change)="onUploadVideo($event)"
@@ -603,15 +619,6 @@
             <span>{{ uploadingVideo() ? 'Subiendo video...' : (videoUrl() ? 'Cambiar Video' : 'Subir Video (.mp4)')
               }}</span>
           </label>
-
-          <div class="url-input-group">
-            <input type="url" class="form-input input-url-media" placeholder="https://ejemplo.com/video.mp4"
-              [value]="videoUrlInput()" [disabled]="saving" (input)="videoUrlInput.set($any($event.target).value)" />
-            <button type="button" class="btn-apply-url" (click)="applyVideoFromUrl()"
-              [disabled]="saving || !videoUrlInput().trim()">
-              Aplicar Video
-            </button>
-          </div>
 
           @if (videoUrl()) {
           <button type="button" class="btn-remove-media" [disabled]="saving" (click)="removeVideo()"

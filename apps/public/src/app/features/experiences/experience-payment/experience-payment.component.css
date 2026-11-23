@@ -450,6 +450,31 @@
   margin-top: 0.2rem;
 }
 
+.pay-amount-group {
+  display: flex;
+  align-items: baseline;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  margin-top: 0.2rem;
+}
+
+.pay-amount-group .pay-amount {
+  margin-top: 0;
+}
+
+.pay-usd-equivalent {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #7dd3fc;
+  background: rgba(125, 211, 252, 0.12);
+  border: 1px solid rgba(125, 211, 252, 0.25);
+  padding: 0.15rem 0.55rem;
+  border-radius: 9999px;
+  line-height: 1.3;
+}
+
 .pay-mono {
   font-family: var(--font-mono);
 }
@@ -625,6 +650,19 @@
 .pay-total strong {
   font-size: 1.4rem;
   color: #80b3ff;
+}
+
+.pay-total-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.15rem;
+}
+
+.pay-usd-sub {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-text-soft, #94a3b8);
 }
 
 .pay-submit {

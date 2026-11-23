@@ -1852,6 +1852,15 @@ export class AdminStoreService {
     return true;
   }
 
+  removeApplicationByEmail(email: string): void {
+    const clean = (email || '').toLowerCase().trim();
+    if (!clean) return;
+    this._applications.update((list) =>
+      list.filter((a) => (a.email || '').toLowerCase().trim() !== clean),
+    );
+    this.persistApplications(this._applications());
+  }
+
   async recordFounderApplication(data: {
     fullName: string;
     email: string;

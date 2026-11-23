@@ -15,6 +15,7 @@ describe('ExperienceFormComponent - isLodging & calculatedUsd reactivity', () =>
 
     fixture = TestBed.createComponent(ExperienceFormComponent);
     component = fixture.componentInstance;
+    component.usdExchangeRate = 1300;
     fixture.detectChanges();
   });
 
@@ -70,6 +71,34 @@ describe('ExperienceFormComponent - isLodging & calculatedUsd reactivity', () =>
 
       const el = fixture.nativeElement as HTMLElement;
       expect(el.textContent).toContain('~$100 USD');
+    });
+
+    it('should dynamically update calculatedUsd when admin exchange rate changes (e.g. 1000)', () => {
+      component.usdExchangeRate = 1000;
+      component.form.controls.priceArs.setValue(65000);
+      fixture.detectChanges();
+
+      expect(component.calculatedUsd()).toBe(65);
+      const el = fixture.nativeElement as HTMLElement;
+      expect(el.textContent).toContain('~$65 USD');
+    });
+  });
+
+  describe('album photos & cover count', () => {
+    it('should include cover image in totalAlbumCount when cover is uploaded or set', () => {
+      expect(component.totalAlbumCount()).toBe(0);
+
+      component.coverImageUrl.set('https://example.com/cover.jpg');
+      expect(component.totalAlbumCount()).toBe(1);
+
+      component.albumPhotos.set([
+        { id: '1', url: 'https://example.com/1.jpg', order: 1, isFeatured: true },
+        { id: '2', url: 'https://example.com/2.jpg', order: 2, isFeatured: false },
+      ]);
+      expect(component.totalAlbumCount()).toBe(3);
+
+      component.coverImageUrl.set('');
+      expect(component.totalAlbumCount()).toBe(2);
     });
   });
 
@@ -207,6 +236,33 @@ describe('ExperienceFormComponent - isLodging & calculatedUsd reactivity', () =>
       });
 
       expect(component.selectedProviderId()).toBe('club');
+    });
+
+    it('should lock provider fields when a registered provider or club is selected, and unlock when custom is selected', () => {
+      component.onSelectProvider('prov-patricio');
+      fixture.detectChanges();
+      expect(component.isProviderFieldsLocked()).toBe(true);
+
+      const nameInput = fixture.nativeElement.querySelector('#providerName');
+      const phoneInput = fixture.nativeElement.querySelector('#providerPhone');
+      const cbuInput = fixture.nativeElement.querySelector('#providerCbuAlias');
+      const cuitInput = fixture.nativeElement.querySelector('#providerCuitDni');
+      const bankInput = fixture.nativeElement.querySelector('#providerBankName');
+
+      expect(nameInput.hasAttribute('readonly')).toBe(true);
+      expect(phoneInput.hasAttribute('readonly')).toBe(true);
+      expect(cbuInput.hasAttribute('readonly')).toBe(true);
+      expect(cuitInput.hasAttribute('readonly')).toBe(true);
+      expect(bankInput.hasAttribute('readonly')).toBe(true);
+
+      component.onSelectProvider('custom');
+      fixture.detectChanges();
+      expect(component.isProviderFieldsLocked()).toBe(false);
+      expect(nameInput.hasAttribute('readonly')).toBe(false);
+      expect(phoneInput.hasAttribute('readonly')).toBe(false);
+      expect(cbuInput.hasAttribute('readonly')).toBe(false);
+      expect(cuitInput.hasAttribute('readonly')).toBe(false);
+      expect(bankInput.hasAttribute('readonly')).toBe(false);
     });
 
     it('should not overwrite user-selected provider when registeredProviders changes', () => {

@@ -27,28 +27,28 @@ import { ArsPipe } from '../../pipes/format.pipes';
             class="preset-btn"
             (click)="addPreset('Promo 2x1', 2, 1)"
           >
-            + 2x1
+            2x1
           </button>
           <button
             type="button"
             class="preset-btn"
             (click)="addPreset('Promo 3x2', 3, 2)"
           >
-            + 3x2
+            3x2
           </button>
           <button
             type="button"
             class="preset-btn"
             (click)="addPreset('Pack Grupo 4x3', 4, 3)"
           >
-            + 4x3
+            4x3
           </button>
           <button
             type="button"
             class="preset-btn"
             (click)="addPreset('Pack Grupal', 2, 2)"
           >
-            + Personalizado
+            Personalizado
           </button>
         </div>
       </div>

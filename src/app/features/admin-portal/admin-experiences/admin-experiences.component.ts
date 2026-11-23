@@ -73,6 +73,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
               [providerMpInfo]="currentAdminMpInfo()"
               [registeredProviders]="adminStore.providerStore.providers()"
               [clubProfile]="adminStore.clubProfile()"
+              [usdExchangeRate]="usdExchangeRate()"
               [saving]="saving()"
               [cancelRoute]="isRouteCreateMode() ? backToListLink() : getDetailRoute(exp)"
               (providerChange)="onAdminProviderChange($event)"
@@ -4595,7 +4596,7 @@ export class AdminExperiencesComponent implements OnInit {
   readonly editMeetingPoint = signal('');
   readonly editMeetingPointUrl = signal('');
   readonly editItinerary = signal('');
-  readonly editDifficulty = signal<'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña' | 'Ninguna'>('Baja');
+  readonly editDifficulty = signal<'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña' | 'Ninguna'>('Ninguna');
   readonly durationOptions: readonly string[] = EXPERIENCE_DURATION_OPTIONS;
   readonly editDurationLabel = signal('4 horas (Media jornada)');
   readonly categoryOptions = EXPERIENCE_CATEGORY_OPTIONS;
@@ -4869,7 +4870,7 @@ export class AdminExperiencesComponent implements OnInit {
     this.editMeetingPoint.set(exp.meetingPoint || '');
     this.editMeetingPointUrl.set(exp.meetingPointUrl || '');
     this.editItinerary.set(exp.itinerary || '');
-    this.editDifficulty.set(exp.difficulty || 'Baja');
+    this.editDifficulty.set(exp.difficulty || 'Ninguna');
     this.editDurationLabel.set(exp.durationLabel || '4 horas (Media jornada)');
     const rawAlt = exp.altitudeMeters;
     const resolvedAltitude =
@@ -5039,7 +5040,7 @@ export class AdminExperiencesComponent implements OnInit {
       description: '',
       region: 'Catamarca',
       meetingPoint: '',
-      difficulty: 'Baja',
+      difficulty: 'Ninguna',
       durationDays: 1,
       durationLabel: '4 horas (Media jornada)',
       altitudeMeters: 1000,
@@ -5071,7 +5072,7 @@ export class AdminExperiencesComponent implements OnInit {
     this.editMeetingPoint.set('');
     this.editMeetingPointUrl.set('');
     this.editItinerary.set('');
-    this.editDifficulty.set('Baja');
+    this.editDifficulty.set('Ninguna');
     this.editDurationLabel.set('4 horas (Media jornada)');
     this.editAltitude.set(1000);
     this.editCapacity.set(10);
@@ -5763,7 +5764,7 @@ export class AdminExperiencesComponent implements OnInit {
       meetingPoint: req.meetingPoint || '',
       meetingPointUrl: req.meetingPointUrl,
       difficulty:
-        (req.difficulty && (req.difficulty.split('(')[0].trim() as any)) || 'Moderada',
+        (req.difficulty && (req.difficulty.split('(')[0].trim() as any)) || 'Ninguna',
       durationDays: 1,
       durationLabel: req.duration || '1 día',
       altitudeMeters: Number(req.altitude?.replace(/\D/g, '')) || 850,
