@@ -89,14 +89,15 @@ describe('ExperienceDetailComponent (/experiencias/:slug)', () => {
     expect(component.albumPhotosCount()).toBe(12);
   });
 
-  it('should render VER ÁLBUM COMPLETO button before the photo count in the overlay', () => {
+  it('should render photo count on the left of overlay and VER ÁLBUM COMPLETO button below image inside box', () => {
     const overlay = fixture.nativeElement.querySelector('.album-preview-overlay');
     expect(overlay).toBeTruthy();
-    const children = overlay.children;
-    expect(children.length).toBe(2);
-    expect(children[0].classList.contains('album-preview-cta')).toBe(true);
-    expect(children[0].textContent).toContain('VER ÁLBUM COMPLETO');
-    expect(children[1].classList.contains('album-preview-count')).toBe(true);
-    expect(children[1].textContent).toContain('fotos en el álbum');
+    const count = overlay.querySelector('.album-preview-count');
+    expect(count).toBeTruthy();
+    expect(count.textContent).toContain('fotos en el álbum');
+
+    const ctaBtn = fixture.nativeElement.querySelector('.album-preview-actions .album-preview-cta');
+    expect(ctaBtn).toBeTruthy();
+    expect(ctaBtn.textContent).toContain('VER ÁLBUM COMPLETO');
   });
 });

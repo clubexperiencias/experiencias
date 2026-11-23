@@ -117,6 +117,23 @@ describe('ProfileComponent', () => {
     expect(card.textContent).toContain('Ya formás parte del club como');
   });
 
+  it('should display the member number stat tile with # when member is present', () => {
+    (component.newsletter as any)._currentMember.set({
+      id: 'socio-1',
+      email: 'perfil@test.com',
+      fullName: 'Perfil Test',
+      status: 'confirmed',
+      position: 84,
+      createdAt: new Date().toISOString(),
+    });
+    fixture.detectChanges();
+
+    const strip = fixture.nativeElement.querySelector('.membership-tenure-strip');
+    expect(strip).toBeTruthy();
+    expect(strip.textContent).toContain('NÚMERO DE SOCIO');
+    expect(strip.textContent).toContain('#84');
+  });
+
   it('should link back to root / from the header logo', () => {
     const brandLink = fixture.nativeElement.querySelector('.brand');
     expect(brandLink.getAttribute('routerlink') || brandLink.getAttribute('href')).toBe('/');

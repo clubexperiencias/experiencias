@@ -146,7 +146,7 @@
                     <div class="photo-card-media">
                       <img
                         [src]="photo.url"
-                        [alt]="photo.title || 'Foto destacada'"
+                        [alt]="getPhotoDisplayTitle(photo)"
                         class="gallery-thumb-img"
                         loading="lazy"
                       />
@@ -155,11 +155,9 @@
                       </span>
                     </div>
                     <div class="photo-card-body">
-                      <span class="photo-item-credit">Registro Oficial</span>
                       <h3 class="photo-item-title">
-                        {{ photo.title || experience.shortTitle || experience.title }}
+                        {{ getPhotoDisplayTitle(photo) }}
                       </h3>
-                      <p class="photo-item-caption">{{ photo.caption || experience.region }}</p>
                     </div>
                   </article>
                 }
@@ -183,19 +181,14 @@
                     <div class="photo-card-media small-thumb">
                       <img
                         [src]="photo.url"
-                        [alt]="photo.title || 'Foto de la experiencia'"
+                        [alt]="getPhotoDisplayTitle(photo)"
                         class="gallery-thumb-img"
                         loading="lazy"
                       />
                       <span class="photo-tag tag-galeria">GALERÍA</span>
                     </div>
                     <div class="photo-card-body">
-                      @if (photo.title) {
-                        <h4 class="photo-item-title-sm">{{ photo.title }}</h4>
-                      }
-                      @if (photo.caption) {
-                        <p class="photo-item-caption-sm">{{ photo.caption }}</p>
-                      }
+                      <h4 class="photo-item-title-sm">{{ getPhotoDisplayTitle(photo) }}</h4>
                     </div>
                   </article>
                 }
@@ -317,7 +310,7 @@
             </div>
 
             <h4 class="lightbox-photo-title">
-              {{ activePhoto.title || exp()?.title || 'Experiencia' }}
+              {{ getPhotoDisplayTitle(activePhoto) }}
             </h4>
 
             @if (activePhoto.caption) {

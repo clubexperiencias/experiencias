@@ -1,56 +1,53 @@
 <div class="exp-core-form-wrapper">
   <!-- Toast Feedback Banner -->
   @if (toastMessage()) {
-    <div class="form-toast-banner" role="status">
-      <span>{{ toastMessage() }}</span>
-    </div>
+  <div class="form-toast-banner" role="status">
+    <span>{{ toastMessage() }}</span>
+  </div>
   }
 
   <!-- Floating Saving Progress Indicator -->
   @if (saving) {
-    <div class="saving-progress-card" role="status" aria-live="assertive">
-      <div class="saving-spinner-ring"></div>
-      <div class="saving-progress-text">
-        <strong class="saving-title">
-          {{ mode === 'admin'
-              ? (isCreateMode ? 'Publicando nueva experiencia...' : 'Guardando cambios en catálogo...')
-              : (savingAction() === 'publish'
-                  ? 'Enviando propuesta para revisión...'
-                  : 'Guardando borrador...')
-          }}
-        </strong>
-        <span class="saving-subtitle">
-          Por favor esperá unos segundos mientras se sincronizan los contenidos y multimedia con el servidor.
-        </span>
-      </div>
+  <div class="saving-progress-card" role="status" aria-live="assertive">
+    <div class="saving-spinner-ring"></div>
+    <div class="saving-progress-text">
+      <strong class="saving-title">
+        {{ mode === 'admin'
+        ? (isCreateMode ? 'Publicando nueva experiencia...' : 'Guardando cambios en catálogo...')
+        : (savingAction() === 'publish'
+        ? 'Enviando propuesta para revisión...'
+        : 'Guardando borrador...')
+        }}
+      </strong>
+      <span class="saving-subtitle">
+        Por favor esperá unos segundos mientras se sincronizan los contenidos y multimedia con el servidor.
+      </span>
     </div>
+  </div>
   }
 
   <!-- Banner Experiencia Oficial del Club de Experiencias (Admin) -->
   @if (mode === 'admin' && isClubExperience) {
-    <div class="club-experience-banner">
-      <div class="club-banner-icon">
-        <mat-icon>shield</mat-icon>
-      </div>
-      <div class="club-banner-text">
-        <div class="club-banner-header">
-          <span class="club-banner-title">Experiencia Creada por el Club de Experiencias</span>
-          <span class="club-banner-badge">Prestador Oficial</span>
-        </div>
-        <p class="club-banner-desc">
-          Esta experiencia pertenece a la cuenta oficial del <strong>Club de Experiencias</strong>.
-          La asignación de prestador y los datos de cobro están vinculados al perfil central del Club administrado conjuntamente por todos los administradores.
-        </p>
-      </div>
-      <a
-        [routerLink]="clubConfigRoute"
-        class="btn-edit-club-profile"
-        title="Ir a Configuración del Club de Experiencias"
-      >
-        <mat-icon>settings</mat-icon>
-        <span>Configuración del Club</span>
-      </a>
+  <div class="club-experience-banner">
+    <div class="club-banner-icon">
+      <mat-icon>shield</mat-icon>
     </div>
+    <div class="club-banner-text">
+      <div class="club-banner-header">
+        <span class="club-banner-title">Experiencia Creada por el Club de Experiencias</span>
+        <span class="club-banner-badge">Prestador Oficial</span>
+      </div>
+      <p class="club-banner-desc">
+        Esta experiencia pertenece a la cuenta oficial del <strong>Club de Experiencias</strong>.
+        La asignación de prestador y los datos de cobro están vinculados al perfil central del Club administrado
+        conjuntamente por todos los administradores.
+      </p>
+    </div>
+    <a [routerLink]="clubConfigRoute" class="btn-edit-club-profile" title="Ir a Configuración del Club de Experiencias">
+      <mat-icon>settings</mat-icon>
+      <span>Configuración del Club</span>
+    </a>
+  </div>
   }
 
   <form [formGroup]="form" class="panel-form" [class.is-form-saving]="saving" (ngSubmit)="onSubmit()">
@@ -64,40 +61,28 @@
             <label for="title" class="form-label">Título principal de la experiencia *</label>
             <span class="char-counter">{{ form.controls.title.value.length }}/100</span>
           </div>
-          <input
-            id="title"
-            type="text"
-            formControlName="title"
-            class="form-input"
-            placeholder="Ej: Travesía en Kayak & Sunset en el Dique El Jumeal"
-            maxlength="100"
-          />
+          <input id="title" type="text" formControlName="title" class="form-input"
+            placeholder="Ej: Travesía en Kayak & Sunset en el Dique El Jumeal" maxlength="100" />
           @if (fieldInvalid('title')) {
-            <span class="field-error">Ingresá un título descriptivo (entre 6 y 100 caracteres).</span>
+          <span class="field-error">Ingresá un título descriptivo (entre 6 y 100 caracteres).</span>
           }
         </div>
 
         @if (mode === 'admin') {
-          <div class="form-group" [class.has-error]="fieldInvalid('slug')">
-            <div class="field-label-row">
-              <label for="slug" class="form-label">Ruta / Slug oficial (URL final en la web pública) *</label>
-              <span class="char-counter">{{ form.controls.slug.value.length }}/40</span>
-            </div>
-            <div class="slug-input-wrap">
-              <span class="slug-prefix">https://experiencias.club/experiencias/</span>
-              <input
-                id="slug"
-                type="text"
-                formControlName="slug"
-                class="form-input slug-field"
-                placeholder="ej: kayak"
-                maxlength="40"
-              />
-            </div>
-            <span class="field-hint">
-              Control exclusivo del administrador para actualizar la ruta web pública oficial de la experiencia.
-            </span>
+        <div class="form-group" [class.has-error]="fieldInvalid('slug')">
+          <div class="field-label-row">
+            <label for="slug" class="form-label">Ruta / Slug oficial (URL final en la web pública) *</label>
+            <span class="char-counter">{{ form.controls.slug.value.length }}/40</span>
           </div>
+          <div class="slug-input-wrap">
+            <span class="slug-prefix">https://experiencias.club/experiencias/</span>
+            <input id="slug" type="text" formControlName="slug" class="form-input slug-field" placeholder="ej: kayak"
+              maxlength="40" />
+          </div>
+          <span class="field-hint">
+            Control exclusivo del administrador para actualizar la ruta web pública.
+          </span>
+        </div>
         }
       </div>
 
@@ -106,10 +91,10 @@
           <label for="category" class="form-label">Ubicación en la Web (Sección) *</label>
           <select id="category" formControlName="category" class="form-input form-select">
             @if (isCustomCategory(form.controls.category.value)) {
-              <option [value]="form.controls.category.value">{{ form.controls.category.value }} (Personalizado)</option>
+            <option [value]="form.controls.category.value">{{ form.controls.category.value }} (Personalizado)</option>
             }
             @for (cat of categoryOptions; track cat.value) {
-              <option [value]="cat.value">{{ cat.label }}</option>
+            <option [value]="cat.value">{{ cat.label }}</option>
             }
           </select>
           <span class="field-hint">
@@ -121,10 +106,10 @@
           <label for="region" class="form-label">Región turística de Catamarca *</label>
           <select id="region" formControlName="region" class="form-input form-select">
             @if (isCustomRegion(form.controls.region.value)) {
-              <option [value]="form.controls.region.value">{{ form.controls.region.value }}</option>
+            <option [value]="form.controls.region.value">{{ form.controls.region.value }}</option>
             }
             @for (r of regions; track r) {
-              <option [value]="r">{{ r }}</option>
+            <option [value]="r">{{ r }}</option>
             }
           </select>
         </div>
@@ -135,34 +120,23 @@
           <label for="tagline" class="form-label">Bajada o síntesis atractiva (Tagline - 1 frase) *</label>
           <span class="char-counter">{{ form.controls.tagline.value.length }}/160</span>
         </div>
-        <input
-          id="tagline"
-          type="text"
-          formControlName="tagline"
-          class="form-input"
-          placeholder="Ej: Remada guiada al atardecer con brindis de productos catamarqueños."
-          maxlength="160"
-        />
+        <input id="tagline" type="text" formControlName="tagline" class="form-input"
+          placeholder="Ej: Remada guiada al atardecer con brindis de productos catamarqueños." maxlength="160" />
         @if (fieldInvalid('tagline')) {
-          <span class="field-error">La bajada es obligatoria (hasta 160 caracteres).</span>
+        <span class="field-error">La bajada es obligatoria (hasta 160 caracteres).</span>
         }
       </div>
 
-      <div class="form-group" [class.has-error]="fieldInvalid('description')">
+      <div class="form-group description-form-group" [class.has-error]="fieldInvalid('description')">
         <div class="field-label-row">
           <label for="description" class="form-label">Descripción detallada de la propuesta *</label>
           <span class="char-counter">{{ form.controls.description.value.length }}/2500</span>
         </div>
-        <textarea
-          id="description"
-          rows="4"
-          formControlName="description"
-          class="form-input form-textarea"
+        <textarea id="description" rows="4" formControlName="description" class="form-input form-textarea"
           placeholder="Describí el itinerario, qué incluye la actividad (equipo, refrigerio, guía certificado), recomendaciones de vestimenta y qué esperar de la experiencia..."
-          maxlength="2500"
-        ></textarea>
+          maxlength="2500"></textarea>
         @if (fieldInvalid('description')) {
-          <span class="field-error">La descripción debe tener al menos 30 caracteres.</span>
+        <span class="field-error">La descripción debe tener al menos 30 caracteres.</span>
         }
       </div>
     </fieldset>
@@ -178,7 +152,7 @@
           </label>
           <select id="difficulty" formControlName="difficulty" class="form-input form-select">
             @for (d of difficulties; track d) {
-              <option [value]="d">{{ d }}</option>
+            <option [value]="d">{{ d }}</option>
             }
           </select>
         </div>
@@ -187,10 +161,11 @@
           <label for="altitudeMeters" class="form-label">Altitud (msnm) *</label>
           <select id="altitudeMeters" formControlName="altitudeMeters" class="form-input form-select">
             @if (isCustomAltitude(form.controls.altitudeMeters.value)) {
-              <option [value]="form.controls.altitudeMeters.value">{{ form.controls.altitudeMeters.value }} msnm (Personalizado)</option>
+            <option [value]="form.controls.altitudeMeters.value">{{ form.controls.altitudeMeters.value }} msnm
+              (Personalizado)</option>
             }
             @for (opt of altitudeOptions; track opt.value) {
-              <option [value]="opt.value">{{ opt.label }}</option>
+            <option [value]="opt.value">{{ opt.label }}</option>
             }
           </select>
         </div>
@@ -202,10 +177,10 @@
           <select id="durationLabel" formControlName="durationLabel" class="form-input form-select">
             <option value="" disabled>Seleccioná una duración</option>
             @if (isCustomDuration(form.controls.durationLabel.value)) {
-              <option [value]="form.controls.durationLabel.value">{{ form.controls.durationLabel.value }}</option>
+            <option [value]="form.controls.durationLabel.value">{{ form.controls.durationLabel.value }}</option>
             }
             @for (d of durationOptions; track d) {
-              <option [value]="d">{{ d }}</option>
+            <option [value]="d">{{ d }}</option>
             }
           </select>
         </div>
@@ -216,33 +191,24 @@
           <label for="meetingPoint" class="form-label">
             {{ isLodging() ? 'Dirección / Ubicación del Alojamiento *' : 'Punto de encuentro y salida *' }}
           </label>
-          <input
-            id="meetingPoint"
-            type="text"
-            formControlName="meetingPoint"
-            class="form-input"
+          <input id="meetingPoint" type="text" formControlName="meetingPoint" class="form-input"
             [placeholder]="isLodging() ? 'Ej: Ruta 40 Km 4200, Belén, Catamarca' : 'Ej: Club Náutico Dique El Jumeal'"
-            maxlength="160"
-          />
+            maxlength="160" />
           @if (fieldInvalid('meetingPoint')) {
-            <span class="field-error">
-              {{ isLodging() ? 'Indicá la dirección o ubicación del alojamiento.' : 'Indicá el punto de encuentro o partida.' }}
-            </span>
+          <span class="field-error">
+            {{ isLodging() ? 'Indicá la dirección o ubicación del alojamiento.' : 'Indicá el punto de encuentro o
+            partida.' }}
+          </span>
           }
         </div>
 
         <div class="form-group">
           <label for="meetingPointUrl" class="form-label">
-            {{ isLodging() ? 'Ubicación en Maps del Alojamiento (opcional)' : 'Ubicación (Enlace de Google Maps - opcional)' }}
+            {{ isLodging() ? 'Ubicación en Maps del Alojamiento (opcional)' : 'Ubicación (Enlace de Google Maps -
+            opcional)' }}
           </label>
-          <input
-            id="meetingPointUrl"
-            type="url"
-            formControlName="meetingPointUrl"
-            class="form-input"
-            placeholder="https://maps.app.goo.gl/... o https://www.google.com/maps/..."
-          />
-          <span class="field-hint">Enlace para el botón 'Cómo llegar' de la ficha pública.</span>
+          <input id="meetingPointUrl" type="url" formControlName="meetingPointUrl" class="form-input"
+            placeholder="https://maps.app.goo.gl/... o https://www.google.com/maps/..." />
         </div>
       </div>
     </fieldset>
@@ -250,33 +216,33 @@
     <!-- SECCIÓN 3: Cronograma e Itinerario / Reglas de la Casa -->
     <fieldset class="form-fieldset" [disabled]="saving">
       <legend class="fieldset-legend">
-        {{ isLodging() ? '3. Dinámica de la Estadía, Horarios & Reglas de la Casa' : '3. Cronograma e Itinerario de la Jornada' }}
+        {{ isLodging() ? '3. Dinámica de la Estadía, Horarios & Reglas de la Casa' : '3. Cronograma e Itinerario de la
+        Jornada' }}
       </legend>
       <p class="fieldset-hint">
         {{ isLodging()
-          ? 'Detallá los horarios de check-in y check-out, comidas incluidas (desayuno, etc.), normas de convivencia y recomendaciones para los huéspedes.'
-          : 'Detallá el cronograma horario o etapas de la vivencia (una por renglón). Se renderiza en formato de línea de tiempo interactiva en la web pública.' }}
+        ? 'Detallá los horarios de check-in y check-out, comidas incluidas (desayuno, etc.), normas de convivencia y
+        recomendaciones para los huéspedes.'
+        : 'Detallá el cronograma horario o etapas de la vivencia (una por renglón). Se renderiza en formato de línea de
+        tiempo interactiva en la web pública.' }}
       </p>
 
       <div class="form-group">
         <label for="itinerary" class="form-label">
-          {{ isLodging() ? 'Horarios de Check-in/out, Comidas y Normas de la Estadía' : 'Itinerario o Cronograma Estimado' }}
+          {{ isLodging() ? 'Horarios de Check-in/out, Comidas y Normas de la Estadía' : 'Itinerario o Cronograma
+          Estimado' }}
         </label>
-        <textarea
-          id="itinerary"
-          rows="4"
-          class="form-input form-textarea"
-          [value]="itinerary()"
+        <textarea id="itinerary" rows="4" class="form-input form-textarea" [value]="itinerary()"
           (input)="itinerary.set($any($event.target).value); draftChange.emit()"
-          [placeholder]="isLodging() ? 'Check-in: 14:00 hs | Check-out: 10:00 hs.&#10;Desayuno casero de 08:00 a 10:30 hs.&#10;Espacio libre de humo. Se aceptan mascotas con aviso previo.' : '09:00 Encuentro y charla de seguridad.&#10;09:30 Inicio de travesía.&#10;13:00 Almuerzo agreste y descanso.&#10;16:30 Regreso al punto de partida.'"
-        ></textarea>
+          [placeholder]="isLodging() ? 'Check-in: 14:00 hs | Check-out: 10:00 hs.&#10;Desayuno casero de 08:00 a 10:30 hs.&#10;Espacio libre de humo. Se aceptan mascotas con aviso previo.' : '09:00 Encuentro y charla de seguridad.&#10;09:30 Inicio de travesía.&#10;13:00 Almuerzo agreste y descanso.&#10;16:30 Regreso al punto de partida.'"></textarea>
       </div>
     </fieldset>
 
     <!-- SECCIÓN 4: Tarifas, Cupos, Fechas Programadas & Packs Promocionales -->
     <fieldset class="form-fieldset" [disabled]="saving">
       <legend class="fieldset-legend">
-        {{ isLodging() ? '4. Tarifas por Noche, Capacidad de Huéspedes, Disponibilidad & Promociones' : '4. Tarifas, Cupos, Fechas Programadas & Packs Promocionales' }}
+        {{ isLodging() ? '4. Tarifas por Noche, Capacidad de Huéspedes, Disponibilidad & Promociones' : '4. Tarifas,
+        Cupos, Fechas Programadas & Packs Promocionales' }}
       </legend>
 
       <div class="form-row form-row-2">
@@ -284,14 +250,7 @@
           <label for="priceArs" class="form-label">
             {{ isLodging() ? 'Tarifa por noche ($ ARS) *' : 'Tarifa por persona ($ ARS) *' }}
           </label>
-          <input
-            id="priceArs"
-            type="number"
-            formControlName="priceArs"
-            class="form-input"
-            step="500"
-            min="1000"
-          />
+          <input id="priceArs" type="number" formControlName="priceArs" class="form-input" step="500" min="1000" />
           <span class="field-hint">
             Equivalente estimado: ~${{ calculatedUsd() }} USD.
           </span>
@@ -301,16 +260,11 @@
           <label for="capacityPerDate" class="form-label">
             {{ isLodging() ? 'Capacidad máxima de huéspedes por unidad *' : 'Cupo máximo por fecha / salida *' }}
           </label>
-          <input
-            id="capacityPerDate"
-            type="number"
-            formControlName="capacityPerDate"
-            class="form-input"
-            min="1"
-            max="999"
-          />
+          <input id="capacityPerDate" type="number" formControlName="capacityPerDate" class="form-input" min="1"
+            max="999" />
           <span class="field-hint">
-            {{ isLodging() ? 'Capacidad máxima de personas admitidas en la cabaña o habitación.' : 'Límite máximo de plazas disponibles por salida hasta agotar stock.' }}
+            {{ isLodging() ? 'Capacidad máxima de personas admitidas en la cabaña o habitación.' : 'Límite máximo de
+            plazas disponibles por salida hasta agotar stock.' }}
           </span>
         </div>
       </div>
@@ -322,57 +276,43 @@
         </label>
         <div class="dates-input-row">
           <div class="date-picker-box">
-            <input
-              id="newDateInput"
-              type="date"
-              class="form-input datepicker-input"
-              [value]="newDate()"
-              [disabled]="saving"
-              (input)="newDate.set($any($event.target).value)"
-              (change)="onDatePicked($any($event.target).value)"
-            />
+            <input id="newDateInput" type="date" class="form-input datepicker-input" [value]="newDate()"
+              [disabled]="saving" (input)="newDate.set($any($event.target).value)"
+              (change)="onDatePicked($any($event.target).value)" />
           </div>
-          <button type="button" class="add-date-btn" (click)="addDate()" [disabled]="saving || !newDate()">+ Agregar fecha</button>
+          <button type="button" class="add-date-btn" (click)="addDate()" [disabled]="saving || !newDate()">+ Agregar
+            fecha</button>
         </div>
 
         @if (datesError()) {
-          <span class="dates-error">{{ datesError() }}</span>
+        <span class="dates-error">{{ datesError() }}</span>
         }
 
         <div class="dates-chips-container">
           @if (dates().length === 0) {
-            <p class="dates-empty-hint">
-              Sin fechas fijas programadas aún (Salidas a coordinar o todo el año). Agregá fechas para asociarlas a promociones específicas o marcá fechas a coordinar para solicitar publicación.
-            </p>
+          <p class="dates-empty-hint">
+            Sin fechas fijas programadas aún (Salidas a coordinar o todo el año). Agregá fechas para asociarlas a
+            promociones específicas o marcá fechas a coordinar para solicitar publicación.
+          </p>
           } @else {
-            <div class="chips-list">
-              @for (date of dates(); track date) {
-                <div class="date-chip">
-                  <span>{{ date | fecha }}</span>
-                  <button
-                    type="button"
-                    class="chip-remove"
-                    [disabled]="saving"
-                    (click)="removeDate(date)"
-                    title="Quitar fecha"
-                  >
-                    ✕
-                  </button>
-                </div>
-              }
+          <div class="chips-list">
+            @for (date of dates(); track date) {
+            <div class="date-chip">
+              <span>{{ date | fecha }}</span>
+              <button type="button" class="chip-remove" [disabled]="saving" (click)="removeDate(date)"
+                title="Quitar fecha">
+                ✕
+              </button>
             </div>
+            }
+          </div>
           }
         </div>
 
         <div class="dates-on-request-control">
           <label class="dates-on-request-label">
-            <input
-              type="checkbox"
-              id="datesOnRequestCheckbox"
-              [checked]="datesOnRequest()"
-              [disabled]="saving"
-              (change)="toggleDatesOnRequest($any($event.target).checked)"
-            />
+            <input type="checkbox" id="datesOnRequestCheckbox" [checked]="datesOnRequest()" [disabled]="saving"
+              (change)="toggleDatesOnRequest($any($event.target).checked)" />
             <span>Fechas a coordinar según demanda (salidas flexibles / a solicitud)</span>
           </label>
         </div>
@@ -380,163 +320,165 @@
 
       <!-- Packs y Promociones Grupales (2x1, 3x2, etc.) -->
       <div style="margin-top: 1.5rem;">
-        <app-experience-pricing-packs-editor
-          [packs]="pricingPacks()"
-          [unitPriceArs]="form.controls.priceArs.value || 0"
-          [availableDates]="dates()"
-          [disabled]="saving"
-          (packsChange)="pricingPacks.set($event); draftChange.emit()"
-        />
+        <app-experience-pricing-packs-editor [packs]="pricingPacks()" [unitPriceArs]="form.controls.priceArs.value || 0"
+          [availableDates]="dates()" [disabled]="saving" (packsChange)="pricingPacks.set($event); draftChange.emit()" />
       </div>
     </fieldset>
 
     <!-- SECCIÓN ADMIN: Prestador Asignado & Datos de Cobro (CBU / Liquidación) -->
     @if (mode === 'admin') {
-      <fieldset class="form-fieldset" [class.is-club-section]="isClubExperience" [disabled]="saving">
-        <legend class="fieldset-legend">
-          Prestador Asignado & Datos de Cobro (CBU / Liquidación)
-          @if (isClubExperience) {
-            <span class="club-locked-chip">Club de Experiencias</span>
-          }
-        </legend>
-
+    <fieldset class="form-fieldset" [class.is-club-section]="isClubExperience" [disabled]="saving">
+      <legend class="fieldset-legend">
+        Prestador Asignado & Datos de Cobro (CBU / Liquidación)
         @if (isClubExperience) {
-          <div class="club-locked-notice">
-            <mat-icon class="locked-info-icon">info</mat-icon>
-            <div class="notice-text">
-              <span>
-                Experiencia del <strong>Club de Experiencias</strong>. Si corresponde a otro prestador, podés cambiar el nombre y datos de contacto a continuación.
-              </span>
-              <a [routerLink]="clubConfigRoute" class="btn-text-edit-club">
-                Perfil del Club en Configuración &rarr;
-              </a>
-            </div>
-          </div>
+        <span class="club-locked-chip">Club de Experiencias</span>
         }
+      </legend>
 
-        <div class="form-row form-row-2">
-          <div class="form-group">
-            <label for="providerName" class="form-label">Nombre / Prestador Asignado *</label>
-            <input
-              id="providerName"
-              type="text"
-              formControlName="providerName"
-              class="form-input"
-              placeholder="Ej: Catamarca Kayak o Club de Experiencias"
-              maxlength="70"
-            />
-          </div>
-
-          <div class="form-group">
-            <label for="providerPhone" class="form-label">Teléfono / WhatsApp de Contacto</label>
-            <input
-              id="providerPhone"
-              type="tel"
-              formControlName="providerPhone"
-              class="form-input"
-              placeholder="Ej: +54 9 383 4567890"
-              maxlength="30"
-            />
-          </div>
-        </div>
-
-        <div class="form-row form-row-3">
-          <div class="form-group">
-            <label for="providerCbuAlias" class="form-label">CBU / CVU o Alias</label>
-            <input
-              id="providerCbuAlias"
-              type="text"
-              formControlName="providerCbuAlias"
-              class="form-input text-blue-input"
-              placeholder="Ej: ALIAS.PROVEEDOR.MP"
-              maxlength="22"
-            />
-          </div>
-
-          <div class="form-group">
-            <label for="providerCuitDni" class="form-label">CUIT / CUIL</label>
-            <input
-              id="providerCuitDni"
-              type="text"
-              formControlName="providerCuitDni"
-              class="form-input"
-              placeholder="Ej: 20-33445566-7"
-              maxlength="13"
-            />
-          </div>
-
-          <div class="form-group">
-            <label for="providerBankName" class="form-label">Banco / Entidad</label>
-            <input
-              id="providerBankName"
-              type="text"
-              formControlName="providerBankName"
-              class="form-input"
-              placeholder="Ej: Banco Nación / Mercado Pago"
-              maxlength="60"
-            />
-          </div>
-        </div>
-      </fieldset>
-
-      <!-- SECCIÓN ADMIN: Integración con Mercado Pago (Informativa, sincronizada con la cuenta del prestador) -->
-      <fieldset class="form-fieldset" [class.is-club-section]="isClubExperience" [disabled]="saving">
-        <legend class="fieldset-legend">
-          Cobros con Mercado Pago (Acreditación Instantánea)
-          @if (providerMpInfo?.connected) {
-            <span class="mp-status-pill connected">Cuenta Vinculada</span>
-          } @else {
-            <span class="mp-status-pill disconnected">No Vinculada</span>
-          }
-        </legend>
-
-        <div class="provider-info-grid">
-          <div class="info-item">
-            <span class="info-label">ESTADO DE INTEGRACIÓN</span>
-            <strong class="info-value" [class.text-green]="providerMpInfo?.connected">
-              {{ providerMpInfo?.connected ? 'Habilitada y activa en checkout' : 'Deshabilitada (Solo transferencias CBU)' }}
-            </strong>
-          </div>
-
-          <div class="info-item">
-            <span class="info-label">ID DE COBRADOR (COLLECTOR ID)</span>
-            <span class="info-value">
-              @if (providerMpInfo?.collectorId) {
-                <code class="mp-code-badge">{{ providerMpInfo?.collectorId }}</code>
-              } @else {
-                <span class="text-muted">No asignado</span>
+      <!-- Selector rápido de Asignación / Transferencia de Prestador -->
+      <div class="form-group provider-transfer-box">
+        <label for="providerSelector" class="form-label provider-transfer-label">
+          <mat-icon class="label-icon">swap_horiz</mat-icon>
+          <span>Asignar o Transferir a Prestador / Cuenta Oficial</span>
+        </label>
+        <select
+          id="providerSelector"
+          class="form-input form-select"
+          [ngModel]="selectedProviderId()"
+          (ngModelChange)="onSelectProvider($event)"
+          [ngModelOptions]="{ standalone: true }"
+        >
+          <option value="club">🏢 Cuenta Oficial del Club de Experiencias</option>
+          @if (registeredProviders && registeredProviders.length > 0) {
+            <optgroup label="Prestadores Registrados">
+              @for (p of registeredProviders; track p.id) {
+                <option [value]="p.id">
+                  👤 {{ p.name || p.agency }} {{ p.agency && p.name && p.agency !== p.name ? '(' + p.agency + ')' : '' }} &mdash; {{ p.email }}
+                </option>
               }
-            </span>
-          </div>
+            </optgroup>
+          }
+          <option value="custom">✏️ Prestador manual / Personalizado</option>
+        </select>
+        <span class="field-hint">
+          Seleccioná un prestador para autocompletar automáticamente su nombre, teléfono y datos de cobro, o elegí la Cuenta Oficial del Club.
+        </span>
+      </div>
 
-          <div class="info-item">
-            <span class="info-label">TITULAR REGISTRADO</span>
-            <span class="info-value">{{ providerMpInfo?.nickname || '—' }}</span>
-          </div>
+      @if (isClubExperience) {
+      <div class="club-locked-notice">
+        <mat-icon class="locked-info-icon">info</mat-icon>
+        <div class="notice-text">
+          <span>
+            Experiencia del <strong>Club de Experiencias</strong>. Si corresponde a otro prestador, podés cambiar el
+            nombre y datos de contacto a continuación.
+          </span>
+          <a [routerLink]="clubConfigRoute" class="btn-text-edit-club">
+            Perfil del Club en Configuración &rarr;
+          </a>
+        </div>
+      </div>
+      }
 
-          <div class="info-item">
-            <span class="info-label">DESTINO DE FONDOS</span>
-            <span class="info-value">
-              {{ providerMpInfo?.connected ? (isClubExperience ? 'Acreditación instantánea a la cuenta oficial del Club' : 'Acreditación instantánea a la cuenta del prestador') : 'Transferencia bancaria directa por CBU' }}
-            </span>
-          </div>
+      <div class="form-row form-row-2">
+        <div class="form-group">
+          <label for="providerName" class="form-label">Nombre / Prestador Asignado *</label>
+          <input id="providerName" type="text" formControlName="providerName" class="form-input"
+            placeholder="Ej: Catamarca Kayak o Club de Experiencias" maxlength="70" />
         </div>
 
-        <p class="fieldset-hint" style="margin-top: 0.75rem; font-size: 0.8rem; color: rgba(255, 255, 255, 0.55);">
-          @if (providerMpInfo?.connected) {
-            Esta información se sincroniza automáticamente desde la cuenta de Mercado Pago vinculada por el prestador a través de OAuth en su panel.
-          } @else {
-            El prestador aún no vinculó su cuenta de Mercado Pago. Las reservas de esta experiencia se cobrarán vía transferencia bancaria (CBU / CVU / Alias). Cuando el prestador conecte su cuenta desde su panel, la acreditación instantánea se activará automáticamente.
-          }
-        </p>
-      </fieldset>
+        <div class="form-group">
+          <label for="providerPhone" class="form-label">Teléfono / WhatsApp de Contacto</label>
+          <input id="providerPhone" type="tel" formControlName="providerPhone" class="form-input"
+            placeholder="Ej: +54 9 383 4567890" maxlength="30" />
+        </div>
+      </div>
+
+      <div class="form-row form-row-3">
+        <div class="form-group">
+          <label for="providerCbuAlias" class="form-label">CBU / CVU o Alias</label>
+          <input id="providerCbuAlias" type="text" formControlName="providerCbuAlias" class="form-input text-blue-input"
+            placeholder="Ej: ALIAS.PROVEEDOR.MP" maxlength="22" />
+        </div>
+
+        <div class="form-group">
+          <label for="providerCuitDni" class="form-label">CUIT / CUIL</label>
+          <input id="providerCuitDni" type="text" formControlName="providerCuitDni" class="form-input"
+            placeholder="Ej: 20-33445566-7" maxlength="13" />
+        </div>
+
+        <div class="form-group">
+          <label for="providerBankName" class="form-label">Banco / Entidad</label>
+          <input id="providerBankName" type="text" formControlName="providerBankName" class="form-input"
+            placeholder="Ej: Banco Nación / Mercado Pago" maxlength="60" />
+        </div>
+      </div>
+    </fieldset>
+
+    <!-- SECCIÓN ADMIN: Integración con Mercado Pago (Informativa, sincronizada con la cuenta del prestador) -->
+    <fieldset class="form-fieldset" [class.is-club-section]="isClubExperience" [disabled]="saving">
+      <legend class="fieldset-legend">
+        Cobros con Mercado Pago (Acreditación Instantánea)
+        @if (providerMpInfo?.connected) {
+        <span class="mp-status-pill connected">Cuenta Vinculada</span>
+        } @else {
+        <span class="mp-status-pill disconnected">No Vinculada</span>
+        }
+      </legend>
+
+      <div class="provider-info-grid">
+        <div class="info-item">
+          <span class="info-label">ESTADO DE INTEGRACIÓN</span>
+          <strong class="info-value" [class.text-green]="providerMpInfo?.connected">
+            {{ providerMpInfo?.connected ? 'Habilitada y activa en checkout' : 'Deshabilitada (Solo transferencias CBU)'
+            }}
+          </strong>
+        </div>
+
+        <div class="info-item">
+          <span class="info-label">ID DE COBRADOR (COLLECTOR ID)</span>
+          <span class="info-value">
+            @if (providerMpInfo?.collectorId) {
+            <code class="mp-code-badge">{{ providerMpInfo?.collectorId }}</code>
+            } @else {
+            <span class="text-muted">No asignado</span>
+            }
+          </span>
+        </div>
+
+        <div class="info-item">
+          <span class="info-label">TITULAR REGISTRADO</span>
+          <span class="info-value">{{ providerMpInfo?.nickname || '—' }}</span>
+        </div>
+
+        <div class="info-item">
+          <span class="info-label">DESTINO DE FONDOS</span>
+          <span class="info-value">
+            {{ providerMpInfo?.connected ? (isClubExperience ? 'Acreditación instantánea a la cuenta oficial del Club' :
+            'Acreditación instantánea a la cuenta del prestador') : 'Transferencia bancaria directa por CBU' }}
+          </span>
+        </div>
+      </div>
+
+      <p class="fieldset-hint" style="margin-top: 0.75rem; font-size: 0.8rem; color: rgba(255, 255, 255, 0.55);">
+        @if (providerMpInfo?.connected) {
+        Esta información se sincroniza automáticamente desde la cuenta de Mercado Pago vinculada por el prestador a
+        través de OAuth en su panel.
+        } @else {
+        El prestador aún no vinculó su cuenta de Mercado Pago. Las reservas de esta experiencia se cobrarán vía
+        transferencia bancaria (CBU / CVU / Alias). Cuando el prestador conecte su cuenta desde su panel, la
+        acreditación instantánea se activará automáticamente.
+        }
+      </p>
+    </fieldset>
     }
 
     <!-- SECCIÓN 5: Multimedia, Video & Portada -->
     <fieldset class="form-fieldset" [disabled]="saving">
       <legend class="fieldset-legend">5. Multimedia, Portada y Álbum de Fotos</legend>
       <p class="fieldset-hint">
-        Gestioná la fotografía de portada principal y el álbum de fotos (hasta 2 fotos destacadas y hasta 9 de galería común).
+        Gestioná la fotografía de portada principal y el álbum de fotos (hasta 2 fotos destacadas y hasta 9 de galería
+        común).
       </p>
 
       <!-- Portada Principal -->
@@ -544,52 +486,25 @@
         <label class="form-label">Fotografía de Portada Principal *</label>
         <div class="media-upload-toolbar">
           <label class="btn-upload-file" [class.is-uploading]="uploadingCover()" [class.is-disabled]="saving">
-            <input
-              type="file"
-              accept="image/*"
-              [disabled]="saving"
-              (change)="onUploadCoverImage($event)"
-              style="display: none"
-            />
-            <span>{{ uploadingCover() ? 'Subiendo portada...' : (coverImageUrl() ? 'Cambiar Portada' : 'Subir Portada desde tu equipo') }}</span>
+            <input type="file" accept="image/*" [disabled]="saving" (change)="onUploadCoverImage($event)"
+              style="display: none" />
+            <span>{{ uploadingCover() ? 'Subiendo portada...' : (coverImageUrl() ? 'Cambiar Portada' : 'Subir Portada
+              desde tu equipo') }}</span>
           </label>
 
-          <div class="url-input-group">
-            <input
-              type="url"
-              class="form-input input-url-media"
-              placeholder="O ingresá URL de imagen (https://...)"
-              [value]="coverUrlInput()"
-              [disabled]="saving"
-              (input)="coverUrlInput.set($any($event.target).value)"
-            />
-            <button
-              type="button"
-              class="btn-apply-url"
-              (click)="applyCoverFromUrl()"
-              [disabled]="saving || !coverUrlInput().trim()"
-            >
-              Aplicar
-            </button>
-          </div>
-
           @if (coverImageUrl()) {
-            <button
-              type="button"
-              class="btn-remove-media"
-              [disabled]="saving"
-              (click)="removeCoverImage()"
-              title="Quitar foto de portada"
-            >
-              Quitar
-            </button>
+          <button type="button" class="btn-remove-media" [disabled]="saving" (click)="removeCoverImage()"
+            title="Quitar foto de portada">
+            Quitar
+          </button>
           }
         </div>
 
         @if (coverImageUrl()) {
-          <div class="cover-preview-box">
-            <img [src]="coverImageUrl()" alt="Vista previa de portada" class="cover-preview-img" referrerpolicy="no-referrer" />
-          </div>
+        <div class="cover-preview-box">
+          <img [src]="coverImageUrl()" alt="Vista previa de portada" class="cover-preview-img"
+            referrerpolicy="no-referrer" />
+        </div>
         }
       </div>
 
@@ -607,10 +522,7 @@
             <span class="album-counter-pill is-featured-pill">
               Destacadas: <strong>{{ featuredPhotos().length }} / 2</strong>
             </span>
-            <span
-              class="album-counter-pill is-gallery-pill"
-              [class.is-limit-reached]="galleryPhotos().length >= 9"
-            >
+            <span class="album-counter-pill is-gallery-pill" [class.is-limit-reached]="galleryPhotos().length >= 9">
               Galería: <strong>{{ galleryPhotos().length }} / 9</strong>
             </span>
             <span class="album-counter-pill">
@@ -620,109 +532,64 @@
         </div>
 
         <div class="media-upload-toolbar">
-          <label
-            class="btn-upload-file"
-            [class.is-uploading]="uploadingAlbum()"
+          <label class="btn-upload-file" [class.is-uploading]="uploadingAlbum()"
             [class.is-disabled]="saving || galleryPhotos().length >= 9"
-            [title]="galleryPhotos().length >= 9 ? 'Límite de galería alcanzado' : 'Subir fotos'"
-          >
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              [disabled]="saving || galleryPhotos().length >= 9"
-              (change)="onUploadAlbumPhotos($event)"
-              style="display: none"
-            />
+            [title]="galleryPhotos().length >= 9 ? 'Límite de galería alcanzado' : 'Subir fotos'">
+            <input type="file" accept="image/*" multiple [disabled]="saving || galleryPhotos().length >= 9"
+              (change)="onUploadAlbumPhotos($event)" style="display: none" />
             <span>
               {{
-                uploadingAlbum()
-                  ? 'Subiendo fotos...'
-                  : galleryPhotos().length >= 9
-                    ? 'Límite de Galería (9/9) Alcanzado'
-                    : 'Subir Fotos al Álbum'
+              uploadingAlbum()
+              ? 'Subiendo fotos...'
+              : galleryPhotos().length >= 9
+              ? 'Límite de Galería (9/9) Alcanzado'
+              : 'Subir Fotos al Álbum'
               }}
             </span>
           </label>
-
-          <div class="url-input-group">
-            <input
-              type="url"
-              class="form-input input-url-media"
-              placeholder="https://ejemplo.com/foto.jpg"
-              [value]="newAlbumPhotoUrl()"
-              (input)="newAlbumPhotoUrl.set($any($event.target).value)"
-              [disabled]="saving || totalAlbumCount() >= 12"
-            />
-            <button
-              type="button"
-              class="btn-apply-url"
-              (click)="addAlbumPhotoFromUrl()"
-              [disabled]="saving || !newAlbumPhotoUrl().trim() || totalAlbumCount() >= 12"
-            >
-              Sumar al Álbum
-            </button>
-          </div>
         </div>
 
         @if (albumPhotos().length > 0) {
-          <div class="album-photos-grid">
-            @for (photo of albumPhotos(); track photo.id; let idx = $index) {
-              <div
-                class="album-photo-item"
-                [class.is-featured-item]="photo.isFeatured"
-                [class.is-cover-item]="photo.isCover"
-              >
-                <div class="photo-badge-overlay">
-                  @if (photo.isFeatured) {
-                    <span class="photo-badge badge-featured">Destacada</span>
-                  }
-                  @if (photo.isCover) {
-                    <span class="photo-badge badge-cover">Portada</span>
-                  }
-                </div>
+        <div class="album-photos-grid">
+          @for (photo of albumPhotos(); track photo.id; let idx = $index) {
+          <div class="album-photo-item" [class.is-featured-item]="photo.isFeatured"
+            [class.is-cover-item]="photo.isCover">
+            <div class="photo-badge-overlay">
+              @if (photo.isFeatured) {
+              <span class="photo-badge badge-featured">Destacada</span>
+              }
+              @if (photo.isCover) {
+              <span class="photo-badge badge-cover">Portada</span>
+              }
+            </div>
 
-                <img [src]="photo.url" [alt]="photo.caption || 'Foto del álbum'" class="album-thumb" referrerpolicy="no-referrer" />
+            <img [src]="photo.url" [alt]="photo.caption || 'Foto del álbum'" class="album-thumb"
+              referrerpolicy="no-referrer" />
 
-                <div class="album-item-meta">
-                  <input
-                    type="text"
-                    class="album-caption-input"
-                    [value]="photo.caption || ''"
-                    [disabled]="saving"
-                    (input)="updatePhotoCaption(idx, $any($event.target).value)"
-                    placeholder="Epígrafe o título..."
-                  />
-                  <button
-                    type="button"
-                    class="album-delete-btn"
-                    [disabled]="saving"
-                    (click)="removeAlbumPhoto(idx)"
-                    title="Eliminar foto del álbum"
-                  >
-                    ✕
-                  </button>
-                </div>
+            <div class="album-item-meta">
+              <input type="text" class="album-caption-input" [value]="getPhotoInputTitle(photo)" [disabled]="saving"
+                (input)="updatePhotoCaption(idx, $any($event.target).value)" placeholder="Escribir título..." />
+              <button type="button" class="album-delete-btn" [disabled]="saving" (click)="removeAlbumPhoto(idx)"
+                title="Eliminar foto del álbum">
+                ✕
+              </button>
+            </div>
 
-                <div class="album-photo-actions">
-                  <button
-                    type="button"
-                    class="btn-photo-action btn-action-featured"
-                    [class.is-active-featured]="photo.isFeatured"
-                    [disabled]="saving"
-                    (click)="toggleFeaturedPhoto(idx)"
-                    [title]="photo.isFeatured ? 'Quitar condición de destacada' : 'Fijar como foto destacada (máx 2)'"
-                  >
-                    {{ photo.isFeatured ? 'Destacada' : 'Destacar' }}
-                  </button>
-                </div>
-              </div>
-            }
+            <div class="album-photo-actions">
+              <button type="button" class="btn-photo-action btn-action-featured"
+                [class.is-active-featured]="photo.isFeatured" [disabled]="saving" (click)="toggleFeaturedPhoto(idx)"
+                [title]="photo.isFeatured ? 'Quitar condición de destacada' : 'Fijar como foto destacada (máx 2)'">
+                {{ photo.isFeatured ? 'Destacada' : 'Destacar' }}
+              </button>
+            </div>
           </div>
+          }
+        </div>
         } @else {
-          <div class="album-empty-placeholder">
-            <span>No hay fotos cargadas en el álbum. Podés subir imágenes para la galería (hasta 2 destacadas y hasta 9 de galería común).</span>
-          </div>
+        <div class="album-empty-placeholder">
+          <span>No hay fotos cargadas en el álbum. Podés subir imágenes para la galería (hasta 2 destacadas y hasta 9 de
+            galería común).</span>
+        </div>
         }
       </div>
 
@@ -731,52 +598,33 @@
         <label class="form-label">Video Oficial (.mp4 o enlace promocional - Opcional)</label>
         <div class="media-upload-toolbar">
           <label class="btn-upload-file" [class.is-uploading]="uploadingVideo()" [class.is-disabled]="saving">
-            <input
-              type="file"
-              accept="video/mp4,video/*"
-              [disabled]="saving"
-              (change)="onUploadVideo($event)"
-              style="display: none"
-            />
-            <span>{{ uploadingVideo() ? 'Subiendo video...' : (videoUrl() ? 'Cambiar Video' : 'Subir Video (.mp4)') }}</span>
+            <input type="file" accept="video/mp4,video/*" [disabled]="saving" (change)="onUploadVideo($event)"
+              style="display: none" />
+            <span>{{ uploadingVideo() ? 'Subiendo video...' : (videoUrl() ? 'Cambiar Video' : 'Subir Video (.mp4)')
+              }}</span>
           </label>
 
           <div class="url-input-group">
-            <input
-              type="url"
-              class="form-input input-url-media"
-              placeholder="https://ejemplo.com/video.mp4"
-              [value]="videoUrlInput()"
-              [disabled]="saving"
-              (input)="videoUrlInput.set($any($event.target).value)"
-            />
-            <button
-              type="button"
-              class="btn-apply-url"
-              (click)="applyVideoFromUrl()"
-              [disabled]="saving || !videoUrlInput().trim()"
-            >
+            <input type="url" class="form-input input-url-media" placeholder="https://ejemplo.com/video.mp4"
+              [value]="videoUrlInput()" [disabled]="saving" (input)="videoUrlInput.set($any($event.target).value)" />
+            <button type="button" class="btn-apply-url" (click)="applyVideoFromUrl()"
+              [disabled]="saving || !videoUrlInput().trim()">
               Aplicar Video
             </button>
           </div>
 
           @if (videoUrl()) {
-            <button
-              type="button"
-              class="btn-remove-media"
-              [disabled]="saving"
-              (click)="removeVideo()"
-              title="Quitar video oficial"
-            >
-              Quitar
-            </button>
+          <button type="button" class="btn-remove-media" [disabled]="saving" (click)="removeVideo()"
+            title="Quitar video oficial">
+            Quitar
+          </button>
           }
         </div>
 
         @if (videoUrl()) {
-          <div class="video-preview-box">
-            <video [src]="videoUrl()" controls class="video-preview-player"></video>
-          </div>
+        <div class="video-preview-box">
+          <video [src]="videoUrl()" controls class="video-preview-player"></video>
+        </div>
         }
       </div>
     </fieldset>
@@ -788,125 +636,100 @@
       <div class="form-row form-row-2">
         <div class="form-group">
           <label for="includedRaw" class="form-label">Servicios e Indumentaria Provista (un ítem por línea)</label>
-          <textarea
-            id="includedRaw"
-            rows="4"
-            class="form-input form-textarea"
-            [value]="includedRaw()"
+          <textarea id="includedRaw" rows="4" class="form-input form-textarea" [value]="includedRaw()"
             (input)="includedRaw.set($any($event.target).value); draftChange.emit()"
-            placeholder="Kayaks de travesía y remos de carbono&#10;Chaleco salvavidas reglamentario PFD&#10;Guía náutico certificado&#10;Seguro de accidentes personales"
-          ></textarea>
+            placeholder="Kayaks de travesía y remos de carbono&#10;Chaleco salvavidas reglamentario PFD&#10;Guía náutico certificado&#10;Seguro de accidentes personales"></textarea>
         </div>
 
         <div class="form-group">
-          <label for="requirementsRaw" class="form-label">Qué Debes Traer / Requisitos del Participante (un ítem por línea)</label>
-          <textarea
-            id="requirementsRaw"
-            rows="4"
-            class="form-input form-textarea"
-            [value]="requirementsRaw()"
+          <label for="requirementsRaw" class="form-label">Qué Debes Traer / Requisitos del Participante (un ítem por
+            línea)</label>
+          <textarea id="requirementsRaw" rows="4" class="form-input form-textarea" [value]="requirementsRaw()"
             (input)="requirementsRaw.set($any($event.target).value); draftChange.emit()"
-            placeholder="Ropa cómoda para mojar y muda seca de recambio&#10;Protector solar y lentes con cordín&#10;Botella de agua recargable (1.5L)&#10;Calzado cerrado apto para agua"
-          ></textarea>
+            placeholder="Ropa cómoda para mojar y muda seca de recambio&#10;Protector solar y lentes con cordín&#10;Botella de agua recargable (1.5L)&#10;Calzado cerrado apto para agua"></textarea>
         </div>
       </div>
 
       <div class="form-group">
-        <label for="highlightsRaw" class="form-label">Puntos Destacados / Lo Mejor de la Experiencia (un ítem por línea)</label>
-        <textarea
-          id="highlightsRaw"
-          rows="3"
-          class="form-input form-textarea"
-          [value]="highlightsRaw()"
+        <label for="highlightsRaw" class="form-label">Puntos Destacados / Lo Mejor de la Experiencia (un ítem por
+          línea)</label>
+        <textarea id="highlightsRaw" rows="3" class="form-input form-textarea" [value]="highlightsRaw()"
           (input)="highlightsRaw.set($any($event.target).value); draftChange.emit()"
-          placeholder="Vistas panorámicas a la cordillera&#10;Guías de montaña certificados&#10;Grupos reducidos y atención personalizada"
-        ></textarea>
+          placeholder="Vistas panorámicas a la cordillera&#10;Guías de montaña certificados&#10;Grupos reducidos y atención personalizada"></textarea>
       </div>
     </fieldset>
 
     <!-- SECCIÓN ADMIN: Estado de Publicación -->
     @if (mode === 'admin') {
-      <fieldset class="form-fieldset" [disabled]="saving">
-        <legend class="fieldset-legend">7. Estado de Publicación en Catálogo</legend>
-        <div class="form-row" [class.form-row-2]="form.controls.status.value === 'publicada'">
-          <div class="form-group">
-            <label for="status" class="form-label">Estado en experiencias.club *</label>
-            <select id="status" formControlName="status" class="form-input form-select">
-              <option value="publicada">Publicada (Visible a todos los exploradores)</option>
-              <option value="oculta">Oculta / Pausada (Dada de baja temporalmente)</option>
-              <option value="borrador">Borrador (En edición interna)</option>
-              <option value="pendiente">Pendiente (Propuesta / Postulación a evaluar)</option>
-              <option value="rechazada">Rechazada (No aprobada)</option>
-            </select>
-          </div>
-
-          @if (form.controls.status.value === 'publicada') {
-            <div class="form-group">
-              <label for="displayLocation" class="form-label">Ubicación en catálogo *</label>
-              <select id="displayLocation" formControlName="displayLocation" class="form-input form-select">
-                <option value="destacada">Destacada (Carrusel superior)</option>
-                <option value="catalogo">Abajo de destacadas (Box siguiente)</option>
-                <option value="no_listada">No listada (Solo con enlace directo)</option>
-              </select>
-            </div>
-          }
+    <fieldset class="form-fieldset" [disabled]="saving">
+      <legend class="fieldset-legend">7. Estado de Publicación en Catálogo</legend>
+      <div class="form-row" [class.form-row-2]="form.controls.status.value === 'publicada'">
+        <div class="form-group">
+          <label for="status" class="form-label">Estado en experiencias.club *</label>
+          <select id="status" formControlName="status" class="form-input form-select">
+            <option value="publicada">Publicada (Visible a todos los exploradores)</option>
+            <option value="oculta">Oculta / Pausada (Dada de baja temporalmente)</option>
+            <option value="borrador">Borrador (En edición interna)</option>
+            <option value="pendiente">Pendiente (Propuesta / Postulación a evaluar)</option>
+            <option value="rechazada">Rechazada (No aprobada)</option>
+          </select>
         </div>
-      </fieldset>
+
+        @if (form.controls.status.value === 'publicada') {
+        <div class="form-group">
+          <label for="displayLocation" class="form-label">Ubicación en catálogo *</label>
+          <select id="displayLocation" formControlName="displayLocation" class="form-input form-select">
+            <option value="destacada">Destacada (Carrusel superior)</option>
+            <option value="catalogo">Abajo de destacadas (Box siguiente)</option>
+            <option value="no_listada">No listada (Solo con enlace directo)</option>
+          </select>
+        </div>
+        }
+      </div>
+    </fieldset>
     }
 
     <!-- Action Buttons Strip -->
     <div class="form-actions-strip">
       @if (cancelRoute) {
-        <a [routerLink]="saving ? null : cancelRoute" class="cancel-btn" [class.is-disabled]="saving">Cancelar</a>
+      <a [routerLink]="saving ? null : cancelRoute" class="cancel-btn" [class.is-disabled]="saving">Cancelar</a>
       } @else {
-        <button type="button" class="cancel-btn" (click)="onCancel()" [disabled]="saving">Cancelar</button>
+      <button type="button" class="cancel-btn" (click)="onCancel()" [disabled]="saving">Cancelar</button>
       }
 
       @if (mode === 'admin') {
-        <div class="save-buttons-group">
-          <button
-            type="submit"
-            class="admin-save-btn"
-            [disabled]="saving || isMediaUploading() || saveDisabled"
-          >
-            @if (saving) {
-              <span class="btn-spinner"></span>
-              <span>{{ isCreateMode ? 'Publicando experiencia...' : 'Guardando cambios...' }}</span>
-            } @else {
-              <span>{{ isCreateMode ? 'Publicar experiencia' : 'Guardar experiencia' }}</span>
-            }
-          </button>
-        </div>
+      <div class="save-buttons-group">
+        <button type="submit" class="admin-save-btn" [disabled]="saving || isMediaUploading() || saveDisabled">
+          @if (saving) {
+          <span class="btn-spinner"></span>
+          <span>{{ isCreateMode ? 'Publicando experiencia...' : 'Guardando cambios...' }}</span>
+          } @else {
+          <span>{{ isCreateMode ? 'Publicar experiencia' : 'Guardar experiencia' }}</span>
+          }
+        </button>
+      </div>
       } @else {
-        <div class="save-buttons-group">
-          <button
-            type="button"
-            class="draft-btn"
-            (click)="onSubmit(false)"
-            [disabled]="saving || isMediaUploading() || saveDisabled"
-          >
-            @if (saving && savingAction() !== 'publish') {
-              <span class="btn-spinner"></span>
-              <span>Guardando borrador...</span>
-            } @else {
-              <span>{{ isCreateMode ? 'Guardar como Borrador' : 'Guardar Cambios' }}</span>
-            }
-          </button>
+      <div class="save-buttons-group">
+        <button type="button" class="draft-btn" (click)="onSubmit(false)"
+          [disabled]="saving || isMediaUploading() || saveDisabled">
+          @if (saving && savingAction() !== 'publish') {
+          <span class="btn-spinner"></span>
+          <span>Guardando borrador...</span>
+          } @else {
+          <span>{{ isCreateMode ? 'Guardar como Borrador' : 'Guardar Cambios' }}</span>
+          }
+        </button>
 
-          <button
-            type="button"
-            class="publish-request-btn"
-            (click)="onSubmit(true)"
-            [disabled]="saving || isMediaUploading() || saveDisabled"
-          >
-            @if (saving && savingAction() === 'publish') {
-              <span class="btn-spinner"></span>
-              <span>Enviando propuesta...</span>
-            } @else {
-              <span>Guardar y Solicitar Publicación al Admin</span>
-            }
-          </button>
-        </div>
+        <button type="button" class="publish-request-btn" (click)="onSubmit(true)"
+          [disabled]="saving || isMediaUploading() || saveDisabled">
+          @if (saving && savingAction() === 'publish') {
+          <span class="btn-spinner"></span>
+          <span>Enviando propuesta...</span>
+          } @else {
+          <span>Guardar y Solicitar Publicación al Admin</span>
+          }
+        </button>
+      </div>
       }
     </div>
   </form>

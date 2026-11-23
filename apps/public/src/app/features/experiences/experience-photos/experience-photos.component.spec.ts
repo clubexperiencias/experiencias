@@ -165,4 +165,43 @@ describe('ExperiencePhotosComponent (/experiencias/:slug/fotos)', () => {
     expect(lodging).toBeTruthy();
     expect(lodging?.slug).toBe('hosteria-el-penon');
   });
+
+  describe('getPhotoDisplayTitle', () => {
+    it('should return user caption when caption is provided (e.g. testeando)', () => {
+      const photo: ExperienceAlbumPhoto = {
+        id: 'p1',
+        url: 'https://example.com/p1.jpg',
+        title: 'Travesía en Kayak - Destacada 1',
+        caption: 'testeando',
+      };
+      expect(component.getPhotoDisplayTitle(photo)).toBe('testeando');
+    });
+
+    it('should return Sin título when photo has auto-generated title and no custom caption', () => {
+      const photo: ExperienceAlbumPhoto = {
+        id: 'p2',
+        url: 'https://example.com/p2.jpg',
+        title: 'Travesía en Kayak - Destacada 2',
+      };
+      expect(component.getPhotoDisplayTitle(photo)).toBe('Sin título');
+    });
+
+    it('should return Sin título when photo has no title or caption', () => {
+      const photo: ExperienceAlbumPhoto = {
+        id: 'p3',
+        url: 'https://example.com/p3.jpg',
+      };
+      expect(component.getPhotoDisplayTitle(photo)).toBe('Sin título');
+      expect(component.getPhotoDisplayTitle(null)).toBe('Sin título');
+    });
+
+    it('should return custom title when user entered a specific title', () => {
+      const photo: ExperienceAlbumPhoto = {
+        id: 'p4',
+        url: 'https://example.com/p4.jpg',
+        title: 'Remada en el Dique al Ocaso',
+      };
+      expect(component.getPhotoDisplayTitle(photo)).toBe('Remada en el Dique al Ocaso');
+    });
+  });
 });

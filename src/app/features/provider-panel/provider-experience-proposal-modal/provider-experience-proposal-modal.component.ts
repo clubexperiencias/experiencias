@@ -23,7 +23,7 @@ import { FechaPipe } from '../../../shared/pipes/format.pipes';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ProviderUser } from '../../../core/models/bank-transfer.model';
-import { ALTITUDE_OPTIONS, EXPERIENCE_CATEGORY_OPTIONS, ExperienceAlbumPhoto } from '../../../core/models/experience.model';
+import { ALTITUDE_OPTIONS, EXPERIENCE_CATEGORY_OPTIONS, EXPERIENCE_DURATION_OPTIONS, ExperienceAlbumPhoto } from '../../../core/models/experience.model';
 import { AdminStoreService } from '../../../core/services/admin-store.service';
 import {
   PersistedMediaDraft,
@@ -642,20 +642,9 @@ const DEFAULT_REQ_FORM = {
                         name="duration"
                         required
                       >
-                        <option value="30 minutos">30 minutos</option>
-                        <option value="1 hora">1 hora</option>
-                        <option value="2 horas">2 horas</option>
-                        <option value="3 horas">3 horas</option>
-                        <option value="4 horas (Media jornada)">4 horas (Media jornada)</option>
-                        <option value="5 horas">5 horas</option>
-                        <option value="6 horas">6 horas</option>
-                        <option value="7 horas">7 horas</option>
-                        <option value="8 horas (Jornada completa)">8 horas (Jornada completa)</option>
-                        <option value="Día completo (10 h)">Día completo (10 h)</option>
-                        <option value="Día y noche (24hs)">Día y noche (24hs)</option>
-                        <option value="2 días">2 días</option>
-                        <option value="3 días">3 días</option>
-                        <option value="4 días o más">4 días o más</option>
+                        @for (d of durationOptions; track d) {
+                          <option [value]="d">{{ d }}</option>
+                        }
                       </select>
                     </div>
                   </div>
@@ -2905,6 +2894,7 @@ export class ProviderExperienceProposalModalComponent {
   }
 
   readonly categoryOptions = EXPERIENCE_CATEGORY_OPTIONS;
+  readonly durationOptions = EXPERIENCE_DURATION_OPTIONS;
 
   isCustomCategory(val: string | null | undefined): boolean {
     if (!val) return false;

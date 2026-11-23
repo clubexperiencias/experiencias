@@ -262,6 +262,11 @@
   gap: 0.35rem;
 }
 
+.form-fieldset > .form-group + .form-group,
+.description-form-group {
+  margin-top: 1.25rem;
+}
+
 .field-label-row {
   display: flex;
   justify-content: space-between;
@@ -1017,4 +1022,29 @@
   .cancel-btn {
     text-align: center;
   }
+}
+
+.provider-transfer-box {
+  margin-bottom: 1.25rem;
+  background: rgba(255, 122, 26, 0.06);
+  border: 1px solid rgba(255, 122, 26, 0.25);
+  border-radius: 4px;
+  padding: 0.85rem 1rem;
+}
+
+.provider-transfer-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #ffaa40;
+  font-weight: 700;
+  font-size: 0.88rem;
+  margin-bottom: 0.4rem;
+}
+
+.provider-transfer-label .label-icon {
+  font-size: 1.15rem;
+  width: 1.15rem;
+  height: 1.15rem;
+  color: #ffaa40;
 }

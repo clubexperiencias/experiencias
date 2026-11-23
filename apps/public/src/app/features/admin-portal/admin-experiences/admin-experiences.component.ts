@@ -9,7 +9,7 @@ import { ExperienceService, RESERVED_EXPERIENCE_SLUGS } from '../../../core/serv
 import { StorageService } from '../../../core/services/storage.service';
 import { AdminStoreService } from '../../../core/services/admin-store.service';
 import { ExperienceProposalRequest, parseConfirmedProposalDates, slugify } from '../../../core/services/provider-store.service';
-import { ALTITUDE_OPTIONS, EXPERIENCE_CATEGORY_OPTIONS, Experience, ExperienceAlbumPhoto, ExperiencePricingPack } from '../../../core/models/experience.model';
+import { ALTITUDE_OPTIONS, EXPERIENCE_CATEGORY_OPTIONS, EXPERIENCE_DURATION_OPTIONS, Experience, ExperienceAlbumPhoto, ExperiencePricingPack } from '../../../core/models/experience.model';
 import {
   ExperienceFormComponent,
   ExperienceFormPayload,
@@ -71,6 +71,8 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
               [isClubExperience]="isCurrentExperienceClub()"
               [clubConfigRoute]="getConfigRoute()"
               [providerMpInfo]="currentAdminMpInfo()"
+              [registeredProviders]="adminStore.providerStore.providers()"
+              [clubProfile]="adminStore.clubProfile()"
               [saving]="saving()"
               [cancelRoute]="isRouteCreateMode() ? backToListLink() : getDetailRoute(exp)"
               (saveExperience)="onSaveAdminExperience($event)"
@@ -4593,22 +4595,7 @@ export class AdminExperiencesComponent implements OnInit {
   readonly editMeetingPointUrl = signal('');
   readonly editItinerary = signal('');
   readonly editDifficulty = signal<'Baja' | 'Moderada' | 'Exigente' | 'Alta Montaña' | 'Ninguna'>('Baja');
-  readonly durationOptions: readonly string[] = [
-    '30 minutos',
-    '1 hora',
-    '2 horas',
-    '3 horas',
-    '4 horas (Media jornada)',
-    '5 horas',
-    '6 horas',
-    '7 horas',
-    '8 horas (Jornada completa)',
-    'Día completo (10 h)',
-    'Día y noche (24hs)',
-    '2 días',
-    '3 días',
-    '4 días o más',
-  ];
+  readonly durationOptions: readonly string[] = EXPERIENCE_DURATION_OPTIONS;
   readonly editDurationLabel = signal('4 horas (Media jornada)');
   readonly categoryOptions = EXPERIENCE_CATEGORY_OPTIONS;
   readonly editCategory = signal<string>('expediciones');
@@ -5420,19 +5407,30 @@ export class AdminExperiencesComponent implements OnInit {
       ? (club.name || 'Club de Experiencias')
       : finalProviderName;
 
+    const matchedProvider = !isClub
+      ? this.adminStore.providerStore.providers().find((p) => {
+          const pName = (p.name || '').trim().toLowerCase();
+          const pAgency = (p.agency || '').trim().toLowerCase();
+          const targetName = resolvedProviderName.toLowerCase().trim();
+          return (pName && pName === targetName) || (pAgency && pAgency === targetName);
+        })
+      : undefined;
+
     const proposalAgency = matchingProposal?.providerAgency || matchingProposal?.providerName;
     const fallbackSlug = (proposalAgency && !isClub ? slugify(proposalAgency) : undefined) || (resolvedProviderName && !isClub ? slugify(resolvedProviderName) : undefined);
     const resolvedProviderSlug = isClub
       ? 'club-de-experiencias'
-      : (!isExpCreatorClub && currentExp?.providerSlug && currentExp.providerSlug !== 'club-de-experiencias' && currentExp.providerSlug !== 'club'
-        ? currentExp.providerSlug
-        : (fallbackSlug || ''));
+      : (matchedProvider?.slug ||
+        (!isExpCreatorClub && currentExp?.providerSlug && currentExp.providerSlug !== 'club-de-experiencias' && currentExp.providerSlug !== 'club'
+          ? currentExp.providerSlug
+          : (fallbackSlug || '')));
 
     const resolvedProviderEmail = isClub
       ? (club.email || 'admin@experiencias.club')
-      : (!isExpCreatorClub && currentExp?.providerEmail && currentExp.providerEmail !== 'admin@experiencias.club' && currentExp.providerEmail !== 'hola@experiencias.club'
-        ? currentExp.providerEmail
-        : (matchingProposal?.providerEmail || ''));
+      : (matchedProvider?.email ||
+        (!isExpCreatorClub && currentExp?.providerEmail && currentExp.providerEmail !== 'admin@experiencias.club' && currentExp.providerEmail !== 'hola@experiencias.club'
+          ? currentExp.providerEmail
+          : (matchingProposal?.providerEmail || '')));
 
     const safeAlbumPhotos = this.editAlbumPhotos().map((p) => ({
       ...p,
@@ -5473,9 +5471,16 @@ export class AdminExperiencesComponent implements OnInit {
       providerBankName: resolvedProviderBank,
       providerSlug: resolvedProviderSlug,
       providerEmail: resolvedProviderEmail,
+      providerId: isClub ? undefined : (matchedProvider?.id || currentExp?.providerId),
       isClubExperience: isClub,
-      mpConnected: this.editMpConnected(),
-      mpCollectorId: this.editMpCollectorId().trim(),
+      mpConnected: isClub
+        ? this.editMpConnected()
+        : (matchedProvider && matchedProvider.mpConnected !== undefined
+          ? matchedProvider.mpConnected
+          : this.editMpConnected()),
+      mpCollectorId: isClub
+        ? this.editMpCollectorId().trim()
+        : (matchedProvider?.mpCollectorId || this.editMpCollectorId().trim()),
       videoUrl: safeVideoUrl,
       videoPoster: this.editVideoPoster().trim(),
       dates,

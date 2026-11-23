@@ -21,11 +21,12 @@ import { RESERVED_EXPERIENCE_SLUGS } from '../../../core/services/experience.ser
 import {
   ALTITUDE_OPTIONS,
   EXPERIENCE_CATEGORY_OPTIONS,
+  EXPERIENCE_DURATION_OPTIONS,
   Experience,
   ExperienceAlbumPhoto,
   ExperiencePricingPack,
 } from '../../../core/models/experience.model';
-import { ProviderExperience } from '../../../core/models/bank-transfer.model';
+import { ProviderExperience, ProviderUser } from '../../../core/models/bank-transfer.model';
 import { ExperiencePricingPacksEditorComponent } from '../experience-pricing-packs-editor/experience-pricing-packs-editor.component';
 import { FechaPipe } from '../../pipes/format.pipes';
 
@@ -62,6 +63,8 @@ export interface ExperienceFormPayload {
   providerCbuAlias?: string;
   providerCuitDni?: string;
   providerBankName?: string;
+  providerId?: string;
+  providerEmail?: string;
   status?: string;
   displayLocation?: string;
 }
@@ -98,6 +101,17 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
     collectorId?: string;
     nickname?: string;
   };
+  @Input() registeredProviders: ProviderUser[] = [];
+  @Input() clubProfile?: {
+    name?: string;
+    phone?: string;
+    cbuAlias?: string;
+    cuitDni?: string;
+    bankName?: string;
+    email?: string;
+  } | null = null;
+
+  readonly selectedProviderId = signal<string>('custom');
 
   @Output() saveExperience = new EventEmitter<{
     payload: ExperienceFormPayload;
@@ -127,15 +141,7 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
     'Alta Montaña',
   ];
 
-  readonly durationOptions: readonly string[] = [
-    '1 a 2 horas (Paseo express)',
-    '2 a 3 horas (Actividad corta)',
-    '4 horas (Media jornada)',
-    '6 a 8 horas (Jornada completa)',
-    'Día completo con noche (2 días / 1 noche)',
-    'Expedición 3 días / 2 noches',
-    'Travesía 4 días o más',
-  ];
+  readonly durationOptions: readonly string[] = EXPERIENCE_DURATION_OPTIONS;
 
   readonly toastMessage = signal<string | null>(null);
   readonly savingAction = signal<'save' | 'publish' | null>(null);
@@ -240,6 +246,9 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
     if (changes['initialExperience'] && this.initialExperience) {
       this.populateForm(this.initialExperience);
     }
+    if (changes['registeredProviders'] || changes['isClubExperience']) {
+      this.syncSelectedProviderFromExperience(this.initialExperience);
+    }
   }
 
   fieldInvalid(fieldName: string): boolean {
@@ -272,7 +281,8 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
     const category = exp.category || 'expediciones';
     const region = exp.region || this.regions[0];
     const difficulty = exp.difficulty || 'Ninguna';
-    const durationLabel = exp.durationLabel || (exp.duration ? String(exp.duration) : '');
+    const rawDuration = exp.durationLabel || (exp.duration ? String(exp.duration) : '');
+    const durationLabel = rawDuration === '1 a 2 horas (Paseo express)' ? '1 a 2 horas' : rawDuration;
     const altitudeMeters = exp.altitudeMeters ?? (exp.altitude ? Number(exp.altitude) : 850);
     const priceArs = exp.priceArs ?? 65000;
     const capacity = exp.capacityPerDate ?? (exp.maxSpotsPerGroup ?? 12);
@@ -379,6 +389,97 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
       this.highlightsRaw.set(exp.highlights.join('\n'));
     } else {
       this.highlightsRaw.set('');
+    }
+
+    this.syncSelectedProviderFromExperience(exp);
+  }
+
+  syncSelectedProviderFromExperience(exp: Partial<Experience> | Partial<ProviderExperience> | any): void {
+    if (!exp) {
+      if (this.isClubExperience) {
+        this.selectedProviderId.set('club');
+      } else {
+        this.selectedProviderId.set('custom');
+      }
+      return;
+    }
+
+    const pName = (exp.providerName || exp.providerAgency || '').trim().toLowerCase();
+    const isClub =
+      exp.isClubExperience === true ||
+      pName === 'club de experiencias' ||
+      pName === 'club' ||
+      exp.providerSlug === 'club-de-experiencias' ||
+      exp.providerSlug === 'club';
+
+    if (isClub) {
+      this.selectedProviderId.set('club');
+      return;
+    }
+
+    if (this.registeredProviders && this.registeredProviders.length > 0) {
+      const provId = exp.providerId;
+      const provEmail = (exp.providerEmail || '').trim().toLowerCase();
+      const provSlug = (exp.providerSlug || '').trim().toLowerCase();
+
+      const match = this.registeredProviders.find((p) => {
+        if (provId && p.id === provId) return true;
+        if (provEmail && p.email && p.email.toLowerCase() === provEmail) return true;
+        if (provSlug && p.slug && p.slug.toLowerCase() === provSlug) return true;
+        const targetName = (p.name || '').trim().toLowerCase();
+        const targetAgency = (p.agency || '').trim().toLowerCase();
+        if (pName && (targetName === pName || targetAgency === pName)) return true;
+        return false;
+      });
+
+      if (match) {
+        this.selectedProviderId.set(match.id);
+        return;
+      }
+    }
+
+    this.selectedProviderId.set('custom');
+  }
+
+  onSelectProvider(providerId: string): void {
+    this.selectedProviderId.set(providerId);
+
+    if (providerId === 'club') {
+      const clubName = this.clubProfile?.name || 'Club de Experiencias';
+      const clubPhone = this.clubProfile?.phone || '';
+      const clubCbu = this.clubProfile?.cbuAlias || '';
+      const clubCuit = this.clubProfile?.cuitDni || '';
+      const clubBank = this.clubProfile?.bankName || '';
+
+      this.form.patchValue({
+        providerName: clubName,
+        providerPhone: clubPhone,
+        providerCbuAlias: clubCbu,
+        providerCuitDni: clubCuit,
+        providerBankName: clubBank,
+      });
+      this.isClubExperience = true;
+      this.form.markAsDirty();
+      return;
+    }
+
+    if (providerId === 'custom') {
+      this.isClubExperience = false;
+      return;
+    }
+
+    const provider = this.registeredProviders.find((p) => p.id === providerId);
+    if (provider) {
+      const pName = (provider.agency || provider.name || '').trim();
+      this.form.patchValue({
+        providerName: pName,
+        providerPhone: (provider.phone || '').trim(),
+        providerCbuAlias: (provider.cbuAlias || '').trim(),
+        providerCuitDni: (provider.cuitDni || '').trim(),
+        providerBankName: (provider.bankName || '').trim(),
+      });
+      this.isClubExperience = false;
+      this.form.markAsDirty();
     }
   }
 
@@ -567,7 +668,8 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
         const newPhoto: ExperienceAlbumPhoto = {
           id: `photo_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
           url: res.url,
-          title: this.form.controls.title.value || 'Foto del álbum',
+          title: '',
+          caption: '',
           order: this.albumPhotos().length + 1,
           isFeatured: false,
         };
@@ -605,11 +707,45 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
     this.showToast('Foto sumada al álbum.');
   }
 
+  getPhotoInputTitle(photo: ExperienceAlbumPhoto): string {
+    if (photo.caption && photo.caption.trim()) {
+      return photo.caption.trim();
+    }
+    if (photo.title && !this.isAutoGeneratedTitle(photo.title)) {
+      return photo.title.trim();
+    }
+    return '';
+  }
+
+  isAutoGeneratedTitle(title?: string): boolean {
+    if (!title) return true;
+    const t = title.trim();
+    if (
+      t === 'Foto del álbum' ||
+      t === 'Portada' ||
+      t === 'Foto destacada' ||
+      t === 'Foto de la experiencia' ||
+      t === 'Foto de experiencia'
+    ) {
+      return true;
+    }
+    if (/- Destacada \d+$/i.test(t)) return true;
+    if (/- Galería \d+$/i.test(t)) return true;
+    if (/· Postal \d+$/i.test(t)) return true;
+    const currentTitle = this.form.controls.title.value?.trim();
+    if (currentTitle && t === currentTitle) return true;
+    return false;
+  }
+
   updatePhotoCaption(idx: number, caption: string): void {
     this.albumPhotos.update((photos) => {
       const updated = [...photos];
       if (updated[idx]) {
-        updated[idx] = { ...updated[idx], caption };
+        updated[idx] = {
+          ...updated[idx],
+          title: caption,
+          caption: caption,
+        };
       }
       return updated;
     });
@@ -741,6 +877,14 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
       providerCbuAlias: value.providerCbuAlias.trim(),
       providerCuitDni: value.providerCuitDni.trim(),
       providerBankName: value.providerBankName.trim(),
+      providerId:
+        this.selectedProviderId() !== 'club' && this.selectedProviderId() !== 'custom'
+          ? this.selectedProviderId()
+          : undefined,
+      providerEmail:
+        this.selectedProviderId() !== 'club' && this.selectedProviderId() !== 'custom'
+          ? this.registeredProviders.find((p) => p.id === this.selectedProviderId())?.email
+          : undefined,
       status: value.status,
       displayLocation: value.displayLocation,
     };
