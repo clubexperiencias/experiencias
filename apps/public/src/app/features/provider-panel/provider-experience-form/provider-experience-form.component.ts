@@ -448,7 +448,7 @@ export class ProviderExperienceFormComponent implements OnInit, AfterViewInit {
             dates: requestDates,
             datesOnRequest: payload.datesOnRequest ?? (payload.dates.length === 0),
             priceArs: payload.priceArs,
-            priceUsd: Math.round(payload.priceArs / 1300),
+            priceUsd: payload.priceUsd ?? Math.round(payload.priceArs / 1400),
             promosAndPricing: '',
             itinerary: payload.itinerary,
             meetingPoint: payload.meetingPoint,

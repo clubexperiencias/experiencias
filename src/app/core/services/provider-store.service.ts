@@ -44,6 +44,7 @@ const STORAGE_KEYS = {
   session: 'catamarca_provider_session_v5',
   providers: 'catamarca_providers_registry_v5',
   experienceRequests: 'catamarca_experience_requests_v1',
+  deletedProviders: 'catamarca_deleted_provider_ids_v1',
 };
 
 export interface ExperienceProposalRequest {
@@ -230,6 +231,7 @@ export class ProviderStoreService {
   private readonly _experienceRequests = signal<ExperienceProposalRequest[]>(
     this.loadStoredRequests(),
   );
+  private readonly _deletedProviderIds = signal<Set<string>>(this.loadDeletedProviderIds());
 
   private lastSessionRestoreTime = 0;
   private readonly SESSION_RESTORE_TTL_MS = 60_000;
@@ -258,6 +260,99 @@ export class ProviderStoreService {
   });
   readonly allProviders = this._providers.asReadonly();
   readonly providers = this._providers.asReadonly();
+  readonly deletedProviderIds = this._deletedProviderIds.asReadonly();
+
+  recordDeletedProvider(id?: string, email?: string): void {
+    const next = new Set(this._deletedProviderIds());
+    if (id) next.add(id.toLowerCase().trim());
+    if (email) next.add(email.toLowerCase().trim());
+    this._deletedProviderIds.set(next);
+    this.saveDeletedProviderIds(next);
+  }
+
+  unrecordDeletedProvider(id?: string, email?: string): void {
+    const next = new Set(this._deletedProviderIds());
+    if (id) next.delete(id.toLowerCase().trim());
+    if (email) next.delete(email.toLowerCase().trim());
+    this._deletedProviderIds.set(next);
+    this.saveDeletedProviderIds(next);
+  }
+
+  isProviderDeleted(id?: string, email?: string): boolean {
+    const set = this._deletedProviderIds();
+    if (id && set.has(id.toLowerCase().trim())) return true;
+    if (email && set.has(email.toLowerCase().trim())) return true;
+    return false;
+  }
+
+  async deleteProvider(
+    prov: ProviderUser | { id: string; email?: string; name?: string; agency?: string },
+  ): Promise<void> {
+    const id = (prov.id || '').trim();
+    const email = (prov.email || '').toLowerCase().trim();
+
+    // 1. Si Supabase está configurado, actualizar histórico en la base remota primero
+    if (isSupabaseConfigured() && (id || email)) {
+      const archivedEmail = `archived_${id.replace(/[^a-z0-9]/gi, '').slice(0, 8)}_${email || 'noemail'}`;
+      let query = (this.supabase.from('prestadores') as any).update({
+        email: archivedEmail,
+        status: 'dado_de_baja',
+        active: false,
+        notes: JSON.stringify({
+          deleted_from_ui: true,
+          original_email: email,
+          deleted_at: new Date().toISOString(),
+        }),
+      });
+
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+      if (isUuid && email) {
+        query = query.or(`id.eq.${id},email.ilike.${email}`);
+      } else if (isUuid) {
+        query = query.eq('id', id);
+      } else if (email) {
+        query = query.ilike('email', email);
+      } else {
+        // ID sintético local sin email: no hay registro remoto en prestadores
+        return;
+      }
+
+      const { data, error } = await query.select('id');
+      if (error) {
+        console.error('[ProviderStore] Error actualizando baja histórica en Supabase:', error);
+        throw error;
+      }
+      if (!data || data.length === 0) {
+        const notFoundErr = new Error(
+          `No se encontró el prestador en Supabase para archivar (id: ${id}, email: ${email})`,
+        );
+        console.warn('[ProviderStore]', notFoundErr.message);
+        throw notFoundErr;
+      }
+    }
+
+    // 2. Marcar como borrado lógico en memoria y almacenamiento local (tras confirmación remota)
+    this.recordDeletedProvider(id, email);
+
+    // 3. Remover de _providers activos
+    this._providers.update((list) =>
+      list.filter((p) => {
+        const pId = (p.id || '').toLowerCase().trim();
+        const pEmail = (p.email || '').toLowerCase().trim();
+        if (id && pId === id.toLowerCase()) return false;
+        if (email && pEmail === email) return false;
+        return true;
+      }),
+    );
+    this.saveProviders();
+
+    // 4. Si existe sesión activa del prestador borrado, cerrarla
+    const cur = this._currentProvider();
+    if (cur && ((id && cur.id === id) || (email && cur.email.toLowerCase().trim() === email))) {
+      this._currentProvider.set(null);
+      this.saveSession(null);
+    }
+  }
   readonly experiences = this._experiences.asReadonly();
   readonly experienceRequests = computed(() =>
     [...this._experienceRequests()].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
@@ -3786,6 +3881,29 @@ export class ProviderStoreService {
     if (typeof window === 'undefined') return;
     try {
       localStorage.setItem(STORAGE_KEYS.providers, JSON.stringify(this._providers()));
+    } catch {
+      // quota
+    }
+  }
+
+  private loadDeletedProviderIds(): Set<string> {
+    if (typeof window === 'undefined') return new Set();
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.deletedProviders);
+      if (!raw) return new Set();
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr)
+        ? new Set(arr.map((s: string) => String(s).toLowerCase().trim()))
+        : new Set();
+    } catch {
+      return new Set();
+    }
+  }
+
+  private saveDeletedProviderIds(set: Set<string>): void {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(STORAGE_KEYS.deletedProviders, JSON.stringify(Array.from(set)));
     } catch {
       // quota
     }

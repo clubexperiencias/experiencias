@@ -358,7 +358,14 @@
                       <span class="pay-label">
                         {{ paymentMethod() === 'mercadopago' ? 'Monto total Mercado Pago' : 'Monto a transferir' }}
                       </span>
-                      <p class="pay-amount">{{ total() | ars }}</p>
+                      <div class="pay-amount-group">
+                        <p class="pay-amount">{{ total() | ars }}</p>
+                        @if (totalUsd() > 0) {
+                        <span class="pay-usd-equivalent" title="Cotización referencial para pagos del exterior">
+                          o ~${{ totalUsd() }} USD
+                        </span>
+                        }
+                      </div>
                       @if (paymentMethod() === 'mercadopago' && mercadoPagoSurchargeArs() > 0) {
                       <span class="pay-surcharge-hint">
                         Incluye {{ baseTotal() | ars }} base + {{ mercadoPagoSurchargePct() }}% de costo de servicio ({{
@@ -637,7 +644,12 @@
 
                 <div class="pay-total">
                   <span>{{ paymentMethod() === 'mercadopago' ? 'Total Mercado Pago' : 'Total a transferir' }}</span>
-                  <strong>{{ total() | ars }}</strong>
+                  <div class="pay-total-group">
+                    <strong>{{ total() | ars }}</strong>
+                    @if (totalUsd() > 0) {
+                    <span class="pay-usd-sub">o ~${{ totalUsd() }} USD</span>
+                    }
+                  </div>
                 </div>
 
                 @if (submitError()) {

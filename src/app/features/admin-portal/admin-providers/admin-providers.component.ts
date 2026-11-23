@@ -16,6 +16,7 @@ import { Experience } from '../../../core/models/experience.model';
 import { FechaPipe, ArsPipe } from '../../../shared/pipes/format.pipes';
 import { AdminApplicationModalComponent } from '../admin-application-modal/admin-application-modal.component';
 import { NotificationService } from '../../../core/services/notification.service';
+import { NewsletterService } from '../../../core/services/newsletter.service';
 import {
   ProviderRatingService,
   ProviderRatingData,
@@ -624,11 +625,20 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
                   <button
                     type="button"
                     class="btn-activate-exp-bottom"
-                    [disabled]="saving()"
+                    [disabled]="saving() || isDeletingProvider()"
                     (click)="toggleProviderBajaStatus(prov)"
                     title="Habilitar prestador y reactivar sus experiencias que fueron pausadas"
                   >
                     <span>Habilitar</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="btn-delete-provider-bottom"
+                    [disabled]="saving() || isDeletingProvider()"
+                    (click)="openDeleteProviderModal(prov)"
+                    title="Eliminar prestador de la interfaz y liberar su correo"
+                  >
+                    <span>Borrar</span>
                   </button>
                 } @else {
                   <button
@@ -941,18 +951,16 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
                               <span>VER FICHA</span>
                             </a>
 
-                            @if (item.rawProvider) {
-                              <a
-                                [routerLink]="getEditRoute(item)"
-                                class="btn-edit-exp"
-                                title="Editar datos del prestador"
-                              >
-                                <span>EDITAR</span>
-                              </a>
-                            }
+                            <a
+                              [routerLink]="getEditRoute(item)"
+                              class="btn-edit-exp"
+                              title="Editar datos del prestador"
+                            >
+                              <span>EDITAR</span>
+                            </a>
                           }
 
-                          @if (item.origin === 'application' && item.rawApp) {
+                          @if (item.origin === 'application' && item.rawApp && item.status !== 'aprobado' && item.status !== 'dado_de_baja') {
                             <button
                               type="button"
                               class="btn-review-app"
@@ -960,6 +968,17 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
                               title="Revisar postulación"
                             >
                               <span>REVISAR</span>
+                            </button>
+                          }
+
+                          @if (item.status === 'dado_de_baja') {
+                            <button
+                              type="button"
+                              class="btn-delete-provider"
+                              (click)="openDeleteProviderModal(item)"
+                              title="Eliminar prestador de la interfaz y liberar su correo"
+                            >
+                              <span>BORRAR</span>
                             </button>
                           }
                         </div>
@@ -979,6 +998,62 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
             (closed)="closeApplication()"
             (statusChanged)="onApplicationStatusChanged($event)"
           />
+        }
+
+        <!-- Modal de Confirmación de Borrado de Prestador -->
+        @if (providerToDelete(); as toDelete) {
+          <div class="confirm-delete-modal-backdrop" (click)="closeDeleteModal()">
+            <div class="confirm-delete-modal-dialog" (click)="$event.stopPropagation()">
+              <div class="delete-modal-header">
+                <div class="delete-modal-title-col">
+                  <h3 class="delete-modal-title">¿Eliminar Prestador del Portal?</h3>
+                  <span class="delete-modal-sub">Esta acción removerá al prestador de la interfaz y liberará su correo</span>
+                </div>
+              </div>
+
+              <div class="delete-modal-body">
+                <div class="delete-target-card">
+                  <span class="target-label">PRESTADOR SELECCIONADO:</span>
+                  <strong class="target-title">{{ toDelete.name || toDelete.agency }}</strong>
+                  <span class="target-id">Email: <code>{{ toDelete.email }}</code> &bull; Estado: <code>DADO DE BAJA</code></span>
+                </div>
+
+                <div class="delete-consequences-list">
+                  <div class="consequence-item">
+                    <span class="bullet">•</span>
+                    <span><strong>Persistencia histórica:</strong> El registro se conserva en la base de datos para preservar la trazabilidad, historial de reservas y registros pasados.</span>
+                  </div>
+                  <div class="consequence-item">
+                    <span class="bullet">•</span>
+                    <span><strong>Remoción de la interfaz:</strong> Dejará de mostrarse en la tabla de prestadores del portal de administración.</span>
+                  </div>
+                  <div class="consequence-item">
+                    <span class="bullet">•</span>
+                    <span><strong>Habilitación de postulación:</strong> El correo electrónico queda liberado para poder volver a postularse como prestador si lo desea en el futuro.</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="delete-modal-actions">
+                <button
+                  type="button"
+                  class="btn-cancel-delete"
+                  (click)="closeDeleteModal()"
+                  [disabled]="isDeletingProvider()"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  class="btn-confirm-delete"
+                  (click)="confirmDeleteProvider()"
+                  [disabled]="isDeletingProvider()"
+                >
+                  <span>{{ isDeletingProvider() ? 'Eliminando...' : 'Eliminar Prestador' }}</span>
+                </button>
+              </div>
+            </div>
+          </div>
         }
       }
     </div>
@@ -1541,7 +1616,8 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
 
       .actions-row .btn-view-fiche,
       .actions-row .btn-edit-exp,
-      .actions-row .btn-review-app {
+      .actions-row .btn-review-app,
+      .actions-row .btn-delete-provider {
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -1632,6 +1708,210 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
         background: #ff5f00;
         border-color: #ff5f00;
         color: #0b0704;
+      }
+
+      .btn-delete-provider {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 0.75rem;
+        height: 32px;
+        min-height: 32px;
+        box-sizing: border-box;
+        background: rgba(239, 68, 68, 0.16);
+        border: 1px solid rgba(239, 68, 68, 0.45);
+        border-radius: 3px;
+        color: #fca5a5;
+        font-size: 0.75rem;
+        font-weight: 700;
+        cursor: pointer;
+        white-space: nowrap !important;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        transition: all 0.2s ease;
+      }
+      .btn-delete-provider:hover {
+        background: #dc2626;
+        border-color: #dc2626;
+        color: #ffffff !important;
+        box-shadow: 0 2px 10px rgba(220, 38, 38, 0.4);
+      }
+      .btn-delete-provider:hover span {
+        color: #ffffff !important;
+      }
+
+      .btn-delete-provider-bottom {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 34px;
+        min-height: 34px;
+        padding: 0 1.25rem;
+        background: rgba(239, 68, 68, 0.16);
+        border: 1px solid rgba(239, 68, 68, 0.45);
+        border-radius: 4px;
+        color: #fca5a5;
+        font-size: 0.8rem;
+        font-weight: 800;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .btn-delete-provider-bottom:hover:not(:disabled) {
+        background: #dc2626;
+        border-color: #dc2626;
+        color: #ffffff !important;
+        box-shadow: 0 2px 10px rgba(220, 38, 38, 0.4);
+      }
+      .btn-delete-provider-bottom:hover:not(:disabled) span {
+        color: #ffffff !important;
+      }
+
+      /* Confirm Delete Provider Modal */
+      .confirm-delete-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.85);
+        backdrop-filter: blur(12px);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+      }
+      .confirm-delete-modal-dialog {
+        width: 100%;
+        max-width: 520px;
+        background: #0f172a;
+        border: 1px solid rgba(239, 68, 68, 0.4);
+        border-radius: 8px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7), 0 0 20px rgba(239, 68, 68, 0.2);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .delete-modal-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.25rem 1.5rem;
+        background: rgba(239, 68, 68, 0.1);
+        border-bottom: 1px solid rgba(239, 68, 68, 0.2);
+      }
+      .delete-modal-title-col {
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+      }
+      .delete-modal-title {
+        margin: 0;
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: #ffffff;
+      }
+      .delete-modal-sub {
+        font-size: 0.8rem;
+        color: #fca5a5;
+      }
+      .delete-modal-body {
+        padding: 1.35rem 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+      .delete-target-card {
+        padding: 0.85rem 1rem;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 6px;
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+      }
+      .target-label {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: rgba(255, 255, 255, 0.5);
+        font-weight: 700;
+      }
+      .target-title {
+        font-size: 0.95rem;
+        color: #ffffff;
+      }
+      .target-id {
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.45);
+      }
+      .target-id code {
+        color: #80b3ff;
+      }
+      .delete-consequences-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.65rem;
+      }
+      .consequence-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+        font-size: 0.82rem;
+        line-height: 1.45;
+        color: rgba(255, 255, 255, 0.75);
+      }
+      .consequence-item .bullet {
+        color: #ef4444;
+        font-weight: 900;
+      }
+      .consequence-item strong {
+        color: #ffffff;
+      }
+      .delete-modal-actions {
+        padding: 1rem 1.5rem;
+        background: rgba(0, 0, 0, 0.25);
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.85rem;
+      }
+      .btn-cancel-delete {
+        padding: 0.6rem 1.25rem;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: #ffffff;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      .btn-cancel-delete:hover:not(:disabled) {
+        background: rgba(255, 255, 255, 0.15);
+      }
+      .btn-confirm-delete {
+        padding: 0.6rem 1.35rem;
+        background: #dc2626;
+        border: 1px solid #ef4444;
+        color: #ffffff !important;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        font-weight: 800;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        box-shadow: 0 4px 14px rgba(220, 38, 38, 0.35);
+      }
+      .btn-confirm-delete span {
+        color: #ffffff !important;
+      }
+      .btn-confirm-delete:hover:not(:disabled) {
+        background: #b91c1c;
+        border-color: #dc2626;
+        box-shadow: 0 6px 18px rgba(220, 38, 38, 0.5);
+      }
+      .btn-confirm-delete:disabled,
+      .btn-cancel-delete:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
       }
 
       /* Fiche & Edit View Topbars */
@@ -2872,6 +3152,7 @@ export class AdminProvidersComponent implements OnInit {
   private readonly expService = inject(ExperienceService);
   private readonly ratingService = inject(ProviderRatingService);
   readonly notificationService = inject(NotificationService);
+  private readonly newsletter = inject(NewsletterService, { optional: true });
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
@@ -2913,6 +3194,8 @@ export class AdminProvidersComponent implements OnInit {
   readonly editAccountHolder = signal<string>('');
   readonly editStatus = signal<'aprobado' | 'pendiente' | 'dado_de_baja'>('aprobado');
   readonly saving = signal<boolean>(false);
+  readonly providerToDelete = signal<ProviderListItem | ProviderUser | null>(null);
+  readonly isDeletingProvider = signal<boolean>(false);
   readonly feedbackToast = signal<string | null>(null);
 
   constructor() {
@@ -3522,13 +3805,24 @@ export class AdminProvidersComponent implements OnInit {
   readonly allProviders = computed<ProviderListItem[]>(() => {
     const list: ProviderListItem[] = [];
     const officialProviders = this.store.providerStore.providers();
-    const approvedProviderEmails = new Set<string>();
+    const seenEmails = new Set<string>();
 
     const applications = this.store.applications().filter((a) => a.type === 'prestador');
 
     for (const p of officialProviders) {
       const cleanEmail = p.email?.toLowerCase().trim() || '';
-      if (cleanEmail && p.status === 'aprobado') approvedProviderEmails.add(cleanEmail);
+      if (!cleanEmail) continue;
+
+      // Omitir si fue borrado lógicamente de la interfaz o marcado archivado
+      if (
+        this.store.providerStore.isProviderDeleted(p.id, cleanEmail) ||
+        cleanEmail.startsWith('archived_') ||
+        cleanEmail.startsWith('deleted_')
+      ) {
+        continue;
+      }
+
+      seenEmails.add(cleanEmail);
       const computedSlug = p.slug || slugify(p.agency || p.name || p.id || cleanEmail);
       const itemStatus: 'aprobado' | 'pendiente' | 'rechazado' | 'dado_de_baja' =
         p.status === 'dado_de_baja'
@@ -3570,9 +3864,20 @@ export class AdminProvidersComponent implements OnInit {
 
     for (const app of applications) {
       const cleanEmail = app.email?.toLowerCase().trim() || '';
-      if (cleanEmail && approvedProviderEmails.has(cleanEmail)) {
+      if (!cleanEmail || seenEmails.has(cleanEmail)) {
         continue;
       }
+
+      // Omitir si fue borrado lógicamente de la interfaz o marcado archivado
+      if (
+        this.store.providerStore.isProviderDeleted(app.id, cleanEmail) ||
+        cleanEmail.startsWith('archived_') ||
+        cleanEmail.startsWith('deleted_')
+      ) {
+        continue;
+      }
+
+      seenEmails.add(cleanEmail);
       const appSlug = app.id;
       const hasCategoryAgency = this.isCategoryIdentifier(app.agency || app.description);
       const displayAgency = hasCategoryAgency ? '' : (app.agency || app.description || '');
@@ -3963,10 +4268,54 @@ export class AdminProvidersComponent implements OnInit {
       return user.avatar.trim();
     }
     const slug = (user.slug || '').toLowerCase().trim();
-    const email = (user.email || '').toLowerCase().trim();
+    const email = (user.email || ('email' in prov ? prov.email : '') || '').toLowerCase().trim();
     if (CLUB_PROVIDER_SLUGS.has(slug) || email === CLUB_PROVIDER_EMAIL) {
       return CLUB_AVATAR_FALLBACK;
     }
+
+    // 1. Vincular con foto de Google Auth (socios / members)
+    if (email) {
+      const member = this.store.members().find((m) => (m.email || '').toLowerCase().trim() === email);
+      const memberAvatar = (member as any)?.avatarUrl || (member as any)?.avatar;
+      if (memberAvatar && typeof memberAvatar === 'string' && memberAvatar.trim()) {
+        return memberAvatar.trim();
+      }
+      const curMember = this.newsletter?.currentMember();
+      const curAvatar = (curMember as any)?.avatarUrl || (curMember as any)?.avatar;
+      if (
+        curMember &&
+        (curMember.email || '').toLowerCase().trim() === email &&
+        curAvatar &&
+        typeof curAvatar === 'string' &&
+        curAvatar.trim()
+      ) {
+        return curAvatar.trim();
+      }
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('sb-') && key.endsWith('-auth-token')) {
+              const raw = localStorage.getItem(key);
+              if (raw) {
+                const parsed = JSON.parse(raw);
+                const authUser = parsed?.user;
+                if (authUser && (authUser.email || '').toLowerCase().trim() === email) {
+                  const metaAvatar =
+                    authUser.user_metadata?.avatar_url || authUser.user_metadata?.picture;
+                  if (metaAvatar && typeof metaAvatar === 'string' && metaAvatar.trim()) {
+                    return metaAvatar.trim();
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+
     if (user.coverImage && user.coverImage.trim()) {
       return user.coverImage.trim();
     }
@@ -3981,6 +4330,43 @@ export class AdminProvidersComponent implements OnInit {
       return coverMap.get(slug)!;
     }
     return null;
+  }
+
+  openDeleteProviderModal(p: ProviderListItem | ProviderUser): void {
+    this.providerToDelete.set(p);
+  }
+
+  closeDeleteModal(): void {
+    if (this.isDeletingProvider()) return;
+    this.providerToDelete.set(null);
+  }
+
+  async confirmDeleteProvider(): Promise<void> {
+    const prov = this.providerToDelete();
+    if (!prov) return;
+
+    this.isDeletingProvider.set(true);
+    try {
+      await this.store.providerStore.deleteProvider(prov);
+      const email = (prov.email || '').toLowerCase().trim();
+      if (email) {
+        this.store.removeApplicationByEmail(email);
+      }
+
+      this.showToast(
+        `El prestador "${prov.name || ('agency' in prov ? prov.agency : '')}" fue removido de la interfaz.`,
+      );
+      this.providerToDelete.set(null);
+
+      if (this.isRouteDetailMode() || this.isRouteEditMode()) {
+        this.router.navigateByUrl(this.isAdminRoute() ? '/admin/prestadores' : '/prestadores');
+      }
+    } catch (err) {
+      console.error('[AdminProviders] Error al eliminar prestador:', err);
+      this.showToast('Ocurrió un error al remover al prestador.');
+    } finally {
+      this.isDeletingProvider.set(false);
+    }
   }
 
   getPublicProviderUrl(slug?: string | null): string {

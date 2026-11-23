@@ -42,27 +42,27 @@ describe('LoginComponent (/ingresar)', () => {
 
   it('should redirect to /socios/emergentes when email was already in waitlist', async () => {
     const navigateSpy = vi.spyOn(router, 'navigate');
-    await component.newsletter.recordWaitlistProspect('waitlist.test@experiencias.club');
-    component.email.set('waitlist.test@experiencias.club');
+    await component.newsletter.recordWaitlistProspect('waitlist@example.com');
+    component.email.set('waitlist@example.com');
 
     await component.submitLogin();
     fixture.detectChanges();
 
     expect(navigateSpy).toHaveBeenCalledWith(['/socios/emergentes'], {
-      queryParams: { email: 'waitlist.test@experiencias.club', from: 'waitlist' },
+      queryParams: { email: 'waitlist@example.com', from: 'waitlist' },
     });
   });
 
   it('should inform user to sign in via Google if they already completed the Socio form', async () => {
     await component.newsletter.registerSocio({
       fullName: 'Socio Existente',
-      email: 'socio.test@experiencias.club',
+      email: 'socio@example.com',
       dni: '30123456',
       phone: '3834123456',
     });
     component.newsletter.resetCurrentSubscription();
 
-    component.email.set('socio.test@experiencias.club');
+    component.email.set('socio@example.com');
     await component.submitLogin();
     fixture.detectChanges();
 

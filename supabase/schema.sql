@@ -223,9 +223,10 @@ CREATE TABLE IF NOT EXISTS public.experiencias (
   region                   TEXT NOT NULL DEFAULT 'Valle Central y Ambato',
   meeting_point            TEXT NOT NULL DEFAULT '',
   meeting_point_url        TEXT NOT NULL DEFAULT '',
-  difficulty               TEXT NOT NULL DEFAULT 'Baja'
+  difficulty               TEXT NOT NULL DEFAULT 'Ninguna'
                            CHECK (
-                             difficulty IN ('Baja', 'Moderada', 'Exigente', 'Alta Montaña')
+                             difficulty IN ('Ninguna', 'Baja', 'Moderada', 'Exigente', 'Alta Montaña')
+                             OR difficulty ILIKE 'ninguna%'
                              OR difficulty ILIKE 'baja%'
                              OR difficulty ILIKE 'moderada%'
                              OR difficulty ILIKE 'exigente%'

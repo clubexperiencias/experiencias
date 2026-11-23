@@ -2036,6 +2036,39 @@ export class NewsletterService {
       ? `${rawSlugBase || 'prestador'}-${Math.random().toString(36).slice(2, 6)}`
       : '';
 
+    // Verificar si el prestador está dado de baja localmente (y no fue borrado por el admin)
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const deletedRaw = localStorage.getItem('catamarca_deleted_provider_ids_v1');
+        const deletedArr: string[] = deletedRaw ? JSON.parse(deletedRaw) : [];
+        const isDeletedFromUi = deletedArr.some((s) => s.toLowerCase() === cleanEmail);
+
+        if (isDeletedFromUi) {
+          // Si el admin lo borró de la interfaz, liberamos el email para que pueda postularse de nuevo
+          const updatedDeleted = deletedArr.filter((s) => s.toLowerCase() !== cleanEmail);
+          localStorage.setItem('catamarca_deleted_provider_ids_v1', JSON.stringify(updatedDeleted));
+        } else if (!this.isSupabaseConnected()) {
+          const provRaw = localStorage.getItem('catamarca_providers_registry_v5');
+          if (provRaw) {
+            const list = JSON.parse(provRaw);
+            if (Array.isArray(list)) {
+              const matched = list.find((p: any) => (p.email || '').toLowerCase().trim() === cleanEmail);
+              if (matched && matched.status === 'dado_de_baja') {
+                return {
+                  success: false,
+                  alreadyRegistered: true,
+                  message:
+                    'Tu cuenta de prestador se encuentra dada de baja. Si necesitás reactivarla o tenés dudas, contactá al soporte del Club.',
+                };
+              }
+            }
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+
     if (this.isSupabaseConnected()) {
       try {
         // 1. Manejo seguro de correos existentes vía RPC (Security Definer), sin depender de SELECT anónimo
@@ -2068,7 +2101,7 @@ export class NewsletterService {
                 success: false,
                 alreadyRegistered: true,
                 message:
-                  'La cuenta asociada a este correo electrónico se encuentra inactiva.',
+                  'Tu cuenta de prestador se encuentra dada de baja. Si necesitás reactivarla o tenés dudas, contactá al soporte del Club.',
               };
             }
           }
@@ -2080,7 +2113,7 @@ export class NewsletterService {
         const accessPayload: Record<string, unknown> = {
           email: cleanEmail,
           name: data.fullName.trim(),
-          agency: (data.agency || '').trim(),
+          ...(data.agency !== undefined ? { agency: (data.agency || '').trim() } : {}),
           phone: data.phone.trim(),
           category: data.category.trim() || 'guia_montaña',
           region: data.region.trim() || 'Puna & Fiambalá',
@@ -2088,7 +2121,7 @@ export class NewsletterService {
           description: data.description.trim(),
           status: shouldAutoApprove ? 'aprobado' : 'pendiente',
           active: shouldAutoApprove,
-          tier: resolvedTier,
+          ...(data.tier !== undefined ? { tier: resolvedTier } : {}),
           ...(generatedSlug ? { slug: generatedSlug } : {}),
         };
 

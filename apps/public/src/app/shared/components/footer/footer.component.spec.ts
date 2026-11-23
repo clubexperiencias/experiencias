@@ -45,12 +45,12 @@ describe('FooterComponent', () => {
   });
 
   it('should render user email, membership tier and logout button when subscribed', async () => {
-    await newsletter.joinWaitlist({ email: 'explorador@experiencias.club' });
+    await newsletter.joinWaitlist({ email: 'socio@example.com' });
     fixture.detectChanges();
 
     const compiled = fixture.nativeElement as HTMLElement;
     const sessionBar = compiled.querySelector('.footer-session-bar');
-    expect(sessionBar?.textContent).toContain('explorador@experiencias.club');
+    expect(sessionBar?.textContent).toContain('socio@example.com');
     expect(sessionBar?.textContent).toContain('Socio Emergente');
     const logoutBtn = compiled.querySelector('.logout-action') as HTMLButtonElement;
     expect(logoutBtn).toBeTruthy();
