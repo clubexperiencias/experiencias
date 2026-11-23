@@ -26,8 +26,6 @@ import {
 } from '../../shared/components/breadcrumb/breadcrumb.component';
 import { KayakAdComponent } from '../../shared/components/kayak-ad/kayak-ad.component';
 
-export type MembersModalType = 'login' | null;
-
 export interface CarouselTestimonioItem {
   key: string;
   cycleIndex: number;
@@ -320,10 +318,14 @@ export class MembersComponent implements OnInit, AfterViewInit, OnDestroy {
     const step = items[1]
       ? items[1].offsetLeft - items[0].offsetLeft
       : container.clientWidth * 0.7;
-    container.scrollBy({
-      left: direction === 'next' ? step : -step,
-      behavior: 'smooth',
-    });
+    if (typeof container.scrollBy === 'function') {
+      container.scrollBy({
+        left: direction === 'next' ? step : -step,
+        behavior: 'smooth',
+      });
+    } else {
+      container.scrollLeft += direction === 'next' ? step : -step;
+    }
   }
 
   onCarouselScroll(): void {
@@ -396,9 +398,6 @@ export class MembersComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Menús de navegación
   readonly mobileMenuOpen = signal(false);
-  readonly activeModal = signal<MembersModalType>(null);
-  readonly loginEmail = signal('');
-  readonly loginError = signal<string | null>(null);
 
   toggleMobileMenu(event: Event): void {
     event.stopPropagation();
@@ -410,46 +409,9 @@ export class MembersComponent implements OnInit, AfterViewInit, OnDestroy {
     this.mobileMenuOpen.set(false);
   }
 
-  openModal(modal: MembersModalType): void {
-    this.mobileMenuOpen.set(false);
-    this.activeModal.set(modal);
-  }
-
-  closeModal(): void {
-    this.activeModal.set(null);
-    this.loginError.set(null);
-  }
-
   @HostListener('window:keydown.escape')
   onEscape(): void {
-    if (this.activeModal()) {
-      this.closeModal();
-    }
     this.mobileMenuOpen.set(false);
-  }
-
-  submitLogin(): void {
-    const email = this.loginEmail().trim();
-    if (!email) return;
-
-    if (
-      this.newsletter.isSubscribed() &&
-      this.newsletter.currentMember()?.email.toLowerCase() === email.toLowerCase()
-    ) {
-      this.closeModal();
-      this.router.navigate(['/perfil']);
-      return;
-    }
-
-    this.newsletter
-      .joinWaitlist({ email })
-      .then(() => {
-        this.closeModal();
-        this.router.navigate(['/perfil']);
-      })
-      .catch(() => {
-        this.loginError.set('Ocurrió un error al ingresar. Intentá nuevamente.');
-      });
   }
 
   logout(): void {

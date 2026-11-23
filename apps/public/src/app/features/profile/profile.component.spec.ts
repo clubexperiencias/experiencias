@@ -319,4 +319,44 @@ describe('ProfileComponent', () => {
 
     expect(scheduleSpy).toHaveBeenCalled();
   });
+
+  it('should remove experience from selectedExperiences when favorite is toggled off via onCardFavoriteToggled', () => {
+    const mockExp: any = {
+      id: 'exp-wishlist-1',
+      slug: 'kayak-wishlist',
+      title: 'Kayak Wishlist',
+      region: 'Catamarca',
+      priceArs: 15000,
+    };
+    component.selectedExperiences.set(['exp-wishlist-1', 'other-exp']);
+
+    // Experience is NOT a favorite
+    vi.spyOn(component, 'isFavorite').mockReturnValue(false);
+    const scheduleSpy = vi.spyOn(component as any, 'scheduleCarouselInit');
+
+    component.onCardFavoriteToggled({ experience: mockExp });
+
+    expect(component.selectedExperiences()).toEqual(['other-exp']);
+    expect(scheduleSpy).toHaveBeenCalled();
+  });
+
+  it('should preserve selectedExperiences when favorite is toggled on or remains a favorite via onCardFavoriteToggled', () => {
+    const mockExp: any = {
+      id: 'exp-wishlist-1',
+      slug: 'kayak-wishlist',
+      title: 'Kayak Wishlist',
+      region: 'Catamarca',
+      priceArs: 15000,
+    };
+    component.selectedExperiences.set(['exp-wishlist-1', 'other-exp']);
+
+    // Experience IS a favorite
+    vi.spyOn(component, 'isFavorite').mockReturnValue(true);
+    const scheduleSpy = vi.spyOn(component as any, 'scheduleCarouselInit');
+
+    component.onCardFavoriteToggled({ experience: mockExp });
+
+    expect(component.selectedExperiences()).toEqual(['exp-wishlist-1', 'other-exp']);
+    expect(scheduleSpy).toHaveBeenCalled();
+  });
 });

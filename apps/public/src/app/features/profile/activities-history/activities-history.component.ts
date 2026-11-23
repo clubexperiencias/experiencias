@@ -127,8 +127,4 @@ export class ActivitiesHistoryComponent {
     const month = months[match[2].toLowerCase()];
     return month === undefined ? 0 : new Date(Number(match[3]), month, Number(match[1])).getTime();
   }
-
-  openLoginModal(): void {
-    // Para el header si se necesita
-  }
 }

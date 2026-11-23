@@ -115,11 +115,11 @@ describe('MembersComponent (/socios)', () => {
   describe('construction notice toast', () => {
     it('should show the construction notice toast after init delay and auto-dismiss after 7 seconds', fakeAsync(() => {
       component.triggerConstructionNotice();
-      expect(component.showConstructionNotice()).toBeFalse();
+      expect(component.showConstructionNotice()).toBe(false);
 
       tick(70);
       fixture.detectChanges();
-      expect(component.showConstructionNotice()).toBeTrue();
+      expect(component.showConstructionNotice()).toBe(true);
 
       const toast = fixture.nativeElement.querySelector('.is-construction-toast');
       expect(toast).toBeTruthy();
@@ -130,18 +130,18 @@ describe('MembersComponent (/socios)', () => {
 
       tick(7000);
       fixture.detectChanges();
-      expect(component.showConstructionNotice()).toBeFalse();
+      expect(component.showConstructionNotice()).toBe(false);
     }));
 
     it('should dismiss the notice immediately when dismissConstructionNotice is called', fakeAsync(() => {
       component.triggerConstructionNotice();
       tick(70);
       fixture.detectChanges();
-      expect(component.showConstructionNotice()).toBeTrue();
+      expect(component.showConstructionNotice()).toBe(true);
 
       component.dismissConstructionNotice();
       fixture.detectChanges();
-      expect(component.showConstructionNotice()).toBeFalse();
+      expect(component.showConstructionNotice()).toBe(false);
     }));
   });
 

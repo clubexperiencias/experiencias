@@ -26,7 +26,6 @@ export class HeaderComponent {
 
   readonly mobileMenuOpen = model<boolean>(false);
   readonly logoutModalOpen = signal<boolean>(false);
-  @Output() loginClick = new EventEmitter<void>();
 
   toggleMobileMenu(event?: Event): void {
     if (event) {

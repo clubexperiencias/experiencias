@@ -29,17 +29,12 @@ describe('ExperiencesPhotosComponent (/experiencias/fotos)', () => {
     expect(breadcrumb.textContent).toContain('Fotos Destacadas');
   });
 
-  it('should render collage photo cards with the same DESTACADA badge and no badge icons', () => {
+  it('should render collage photo cards with location tags', () => {
     const cards = fixture.nativeElement.querySelectorAll('.collage-card');
     expect(cards.length).toBe(6);
 
-    const badges = fixture.nativeElement.querySelectorAll('.admin-curated-badge');
-    expect(badges.length).toBe(6);
-    badges.forEach((badge: HTMLElement) => {
-      expect(badge.textContent.trim()).toBe('DESTACADA');
-      expect(badge.querySelector('mat-icon')).toBeNull();
-    });
-    expect(fixture.nativeElement.textContent).not.toContain('Amanecer en las Quebradas de Ambato');
+    const tags = fixture.nativeElement.querySelectorAll('.photo-location-tag');
+    expect(tags.length).toBe(6);
   });
 
   it('should hide filters and show the founder ad component', () => {
@@ -53,7 +48,7 @@ describe('ExperiencesPhotosComponent (/experiencias/fotos)', () => {
     fixture.detectChanges();
 
     expect(component.activeModalPhoto()).toBe(firstPhoto);
-    const modal = fixture.nativeElement.querySelector('.lightbox-modal-card');
+    const modal = fixture.nativeElement.querySelector('.lightbox-content');
     expect(modal).toBeTruthy();
     expect(modal.textContent).toContain(firstPhoto.title);
 

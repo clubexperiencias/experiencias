@@ -17,6 +17,7 @@ import {
   BreadcrumbComponent,
   BreadcrumbItem,
 } from '../../shared/components/breadcrumb/breadcrumb.component';
+import { ExperienceDrawerComponent } from '../../shared/components/experience-drawer/experience-drawer.component';
 
 export type ModalType =
   | 'roadmap'
@@ -41,7 +42,7 @@ export interface LandscapeLocation {
 @Component({
   selector: 'app-waitlist',
   standalone: true,
-  imports: [MatIconModule, RouterLink, FooterComponent, HeaderComponent, BreadcrumbComponent],
+  imports: [MatIconModule, RouterLink, FooterComponent, HeaderComponent, BreadcrumbComponent, ExperienceDrawerComponent],
   templateUrl: './waitlist.component.html',
   styleUrl: './waitlist.component.css',
 })
@@ -203,10 +204,6 @@ export class WaitlistComponent implements OnInit {
       console.warn('[WaitlistComponent] Error enviando confirmación desde manifiesto:', err);
     }
   }
-
-  // Iniciar Sesión
-  readonly loginEmail = signal('');
-  readonly loginError = signal<string | null>(null);
 
   // Menú desplegable de perfil de usuario
   readonly profileMenuOpen = signal(false);
@@ -482,33 +479,6 @@ export class WaitlistComponent implements OnInit {
 
   editMemberProfile(): void {
     this.profileSaved.set(false);
-  }
-
-  openLoginModal(): void {
-    this.mobileMenuOpen.set(false);
-    this.loginError.set(null);
-    this.loginEmail.set('');
-    this.openModal('login');
-  }
-
-  async submitLogin(): Promise<void> {
-    const email = this.loginEmail().trim().toLowerCase();
-    if (!email || this.newsletter.isLoading()) return;
-
-    const res = await this.newsletter.loginWithEmail(email);
-    if (res.alreadyRegisteredSocio) {
-      this.loginError.set(res.message);
-    } else if (res.alreadyInWaitlist || res.notFound) {
-      this.closeModal();
-      this.router.navigate(['/socios/emergentes'], {
-        queryParams: { email, from: 'waitlist' },
-      });
-    } else if (res.success) {
-      this.closeModal();
-      this.router.navigate(['/perfil']);
-    } else {
-      this.loginError.set(res.message);
-    }
   }
 
   async submit(): Promise<void> {

@@ -1,0 +1,235 @@
+<div
+  class="exp-catalog-item"
+  [class.carousel-item]="variant === 'carousel'"
+  [class.exp-item-horizontal]="variant === 'featured-horizontal'"
+  [class.exp-item-destacada]="variant === 'featured-horizontal'"
+  [class.featured-horizontal]="variant === 'featured-horizontal'"
+  [class.exp-item-standard]="variant === 'standard'"
+  [class.is-expanded]="isExpanded"
+  [class.is-locked-card]="experience.isLocked"
+>
+  <!-- Botón de Favorito en esquina superior derecha (para variants horizontal y standard) -->
+  @if (variant !== 'carousel') {
+    <button
+      type="button"
+      class="fav-btn-circle"
+      [class.is-favorited]="isFavorited()"
+      [class.is-disabled-fav]="experience.isLocked"
+      [disabled]="experience.isLocked"
+      (click)="experience.isLocked ? $event.stopPropagation() : onToggleFavorite($event)"
+      [attr.aria-label]="experience.isLocked ? 'Próximamente disponible' : (isFavorited() ? 'Quitar de favoritos' : 'Agregar a favoritos')"
+      [title]="experience.isLocked ? 'Próximamente disponible' : (isFavorited() ? 'Quitar de favoritos' : 'Agregar a favoritos')"
+    >
+      <mat-icon class="fav-icon" [class.is-favorited]="isFavorited()">
+        {{ isFavorited() ? 'favorite' : 'favorite_border' }}
+      </mat-icon>
+    </button>
+  }
+
+  <div class="exp-card-main" [class.standard-card-main]="variant === 'standard'">
+    <!-- Media / Imagen -->
+    <div
+      class="exp-card-media"
+      [class.horizontal-media]="variant === 'featured-horizontal'"
+      [class.standard-media]="variant === 'standard'"
+    >
+      <img
+        [src]="experience.coverImage"
+        [alt]="experience.title"
+        class="exp-card-img"
+        loading="lazy"
+        decoding="async"
+      />
+      <span class="exp-region-tag" [class.is-enabled-tag]="!experience.isLocked">
+        {{ experience.region }}
+      </span>
+
+      <!-- En carousel, el botón de favoritos va dentro del media block -->
+      @if (variant === 'carousel') {
+        <button
+          type="button"
+          class="fav-btn-circle"
+          [class.is-favorited]="isFavorited()"
+          [class.is-disabled-fav]="experience.isLocked"
+          [disabled]="experience.isLocked"
+          (click)="experience.isLocked ? $event.stopPropagation() : onToggleFavorite($event)"
+          [attr.aria-label]="experience.isLocked ? 'Próximamente disponible' : (isFavorited() ? 'Quitar de favoritos' : 'Agregar a favoritos')"
+          [title]="experience.isLocked ? 'Próximamente disponible' : (isFavorited() ? 'Quitar de favoritos' : 'Agregar a favoritos')"
+        >
+          <mat-icon class="fav-icon" [class.is-favorited]="isFavorited()">
+            {{ isFavorited() ? 'favorite' : 'favorite_border' }}
+          </mat-icon>
+        </button>
+      }
+    </div>
+
+    <!-- Contenido -->
+    <div
+      class="exp-card-content"
+      [class.horizontal-content]="variant === 'featured-horizontal'"
+      [class.standard-content]="variant === 'standard'"
+    >
+      <div [class.standard-text-wrap]="variant === 'standard'">
+        <h3 class="exp-title">
+          @if (!experience.isLocked) {
+            <a [routerLink]="detailRoute()" class="exp-title-link">
+              {{ experience.title }}
+            </a>
+          } @else {
+            {{ experience.title }}
+          }
+        </h3>
+        <p class="exp-tagline">{{ experience.tagline }}</p>
+
+        @if (!experience.isLocked) {
+          <div class="exp-meta-row">
+            <span>{{ experience.durationLabel }}</span>
+            @if (experience.difficulty && experience.difficulty.toLowerCase() !== 'ninguna') {
+              <span>Dificultad: {{ experience.difficulty }}</span>
+            }
+            @if (variant !== 'carousel' && experience.altitudeMeters) {
+              <span>{{ experience.altitudeMeters }} msnm</span>
+            }
+            @if (variant !== 'carousel' && experience.bestSeason) {
+              <span>Temporada: {{ experience.bestSeason }}</span>
+            }
+            @if (experience.providerName) {
+              @if (providerSlug(); as slug) {
+                <span>Prestador: <a [routerLink]="['/prestadores', slug]" class="provider-stat-link">{{ experience.providerName }}</a></span>
+              } @else {
+                <span>Prestador: <strong class="provider-stat-name">{{ experience.providerName }}</strong></span>
+              }
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Fila de Precios y Acción -->
+      <div
+        class="exp-price-action-row"
+        [class.standard-footer-row]="variant === 'standard'"
+        [class.is-locked-footer]="experience.isLocked"
+      >
+        @if (experience.isLocked) {
+          <button type="button" disabled class="exp-locked-btn is-blocked-btn" title="Próximamente disponible">
+            <span>Próximamente</span>
+          </button>
+        } @else {
+          <div class="price-box">
+            <span class="price-val">${{ (experience.priceArs ?? 0).toLocaleString('es-AR') }} ARS</span>
+            <span class="price-usd">o ${{ experience.priceUsd ?? 0 }} USD</span>
+          </div>
+
+          @if (experience.detailRoute) {
+            <a [routerLink]="experience.detailRoute" class="exp-toggle-details-btn exp-cta-link" style="color: #ffffff !important;">
+              <span style="color: #ffffff !important;">Saber Más</span>
+            </a>
+          } @else {
+            <button
+              type="button"
+              class="exp-toggle-details-btn"
+              [class.active]="isExpanded"
+              (click)="onToggleDetails()"
+              style="color: #ffffff !important;"
+            >
+              @if (isExpanded) {
+                <span style="color: #ffffff !important;">Ocultar detalles</span>
+              } @else {
+                <span style="color: #ffffff !important;">Saber Más</span>
+              }
+            </button>
+          }
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel expandible de detalles técnicos -->
+  @if (isExpanded) {
+    <div class="exp-details-panel">
+      <div class="details-panel-header">
+        <div>
+          <span class="details-kicker">FICHA TÉCNICA Y PROTOCOLO</span>
+          <h4 class="details-title">{{ experience.title }}</h4>
+        </div>
+        <button
+          type="button"
+          class="details-close-btn"
+          (click)="onCloseDetails()"
+          aria-label="Cerrar detalles"
+        >
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <p class="details-description">{{ experience.description }}</p>
+
+      <div class="details-columns-grid">
+        @if (experience.highlights && experience.highlights.length > 0) {
+          <div class="details-col">
+            <span class="col-kicker">PUNTOS DESTACADOS</span>
+            <ul class="highlights-list">
+              @for (h of experience.highlights; track h) {
+                <li>{{ h }}</li>
+              }
+            </ul>
+          </div>
+        }
+
+        @if (experience.included && experience.included.length > 0) {
+          <div class="details-col">
+            <span class="col-kicker">SERVICIOS INCLUIDOS</span>
+            <div class="included-pills-wrap">
+              @for (inc of experience.included; track inc) {
+                <span class="inc-pill">✓ {{ inc }}</span>
+              }
+            </div>
+          </div>
+        }
+
+        @if (experience.providerName) {
+          <div class="details-col">
+            <span class="col-kicker">PRESTADOR</span>
+            @if (providerSlug(); as slug) {
+              <p style="margin: 0.25rem 0 0; font-size: 0.88rem;">
+                <a [routerLink]="['/prestadores', slug]" class="provider-stat-link" style="color: #ffffff;">
+                  {{ experience.providerName }}
+                </a>
+              </p>
+            } @else {
+              <p style="color: #ffffff; font-weight: 600; margin: 0.25rem 0 0; font-size: 0.88rem;">
+                {{ experience.providerName }}
+              </p>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Footer del panel de detalles -->
+      @if (footerAction === 'socios') {
+        <div class="details-footer-row">
+          <div class="footer-hint">
+            <mat-icon class="hint-icon">lock</mat-icon>
+            <span>Cupos reservados exclusivamente para Socios del Club</span>
+          </div>
+          <a routerLink="/socios" class="participate-cta-btn">
+            <span>Quiero ser Socio del Club</span>
+            <mat-icon class="btn-icon">arrow_forward</mat-icon>
+          </a>
+        </div>
+      } @else if (footerAction === 'fiche') {
+        <div class="details-footer-row">
+          <div class="footer-hint">
+            <mat-icon class="hint-icon">verified</mat-icon>
+            <span>Experiencia guardada en tus favoritos</span>
+          </div>
+          <a [routerLink]="detailRoute()" class="participate-cta-btn" style="color: #ffffff !important;">
+            <span style="color: #ffffff !important;">Ver Ficha Completa</span>
+            <mat-icon class="btn-icon">arrow_forward</mat-icon>
+          </a>
+        </div>
+      }
+    </div>
+  }
+</div>
+

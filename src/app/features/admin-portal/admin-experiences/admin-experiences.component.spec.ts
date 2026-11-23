@@ -21,6 +21,7 @@ describe('AdminExperiencesComponent - Mercado Pago Precedence', () => {
     experiences: ReturnType<typeof signal<Experience[]>>;
     approveExperienceRequest?: (id: string, publicUrl?: string, dates?: string[]) => Promise<boolean>;
     rejectExperienceRequest?: (id: string) => Promise<boolean>;
+    usdExchangeRate?: ReturnType<typeof signal<number>>;
   };
 
   const sampleConnectedProvider: ProviderUser = {
@@ -60,6 +61,7 @@ describe('AdminExperiencesComponent - Mercado Pago Precedence', () => {
         bankName: 'Banco Nacion',
       }),
       experiences: signal<Experience[]>([]),
+      usdExchangeRate: signal(1200),
       approveExperienceRequest: () => Promise.resolve(true),
       rejectExperienceRequest: () => Promise.resolve(true),
     };
@@ -67,7 +69,7 @@ describe('AdminExperiencesComponent - Mercado Pago Precedence', () => {
     await TestBed.configureTestingModule({
       imports: [AdminExperiencesComponent],
       providers: [
-        provideRouter([]),
+        provideRouter([{ path: '**', component: AdminExperiencesComponent }]),
         { provide: AdminStoreService, useValue: mockAdminStore },
       ],
     }).compileComponents();
@@ -277,6 +279,8 @@ describe('AdminExperiencesComponent - Mercado Pago Precedence', () => {
 
   describe('proposal resolution without catalog record', () => {
     it('should resolve pending proposal from providerStore when not in catalog', async () => {
+      const route = (component as any).route;
+      vi.spyOn(route.snapshot.paramMap, 'get').mockReturnValue('travesia-sierra-puna');
       const proposal = {
         id: 'req-pending-only-1',
         slug: 'travesia-sierra-puna',
@@ -306,6 +310,8 @@ describe('AdminExperiencesComponent - Mercado Pago Precedence', () => {
     });
 
     it('should resolve pending proposal by request ID when slug is not matched in catalog', async () => {
+      const route = (component as any).route;
+      vi.spyOn(route.snapshot.paramMap, 'get').mockReturnValue('req-uuid-12345');
       const proposal = {
         id: 'req-uuid-12345',
         title: 'Cabalgata en la Puna',
@@ -403,6 +409,160 @@ describe('AdminExperiencesComponent - Mercado Pago Precedence', () => {
       });
 
       expect(component.editProviderPhone()).toBe('+5493834998877');
+    });
+  });
+
+  describe('saveExperience providerStore propagation', () => {
+    it('should use saved experience record values when propagating to providerStore', async () => {
+      const updatePublicUrlSpy = vi.fn();
+      const updateExpSpy = vi.fn();
+      (mockAdminStore.providerStore as any).updateExperiencePublicUrl = updatePublicUrlSpy;
+      (mockAdminStore.providerStore as any).updateExperience = updateExpSpy;
+
+      const expService = (component as any).experienceService;
+      vi.spyOn(expService, 'updateExperience').mockResolvedValue(undefined);
+      vi.spyOn(expService, 'reloadFromSupabase').mockResolvedValue(undefined);
+
+      const savedExperience = {
+        id: 'exp-test-1',
+        title: 'Hospedaje de Montaña',
+        slug: 'hospedaje-montana-actualizado',
+        category: 'hospedajes',
+        publicUrl: 'https://experiencias.club/experiencias/hospedajes/hospedaje-montana-actualizado',
+        detailRoute: '/experiencias/hospedajes/hospedaje-montana-actualizado',
+        priceArs: 25000,
+        coverImage: 'https://img.jpg',
+        galleryImages: [],
+        shortTitle: 'Hospedaje',
+        tagline: 'Lugar único en la montaña',
+        description: 'Descripción completa del hospedaje',
+        region: 'Oeste y Puna',
+        meetingPoint: 'Plaza Principal',
+        durationLabel: 'Día completo',
+        difficulty: 'Baja',
+        altitudeMeters: 1200,
+        included: ['Desayuno'],
+        highlights: [],
+        capacityPerDate: 4,
+        status: 'publicada',
+        isClubExperience: true,
+      } as unknown as Experience;
+      vi.spyOn(expService, 'getExperienceById').mockReturnValue(savedExperience);
+
+      component.openEditModal(savedExperience);
+      component.editDatesRaw.set('A coordinar');
+      component.editIncludedRaw.set('Desayuno');
+
+      await (component as any).saveExperience();
+
+      expect(updatePublicUrlSpy).toHaveBeenCalledWith(
+        'exp-test-1',
+        'https://experiencias.club/experiencias/hospedajes/hospedaje-montana-actualizado',
+      );
+      expect(updateExpSpy).toHaveBeenCalledWith('exp-test-1', {
+        slug: 'hospedaje-montana-actualizado',
+        publicUrl: 'https://experiencias.club/experiencias/hospedajes/hospedaje-montana-actualizado',
+        detailRoute: '/experiencias/hospedajes/hospedaje-montana-actualizado',
+      });
+    });
+  });
+
+  describe('syncRouteState - canonical slug redirection for proposals', () => {
+    it('should redirect when proposal canonical slug uniquely resolves to the same proposal', async () => {
+      const router = (component as any).router;
+      const navigateSpy = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+      const route = (component as any).route;
+      vi.spyOn(route.snapshot.paramMap, 'get').mockReturnValue('req-unique-1');
+
+      const proposal = {
+        id: 'req-unique-1',
+        title: 'Travesía Nocturna',
+        slug: 'travesia-nocturna',
+        status: 'propuesta',
+      };
+      mockAdminStore.providerStore.experienceRequests.set([proposal]);
+
+      await (component as any).syncRouteState('/admin/experiencias/req-unique-1', 'req-unique-1');
+
+      expect(navigateSpy).toHaveBeenCalledWith(
+        expect.stringContaining('/travesia-nocturna'),
+        { replaceUrl: true },
+      );
+    });
+
+    it('should NOT redirect when canonical slug is ambiguous across multiple proposals', async () => {
+      const router = (component as any).router;
+      const navigateSpy = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+      const route = (component as any).route;
+      vi.spyOn(route.snapshot.paramMap, 'get').mockReturnValue('req-ambig-1');
+
+      const proposal1 = {
+        id: 'req-ambig-1',
+        title: 'Travesía Duplicada',
+        slug: 'travesia-duplicada',
+        status: 'propuesta',
+      };
+      const proposal2 = {
+        id: 'req-ambig-2',
+        title: 'Travesía Duplicada',
+        slug: 'travesia-duplicada',
+        status: 'propuesta',
+      };
+      mockAdminStore.providerStore.experienceRequests.set([proposal1, proposal2]);
+
+      await (component as any).syncRouteState('/admin/experiencias/req-ambig-1', 'req-ambig-1');
+
+      expect(navigateSpy).not.toHaveBeenCalled();
+    });
+
+    it('should NOT redirect when canonical slug resolves to an existing published experience', async () => {
+      const router = (component as any).router;
+      const navigateSpy = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+      const route = (component as any).route;
+      vi.spyOn(route.snapshot.paramMap, 'get').mockReturnValue('req-conflict-1');
+
+      const proposal = {
+        id: 'req-conflict-1',
+        title: 'Kayak Conflicto',
+        slug: 'kayak-conflicto',
+        status: 'propuesta',
+      };
+      mockAdminStore.providerStore.experienceRequests.set([proposal]);
+
+      const expService = (component as any).experienceService;
+      vi.spyOn(expService, 'getExperienceBySlug').mockImplementation(((s: string) => {
+        if (s === 'kayak-conflicto') {
+          return { id: 'exp-different-id', slug: 'kayak-conflicto' } as Experience;
+        }
+        return undefined;
+      }) as any);
+
+      await (component as any).syncRouteState('/admin/experiencias/req-conflict-1', 'req-conflict-1');
+
+      expect(navigateSpy).not.toHaveBeenCalled();
+    });
+
+    it('should abort syncRouteState if active route slug changes or becomes null while loadProposalsFromSupabase runs', async () => {
+      component.editingExperience.set(null);
+      const openModalSpy = vi.spyOn(component, 'openEditModal');
+      const route = (component as any).route;
+      const paramGetSpy = vi.spyOn(route.snapshot.paramMap, 'get').mockReturnValue('req-delayed-1');
+
+      let resolveProposals: () => void = () => {};
+      mockAdminStore.providerStore.loadProposalsFromSupabase = () =>
+        new Promise<void>((resolve) => {
+          resolveProposals = resolve;
+        });
+
+      const syncPromise = (component as any).syncRouteState('/admin/experiencias/req-delayed-1', 'req-delayed-1');
+
+      // User navigates away to list route (no slug param)
+      paramGetSpy.mockReturnValue(null);
+      resolveProposals();
+      await syncPromise;
+
+      expect(component.editingExperience()).toBeNull();
+      expect(openModalSpy).not.toHaveBeenCalled();
     });
   });
 });

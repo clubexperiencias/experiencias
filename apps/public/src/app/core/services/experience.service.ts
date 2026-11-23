@@ -421,9 +421,19 @@ export class ExperienceService {
   }
 
   getExperienceBySlug(slug: string): Experience | undefined {
-    return this._experiences().find(
-      (e) => e.slug === slug || e.id === slug || e.id === `exp-${slug}`,
+    if (!slug) return undefined;
+    const clean = slug.trim().toLowerCase();
+    const matches = this._experiences().filter(
+      (e) =>
+        (e.slug || '').trim().toLowerCase() === clean ||
+        e.id === clean ||
+        e.id === `exp-${clean}`,
     );
+    if (matches.length === 0) return undefined;
+    if (matches.length === 1) return matches[0];
+    // Si hay colisión con registros duplicados o históricos, priorizar la versión activa/publicada
+    const published = matches.find((e) => e.status === 'publicada');
+    return published || matches[0];
   }
 
   getExperienceById(id: string): Experience | undefined {
@@ -542,6 +552,7 @@ export class ExperienceService {
     } else {
       nextList.push(merged);
     }
+
     this._experiences.set(nextList);
     this.persistToLocalStorage(nextList);
 
@@ -1267,8 +1278,12 @@ export class ExperienceService {
    * @param profile Perfil oficial institucional del Club de Experiencias.
    */
   syncClubExperiencesWithProfile(profile: ClubProfile): void {
+    const eligibleClubIds: string[] = [];
     const list = this._experiences().map((exp) => {
       if (isClubExperience(exp)) {
+        if (exp.id) {
+          eligibleClubIds.push(exp.id);
+        }
         return {
           ...exp,
           isClubExperience: true,
@@ -1286,10 +1301,10 @@ export class ExperienceService {
     this._experiences.set(list);
     this.persistToLocalStorage(list);
 
-    if (isSupabaseConfigured()) {
-      const escapedEmail = (profile.email || '').trim().replace(/["\\]/g, '\\$&');
-      const emailFilter = escapedEmail ? `,provider_email.eq."${escapedEmail}"` : '';
-      const orFilter = `slug.eq.kayak,slug.eq.exp-kayak,provider_slug.eq.club-de-experiencias${emailFilter}`;
+    if (isSupabaseConfigured() && eligibleClubIds.length > 0) {
+      const orFilter = eligibleClubIds
+        .map((id) => `id.eq."${id.trim().replace(/["\\]/g, '\\$&')}"`)
+        .join(',');
 
       (this.supabase.from('experiencias') as any)
         .update({

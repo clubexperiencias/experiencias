@@ -6,16 +6,15 @@ import { NewsletterService } from '../../core/services/newsletter.service';
 describe('FoundersComponent (/fundadores)', () => {
   let component: FoundersComponent;
   let fixture: ComponentFixture<FoundersComponent>;
-  let fakeNewsletter: jasmine.SpyObj<NewsletterService>;
+  let fakeNewsletter: any;
 
   beforeEach(async () => {
     localStorage.clear();
-    fakeNewsletter = jasmine.createSpyObj<NewsletterService>('NewsletterService', [
-      'submitFounderApplication',
-      'resetCurrentSubscription',
-    ]);
-    (fakeNewsletter as any).currentMember = jasmine.createSpy('currentMember').and.returnValue(null);
-    fakeNewsletter.submitFounderApplication.and.resolveTo({ success: true });
+    fakeNewsletter = {
+      submitFounderApplication: vi.fn().mockResolvedValue({ success: true }),
+      resetCurrentSubscription: vi.fn(),
+      currentMember: vi.fn().mockReturnValue(null),
+    };
 
     await TestBed.configureTestingModule({
       imports: [FoundersComponent],

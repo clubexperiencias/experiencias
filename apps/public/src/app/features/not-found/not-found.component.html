@@ -34,34 +34,4 @@
 
   <!-- Footer Compartido -->
   <app-footer />
-
-  <!-- Modal Login -->
-  @if (activeModal() === 'login') {
-    <div class="modal-backdrop" (click)="closeModal()">
-      <div class="modal-card" (click)="$event.stopPropagation()">
-        <div class="modal-header">
-          <div>
-            <span class="modal-kicker">ACCESO DE SOCIOS</span>
-            <h3 class="modal-heading">Iniciar Sesión</h3>
-          </div>
-          <button class="modal-close-btn" (click)="closeModal()" aria-label="Cerrar modal">
-            <mat-icon>close</mat-icon>
-          </button>
-        </div>
-
-        <p class="modal-lead">
-          Iniciá sesión con Google para acceder a tu perfil y cupos reservados:
-        </p>
-
-        <div class="login-modal-box">
-          <div class="modal-footer" style="margin-top: 1.4rem">
-            <button class="pill-action-btn secondary" (click)="closeModal()">Cancelar</button>
-            <a routerLink="/ingresar" class="pill-action-btn" (click)="closeModal()">
-              Iniciar sesión con Google
-            </a>
-          </div>
-        </div>
-      </div>
-    </div>
-  }
 </div>

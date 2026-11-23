@@ -265,7 +265,7 @@
             <span class="section-kicker">REGISTRO VISUAL</span>
             <h2 class="card-heading">Álbum de Fotos</h2>
             <p class="card-subheading">
-              Mirá postales reales de esta experiencia en Catamarca ({{ albumPhotosCount() }} fotos).
+              Mirá postales reales de esta experiencia en Catamarca ({{ albumPhotosCount() }} {{ albumPhotosCount() === 1 ? 'foto' : 'fotos' }}).
             </p>
           </div>
 
@@ -278,8 +278,8 @@
               decoding="async"
             />
             <div class="album-preview-overlay">
-              <span class="album-preview-count">{{ albumPhotosCount() }} fotos en el álbum</span>
               <span class="album-preview-cta">VER ÁLBUM COMPLETO</span>
+              <span class="album-preview-count">{{ albumPhotosCount() }} {{ albumPhotosCount() === 1 ? 'foto' : 'fotos' }} en el álbum</span>
             </div>
           </a>
         </div>

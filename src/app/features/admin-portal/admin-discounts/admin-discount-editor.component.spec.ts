@@ -3,6 +3,7 @@ import { provideRouter } from '@angular/router';
 import { AdminDiscountEditorComponent } from './admin-discount-editor.component';
 import { DiscountService } from '../../../core/services/discount.service';
 import { ExperienceService } from '../../../core/services/experience.service';
+import { ProviderStoreService } from '../../../core/services/provider-store.service';
 import { signal } from '@angular/core';
 
 describe('AdminDiscountEditorComponent', () => {
@@ -13,7 +14,7 @@ describe('AdminDiscountEditorComponent', () => {
     await TestBed.configureTestingModule({
       imports: [AdminDiscountEditorComponent],
       providers: [
-        provideRouter([]),
+        provideRouter([{ path: '**', children: [] }]),
         {
           provide: DiscountService,
           useValue: {
@@ -28,6 +29,13 @@ describe('AdminDiscountEditorComponent', () => {
           provide: ExperienceService,
           useValue: {
             experiences: signal([]),
+          },
+        },
+        {
+          provide: ProviderStoreService,
+          useValue: {
+            allProviders: signal([]),
+            providers: signal([]),
           },
         },
       ],
@@ -84,7 +92,7 @@ describe('AdminDiscountEditorComponent', () => {
   });
 
   it('should retain existing slug when experienceId is null and target is unchanged', async () => {
-    const updateSpy = jasmine.createSpy('updateDiscount').and.resolveTo({ id: 'disc-123' } as any);
+    const updateSpy = vi.fn().mockResolvedValue({ id: 'disc-123' } as any);
     (component as any).discountService.updateDiscount = updateSpy;
     (component as any).isEditing.set(true);
     (component as any).editingId.set('disc-123');
@@ -101,7 +109,7 @@ describe('AdminDiscountEditorComponent', () => {
     expect(component.formError()).toBeNull();
     expect(updateSpy).toHaveBeenCalledWith(
       'disc-123',
-      jasmine.objectContaining({
+      expect.objectContaining({
         name: 'Promo Kayak Renombrada',
         scope: 'experience',
         experienceId: null,
@@ -111,7 +119,7 @@ describe('AdminDiscountEditorComponent', () => {
   });
 
   it('should resolve slug to catalog ID when experience exists in catalog', async () => {
-    const updateSpy = jasmine.createSpy('updateDiscount').and.resolveTo({ id: 'disc-456' } as any);
+    const updateSpy = vi.fn().mockResolvedValue({ id: 'disc-456' } as any);
     (component as any).discountService.updateDiscount = updateSpy;
     (component as any).isEditing.set(true);
     (component as any).editingId.set('disc-456');
@@ -133,7 +141,7 @@ describe('AdminDiscountEditorComponent', () => {
     expect(component.experienceId()).toBe('exp-999');
     expect(updateSpy).toHaveBeenCalledWith(
       'disc-456',
-      jasmine.objectContaining({
+      expect.objectContaining({
         scope: 'experience',
         experienceId: 'exp-999',
         experienceSlug: 'dunas-taton',
@@ -142,12 +150,12 @@ describe('AdminDiscountEditorComponent', () => {
   });
 
   it('should not navigate via goBack if the component is destroyed or no longer owns the route', async () => {
-    const updateSpy = jasmine.createSpy('updateDiscount').and.resolveTo({ id: 'disc-789' } as any);
+    const updateSpy = vi.fn().mockResolvedValue({ id: 'disc-789' } as any);
     (component as any).discountService.updateDiscount = updateSpy;
     (component as any).isEditing.set(true);
     (component as any).editingId.set('disc-789');
 
-    const goBackSpy = spyOn(component, 'goBack');
+    const goBackSpy = vi.spyOn(component, 'goBack');
 
     // Simular que el componente fue destruido o el admin navegó hacia otra ruta antes de que finalice la escritura
     (component as any).isDestroyed = true;
@@ -191,7 +199,7 @@ describe('AdminDiscountEditorComponent', () => {
   });
 
   it('should reject an end date earlier than start date with a field error before writing', async () => {
-    const createSpy = jasmine.createSpy('createDiscount').and.resolveTo(null);
+    const createSpy = vi.fn().mockResolvedValue(null);
     (component as any).discountService.createDiscount = createSpy;
 
     component.code.set('PROMO-DATES');
@@ -205,11 +213,11 @@ describe('AdminDiscountEditorComponent', () => {
 
     expect(component.formError()).toBe('La fecha de finalización no puede ser anterior a la fecha de inicio.');
     expect(createSpy).not.toHaveBeenCalled();
-    expect(component.saving()).toBeFalse();
+    expect(component.saving()).toBe(false);
   });
 
   it('should allow same-day promotions when startsAt equals endsAt', async () => {
-    const createSpy = jasmine.createSpy('createDiscount').and.resolveTo({ id: 'promo-same-day' } as any);
+    const createSpy = vi.fn().mockResolvedValue({ id: 'promo-same-day' } as any);
     (component as any).discountService.createDiscount = createSpy;
 
     component.code.set('BLACK-FRIDAY');
@@ -223,16 +231,16 @@ describe('AdminDiscountEditorComponent', () => {
 
     expect(component.formError()).toBeNull();
     expect(createSpy).toHaveBeenCalledWith(
-      jasmine.objectContaining({
+      expect.objectContaining({
         code: 'BLACK-FRIDAY',
-        startsAt: jasmine.stringMatching(/^2026-11-27/),
-        endsAt: jasmine.stringMatching(/^2026-11-27/),
+        startsAt: expect.stringMatching(/^2026-11-27/),
+        endsAt: expect.stringMatching(/^2026-11-27/),
       }),
     );
   });
 
   it('should allow either startsAt or endsAt to remain unset', async () => {
-    const createSpy = jasmine.createSpy('createDiscount').and.resolveTo({ id: 'promo-unset' } as any);
+    const createSpy = vi.fn().mockResolvedValue({ id: 'promo-unset' } as any);
     (component as any).discountService.createDiscount = createSpy;
 
     // Solo fecha de inicio
@@ -247,14 +255,14 @@ describe('AdminDiscountEditorComponent', () => {
 
     expect(component.formError()).toBeNull();
     expect(createSpy).toHaveBeenCalledWith(
-      jasmine.objectContaining({
+      expect.objectContaining({
         code: 'OPEN-START',
-        startsAt: jasmine.stringMatching(/^2026-12-01/),
+        startsAt: expect.stringMatching(/^2026-12-01/),
         endsAt: null,
       }),
     );
 
-    createSpy.calls.reset();
+    createSpy.mockClear();
 
     // Solo fecha de fin
     component.code.set('OPEN-END');
@@ -266,10 +274,10 @@ describe('AdminDiscountEditorComponent', () => {
 
     expect(component.formError()).toBeNull();
     expect(createSpy).toHaveBeenCalledWith(
-      jasmine.objectContaining({
+      expect.objectContaining({
         code: 'OPEN-END',
         startsAt: null,
-        endsAt: jasmine.stringMatching(/^2026-12-31/),
+        endsAt: expect.stringMatching(/^2026-12-31/),
       }),
     );
   });
@@ -405,9 +413,9 @@ describe('AdminDiscountEditorComponent', () => {
   describe('edit lookup flow and error states', () => {
     it('should display a not-found state and disable save when lookup has no match', async () => {
       const discountService = (component as any).discountService;
-      spyOn(discountService, 'getDiscountById').and.returnValue(undefined);
-      spyOn(discountService, 'loadDiscounts').and.resolveTo([]);
-      const updateSpy = spyOn(discountService, 'updateDiscount');
+      vi.spyOn(discountService, 'getDiscountById').mockReturnValue(undefined);
+      vi.spyOn(discountService, 'loadDiscounts').mockResolvedValue([]);
+      const updateSpy = vi.spyOn(discountService, 'updateDiscount');
 
       component.isEditing.set(true);
       component.editingId.set('non-existent-id');
@@ -415,9 +423,9 @@ describe('AdminDiscountEditorComponent', () => {
       await component.loadExistingDiscount('non-existent-id');
       fixture.detectChanges();
 
-      expect(component.discountNotFound()).toBeTrue();
+      expect(component.discountNotFound()).toBe(true);
       expect(component.loadError()).toBeNull();
-      expect(component.isSaveDisabled()).toBeTrue();
+      expect(component.isSaveDisabled()).toBe(true);
 
       // Verificar que el estado not-found oculta el formulario con defaults
       const compiled = fixture.nativeElement as HTMLElement;
@@ -431,11 +439,11 @@ describe('AdminDiscountEditorComponent', () => {
 
     it('should display a retryable load error when read fails with an error', async () => {
       const discountService = (component as any).discountService;
-      spyOn(discountService, 'getDiscountById').and.returnValue(undefined);
-      const loadSpy = spyOn(discountService, 'loadDiscounts').and.rejectWith(
+      vi.spyOn(discountService, 'getDiscountById').mockReturnValue(undefined);
+      const loadSpy = vi.spyOn(discountService, 'loadDiscounts').mockRejectedValue(
         new Error('Network connection timeout'),
       );
-      const updateSpy = spyOn(discountService, 'updateDiscount');
+      const updateSpy = vi.spyOn(discountService, 'updateDiscount');
 
       component.isEditing.set(true);
       component.editingId.set('broken-id');
@@ -444,8 +452,8 @@ describe('AdminDiscountEditorComponent', () => {
       fixture.detectChanges();
 
       expect(component.loadError()).toBe('Network connection timeout');
-      expect(component.discountNotFound()).toBeFalse();
-      expect(component.isSaveDisabled()).toBeTrue();
+      expect(component.discountNotFound()).toBe(false);
+      expect(component.isSaveDisabled()).toBe(true);
 
       const compiled = fixture.nativeElement as HTMLElement;
       expect(compiled.querySelector('.state-error')).toBeTruthy();
@@ -456,7 +464,7 @@ describe('AdminDiscountEditorComponent', () => {
       expect(updateSpy).not.toHaveBeenCalled();
 
       // Probar reintento con éxito
-      loadSpy.and.resolveTo([
+      loadSpy.mockResolvedValue([
         {
           id: 'broken-id',
           code: 'RECOVERED10',
@@ -476,15 +484,15 @@ describe('AdminDiscountEditorComponent', () => {
       expect(component.loadError()).toBeNull();
       expect(component.code()).toBe('RECOVERED10');
       expect(component.name()).toBe('Promo Recuperada');
-      expect(component.isSaveDisabled()).toBeFalse();
+      expect(component.isSaveDisabled()).toBe(false);
       expect(compiled.querySelector('.state-error')).toBeNull();
       expect(compiled.querySelector('.editor-layout')).toBeTruthy();
     });
 
     it('should display a retryable load error on empty-cache failure', async () => {
       const discountService = (component as any).discountService;
-      spyOn(discountService, 'getDiscountById').and.returnValue(undefined);
-      spyOn(discountService, 'loadDiscounts').and.resolveTo([]);
+      vi.spyOn(discountService, 'getDiscountById').mockReturnValue(undefined);
+      vi.spyOn(discountService, 'loadDiscounts').mockResolvedValue([]);
       // Simular que el servicio tiene un error registrado
       discountService.error = signal('Error de conexión con Supabase');
 
@@ -495,7 +503,7 @@ describe('AdminDiscountEditorComponent', () => {
       fixture.detectChanges();
 
       expect(component.loadError()).toBe('Error de conexión con Supabase');
-      expect(component.isSaveDisabled()).toBeTrue();
+      expect(component.isSaveDisabled()).toBe(true);
 
       const compiled = fixture.nativeElement as HTMLElement;
       expect(compiled.querySelector('.state-error')).toBeTruthy();
@@ -506,8 +514,8 @@ describe('AdminDiscountEditorComponent', () => {
   describe('save return verification', () => {
     it('should set form error and not navigate when createDiscount returns null', async () => {
       const discountService = (component as any).discountService;
-      spyOn(discountService, 'createDiscount').and.resolveTo(null);
-      const goBackSpy = spyOn(component, 'goBack');
+      vi.spyOn(discountService, 'createDiscount').mockResolvedValue(null);
+      const goBackSpy = vi.spyOn(component, 'goBack');
 
       component.code.set('PROMO-NULL');
       component.name.set('Promo Retorno Nulo');
@@ -526,8 +534,8 @@ describe('AdminDiscountEditorComponent', () => {
 
     it('should set form error and not navigate when updateDiscount returns null', async () => {
       const discountService = (component as any).discountService;
-      spyOn(discountService, 'updateDiscount').and.resolveTo(null);
-      const goBackSpy = spyOn(component, 'goBack');
+      vi.spyOn(discountService, 'updateDiscount').mockResolvedValue(null);
+      const goBackSpy = vi.spyOn(component, 'goBack');
 
       component.isEditing.set(true);
       component.editingId.set('edit-null-id');
@@ -548,9 +556,9 @@ describe('AdminDiscountEditorComponent', () => {
 
     it('should navigate back via goBack when createDiscount returns a non-null discount', async () => {
       const discountService = (component as any).discountService;
-      spyOn(discountService, 'createDiscount').and.resolveTo({ id: 'created-ok' } as any);
-      const goBackSpy = spyOn(component, 'goBack');
-      spyOn<any>(component, 'ownsActiveRoute').and.returnValue(true);
+      vi.spyOn(discountService, 'createDiscount').mockResolvedValue({ id: 'created-ok' } as any);
+      const goBackSpy = vi.spyOn(component, 'goBack').mockImplementation(() => {});
+      vi.spyOn<any, any>(component, 'ownsActiveRoute').mockReturnValue(true);
 
       component.code.set('PROMO-SUCCESS');
       component.name.set('Promo Exitosa');

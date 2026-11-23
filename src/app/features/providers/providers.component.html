@@ -1,6 +1,6 @@
 <div class="providers-page-container">
   <!-- Barra Superior Unificada -->
-  <app-header [(mobileMenuOpen)]="mobileMenuOpen" (loginClick)="openModal('login')"></app-header>
+  <app-header [(mobileMenuOpen)]="mobileMenuOpen"></app-header>
 
   <!-- Breadcrumb debajo del Header con fondo #FFCC00 -->
   <app-breadcrumb [items]="breadcrumbs"></app-breadcrumb>
@@ -391,30 +391,6 @@
           </div>
         </div>
         }
-      </div>
-    </div>
-    }
-
-    <!-- Modal: Iniciar Sesión -->
-    @if (activeModal() === 'login') {
-    <div class="modal-card" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <div>
-          <span class="modal-kicker">ACCESO DE SOCIOS</span>
-          <h3 class="modal-heading">Iniciar Sesión</h3>
-        </div>
-        <button class="modal-close-btn" (click)="closeModal()" aria-label="Cerrar modal">
-          <mat-icon>close</mat-icon>
-        </button>
-      </div>
-      <p class="modal-lead">
-        Ingresá con tu correo electrónico registrado para acceder a tu perfil y beneficios.
-      </p>
-      <div class="modal-body-content">
-        <a routerLink="/" class="pill-action-btn" (click)="closeModal()"
-          style="display: block; text-align: center; text-decoration: none">
-          Ir a Portada para Ingresar
-        </a>
       </div>
     </div>
     }

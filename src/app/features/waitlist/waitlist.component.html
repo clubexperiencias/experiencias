@@ -124,34 +124,6 @@
   <!-- ═══════════════ MODALES INTERACTIVOS ═══════════════ -->
   @if (activeModal()) {
   <div class="modal-backdrop" (click)="onBackdropClick($event)">
-    <!-- Modal: Iniciar Sesión -->
-    @if (activeModal() === 'login') {
-    <div class="modal-card" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <div>
-          <span class="modal-kicker">ACCESO DE SOCIOS</span>
-          <h3 class="modal-heading">Iniciar Sesión</h3>
-        </div>
-        <button class="modal-close-btn" (click)="closeModal()" aria-label="Cerrar modal">
-          <mat-icon>close</mat-icon>
-        </button>
-      </div>
-
-      <p class="modal-lead login-lead">
-        Iniciá sesión con Google para acceder a tu perfil de socio y comprobantes:
-      </p>
-
-      <div class="login-modal-box">
-        <div class="modal-footer" style="margin-top: 1.4rem">
-          <button class="pill-action-btn secondary" (click)="closeModal()">Cancelar</button>
-          <a routerLink="/ingresar" class="pill-action-btn" (click)="closeModal()">
-            Iniciar sesión con Google
-          </a>
-        </div>
-      </div>
-    </div>
-    }
-
     <!-- Modal: Niveles de Socio (Flow de Membresías) -->
     @if (activeModal() === 'tiers') {
     <div class="modal-card wide tiers-modal-card" (click)="$event.stopPropagation()">
@@ -642,43 +614,11 @@
 
           <!-- Box de detalles que se expande lateralmente unido a la card -->
           @if (selectedExperience()?.id === exp.id) {
-          <div class="exp-lateral-panel" [class.expand-right]="idx % 2 === 0" [class.expand-left]="idx % 2 !== 0">
-            <div class="lateral-header-row">
-              <div class="lateral-kicker-group">
-                <span class="lateral-kicker">
-                  {{
-                  idx % 2 === 0
-                  ? 'FICHA TÉCNICA Y RECORRIDO →'
-                  : '← FICHA TÉCNICA Y RECORRIDO'
-                  }}
-                </span>
-                <h4 class="lateral-title">{{ exp.title }}</h4>
-              </div>
-              <button class="close-details-pill" (click)="selectedExperience.set(null)" aria-label="Cerrar detalles">
-                ✕
-              </button>
-            </div>
-
-            <p class="details-desc">{{ exp.description }}</p>
-
-            <div class="highlights-list">
-              <strong>Puntos destacados de la travesía:</strong>
-              <ul>
-                @for (h of exp.highlights; track h) {
-                <li>{{ h }}</li>
-                }
-              </ul>
-            </div>
-
-            <div class="included-services">
-              <strong>Servicios incluidos por el prestador:</strong>
-              <div class="included-tags-row">
-                @for (inc of exp.included; track inc) {
-                <span class="inc-pill">✓ {{ inc }}</span>
-                }
-              </div>
-            </div>
-          </div>
+            <app-experience-drawer
+              [experience]="exp"
+              [direction]="idx % 2 === 0 ? 'right' : 'left'"
+              (close)="selectedExperience.set(null)"
+            />
           }
         </div>
         }
