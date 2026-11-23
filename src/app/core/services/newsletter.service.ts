@@ -2047,7 +2047,7 @@ export class NewsletterService {
           // Si el admin lo borró de la interfaz, liberamos el email para que pueda postularse de nuevo
           const updatedDeleted = deletedArr.filter((s) => s.toLowerCase() !== cleanEmail);
           localStorage.setItem('catamarca_deleted_provider_ids_v1', JSON.stringify(updatedDeleted));
-        } else {
+        } else if (!this.isSupabaseConnected()) {
           const provRaw = localStorage.getItem('catamarca_providers_registry_v5');
           if (provRaw) {
             const list = JSON.parse(provRaw);

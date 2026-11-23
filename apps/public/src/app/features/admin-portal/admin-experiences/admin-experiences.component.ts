@@ -5748,6 +5748,16 @@ export class AdminExperiencesComponent implements OnInit {
       : typeof req.dates === 'string'
         ? parseConfirmedProposalDates(req.dates)
         : [];
+    const rawDifficulty = req.difficulty ? req.difficulty.split('(')[0].trim() : '';
+    const allowedDifficulties: readonly Experience['difficulty'][] = [
+      'Ninguna',
+      'Baja',
+      'Moderada',
+      'Exigente',
+      'Alta Montaña',
+    ];
+    const normalizedDifficulty =
+      allowedDifficulties.find((d) => d.toLowerCase() === rawDifficulty.toLowerCase()) || 'Ninguna';
 
     return {
       id: req.id,
@@ -5763,8 +5773,7 @@ export class AdminExperiencesComponent implements OnInit {
       region: req.region || 'Catamarca',
       meetingPoint: req.meetingPoint || '',
       meetingPointUrl: req.meetingPointUrl,
-      difficulty:
-        (req.difficulty && (req.difficulty.split('(')[0].trim() as any)) || 'Ninguna',
+      difficulty: normalizedDifficulty,
       durationDays: 1,
       durationLabel: req.duration || '1 día',
       altitudeMeters: Number(req.altitude?.replace(/\D/g, '')) || 850,

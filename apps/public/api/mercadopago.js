@@ -1235,6 +1235,10 @@ module.exports = async function handler(req, res) {
         });
       }
 
+      if (!payer?.email || !String(payer.email).trim()) {
+        return res.status(400).json({ error: 'El email del pagador es obligatorio para generar la reserva.' });
+      }
+
       // Utilizar el access token del vendedor autorizado si está disponible, o el access token del Club/Marketplace
       const preferenceAccessToken = resolvedSellerToken || mpAccessToken;
 
@@ -1253,10 +1257,6 @@ module.exports = async function handler(req, res) {
           error: 'Pasarela de pago no configurada',
           message: 'El servicio de Mercado Pago no cuenta con credenciales activas en este entorno.',
         });
-      }
-
-      if (!payer?.email || !String(payer.email).trim()) {
-        return res.status(400).json({ error: 'El email del pagador es obligatorio para generar la reserva.' });
       }
 
       try {

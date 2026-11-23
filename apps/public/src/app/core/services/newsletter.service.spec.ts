@@ -236,6 +236,27 @@ describe('NewsletterService - submitProviderApplication', () => {
     expect(insertSpy).not.toHaveBeenCalled();
   });
 
+  it('should securely detect inactive/dado_de_baja provider via RPC', async () => {
+    mockSupabase.rpc.mockResolvedValue({ data: { status: 'inactive' }, error: null });
+    const insertSpy = vi.fn();
+    mockSupabase.from.mockReturnValue({ insert: insertSpy });
+
+    const res = await service.submitProviderApplication({
+      fullName: 'Guía Inactivo',
+      category: 'guia_montaña',
+      region: 'Puna',
+      email: 'baja@guia.com',
+      phone: '3834123456',
+      website: '',
+      description: '',
+    });
+
+    expect(res.success).toBe(false);
+    expect(res.alreadyRegistered).toBe(true);
+    expect(res.message).toContain('dada de baja');
+    expect(insertSpy).not.toHaveBeenCalled();
+  });
+
   it('should handle duplicate key constraint on insert securely without throwing', async () => {
     const insertSpy = vi.fn().mockResolvedValue({
       data: null,

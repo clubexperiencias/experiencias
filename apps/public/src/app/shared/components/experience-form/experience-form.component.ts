@@ -244,18 +244,20 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
   );
 
   readonly currentUsdRate = computed(() => {
+    const isValid = (r: unknown): r is number => typeof r === 'number' && Number.isFinite(r) && r > 0;
+
     const inputRate = this._usdExchangeRateInput();
-    if (inputRate && inputRate > 0) {
+    if (isValid(inputRate)) {
       return inputRate;
     }
     const adminRate = this.adminStore?.usdExchangeRate();
-    if (adminRate && adminRate > 0) {
+    if (isValid(adminRate)) {
       return adminRate;
     }
     const profileRate =
       this._clubProfileInput()?.usdExchangeRate ||
       this.adminStore?.clubProfile()?.usdExchangeRate;
-    if (profileRate && profileRate > 0) {
+    if (isValid(profileRate)) {
       return profileRate;
     }
     return 1400;
@@ -278,8 +280,17 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
   readonly galleryPhotos = computed(() => this.albumPhotos().filter((p) => !p.isFeatured));
   readonly hasCoverImage = computed(() => Boolean(this.coverImageUrl()?.trim()));
   readonly totalAlbumCount = computed(() => {
-    const coverCount = this.hasCoverImage() ? 1 : 0;
-    return this.albumPhotos().length + coverCount;
+    const coverUrl = this.coverImageUrl()?.trim() || '';
+    const album = this.albumPhotos();
+    const hasCover = Boolean(coverUrl);
+    const nonCoverPhotos = album.filter(
+      (p) => !p.isCover && (!hasCover || (p.url || '').trim() !== coverUrl),
+    );
+    const hasMatchingCoverInAlbum = album.some(
+      (p) => Boolean(p.isCover) || (hasCover && (p.url || '').trim() === coverUrl),
+    );
+    const coverCount = hasCover || hasMatchingCoverInAlbum ? 1 : 0;
+    return nonCoverPhotos.length + coverCount;
   });
 
   ngOnInit(): void {

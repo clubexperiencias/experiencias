@@ -82,6 +82,17 @@ describe('ExperienceFormComponent - isLodging & calculatedUsd reactivity', () =>
       const el = fixture.nativeElement as HTMLElement;
       expect(el.textContent).toContain('~$65 USD');
     });
+
+    it('should fall back to 1400 if rate is non-positive or non-finite', () => {
+      component.usdExchangeRate = Infinity;
+      expect(component.currentUsdRate()).toBe(1400);
+
+      component.usdExchangeRate = 0;
+      expect(component.currentUsdRate()).toBe(1400);
+
+      component.usdExchangeRate = -500;
+      expect(component.currentUsdRate()).toBe(1400);
+    });
   });
 
   describe('album photos & cover count', () => {
@@ -98,6 +109,14 @@ describe('ExperienceFormComponent - isLodging & calculatedUsd reactivity', () =>
       expect(component.totalAlbumCount()).toBe(3);
 
       component.coverImageUrl.set('');
+      expect(component.totalAlbumCount()).toBe(2);
+
+      // When cover is already present in albumPhotos, it should not be counted twice
+      component.coverImageUrl.set('https://example.com/cover.jpg');
+      component.albumPhotos.set([
+        { id: '1', url: 'https://example.com/cover.jpg', order: 1, isFeatured: false, isCover: true },
+        { id: '2', url: 'https://example.com/2.jpg', order: 2, isFeatured: false },
+      ]);
       expect(component.totalAlbumCount()).toBe(2);
     });
   });

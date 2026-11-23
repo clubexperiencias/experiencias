@@ -2918,6 +2918,15 @@ export class ProviderExperienceProposalModalComponent {
     return trimmed;
   }
 
+  normalizeDifficulty(val: string | null | undefined): string {
+    if (!val) return '';
+    const trimmed = val.trim();
+    if (trimmed === 'Baja (Sin experiencia previa)') {
+      return 'Baja';
+    }
+    return trimmed;
+  }
+
   onAltitudeInput(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (!input || input.value === null || input.value === undefined) return;
@@ -3305,6 +3314,9 @@ export class ProviderExperienceProposalModalComponent {
         };
         if (this.reqForm.duration) {
           this.reqForm.duration = this.normalizeDuration(this.reqForm.duration);
+        }
+        if (this.reqForm.difficulty) {
+          this.reqForm.difficulty = this.normalizeDifficulty(this.reqForm.difficulty);
         }
         // Borradores previos guardaban el link de Maps dentro de "meetingPoint"
         if (!this.reqForm.meetingPointUrl && this.isValidGoogleMapsUrl(this.reqForm.meetingPoint)) {

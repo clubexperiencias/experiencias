@@ -1856,7 +1856,9 @@ export class AdminStoreService {
     const clean = (email || '').toLowerCase().trim();
     if (!clean) return;
     this._applications.update((list) =>
-      list.filter((a) => (a.email || '').toLowerCase().trim() !== clean),
+      list.filter(
+        (a) => a.type !== 'prestador' || (a.email || '').toLowerCase().trim() !== clean,
+      ),
     );
     this.persistApplications(this._applications());
   }

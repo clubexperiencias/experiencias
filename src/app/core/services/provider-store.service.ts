@@ -291,10 +291,50 @@ export class ProviderStoreService {
     const id = (prov.id || '').trim();
     const email = (prov.email || '').toLowerCase().trim();
 
-    // 1. Marcar como borrado lógico en memoria y almacenamiento local
+    // 1. Si Supabase está configurado, actualizar histórico en la base remota primero
+    if (isSupabaseConfigured() && (id || email)) {
+      const archivedEmail = `archived_${id.replace(/[^a-z0-9]/gi, '').slice(0, 8)}_${email || 'noemail'}`;
+      let query = (this.supabase.from('prestadores') as any).update({
+        email: archivedEmail,
+        status: 'dado_de_baja',
+        active: false,
+        notes: JSON.stringify({
+          deleted_from_ui: true,
+          original_email: email,
+          deleted_at: new Date().toISOString(),
+        }),
+      });
+
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+      if (isUuid && email) {
+        query = query.or(`id.eq.${id},email.ilike.${email}`);
+      } else if (isUuid) {
+        query = query.eq('id', id);
+      } else if (email) {
+        query = query.ilike('email', email);
+      } else {
+        // ID sintético local sin email: no hay registro remoto en prestadores
+        return;
+      }
+
+      const { data, error } = await query.select('id');
+      if (error) {
+        console.error('[ProviderStore] Error actualizando baja histórica en Supabase:', error);
+        throw error;
+      }
+      if (!data || data.length === 0) {
+        const notFoundErr = new Error(
+          `No se encontró el prestador en Supabase para archivar (id: ${id}, email: ${email})`,
+        );
+        console.warn('[ProviderStore]', notFoundErr.message);
+        throw notFoundErr;
+      }
+    }
+
+    // 2. Marcar como borrado lógico en memoria y almacenamiento local (tras confirmación remota)
     this.recordDeletedProvider(id, email);
 
-    // 2. Remover de _providers activos
+    // 3. Remover de _providers activos
     this._providers.update((list) =>
       list.filter((p) => {
         const pId = (p.id || '').toLowerCase().trim();
@@ -306,32 +346,11 @@ export class ProviderStoreService {
     );
     this.saveProviders();
 
-    // 3. Si existe sesión activa del prestador borrado, cerrarla
+    // 4. Si existe sesión activa del prestador borrado, cerrarla
     const cur = this._currentProvider();
     if (cur && ((id && cur.id === id) || (email && cur.email.toLowerCase().trim() === email))) {
       this._currentProvider.set(null);
       this.saveSession(null);
-    }
-
-    // 4. Si Supabase está configurado, actualizar histórico sin eliminar fila
-    if (isSupabaseConfigured()) {
-      try {
-        const archivedEmail = `archived_${id.replace(/[^a-z0-9]/gi, '').slice(0, 8)}_${email}`;
-        await (this.supabase.from('prestadores') as any)
-          .update({
-            email: archivedEmail,
-            status: 'dado_de_baja',
-            active: false,
-            notes: JSON.stringify({
-              deleted_from_ui: true,
-              original_email: email,
-              deleted_at: new Date().toISOString(),
-            }),
-          })
-          .or(`id.eq.${id},email.ilike.${email}`);
-      } catch (err) {
-        console.warn('[ProviderStore] Error actualizando baja histórica en Supabase:', err);
-      }
     }
   }
   readonly experiences = this._experiences.asReadonly();
