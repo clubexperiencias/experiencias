@@ -18,6 +18,8 @@ describe('AdminExperiencesComponent - Mercado Pago Precedence', () => {
       reloadFromStorage?: () => void;
     };
     clubProfile: ReturnType<typeof signal<any>>;
+    allRegisteredProviders?: ReturnType<typeof signal<ProviderUser[]>>;
+    loadAllApplications?: () => Promise<void>;
     experiences: ReturnType<typeof signal<Experience[]>>;
     approveExperienceRequest?: (id: string, publicUrl?: string, dates?: string[]) => Promise<boolean>;
     rejectExperienceRequest?: (id: string) => Promise<boolean>;
@@ -60,6 +62,8 @@ describe('AdminExperiencesComponent - Mercado Pago Precedence', () => {
         cuitDni: '30-12345678-9',
         bankName: 'Banco Nacion',
       }),
+      allRegisteredProviders: signal<ProviderUser[]>([sampleConnectedProvider, sampleDisconnectedProvider]),
+      loadAllApplications: () => Promise.resolve(),
       experiences: signal<Experience[]>([]),
       usdExchangeRate: signal(1200),
       approveExperienceRequest: () => Promise.resolve(true),

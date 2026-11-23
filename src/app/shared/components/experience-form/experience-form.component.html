@@ -371,7 +371,7 @@
             Experiencia de la <strong>Cuenta Oficial del Club de Experiencias</strong>. Los datos de contacto y cobro institucionales se gestionan desde la configuración del Club.
           </span>
           <a [routerLink]="clubConfigRoute" class="btn-text-edit-club">
-            Perfil del Club en Configuración &rarr;
+            Ir a Configuración del Club
           </a>
         </div>
       </div>
@@ -497,31 +497,58 @@
         común).
       </p>
 
-      <!-- Portada Principal -->
-      <div class="media-block-section">
-        <label class="form-label">Fotografía de Portada Principal *</label>
-        <div class="media-upload-toolbar">
-          <label class="btn-upload-file" [class.is-uploading]="uploadingCover()" [class.is-disabled]="saving">
-            <input type="file" accept="image/*" [disabled]="saving" (change)="onUploadCoverImage($event)"
-              style="display: none" />
-            <span>{{ uploadingCover() ? 'Subiendo portada...' : (coverImageUrl() ? 'Cambiar Portada' : 'Subir Portada
-              desde tu equipo') }}</span>
-          </label>
+      <!-- Portada Principal y Video Oficial (2 columnas en desktop, 1 columna en mobile) -->
+      <div class="form-row form-row-2 media-hero-row">
+        <!-- Portada Principal -->
+        <div class="media-block-section">
+          <label class="form-label">Fotografía de Portada Principal *</label>
+          <div class="media-upload-toolbar">
+            <label class="btn-upload-file" [class.is-uploading]="uploadingCover()" [class.is-disabled]="saving">
+              <input type="file" accept="image/*" [disabled]="saving" (change)="onUploadCoverImage($event)"
+                style="display: none" />
+              <span>{{ uploadingCover() ? 'Subiendo portada...' : (coverImageUrl() ? 'Cambiar Portada' : 'Subir Portada desde tu equipo') }}</span>
+            </label>
+
+            @if (coverImageUrl()) {
+            <button type="button" class="btn-remove-media" [disabled]="saving" (click)="removeCoverImage()"
+              title="Quitar foto de portada">
+              Quitar
+            </button>
+            }
+          </div>
 
           @if (coverImageUrl()) {
-          <button type="button" class="btn-remove-media" [disabled]="saving" (click)="removeCoverImage()"
-            title="Quitar foto de portada">
-            Quitar
-          </button>
+          <div class="cover-preview-box">
+            <img [src]="coverImageUrl()" alt="Vista previa de portada" class="cover-preview-img"
+              referrerpolicy="no-referrer" />
+          </div>
           }
         </div>
 
-        @if (coverImageUrl()) {
-        <div class="cover-preview-box">
-          <img [src]="coverImageUrl()" alt="Vista previa de portada" class="cover-preview-img"
-            referrerpolicy="no-referrer" />
+        <!-- Video Oficial (Opcional) -->
+        <div class="media-block-section">
+          <label class="form-label">Video Oficial (.mp4 - Opcional)</label>
+          <div class="media-upload-toolbar">
+            <label class="btn-upload-file" [class.is-uploading]="uploadingVideo()" [class.is-disabled]="saving">
+              <input type="file" accept="video/mp4,video/*" [disabled]="saving" (change)="onUploadVideo($event)"
+                style="display: none" />
+              <span>{{ uploadingVideo() ? 'Subiendo video...' : (videoUrl() ? 'Cambiar Video' : 'Subir Video (.mp4)') }}</span>
+            </label>
+
+            @if (videoUrl()) {
+            <button type="button" class="btn-remove-media" [disabled]="saving" (click)="removeVideo()"
+              title="Quitar video oficial">
+              Quitar
+            </button>
+            }
+          </div>
+
+          @if (videoUrl()) {
+          <div class="video-preview-box">
+            <video [src]="videoUrl()" controls class="video-preview-player"></video>
+          </div>
+          }
         </div>
-        }
       </div>
 
       <!-- Álbum Oficial de Fotos -->
@@ -594,8 +621,8 @@
             <div class="album-photo-actions">
               <button type="button" class="btn-photo-action btn-action-featured"
                 [class.is-active-featured]="photo.isFeatured" [disabled]="saving" (click)="toggleFeaturedPhoto(idx)"
-                [title]="photo.isFeatured ? 'Quitar condición de destacada' : 'Fijar como foto destacada (máx 2)'">
-                {{ photo.isFeatured ? 'Destacada' : 'Destacar' }}
+                [title]="photo.isFeatured ? 'Quitar condición de destacada' : (featuredPhotos().length >= 2 ? 'Límite alcanzado (máximo 2 fotos destacadas)' : 'Fijar como foto destacada (máx 2)')">
+                {{ photo.isFeatured ? 'Destacada' : (featuredPhotos().length >= 2 ? 'Destacar (máx 2)' : 'Destacar') }}
               </button>
             </div>
           </div>
@@ -605,32 +632,6 @@
         <div class="album-empty-placeholder">
           <span>No hay fotos cargadas en el álbum. Podés subir imágenes para la galería (hasta 2 destacadas y hasta 9 de
             galería común).</span>
-        </div>
-        }
-      </div>
-
-      <!-- Video Oficial (Opcional) -->
-      <div class="media-block-section" style="margin-top: 1.5rem;">
-        <label class="form-label">Video Oficial (.mp4 - Opcional)</label>
-        <div class="media-upload-toolbar">
-          <label class="btn-upload-file" [class.is-uploading]="uploadingVideo()" [class.is-disabled]="saving">
-            <input type="file" accept="video/mp4,video/*" [disabled]="saving" (change)="onUploadVideo($event)"
-              style="display: none" />
-            <span>{{ uploadingVideo() ? 'Subiendo video...' : (videoUrl() ? 'Cambiar Video' : 'Subir Video (.mp4)')
-              }}</span>
-          </label>
-
-          @if (videoUrl()) {
-          <button type="button" class="btn-remove-media" [disabled]="saving" (click)="removeVideo()"
-            title="Quitar video oficial">
-            Quitar
-          </button>
-          }
-        </div>
-
-        @if (videoUrl()) {
-        <div class="video-preview-box">
-          <video [src]="videoUrl()" controls class="video-preview-player"></video>
         </div>
         }
       </div>

@@ -504,10 +504,10 @@ describe('ExperiencePaymentComponent - Lodging Stay Date Handling and Submission
     const compiled = fixture.nativeElement as HTMLElement;
     const usdEquivalentEl = compiled.querySelector('.pay-usd-equivalent');
     expect(usdEquivalentEl).toBeTruthy();
-    expect(usdEquivalentEl?.textContent).toContain(`o ~\$${expectedUsd} USD`);
+    expect(usdEquivalentEl?.textContent).toContain(`o \$${expectedUsd} USD`);
 
     const usdSubEl = compiled.querySelector('.pay-usd-sub');
     expect(usdSubEl).toBeTruthy();
-    expect(usdSubEl?.textContent).toContain(`o ~\$${expectedUsd} USD`);
+    expect(usdSubEl?.textContent).toContain(`o \$${expectedUsd} USD`);
   });
 });

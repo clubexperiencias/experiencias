@@ -52,3 +52,13 @@ export interface WaitlistStats {
   exclusiveSpotsTotal: number;
   exclusiveSpotsRemaining: number;
 }
+
+export const SURVEY_INTEREST_KEYS: ReadonlySet<string> = new Set([
+  'galan',
+  'seismiles',
+  'kayak',
+  'pissis',
+  'termas',
+  'astroturismo',
+  'otros',
+]);

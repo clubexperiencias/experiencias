@@ -309,8 +309,14 @@ export class ExperienceService {
     return this.publishedExperiences().find((e: Experience) => {
       const expSlug = (e.slug || '').trim().toLowerCase();
       const expId = (e.id || '').trim().toLowerCase();
+      const initialSlug = (e.initialSlug || '').trim().toLowerCase();
+      const hasAlias =
+        Array.isArray(e.slugAliases) &&
+        e.slugAliases.some((a) => (a || '').trim().toLowerCase() === clean);
       return (
         expSlug === clean ||
+        initialSlug === clean ||
+        hasAlias ||
         expId === clean ||
         expId === `exp-${clean}` ||
         clean === `exp-${expSlug}`
@@ -423,12 +429,20 @@ export class ExperienceService {
   getExperienceBySlug(slug: string): Experience | undefined {
     if (!slug) return undefined;
     const clean = slug.trim().toLowerCase();
-    const matches = this._experiences().filter(
-      (e) =>
-        (e.slug || '').trim().toLowerCase() === clean ||
+    const matches = this._experiences().filter((e) => {
+      const expSlug = (e.slug || '').trim().toLowerCase();
+      const initialSlug = (e.initialSlug || '').trim().toLowerCase();
+      const hasAlias =
+        Array.isArray(e.slugAliases) &&
+        e.slugAliases.some((a) => (a || '').trim().toLowerCase() === clean);
+      return (
+        expSlug === clean ||
+        initialSlug === clean ||
+        hasAlias ||
         e.id === clean ||
-        e.id === `exp-${clean}`,
-    );
+        e.id === `exp-${clean}`
+      );
+    });
     if (matches.length === 0) return undefined;
     if (matches.length === 1) return matches[0];
     // Si hay colisión con registros duplicados o históricos, priorizar la versión activa/publicada
@@ -533,11 +547,40 @@ export class ExperienceService {
     const resultingSlug = updated.slug || current.slug;
     const routePrefix = resultingCategory === 'hospedajes' ? '/experiencias/hospedajes' : '/experiencias';
 
+    const resolvedInitialSlug =
+      updated.initialSlug ||
+      current.initialSlug ||
+      current.slug ||
+      resultingSlug;
+
+    const aliasSet = new Set<string>();
+    if (Array.isArray(current.slugAliases)) {
+      current.slugAliases.forEach((a) => {
+        if (a && typeof a === 'string') aliasSet.add(a.trim().toLowerCase());
+      });
+    }
+    if (Array.isArray(updated.slugAliases)) {
+      updated.slugAliases.forEach((a) => {
+        if (a && typeof a === 'string') aliasSet.add(a.trim().toLowerCase());
+      });
+    }
+    if (current.slug && current.slug.trim().toLowerCase() !== resultingSlug.trim().toLowerCase()) {
+      aliasSet.add(current.slug.trim().toLowerCase());
+    }
+    if (resolvedInitialSlug && resolvedInitialSlug.trim().toLowerCase() !== resultingSlug.trim().toLowerCase()) {
+      aliasSet.add(resolvedInitialSlug.trim().toLowerCase());
+    }
+    aliasSet.delete(resultingSlug.trim().toLowerCase());
+    const resolvedSlugAliases = Array.from(aliasSet).filter(Boolean);
+
     const merged: Experience = {
       ...current,
       ...updated,
       id: index !== -1 ? current.id : updated.id,
       category: resultingCategory,
+      slug: resultingSlug,
+      initialSlug: resolvedInitialSlug,
+      slugAliases: resolvedSlugAliases,
       coverImage: safeCoverImage,
       videoUrl: safeVideoUrl || undefined,
       albumPhotos: safeAlbumPhotos,
@@ -662,50 +705,53 @@ export class ExperienceService {
           payload['category'] = merged.category;
         }
 
-        if (merged.mpCollectorId !== undefined || merged.mpConnected !== undefined) {
-          let notesObj: Record<string, any> = {};
-          if (merged.notes && typeof merged.notes === 'object' && !Array.isArray(merged.notes)) {
-            notesObj = { ...(merged.notes as Record<string, any>) };
-          } else if (typeof merged.notes === 'string') {
-            const rawNotes = merged.notes.trim();
-            if (rawNotes) {
-              try {
-                const parsed = JSON.parse(rawNotes);
-                if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-                  notesObj = { ...parsed };
-                } else {
-                  notesObj = { text: rawNotes };
-                }
-              } catch {
+        let notesObj: Record<string, any> = {};
+        if (merged.notes && typeof merged.notes === 'object' && !Array.isArray(merged.notes)) {
+          notesObj = { ...(merged.notes as Record<string, any>) };
+        } else if (typeof merged.notes === 'string') {
+          const rawNotes = merged.notes.trim();
+          if (rawNotes) {
+            try {
+              const parsed = JSON.parse(rawNotes);
+              if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                notesObj = { ...parsed };
+              } else {
                 notesObj = { text: rawNotes };
               }
+            } catch {
+              notesObj = { text: rawNotes };
             }
           }
+        }
 
-          if (updated.notes !== undefined) {
-            if (typeof updated.notes === 'object' && updated.notes !== null && !Array.isArray(updated.notes)) {
-              notesObj = { ...notesObj, ...(updated.notes as Record<string, any>) };
-            } else if (typeof updated.notes === 'string') {
-              const cleanUpdatedNotes = updated.notes.trim();
-              if (cleanUpdatedNotes) {
-                try {
-                  const parsedUpdates = JSON.parse(cleanUpdatedNotes);
-                  if (parsedUpdates && typeof parsedUpdates === 'object' && !Array.isArray(parsedUpdates)) {
-                    notesObj = { ...notesObj, ...parsedUpdates };
-                  } else {
-                    notesObj['text'] = cleanUpdatedNotes;
-                  }
-                } catch {
+        if (updated.notes !== undefined) {
+          if (typeof updated.notes === 'object' && updated.notes !== null && !Array.isArray(updated.notes)) {
+            notesObj = { ...notesObj, ...(updated.notes as Record<string, any>) };
+          } else if (typeof updated.notes === 'string') {
+            const cleanUpdatedNotes = updated.notes.trim();
+            if (cleanUpdatedNotes) {
+              try {
+                const parsedUpdates = JSON.parse(cleanUpdatedNotes);
+                if (parsedUpdates && typeof parsedUpdates === 'object' && !Array.isArray(parsedUpdates)) {
+                  notesObj = { ...notesObj, ...parsedUpdates };
+                } else {
                   notesObj['text'] = cleanUpdatedNotes;
                 }
-              } else {
-                delete notesObj['text'];
+              } catch {
+                notesObj['text'] = cleanUpdatedNotes;
               }
+            } else {
+              delete notesObj['text'];
             }
           }
+        }
 
-          if (merged.mpCollectorId !== undefined) notesObj['mp_collector_id'] = merged.mpCollectorId;
-          if (merged.mpConnected !== undefined) notesObj['mp_connected'] = merged.mpConnected;
+        if (merged.mpCollectorId !== undefined) notesObj['mp_collector_id'] = merged.mpCollectorId;
+        if (merged.mpConnected !== undefined) notesObj['mp_connected'] = merged.mpConnected;
+        if (merged.initialSlug) notesObj['initial_slug'] = merged.initialSlug;
+        if (merged.slugAliases && merged.slugAliases.length > 0) notesObj['slug_aliases'] = merged.slugAliases;
+
+        if (Object.keys(notesObj).length > 0) {
           payload['notes'] = JSON.stringify(notesObj);
         } else if (updated.notes !== undefined) {
           payload['notes'] = updated.notes;
@@ -872,28 +918,43 @@ export class ExperienceService {
       slug = `${baseSlug}-${suffix++}`;
     }
 
+    const resolvedInitialSlug = newExp.initialSlug || slug;
+    const aliasSet = new Set<string>();
+    if (Array.isArray(newExp.slugAliases)) {
+      newExp.slugAliases.forEach((a) => {
+        if (a && typeof a === 'string') aliasSet.add(a.trim().toLowerCase());
+      });
+    }
+    if (resolvedInitialSlug && resolvedInitialSlug.trim().toLowerCase() !== slug.trim().toLowerCase()) {
+      aliasSet.add(resolvedInitialSlug.trim().toLowerCase());
+    }
+    aliasSet.delete(slug.trim().toLowerCase());
+    const resolvedSlugAliases = Array.from(aliasSet).filter(Boolean);
+
     let initialNotes = newExp.notes;
-    if (newExp.mpCollectorId !== undefined || newExp.mpConnected !== undefined) {
-      let notesObj: Record<string, any> = {};
-      if (newExp.notes && typeof newExp.notes === 'object' && !Array.isArray(newExp.notes)) {
-        notesObj = { ...(newExp.notes as Record<string, any>) };
-      } else if (typeof newExp.notes === 'string') {
-        const rawNotes = newExp.notes.trim();
-        if (rawNotes) {
-          try {
-            const parsed = JSON.parse(rawNotes);
-            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-              notesObj = { ...parsed };
-            } else {
-              notesObj = { text: rawNotes };
-            }
-          } catch {
+    let notesObj: Record<string, any> = {};
+    if (newExp.notes && typeof newExp.notes === 'object' && !Array.isArray(newExp.notes)) {
+      notesObj = { ...(newExp.notes as Record<string, any>) };
+    } else if (typeof newExp.notes === 'string') {
+      const rawNotes = newExp.notes.trim();
+      if (rawNotes) {
+        try {
+          const parsed = JSON.parse(rawNotes);
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            notesObj = { ...parsed };
+          } else {
             notesObj = { text: rawNotes };
           }
+        } catch {
+          notesObj = { text: rawNotes };
         }
       }
-      if (newExp.mpCollectorId !== undefined) notesObj['mp_collector_id'] = newExp.mpCollectorId;
-      if (newExp.mpConnected !== undefined) notesObj['mp_connected'] = newExp.mpConnected;
+    }
+    if (newExp.mpCollectorId !== undefined) notesObj['mp_collector_id'] = newExp.mpCollectorId;
+    if (newExp.mpConnected !== undefined) notesObj['mp_connected'] = newExp.mpConnected;
+    if (resolvedInitialSlug) notesObj['initial_slug'] = resolvedInitialSlug;
+    if (resolvedSlugAliases.length > 0) notesObj['slug_aliases'] = resolvedSlugAliases;
+    if (Object.keys(notesObj).length > 0) {
       initialNotes = JSON.stringify(notesObj);
     }
 
@@ -901,6 +962,8 @@ export class ExperienceService {
       ...newExp,
       notes: initialNotes,
       slug,
+      initialSlug: resolvedInitialSlug,
+      slugAliases: resolvedSlugAliases,
       detailRoute: `/experiencias/${slug}`,
       publicUrl: `https://experiencias.club/experiencias/${slug}`,
       status: newExp.status || 'publicada',
@@ -2335,7 +2398,15 @@ export class ExperienceService {
                       if (typeof p.text === 'string') {
                         return p.text || undefined;
                       }
-                      if (p.mp_connected !== undefined || p.mp_collector_id !== undefined || p.deleted !== undefined) {
+                      if (
+                        p.mp_connected !== undefined ||
+                        p.mp_collector_id !== undefined ||
+                        p.deleted !== undefined ||
+                        p.initial_slug !== undefined ||
+                        p.initialSlug !== undefined ||
+                        p.slug_aliases !== undefined ||
+                        p.slugAliases !== undefined
+                      ) {
                         return undefined;
                       }
                     }
@@ -2343,6 +2414,40 @@ export class ExperienceService {
                 }
                 return exp.notes || undefined;
               }
+              return undefined;
+            })(),
+            initialSlug: (() => {
+              try {
+                if (exp.notes && typeof exp.notes === 'object' && !Array.isArray(exp.notes)) {
+                  if ((exp.notes as any).initial_slug) return String((exp.notes as any).initial_slug);
+                  if ((exp.notes as any).initialSlug) return String((exp.notes as any).initialSlug);
+                }
+                if (typeof exp.notes === 'string') {
+                  const trimmed = exp.notes.trim();
+                  if (trimmed.startsWith('{')) {
+                    const p = JSON.parse(trimmed);
+                    if (p.initial_slug) return String(p.initial_slug);
+                    if (p.initialSlug) return String(p.initialSlug);
+                  }
+                }
+              } catch {}
+              return undefined;
+            })(),
+            slugAliases: (() => {
+              try {
+                if (exp.notes && typeof exp.notes === 'object' && !Array.isArray(exp.notes)) {
+                  const aliases = (exp.notes as any).slug_aliases || (exp.notes as any).slugAliases;
+                  if (Array.isArray(aliases)) return aliases.map(String);
+                }
+                if (typeof exp.notes === 'string') {
+                  const trimmed = exp.notes.trim();
+                  if (trimmed.startsWith('{')) {
+                    const p = JSON.parse(trimmed);
+                    const aliases = p.slug_aliases || p.slugAliases;
+                    if (Array.isArray(aliases)) return aliases.map(String);
+                  }
+                }
+              } catch {}
               return undefined;
             })(),
             mpConnected: (() => {

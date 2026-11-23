@@ -1,6 +1,6 @@
-import { Component, HostListener, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, computed, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
 import { MatIconModule } from '@angular/material/icon';
@@ -39,6 +39,7 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
 })
 export class ExperienceDetailComponent {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   readonly experienceService = inject(ExperienceService);
   readonly hospedajesService = inject(HospedajesService, { optional: true });
   readonly favoritesService = inject(FavoritesService);
@@ -67,6 +68,21 @@ export class ExperienceDetailComponent {
       .catch((err) => {
         console.warn('[ExperienceDetail] Error cargando experiencias remotas:', err);
       });
+
+    effect(() => {
+      const currentSlug = this.slug();
+      const exp = this.exp();
+      if (!currentSlug || !exp?.slug) return;
+      const cleanCurrent = currentSlug.trim().toLowerCase();
+      const cleanCanonical = exp.slug.trim().toLowerCase();
+      if (cleanCurrent !== cleanCanonical) {
+        const basePath = this.isHospedaje() ? '/experiencias/hospedajes' : '/experiencias';
+        this.router.navigate([basePath, exp.slug], {
+          replaceUrl: true,
+          queryParamsHandling: 'preserve',
+        });
+      }
+    });
   }
 
   getProviderSlug(item?: any): string | null {

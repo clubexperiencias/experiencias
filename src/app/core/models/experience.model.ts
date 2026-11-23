@@ -122,6 +122,8 @@ export const ALTITUDE_OPTIONS: readonly AltitudeOption[] = [
 export interface Experience {
   id: string;
   slug: string;
+  initialSlug?: string;
+  slugAliases?: string[];
   title: string;
   shortTitle?: string;
   kicker?: string;

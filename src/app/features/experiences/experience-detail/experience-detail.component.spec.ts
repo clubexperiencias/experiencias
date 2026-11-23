@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter, ActivatedRoute } from '@angular/router';
+import { provideRouter, ActivatedRoute, Router } from '@angular/router';
 import { of } from 'rxjs';
+import { vi } from 'vitest';
 import { ExperienceDetailComponent } from './experience-detail.component';
 import { KAYAK_DEFAULT_EXPERIENCE, STORAGE_KEY } from '../../../core/services/experience.service';
 
@@ -89,7 +90,7 @@ describe('ExperienceDetailComponent (/experiencias/:slug)', () => {
     expect(component.albumPhotosCount()).toBe(12);
   });
 
-  it('should render photo count on the left of overlay and VER ÁLBUM COMPLETO button below image inside box', () => {
+  it('should render photo count on the left of overlay and Ver Álbum Completo button below image inside box', () => {
     const overlay = fixture.nativeElement.querySelector('.album-preview-overlay');
     expect(overlay).toBeTruthy();
     const count = overlay.querySelector('.album-preview-count');
@@ -98,6 +99,27 @@ describe('ExperienceDetailComponent (/experiencias/:slug)', () => {
 
     const ctaBtn = fixture.nativeElement.querySelector('.album-preview-actions .album-preview-cta');
     expect(ctaBtn).toBeTruthy();
-    expect(ctaBtn.textContent).toContain('VER ÁLBUM COMPLETO');
+    expect(ctaBtn.textContent).toContain('Ver Álbum Completo');
+  });
+
+  it('should redirect to canonical clean slug if navigated via initial slug or alias', () => {
+    const router = TestBed.inject(Router);
+    const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+    const testExp = {
+      ...KAYAK_DEFAULT_EXPERIENCE,
+      slug: 'kayak-clean',
+      initialSlug: 'kayak-prop-12345678',
+      slugAliases: ['kayak-alias'],
+    };
+    (component.experienceService as any)._experiences.set([testExp]);
+
+    fixture.detectChanges();
+    TestBed.flushEffects();
+
+    expect(navigateSpy).toHaveBeenCalledWith(
+      ['/experiencias', 'kayak-clean'],
+      expect.objectContaining({ replaceUrl: true }),
+    );
   });
 });

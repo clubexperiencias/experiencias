@@ -5,7 +5,7 @@ import {
 } from '../../../core/services/newsletter.service';
 import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
 import { buildGoogleCalendarUrl } from '../../../shared/utils/google-calendar.util';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -65,6 +65,7 @@ import {
 })
 export class ExperiencePaymentComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly store = inject(ProviderStoreService);
   private readonly expService = inject(ExperienceService);
   private readonly fb = inject(FormBuilder);
@@ -997,6 +998,22 @@ export class ExperiencePaymentComponent implements OnInit {
   }
 
   constructor() {
+    effect(() => {
+      const currentSlug = this.slug();
+      const exp = this.experience();
+      if (!currentSlug || !exp?.slug) return;
+      const cleanCurrent = currentSlug.trim().toLowerCase();
+      const cleanCanonical = exp.slug.trim().toLowerCase();
+      if (cleanCurrent !== cleanCanonical) {
+        const isHosp = this.isLodging() || exp.category === 'hospedajes';
+        const basePath = isHosp ? '/experiencias/hospedajes' : '/experiencias';
+        this.router.navigate([basePath, exp.slug, 'pago'], {
+          replaceUrl: true,
+          queryParamsHandling: 'preserve',
+        });
+      }
+    });
+
     effect(() => {
       if (this.isLodging()) return;
       const noFixed = this.hasNoFixedDates();

@@ -268,6 +268,35 @@ describe('ExperienceService', () => {
       expect(updateBuilder.eq).toHaveBeenCalledWith('id', targetExp.id);
     });
 
+    it('should resolve experiences by initialSlug and slugAliases', async () => {
+      const initialExperiences = [...service.experiences()];
+      const targetExp = initialExperiences[0];
+
+      const updateBuilder: any = {
+        eq: vi.fn().mockReturnThis(),
+        select: vi.fn().mockResolvedValue({ data: [{ id: targetExp.id }], error: null }),
+      };
+      mockSupabase.from.mockReturnValue({
+        update: vi.fn().mockReturnValue(updateBuilder),
+      });
+
+      // Update slug to a cleaner canonical slug with an initialSlug
+      await service.updateExperience({
+        id: targetExp.id,
+        slug: 'kayak-sunset-clean',
+        initialSlug: 'kayak-original-proposal-slug',
+      });
+
+      // Resolves by canonical slug
+      expect(service.getPublishedExperienceBySlug('kayak-sunset-clean')?.id).toBe(targetExp.id);
+      // Resolves by initial slug
+      expect(service.getPublishedExperienceBySlug('kayak-original-proposal-slug')?.id).toBe(targetExp.id);
+      // Resolves by previous slug that became an alias
+      expect(service.getPublishedExperienceBySlug(targetExp.slug)?.id).toBe(targetExp.id);
+      // getExperienceBySlug also resolves them
+      expect(service.getExperienceBySlug('kayak-original-proposal-slug')?.id).toBe(targetExp.id);
+    });
+
     it('should preserve existing plain-text notes when adding payment fields', async () => {
       const initialExperiences = [...service.experiences()];
       const targetExp = initialExperiences[0];

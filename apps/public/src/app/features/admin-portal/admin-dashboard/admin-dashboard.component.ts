@@ -26,6 +26,7 @@ import { ProviderRatingService } from '../../../core/services/provider-rating.se
 import { FavoritesService } from '../../../core/services/favorites.service';
 import { DiscountService } from '../../../core/services/discount.service';
 import { Discount } from '../../../core/models/discount.model';
+import { SURVEY_INTEREST_KEYS } from '../../../core/models/waitlist.model';
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -3754,31 +3755,47 @@ export class AdminDashboardComponent {
   });
 
   readonly topFavoritedExperiences = computed(() => {
-    const exps = this.webExperiences();
-    const members = this.store.members();
+    const exps = typeof this.webExperiences === 'function' ? this.webExperiences() : (this.experienceService.publishedExperiences?.() || this.experienceService.experiences?.() || []);
+    const members = typeof this.store.members === 'function' ? this.store.members() : [];
     const favCountMap = new Map<string, number>();
 
     for (const m of members) {
+      // Ignorar registros de lista de espera y dados de baja (sus respuestas son de la encuesta de registro)
+      if (
+        m.membershipTier === 'waitlist' ||
+        m.membershipTier === 'dado_de_baja' ||
+        (m as any).type === 'waitlist'
+      ) {
+        continue;
+      }
       const list = (m as any).experiencesWishlist || (m as any).favoriteExperiences || [];
       if (Array.isArray(list)) {
         for (const slug of list) {
-          favCountMap.set(slug, (favCountMap.get(slug) || 0) + 1);
+          const norm = (slug || '').trim().toLowerCase();
+          if (norm && !SURVEY_INTEREST_KEYS.has(norm)) {
+            favCountMap.set(norm, (favCountMap.get(norm) || 0) + 1);
+          }
         }
       }
     }
 
-    const localFavs = this.favoritesService.favoriteSlugs();
+    const localFavs = typeof this.favoritesService?.favoriteSlugs === 'function' ? this.favoritesService.favoriteSlugs() : [];
     for (const slug of localFavs) {
-      favCountMap.set(slug, Math.max(favCountMap.get(slug) || 0, 1));
+      const norm = (slug || '').trim().toLowerCase();
+      if (norm && !SURVEY_INTEREST_KEYS.has(norm)) {
+        favCountMap.set(norm, Math.max(favCountMap.get(norm) || 0, 1));
+      }
     }
 
     return exps
       .filter((e) => e.status !== 'oculta')
       .map((e) => {
+        const slugNorm = (e.slug || '').trim().toLowerCase();
+        const idNorm = (e.id || '').trim().toLowerCase();
         const count = Math.max(
-          favCountMap.get(e.slug) || 0,
-          favCountMap.get(e.id) || 0,
           e.favoritesCount || 0,
+          slugNorm ? favCountMap.get(slugNorm) || 0 : 0,
+          idNorm ? favCountMap.get(idNorm) || 0 : 0,
         );
         return {
           experience: e,
@@ -3804,11 +3821,19 @@ export class AdminDashboardComponent {
     const applications = this.store.applications().filter((a) => a.type === 'prestador');
 
     for (const p of officialProviders) {
-      if (!p.verified || p.status === 'dado_de_baja' || p.status === 'pendiente') {
+      const cleanEmail = p.email?.toLowerCase().trim() || '';
+      if (
+        !cleanEmail ||
+        cleanEmail.startsWith('archived_') ||
+        cleanEmail.startsWith('deleted_') ||
+        !p.verified ||
+        p.status === 'dado_de_baja' ||
+        p.status === 'pendiente' ||
+        this.store.providerStore.isProviderDeleted(p.id, cleanEmail)
+      ) {
         continue;
       }
-      const cleanEmail = p.email?.toLowerCase().trim() || '';
-      if (cleanEmail) providerEmails.add(cleanEmail);
+      providerEmails.add(cleanEmail);
       const computedSlug = p.slug || slugify(p.agency || p.name || p.id || cleanEmail);
 
       const matchingApp = applications.find((a) => a.email?.toLowerCase().trim() === cleanEmail);
@@ -3838,7 +3863,16 @@ export class AdminDashboardComponent {
 
     for (const app of applications) {
       const cleanEmail = app.email?.toLowerCase().trim() || '';
-      if (cleanEmail && providerEmails.has(cleanEmail)) {
+      if (
+        !cleanEmail ||
+        cleanEmail.startsWith('archived_') ||
+        cleanEmail.startsWith('deleted_') ||
+        app.status === 'dado_de_baja' ||
+        this.store.providerStore.isProviderDeleted(app.id, cleanEmail)
+      ) {
+        continue;
+      }
+      if (providerEmails.has(cleanEmail)) {
         continue; // Ya figura como prestador oficial aprobado
       }
       const hasCategoryAgency = this.isCategoryIdentifier(app.agency || app.description);
@@ -3859,9 +3893,7 @@ export class AdminDashboardComponent {
             ? 'aprobado'
             : app.status === 'rechazado'
               ? 'rechazado'
-              : app.status === 'dado_de_baja'
-                ? 'dado_de_baja'
-                : 'pendiente',
+              : 'pendiente',
         createdAt: app.createdAt,
         rawApp: app,
       });

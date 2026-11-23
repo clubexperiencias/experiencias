@@ -26,6 +26,7 @@ describe('AdminRankingComponent', () => {
         {
           provide: AdminStoreService,
           useValue: {
+            members: signal([]),
             providerStore: {
               allProviders: allProvidersSignal,
             },
@@ -47,6 +48,7 @@ describe('AdminRankingComponent', () => {
         {
           provide: FavoritesService,
           useValue: {
+            favoriteSlugs: signal([]),
             getFavoritesCount: () => 5,
           },
         },

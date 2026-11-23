@@ -571,6 +571,7 @@ export class WaitlistComponent implements OnInit {
         phone: this.providerPhone().trim(),
         website: this.providerWebsite().trim(),
         description: '',
+        autoApprove: true,
       });
 
       if (!result?.success) {

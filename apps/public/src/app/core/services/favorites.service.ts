@@ -4,6 +4,7 @@ import { filter } from 'rxjs';
 import { ExperienceService } from './experience.service';
 import { NewsletterService } from './newsletter.service';
 import { Experience } from '../models/experience.model';
+import { SURVEY_INTEREST_KEYS } from '../models/waitlist.model';
 import { SUPABASE_CLIENT } from '../supabase/supabase.client';
 
 export const FAVORITES_STORAGE_KEY = 'catamarca_user_favorites_v1';
@@ -216,6 +217,11 @@ export class FavoritesService {
       const norm = (item || '').trim();
       const normLower = norm.toLowerCase();
       if (!norm) continue;
+
+      // Ignorar opciones genéricas de la encuesta de registro
+      if (SURVEY_INTEREST_KEYS.has(normLower)) {
+        continue;
+      }
 
       // Si el socio eliminó explícitamente esta experiencia de favoritos, no re-agregarla
       if (removed.has(normLower)) {

@@ -71,7 +71,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
               [isClubExperience]="isCurrentExperienceClub()"
               [clubConfigRoute]="getConfigRoute()"
               [providerMpInfo]="currentAdminMpInfo()"
-              [registeredProviders]="adminStore.providerStore.providers()"
+              [registeredProviders]="registeredProviders()"
               [clubProfile]="adminStore.clubProfile()"
               [usdExchangeRate]="usdExchangeRate()"
               [saving]="saving()"
@@ -4147,7 +4147,7 @@ export class AdminExperiencesComponent implements OnInit {
       if (matching?.providerPhone) return matching.providerPhone;
     }
     if (exp.providerId) {
-      const p = this.adminStore.providerStore.providers().find((pr) => pr.id === exp.providerId);
+      const p = this.registeredProviders().find((pr) => pr.id === exp.providerId);
       if (p?.phone) return p.phone;
     }
     return '';
@@ -4350,9 +4350,16 @@ export class AdminExperiencesComponent implements OnInit {
     return [];
   });
 
+  readonly registeredProviders = computed<ProviderUser[]>(() => {
+    return this.adminStore.allRegisteredProviders
+      ? this.adminStore.allRegisteredProviders()
+      : this.adminStore.providerStore.providers();
+  });
+
   async ngOnInit(): Promise<void> {
     void this.experienceService.reloadFromSupabase();
     void this.adminStore.providerStore.loadProposalsFromSupabase();
+    void this.adminStore.loadAllApplications();
 
     this.route.queryParamMap
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -4672,7 +4679,7 @@ export class AdminExperiencesComponent implements OnInit {
   readonly currentEditingProvider = computed<ProviderUser | undefined>(() => {
     const exp = this.editingExperience();
     const name = this.editProviderName().trim().toLowerCase();
-    const providers = this.adminStore.providerStore.providers();
+    const providers = this.registeredProviders();
     const explicitId = (this.editProviderId() || '').trim();
     if (explicitId) {
       const byExplicitId = providers.find((p) => p.id === explicitId);
@@ -4693,7 +4700,7 @@ export class AdminExperiencesComponent implements OnInit {
 
   getProviderForExperience(exp: Experience | null): ProviderUser | undefined {
     if (!exp) return undefined;
-    const providers = this.adminStore.providerStore.providers();
+    const providers = this.registeredProviders();
     if (exp.providerId) {
       const byId = providers.find((p) => p.id === exp.providerId);
       if (byId) return byId;
@@ -4777,7 +4784,7 @@ export class AdminExperiencesComponent implements OnInit {
           nickname: '',
         };
       }
-      const prov = this.adminStore.providerStore.providers().find((p) => p.id === activeSelectedId);
+      const prov = this.registeredProviders().find((p) => p.id === activeSelectedId);
       if (prov) {
         return {
           connected: Boolean(prov.mpConnected),
@@ -5459,9 +5466,9 @@ export class AdminExperiencesComponent implements OnInit {
     const explicitProviderId = (this.editProviderId() || '').trim();
     const matchedProvider = !isClub
       ? (explicitProviderId
-          ? this.adminStore.providerStore.providers().find((p) => p.id === explicitProviderId)
+          ? this.registeredProviders().find((p) => p.id === explicitProviderId)
           : undefined) ||
-        this.adminStore.providerStore.providers().find((p) => {
+        this.registeredProviders().find((p) => {
           const pName = (p.name || '').trim().toLowerCase();
           const pAgency = (p.agency || '').trim().toLowerCase();
           const targetName = resolvedProviderName.toLowerCase().trim();
@@ -5548,21 +5555,45 @@ export class AdminExperiencesComponent implements OnInit {
       detailRoute: this.editCategory() === 'hospedajes' ? `/experiencias/hospedajes/${slug}` : `/experiencias/${slug}`,
     };
 
+    const resolvedInitialSlug =
+      currentExp?.initialSlug ||
+      currentExp?.slug ||
+      slug;
+
+    const aliasSet = new Set<string>();
+    if (Array.isArray(currentExp?.slugAliases)) {
+      currentExp!.slugAliases.forEach((a) => {
+        if (a) aliasSet.add(a.toLowerCase().trim());
+      });
+    }
+    if (currentExp?.slug && currentExp.slug.toLowerCase().trim() !== slug.toLowerCase().trim()) {
+      aliasSet.add(currentExp.slug.toLowerCase().trim());
+    }
+    if (resolvedInitialSlug && resolvedInitialSlug.toLowerCase().trim() !== slug.toLowerCase().trim()) {
+      aliasSet.add(resolvedInitialSlug.toLowerCase().trim());
+    }
+    aliasSet.delete(slug.toLowerCase().trim());
+    const resolvedSlugAliases = Array.from(aliasSet).filter(Boolean);
+
+    payload.initialSlug = resolvedInitialSlug;
+    payload.slugAliases = resolvedSlugAliases;
+
     this.saving.set(true);
     try {
       if (this.isCreating()) {
         let serializedNotes: string | undefined = undefined;
         const rawCollectorId = payload.mpCollectorId?.trim();
         const isMpConn = payload.mpConnected;
-        if (rawCollectorId || isMpConn !== undefined) {
-          const notesObj: Record<string, any> = {};
-          if (rawCollectorId) notesObj['mp_collector_id'] = rawCollectorId;
-          if (isMpConn !== undefined) notesObj['mp_connected'] = isMpConn;
-          serializedNotes = JSON.stringify(notesObj);
-        }
+        const notesObj: Record<string, any> = {};
+        if (rawCollectorId) notesObj['mp_collector_id'] = rawCollectorId;
+        if (isMpConn !== undefined) notesObj['mp_connected'] = isMpConn;
+        notesObj['initial_slug'] = slug;
+        serializedNotes = JSON.stringify(notesObj);
 
         const fullNewExp: Experience = {
           ...payload,
+          initialSlug: slug,
+          slugAliases: [],
           notes: serializedNotes,
           kicker: '',
           bestSeason: '',
@@ -5576,7 +5607,6 @@ export class AdminExperiencesComponent implements OnInit {
           `Experiencia "${title}" creada exitosamente en la ruta /experiencias/${slug}.`,
         );
       } else {
-        const currentExp = this.editingExperience();
         const isFromPending = currentExp?.status === 'pendiente';
         const newStatus = payload.status;
 

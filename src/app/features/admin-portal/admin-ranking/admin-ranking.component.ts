@@ -9,6 +9,7 @@ import { ProviderRatingService, ProviderRatingData } from '../../../core/service
 import { FavoritesService } from '../../../core/services/favorites.service';
 import { ProviderUser } from '../../../core/models/bank-transfer.model';
 import { Experience } from '../../../core/models/experience.model';
+import { SURVEY_INTEREST_KEYS } from '../../../core/models/waitlist.model';
 import { ArsPipe } from '../../../shared/pipes/format.pipes';
 import { getPublicExperienceUrl } from '../../../shared/utils/csv.util';
 
@@ -934,18 +935,26 @@ export class AdminRankingComponent {
     const publishedExperiences = this.experienceService.experiences().filter(
       (exp) => exp.status === 'publicada' && !exp.deletedAt && !(exp as any).isSoftDeleted,
     );
-    const members = this.adminStore.members();
-    const localFavs = this.favoritesService.favoriteSlugs().map((s) => s.toLowerCase().trim());
+    const members = typeof this.adminStore.members === 'function' ? this.adminStore.members() : [];
+    const localFavs = typeof this.favoritesService?.favoriteSlugs === 'function'
+      ? this.favoritesService.favoriteSlugs().map((s) => s.toLowerCase().trim())
+      : [];
 
     // Contar cuántos socios reales tienen cada experiencia en su wishlist
     const countsMap = new Map<string, number>();
 
     for (const m of members) {
-      if (m.membershipTier === 'dado_de_baja') continue;
+      if (
+        m.membershipTier === 'waitlist' ||
+        m.membershipTier === 'dado_de_baja' ||
+        (m as any).type === 'waitlist'
+      ) {
+        continue;
+      }
       if (Array.isArray(m.experiencesWishlist)) {
         for (const fav of m.experiencesWishlist) {
           const k = fav.trim().toLowerCase();
-          if (k) {
+          if (k && !SURVEY_INTEREST_KEYS.has(k)) {
             countsMap.set(k, (countsMap.get(k) || 0) + 1);
           }
         }
@@ -954,7 +963,7 @@ export class AdminRankingComponent {
 
     // Agregar favoritos locales si no están en members
     for (const fav of localFavs) {
-      if (fav && !countsMap.has(fav)) {
+      if (fav && !SURVEY_INTEREST_KEYS.has(fav) && !countsMap.has(fav)) {
         countsMap.set(fav, 1);
       }
     }
@@ -966,8 +975,8 @@ export class AdminRankingComponent {
       const countFromSlug = slugKey ? (countsMap.get(slugKey) || 0) : 0;
       const countFromId = idKey ? (countsMap.get(idKey) || 0) : 0;
 
-      // DATOS REALES: Tomar únicamente el conteo real de socios que tienen la experiencia guardada
-      const realFavCount = Math.max(countFromSlug, countFromId);
+      // DATOS REALES: Tomar únicamente el conteo real de la base de datos o de socios que tienen la experiencia guardada
+      const realFavCount = Math.max(exp.favoritesCount || 0, countFromSlug, countFromId);
 
       return {
         rank: 0,

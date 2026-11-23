@@ -91,6 +91,24 @@ describe('FavoritesService', () => {
     expect(service.isFavorite('trekking-antofagasta')).toBe(true);
   });
 
+  it('should ignore generic registration survey keys when merging member wishlist', () => {
+    currentMemberSignal.set({
+      email: 'survey-socio@experiencias.club',
+      fullName: 'Socio Survey',
+      experiencesWishlist: ['kayak', 'galan', 'seismiles', 'pissis', 'termas', 'astroturismo', 'otros', 'kayak-las-jumeal'],
+    });
+    TestBed.flushEffects();
+
+    expect(service.isFavorite('kayak')).toBe(false);
+    expect(service.isFavorite('galan')).toBe(false);
+    expect(service.isFavorite('seismiles')).toBe(false);
+    expect(service.isFavorite('pissis')).toBe(false);
+    expect(service.isFavorite('termas')).toBe(false);
+    expect(service.isFavorite('astroturismo')).toBe(false);
+    expect(service.isFavorite('otros')).toBe(false);
+    expect(service.isFavorite('kayak-las-jumeal')).toBe(true);
+  });
+
   it('should not re-add a removed favorite when receiving a stale member refresh', () => {
     TestBed.flushEffects();
     expect(service.isFavorite(mockExp)).toBe(true);

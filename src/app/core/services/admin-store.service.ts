@@ -1,9 +1,9 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { SUPABASE_CLIENT, isSupabaseConfigured } from '../supabase/supabase.client';
 import { environment } from '../../../environments/environment';
-import { TransferSubmission, TransferStatus } from '../models/bank-transfer.model';
+import { TransferSubmission, TransferStatus, ProviderUser } from '../models/bank-transfer.model';
 import { NewsletterService } from './newsletter.service';
-import { ProviderStoreService, ExperienceProposalRequest } from './provider-store.service';
+import { ProviderStoreService, ExperienceProposalRequest, slugify } from './provider-store.service';
 import { NotificationService, NotificationResult } from './notification.service';
 import { ExperienceService } from './experience.service';
 import { ClubProfile, DEFAULT_CLUB_PROFILE } from '../models/club-profile.model';
@@ -174,22 +174,104 @@ export class AdminStoreService {
         p.status !== 'rechazado'
       ) {
         const email = p.email?.toLowerCase().trim();
-        if (email) set.add(email);
+        if (email && !email.startsWith('archived_') && !email.startsWith('deleted_')) set.add(email);
       }
     }
     for (const a of this.applications() || []) {
       if (a.type === 'prestador' && a.status === 'aprobado') {
         const email = a.email?.toLowerCase().trim();
-        if (email) set.add(email);
+        if (email && !email.startsWith('archived_') && !email.startsWith('deleted_')) set.add(email);
       }
     }
     for (const r of this.providerStore.experienceRequests() || []) {
       if (r.status === 'aprobada' || (r as any).status === 'aprobado') {
         const email = r.providerEmail?.toLowerCase().trim();
-        if (email) set.add(email);
+        if (email && !email.startsWith('archived_') && !email.startsWith('deleted_')) set.add(email);
       }
     }
     return set;
+  });
+
+  readonly allRegisteredProviders = computed<ProviderUser[]>(() => {
+    const list: ProviderUser[] = [];
+    const seenEmails = new Set<string>();
+    const seenIds = new Set<string>();
+
+    for (const p of this.providerStore.providers() || []) {
+      const email = p.email?.toLowerCase().trim() || '';
+      if (
+        !email ||
+        email.startsWith('archived_') ||
+        email.startsWith('deleted_') ||
+        p.status === 'dado_de_baja' ||
+        this.providerStore.isProviderDeleted(p.id, email)
+      ) {
+        continue;
+      }
+      seenEmails.add(email);
+      if (p.id) seenIds.add(p.id);
+
+      const matchingApp = (this.applications() || []).find(
+        (a) => a.email?.toLowerCase().trim() === email,
+      );
+      if (matchingApp) {
+        list.push({
+          ...p,
+          phone: p.phone || (matchingApp.phone !== '—' ? matchingApp.phone : '') || '',
+          cuitDni: p.cuitDni || matchingApp.cuitDni || '',
+          cbuAlias: p.cbuAlias || matchingApp.cbuAlias || '',
+          bankName: p.bankName || matchingApp.bankName || '',
+          accountHolder: p.accountHolder || matchingApp.accountHolder || '',
+          agency: p.agency || matchingApp.agency || '',
+          name: p.name || matchingApp.fullName || 'Prestador',
+        });
+      } else {
+        list.push(p);
+      }
+    }
+
+    for (const app of this.applications() || []) {
+      if (app.type !== 'prestador') continue;
+      const email = app.email?.toLowerCase().trim() || '';
+      if (
+        !email ||
+        email.startsWith('archived_') ||
+        email.startsWith('deleted_') ||
+        app.status === 'dado_de_baja' ||
+        app.status === 'rechazado' ||
+        this.providerStore.isProviderDeleted(app.id, email) ||
+        seenEmails.has(email) ||
+        seenIds.has(app.id)
+      ) {
+        continue;
+      }
+      seenEmails.add(email);
+      seenIds.add(app.id);
+
+      list.push({
+        id: app.id,
+        email: app.email,
+        name: app.fullName || 'Prestador',
+        agency: app.agency || '',
+        slug: slugify(app.agency || app.fullName || app.id),
+        bio: app.description || '',
+        phone: app.phone && app.phone !== '—' ? app.phone : '',
+        website: app.website || '',
+        cuitDni: app.cuitDni || '',
+        cbuAlias: app.cbuAlias || '',
+        bankName: app.bankName || '',
+        accountHolder: app.accountHolder || '',
+        verified: app.status === 'aprobado',
+        status: app.status,
+        role: 'prestador',
+        joinedAt: app.createdAt || new Date().toISOString(),
+        tier: app.tier || 'emergente',
+        region: app.region,
+        rubro: app.category,
+      });
+    }
+
+    return list;
   });
 
   isProviderEmail(email?: string | null): boolean {
@@ -928,7 +1010,12 @@ export class AdminStoreService {
           const providerEmails = this.providerEmailsSet();
 
           const payload = rpcData as any;
-          const socios: AdminMember[] = (payload.socios || []).map((s: any) => ({
+          const socios: AdminMember[] = (payload.socios || [])
+            .filter((s: any) => {
+              const email = (s.email || '').toLowerCase().trim();
+              return !email.startsWith('archived_') && !email.startsWith('deleted_');
+            })
+            .map((s: any) => ({
             id: s.id,
             type: 'socio' as const,
             email: s.email,
@@ -947,7 +1034,12 @@ export class AdminStoreService {
             createdAt: s.createdAt || s.created_at || new Date().toISOString(),
           }));
 
-          const waitlist: AdminMember[] = (payload.waitlist || []).map((w: any) => ({
+          const waitlist: AdminMember[] = (payload.waitlist || [])
+            .filter((w: any) => {
+              const email = (w.email || '').toLowerCase().trim();
+              return !email.startsWith('archived_') && !email.startsWith('deleted_');
+            })
+            .map((w: any) => ({
             id: w.id,
             type: 'waitlist' as const,
             email: w.email,
@@ -996,7 +1088,10 @@ export class AdminStoreService {
 
         const allSocioRows = sociosRes.data || [];
         const sociosList: AdminMember[] = allSocioRows
-          .filter((s: any) => s.membership_tier !== 'waitlist')
+          .filter((s: any) => {
+            const email = (s.email || '').toLowerCase().trim();
+            return s.membership_tier !== 'waitlist' && !email.startsWith('archived_') && !email.startsWith('deleted_');
+          })
           .map((s: any) => {
             const cleanEmail = s.email?.toLowerCase().trim();
             const hasPayment = paidEmailSet.has(cleanEmail);
@@ -1022,7 +1117,10 @@ export class AdminStoreService {
           });
 
         const waitlistOnly: AdminMember[] = allSocioRows
-          .filter((w: any) => w.membership_tier === 'waitlist')
+          .filter((w: any) => {
+            const email = (w.email || '').toLowerCase().trim();
+            return w.membership_tier === 'waitlist' && !email.startsWith('archived_') && !email.startsWith('deleted_');
+          })
           .map((w: any) => {
             const cleanEmail = w.email?.toLowerCase().trim();
             const isGoogle = Boolean(w.auth_user_id);
@@ -1631,7 +1729,12 @@ export class AdminStoreService {
           }
         }
 
-        const prestadores: AdminApplication[] = providerRows.map((p: any) => {
+        const prestadores: AdminApplication[] = providerRows
+          .filter((p: any) => {
+            const email = (p.email || '').toLowerCase().trim();
+            return !email.startsWith('archived_') && !email.startsWith('deleted_');
+          })
+          .map((p: any) => {
           const rawStatus = p.status;
           const status =
             rawStatus === 'aprobado'
@@ -1663,7 +1766,12 @@ export class AdminStoreService {
           };
         });
 
-        const fundadores: AdminApplication[] = fundadoresRows.map((f: any) => ({
+        const fundadores: AdminApplication[] = fundadoresRows
+          .filter((f: any) => {
+            const email = (f.email || '').toLowerCase().trim();
+            return !email.startsWith('archived_') && !email.startsWith('deleted_');
+          })
+          .map((f: any) => ({
           id: f.id,
           type: 'fundador' as const,
           fullName: f.full_name || 'Sin nombre',

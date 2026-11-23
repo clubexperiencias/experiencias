@@ -812,15 +812,13 @@
   display: inline-flex;
   align-items: center;
   gap: 0.55rem;
-  padding: 0.8rem 1.5rem;
-  border-radius: 4px;
+  padding: 0.8rem 1.4rem;
+  border-radius: 2px;
   background: rgba(255, 255, 255, 0.08);
   color: #ffffff !important;
-  border: 1px solid rgba(255, 255, 255, 0.24);
+  border: 1px solid rgba(255, 255, 255, 0.22);
   font-size: 0.86rem;
   font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
   text-decoration: none;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
