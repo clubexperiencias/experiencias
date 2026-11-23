@@ -50,6 +50,8 @@ const STORAGE_KEYS = {
 export interface ExperienceProposalRequest {
   id: string;
   slug?: string;
+  initialSlug?: string;
+  slugAliases?: string[];
   providerId: string;
   providerName: string;
   providerAgency: string;
@@ -144,6 +146,8 @@ export function mapLiveExperienceToProvider(live: Experience): ProviderExperienc
   return {
     id: live.id,
     slug: live.slug,
+    initialSlug: live.initialSlug,
+    slugAliases: live.slugAliases,
     providerId: 'provider-oficial',
     providerName: 'Club de Experiencias',
     title: live.title,
@@ -1820,6 +1824,8 @@ export class ProviderStoreService {
       providerId: req.providerId || this.currentProvider()?.id || '',
       providerName: req.providerName || this.currentProvider()?.name || '',
       slug: req.slug || slugify(req.title) || req.id,
+      initialSlug: req.initialSlug,
+      slugAliases: req.slugAliases,
       title: req.title,
       tagline: req.subheading || req.title,
       description: req.subheading || '',
@@ -1853,10 +1859,18 @@ export class ProviderStoreService {
   }
 
   private findProposalRequestByKey(key: string): ExperienceProposalRequest | undefined {
+    if (!key) return undefined;
+    const clean = key.trim().toLowerCase();
     const requests = this._experienceRequests();
     return (
-      requests.find((r) => r.id === key || r.slug === key) ??
-      requests.find((r) => slugify(r.title) === key)
+      requests.find(
+        (r) =>
+          r.id.toLowerCase() === clean ||
+          (r.slug && r.slug.toLowerCase() === clean) ||
+          (r.initialSlug && r.initialSlug.toLowerCase() === clean) ||
+          (Array.isArray(r.slugAliases) &&
+            r.slugAliases.some((a) => (a || '').toLowerCase() === clean)),
+      ) ?? requests.find((r) => slugify(r.title) === clean)
     );
   }
 
@@ -1875,7 +1889,15 @@ export class ProviderStoreService {
   }
 
   getExperienceBySlug(slug: string): ProviderExperience | undefined {
-    const fromStore = this._experiences().find((e) => e.slug === slug);
+    if (!slug) return undefined;
+    const clean = slug.trim().toLowerCase();
+    const fromStore = this._experiences().find(
+      (e) =>
+        (e.slug && e.slug.trim().toLowerCase() === clean) ||
+        (e.initialSlug && e.initialSlug.trim().toLowerCase() === clean) ||
+        (Array.isArray(e.slugAliases) &&
+          e.slugAliases.some((a) => (a || '').trim().toLowerCase() === clean)),
+    );
     if (fromStore) return fromStore;
     const live = this.expService.getExperienceBySlug(slug);
     if (live) {
@@ -1883,6 +1905,15 @@ export class ProviderStoreService {
     }
     const req = this.findProposalRequestByKey(slug);
     if (req) {
+      if (req.status === 'aprobada') {
+        const approvedLive =
+          this.expService.getExperienceById(req.id) ||
+          (req.slug ? this.expService.getExperienceBySlug(req.slug) : undefined) ||
+          (req.initialSlug ? this.expService.getExperienceBySlug(req.initialSlug) : undefined);
+        if (approvedLive) {
+          return mapLiveExperienceToProvider(approvedLive);
+        }
+      }
       return this.mapProposalRequestToProviderExperience(req);
     }
     return undefined;
@@ -3968,12 +3999,15 @@ export class ProviderStoreService {
     const rawSlug = slugify(data.title || '');
     const baseSlug = rawSlug || 'experiencia';
     const generatedSlug = `${baseSlug}-${idSuffix}`;
+    const initialSlug = (data as any).initialSlug || (data as any).slug || generatedSlug;
 
     const newReq: ExperienceProposalRequest = {
       ...data,
       category: data.category || 'expediciones',
       id,
       slug: (data as any).slug || generatedSlug,
+      initialSlug,
+      slugAliases: (data as any).slugAliases || [],
       status: 'pendiente',
       createdAt: new Date().toISOString(),
     };
@@ -3983,6 +4017,21 @@ export class ProviderStoreService {
     // Persistir en Supabase en tabla unificada experiencias (status: 'pendiente')
     if (isSupabaseConfigured()) {
       try {
+        let proposalNotesObj: Record<string, any> = {};
+        if (newReq.notes) {
+          try {
+            if (typeof newReq.notes === 'string' && newReq.notes.trim().startsWith('{')) {
+              proposalNotesObj = JSON.parse(newReq.notes.trim());
+            } else {
+              proposalNotesObj = { text: newReq.notes };
+            }
+          } catch {
+            proposalNotesObj = { text: newReq.notes };
+          }
+        }
+        proposalNotesObj['initial_slug'] = initialSlug;
+        const serializedProposalNotes = JSON.stringify(proposalNotesObj);
+
         const unifiedExpPayload: Record<string, any> = {
           id: newReq.id,
           slug: newReq.slug || generatedSlug,
@@ -4023,7 +4072,7 @@ export class ProviderStoreService {
           provider_email: (newReq.providerEmail || '').toLowerCase(),
           provider_phone: newReq.providerPhone || '',
           participant_requirements: newReq.participantRequirements || '',
-          notes: newReq.notes || '',
+          notes: serializedProposalNotes,
           status: 'pendiente',
         };
 
@@ -4136,9 +4185,34 @@ export class ProviderStoreService {
         const mapped: ExperienceProposalRequest[] = validRows.map((row: any) => {
           const email = (row.provider_email || '').trim().toLowerCase();
           const banking = providerBankingMap.get(email);
+
+          let parsedInitialSlug: string | undefined = undefined;
+          let parsedSlugAliases: string[] = [];
+          if (row.notes) {
+            try {
+              if (typeof row.notes === 'object' && !Array.isArray(row.notes)) {
+                if (row.notes.initial_slug) parsedInitialSlug = String(row.notes.initial_slug);
+                else if (row.notes.initialSlug) parsedInitialSlug = String(row.notes.initialSlug);
+                const aliases = row.notes.slug_aliases || row.notes.slugAliases;
+                if (Array.isArray(aliases)) parsedSlugAliases = aliases.map(String);
+              } else if (typeof row.notes === 'string') {
+                const trimmed = row.notes.trim();
+                if (trimmed.startsWith('{')) {
+                  const p = JSON.parse(trimmed);
+                  if (p.initial_slug) parsedInitialSlug = String(p.initial_slug);
+                  else if (p.initialSlug) parsedInitialSlug = String(p.initialSlug);
+                  const aliases = p.slug_aliases || p.slugAliases;
+                  if (Array.isArray(aliases)) parsedSlugAliases = aliases.map(String);
+                }
+              }
+            } catch {}
+          }
+
           return {
             id: row.id,
             slug: row.slug || undefined,
+            initialSlug: parsedInitialSlug || undefined,
+            slugAliases: parsedSlugAliases.length > 0 ? parsedSlugAliases : undefined,
             providerId: row.provider_id || '',
             providerName: row.provider_name || '',
             providerAgency: row.provider_agency || '',
@@ -4270,34 +4344,94 @@ export class ProviderStoreService {
       this.expService.experiences().find((e) => e.id === requestId) ||
       this._experiences().find((e) => e.id === requestId);
 
-    let generatedSlug = matchedExistingExp?.slug || baseSlug;
-    let suffix = 2;
-    const existingSlugs = new Set([
-      ...this.expService
-        .experiences()
-        .filter((e) => e.id !== requestId && (!matchedExistingExp || e.id !== matchedExistingExp.id))
-        .map((e) => e.slug.toLowerCase()),
-      ...this._experiences()
-        .filter((e) => e.id !== requestId && (!matchedExistingExp || e.id !== matchedExistingExp.id))
-        .map((e) => e.slug.toLowerCase()),
-    ]);
-    const existingIds = new Set([
-      ...this.expService
-        .experiences()
-        .filter((e) => e.id !== requestId && (!matchedExistingExp || e.id !== matchedExistingExp.id))
-        .map((e) => e.id.toLowerCase()),
-      ...this._experiences()
-        .filter((e) => e.id !== requestId && (!matchedExistingExp || e.id !== matchedExistingExp.id))
-        .map((e) => e.id.toLowerCase()),
-    ]);
-    while (
-      existingSlugs.has(generatedSlug.toLowerCase()) ||
-      existingIds.has(('exp-' + generatedSlug).toLowerCase())
-    ) {
-      generatedSlug = `${baseSlug}-${suffix++}`;
+    const initialSlug =
+      req.initialSlug ||
+      matchedExistingExp?.initialSlug ||
+      req.slug ||
+      baseSlug;
+
+    let targetSlug = matchedExistingExp?.slug || baseSlug;
+    if (RESERVED_EXPERIENCE_SLUGS.has(targetSlug.toLowerCase())) {
+      targetSlug = `${targetSlug}-exp`;
     }
+
+    let generatedSlug = targetSlug;
+    let suffix = 2;
+    const otherExperiences = [
+      ...this.expService.experiences(),
+      ...this._experiences(),
+    ].filter((e) => e.id !== requestId && (!matchedExistingExp || e.id !== matchedExistingExp.id));
+
+    const existingSlugs = new Set<string>();
+    const existingIds = new Set<string>();
+
+    for (const e of otherExperiences) {
+      if (e.slug) existingSlugs.add(e.slug.toLowerCase().trim());
+      if (e.initialSlug) existingSlugs.add(e.initialSlug.toLowerCase().trim());
+      if (Array.isArray(e.slugAliases)) {
+        for (const alias of e.slugAliases) {
+          if (alias) existingSlugs.add(alias.toLowerCase().trim());
+        }
+      }
+      if (e.id) existingIds.add(e.id.toLowerCase().trim());
+    }
+
+    while (
+      RESERVED_EXPERIENCE_SLUGS.has(generatedSlug.toLowerCase().trim()) ||
+      existingSlugs.has(generatedSlug.toLowerCase().trim()) ||
+      existingIds.has(('exp-' + generatedSlug).toLowerCase().trim())
+    ) {
+      generatedSlug = `${targetSlug}-${suffix++}`;
+    }
+
+    const aliasSet = new Set<string>();
+    if (matchedExistingExp?.slugAliases) {
+      matchedExistingExp.slugAliases.forEach((a) => {
+        if (a) aliasSet.add(a.toLowerCase().trim());
+      });
+    }
+    if (req.slugAliases) {
+      req.slugAliases.forEach((a) => {
+        if (a) aliasSet.add(a.toLowerCase().trim());
+      });
+    }
+    if (initialSlug && initialSlug.toLowerCase().trim() !== generatedSlug.toLowerCase().trim()) {
+      aliasSet.add(initialSlug.toLowerCase().trim());
+    }
+    if (req.slug && req.slug.toLowerCase().trim() !== generatedSlug.toLowerCase().trim()) {
+      aliasSet.add(req.slug.toLowerCase().trim());
+    }
+    aliasSet.delete(generatedSlug.toLowerCase().trim());
+    const slugAliases = Array.from(aliasSet).filter(Boolean);
+
     const finalId = matchedExistingExp ? matchedExistingExp.id : 'exp-' + generatedSlug;
-    const resolvedUrl = publicUrl?.trim() || `https://experiencias.club/experiencias/${generatedSlug}`;
+    const routePrefix = req.category === 'hospedajes' ? '/experiencias/hospedajes' : '/experiencias';
+    const canonicalInternalUrl = `https://experiencias.club${routePrefix}/${generatedSlug}`;
+
+    const isInternalExperienceUrl = (url?: string) => {
+      if (!url) return false;
+      const clean = url.trim().toLowerCase();
+      if (clean.startsWith('/experiencias') || clean.startsWith('experiencias/')) {
+        return true;
+      }
+      try {
+        const parsed = new URL(clean);
+        const host = parsed.hostname.toLowerCase();
+        const isClubHost =
+          host === 'experiencias.club' ||
+          host.endsWith('.experiencias.club') ||
+          host === 'localhost' ||
+          host === '127.0.0.1';
+        return isClubHost && parsed.pathname.startsWith('/experiencias');
+      } catch {
+        return clean.includes('experiencias.club/experiencias');
+      }
+    };
+
+    const resolvedUrl =
+      publicUrl && !isInternalExperienceUrl(publicUrl)
+        ? publicUrl.trim()
+        : canonicalInternalUrl;
 
     // Solo usar fechas confirmadas por el prestador o administrador.
     // Cuando las fechas son "A coordinar", se publican sin fechas reservables fijas ([]).
@@ -4306,30 +4440,31 @@ export class ProviderStoreService {
         ? confirmedDates
         : parseConfirmedProposalDates(req.dates);
 
-    let serializedProposalNotes = req.notes;
-    if (existingProvider?.mpConnected !== undefined || existingProvider?.mpCollectorId !== undefined) {
-      let notesObj: Record<string, any> = {};
-      const rawNotes = typeof req.notes === 'string' ? req.notes.trim() : '';
-      if (rawNotes) {
-        if (rawNotes.startsWith('{')) {
-          try {
-            const parsed = JSON.parse(rawNotes);
-            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-              notesObj = { ...parsed };
-            } else {
-              notesObj = { text: rawNotes };
-            }
-          } catch {
+    let notesObj: Record<string, any> = {};
+    const rawNotes = typeof req.notes === 'string' ? req.notes.trim() : '';
+    if (rawNotes) {
+      if (rawNotes.startsWith('{')) {
+        try {
+          const parsed = JSON.parse(rawNotes);
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            notesObj = { ...parsed };
+          } else {
             notesObj = { text: rawNotes };
           }
-        } else {
+        } catch {
           notesObj = { text: rawNotes };
         }
+      } else {
+        notesObj = { text: rawNotes };
       }
-      if (existingProvider?.mpCollectorId !== undefined) notesObj['mp_collector_id'] = existingProvider.mpCollectorId;
-      if (existingProvider?.mpConnected !== undefined) notesObj['mp_connected'] = Boolean(existingProvider.mpConnected);
-      serializedProposalNotes = JSON.stringify(notesObj);
     }
+    if (existingProvider?.mpCollectorId !== undefined) notesObj['mp_collector_id'] = existingProvider.mpCollectorId;
+    if (existingProvider?.mpConnected !== undefined) notesObj['mp_connected'] = Boolean(existingProvider.mpConnected);
+    notesObj['initial_slug'] = initialSlug;
+    if (slugAliases.length > 0) {
+      notesObj['slug_aliases'] = slugAliases;
+    }
+    const serializedProposalNotes = JSON.stringify(notesObj);
 
     let bankingFromPrestadores: { cbu_alias?: string; cuit_dni?: string; bank_name?: string } | null = null;
     if (isSupabaseConfigured() && normalizedEmail) {
@@ -4370,9 +4505,11 @@ export class ProviderStoreService {
       await this.expService.updateExperience({
         id: publishedId,
         slug: generatedSlug,
+        initialSlug,
+        slugAliases,
         status: 'publicada',
         category: req.category || 'expediciones',
-        detailRoute: req.category === 'hospedajes' ? `/experiencias/hospedajes/${generatedSlug}` : `/experiencias/${generatedSlug}`,
+        detailRoute: `${routePrefix}/${generatedSlug}`,
         dates: publishedDates,
         publicUrl: resolvedUrl,
         reviewedAt: new Date().toISOString(),
@@ -4392,7 +4529,7 @@ export class ProviderStoreService {
         isClubExperience: false,
         mpConnected: Boolean(existingProvider?.mpConnected),
         mpCollectorId: existingProvider?.mpCollectorId,
-        ...(serializedProposalNotes ? { notes: serializedProposalNotes } : {}),
+        notes: serializedProposalNotes,
       });
     } else if (remoteRow) {
       try {
@@ -4432,6 +4569,8 @@ export class ProviderStoreService {
       const experienceForCatalog: Experience = {
         id: publishedId,
         slug: generatedSlug,
+        initialSlug,
+        slugAliases,
         title: req.title,
         shortTitle: req.title.split('&')[0].trim(),
         kicker: req.kicker || 'EXPERIENCIA',
@@ -4509,9 +4648,12 @@ export class ProviderStoreService {
           ? {
               ...r,
               slug: generatedSlug,
+              initialSlug,
+              slugAliases,
+              publicUrl: resolvedUrl,
               status: 'aprobada' as const,
               reviewedAt: new Date().toISOString(),
-              ...(serializedProposalNotes ? { notes: serializedProposalNotes } : {}),
+              notes: serializedProposalNotes,
             }
           : r,
       ),
@@ -4555,6 +4697,8 @@ export class ProviderStoreService {
         const newExp: ProviderExperience = {
           id: publishedId,
           slug: generatedSlug,
+          initialSlug,
+          slugAliases,
           title: req.title,
           shortTitle: req.title.split('&')[0].trim(),
           tagline:
@@ -4595,6 +4739,8 @@ export class ProviderStoreService {
                   ...e,
                   id: publishedId,
                   slug: generatedSlug,
+                  initialSlug,
+                  slugAliases,
                   status: 'publicada',
                   publicUrl: resolvedUrl,
                   dates: publishedDates,

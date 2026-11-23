@@ -91,6 +91,80 @@ describe('FavoritesService', () => {
     expect(service.isFavorite('trekking-antofagasta')).toBe(true);
   });
 
+  it('should ignore generic registration survey keys when merging member wishlist', () => {
+    currentMemberSignal.set({
+      email: 'survey-socio@experiencias.club',
+      fullName: 'Socio Survey',
+      experiencesWishlist: ['kayak', 'galan', 'seismiles', 'pissis', 'termas', 'astroturismo', 'otros', 'kayak-las-jumeal'],
+    });
+    TestBed.flushEffects();
+
+    expect(service.isFavorite('kayak')).toBe(false);
+    expect(service.isFavorite('galan')).toBe(false);
+    expect(service.isFavorite('seismiles')).toBe(false);
+    expect(service.isFavorite('pissis')).toBe(false);
+    expect(service.isFavorite('termas')).toBe(false);
+    expect(service.isFavorite('astroturismo')).toBe(false);
+    expect(service.isFavorite('otros')).toBe(false);
+    expect(service.isFavorite('kayak-las-jumeal')).toBe(true);
+  });
+
+  it('should preserve overlapping genuine experiences when survey keys arrive with an empty cache', () => {
+    const kayakExp: Experience = {
+      ...mockExp,
+      id: 'exp-kayak',
+      slug: 'kayak',
+      title: 'Kayak Travesía',
+    };
+    mockExperienceService.experiences = () => [mockExp, kayakExp];
+
+    // Simula caché local vacía y wishlist entrante con mezcla de survey-only y experiencia genuina
+    currentMemberSignal.set({
+      email: 'empty-cache@experiencias.club',
+      fullName: 'Socio Empty Cache',
+      experiencesWishlist: ['galan', 'kayak', 'astroturismo'],
+    });
+    TestBed.flushEffects();
+
+    expect(service.isFavorite('kayak')).toBe(true);
+    expect(service.isFavorite('galan')).toBe(false);
+    expect(service.isFavorite('astroturismo')).toBe(false);
+    expect(service.favoriteSlugs()).toEqual(['kayak']);
+  });
+
+  it('should remove previously persisted survey-derived favorites on loadStoredFavorites while preserving genuine experiences', () => {
+    const kayakExp: Experience = {
+      ...mockExp,
+      id: 'exp-kayak',
+      slug: 'kayak',
+      title: 'Kayak Travesía',
+    };
+    mockExperienceService.experiences = () => [mockExp, kayakExp];
+
+    const storageKey = 'catamarca_user_favorites_v1_socio-persisted@experiencias.club';
+    localStorage.setItem(
+      storageKey,
+      JSON.stringify(['galan', 'astroturismo', 'kayak', 'kayak-las-jumeal']),
+    );
+
+    currentMemberSignal.set({
+      email: 'socio-persisted@experiencias.club',
+      fullName: 'Socio Persisted',
+      experiencesWishlist: [],
+    });
+    TestBed.flushEffects();
+
+    expect(service.favoriteSlugs()).toEqual(['kayak', 'kayak-las-jumeal']);
+    expect(service.isFavorite('kayak')).toBe(true);
+    expect(service.isFavorite('kayak-las-jumeal')).toBe(true);
+    expect(service.isFavorite('galan')).toBe(false);
+    expect(service.isFavorite('astroturismo')).toBe(false);
+
+    // Verifica que se haya guardado la lista depurada en localStorage
+    const savedInStorage = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    expect(savedInStorage).toEqual(['kayak', 'kayak-las-jumeal']);
+  });
+
   it('should not re-add a removed favorite when receiving a stale member refresh', () => {
     TestBed.flushEffects();
     expect(service.isFavorite(mockExp)).toBe(true);

@@ -425,11 +425,55 @@ describe('ProviderStoreService - Payment & Proposal Persistence', () => {
       });
 
       expect(req.slug).toBeDefined();
-      const customUrl = 'https://experiencias.club/experiencias/custom-url-test';
+      const customUrl = 'https://external-partner.com/experiences/custom-url-test';
       const ok = await store.approveExperienceRequest(req.id, customUrl);
       expect(ok).toBe(true);
       expect(createdExpCatalog.slug).toBe(req.slug);
       expect(createdExpCatalog.publicUrl).toBe(customUrl);
+    });
+
+    it('should build internal publicUrl from routePrefix and final generatedSlug when supplied URL is internal or conflicting', async () => {
+      const existingCatalogExp = {
+        id: 'exp-different-id',
+        slug: 'travesia-conflict',
+        title: 'Travesía Existente',
+        status: 'publicada',
+      } as any;
+      vi.spyOn(expService, 'experiences').mockReturnValue([existingCatalogExp]);
+      let createdExpCatalog: any = null;
+      vi.spyOn(expService, 'createExperience').mockImplementation(async (exp: any) => {
+        createdExpCatalog = exp;
+      });
+
+      const req = await store.submitExperienceRequest({
+        providerId: 'prov-col-test',
+        providerName: 'Col Test',
+        providerAgency: 'Agency',
+        providerEmail: 'col@provider.com',
+        title: 'Travesía Conflict',
+        slug: 'travesia-conflict',
+        kicker: 'EXPERIENCIA',
+        subheading: 'Subheading',
+        region: 'Valle Central',
+        difficulty: 'Baja',
+        duration: '2 horas',
+        capacity: 8,
+        season: 'Todo el año',
+        dates: '2026-11-20',
+        priceArs: 40000,
+        itinerary: 'Itinerario',
+        meetingPoint: 'Punto',
+        includedServices: 'Servicios',
+        participantRequirements: 'Requisitos',
+      } as any);
+
+      // Supplied public URL has conflicting original slug 'travesia-conflict'
+      const conflictingUrl = 'https://experiencias.club/experiencias/travesia-conflict';
+      const ok = await store.approveExperienceRequest(req.id, conflictingUrl);
+      expect(ok).toBe(true);
+      expect(createdExpCatalog.slug).toBe('travesia-conflict-2');
+      // Must build from final generatedSlug, not retain the conflicting supplied URL
+      expect(createdExpCatalog.publicUrl).toBe('https://experiencias.club/experiencias/travesia-conflict-2');
     });
 
     it('should not treat matching slug as identity in approveExperienceRequest and should suffix collision', async () => {
@@ -472,6 +516,78 @@ describe('ProviderStoreService - Payment & Proposal Persistence', () => {
       expect(createdExpCatalog).toBeDefined();
       expect(createdExpCatalog.id).not.toBe('exp-different-id');
       expect(createdExpCatalog.slug).toBe('travesia-conflict-2');
+    });
+
+    it('should reserve other experiences historical initialSlug and slugAliases against reuse upon approval', async () => {
+      const existingCatalogExp = {
+        id: 'exp-different-id',
+        slug: 'travesia-renamed',
+        initialSlug: 'travesia-historica',
+        slugAliases: ['travesia-alias-viejo'],
+        title: 'Travesía Existente',
+        status: 'publicada',
+      } as any;
+      vi.spyOn(expService, 'experiences').mockReturnValue([existingCatalogExp]);
+      let createdExpCatalog: any = null;
+      vi.spyOn(expService, 'createExperience').mockImplementation(async (exp: any) => {
+        createdExpCatalog = exp;
+      });
+
+      // 1. Propuesta con slug que colisiona con el initialSlug de otra experiencia
+      const req1 = await store.submitExperienceRequest({
+        providerId: 'prov-new',
+        providerName: 'New Provider',
+        providerAgency: 'Agency',
+        providerEmail: 'new@provider.com',
+        title: 'Travesía Histórica',
+        slug: 'travesia-historica',
+        kicker: 'EXPERIENCIA',
+        subheading: 'Subheading',
+        region: 'Valle Central',
+        difficulty: 'Baja',
+        duration: '2 horas',
+        capacity: 8,
+        season: 'Todo el año',
+        dates: '2026-11-20',
+        priceArs: 40000,
+        itinerary: 'Itinerario',
+        meetingPoint: 'Punto',
+        includedServices: 'Servicios',
+        participantRequirements: 'Requisitos',
+      } as any);
+
+      const ok1 = await store.approveExperienceRequest(req1.id);
+      expect(ok1).toBe(true);
+      expect(createdExpCatalog).toBeDefined();
+      expect(createdExpCatalog.slug).toBe('travesia-historica-2');
+
+      // 2. Propuesta con slug que colisiona con un slugAlias de otra experiencia
+      const req2 = await store.submitExperienceRequest({
+        providerId: 'prov-new',
+        providerName: 'New Provider',
+        providerAgency: 'Agency',
+        providerEmail: 'new@provider.com',
+        title: 'Travesía Alias Viejo',
+        slug: 'travesia-alias-viejo',
+        kicker: 'EXPERIENCIA',
+        subheading: 'Subheading',
+        region: 'Valle Central',
+        difficulty: 'Baja',
+        duration: '2 horas',
+        capacity: 8,
+        season: 'Todo el año',
+        dates: '2026-11-20',
+        priceArs: 40000,
+        itinerary: 'Itinerario',
+        meetingPoint: 'Punto',
+        includedServices: 'Servicios',
+        participantRequirements: 'Requisitos',
+      } as any);
+
+      const ok2 = await store.approveExperienceRequest(req2.id);
+      expect(ok2).toBe(true);
+      expect(createdExpCatalog).toBeDefined();
+      expect(createdExpCatalog.slug).toBe('travesia-alias-viejo-2');
     });
 
     it('should reuse existing experience by same ID in approveExperienceRequest', async () => {
@@ -668,8 +784,93 @@ describe('ProviderStoreService - Payment & Proposal Persistence', () => {
       expect(updatedPayload).toBeDefined();
       expect(updatedPayload.status).toBe('publicada');
       expect(updatedPayload.slug).toBe(req.slug);
-      expect(updatedPayload.public_url).toBe('https://experiencias.club/experiencias/custom-remote');
+      expect(updatedPayload.public_url).toBe(`https://experiencias.club/experiencias/${req.slug}`);
       expect(updatedPayload.dates).toEqual(['2026-12-01']);
+    });
+
+    it('should parse initialSlug and slugAliases from row.notes in loadProposalsFromSupabase and preserve original initial_slug upon approval of remote-only row', async () => {
+      const remoteProposalRow = {
+        id: 'remote-prop-123',
+        title: 'Travesía Volcánica',
+        slug: 'travesia-volcanica-nueva',
+        provider_id: 'prov-remote-1',
+        provider_name: 'Guía Remoto',
+        provider_agency: 'Volcanes SA',
+        provider_email: 'guia@volcanes.com',
+        status: 'pendiente',
+        notes: JSON.stringify({
+          initial_slug: 'travesia-volcanica-original',
+          slug_aliases: ['alias-volcanica-antigua'],
+          text: 'Notas del prestador',
+        }),
+      };
+
+      let updatedId: string | undefined;
+      let updatedPayload: any = null;
+
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === 'experiencias') {
+          return {
+            select: vi.fn().mockImplementation((fields?: string) => {
+              if (fields && fields.includes('status') && !fields.includes('*')) {
+                return {
+                  eq: vi.fn().mockReturnValue({
+                    maybeSingle: vi.fn().mockResolvedValue({ data: remoteProposalRow, error: null }),
+                  }),
+                };
+              }
+              return {
+                in: vi.fn().mockReturnValue({
+                  order: vi.fn().mockResolvedValue({ data: [remoteProposalRow], error: null }),
+                  ilike: vi.fn().mockReturnValue({
+                    order: vi.fn().mockResolvedValue({ data: [remoteProposalRow], error: null }),
+                  }),
+                }),
+                order: vi.fn().mockResolvedValue({ data: [remoteProposalRow], error: null }),
+                eq: vi.fn().mockReturnValue({
+                  order: vi.fn().mockResolvedValue({ data: [remoteProposalRow], error: null }),
+                }),
+              };
+            }),
+            update: vi.fn().mockImplementation((payload: any) => ({
+              eq: vi.fn().mockImplementation((_col: string, val: string) => {
+                updatedId = val;
+                updatedPayload = payload;
+                return Promise.resolve({ error: null });
+              }),
+            })),
+          };
+        }
+        if (table === 'prestadores') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+              }),
+            }),
+          };
+        }
+        return {
+          select: vi.fn().mockReturnThis(),
+          order: vi.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      });
+
+      vi.spyOn(expService, 'reloadFromSupabase').mockResolvedValue(true);
+
+      await store.loadProposalsFromSupabase();
+
+      const loadedReq = store.experienceRequests().find((r) => r.id === 'remote-prop-123');
+      expect(loadedReq).toBeDefined();
+      expect(loadedReq?.initialSlug).toBe('travesia-volcanica-original');
+      expect(loadedReq?.slugAliases).toEqual(['alias-volcanica-antigua']);
+
+      const ok = await store.approveExperienceRequest('remote-prop-123');
+      expect(ok).toBe(true);
+      expect(updatedPayload).toBeDefined();
+      const updatedNotes = JSON.parse(updatedPayload.notes);
+      expect(updatedNotes.initial_slug).toBe('travesia-volcanica-original');
+      expect(updatedNotes.slug_aliases).toContain('alias-volcanica-antigua');
     });
   });
 

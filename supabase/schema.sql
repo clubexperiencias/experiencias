@@ -634,12 +634,24 @@ CREATE TRIGGER pagos_normalize_before_write
 -- 4.5 Vinculación de auth.users con socios
 CREATE OR REPLACE FUNCTION public.handle_user_auth_link()
 RETURNS TRIGGER AS $$
+DECLARE
+  v_google_name TEXT;
 BEGIN
+  v_google_name := COALESCE(
+    NULLIF(TRIM(NEW.raw_user_meta_data ->> 'full_name'), ''),
+    NULLIF(TRIM(NEW.raw_user_meta_data ->> 'name'), '')
+  );
+
   UPDATE public.socios
   SET auth_user_id = NEW.id,
+      full_name = CASE 
+        WHEN (full_name IS NULL OR TRIM(full_name) = '' OR full_name = 'Socio sin nombre') AND v_google_name IS NOT NULL
+        THEN v_google_name
+        ELSE full_name
+      END,
       updated_at = now()
   WHERE LOWER(email) = LOWER(NEW.email)
-    AND (auth_user_id IS NULL OR auth_user_id <> NEW.id);
+    AND (auth_user_id IS NULL OR auth_user_id <> NEW.id OR (full_name IS NULL OR TRIM(full_name) = '' OR full_name = 'Socio sin nombre'));
 
   RETURN NEW;
 END;
@@ -649,6 +661,68 @@ DROP TRIGGER IF EXISTS on_auth_user_created_link_socio ON auth.users;
 CREATE TRIGGER on_auth_user_created_link_socio
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_user_auth_link();
+
+-- 4.5b Sincronización automática de prestadores hacia socios (aprobados y pendientes)
+CREATE OR REPLACE FUNCTION public.sync_prestador_to_socio()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_auth_id UUID;
+  v_name TEXT;
+BEGIN
+  IF NEW.email IS NULL OR TRIM(NEW.email) = '' THEN
+    RETURN NEW;
+  END IF;
+
+  v_name := COALESCE(NULLIF(TRIM(NEW.name), ''), NULLIF(TRIM(NEW.agency), ''), 'Prestador del Club');
+
+  SELECT id INTO v_auth_id
+  FROM auth.users
+  WHERE LOWER(TRIM(email)) = LOWER(TRIM(NEW.email))
+  LIMIT 1;
+
+  INSERT INTO public.socios (
+    email,
+    full_name,
+    phone,
+    membership_tier,
+    auth_user_id
+  )
+  VALUES (
+    LOWER(TRIM(NEW.email)),
+    v_name,
+    COALESCE(TRIM(NEW.phone), ''),
+    'emergente',
+    v_auth_id
+  )
+  ON CONFLICT (email) DO UPDATE
+  SET
+    full_name = CASE
+      WHEN public.socios.full_name IS NULL OR public.socios.full_name = ''
+      THEN EXCLUDED.full_name
+      ELSE public.socios.full_name
+    END,
+    phone = CASE
+      WHEN public.socios.phone IS NULL OR public.socios.phone = ''
+      THEN EXCLUDED.phone
+      ELSE public.socios.phone
+    END,
+    auth_user_id = COALESCE(public.socios.auth_user_id, EXCLUDED.auth_user_id),
+    membership_tier = CASE
+      WHEN public.socios.membership_tier = 'waitlist'
+      THEN 'emergente'
+      ELSE public.socios.membership_tier
+    END,
+    updated_at = now();
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS trg_prestador_sync_socio ON public.prestadores;
+CREATE TRIGGER trg_prestador_sync_socio
+  AFTER INSERT OR UPDATE OF email, name, agency, phone, status ON public.prestadores
+  FOR EACH ROW
+  EXECUTE FUNCTION public.sync_prestador_to_socio();
 
 CREATE OR REPLACE FUNCTION public.link_socio_to_existing_auth_user()
 RETURNS TRIGGER AS $$
@@ -3601,7 +3675,7 @@ BEGIN
     CREATE POLICY "Permitir subida publica de comprobantes"
       ON storage.objects
       FOR INSERT
-      TO public, anon, authenticated
+      TO public
       WITH CHECK (bucket_id = 'comprobantes');
 
     DROP POLICY IF EXISTS "Lectura de comprobantes para admins y prestadores" ON storage.objects;
@@ -3642,13 +3716,13 @@ BEGIN
       'experiencias',
       'experiencias',
       true,
-      52428800,
-      ARRAY['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm', 'video/quicktime']
+      104857600,
+      NULL
     )
     ON CONFLICT (id) DO UPDATE
     SET public = true,
-        file_size_limit = 52428800,
-        allowed_mime_types = ARRAY['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm', 'video/quicktime'];
+        file_size_limit = 104857600,
+        allowed_mime_types = NULL;
   END IF;
 EXCEPTION
   WHEN OTHERS THEN
@@ -3667,7 +3741,7 @@ BEGIN
     CREATE POLICY "Lectura publica de fotos de experiencias"
       ON storage.objects
       FOR SELECT
-      TO public, anon, authenticated
+      TO public
       USING (bucket_id = 'experiencias');
 
     DROP POLICY IF EXISTS "Subida de fotos de experiencias" ON storage.objects;
@@ -3675,52 +3749,23 @@ BEGIN
     CREATE POLICY "Permitir subida de fotos de experiencias"
       ON storage.objects
       FOR INSERT
-      TO public, anon, authenticated
+      TO public
       WITH CHECK (bucket_id = 'experiencias');
 
     DROP POLICY IF EXISTS "Actualizacion de fotos de experiencias" ON storage.objects;
     CREATE POLICY "Actualizacion de fotos de experiencias"
       ON storage.objects
       FOR UPDATE
-      TO authenticated
-      USING (
-        bucket_id = 'experiencias'
-        AND (
-          EXISTS (
-            SELECT 1 FROM public.administradores
-            WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email') AND active = true
-          )
-          OR (
-            (auth.uid()::text = owner::text)
-            AND EXISTS (
-              SELECT 1 FROM public.prestadores
-              WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email') AND active = true
-            )
-          )
-        )
-      );
+      TO public
+      USING (bucket_id = 'experiencias')
+      WITH CHECK (bucket_id = 'experiencias');
 
     DROP POLICY IF EXISTS "Eliminacion de fotos de experiencias" ON storage.objects;
     CREATE POLICY "Eliminacion de fotos de experiencias"
       ON storage.objects
       FOR DELETE
-      TO authenticated
-      USING (
-        bucket_id = 'experiencias'
-        AND (
-          EXISTS (
-            SELECT 1 FROM public.administradores
-            WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email') AND active = true
-          )
-          OR (
-            (auth.uid()::text = owner::text)
-            AND EXISTS (
-              SELECT 1 FROM public.prestadores
-              WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email') AND active = true
-            )
-          )
-        )
-      );
+      TO public
+      USING (bucket_id = 'experiencias');
   END IF;
 EXCEPTION
   WHEN OTHERS THEN

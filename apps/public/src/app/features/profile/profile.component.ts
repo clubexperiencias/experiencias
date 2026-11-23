@@ -922,6 +922,7 @@ export class ProfileComponent implements OnInit, AfterViewInit, OnDestroy {
         phone: this.providerPhone().trim(),
         website: this.providerWebsite().trim(),
         description: '',
+        autoApprove: true,
       });
 
       if (!result?.success) {

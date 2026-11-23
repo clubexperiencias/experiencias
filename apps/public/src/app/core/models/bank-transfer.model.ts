@@ -65,6 +65,8 @@ export interface ExperienceDateSlot {
 export interface ProviderExperience {
   id: string;
   slug: string;
+  initialSlug?: string;
+  slugAliases?: string[];
   title: string;
   shortTitle?: string;
   tagline: string;

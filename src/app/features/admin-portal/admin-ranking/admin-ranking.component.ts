@@ -9,6 +9,7 @@ import { ProviderRatingService, ProviderRatingData } from '../../../core/service
 import { FavoritesService } from '../../../core/services/favorites.service';
 import { ProviderUser } from '../../../core/models/bank-transfer.model';
 import { Experience } from '../../../core/models/experience.model';
+import { SURVEY_INTEREST_KEYS } from '../../../core/models/waitlist.model';
 import { ArsPipe } from '../../../shared/pipes/format.pipes';
 import { getPublicExperienceUrl } from '../../../shared/utils/csv.util';
 
@@ -753,12 +754,12 @@ export class AdminRankingComponent {
   getExperienceFicheRoute(expOrSlug?: string | { id?: string; slug?: string }): string {
     let slug = '';
     if (typeof expOrSlug === 'string') {
-      const latest = this.experienceService.getExperienceBySlug(expOrSlug) ||
-                     this.experienceService.getExperienceById(expOrSlug);
+      const latest = this.experienceService.getExperienceBySlug?.(expOrSlug) ||
+                     this.experienceService.getExperienceById?.(expOrSlug);
       slug = latest?.slug || expOrSlug;
     } else if (expOrSlug) {
-      const latest = (expOrSlug.id ? this.experienceService.getExperienceById(expOrSlug.id) : null) ||
-                     (expOrSlug.slug ? this.experienceService.getExperienceBySlug(expOrSlug.slug) : null);
+      const latest = (expOrSlug.id ? this.experienceService.getExperienceById?.(expOrSlug.id) : null) ||
+                     (expOrSlug.slug ? this.experienceService.getExperienceBySlug?.(expOrSlug.slug) : null);
       slug = latest?.slug || expOrSlug.slug || expOrSlug.id || '';
     }
     const rawPath = this.router.url.split('?')[0].split('#')[0];
@@ -934,18 +935,39 @@ export class AdminRankingComponent {
     const publishedExperiences = this.experienceService.experiences().filter(
       (exp) => exp.status === 'publicada' && !exp.deletedAt && !(exp as any).isSoftDeleted,
     );
-    const members = this.adminStore.members();
-    const localFavs = this.favoritesService.favoriteSlugs().map((s) => s.toLowerCase().trim());
+    const members = typeof this.adminStore.members === 'function' ? this.adminStore.members() : [];
+    const localFavs = typeof this.favoritesService?.favoriteSlugs === 'function'
+      ? this.favoritesService.favoriteSlugs().map((s) => s.toLowerCase().trim())
+      : [];
+
+    const publishedSlugSet = new Set<string>();
+    for (const exp of publishedExperiences) {
+      if (exp.slug) publishedSlugSet.add(exp.slug.toLowerCase().trim());
+      if (exp.id) publishedSlugSet.add(exp.id.toLowerCase().trim());
+      if (exp.initialSlug) publishedSlugSet.add(exp.initialSlug.toLowerCase().trim());
+      if (Array.isArray(exp.slugAliases)) {
+        for (const a of exp.slugAliases) {
+          if (a) publishedSlugSet.add(a.toLowerCase().trim());
+        }
+      }
+    }
+    const isExcludedSurveyKey = (key: string) => SURVEY_INTEREST_KEYS.has(key) && !publishedSlugSet.has(key);
 
     // Contar cuántos socios reales tienen cada experiencia en su wishlist
     const countsMap = new Map<string, number>();
 
     for (const m of members) {
-      if (m.membershipTier === 'dado_de_baja') continue;
+      if (
+        m.membershipTier === 'waitlist' ||
+        m.membershipTier === 'dado_de_baja' ||
+        (m as any).type === 'waitlist'
+      ) {
+        continue;
+      }
       if (Array.isArray(m.experiencesWishlist)) {
         for (const fav of m.experiencesWishlist) {
           const k = fav.trim().toLowerCase();
-          if (k) {
+          if (k && !isExcludedSurveyKey(k)) {
             countsMap.set(k, (countsMap.get(k) || 0) + 1);
           }
         }
@@ -954,7 +976,7 @@ export class AdminRankingComponent {
 
     // Agregar favoritos locales si no están en members
     for (const fav of localFavs) {
-      if (fav && !countsMap.has(fav)) {
+      if (fav && !isExcludedSurveyKey(fav) && !countsMap.has(fav)) {
         countsMap.set(fav, 1);
       }
     }
@@ -962,12 +984,23 @@ export class AdminRankingComponent {
     const rows = publishedExperiences.map((exp) => {
       const slugKey = (exp.slug || '').toLowerCase().trim();
       const idKey = (exp.id || '').toLowerCase().trim();
+      const initialKey = (exp.initialSlug || '').toLowerCase().trim();
 
       const countFromSlug = slugKey ? (countsMap.get(slugKey) || 0) : 0;
       const countFromId = idKey ? (countsMap.get(idKey) || 0) : 0;
+      const countFromInitial = initialKey ? (countsMap.get(initialKey) || 0) : 0;
+      let maxAliasCount = 0;
+      if (Array.isArray(exp.slugAliases)) {
+        for (const alias of exp.slugAliases) {
+          const aKey = (alias || '').toLowerCase().trim();
+          if (aKey && countsMap.has(aKey)) {
+            maxAliasCount = Math.max(maxAliasCount, countsMap.get(aKey) || 0);
+          }
+        }
+      }
 
-      // DATOS REALES: Tomar únicamente el conteo real de socios que tienen la experiencia guardada
-      const realFavCount = Math.max(countFromSlug, countFromId);
+      // DATOS REALES: Conteo derivado exclusivamente de socios elegibles (excluye waitlist y dados de baja) y favoritos locales
+      const realFavCount = Math.max(countFromSlug, countFromId, countFromInitial, maxAliasCount);
 
       return {
         rank: 0,

@@ -4,6 +4,7 @@ import { filter } from 'rxjs';
 import { ExperienceService } from './experience.service';
 import { NewsletterService } from './newsletter.service';
 import { Experience } from '../models/experience.model';
+import { SURVEY_INTEREST_KEYS } from '../models/waitlist.model';
 import { SUPABASE_CLIENT } from '../supabase/supabase.client';
 
 export const FAVORITES_STORAGE_KEY = 'catamarca_user_favorites_v1';
@@ -127,6 +128,38 @@ export class FavoritesService {
     return norm ? `${FAVORITES_REMOVED_STORAGE_KEY}_${norm}` : null;
   }
 
+  private isGenuineExperience(slugOrId: string): boolean {
+    const norm = (slugOrId || '').trim().toLowerCase();
+    if (!norm) return false;
+    const all = this.experienceService.experiences();
+    if (Array.isArray(all) && all.length > 0) {
+      const found = all.some((e) => {
+        const expSlug = (e.slug || '').trim().toLowerCase();
+        const expId = (e.id || '').trim().toLowerCase();
+        const initialSlug = (e.initialSlug || '').trim().toLowerCase();
+        const hasAlias =
+          Array.isArray(e.slugAliases) &&
+          e.slugAliases.some((a) => (a || '').trim().toLowerCase() === norm);
+        return (
+          expSlug === norm ||
+          expId === norm ||
+          initialSlug === norm ||
+          hasAlias ||
+          expId === `exp-${norm}` ||
+          norm === `exp-${expSlug}`
+        );
+      });
+      if (found) return true;
+    }
+    return Boolean(this.experienceService.getExperienceBySlug?.(norm));
+  }
+
+  private isSurveyOnly(slugOrId: string): boolean {
+    const norm = (slugOrId || '').trim().toLowerCase();
+    if (!norm) return false;
+    return SURVEY_INTEREST_KEYS.has(norm) && !this.isGenuineExperience(norm);
+  }
+
   private loadStoredFavorites(identity?: string | null): string[] {
     if (typeof localStorage === 'undefined') return [];
     try {
@@ -139,7 +172,13 @@ export class FavoritesService {
       const blocked = new Set(['proximamente', 'proximamente-valle-catamarca', 'exp-coming-soon', 'exp-coming-soon-catalog']);
       const filtered = parsed
         .map((s) => String(s).trim())
-        .filter((s) => Boolean(s) && !blocked.has(s.toLowerCase()));
+        .filter((s) => {
+          if (!s) return false;
+          const lower = s.toLowerCase();
+          if (blocked.has(lower)) return false;
+          if (this.isSurveyOnly(lower)) return false;
+          return true;
+        });
       if (filtered.length !== parsed.length) {
         this.persistFavorites(filtered, identity);
       }
@@ -207,15 +246,21 @@ export class FavoritesService {
 
   private mergeMemberWishlist(wishlist: string[], identity?: string | null): void {
     const current = this._favoriteSlugs();
-    const currentLower = new Set(current.map((s) => s.toLowerCase()));
+    const cleanCurrent = current.filter((s) => !this.isSurveyOnly(s));
+    const currentLower = new Set(cleanCurrent.map((s) => s.toLowerCase()));
     const removed = this._removedSlugs();
-    let changed = false;
-    const merged = [...current];
+    let changed = cleanCurrent.length !== current.length;
+    const merged = [...cleanCurrent];
 
     for (const item of wishlist) {
       const norm = (item || '').trim();
       const normLower = norm.toLowerCase();
       if (!norm) continue;
+
+      // Ignorar opciones genéricas de la encuesta de registro a menos que representen una experiencia genuina
+      if (this.isSurveyOnly(normLower)) {
+        continue;
+      }
 
       // Si el socio eliminó explícitamente esta experiencia de favoritos, no re-agregarla
       if (removed.has(normLower)) {
@@ -265,6 +310,7 @@ export class FavoritesService {
     if (typeof expOrKey === 'object' && expOrKey.isLocked) return false;
     const key = typeof expOrKey === 'string' ? expOrKey.trim().toLowerCase() : (expOrKey.slug || expOrKey.id || '').trim().toLowerCase();
     if (!key || key === 'proximamente' || key === 'proximamente-valle-catamarca' || key === 'exp-coming-soon' || key === 'exp-coming-soon-catalog') return false;
+    if (this.isSurveyOnly(key)) return false;
     return this._favoriteSlugs().some((s) => s.toLowerCase() === key);
   }
 
@@ -416,7 +462,9 @@ export class FavoritesService {
   }
 
   readonly favoriteExperiences = computed<Experience[]>(() => {
-    const slugs = this._favoriteSlugs().map((s) => s.toLowerCase());
+    const slugs = this._favoriteSlugs()
+      .map((s) => s.toLowerCase())
+      .filter((s) => !this.isSurveyOnly(s));
     if (slugs.length === 0) return [];
 
     const all = this.experienceService.experiences();

@@ -18,6 +18,8 @@ describe('AdminExperiencesComponent - Mercado Pago Precedence', () => {
       reloadFromStorage?: () => void;
     };
     clubProfile: ReturnType<typeof signal<any>>;
+    allRegisteredProviders?: ReturnType<typeof signal<ProviderUser[]>>;
+    loadAllApplications?: () => Promise<void>;
     experiences: ReturnType<typeof signal<Experience[]>>;
     approveExperienceRequest?: (id: string, publicUrl?: string, dates?: string[]) => Promise<boolean>;
     rejectExperienceRequest?: (id: string) => Promise<boolean>;
@@ -60,6 +62,8 @@ describe('AdminExperiencesComponent - Mercado Pago Precedence', () => {
         cuitDni: '30-12345678-9',
         bankName: 'Banco Nacion',
       }),
+      allRegisteredProviders: signal<ProviderUser[]>([sampleConnectedProvider, sampleDisconnectedProvider]),
+      loadAllApplications: () => Promise.resolve(),
       experiences: signal<Experience[]>([]),
       usdExchangeRate: signal(1200),
       approveExperienceRequest: () => Promise.resolve(true),
@@ -724,6 +728,63 @@ describe('AdminExperiencesComponent - Mercado Pago Precedence', () => {
       );
     });
 
+    it('should omit slug from updateExperience when approving and publishing a proposal', async () => {
+      const expService = (component as any).experienceService;
+      let capturedPayload: any = null;
+      vi.spyOn(expService, 'updateExperience').mockImplementation((p: any) => {
+        capturedPayload = p;
+        return Promise.resolve();
+      });
+      vi.spyOn(expService, 'reloadFromSupabase').mockResolvedValue(undefined);
+
+      const pendingProposalExp = {
+        id: 'prop-123',
+        title: 'Travesía Volcanes',
+        tagline: 'Aventura única en la puna',
+        slug: 'travesia-volcanes-prop',
+        description: 'Descripción de la travesía',
+        region: 'Oeste y Puna',
+        meetingPoint: 'Plaza Principal',
+        durationLabel: '4 horas',
+        priceArs: 50000,
+        status: 'pendiente',
+        coverImage: 'https://img.jpg',
+        dates: ['2026-12-01'],
+        providerName: 'Guía Volcanes',
+        providerPhone: '+5493834112233',
+        providerCbuAlias: 'volcanes.alias',
+        providerCuitDni: '20-12345678-9',
+        providerBankName: 'Banco Nación',
+      } as unknown as Experience;
+
+      mockAdminStore.providerStore.experienceRequests.set([
+        {
+          id: 'prop-123',
+          slug: 'travesia-volcanes-prop',
+          title: 'Travesía Volcanes',
+          providerName: 'Guía Volcanes',
+          providerPhone: '+5493834112233',
+          providerCbuAlias: 'volcanes.alias',
+          providerCuitDni: '20-12345678-9',
+          providerBankName: 'Banco Nación',
+          status: 'pendiente',
+        },
+      ]);
+      const approveSpy = vi.spyOn((component as any).adminStore, 'approveExperienceRequest').mockResolvedValue(true);
+
+      component.openEditModal(pendingProposalExp);
+      component.editStatus.set('publicada');
+      component.editDatesRaw.set('2026-12-01');
+
+      await component.saveExperience();
+
+      expect(approveSpy).toHaveBeenCalled();
+      expect(capturedPayload).toBeDefined();
+      expect(capturedPayload.id).toBe('prop-123');
+      expect(capturedPayload.slug).toBeUndefined();
+      expect(capturedPayload.status).toBe('publicada');
+    });
+
     it('should update currentAdminMpInfo when onAdminProviderChange is called', () => {
       const exp = {
         id: 'exp-1',
@@ -846,6 +907,65 @@ describe('AdminExperiencesComponent - Mercado Pago Precedence', () => {
 
       expect(component.editingExperience()).toBeNull();
       expect(openModalSpy).not.toHaveBeenCalled();
+    });
+
+    it('should preserve form Mercado Pago settings when matched provider is application-only without mp credentials', async () => {
+      const expService = (component as any).experienceService;
+      let savedPayload: any = null;
+      vi.spyOn(expService, 'updateExperience').mockImplementation(async (payload: any) => {
+        savedPayload = payload;
+        return payload;
+      });
+      vi.spyOn(expService, 'reloadFromSupabase').mockResolvedValue(undefined);
+
+      const appOnlyProvider = {
+        id: 'app-provider-1',
+        name: 'Guía Nuevo',
+        agency: 'Aventuras App',
+        email: 'nuevo@app.com',
+        role: 'prestador',
+        cbuAlias: 'AL.ALIAS.APP',
+        cuitDni: '20123456789',
+        bankName: 'Banco App',
+        phone: '1122334455',
+      } as unknown as ProviderUser;
+
+      (component as any).adminStore.allRegisteredProviders = signal([appOnlyProvider]);
+      mockAdminStore.providerStore.providers = signal([]);
+
+      const expToEdit = {
+        id: 'exp-mp-preserve',
+        title: 'Travesía Form MP',
+        slug: 'travesia-form-mp',
+        tagline: 'Expedición MP',
+        description: 'Recorrido guiado',
+        region: 'Valle Central',
+        meetingPoint: 'Plaza Central',
+        category: 'expediciones',
+        priceArs: 25000,
+        providerId: 'app-provider-1',
+        providerName: 'Aventuras App',
+        providerPhone: '1122334455',
+        providerCbuAlias: 'AL.ALIAS.APP',
+        providerCuitDni: '20123456789',
+        providerBankName: 'Banco App',
+        isClubExperience: false,
+        mpConnected: true,
+        mpCollectorId: 'COLLECTOR-12345',
+        coverImage: 'https://img.jpg',
+        dates: ['2026-12-01'],
+      } as unknown as Experience;
+
+      component.openEditModal(expToEdit);
+      component.editDatesRaw.set('A coordinar');
+      component.editMpConnected.set(true);
+      component.editMpCollectorId.set('COLLECTOR-12345');
+
+      await component.saveExperience();
+
+      expect(savedPayload).toBeTruthy();
+      expect(savedPayload.mpConnected).toBe(true);
+      expect(savedPayload.mpCollectorId).toBe('COLLECTOR-12345');
     });
   });
 });

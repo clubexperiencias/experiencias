@@ -1417,6 +1417,47 @@ function templateExperienceProposalProvider(data) {
   return renderBaseLayout(content, `Recibimos tu propuesta: ${data.title}`, 'blue');
 }
 
+function uploadObjectToSupabase(supabaseUrl, privilegedKey, bucket, storageKey, contentType, buffer) {
+  return new Promise((resolve) => {
+    try {
+      const url = new URL(`${supabaseUrl}/storage/v1/object/${bucket}/${encodeURI(storageKey)}`);
+      const options = {
+        hostname: url.hostname,
+        port: url.port || 443,
+        path: url.pathname,
+        method: 'POST',
+        headers: {
+          apikey: privilegedKey,
+          Authorization: `Bearer ${privilegedKey}`,
+          'Content-Type': contentType || 'application/octet-stream',
+          'Content-Length': buffer.length,
+          'x-upsert': 'true',
+        },
+      };
+      const req = https.request(options, (res) => {
+        let respData = '';
+        res.on('data', (chunk) => (respData += chunk));
+        res.on('end', () => {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            resolve({ ok: true, status: res.statusCode });
+          } else {
+            resolve({ ok: false, status: res.statusCode, error: respData || 'Error en almacenamiento de Supabase' });
+          }
+        });
+      });
+      req.on('error', (err) => resolve({ ok: false, status: 500, error: err.message }));
+      req.setTimeout(25000, () => {
+        req.destroy();
+        resolve({ ok: false, status: 504, error: 'Timeout en subida a Supabase Storage' });
+      });
+      req.write(buffer);
+      req.end();
+    } catch (err) {
+      resolve({ ok: false, status: 500, error: err.message });
+    }
+  });
+}
+
 // -----------------------------------------------------------------------------
 // Handler Principal Serverless (Vercel)
 // -----------------------------------------------------------------------------
@@ -2256,6 +2297,42 @@ module.exports = async function handler(req, res) {
           results.push({ target: 'admin', ...adminResult });
         }
         break;
+      }
+
+      case 'STORAGE_UPLOAD': {
+        const { bucket, storageKey, contentType, base64Data } = data || {};
+        if (!bucket || !storageKey || !base64Data) {
+          return res.status(400).json({ success: false, error: 'Faltan parámetros requeridos para la subida.' });
+        }
+        const privilegedKey = config.supabaseServiceRoleKey || config.supabaseKey;
+        if (!config.supabaseUrl || !privilegedKey) {
+          return res.status(500).json({ success: false, error: 'Supabase no está configurado en el servidor.' });
+        }
+        try {
+          const rawBase64 = String(base64Data).includes(',') ? String(base64Data).split(',')[1] : String(base64Data);
+          const buffer = Buffer.from(rawBase64, 'base64');
+          const uploadRes = await uploadObjectToSupabase(
+            config.supabaseUrl,
+            privilegedKey,
+            bucket,
+            storageKey,
+            contentType || 'application/octet-stream',
+            buffer,
+          );
+          if (uploadRes.ok) {
+            let publicUrl = '';
+            if (bucket === 'experiencias') {
+              publicUrl = `${config.supabaseUrl}/storage/v1/object/public/${bucket}/${storageKey}`;
+            } else {
+              publicUrl = `${config.supabaseUrl}/storage/v1/object/authenticated/${bucket}/${storageKey}`;
+            }
+            return res.status(200).json({ success: true, url: publicUrl, storageKey });
+          } else {
+            return res.status(uploadRes.status || 500).json({ success: false, error: uploadRes.error });
+          }
+        } catch (uploadError) {
+          return res.status(500).json({ success: false, error: uploadError.message });
+        }
       }
 
       default:

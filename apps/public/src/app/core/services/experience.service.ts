@@ -306,11 +306,19 @@ export class ExperienceService {
   getPublishedExperienceBySlug(slug: string): Experience | undefined {
     if (!slug) return undefined;
     const clean = slug.trim().toLowerCase();
-    return this.publishedExperiences().find((e: Experience) => {
+    const published = this.publishedExperiences();
+    const exact = published.find((e: Experience) => (e.slug || '').trim().toLowerCase() === clean);
+    if (exact) return exact;
+    return published.find((e: Experience) => {
       const expSlug = (e.slug || '').trim().toLowerCase();
       const expId = (e.id || '').trim().toLowerCase();
+      const initialSlug = (e.initialSlug || '').trim().toLowerCase();
+      const hasAlias =
+        Array.isArray(e.slugAliases) &&
+        e.slugAliases.some((a) => (a || '').trim().toLowerCase() === clean);
       return (
-        expSlug === clean ||
+        initialSlug === clean ||
+        hasAlias ||
         expId === clean ||
         expId === `exp-${clean}` ||
         clean === `exp-${expSlug}`
@@ -423,12 +431,27 @@ export class ExperienceService {
   getExperienceBySlug(slug: string): Experience | undefined {
     if (!slug) return undefined;
     const clean = slug.trim().toLowerCase();
-    const matches = this._experiences().filter(
-      (e) =>
-        (e.slug || '').trim().toLowerCase() === clean ||
-        e.id === clean ||
-        e.id === `exp-${clean}`,
+    const all = this._experiences();
+    const exactPublished = all.find(
+      (e) => (e.slug || '').trim().toLowerCase() === clean && e.status === 'publicada',
     );
+    if (exactPublished) return exactPublished;
+    const exact = all.find((e) => (e.slug || '').trim().toLowerCase() === clean);
+    if (exact) return exact;
+
+    const matches = all.filter((e) => {
+      const expSlug = (e.slug || '').trim().toLowerCase();
+      const initialSlug = (e.initialSlug || '').trim().toLowerCase();
+      const hasAlias =
+        Array.isArray(e.slugAliases) &&
+        e.slugAliases.some((a) => (a || '').trim().toLowerCase() === clean);
+      return (
+        initialSlug === clean ||
+        hasAlias ||
+        e.id === clean ||
+        e.id === `exp-${clean}`
+      );
+    });
     if (matches.length === 0) return undefined;
     if (matches.length === 1) return matches[0];
     // Si hay colisión con registros duplicados o históricos, priorizar la versión activa/publicada
@@ -530,14 +553,79 @@ export class ExperienceService {
           : current.galleryImages);
 
     const resultingCategory = updated.category || current.category || 'expediciones';
-    const resultingSlug = updated.slug || current.slug;
+    let resultingSlug = current.slug;
+    if (updated.slug) {
+      let desiredSlug = updated.slug
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+      if (RESERVED_EXPERIENCE_SLUGS.has(desiredSlug.toLowerCase())) {
+        desiredSlug = `${desiredSlug}-exp`;
+      }
+      const targetId = index !== -1 ? prevList[index].id : updated.id;
+      const isRenameInUse = (s: string) => {
+        const sLower = s.toLowerCase();
+        if (RESERVED_EXPERIENCE_SLUGS.has(sLower)) return true;
+        return prevList.some((e) => {
+          if (
+            e.id === targetId ||
+            (e.slug && current.slug && e.slug.toLowerCase() === current.slug.toLowerCase())
+          ) {
+            return false;
+          }
+          if (e.slug && e.slug.toLowerCase() === sLower) return true;
+          if (e.initialSlug && e.initialSlug.toLowerCase() === sLower) return true;
+          if (Array.isArray(e.slugAliases) && e.slugAliases.some((a) => a && a.toLowerCase() === sLower)) {
+            return true;
+          }
+          return false;
+        });
+      };
+      const baseRenameSlug = desiredSlug;
+      let renameSuffix = 2;
+      while (isRenameInUse(desiredSlug)) {
+        desiredSlug = `${baseRenameSlug}-${renameSuffix++}`;
+      }
+      resultingSlug = desiredSlug;
+    }
     const routePrefix = resultingCategory === 'hospedajes' ? '/experiencias/hospedajes' : '/experiencias';
+
+    const resolvedInitialSlug =
+      updated.initialSlug ||
+      current.initialSlug ||
+      current.slug ||
+      resultingSlug;
+
+    const aliasSet = new Set<string>();
+    if (Array.isArray(current.slugAliases)) {
+      current.slugAliases.forEach((a) => {
+        if (a && typeof a === 'string') aliasSet.add(a.trim().toLowerCase());
+      });
+    }
+    if (Array.isArray(updated.slugAliases)) {
+      updated.slugAliases.forEach((a) => {
+        if (a && typeof a === 'string') aliasSet.add(a.trim().toLowerCase());
+      });
+    }
+    if (current.slug && current.slug.trim().toLowerCase() !== resultingSlug.trim().toLowerCase()) {
+      aliasSet.add(current.slug.trim().toLowerCase());
+    }
+    if (resolvedInitialSlug && resolvedInitialSlug.trim().toLowerCase() !== resultingSlug.trim().toLowerCase()) {
+      aliasSet.add(resolvedInitialSlug.trim().toLowerCase());
+    }
+    aliasSet.delete(resultingSlug.trim().toLowerCase());
+    const resolvedSlugAliases = Array.from(aliasSet).filter(Boolean);
 
     const merged: Experience = {
       ...current,
       ...updated,
       id: index !== -1 ? current.id : updated.id,
       category: resultingCategory,
+      slug: resultingSlug,
+      initialSlug: resolvedInitialSlug,
+      slugAliases: resolvedSlugAliases,
       coverImage: safeCoverImage,
       videoUrl: safeVideoUrl || undefined,
       albumPhotos: safeAlbumPhotos,
@@ -662,51 +750,57 @@ export class ExperienceService {
           payload['category'] = merged.category;
         }
 
-        if (merged.mpCollectorId !== undefined || merged.mpConnected !== undefined) {
-          let notesObj: Record<string, any> = {};
-          if (merged.notes && typeof merged.notes === 'object' && !Array.isArray(merged.notes)) {
-            notesObj = { ...(merged.notes as Record<string, any>) };
-          } else if (typeof merged.notes === 'string') {
-            const rawNotes = merged.notes.trim();
-            if (rawNotes) {
-              try {
-                const parsed = JSON.parse(rawNotes);
-                if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-                  notesObj = { ...parsed };
-                } else {
-                  notesObj = { text: rawNotes };
-                }
-              } catch {
+        let notesObj: Record<string, any> = {};
+        if (merged.notesMetadata && typeof merged.notesMetadata === 'object' && !Array.isArray(merged.notesMetadata)) {
+          notesObj = { ...merged.notesMetadata };
+        } else if (merged.notes && typeof merged.notes === 'object' && !Array.isArray(merged.notes)) {
+          notesObj = { ...(merged.notes as Record<string, any>) };
+        } else if (typeof merged.notes === 'string') {
+          const rawNotes = merged.notes.trim();
+          if (rawNotes) {
+            try {
+              const parsed = JSON.parse(rawNotes);
+              if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                notesObj = { ...parsed };
+              } else {
                 notesObj = { text: rawNotes };
               }
+            } catch {
+              notesObj = { text: rawNotes };
             }
           }
+        }
 
-          if (updated.notes !== undefined) {
-            if (typeof updated.notes === 'object' && updated.notes !== null && !Array.isArray(updated.notes)) {
-              notesObj = { ...notesObj, ...(updated.notes as Record<string, any>) };
-            } else if (typeof updated.notes === 'string') {
-              const cleanUpdatedNotes = updated.notes.trim();
-              if (cleanUpdatedNotes) {
-                try {
-                  const parsedUpdates = JSON.parse(cleanUpdatedNotes);
-                  if (parsedUpdates && typeof parsedUpdates === 'object' && !Array.isArray(parsedUpdates)) {
-                    notesObj = { ...notesObj, ...parsedUpdates };
-                  } else {
-                    notesObj['text'] = cleanUpdatedNotes;
-                  }
-                } catch {
+        if (updated.notes !== undefined) {
+          if (typeof updated.notes === 'object' && updated.notes !== null && !Array.isArray(updated.notes)) {
+            notesObj = { ...notesObj, ...(updated.notes as Record<string, any>) };
+          } else if (typeof updated.notes === 'string') {
+            const cleanUpdatedNotes = updated.notes.trim();
+            if (cleanUpdatedNotes) {
+              try {
+                const parsedUpdates = JSON.parse(cleanUpdatedNotes);
+                if (parsedUpdates && typeof parsedUpdates === 'object' && !Array.isArray(parsedUpdates)) {
+                  notesObj = { ...notesObj, ...parsedUpdates };
+                } else {
                   notesObj['text'] = cleanUpdatedNotes;
                 }
-              } else {
-                delete notesObj['text'];
+              } catch {
+                notesObj['text'] = cleanUpdatedNotes;
               }
+            } else {
+              delete notesObj['text'];
             }
           }
+        }
 
-          if (merged.mpCollectorId !== undefined) notesObj['mp_collector_id'] = merged.mpCollectorId;
-          if (merged.mpConnected !== undefined) notesObj['mp_connected'] = merged.mpConnected;
+        if (merged.mpCollectorId !== undefined) notesObj['mp_collector_id'] = merged.mpCollectorId;
+        if (merged.mpConnected !== undefined) notesObj['mp_connected'] = merged.mpConnected;
+        if (merged.initialSlug) notesObj['initial_slug'] = merged.initialSlug;
+        if (merged.slugAliases && merged.slugAliases.length > 0) notesObj['slug_aliases'] = merged.slugAliases;
+
+        if (Object.keys(notesObj).length > 0) {
           payload['notes'] = JSON.stringify(notesObj);
+          merged.notesMetadata = { ...notesObj };
         } else if (updated.notes !== undefined) {
           payload['notes'] = updated.notes;
         }
@@ -868,39 +962,73 @@ export class ExperienceService {
     }
     const baseSlug = slug;
     let suffix = 2;
-    while (list.some((e) => e.slug.toLowerCase() === slug.toLowerCase())) {
+    const isSlugInUse = (s: string) => {
+      const sLower = s.toLowerCase();
+      if (RESERVED_EXPERIENCE_SLUGS.has(sLower)) return true;
+      return list.some((e) => {
+        if (newExp.id && (e.id === newExp.id || e.id === `exp-${newExp.id}`)) return false;
+        if (e.slug && e.slug.toLowerCase() === sLower) return true;
+        if (e.initialSlug && e.initialSlug.toLowerCase() === sLower) return true;
+        if (Array.isArray(e.slugAliases) && e.slugAliases.some((a) => a && a.toLowerCase() === sLower)) {
+          return true;
+        }
+        return false;
+      });
+    };
+    while (isSlugInUse(slug)) {
       slug = `${baseSlug}-${suffix++}`;
     }
 
+    const resolvedInitialSlug = newExp.initialSlug || slug;
+    const aliasSet = new Set<string>();
+    if (Array.isArray(newExp.slugAliases)) {
+      newExp.slugAliases.forEach((a) => {
+        if (a && typeof a === 'string') aliasSet.add(a.trim().toLowerCase());
+      });
+    }
+    if (resolvedInitialSlug && resolvedInitialSlug.trim().toLowerCase() !== slug.trim().toLowerCase()) {
+      aliasSet.add(resolvedInitialSlug.trim().toLowerCase());
+    }
+    aliasSet.delete(slug.trim().toLowerCase());
+    const resolvedSlugAliases = Array.from(aliasSet).filter(Boolean);
+
     let initialNotes = newExp.notes;
-    if (newExp.mpCollectorId !== undefined || newExp.mpConnected !== undefined) {
-      let notesObj: Record<string, any> = {};
-      if (newExp.notes && typeof newExp.notes === 'object' && !Array.isArray(newExp.notes)) {
-        notesObj = { ...(newExp.notes as Record<string, any>) };
-      } else if (typeof newExp.notes === 'string') {
-        const rawNotes = newExp.notes.trim();
-        if (rawNotes) {
-          try {
-            const parsed = JSON.parse(rawNotes);
-            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-              notesObj = { ...parsed };
-            } else {
-              notesObj = { text: rawNotes };
-            }
-          } catch {
-            notesObj = { text: rawNotes };
+    let notesObj: Record<string, any> = {};
+    if (newExp.notesMetadata && typeof newExp.notesMetadata === 'object' && !Array.isArray(newExp.notesMetadata)) {
+      notesObj = { ...newExp.notesMetadata };
+    }
+    if (newExp.notes && typeof newExp.notes === 'object' && !Array.isArray(newExp.notes)) {
+      notesObj = { ...notesObj, ...(newExp.notes as Record<string, any>) };
+    } else if (typeof newExp.notes === 'string') {
+      const rawNotes = newExp.notes.trim();
+      if (rawNotes) {
+        try {
+          const parsed = JSON.parse(rawNotes);
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            notesObj = { ...notesObj, ...parsed };
+          } else {
+            notesObj['text'] = rawNotes;
           }
+        } catch {
+          notesObj['text'] = rawNotes;
         }
       }
-      if (newExp.mpCollectorId !== undefined) notesObj['mp_collector_id'] = newExp.mpCollectorId;
-      if (newExp.mpConnected !== undefined) notesObj['mp_connected'] = newExp.mpConnected;
+    }
+    if (newExp.mpCollectorId !== undefined) notesObj['mp_collector_id'] = newExp.mpCollectorId;
+    if (newExp.mpConnected !== undefined) notesObj['mp_connected'] = newExp.mpConnected;
+    if (resolvedInitialSlug) notesObj['initial_slug'] = resolvedInitialSlug;
+    if (resolvedSlugAliases.length > 0) notesObj['slug_aliases'] = resolvedSlugAliases;
+    if (Object.keys(notesObj).length > 0) {
       initialNotes = JSON.stringify(notesObj);
     }
 
     const experience: Experience = {
       ...newExp,
       notes: initialNotes,
+      notesMetadata: Object.keys(notesObj).length > 0 ? { ...notesObj } : undefined,
       slug,
+      initialSlug: resolvedInitialSlug,
+      slugAliases: resolvedSlugAliases,
       detailRoute: `/experiencias/${slug}`,
       publicUrl: `https://experiencias.club/experiencias/${slug}`,
       status: newExp.status || 'publicada',
@@ -1525,9 +1653,69 @@ export class ExperienceService {
                       ? Number(String(rawAlt).replace(/\D/g, ''))
                       : 850;
 
+                const pInitialSlug = p.initialSlug || (() => {
+                  try {
+                    if (p.notes && typeof p.notes === 'object' && !Array.isArray(p.notes)) {
+                      return (p.notes as any).initial_slug || (p.notes as any).initialSlug;
+                    }
+                    if (typeof p.notes === 'string' && p.notes.trim().startsWith('{')) {
+                      const parsed = JSON.parse(p.notes.trim());
+                      return parsed.initial_slug || parsed.initialSlug;
+                    }
+                  } catch {}
+                  return undefined;
+                })();
+
+                const pSlugAliases = Array.isArray(p.slugAliases) && p.slugAliases.length > 0
+                  ? p.slugAliases
+                  : (() => {
+                      try {
+                        if (p.notes && typeof p.notes === 'object' && !Array.isArray(p.notes)) {
+                          const aliases = (p.notes as any).slug_aliases || (p.notes as any).slugAliases;
+                          if (Array.isArray(aliases)) return aliases.map(String);
+                        }
+                        if (typeof p.notes === 'string' && p.notes.trim().startsWith('{')) {
+                          const parsed = JSON.parse(p.notes.trim());
+                          const aliases = parsed.slug_aliases || parsed.slugAliases;
+                          if (Array.isArray(aliases)) return aliases.map(String);
+                        }
+                      } catch {}
+                      return undefined;
+                    })();
+
+                const pNotesMetadata = (() => {
+                  try {
+                    if (p.notesMetadata && typeof p.notesMetadata === 'object' && !Array.isArray(p.notesMetadata)) {
+                      return { ...p.notesMetadata };
+                    }
+                    if (p.notes && typeof p.notes === 'object' && !Array.isArray(p.notes)) {
+                      return { ...(p.notes as any) };
+                    }
+                    if (typeof p.notes === 'string' && p.notes.trim().startsWith('{')) {
+                      const parsed = JSON.parse(p.notes.trim());
+                      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                        return parsed;
+                      }
+                    }
+                  } catch {}
+                  return undefined;
+                })();
+
+                const pDisplayText = (() => {
+                  if (typeof p.notes === 'string' && !p.notes.trim().startsWith('{')) {
+                    return p.notes;
+                  }
+                  if (pNotesMetadata && typeof pNotesMetadata.text === 'string') {
+                    return pNotesMetadata.text || undefined;
+                  }
+                  return undefined;
+                })();
+
                 localExperiences.push({
                   id: p.id || `exp-${p.slug}`,
                   slug: p.slug,
+                  initialSlug: pInitialSlug || undefined,
+                  slugAliases: pSlugAliases || undefined,
                   title: p.title,
                   category,
                   shortTitle: p.shortTitle || p.title,
@@ -1565,6 +1753,8 @@ export class ExperienceService {
                   highlights: p.highlights || [],
                   included: p.included || [],
                   notIncluded: p.notIncluded || [],
+                  notes: pDisplayText,
+                  notesMetadata: pNotesMetadata,
                   pendingRemoteSync: true,
                 });
                 existingSlugs.add(p.slug.toLowerCase());
@@ -1634,9 +1824,41 @@ export class ExperienceService {
                       ? Number(rAltDigits)
                       : 850;
 
+                  const rInitialSlug = r.initialSlug || (() => {
+                    try {
+                      if (r.notes && typeof r.notes === 'object' && !Array.isArray(r.notes)) {
+                        return (r.notes as any).initial_slug || (r.notes as any).initialSlug;
+                      }
+                      if (typeof r.notes === 'string' && r.notes.trim().startsWith('{')) {
+                        const parsed = JSON.parse(r.notes.trim());
+                        return parsed.initial_slug || parsed.initialSlug;
+                      }
+                    } catch {}
+                    return undefined;
+                  })();
+
+                  const rSlugAliases = Array.isArray(r.slugAliases) && r.slugAliases.length > 0
+                    ? r.slugAliases
+                    : (() => {
+                        try {
+                          if (r.notes && typeof r.notes === 'object' && !Array.isArray(r.notes)) {
+                            const aliases = (r.notes as any).slug_aliases || (r.notes as any).slugAliases;
+                            if (Array.isArray(aliases)) return aliases.map(String);
+                          }
+                          if (typeof r.notes === 'string' && r.notes.trim().startsWith('{')) {
+                            const parsed = JSON.parse(r.notes.trim());
+                            const aliases = parsed.slug_aliases || parsed.slugAliases;
+                            if (Array.isArray(aliases)) return aliases.map(String);
+                          }
+                        } catch {}
+                        return undefined;
+                      })();
+
                   localExperiences.push({
                     id,
                     slug,
+                    initialSlug: rInitialSlug || undefined,
+                    slugAliases: rSlugAliases || undefined,
                     title: r.title,
                     category,
                     shortTitle: r.title.split('&')[0].trim(),
@@ -2320,6 +2542,23 @@ export class ExperienceService {
             providerAgency: exp.provider_agency || undefined,
             participantRequirements: exp.participant_requirements || undefined,
             favoritesCount: typeof exp.favorites_count === 'number' ? exp.favorites_count : 0,
+            notesMetadata: (() => {
+              try {
+                if (exp.notes && typeof exp.notes === 'object' && !Array.isArray(exp.notes)) {
+                  return { ...(exp.notes as any) };
+                }
+                if (typeof exp.notes === 'string') {
+                  const trimmed = exp.notes.trim();
+                  if (trimmed.startsWith('{')) {
+                    const p = JSON.parse(trimmed);
+                    if (p && typeof p === 'object' && !Array.isArray(p)) {
+                      return p;
+                    }
+                  }
+                }
+              } catch {}
+              return undefined;
+            })(),
             notes: (() => {
               if (!exp.notes) return undefined;
               if (typeof exp.notes === 'object' && !Array.isArray(exp.notes)) {
@@ -2335,14 +2574,46 @@ export class ExperienceService {
                       if (typeof p.text === 'string') {
                         return p.text || undefined;
                       }
-                      if (p.mp_connected !== undefined || p.mp_collector_id !== undefined || p.deleted !== undefined) {
-                        return undefined;
-                      }
+                      return undefined;
                     }
                   } catch {}
                 }
                 return exp.notes || undefined;
               }
+              return undefined;
+            })(),
+            initialSlug: (() => {
+              try {
+                if (exp.notes && typeof exp.notes === 'object' && !Array.isArray(exp.notes)) {
+                  if ((exp.notes as any).initial_slug) return String((exp.notes as any).initial_slug);
+                  if ((exp.notes as any).initialSlug) return String((exp.notes as any).initialSlug);
+                }
+                if (typeof exp.notes === 'string') {
+                  const trimmed = exp.notes.trim();
+                  if (trimmed.startsWith('{')) {
+                    const p = JSON.parse(trimmed);
+                    if (p.initial_slug) return String(p.initial_slug);
+                    if (p.initialSlug) return String(p.initialSlug);
+                  }
+                }
+              } catch {}
+              return undefined;
+            })(),
+            slugAliases: (() => {
+              try {
+                if (exp.notes && typeof exp.notes === 'object' && !Array.isArray(exp.notes)) {
+                  const aliases = (exp.notes as any).slug_aliases || (exp.notes as any).slugAliases;
+                  if (Array.isArray(aliases)) return aliases.map(String);
+                }
+                if (typeof exp.notes === 'string') {
+                  const trimmed = exp.notes.trim();
+                  if (trimmed.startsWith('{')) {
+                    const p = JSON.parse(trimmed);
+                    const aliases = p.slug_aliases || p.slugAliases;
+                    if (Array.isArray(aliases)) return aliases.map(String);
+                  }
+                }
+              } catch {}
               return undefined;
             })(),
             mpConnected: (() => {
