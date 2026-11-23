@@ -146,6 +146,7 @@
   color: var(--color-gold);
   font-weight: 700;
   display: block;
+  margin-bottom: 0.5rem;
   line-height: 1.2;
   text-transform: uppercase;
 }
@@ -788,8 +789,7 @@
   inset: 0;
   display: flex;
   align-items: flex-end;
-  justify-content: space-between;
-  gap: 1rem;
+  justify-content: flex-start;
   padding: 1.25rem 1.5rem;
   background: linear-gradient(180deg, rgba(6, 12, 26, 0) 40%, rgba(6, 12, 26, 0.85) 100%);
 }
@@ -797,48 +797,58 @@
 .album-preview-count {
   font-size: 0.85rem;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(255, 255, 255, 0.95);
   letter-spacing: 0.02em;
-  margin-bottom: 0.45rem;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+}
+
+.album-preview-actions {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 1.25rem;
 }
 
 .album-preview-cta {
   display: inline-flex;
   align-items: center;
   gap: 0.55rem;
-  padding: 0.8rem 1.4rem;
-  border-radius: 2px;
+  padding: 0.8rem 1.5rem;
+  border-radius: 4px;
   background: rgba(255, 255, 255, 0.08);
-  color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.24);
   font-size: 0.86rem;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  text-decoration: none;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   transition: all 0.2s ease;
   font-family: inherit;
+  cursor: pointer;
 }
 
-.album-preview-card-link:hover .album-preview-cta {
+.album-preview-cta:hover {
   background: rgba(255, 255, 255, 0.16);
   border-color: rgba(255, 255, 255, 0.45);
   transform: translateY(-2px);
-  color: #ffffff;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
 }
 
 @media (max-width: 600px) {
   .album-preview-overlay {
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: flex-end;
     padding: 1rem;
-    gap: 0.5rem;
   }
 
-  .album-preview-count {
-    margin-bottom: 0;
+  .album-preview-actions {
+    width: 100%;
+  }
+
+  .album-preview-cta {
+    width: 100%;
+    justify-content: center;
   }
 }
 

@@ -278,10 +278,15 @@
               decoding="async"
             />
             <div class="album-preview-overlay">
-              <span class="album-preview-cta">VER ÁLBUM COMPLETO</span>
               <span class="album-preview-count">{{ albumPhotosCount() }} {{ albumPhotosCount() === 1 ? 'foto' : 'fotos' }} en el álbum</span>
             </div>
           </a>
+
+          <div class="album-preview-actions">
+            <a [routerLink]="photosRoute()" class="album-preview-cta">
+              <span>VER ÁLBUM COMPLETO</span>
+            </a>
+          </div>
         </div>
         }
 

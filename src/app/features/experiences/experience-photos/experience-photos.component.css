@@ -78,7 +78,7 @@
   color: var(--color-gold, #d9b35a);
   font-weight: 700;
   display: block;
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.5rem;
   line-height: 1.2;
   text-transform: uppercase;
 }

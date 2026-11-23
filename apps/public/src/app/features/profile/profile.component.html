@@ -43,8 +43,14 @@
                 <strong>{{ newsletter.isMonthlyActive() ? 'Socio Pleno' : 'Socio Emergente' }}</strong>.
               </p>
 
-              @if (emergingTenureLabel() || plenoTenureLabel() || plenoRemainingInfo()) {
+              @if (memberNumber() || emergingTenureLabel() || plenoTenureLabel() || plenoRemainingInfo()) {
               <div class="membership-tenure-strip">
+                @if (memberNumber(); as num) {
+                <div class="tenure-tile">
+                  <span class="tenure-label">NÚMERO DE SOCIO</span>
+                  <strong class="tenure-value">#{{ num }}</strong>
+                </div>
+                }
                 @if (emergingTenureLabel(); as emergingTenure) {
                 <div class="tenure-tile">
                   <span class="tenure-label">ANTIGÜEDAD SOCIO EMERGENTE</span>

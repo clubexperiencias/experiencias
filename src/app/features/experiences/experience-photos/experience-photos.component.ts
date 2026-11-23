@@ -318,6 +318,48 @@ export class ExperiencePhotosComponent {
   });
 
   // ═══════════════ LIGHTBOX METHODS ═══════════════
+  getPhotoDisplayTitle(photo?: ExperienceAlbumPhoto | null): string {
+    if (!photo) return 'Sin título';
+
+    const caption = photo.caption?.trim();
+    const title = photo.title?.trim();
+    const expTitle = this.exp()?.title?.trim() || '';
+    const expShortTitle = this.exp()?.shortTitle?.trim() || '';
+
+    const isAutoTitle = (t?: string) => {
+      if (!t) return true;
+      if (t === expTitle || t === expShortTitle) return true;
+      if (
+        t === 'Foto del álbum' ||
+        t === 'Portada' ||
+        t === 'Foto destacada' ||
+        t === 'Foto de la experiencia' ||
+        t === 'Foto de experiencia'
+      ) {
+        return true;
+      }
+      if (/- Destacada \d+$/i.test(t)) return true;
+      if (/- Galería \d+$/i.test(t)) return true;
+      if (/· Postal \d+$/i.test(t)) return true;
+      return false;
+    };
+
+    if (
+      caption &&
+      caption !== this.exp()?.region &&
+      caption !== 'Portada oficial de la experiencia' &&
+      caption !== 'Foto de portada principal'
+    ) {
+      return caption;
+    }
+
+    if (title && !isAutoTitle(title)) {
+      return title;
+    }
+
+    return 'Sin título';
+  }
+
   openLightbox(photo: ExperienceAlbumPhoto): void {
     const list = this.allPhotosOrdered();
     const idx = list.findIndex((p) => p.id === photo.id);

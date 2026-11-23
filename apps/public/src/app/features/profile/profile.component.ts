@@ -97,6 +97,18 @@ export class ProfileComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly nowMs = signal<number>(Date.now());
   private clockTimer: ReturnType<typeof setInterval> | null = null;
 
+  readonly memberNumber = computed<string | number | null>(() => {
+    const member = this.newsletter.currentMember();
+    if (!member) return null;
+    const raw: unknown = member.position;
+    if (raw === null || raw === undefined) return null;
+    if (typeof raw === 'string') {
+      const cleaned = raw.replace(/^#/, '').trim();
+      return cleaned || null;
+    }
+    return typeof raw === 'number' && raw > 0 ? raw : null;
+  });
+
   readonly emergingTenureLabel = computed<string | null>(() => {
     const nowMs = this.nowMs();
     const member = this.newsletter.currentMember();

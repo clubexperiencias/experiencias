@@ -249,5 +249,48 @@ describe('ProviderExperienceProposalModalComponent Draft Persistence', () => {
     expect(callArgs.coverImage).not.toBe('data:image/jpeg;base64,otherDataUrl');
     expect(callArgs.coverImage).toContain('data:image/jpeg;base64,');
   });
+
+  describe('durationOptions handling and normalization', () => {
+    it('should normalize legacy "1 a 2 horas (Paseo express)" to "1 a 2 horas" on loadDraft', () => {
+      localStorage.setItem(
+        ProviderExperienceProposalModalComponent.DRAFT_STORAGE_KEY,
+        JSON.stringify({
+          reqForm: {
+            title: 'Kayak Paseo',
+            duration: '1 a 2 horas (Paseo express)',
+          },
+        }),
+      );
+
+      component.loadDraft();
+
+      expect(component.reqForm.duration).toBe('1 a 2 horas');
+      expect(component.isCustomDuration(component.reqForm.duration)).toBe(false);
+    });
+
+    it('should preserve unoffered custom duration on loadDraft and render it as option in select', () => {
+      const customDuration = '5 horas (Travesía personalizada)';
+      localStorage.setItem(
+        ProviderExperienceProposalModalComponent.DRAFT_STORAGE_KEY,
+        JSON.stringify({
+          reqForm: {
+            title: 'Travesía Especial',
+            duration: customDuration,
+          },
+        }),
+      );
+
+      component.loadDraft();
+      fixture.detectChanges();
+
+      expect(component.reqForm.duration).toBe(customDuration);
+      expect(component.isCustomDuration(customDuration)).toBe(true);
+
+      const selectEl: HTMLSelectElement = fixture.nativeElement.querySelector('#req-duration');
+      expect(selectEl).toBeTruthy();
+      const optionTexts = Array.from(selectEl.options).map((opt) => opt.value);
+      expect(optionTexts).toContain(customDuration);
+    });
+  });
 });
 

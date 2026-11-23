@@ -82,6 +82,22 @@ export const EXPERIENCE_CATEGORY_OPTIONS: readonly ExperienceCategoryOption[] = 
   { value: 'hospedajes', label: 'Hospedajes & Refugios' },
 ];
 
+export const EXPERIENCE_DURATION_OPTIONS: readonly string[] = [
+  '15 a 30 minutos (Express)',
+  '30 minutos',
+  '30 a 45 minutos',
+  '1 hora',
+  '1 a 2 horas',
+  '2 a 3 horas (Actividad corta)',
+  '4 horas (Media jornada)',
+  '6 a 8 horas (Jornada completa)',
+  '8 horas (Jornada completa)',
+  'Día completo (10 h)',
+  'Día completo con noche (2 días / 1 noche)',
+  'Expedición 3 días / 2 noches',
+  'Travesía 4 días o más',
+];
+
 export const ALTITUDE_OPTIONS: readonly AltitudeOption[] = [
   { value: 0, label: '0 msnm (Sin altitud / Llano o Náutica)' },
   { value: 500, label: '500 msnm (Valle Central / Diques)' },
