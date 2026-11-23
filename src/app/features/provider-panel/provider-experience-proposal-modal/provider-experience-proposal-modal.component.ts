@@ -642,6 +642,9 @@ const DEFAULT_REQ_FORM = {
                         name="duration"
                         required
                       >
+                        @if (isCustomDuration(reqForm.duration)) {
+                          <option [value]="reqForm.duration">{{ reqForm.duration }}</option>
+                        }
                         @for (d of durationOptions; track d) {
                           <option [value]="d">{{ d }}</option>
                         }
@@ -2901,6 +2904,20 @@ export class ProviderExperienceProposalModalComponent {
     return !this.categoryOptions.some((opt) => opt.value === val);
   }
 
+  isCustomDuration(val: string | null | undefined): boolean {
+    if (!val) return false;
+    return !this.durationOptions.includes(val);
+  }
+
+  normalizeDuration(val: string | null | undefined): string {
+    if (!val) return '';
+    const trimmed = val.trim();
+    if (trimmed === '1 a 2 horas (Paseo express)') {
+      return '1 a 2 horas';
+    }
+    return trimmed;
+  }
+
   onAltitudeInput(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (!input || input.value === null || input.value === undefined) return;
@@ -3286,6 +3303,9 @@ export class ProviderExperienceProposalModalComponent {
           ...DEFAULT_REQ_FORM,
           ...data.reqForm,
         };
+        if (this.reqForm.duration) {
+          this.reqForm.duration = this.normalizeDuration(this.reqForm.duration);
+        }
         // Borradores previos guardaban el link de Maps dentro de "meetingPoint"
         if (!this.reqForm.meetingPointUrl && this.isValidGoogleMapsUrl(this.reqForm.meetingPoint)) {
           this.reqForm.meetingPointUrl = this.reqForm.meetingPoint;

@@ -75,6 +75,7 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
               [clubProfile]="adminStore.clubProfile()"
               [saving]="saving()"
               [cancelRoute]="isRouteCreateMode() ? backToListLink() : getDetailRoute(exp)"
+              (providerChange)="onAdminProviderChange($event)"
               (saveExperience)="onSaveAdminExperience($event)"
               (cancel)="onCancelAdminEdit()"
             />
@@ -4658,6 +4659,7 @@ export class AdminExperiencesComponent implements OnInit {
   readonly editStatus = signal<'publicada' | 'oculta' | 'borrador' | 'pendiente' | 'rechazada'>('publicada');
   readonly editDisplayLocation = signal<'destacada' | 'catalogo' | 'no_listada'>('destacada');
   readonly editProviderName = signal('');
+  readonly editProviderId = signal('');
   readonly editProviderPhone = signal('');
   readonly editProviderCbuAlias = signal('');
   readonly editProviderCuitDni = signal('');
@@ -4670,6 +4672,11 @@ export class AdminExperiencesComponent implements OnInit {
     const exp = this.editingExperience();
     const name = this.editProviderName().trim().toLowerCase();
     const providers = this.adminStore.providerStore.providers();
+    const explicitId = (this.editProviderId() || '').trim();
+    if (explicitId) {
+      const byExplicitId = providers.find((p) => p.id === explicitId);
+      if (byExplicitId) return byExplicitId;
+    }
     if (exp?.providerId) {
       const byId = providers.find((p) => p.id === exp.providerId);
       if (byId) return byId;
@@ -4746,7 +4753,39 @@ export class AdminExperiencesComponent implements OnInit {
     this.showToast(`Datos de Mercado Pago cargados desde el perfil de ${prov.name}.`);
   }
 
+  readonly activeFormSelectedProviderId = signal<string | null>(null);
+
+  onAdminProviderChange(event: { providerId: string; isClub: boolean }): void {
+    this.activeFormSelectedProviderId.set(event.providerId);
+  }
+
   readonly currentAdminMpInfo = computed(() => {
+    const activeSelectedId = this.activeFormSelectedProviderId();
+    if (activeSelectedId) {
+      if (activeSelectedId === 'club') {
+        return {
+          connected: true,
+          collectorId: 'CLUB_MP_OFICIAL',
+          nickname: 'Club de Experiencias',
+        };
+      }
+      if (activeSelectedId === 'custom') {
+        return {
+          connected: false,
+          collectorId: '',
+          nickname: '',
+        };
+      }
+      const prov = this.adminStore.providerStore.providers().find((p) => p.id === activeSelectedId);
+      if (prov) {
+        return {
+          connected: Boolean(prov.mpConnected),
+          collectorId: prov.mpCollectorId || '',
+          nickname: prov.mpNickname || prov.name || '',
+        };
+      }
+    }
+
     const exp = this.editingExperience();
     const isClub = exp ? this.isClub(exp) : false;
     const prov = exp ? this.getProviderForExperience(exp) : null;
@@ -4784,6 +4823,7 @@ export class AdminExperiencesComponent implements OnInit {
       this.editRequirementsRaw.set(p.participantRequirements);
       this.editHighlightsRaw.set(p.highlights.join('\n'));
       if (p.providerName !== undefined) this.editProviderName.set(p.providerName);
+      if (p.providerId !== undefined) this.editProviderId.set(p.providerId || '');
       if (p.providerPhone !== undefined) {
         const submittedPhone = (p.providerPhone || '').trim();
         const currentExp = this.editingExperience();
@@ -4815,6 +4855,7 @@ export class AdminExperiencesComponent implements OnInit {
   }
 
   openEditModal(exp: Experience): void {
+    this.activeFormSelectedProviderId.set(null);
     this.isCreating.set(false);
     this.editingExperience.set(exp);
 
@@ -4962,6 +5003,7 @@ export class AdminExperiencesComponent implements OnInit {
     }
 
     this.editProviderName.set(finalProviderName);
+    this.editProviderId.set(exp.providerId || '');
     this.editProviderPhone.set(finalProviderPhone);
     this.editProviderCbuAlias.set(finalProviderCbu);
     this.editProviderCuitDni.set(finalProviderCuit);
@@ -4985,6 +5027,7 @@ export class AdminExperiencesComponent implements OnInit {
   }
 
   openCreateModal(): void {
+    this.activeFormSelectedProviderId.set(null);
     const newId = `exp-${Date.now().toString(36)}`;
     const blankExp: Experience = {
       id: newId,
@@ -5048,6 +5091,7 @@ export class AdminExperiencesComponent implements OnInit {
     this.editStatus.set('publicada');
     this.editDisplayLocation.set('destacada');
     this.editProviderName.set('');
+    this.editProviderId.set('');
     this.editProviderPhone.set('');
     this.editProviderCbuAlias.set('');
     this.editProviderCuitDni.set('');
@@ -5360,12 +5404,16 @@ export class AdminExperiencesComponent implements OnInit {
 
     const finalProviderName = inputProviderName || fallbackCreatorName;
     const isExplicitClub =
-      !finalProviderName ||
-      finalProviderName.toLowerCase() === 'club de experiencias' ||
-      finalProviderName.toLowerCase() === 'club';
+      inputProviderName.toLowerCase() === 'club de experiencias' ||
+      inputProviderName.toLowerCase() === 'club';
 
     const isExternalExperience = Boolean(currentExp && !this.isClub(currentExp) && !this.isCreating());
-    const isClub = !isExternalExperience && isExplicitClub && (this.isClub(currentExp) || this.isCreating());
+    const isClub =
+      isExplicitClub ||
+      (!isExternalExperience &&
+        (!finalProviderName ||
+          finalProviderName.toLowerCase() === 'club de experiencias' ||
+          finalProviderName.toLowerCase() === 'club'));
     const club = this.adminStore.clubProfile();
 
     const resolvedProviderPhone = isClub
@@ -5407,8 +5455,12 @@ export class AdminExperiencesComponent implements OnInit {
       ? (club.name || 'Club de Experiencias')
       : finalProviderName;
 
+    const explicitProviderId = (this.editProviderId() || '').trim();
     const matchedProvider = !isClub
-      ? this.adminStore.providerStore.providers().find((p) => {
+      ? (explicitProviderId
+          ? this.adminStore.providerStore.providers().find((p) => p.id === explicitProviderId)
+          : undefined) ||
+        this.adminStore.providerStore.providers().find((p) => {
           const pName = (p.name || '').trim().toLowerCase();
           const pAgency = (p.agency || '').trim().toLowerCase();
           const targetName = resolvedProviderName.toLowerCase().trim();
@@ -5471,16 +5523,18 @@ export class AdminExperiencesComponent implements OnInit {
       providerBankName: resolvedProviderBank,
       providerSlug: resolvedProviderSlug,
       providerEmail: resolvedProviderEmail,
-      providerId: isClub ? undefined : (matchedProvider?.id || currentExp?.providerId),
+      providerId: isClub ? undefined : (matchedProvider?.id || (explicitProviderId || undefined) || currentExp?.providerId),
       isClubExperience: isClub,
       mpConnected: isClub
-        ? this.editMpConnected()
-        : (matchedProvider && matchedProvider.mpConnected !== undefined
-          ? matchedProvider.mpConnected
+        ? (isExternalExperience ? true : this.editMpConnected())
+        : (matchedProvider
+          ? (matchedProvider.mpConnected !== undefined ? matchedProvider.mpConnected : false)
           : this.editMpConnected()),
       mpCollectorId: isClub
-        ? this.editMpCollectorId().trim()
-        : (matchedProvider?.mpCollectorId || this.editMpCollectorId().trim()),
+        ? (isExternalExperience ? 'CLUB-OFICIAL' : (this.editMpCollectorId().trim() || 'CLUB-OFICIAL'))
+        : (matchedProvider
+          ? (matchedProvider.mpCollectorId || '').trim()
+          : this.editMpCollectorId().trim()),
       videoUrl: safeVideoUrl,
       videoPoster: this.editVideoPoster().trim(),
       dates,

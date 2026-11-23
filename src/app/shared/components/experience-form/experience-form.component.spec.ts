@@ -1,3 +1,4 @@
+import { SimpleChange } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { ExperienceFormComponent } from './experience-form.component';
@@ -117,6 +118,9 @@ describe('ExperienceFormComponent - isLodging & calculatedUsd reactivity', () =>
         cbuAlias: 'PATRICIO.KAYAK.MP',
         cuitDni: '20-33445566-7',
         bankName: 'Mercado Pago',
+        mpConnected: true,
+        mpCollectorId: 'MP-PATRICIO-COLLECTOR',
+        mpNickname: 'Patricio MP',
       },
       {
         id: 'prov-juan',
@@ -127,6 +131,9 @@ describe('ExperienceFormComponent - isLodging & calculatedUsd reactivity', () =>
         cbuAlias: 'JUAN.TREKKING.BNA',
         cuitDni: '20-11223344-5',
         bankName: 'Banco Nación',
+        mpConnected: false,
+        mpCollectorId: '',
+        mpNickname: '',
       },
     ] as any[];
 
@@ -200,6 +207,303 @@ describe('ExperienceFormComponent - isLodging & calculatedUsd reactivity', () =>
       });
 
       expect(component.selectedProviderId()).toBe('club');
+    });
+
+    it('should not overwrite user-selected provider when registeredProviders changes', () => {
+      component.onSelectProvider('prov-juan');
+      expect(component.selectedProviderId()).toBe('prov-juan');
+
+      const updatedProviders = [
+        ...mockProviders,
+        {
+          id: 'prov-new',
+          name: 'Nuevo Guia',
+          agency: 'Nueva Agencia',
+          email: 'nuevo@guia.com',
+          phone: '+54 9 383 1234567',
+        },
+      ];
+
+      fixture.componentRef.setInput('registeredProviders', updatedProviders);
+      component.ngOnChanges({
+        registeredProviders: new SimpleChange(mockProviders, updatedProviders, false),
+      });
+
+      expect(component.selectedProviderId()).toBe('prov-juan');
+      expect(component.form.controls.providerName.value).toBe('Trekking Puna');
+    });
+
+    it('should preserve selected provider ID and corresponding filled fields when registeredProviders list updates', () => {
+      component.onSelectProvider('prov-patricio');
+      component.form.controls.providerPhone.setValue('+54 9 383 9998888');
+
+      const updatedProviders = mockProviders.map((p) =>
+        p.id === 'prov-patricio' ? { ...p, phone: '+54 9 383 0000000' } : p
+      );
+
+      fixture.componentRef.setInput('registeredProviders', updatedProviders);
+      component.ngOnChanges({
+        registeredProviders: new SimpleChange(mockProviders, updatedProviders, false),
+      });
+
+      expect(component.selectedProviderId()).toBe('prov-patricio');
+      expect(component.form.controls.providerPhone.value).toBe('+54 9 383 9998888');
+      expect(component.form.controls.providerName.value).toBe('Catamarca Kayak');
+    });
+
+    it('should sync provider from initialExperience on registeredProviders change when no provider was selected', () => {
+      component.initialExperience = {
+        title: 'Travesía Kayak',
+        providerId: 'prov-patricio',
+        providerName: 'Catamarca Kayak',
+      } as any;
+      component.selectedProviderId.set('custom');
+
+      component.ngOnChanges({
+        registeredProviders: new SimpleChange([], mockProviders, false),
+      });
+
+      expect(component.selectedProviderId()).toBe('prov-patricio');
+      expect(component.form.controls.providerName.value).toBe('Catamarca Kayak');
+    });
+
+    it('should re-sync provider when initialExperience changes', () => {
+      component.onSelectProvider('prov-patricio');
+      expect(component.selectedProviderId()).toBe('prov-patricio');
+
+      const newExp = {
+        title: 'Expedición Puna',
+        providerId: 'prov-juan',
+        providerName: 'Trekking Puna',
+        providerPhone: '+54 9 383 4998877',
+      } as any;
+      component.initialExperience = newExp;
+
+      component.ngOnChanges({
+        initialExperience: new SimpleChange(null, newExp, false),
+      });
+
+      expect(component.selectedProviderId()).toBe('prov-juan');
+      expect(component.form.controls.providerName.value).toBe('Trekking Puna');
+    });
+
+    it('should search all registeredProviders for exact provider ID match first before falling back to name/email/slug', () => {
+      const providers = [
+        {
+          id: 'prov-imposter',
+          name: 'Impostor',
+          agency: 'Catamarca Kayak',
+          email: 'imposter@kayak.com',
+        },
+        {
+          id: 'prov-real',
+          name: 'Real Guide',
+          agency: 'Otra Agencia',
+          email: 'real@guia.com',
+        },
+      ] as any[];
+
+      fixture.componentRef.setInput('registeredProviders', providers);
+
+      component.populateForm({
+        title: 'Travesía Especial en Kayak',
+        tagline: 'Una bajada increíble',
+        description: 'Una bajada increíble por los ríos y diques de Catamarca para disfrutar en familia',
+        durationLabel: '2 horas',
+        meetingPoint: 'Dique El Jumeal',
+        providerId: 'prov-real',
+        providerName: 'Catamarca Kayak',
+      });
+
+      expect(component.selectedProviderId()).toBe('prov-real');
+
+      let emittedPayload: any = null;
+      component.saveExperience.subscribe((event) => {
+        emittedPayload = event.payload;
+      });
+
+      component.onSubmit();
+      expect(emittedPayload).toBeTruthy();
+      expect(emittedPayload.providerId).toBe('prov-real');
+      expect(emittedPayload.providerEmail).toBe('real@guia.com');
+    });
+
+    it('should match provider B when providers share an agency and the experience has provider B ID', () => {
+      const providersWithSharedAgency = [
+        {
+          id: 'prov-a',
+          name: 'Guía Uno',
+          agency: 'Catamarca Kayak Expediciones',
+          email: 'guia1@kayak.com',
+        },
+        {
+          id: 'prov-b',
+          name: 'Guía Dos',
+          agency: 'Catamarca Kayak Expediciones',
+          email: 'guia2@kayak.com',
+        },
+      ] as any[];
+
+      fixture.componentRef.setInput('registeredProviders', providersWithSharedAgency);
+
+      component.populateForm({
+        title: 'Travesía Dique El Jumeal',
+        tagline: 'Remada guiada en kayak',
+        description: 'Recorrido en kayak por el dique con guías experimentados y equipo completo',
+        durationLabel: '2 horas',
+        meetingPoint: 'Dique El Jumeal',
+        providerId: 'prov-b',
+        providerName: 'Catamarca Kayak Expediciones',
+      });
+
+      expect(component.selectedProviderId()).toBe('prov-b');
+
+      let emittedPayload: any = null;
+      component.saveExperience.subscribe((event) => {
+        emittedPayload = event.payload;
+      });
+
+      component.onSubmit();
+      expect(emittedPayload).toBeTruthy();
+      expect(emittedPayload.providerId).toBe('prov-b');
+      expect(emittedPayload.providerEmail).toBe('guia2@kayak.com');
+    });
+
+    it('should keep Mercado Pago panel in sync with current form provider selection and emit providerChange', () => {
+      let emittedChange: any = null;
+      component.providerChange.subscribe((change) => {
+        emittedChange = change;
+      });
+
+      // 1. Select prov-patricio (which has mpConnected: true)
+      component.onSelectProvider('prov-patricio');
+      fixture.detectChanges();
+
+      expect(emittedChange).toEqual({
+        providerId: 'prov-patricio',
+        isClub: false,
+        mpInfo: {
+          connected: true,
+          collectorId: 'MP-PATRICIO-COLLECTOR',
+          nickname: 'Patricio MP',
+        },
+      });
+      expect(component.activeMpInfo().connected).toBe(true);
+      expect(component.activeMpInfo().collectorId).toBe('MP-PATRICIO-COLLECTOR');
+
+      const el = fixture.nativeElement as HTMLElement;
+      expect(el.textContent).toContain('Cuenta Vinculada');
+      expect(el.textContent).toContain('MP-PATRICIO-COLLECTOR');
+      expect(el.textContent).toContain('Patricio MP');
+
+      // 2. Switch to prov-juan (which has mpConnected: false)
+      component.onSelectProvider('prov-juan');
+      fixture.detectChanges();
+
+      expect(emittedChange.providerId).toBe('prov-juan');
+      expect(emittedChange.mpInfo.connected).toBe(false);
+      expect(component.activeMpInfo().connected).toBe(false);
+      expect(el.textContent).toContain('No Vinculada');
+      expect(el.textContent).toContain('No asignado');
+
+      // 3. Select club
+      component.onSelectProvider('club');
+      fixture.detectChanges();
+
+      expect(emittedChange.providerId).toBe('club');
+      expect(emittedChange.isClub).toBe(true);
+      expect(component.activeMpInfo().connected).toBe(true);
+      expect(component.activeMpInfo().collectorId).toBe('CLUB_MP_OFICIAL');
+      expect(el.textContent).toContain('Acreditación instantánea a la cuenta oficial del Club');
+    });
+
+    it('should search all registeredProviders for exact provider ID match first before falling back to name/email/slug', () => {
+      const providers = [
+        {
+          id: 'prov-imposter',
+          name: 'Impostor',
+          agency: 'Catamarca Kayak',
+          email: 'imposter@kayak.com',
+        },
+        {
+          id: 'prov-real',
+          name: 'Real Guide',
+          agency: 'Otra Agencia',
+          email: 'real@guia.com',
+        },
+      ] as any[];
+
+      fixture.componentRef.setInput('registeredProviders', providers);
+
+      component.populateForm({
+        title: 'Travesía Especial en Kayak',
+        tagline: 'Una bajada increíble',
+        description: 'Una bajada increíble por los ríos y diques de Catamarca para disfrutar en familia',
+        durationLabel: '2 horas',
+        meetingPoint: 'Dique El Jumeal',
+        providerId: 'prov-real',
+        providerName: 'Catamarca Kayak',
+      });
+
+      expect(component.selectedProviderId()).toBe('prov-real');
+
+      let emittedPayload: any = null;
+      component.saveExperience.subscribe((event) => {
+        emittedPayload = event.payload;
+      });
+
+      component.onSubmit();
+      expect(emittedPayload).toBeTruthy();
+      expect(emittedPayload.providerId).toBe('prov-real');
+      expect(emittedPayload.providerEmail).toBe('real@guia.com');
+    });
+
+    it('should keep Mercado Pago panel in sync with current form provider selection and emit providerChange', () => {
+      let emittedChange: any = null;
+      component.providerChange.subscribe((change) => {
+        emittedChange = change;
+      });
+
+      // 1. Select prov-patricio (which has mpConnected: true)
+      component.onSelectProvider('prov-patricio');
+      fixture.detectChanges();
+
+      expect(emittedChange).toEqual({
+        providerId: 'prov-patricio',
+        isClub: false,
+        mpInfo: {
+          connected: true,
+          collectorId: 'MP-PATRICIO-COLLECTOR',
+          nickname: 'Patricio MP',
+        },
+      });
+      expect(component.activeMpInfo().connected).toBe(true);
+      expect(component.activeMpInfo().collectorId).toBe('MP-PATRICIO-COLLECTOR');
+
+      const el = fixture.nativeElement as HTMLElement;
+      expect(el.textContent).toContain('Cuenta Vinculada');
+      expect(el.textContent).toContain('MP-PATRICIO-COLLECTOR');
+      expect(el.textContent).toContain('Patricio MP');
+
+      // 2. Switch to prov-juan (which has mpConnected: false)
+      component.onSelectProvider('prov-juan');
+      fixture.detectChanges();
+
+      expect(emittedChange.providerId).toBe('prov-juan');
+      expect(emittedChange.mpInfo.connected).toBe(false);
+      expect(component.activeMpInfo().connected).toBe(false);
+      expect(el.textContent).toContain('No Vinculada');
+      expect(el.textContent).toContain('No asignado');
+
+      // 3. Select club
+      component.onSelectProvider('club');
+      fixture.detectChanges();
+
+      expect(emittedChange.providerId).toBe('club');
+      expect(emittedChange.isClub).toBe(true);
+      expect(component.activeMpInfo().connected).toBe(true);
+      expect(component.activeMpInfo().collectorId).toBe('CLUB_MP_OFICIAL');
+      expect(el.textContent).toContain('Acreditación instantánea a la cuenta oficial del Club');
     });
   });
 });

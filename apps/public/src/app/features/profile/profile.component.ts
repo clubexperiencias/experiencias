@@ -100,12 +100,13 @@ export class ProfileComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly memberNumber = computed<string | number | null>(() => {
     const member = this.newsletter.currentMember();
     if (!member) return null;
-    const raw: unknown = member.position ?? 143;
+    const raw: unknown = member.position;
+    if (raw === null || raw === undefined) return null;
     if (typeof raw === 'string') {
       const cleaned = raw.replace(/^#/, '').trim();
-      return cleaned || 143;
+      return cleaned || null;
     }
-    return (typeof raw === 'number' && raw > 0) ? raw : 143;
+    return typeof raw === 'number' && raw > 0 ? raw : null;
   });
 
   readonly emergingTenureLabel = computed<string | null>(() => {

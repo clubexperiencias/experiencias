@@ -376,4 +376,75 @@ describe('ProfileComponent', () => {
     expect(component.selectedExperiences()).toEqual(['exp-wishlist-1', 'other-exp']);
     expect(scheduleSpy).toHaveBeenCalled();
   });
+
+  describe('memberNumber computed signal', () => {
+    it('should return null when member is null', () => {
+      (component.newsletter as any)._currentMember.set(null);
+      expect(component.memberNumber()).toBeNull();
+    });
+
+    it('should return null when member.position is null or undefined without substituting 143', () => {
+      (component.newsletter as any)._currentMember.set({
+        id: 'mem-1',
+        email: 'test@gmail.com',
+        position: null,
+      });
+      expect(component.memberNumber()).toBeNull();
+
+      (component.newsletter as any)._currentMember.set({
+        id: 'mem-2',
+        email: 'test2@gmail.com',
+        position: undefined,
+      });
+      expect(component.memberNumber()).toBeNull();
+    });
+
+    it('should return valid positive number when position is positive', () => {
+      (component.newsletter as any)._currentMember.set({
+        id: 'mem-1',
+        email: 'test@gmail.com',
+        position: 143,
+      });
+      expect(component.memberNumber()).toBe(143);
+
+      (component.newsletter as any)._currentMember.set({
+        id: 'mem-2',
+        email: 'test@gmail.com',
+        position: 1,
+      });
+      expect(component.memberNumber()).toBe(1);
+    });
+
+    it('should return cleaned string when position is formatted with # or spaces', () => {
+      (component.newsletter as any)._currentMember.set({
+        id: 'mem-1',
+        email: 'test@gmail.com',
+        position: '#143',
+      });
+      expect(component.memberNumber()).toBe('143');
+    });
+
+    it('should return null when position is zero, negative or empty string', () => {
+      (component.newsletter as any)._currentMember.set({
+        id: 'mem-1',
+        email: 'test@gmail.com',
+        position: 0,
+      });
+      expect(component.memberNumber()).toBeNull();
+
+      (component.newsletter as any)._currentMember.set({
+        id: 'mem-2',
+        email: 'test@gmail.com',
+        position: -10,
+      });
+      expect(component.memberNumber()).toBeNull();
+
+      (component.newsletter as any)._currentMember.set({
+        id: 'mem-3',
+        email: 'test@gmail.com',
+        position: '#',
+      });
+      expect(component.memberNumber()).toBeNull();
+    });
+  });
 });

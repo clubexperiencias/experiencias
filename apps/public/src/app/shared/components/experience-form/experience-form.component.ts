@@ -112,6 +112,7 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
   } | null = null;
 
   readonly selectedProviderId = signal<string>('custom');
+  private hasUserSelectedProvider = false;
 
   @Output() saveExperience = new EventEmitter<{
     payload: ExperienceFormPayload;
@@ -119,6 +120,15 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
   }>();
   @Output() cancel = new EventEmitter<void>();
   @Output() draftChange = new EventEmitter<void>();
+  @Output() providerChange = new EventEmitter<{
+    providerId: string;
+    isClub: boolean;
+    mpInfo: {
+      connected?: boolean;
+      collectorId?: string;
+      nickname?: string;
+    };
+  }>();
 
   readonly categoryOptions = EXPERIENCE_CATEGORY_OPTIONS;
   readonly altitudeOptions = ALTITUDE_OPTIONS;
@@ -243,11 +253,40 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
       }
       this.form.controls.slug.updateValueAndValidity();
     }
-    if (changes['initialExperience'] && this.initialExperience) {
-      this.populateForm(this.initialExperience);
+    const experienceChanged = Boolean(changes['initialExperience']);
+    if (experienceChanged) {
+      this.hasUserSelectedProvider = false;
+      if (this.initialExperience) {
+        this.populateForm(this.initialExperience);
+      } else {
+        this.syncSelectedProviderFromExperience(null);
+      }
     }
     if (changes['registeredProviders'] || changes['isClubExperience']) {
-      this.syncSelectedProviderFromExperience(this.initialExperience);
+      const currentId = this.selectedProviderId();
+      const hasProviderSelected = Boolean(currentId && currentId !== 'custom');
+      const hasSelection = this.hasUserSelectedProvider || hasProviderSelected;
+
+      if (!hasSelection) {
+        if (!experienceChanged) {
+          this.syncSelectedProviderFromExperience(this.initialExperience);
+        }
+      }
+
+      const activeId = this.selectedProviderId();
+      if (activeId && activeId !== 'custom' && activeId !== 'club') {
+        const provider = this.registeredProviders?.find((p) => p.id === activeId);
+        if (provider) {
+          const pName = (provider.agency || provider.name || '').trim();
+          this.form.patchValue({
+            providerName: this.form.controls.providerName.value || pName,
+            providerPhone: this.form.controls.providerPhone.value || (provider.phone || '').trim(),
+            providerCbuAlias: this.form.controls.providerCbuAlias.value || (provider.cbuAlias || '').trim(),
+            providerCuitDni: this.form.controls.providerCuitDni.value || (provider.cuitDni || '').trim(),
+            providerBankName: this.form.controls.providerBankName.value || (provider.bankName || '').trim(),
+          });
+        }
+      }
     }
   }
 
@@ -278,6 +317,7 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
   }
 
   populateForm(exp: Partial<Experience> | Partial<ProviderExperience> | any): void {
+    this.hasUserSelectedProvider = false;
     const category = exp.category || 'expediciones';
     const region = exp.region || this.regions[0];
     const difficulty = exp.difficulty || 'Ninguna';
@@ -422,15 +462,17 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
       const provEmail = (exp.providerEmail || '').trim().toLowerCase();
       const provSlug = (exp.providerSlug || '').trim().toLowerCase();
 
-      const match = this.registeredProviders.find((p) => {
-        if (provId && p.id === provId) return true;
-        if (provEmail && p.email && p.email.toLowerCase() === provEmail) return true;
-        if (provSlug && p.slug && p.slug.toLowerCase() === provSlug) return true;
-        const targetName = (p.name || '').trim().toLowerCase();
-        const targetAgency = (p.agency || '').trim().toLowerCase();
-        if (pName && (targetName === pName || targetAgency === pName)) return true;
-        return false;
-      });
+      let match = provId ? this.registeredProviders.find((p) => p.id === provId) : undefined;
+      if (!match) {
+        match = this.registeredProviders.find((p) => {
+          if (provEmail && p.email && p.email.toLowerCase() === provEmail) return true;
+          if (provSlug && p.slug && p.slug.toLowerCase() === provSlug) return true;
+          const targetName = (p.name || '').trim().toLowerCase();
+          const targetAgency = (p.agency || '').trim().toLowerCase();
+          if (pName && (targetName === pName || targetAgency === pName)) return true;
+          return false;
+        });
+      }
 
       if (match) {
         this.selectedProviderId.set(match.id);
@@ -441,7 +483,82 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
     this.selectedProviderId.set('custom');
   }
 
+  readonly activeMpInfo = computed<{
+    connected?: boolean;
+    collectorId?: string;
+    nickname?: string;
+  }>(() => {
+    const selectedId = this.selectedProviderId();
+
+    if (selectedId === 'club') {
+      return {
+        connected: true,
+        collectorId: 'CLUB_MP_OFICIAL',
+        nickname: this.clubProfile?.name || 'Club de Experiencias',
+      };
+    }
+
+    if (selectedId && selectedId !== 'custom') {
+      const provider = this.registeredProviders?.find((p) => p.id === selectedId);
+      if (provider) {
+        return {
+          connected: Boolean(provider.mpConnected),
+          collectorId: provider.mpCollectorId || '',
+          nickname: provider.mpNickname || provider.name || '',
+        };
+      }
+    }
+
+    if (this.hasUserSelectedProvider && selectedId === 'custom') {
+      return {
+        connected: false,
+        collectorId: '',
+        nickname: '',
+      };
+    }
+
+    if (this.providerMpInfo) {
+      return this.providerMpInfo;
+    }
+
+    return {
+      connected: false,
+      collectorId: '',
+      nickname: '',
+    };
+  });
+
+  private updateProviderMpInfo(providerId: string): void {
+    if (providerId === 'club') {
+      this.providerMpInfo = {
+        connected: true,
+        collectorId: 'CLUB_MP_OFICIAL',
+        nickname: this.clubProfile?.name || 'Club de Experiencias',
+      };
+      return;
+    }
+
+    if (providerId === 'custom') {
+      this.providerMpInfo = {
+        connected: false,
+        collectorId: '',
+        nickname: '',
+      };
+      return;
+    }
+
+    const provider = this.registeredProviders?.find((p) => p.id === providerId);
+    if (provider) {
+      this.providerMpInfo = {
+        connected: Boolean(provider.mpConnected),
+        collectorId: provider.mpCollectorId || '',
+        nickname: provider.mpNickname || provider.name || '',
+      };
+    }
+  }
+
   onSelectProvider(providerId: string): void {
+    this.hasUserSelectedProvider = true;
     this.selectedProviderId.set(providerId);
 
     if (providerId === 'club') {
@@ -459,12 +576,24 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
         providerBankName: clubBank,
       });
       this.isClubExperience = true;
+      this.updateProviderMpInfo('club');
+      this.providerChange.emit({
+        providerId: 'club',
+        isClub: true,
+        mpInfo: this.activeMpInfo(),
+      });
       this.form.markAsDirty();
       return;
     }
 
     if (providerId === 'custom') {
       this.isClubExperience = false;
+      this.updateProviderMpInfo('custom');
+      this.providerChange.emit({
+        providerId: 'custom',
+        isClub: false,
+        mpInfo: this.activeMpInfo(),
+      });
       return;
     }
 
@@ -479,11 +608,19 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
         providerBankName: (provider.bankName || '').trim(),
       });
       this.isClubExperience = false;
+      this.updateProviderMpInfo(providerId);
+      this.providerChange.emit({
+        providerId,
+        isClub: false,
+        mpInfo: this.activeMpInfo(),
+      });
       this.form.markAsDirty();
     }
   }
 
   resetForm(): void {
+    this.hasUserSelectedProvider = false;
+    this.selectedProviderId.set('custom');
     this.form.reset(
       {
         title: '',
@@ -803,8 +940,8 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
           '.panel-form input.ng-invalid, .panel-form select.ng-invalid, .panel-form textarea.ng-invalid',
         );
         if (firstInvalid instanceof HTMLElement) {
-          firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          firstInvalid.focus();
+          firstInvalid.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+          firstInvalid.focus?.();
         }
       }
       return;

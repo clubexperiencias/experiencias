@@ -419,7 +419,7 @@
     <fieldset class="form-fieldset" [class.is-club-section]="isClubExperience" [disabled]="saving">
       <legend class="fieldset-legend">
         Cobros con Mercado Pago (Acreditación Instantánea)
-        @if (providerMpInfo?.connected) {
+        @if (activeMpInfo().connected) {
         <span class="mp-status-pill connected">Cuenta Vinculada</span>
         } @else {
         <span class="mp-status-pill disconnected">No Vinculada</span>
@@ -429,8 +429,8 @@
       <div class="provider-info-grid">
         <div class="info-item">
           <span class="info-label">ESTADO DE INTEGRACIÓN</span>
-          <strong class="info-value" [class.text-green]="providerMpInfo?.connected">
-            {{ providerMpInfo?.connected ? 'Habilitada y activa en checkout' : 'Deshabilitada (Solo transferencias CBU)'
+          <strong class="info-value" [class.text-green]="activeMpInfo().connected">
+            {{ activeMpInfo().connected ? 'Habilitada y activa en checkout' : 'Deshabilitada (Solo transferencias CBU)'
             }}
           </strong>
         </div>
@@ -438,8 +438,8 @@
         <div class="info-item">
           <span class="info-label">ID DE COBRADOR (COLLECTOR ID)</span>
           <span class="info-value">
-            @if (providerMpInfo?.collectorId) {
-            <code class="mp-code-badge">{{ providerMpInfo?.collectorId }}</code>
+            @if (activeMpInfo().collectorId) {
+            <code class="mp-code-badge">{{ activeMpInfo().collectorId }}</code>
             } @else {
             <span class="text-muted">No asignado</span>
             }
@@ -448,20 +448,20 @@
 
         <div class="info-item">
           <span class="info-label">TITULAR REGISTRADO</span>
-          <span class="info-value">{{ providerMpInfo?.nickname || '—' }}</span>
+          <span class="info-value">{{ activeMpInfo().nickname || '—' }}</span>
         </div>
 
         <div class="info-item">
           <span class="info-label">DESTINO DE FONDOS</span>
           <span class="info-value">
-            {{ providerMpInfo?.connected ? (isClubExperience ? 'Acreditación instantánea a la cuenta oficial del Club' :
+            {{ activeMpInfo().connected ? (isClubExperience ? 'Acreditación instantánea a la cuenta oficial del Club' :
             'Acreditación instantánea a la cuenta del prestador') : 'Transferencia bancaria directa por CBU' }}
           </span>
         </div>
       </div>
 
       <p class="fieldset-hint" style="margin-top: 0.75rem; font-size: 0.8rem; color: rgba(255, 255, 255, 0.55);">
-        @if (providerMpInfo?.connected) {
+        @if (activeMpInfo().connected) {
         Esta información se sincroniza automáticamente desde la cuenta de Mercado Pago vinculada por el prestador a
         través de OAuth en su panel.
         } @else {
