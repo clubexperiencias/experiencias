@@ -4404,21 +4404,24 @@ export class AdminExperiencesComponent implements OnInit {
     if (slug) {
       this.notFound.set(false);
       await this.experienceService.remoteLoadPromise;
-      const currentSlug = this.route.snapshot.paramMap.get('slug');
-      if (currentSlug && currentSlug !== slug) {
+      if (this.route.snapshot.paramMap.get('slug') !== slug) {
         return;
       }
       let exp =
         this.experienceService.getExperienceBySlug(slug) ||
         this.experienceService.getExperienceById(slug);
 
+      let matchingReq: ExperienceProposalRequest | undefined;
       if (!exp) {
-        let matchingReq = this.findMatchingProposal({ id: slug, slug, title: slug });
+        matchingReq = this.findMatchingProposal({ id: slug, slug, title: slug });
         if (!matchingReq) {
           try {
             await this.adminStore.providerStore.loadProposalsFromSupabase();
           } catch {
             // fallback si supabase no está disponible
+          }
+          if (this.route.snapshot.paramMap.get('slug') !== slug) {
+            return;
           }
           matchingReq = this.findMatchingProposal({ id: slug, slug, title: slug });
         }
@@ -4443,10 +4446,37 @@ export class AdminExperiencesComponent implements OnInit {
         }
       }
 
+      if (this.route.snapshot.paramMap.get('slug') !== slug) {
+        return;
+      }
+
       if (exp) {
         this.editingExperience.set(exp);
         this.openEditModal(exp);
-        if (exp.slug && exp.slug !== slug) {
+        const targetReq = matchingReq || (exp.id.startsWith('req-') ? this.findMatchingProposal(exp) : undefined);
+        let canRedirect = Boolean(exp.slug && exp.slug !== slug);
+        if (canRedirect) {
+          if (targetReq) {
+            const conflictingExp = this.experienceService.getExperienceBySlug(exp.slug!);
+            const requests = this.adminStore.providerStore.experienceRequests();
+            const cleanCanonical = exp.slug!.toLowerCase().trim();
+            const matchingProposals = requests.filter(
+              (r) =>
+                (r.slug && r.slug.toLowerCase().trim() === cleanCanonical) ||
+                (r.title && slugify(r.title) === cleanCanonical),
+            );
+            canRedirect =
+              !conflictingExp &&
+              matchingProposals.length === 1 &&
+              matchingProposals[0].id === targetReq.id;
+          } else {
+            const resolvedExp = this.experienceService.getExperienceBySlug(exp.slug!);
+            if (resolvedExp && resolvedExp.id !== exp.id) {
+              canRedirect = false;
+            }
+          }
+        }
+        if (canRedirect) {
           void this.router.navigateByUrl(isEdit ? this.getEditRoute(exp) : this.getDetailRoute(exp), { replaceUrl: true });
         }
         if (isEdit) {
@@ -5547,15 +5577,21 @@ export class AdminExperiencesComponent implements OnInit {
         }
       }
 
+      const updated = this.experienceService.getExperienceById(payload.id);
+      const targetSlug = updated?.slug || payload.slug || slug;
+      const targetPublicUrl =
+        updated?.publicUrl || payload.publicUrl || `https://experiencias.club/experiencias/${targetSlug}`;
+      const targetDetailRoute = updated?.detailRoute || payload.detailRoute;
+
       // Propagar actualización de slug y publicUrl a providerStore para consistencia global
       if (this.adminStore?.providerStore) {
         try {
-          this.adminStore.providerStore.updateExperiencePublicUrl?.(payload.id, payload.publicUrl || `https://experiencias.club/experiencias/${slug}`);
+          this.adminStore.providerStore.updateExperiencePublicUrl?.(payload.id, targetPublicUrl);
           if (typeof (this.adminStore.providerStore as any).updateExperience === 'function') {
             (this.adminStore.providerStore as any).updateExperience(payload.id, {
-              slug,
-              publicUrl: payload.publicUrl,
-              detailRoute: payload.detailRoute,
+              slug: targetSlug,
+              publicUrl: targetPublicUrl,
+              detailRoute: targetDetailRoute,
             });
           }
         } catch {
@@ -5563,12 +5599,11 @@ export class AdminExperiencesComponent implements OnInit {
         }
       }
 
-      const updated = this.experienceService.getExperienceById(payload.id);
       if (updated && this.editingExperience()?.id === payload.id) {
         this.editingExperience.set(updated);
       }
       if (this.isRouteEditMode() || this.isRouteCreateMode()) {
-        this.router.navigateByUrl(this.getDetailRoute({ slug } as Experience));
+        this.router.navigateByUrl(this.getDetailRoute(updated || ({ slug: targetSlug } as Experience)));
       } else {
         this.closeEditModal();
       }

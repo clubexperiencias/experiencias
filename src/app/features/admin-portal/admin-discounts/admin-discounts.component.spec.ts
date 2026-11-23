@@ -40,7 +40,7 @@ describe('AdminDiscountsComponent', () => {
     }).compileComponents();
 
     router = TestBed.inject(Router);
-    vi.spyOn(router, 'navigateByUrl');
+    vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
 
     fixture = TestBed.createComponent(AdminDiscountsComponent);
     component = fixture.componentInstance;

@@ -254,10 +254,9 @@ export class ExperienceDetailComponent {
     if (!e) return 0;
     const album = Array.isArray(e.albumPhotos) ? e.albumPhotos : [];
     const hasCoverImage = Boolean(e.coverImage?.trim());
-    const coverAlreadyInAlbum =
-      album.some((p) => p.isCover) ||
-      (hasCoverImage && album.some((p) => p.url?.trim() === e.coverImage?.trim()));
-    return album.length + (hasCoverImage && !coverAlreadyInAlbum ? 1 : 0);
+    const coverAlreadyInAlbum = album.some((p) => p.isCover);
+    const total = album.length + (hasCoverImage && !coverAlreadyInAlbum ? 1 : 0);
+    return Math.min(12, total);
   });
 
   readonly upcomingDates = computed<string[]>(() => {

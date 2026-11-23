@@ -3,6 +3,7 @@ import { provideRouter } from '@angular/router';
 import { AdminDiscountEditorComponent } from './admin-discount-editor.component';
 import { DiscountService } from '../../../core/services/discount.service';
 import { ExperienceService } from '../../../core/services/experience.service';
+import { ProviderStoreService } from '../../../core/services/provider-store.service';
 import { signal } from '@angular/core';
 
 describe('AdminDiscountEditorComponent', () => {
@@ -13,7 +14,7 @@ describe('AdminDiscountEditorComponent', () => {
     await TestBed.configureTestingModule({
       imports: [AdminDiscountEditorComponent],
       providers: [
-        provideRouter([]),
+        provideRouter([{ path: '**', children: [] }]),
         {
           provide: DiscountService,
           useValue: {
@@ -28,6 +29,13 @@ describe('AdminDiscountEditorComponent', () => {
           provide: ExperienceService,
           useValue: {
             experiences: signal([]),
+          },
+        },
+        {
+          provide: ProviderStoreService,
+          useValue: {
+            allProviders: signal([]),
+            providers: signal([]),
           },
         },
       ],
@@ -549,7 +557,7 @@ describe('AdminDiscountEditorComponent', () => {
     it('should navigate back via goBack when createDiscount returns a non-null discount', async () => {
       const discountService = (component as any).discountService;
       vi.spyOn(discountService, 'createDiscount').mockResolvedValue({ id: 'created-ok' } as any);
-      const goBackSpy = vi.spyOn(component, 'goBack');
+      const goBackSpy = vi.spyOn(component, 'goBack').mockImplementation(() => {});
       vi.spyOn<any, any>(component, 'ownsActiveRoute').mockReturnValue(true);
 
       component.code.set('PROMO-SUCCESS');

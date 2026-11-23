@@ -73,6 +73,20 @@ describe('ExperienceDetailComponent (/experiencias/:slug)', () => {
     (component.experienceService as any)._experiences.set([customExp]);
     fixture.detectChanges();
     expect(component.albumPhotosCount()).toBe(3);
+
+    // Cap at 12 when album has more than 12 photos
+    const largeAlbumExp: any = {
+      ...KAYAK_DEFAULT_EXPERIENCE,
+      coverImage: '/assets/images/cover.jpg',
+      albumPhotos: Array.from({ length: 15 }, (_, i) => ({
+        id: `p-${i}`,
+        url: `/assets/images/p-${i}.jpg`,
+        isCover: i === 0,
+      })),
+    };
+    (component.experienceService as any)._experiences.set([largeAlbumExp]);
+    fixture.detectChanges();
+    expect(component.albumPhotosCount()).toBe(12);
   });
 
   it('should render VER ÁLBUM COMPLETO button before the photo count in the overlay', () => {

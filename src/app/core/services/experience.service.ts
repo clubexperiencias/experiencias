@@ -553,20 +553,6 @@ export class ExperienceService {
       nextList.push(merged);
     }
 
-    // Si se actualizó el slug, resolver colisiones con registros duplicados o históricos
-    if (merged.slug) {
-      const targetSlug = merged.slug.trim().toLowerCase();
-      const targetIdx = index !== -1 ? index : nextList.length - 1;
-      for (let i = 0; i < nextList.length; i++) {
-        if (i !== targetIdx && (nextList[i].slug || '').trim().toLowerCase() === targetSlug) {
-          nextList[i] = {
-            ...nextList[i],
-            slug: `${nextList[i].slug}-archived-${nextList[i].id}`,
-          };
-        }
-      }
-    }
-
     this._experiences.set(nextList);
     this.persistToLocalStorage(nextList);
 
@@ -1292,8 +1278,12 @@ export class ExperienceService {
    * @param profile Perfil oficial institucional del Club de Experiencias.
    */
   syncClubExperiencesWithProfile(profile: ClubProfile): void {
+    const eligibleClubIds: string[] = [];
     const list = this._experiences().map((exp) => {
       if (isClubExperience(exp)) {
+        if (exp.id) {
+          eligibleClubIds.push(exp.id);
+        }
         return {
           ...exp,
           isClubExperience: true,
@@ -1311,10 +1301,10 @@ export class ExperienceService {
     this._experiences.set(list);
     this.persistToLocalStorage(list);
 
-    if (isSupabaseConfigured()) {
-      const escapedEmail = (profile.email || '').trim().replace(/["\\]/g, '\\$&');
-      const emailFilter = escapedEmail ? `,provider_email.eq."${escapedEmail}"` : '';
-      const orFilter = `provider_slug.eq.club-de-experiencias,provider_slug.eq.club${emailFilter}`;
+    if (isSupabaseConfigured() && eligibleClubIds.length > 0) {
+      const orFilter = eligibleClubIds
+        .map((id) => `id.eq."${id.trim().replace(/["\\]/g, '\\$&')}"`)
+        .join(',');
 
       (this.supabase.from('experiencias') as any)
         .update({

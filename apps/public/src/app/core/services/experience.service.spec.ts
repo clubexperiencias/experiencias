@@ -11,6 +11,7 @@ import {
 } from './experience.service';
 import { SUPABASE_CLIENT } from '../supabase/supabase.client';
 import { Experience } from '../models/experience.model';
+import { ClubProfile } from '../models/club-profile.model';
 
 describe('ExperienceService', () => {
   let service: ExperienceService;
@@ -867,7 +868,7 @@ describe('ExperienceService', () => {
   describe('provider experience gallery selection and blob filtering', () => {
     it('should filter unusable blob URLs from galleryImages preserving remaining valid entries', () => {
       localStorage.setItem(
-        'catamarca_provider_experiences_v1',
+        'catamarca_provider_experiences_v5',
         JSON.stringify([
           {
             id: 'prov-exp-blob-gallery',
@@ -900,7 +901,7 @@ describe('ExperienceService', () => {
 
     it('should fall back to usable albumPhotos when all galleryImages are expired blob URLs', () => {
       localStorage.setItem(
-        'catamarca_provider_experiences_v1',
+        'catamarca_provider_experiences_v5',
         JSON.stringify([
           {
             id: 'prov-exp-album-fallback',
@@ -928,7 +929,7 @@ describe('ExperienceService', () => {
 
     it('should fall back to coverImage when neither galleryImages nor albumPhotos has usable entries', () => {
       localStorage.setItem(
-        'catamarca_provider_experiences_v1',
+        'catamarca_provider_experiences_v5',
         JSON.stringify([
           {
             id: 'prov-exp-cover-fallback',
@@ -1051,7 +1052,7 @@ describe('ExperienceService', () => {
   describe('provider experience gallery selection and blob filtering', () => {
     it('should filter unusable blob URLs from galleryImages preserving remaining valid entries', () => {
       localStorage.setItem(
-        'catamarca_provider_experiences_v1',
+        'catamarca_provider_experiences_v5',
         JSON.stringify([
           {
             id: 'prov-exp-blob-gallery',
@@ -1084,7 +1085,7 @@ describe('ExperienceService', () => {
 
     it('should fall back to usable albumPhotos when all galleryImages are expired blob URLs', () => {
       localStorage.setItem(
-        'catamarca_provider_experiences_v1',
+        'catamarca_provider_experiences_v5',
         JSON.stringify([
           {
             id: 'prov-exp-album-fallback',
@@ -1112,7 +1113,7 @@ describe('ExperienceService', () => {
 
     it('should fall back to coverImage when neither galleryImages nor albumPhotos has usable entries', () => {
       localStorage.setItem(
-        'catamarca_provider_experiences_v1',
+        'catamarca_provider_experiences_v5',
         JSON.stringify([
           {
             id: 'prov-exp-cover-fallback',
@@ -1240,6 +1241,86 @@ describe('ExperienceService', () => {
 
       // Ninguna foto debe tener isCover: true
       expect(exp?.albumPhotos?.every((p) => !p.isCover)).toBe(true);
+    });
+  });
+
+  describe('syncClubExperiencesWithProfile', () => {
+    it('should only update eligible Club experiences and exclude external providers in orFilter', () => {
+      const updateSpy = vi.fn().mockReturnThis();
+      const orSpy = vi.fn().mockReturnValue(Promise.resolve({ error: null }));
+      mockSupabase.from.mockReturnValue({
+        update: updateSpy,
+        or: orSpy,
+      } as any);
+
+      const clubExp: Experience = {
+        id: 'club-exp-1',
+        slug: 'travesia-club',
+        title: 'Travesía Club',
+        isClubExperience: true,
+        providerSlug: 'club-de-experiencias',
+        providerName: 'Club de Experiencias',
+        providerEmail: 'admin@experiencias.club',
+        priceArs: 10000,
+        priceUsd: 10,
+        status: 'publicada',
+      } as any;
+
+      const externalExp: Experience = {
+        id: 'ext-exp-2',
+        slug: 'kayak-externo',
+        title: 'Kayak Externo',
+        isClubExperience: false,
+        providerSlug: 'club', // Note: has providerSlug 'club' but an explicit external provider identity
+        providerName: 'Guía Juan Pérez',
+        providerEmail: 'juan@externo.com',
+        priceArs: 15000,
+        priceUsd: 15,
+        status: 'publicada',
+      } as any;
+
+      (service as any)._experiences.set([clubExp, externalExp]);
+
+      const profile: ClubProfile = {
+        name: 'Club Oficial Actualizado',
+        agency: 'Club Oficial',
+        email: 'admin@experiencias.club',
+        slug: 'club-de-experiencias',
+        phone: '+5493834001122',
+        cbuAlias: 'CLUB.OFICIAL.CBU',
+        cuitDni: '30-12345678-9',
+        bankName: 'Banco Nación',
+        accountHolder: 'Club Oficial',
+        bio: 'Bio',
+        website: '',
+        socialMedia: '',
+        address: '',
+        updatedAt: '2026-01-01',
+      };
+
+      service.syncClubExperiencesWithProfile(profile);
+
+      // Local state verification: only clubExp should be updated
+      const updatedExperiences = service.experiences();
+      const localClub = updatedExperiences.find((e) => e.id === 'club-exp-1');
+      const localExternal = updatedExperiences.find((e) => e.id === 'ext-exp-2');
+
+      expect(localClub?.providerName).toBe('Club Oficial Actualizado');
+      expect(localClub?.providerCbuAlias).toBe('CLUB.OFICIAL.CBU');
+      expect(localExternal?.providerName).toBe('Guía Juan Pérez');
+      expect(localExternal?.providerEmail).toBe('juan@externo.com');
+
+      // Remote synchronization verification: orFilter must only include club-exp-1
+      expect(mockSupabase.from).toHaveBeenCalledWith('experiencias');
+      expect(updateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          provider_name: 'Club Oficial Actualizado',
+          provider_slug: 'club-de-experiencias',
+          provider_email: 'admin@experiencias.club',
+          provider_phone: '+5493834001122',
+        }),
+      );
+      expect(orSpy).toHaveBeenCalledWith('id.eq."club-exp-1"');
     });
   });
 });

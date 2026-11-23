@@ -1,7 +1,9 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { ExperienceCardComponent } from './experience-card.component';
 import { Experience } from '../../../core/models/experience.model';
+import { ProviderStoreService } from '../../../core/services/provider-store.service';
 
 describe('ExperienceCardComponent', () => {
   let component: ExperienceCardComponent;
@@ -85,5 +87,64 @@ describe('ExperienceCardComponent', () => {
     const lockedBtn = fixture.nativeElement.querySelector('.exp-locked-btn');
     expect(lockedBtn).toBeTruthy();
     expect(lockedBtn.textContent).toContain('Próximamente');
+  });
+
+  it('should dynamically recompute detailRoute and providerSlug when experience changes', () => {
+    expect(component.detailRoute()).toEqual(['/experiencias', 'kayak-en-el-dique']);
+    expect(component.providerSlug()).toBe('guia-dique');
+
+    component.experience = {
+      ...mockExperience,
+      slug: 'nuevo-destino',
+      detailRoute: '/experiencias/nuevo-destino-custom',
+      providerSlug: 'nuevo-prestador',
+    };
+
+    expect(component.detailRoute()).toBe('/experiencias/nuevo-destino-custom');
+    expect(component.providerSlug()).toBe('nuevo-prestador');
+  });
+
+  it('should dynamically update isFavorited when isFavoriteOverride or experience changes', () => {
+    expect(component.isFavorited()).toBe(false);
+
+    component.isFavoriteOverride = true;
+    expect(component.isFavorited()).toBe(true);
+
+    component.isFavoriteOverride = false;
+    expect(component.isFavorited()).toBe(false);
+
+    component.isFavoriteOverride = undefined;
+    expect(component.isFavorited()).toBe(false);
+  });
+
+  it('should match expAgency against pName and pAgency in providerStore when resolving providerSlug', () => {
+    const mockStore = {
+      providers: signal([
+        {
+          id: 'prov-1',
+          name: 'Agencia Aventura',
+          agency: 'Otra Cosa',
+          slug: 'agencia-aventura-slug',
+        },
+      ]),
+    };
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      imports: [ExperienceCardComponent],
+      providers: [
+        provideRouter([]),
+        { provide: ProviderStoreService, useValue: mockStore },
+      ],
+    }).compileComponents();
+
+    const newFixture = TestBed.createComponent(ExperienceCardComponent);
+    const newComp = newFixture.componentInstance;
+    newComp.experience = {
+      ...mockExperience,
+      providerSlug: undefined,
+      providerName: undefined,
+      providerAgency: 'Agencia Aventura',
+    };
+    expect(newComp.providerSlug()).toBe('agencia-aventura-slug');
   });
 });

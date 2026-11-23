@@ -305,6 +305,7 @@
                   [isExpanded]="selectedExperience()?.id === exp.id"
                   (toggleDetails)="toggleExperienceDetails($event)"
                   (closeDetails)="closeExperienceDetails()"
+                  (favoriteToggled)="onCardFavoriteToggled($event)"
                 />
               }
             </div>

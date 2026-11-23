@@ -319,6 +319,22 @@ export class ProfileComponent implements OnInit, AfterViewInit, OnDestroy {
     this.scheduleCarouselInit();
   }
 
+  onCardFavoriteToggled(event: { experience: Experience; event?: Event }): void {
+    const exp = event.experience;
+    if (!this.isFavorite(exp)) {
+      const targets = new Set<string>();
+      if (exp.id) targets.add(exp.id.trim().toLowerCase());
+      if (exp.slug) targets.add(exp.slug.trim().toLowerCase());
+
+      if (targets.size > 0) {
+        this.selectedExperiences.update((current) =>
+          current.filter((item) => !targets.has(item.trim().toLowerCase())),
+        );
+      }
+    }
+    this.scheduleCarouselInit();
+  }
+
   getProviderSlug(exp: Experience): string | null {
     if (exp.providerSlug) {
       return exp.providerSlug.toLowerCase().trim() === 'club'

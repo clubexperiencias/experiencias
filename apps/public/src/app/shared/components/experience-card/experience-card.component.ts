@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output, computed, inject } from '@angular/core';
+import { Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
@@ -33,21 +33,21 @@ export class ExperienceCardComponent {
   @Output() closeDetails = new EventEmitter<Experience>();
   @Output() favoriteToggled = new EventEmitter<{ experience: Experience; event?: Event }>();
 
-  readonly isFavorited = computed(() => {
+  isFavorited(): boolean {
     if (typeof this.isFavoriteOverride === 'boolean') {
       return this.isFavoriteOverride;
     }
     if (!this.experience) return false;
     return this.favoritesService.isFavorite(this.experience);
-  });
+  }
 
-  readonly detailRoute = computed(() => {
+  detailRoute(): string | (string | undefined)[] {
     if (!this.experience) return ['/experiencias'];
     if (this.experience.detailRoute) return this.experience.detailRoute;
     return ['/experiencias', this.experience.slug || this.experience.id];
-  });
+  }
 
-  readonly providerSlug = computed(() => {
+  providerSlug(): string | null {
     const exp = this.experience;
     if (!exp) return null;
     if (exp.providerSlug) {
@@ -72,7 +72,7 @@ export class ExperienceCardComponent {
 
         if (expEmail && pEmail && pEmail === expEmail) return true;
         if (expName && ((pName && pName === expName) || (pAgency && pAgency === expName))) return true;
-        if (expAgency && ((pName && pAgency === expName) || (pAgency && pAgency === expAgency))) return true;
+        if (expAgency && ((pName && pName === expAgency) || (pAgency && pAgency === expAgency))) return true;
         return false;
       });
 
@@ -90,7 +90,7 @@ export class ExperienceCardComponent {
       if (fallback) return fallback;
     }
     return null;
-  });
+  }
 
   onToggleFavorite(event?: Event): void {
     if (!this.experience) return;
