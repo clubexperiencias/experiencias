@@ -3413,6 +3413,12 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         color: rgba(255, 255, 255, 0.8);
       }
 
+      .album-counter-pill.is-cover-pill {
+        background: rgba(255, 122, 26, 0.15);
+        border-color: rgba(255, 122, 26, 0.4);
+        color: #ffaa66;
+      }
+
       .album-counter-pill.is-featured-pill {
         background: rgba(255, 170, 0, 0.12);
         border-color: rgba(255, 170, 0, 0.4);
@@ -5499,6 +5505,17 @@ export class AdminExperiencesComponent implements OnInit {
     const rawVideoUrl = this.editVideoUrl().trim();
     const safeVideoUrl = rawVideoUrl.startsWith('blob:') ? '' : rawVideoUrl;
 
+    const authoritativeProviders = (typeof this.adminStore.providerStore?.providers === 'function'
+      ? this.adminStore.providerStore.providers()
+      : (this.adminStore.providerStore?.providers || [])) as ProviderUser[];
+    const authoritativeMatch = matchedProvider
+      ? authoritativeProviders.find(
+          (p) =>
+            (p.id && matchedProvider.id && p.id === matchedProvider.id) ||
+            (p.email && matchedProvider.email && p.email.toLowerCase().trim() === matchedProvider.email.toLowerCase().trim()),
+        )
+      : undefined;
+
     const payload: Partial<Experience> & { id: string } = {
       id: this.editId(),
       slug,
@@ -5535,13 +5552,13 @@ export class AdminExperiencesComponent implements OnInit {
       isClubExperience: isClub,
       mpConnected: isClub
         ? (isExternalExperience ? true : this.editMpConnected())
-        : (matchedProvider
-          ? (matchedProvider.mpConnected !== undefined ? matchedProvider.mpConnected : false)
+        : (authoritativeMatch
+          ? (authoritativeMatch.mpConnected !== undefined ? authoritativeMatch.mpConnected : false)
           : this.editMpConnected()),
       mpCollectorId: isClub
         ? (isExternalExperience ? 'CLUB-OFICIAL' : (this.editMpCollectorId().trim() || 'CLUB-OFICIAL'))
-        : (matchedProvider
-          ? (matchedProvider.mpCollectorId || '').trim()
+        : (authoritativeMatch
+          ? (authoritativeMatch.mpCollectorId || '').trim()
           : this.editMpCollectorId().trim()),
       videoUrl: safeVideoUrl,
       videoPoster: this.editVideoPoster().trim(),
@@ -5645,7 +5662,8 @@ export class AdminExperiencesComponent implements OnInit {
               }
             }
             // Preserve and apply the other form edits as part of the same save
-            await this.experienceService.updateExperience(payload);
+            const { slug: _requestedSlug, ...payloadWithoutSlug } = payload;
+            await this.experienceService.updateExperience(payloadWithoutSlug);
             this.showToast(`La propuesta "${title}" fue aprobada y publicada con sus cambios.`);
           } else {
             // Rechazada

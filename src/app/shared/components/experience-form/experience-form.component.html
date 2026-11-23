@@ -562,14 +562,14 @@
           </div>
 
           <div class="album-counters-bar">
+            <span class="album-counter-pill is-cover-pill">
+              Portada: <strong>{{ coverCount() }} / 1</strong>
+            </span>
             <span class="album-counter-pill is-featured-pill">
               Destacadas: <strong>{{ featuredPhotos().length }} / 2</strong>
             </span>
             <span class="album-counter-pill is-gallery-pill" [class.is-limit-reached]="galleryPhotos().length >= 9">
-              Galería: <strong>{{ galleryPhotos().length }} / 9</strong>
-            </span>
-            <span class="album-counter-pill" [class.is-limit-reached]="totalAlbumCount() >= 12">
-              Total: <strong>{{ totalAlbumCount() }} / 12</strong>
+              Otras: <strong>{{ galleryPhotos().length }} / 9</strong>
             </span>
           </div>
         </div>
@@ -637,9 +637,9 @@
       </div>
     </fieldset>
 
-    <!-- SECCIÓN 6: Servicios, Requisitos y Puntos Destacados -->
+    <!-- SECCIÓN 6: Servicios y Requisitos -->
     <fieldset class="form-fieldset" [disabled]="saving">
-      <legend class="fieldset-legend">6. Servicios, Requisitos y Puntos Destacados</legend>
+      <legend class="fieldset-legend">6. Servicios y Requisitos</legend>
 
       <div class="form-row form-row-2">
         <div class="form-group">
@@ -656,14 +656,6 @@
             (input)="requirementsRaw.set($any($event.target).value); draftChange.emit()"
             placeholder="Ropa cómoda para mojar y muda seca de recambio&#10;Protector solar y lentes con cordín&#10;Botella de agua recargable (1.5L)&#10;Calzado cerrado apto para agua"></textarea>
         </div>
-      </div>
-
-      <div class="form-group">
-        <label for="highlightsRaw" class="form-label">Puntos Destacados / Lo Mejor de la Experiencia (un ítem por
-          línea)</label>
-        <textarea id="highlightsRaw" rows="3" class="form-input form-textarea" [value]="highlightsRaw()"
-          (input)="highlightsRaw.set($any($event.target).value); draftChange.emit()"
-          placeholder="Vistas panorámicas a la cordillera&#10;Guías de montaña certificados&#10;Grupos reducidos y atención personalizada"></textarea>
       </div>
     </fieldset>
 

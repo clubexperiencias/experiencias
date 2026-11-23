@@ -4185,9 +4185,34 @@ export class ProviderStoreService {
         const mapped: ExperienceProposalRequest[] = validRows.map((row: any) => {
           const email = (row.provider_email || '').trim().toLowerCase();
           const banking = providerBankingMap.get(email);
+
+          let parsedInitialSlug: string | undefined = undefined;
+          let parsedSlugAliases: string[] = [];
+          if (row.notes) {
+            try {
+              if (typeof row.notes === 'object' && !Array.isArray(row.notes)) {
+                if (row.notes.initial_slug) parsedInitialSlug = String(row.notes.initial_slug);
+                else if (row.notes.initialSlug) parsedInitialSlug = String(row.notes.initialSlug);
+                const aliases = row.notes.slug_aliases || row.notes.slugAliases;
+                if (Array.isArray(aliases)) parsedSlugAliases = aliases.map(String);
+              } else if (typeof row.notes === 'string') {
+                const trimmed = row.notes.trim();
+                if (trimmed.startsWith('{')) {
+                  const p = JSON.parse(trimmed);
+                  if (p.initial_slug) parsedInitialSlug = String(p.initial_slug);
+                  else if (p.initialSlug) parsedInitialSlug = String(p.initialSlug);
+                  const aliases = p.slug_aliases || p.slugAliases;
+                  if (Array.isArray(aliases)) parsedSlugAliases = aliases.map(String);
+                }
+              }
+            } catch {}
+          }
+
           return {
             id: row.id,
             slug: row.slug || undefined,
+            initialSlug: parsedInitialSlug || undefined,
+            slugAliases: parsedSlugAliases.length > 0 ? parsedSlugAliases : undefined,
             providerId: row.provider_id || '',
             providerName: row.provider_name || '',
             providerAgency: row.provider_agency || '',
@@ -4319,49 +4344,42 @@ export class ProviderStoreService {
       this.expService.experiences().find((e) => e.id === requestId) ||
       this._experiences().find((e) => e.id === requestId);
 
-    // Extraer slug limpio deseado por el administrador si se pasó en publicUrl
-    let adminCustomSlug: string | undefined;
-    if (publicUrl && typeof publicUrl === 'string') {
-      const match = publicUrl.match(/\/experiencias\/(?:hospedajes\/)?([a-z0-9-]+)/i);
-      if (match && match[1]) {
-        adminCustomSlug = match[1].toLowerCase().trim();
-      }
-    }
-
     const initialSlug =
       req.initialSlug ||
       matchedExistingExp?.initialSlug ||
       req.slug ||
       baseSlug;
 
-    let targetSlug = adminCustomSlug || matchedExistingExp?.slug || baseSlug;
+    let targetSlug = matchedExistingExp?.slug || baseSlug;
     if (RESERVED_EXPERIENCE_SLUGS.has(targetSlug.toLowerCase())) {
       targetSlug = `${targetSlug}-exp`;
     }
 
     let generatedSlug = targetSlug;
     let suffix = 2;
-    const existingSlugs = new Set([
-      ...this.expService
-        .experiences()
-        .filter((e) => e.id !== requestId && (!matchedExistingExp || e.id !== matchedExistingExp.id))
-        .map((e) => e.slug.toLowerCase()),
-      ...this._experiences()
-        .filter((e) => e.id !== requestId && (!matchedExistingExp || e.id !== matchedExistingExp.id))
-        .map((e) => e.slug.toLowerCase()),
-    ]);
-    const existingIds = new Set([
-      ...this.expService
-        .experiences()
-        .filter((e) => e.id !== requestId && (!matchedExistingExp || e.id !== matchedExistingExp.id))
-        .map((e) => e.id.toLowerCase()),
-      ...this._experiences()
-        .filter((e) => e.id !== requestId && (!matchedExistingExp || e.id !== matchedExistingExp.id))
-        .map((e) => e.id.toLowerCase()),
-    ]);
+    const otherExperiences = [
+      ...this.expService.experiences(),
+      ...this._experiences(),
+    ].filter((e) => e.id !== requestId && (!matchedExistingExp || e.id !== matchedExistingExp.id));
+
+    const existingSlugs = new Set<string>();
+    const existingIds = new Set<string>();
+
+    for (const e of otherExperiences) {
+      if (e.slug) existingSlugs.add(e.slug.toLowerCase().trim());
+      if (e.initialSlug) existingSlugs.add(e.initialSlug.toLowerCase().trim());
+      if (Array.isArray(e.slugAliases)) {
+        for (const alias of e.slugAliases) {
+          if (alias) existingSlugs.add(alias.toLowerCase().trim());
+        }
+      }
+      if (e.id) existingIds.add(e.id.toLowerCase().trim());
+    }
+
     while (
-      existingSlugs.has(generatedSlug.toLowerCase()) ||
-      existingIds.has(('exp-' + generatedSlug).toLowerCase())
+      RESERVED_EXPERIENCE_SLUGS.has(generatedSlug.toLowerCase().trim()) ||
+      existingSlugs.has(generatedSlug.toLowerCase().trim()) ||
+      existingIds.has(('exp-' + generatedSlug).toLowerCase().trim())
     ) {
       generatedSlug = `${targetSlug}-${suffix++}`;
     }
@@ -4369,6 +4387,11 @@ export class ProviderStoreService {
     const aliasSet = new Set<string>();
     if (matchedExistingExp?.slugAliases) {
       matchedExistingExp.slugAliases.forEach((a) => {
+        if (a) aliasSet.add(a.toLowerCase().trim());
+      });
+    }
+    if (req.slugAliases) {
+      req.slugAliases.forEach((a) => {
         if (a) aliasSet.add(a.toLowerCase().trim());
       });
     }
@@ -4383,7 +4406,32 @@ export class ProviderStoreService {
 
     const finalId = matchedExistingExp ? matchedExistingExp.id : 'exp-' + generatedSlug;
     const routePrefix = req.category === 'hospedajes' ? '/experiencias/hospedajes' : '/experiencias';
-    const resolvedUrl = publicUrl?.trim() || `https://experiencias.club${routePrefix}/${generatedSlug}`;
+    const canonicalInternalUrl = `https://experiencias.club${routePrefix}/${generatedSlug}`;
+
+    const isInternalExperienceUrl = (url?: string) => {
+      if (!url) return false;
+      const clean = url.trim().toLowerCase();
+      if (clean.startsWith('/experiencias') || clean.startsWith('experiencias/')) {
+        return true;
+      }
+      try {
+        const parsed = new URL(clean);
+        const host = parsed.hostname.toLowerCase();
+        const isClubHost =
+          host === 'experiencias.club' ||
+          host.endsWith('.experiencias.club') ||
+          host === 'localhost' ||
+          host === '127.0.0.1';
+        return isClubHost && parsed.pathname.startsWith('/experiencias');
+      } catch {
+        return clean.includes('experiencias.club/experiencias');
+      }
+    };
+
+    const resolvedUrl =
+      publicUrl && !isInternalExperienceUrl(publicUrl)
+        ? publicUrl.trim()
+        : canonicalInternalUrl;
 
     // Solo usar fechas confirmadas por el prestador o administrador.
     // Cuando las fechas son "A coordinar", se publican sin fechas reservables fijas ([]).

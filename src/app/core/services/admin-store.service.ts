@@ -212,7 +212,7 @@ export class AdminStoreService {
       if (p.id) seenIds.add(p.id);
 
       const matchingApp = (this.applications() || []).find(
-        (a) => a.email?.toLowerCase().trim() === email,
+        (a) => a.type === 'prestador' && a.email?.toLowerCase().trim() === email,
       );
       if (matchingApp) {
         list.push({

@@ -279,6 +279,11 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
   readonly featuredPhotos = computed(() => this.albumPhotos().filter((p) => p.isFeatured));
   readonly galleryPhotos = computed(() => this.albumPhotos().filter((p) => !p.isFeatured));
   readonly hasCoverImage = computed(() => Boolean(this.coverImageUrl()?.trim()));
+  readonly coverCount = computed(() => {
+    const coverUrl = this.coverImageUrl()?.trim();
+    if (coverUrl) return 1;
+    return this.albumPhotos().some((p) => p.isCover) ? 1 : 0;
+  });
   readonly totalAlbumCount = computed(() => {
     const coverUrl = this.coverImageUrl()?.trim() || '';
     const album = this.albumPhotos();

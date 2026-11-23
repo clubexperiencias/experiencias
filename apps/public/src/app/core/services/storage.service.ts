@@ -78,15 +78,37 @@ export class StorageService {
 
     // 1. Si Supabase está configurado, subir directamente solo al bucket correspondiente
     if (isSupabaseConfigured()) {
+      const resolvedContentType = this.resolveContentType(file);
       const { error: uploadErr } = await this.supabase.storage
         .from(primaryBucket)
         .upload(storageKey, file, {
-          contentType: file.type || 'application/octet-stream',
-          upsert: true,
+          contentType: resolvedContentType,
+          upsert: false,
         });
 
       if (uploadErr) {
         console.error(`[StorageService] Error al subir a ${primaryBucket}:`, uploadErr.message);
+
+        // Fallback a API con service role (bypassea RLS) para archivos de hasta 4.5MB
+        if (file.size <= 4.5 * 1024 * 1024) {
+          const fallbackRes = await this.uploadViaBackendFallback(file, storageKey, primaryBucket, resolvedContentType);
+          if (fallbackRes) {
+            return fallbackRes;
+          }
+        }
+
+        // Si estamos en entorno de desarrollo/local (!environment.production), permitir fallback a Blob URL para no bloquear pruebas si Supabase Storage no tiene las políticas RLS configuradas
+        if (!environment.production) {
+          console.warn(
+            `[StorageService] Modo desarrollo: Falló la subida a Supabase (${uploadErr.message}). Se utiliza Blob URL temporal para pruebas.`,
+          );
+          return {
+            url: URL.createObjectURL(file),
+            storageKey: `local/${safeRef}-${file.name}`,
+            provider: 'local',
+          };
+        }
+
         throw new Error(`No se pudo subir el archivo a Supabase Storage: ${uploadErr.message}`);
       }
 
@@ -128,5 +150,70 @@ export class StorageService {
       storageKey: `local/${safeRef}-${file.name}`,
       provider: 'local',
     };
+  }
+
+  private resolveContentType(file: File): string {
+    if (file.type && file.type !== 'application/octet-stream') {
+      return file.type;
+    }
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    switch (ext) {
+      case 'mp4': return 'video/mp4';
+      case 'webm': return 'video/webm';
+      case 'mov': return 'video/quicktime';
+      case 'm4v': return 'video/x-m4v';
+      case 'jpg':
+      case 'jpeg': return 'image/jpeg';
+      case 'png': return 'image/png';
+      case 'webp': return 'image/webp';
+      case 'gif': return 'image/gif';
+      case 'pdf': return 'application/pdf';
+      default: return file.type || 'application/octet-stream';
+    }
+  }
+
+  private async uploadViaBackendFallback(
+    file: File,
+    storageKey: string,
+    primaryBucket: 'experiencias' | 'comprobantes',
+    contentType: string,
+  ): Promise<StorageUploadResult | null> {
+    try {
+      const base64Data = await this.fileToBase64(file);
+      const res = await fetch('/api/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'STORAGE_UPLOAD',
+          data: {
+            bucket: primaryBucket,
+            storageKey,
+            contentType,
+            base64Data,
+          },
+        }),
+      });
+      if (!res.ok) return null;
+      const json = await res.json();
+      if (json && json.success && json.url) {
+        return {
+          url: json.url,
+          storageKey,
+          provider: 'supabase',
+        };
+      }
+    } catch (e) {
+      console.warn('[StorageService] Error en fallback backend de subida:', e);
+    }
+    return null;
+  }
+
+  private fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = (err) => reject(err);
+      reader.readAsDataURL(file);
+    });
   }
 }

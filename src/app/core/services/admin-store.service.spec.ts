@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
 import { AdminStoreService } from './admin-store.service';
 import { ProviderStoreService } from './provider-store.service';
 import { NotificationService } from './notification.service';
@@ -37,11 +38,13 @@ describe('AdminStoreService - Provider Status Update Flow', () => {
 
     mockProviderStore = {
       allProviders: vi.fn().mockReturnValue([]),
+      providers: signal([]),
       experienceRequests: vi.fn().mockReturnValue([]),
       syncProviderStatusFromAdmin: vi.fn(),
       loadStoredProviders: vi.fn().mockReturnValue([]),
       reloadFromStorage: vi.fn(),
       syncClubProviderProfile: vi.fn(),
+      isProviderDeleted: vi.fn().mockReturnValue(false),
     };
 
     TestBed.configureTestingModule({
@@ -822,6 +825,58 @@ describe('AdminStoreService - Provider Status Update Flow', () => {
       expect(parsedNotes.system).toBe('configuracion_club');
       expect(parsedNotes.customMeta).toBe('preserved_value');
       expect(parsedNotes.pausedByBajaExpIds).toEqual(['exp-1']);
+    });
+  });
+
+  describe('allRegisteredProviders - application match predicate', () => {
+    it('should match only provider applications and not allow founder application to suppress provider application', () => {
+      const providersSignal = signal<any[]>([
+        {
+          id: 'prov-1',
+          name: 'Guía Dual',
+          email: 'dual@test.com',
+          phone: '',
+          cbuAlias: '',
+          cuitDni: '',
+          bankName: '',
+          agency: '',
+          status: 'aprobado',
+        },
+      ]);
+      mockProviderStore.providers = providersSignal;
+
+      // Founder application comes FIRST, provider application comes SECOND
+      (adminStore as any)._applications.set([
+        {
+          id: 'app-founder-1',
+          type: 'fundador',
+          fullName: 'Socio Fundador',
+          email: 'dual@test.com',
+          phone: '—',
+          status: 'aprobado',
+        },
+        {
+          id: 'app-prov-1',
+          type: 'prestador',
+          fullName: 'Guía Dual Completo',
+          email: 'dual@test.com',
+          phone: '+5493834112233',
+          cbuAlias: 'dual.cbu.alias',
+          cuitDni: '20-11223344-9',
+          bankName: 'Banco Macro',
+          agency: 'Aventuras Duales',
+          status: 'aprobado',
+        },
+      ]);
+
+      const registered = adminStore.allRegisteredProviders();
+      const prov = registered.find((p) => p.email === 'dual@test.com');
+      expect(prov).toBeDefined();
+      expect(prov?.phone).toBe('+5493834112233');
+      expect(prov?.cbuAlias).toBe('dual.cbu.alias');
+      expect(prov?.cuitDni).toBe('20-11223344-9');
+      expect(prov?.bankName).toBe('Banco Macro');
+      expect(prov?.agency).toBe('Aventuras Duales');
     });
   });
 });

@@ -179,6 +179,7 @@ export interface Experience {
   coverImageName?: string;
   coverVideoName?: string;
   notes?: string;
+  notesMetadata?: Record<string, any>;
   reviewedAt?: string;
   isClubExperience?: boolean;
   mpConnected?: boolean;

@@ -661,6 +661,12 @@
   color: rgba(255, 255, 255, 0.85);
 }
 
+.album-counter-pill.is-cover-pill {
+  background: rgba(255, 122, 26, 0.15);
+  border-color: rgba(255, 122, 26, 0.4);
+  color: #ffaa66;
+}
+
 .album-counter-pill.is-featured-pill {
   background: rgba(255, 204, 0, 0.12);
   border-color: rgba(255, 204, 0, 0.35);

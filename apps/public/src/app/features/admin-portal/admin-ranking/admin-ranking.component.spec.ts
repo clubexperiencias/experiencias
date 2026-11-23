@@ -37,6 +37,8 @@ describe('AdminRankingComponent', () => {
           provide: ExperienceService,
           useValue: {
             experiences: experiencesSignal,
+            getExperienceBySlug: (s: string) => experiencesSignal().find((e) => e.slug === s || e.id === s),
+            getExperienceById: (id: string) => experiencesSignal().find((e) => e.id === id),
           },
         },
         {
@@ -182,6 +184,135 @@ describe('AdminRankingComponent', () => {
     expect(links.length).toBe(1);
     expect(links[0].getAttribute('href') || links[0].getAttribute('ng-reflect-router-link')).toContain('prestador-con-slug');
     expect(fixture.nativeElement.textContent).not.toContain('app-no-slug-123');
+  });
+
+  it('should count favorites for published experience matching survey key (e.g. kayak) and exclude survey keys without experiences', () => {
+    experiencesSignal.set([
+      {
+        id: 'exp-kayak',
+        slug: 'kayak',
+        title: 'Travesía Kayak',
+        status: 'publicada',
+        favoritesCount: 0,
+      },
+      {
+        id: 'exp-trekking',
+        slug: 'trekking-valle',
+        title: 'Trekking Valle',
+        status: 'publicada',
+        favoritesCount: 0,
+      },
+    ]);
+
+    const membersSignal = (component as any).adminStore.members;
+    membersSignal.set([
+      {
+        id: 'socio-1',
+        membershipTier: 'activo',
+        type: 'socio',
+        experiencesWishlist: ['kayak', 'astroturismo', 'trekking-valle'],
+      },
+      {
+        id: 'waitlist-1',
+        membershipTier: 'waitlist',
+        type: 'waitlist',
+        experiencesWishlist: ['kayak'],
+      },
+    ]);
+    fixture.detectChanges();
+
+    const ranking = component.experienceRanking();
+    const kayakRow = ranking.find((r) => r.slug === 'kayak');
+    const trekkingRow = ranking.find((r) => r.slug === 'trekking-valle');
+
+    expect(kayakRow?.favoritesCount).toBe(1);
+    expect(trekkingRow?.favoritesCount).toBe(1);
+  });
+
+  it('should not allow unfiltered exp.favoritesCount to inflate ranking count over eligible members count', () => {
+    experiencesSignal.set([
+      {
+        id: 'exp-inflated',
+        slug: 'exp-inflated',
+        title: 'Experiencia Inflada',
+        status: 'publicada',
+        favoritesCount: 25, // Unfiltered stored count (e.g. from waitlist or deleted members)
+      },
+      {
+        id: 'exp-real',
+        slug: 'exp-real',
+        title: 'Experiencia Real',
+        status: 'publicada',
+        favoritesCount: 0,
+      },
+    ]);
+
+    const membersSignal = (component as any).adminStore.members;
+    membersSignal.set([
+      // Only 2 eligible members have exp-inflated
+      {
+        id: 'socio-1',
+        membershipTier: 'activo',
+        type: 'socio',
+        experiencesWishlist: ['exp-inflated'],
+      },
+      {
+        id: 'socio-2',
+        membershipTier: 'activo',
+        type: 'socio',
+        experiencesWishlist: ['exp-inflated'],
+      },
+      // 3 eligible members have exp-real
+      {
+        id: 'socio-3',
+        membershipTier: 'activo',
+        type: 'socio',
+        experiencesWishlist: ['exp-real'],
+      },
+      {
+        id: 'socio-4',
+        membershipTier: 'activo',
+        type: 'socio',
+        experiencesWishlist: ['exp-real'],
+      },
+      {
+        id: 'socio-5',
+        membershipTier: 'activo',
+        type: 'socio',
+        experiencesWishlist: ['exp-real'],
+      },
+      // Ineligible waitlist members
+      {
+        id: 'waitlist-1',
+        membershipTier: 'waitlist',
+        type: 'waitlist',
+        experiencesWishlist: ['exp-inflated'],
+      },
+      // Ineligible dado_de_baja members
+      {
+        id: 'baja-1',
+        membershipTier: 'dado_de_baja',
+        type: 'socio',
+        experiencesWishlist: ['exp-inflated'],
+      },
+    ]);
+    fixture.detectChanges();
+
+    const ranking = component.experienceRanking();
+    const inflatedRow = ranking.find((r) => r.slug === 'exp-inflated');
+    const realRow = ranking.find((r) => r.slug === 'exp-real');
+
+    // exp-inflated must have 2 (not 25)
+    expect(inflatedRow?.favoritesCount).toBe(2);
+    // exp-real must have 3
+    expect(realRow?.favoritesCount).toBe(3);
+
+    // exp-real (3) must rank above exp-inflated (2)
+    expect(ranking[0].slug).toBe('exp-real');
+    expect(ranking[1].slug).toBe('exp-inflated');
+
+    // totalFavoritesCount must be 5 (3 + 2), not 28 (25 + 3)
+    expect(component.totalFavoritesCount()).toBe(5);
   });
 });
 

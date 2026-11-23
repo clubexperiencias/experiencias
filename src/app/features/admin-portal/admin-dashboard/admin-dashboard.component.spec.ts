@@ -169,6 +169,32 @@ describe('AdminDashboardComponent - Proposal Review Routes and Actions', () => {
       expect(kayakRow?.favoritesCount).toBe(0);
       expect(cabalgataRow?.favoritesCount).toBe(2);
     });
+
+    it('should count favorites for published experiences matching survey keys (e.g. kayak) while ignoring survey keys without experiences', () => {
+      mockExpService.experiences.set([
+        {
+          id: 'exp-kayak',
+          slug: 'kayak',
+          title: 'Kayak en el dique',
+          status: 'publicada',
+          favoritesCount: 0,
+        },
+      ]);
+
+      mockStore.members.set([
+        // Active member with kayak favorite (in SURVEY_INTEREST_KEYS, but published experience exists)
+        {
+          id: 'socio-kayak',
+          membershipTier: 'activo',
+          type: 'socio',
+          experiencesWishlist: ['kayak', 'astroturismo'],
+        },
+      ]);
+
+      const top = component.topFavoritedExperiences();
+      const kayakRow = top.find((r) => r.slug === 'kayak');
+      expect(kayakRow?.favoritesCount).toBe(1);
+    });
   });
 
   describe('dashboardProviders', () => {

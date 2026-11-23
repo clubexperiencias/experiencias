@@ -651,7 +651,7 @@ BEGIN
       END,
       updated_at = now()
   WHERE LOWER(email) = LOWER(NEW.email)
-    AND (auth_user_id IS NULL OR auth_user_id <> NEW.id OR (full_name IS NULL OR TRIM(full_name) = ''));
+    AND (auth_user_id IS NULL OR auth_user_id <> NEW.id OR (full_name IS NULL OR TRIM(full_name) = '' OR full_name = 'Socio sin nombre'));
 
   RETURN NEW;
 END;
@@ -3675,7 +3675,7 @@ BEGIN
     CREATE POLICY "Permitir subida publica de comprobantes"
       ON storage.objects
       FOR INSERT
-      TO public, anon, authenticated
+      TO public
       WITH CHECK (bucket_id = 'comprobantes');
 
     DROP POLICY IF EXISTS "Lectura de comprobantes para admins y prestadores" ON storage.objects;
@@ -3716,13 +3716,13 @@ BEGIN
       'experiencias',
       'experiencias',
       true,
-      52428800,
-      ARRAY['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm', 'video/quicktime']
+      104857600,
+      NULL
     )
     ON CONFLICT (id) DO UPDATE
     SET public = true,
-        file_size_limit = 52428800,
-        allowed_mime_types = ARRAY['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm', 'video/quicktime'];
+        file_size_limit = 104857600,
+        allowed_mime_types = NULL;
   END IF;
 EXCEPTION
   WHEN OTHERS THEN
@@ -3741,7 +3741,7 @@ BEGIN
     CREATE POLICY "Lectura publica de fotos de experiencias"
       ON storage.objects
       FOR SELECT
-      TO public, anon, authenticated
+      TO public
       USING (bucket_id = 'experiencias');
 
     DROP POLICY IF EXISTS "Subida de fotos de experiencias" ON storage.objects;
@@ -3749,52 +3749,23 @@ BEGIN
     CREATE POLICY "Permitir subida de fotos de experiencias"
       ON storage.objects
       FOR INSERT
-      TO public, anon, authenticated
+      TO public
       WITH CHECK (bucket_id = 'experiencias');
 
     DROP POLICY IF EXISTS "Actualizacion de fotos de experiencias" ON storage.objects;
     CREATE POLICY "Actualizacion de fotos de experiencias"
       ON storage.objects
       FOR UPDATE
-      TO authenticated
-      USING (
-        bucket_id = 'experiencias'
-        AND (
-          EXISTS (
-            SELECT 1 FROM public.administradores
-            WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email') AND active = true
-          )
-          OR (
-            (auth.uid()::text = owner::text)
-            AND EXISTS (
-              SELECT 1 FROM public.prestadores
-              WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email') AND active = true
-            )
-          )
-        )
-      );
+      TO public
+      USING (bucket_id = 'experiencias')
+      WITH CHECK (bucket_id = 'experiencias');
 
     DROP POLICY IF EXISTS "Eliminacion de fotos de experiencias" ON storage.objects;
     CREATE POLICY "Eliminacion de fotos de experiencias"
       ON storage.objects
       FOR DELETE
-      TO authenticated
-      USING (
-        bucket_id = 'experiencias'
-        AND (
-          EXISTS (
-            SELECT 1 FROM public.administradores
-            WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email') AND active = true
-          )
-          OR (
-            (auth.uid()::text = owner::text)
-            AND EXISTS (
-              SELECT 1 FROM public.prestadores
-              WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email') AND active = true
-            )
-          )
-        )
-      );
+      TO public
+      USING (bucket_id = 'experiencias');
   END IF;
 EXCEPTION
   WHEN OTHERS THEN

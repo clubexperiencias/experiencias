@@ -103,6 +103,27 @@ describe('ExperienceService', () => {
       expect(created?.slug).toBe(`${existingSlug}-2`);
     });
 
+    it('should reserve initialSlug and slugAliases against reuse with suffix in createExperience', async () => {
+      (service as any)._experiences.set([
+        {
+          ...baseExp,
+          id: 'exp-hist-1',
+          slug: 'exp-hist-actual',
+          initialSlug: 'exp-hist-original',
+          slugAliases: ['exp-hist-alias'],
+          title: 'Exp Con Historial',
+        },
+      ]);
+
+      await service.createExperience({ ...baseExp, id: 'test-alias-dup', slug: 'exp-hist-alias' });
+      const created1 = service.experiences().find((e) => e.id === 'test-alias-dup');
+      expect(created1?.slug).toBe('exp-hist-alias-2');
+
+      await service.createExperience({ ...baseExp, id: 'test-initial-dup', slug: 'exp-hist-original' });
+      const created2 = service.experiences().find((e) => e.id === 'test-initial-dup');
+      expect(created2?.slug).toBe('exp-hist-original-2');
+    });
+
     it('should successfully create experience with a valid slug', async () => {
       const initialCount = service.experiences().length;
       await service.createExperience({ ...baseExp, slug: 'nueva-aventura-unica' });
@@ -295,6 +316,68 @@ describe('ExperienceService', () => {
       expect(service.getPublishedExperienceBySlug(targetExp.slug)?.id).toBe(targetExp.id);
       // getExperienceBySlug also resolves them
       expect(service.getExperienceBySlug('kayak-original-proposal-slug')?.id).toBe(targetExp.id);
+    });
+
+    it('should reserve initialSlug and slugAliases against reuse with suffix in rename flow', async () => {
+      (service as any)._experiences.set([
+        {
+          ...baseExp,
+          id: 'exp-owner',
+          slug: 'exp-owner-actual',
+          initialSlug: 'exp-owner-original',
+          slugAliases: ['exp-owner-alias'],
+          title: 'Exp Owner',
+        },
+        {
+          ...baseExp,
+          id: 'exp-renamer',
+          slug: 'exp-renamer-current',
+          title: 'Exp Renamer',
+        },
+      ]);
+
+      const updateBuilder: any = {
+        eq: vi.fn().mockReturnThis(),
+        select: vi.fn().mockResolvedValue({ data: [{ id: 'exp-renamer' }], error: null }),
+      };
+      mockSupabase.from.mockReturnValue({
+        update: vi.fn().mockReturnValue(updateBuilder),
+      });
+
+      await service.updateExperience({
+        id: 'exp-renamer',
+        slug: 'exp-owner-alias',
+      });
+
+      const renamed = service.experiences().find((e) => e.id === 'exp-renamer');
+      expect(renamed?.slug).toBe('exp-owner-alias-2');
+    });
+
+    it('should prefer exact canonical-slug match over historical-slug match on collisions', () => {
+      (service as any)._experiences.set([
+        {
+          ...baseExp,
+          id: 'exp-old',
+          slug: 'exp-old-renamed',
+          initialSlug: 'travesia-colision',
+          slugAliases: ['alias-colision'],
+          status: 'publicada',
+          title: 'Vieja Exp',
+        },
+        {
+          ...baseExp,
+          id: 'exp-current',
+          slug: 'travesia-colision',
+          status: 'publicada',
+          title: 'Actual Exp',
+        },
+      ]);
+
+      const pubResult = service.getPublishedExperienceBySlug('travesia-colision');
+      expect(pubResult?.id).toBe('exp-current');
+
+      const genResult = service.getExperienceBySlug('travesia-colision');
+      expect(genResult?.id).toBe('exp-current');
     });
 
     it('should preserve existing plain-text notes when adding payment fields', async () => {
@@ -982,6 +1065,86 @@ describe('ExperienceService', () => {
 
       expect(loaded).toBeDefined();
       expect(loaded.galleryImages).toEqual(['/assets/images/custom-cover.jpg']);
+    });
+  });
+
+  describe('provider-record and proposal-cache restoration - initialSlug and slugAliases', () => {
+    it('should preserve initialSlug and slugAliases when restoring provider records from localStorage', () => {
+      localStorage.setItem(
+        'catamarca_provider_experiences_v5',
+        JSON.stringify([
+          {
+            id: 'prov-exp-slug-data',
+            slug: 'prov-exp-actual-slug',
+            initialSlug: 'prov-exp-initial-slug',
+            slugAliases: ['alias-antiguo-1', 'alias-antiguo-2'],
+            title: 'Exp Con Slugs Historicos',
+            status: 'publicada',
+            coverImage: '/assets/images/cover.jpg',
+          },
+          {
+            id: 'prov-exp-slug-notes',
+            slug: 'prov-exp-notes-slug',
+            notes: JSON.stringify({
+              initial_slug: 'prov-exp-notes-initial',
+              slug_aliases: ['alias-desde-notes'],
+            }),
+            title: 'Exp Con Slugs En Notes',
+            status: 'publicada',
+            coverImage: '/assets/images/cover.jpg',
+          },
+        ]),
+      );
+
+      const initial = (service as any).loadInitialExperiences();
+      const loaded1 = initial.find((e: Experience) => e.id === 'prov-exp-slug-data');
+      expect(loaded1).toBeDefined();
+      expect(loaded1.initialSlug).toBe('prov-exp-initial-slug');
+      expect(loaded1.slugAliases).toEqual(['alias-antiguo-1', 'alias-antiguo-2']);
+
+      const loaded2 = initial.find((e: Experience) => e.id === 'prov-exp-slug-notes');
+      expect(loaded2).toBeDefined();
+      expect(loaded2.initialSlug).toBe('prov-exp-notes-initial');
+      expect(loaded2.slugAliases).toEqual(['alias-desde-notes']);
+    });
+
+    it('should preserve initialSlug and slugAliases when restoring approved proposals from requests cache', () => {
+      localStorage.setItem(
+        'catamarca_experience_requests_v1',
+        JSON.stringify([
+          {
+            id: 'req-cache-slug-data',
+            slug: 'req-cache-actual-slug',
+            initialSlug: 'req-cache-initial-slug',
+            slugAliases: ['req-alias-1'],
+            title: 'Propuesta Cache Con Slugs',
+            status: 'aprobada',
+            coverImage: '/assets/images/cover.jpg',
+          },
+          {
+            id: 'req-cache-slug-notes',
+            slug: 'req-cache-notes-slug',
+            notes: JSON.stringify({
+              initial_slug: 'req-cache-notes-initial',
+              slug_aliases: ['req-alias-notes'],
+            }),
+            title: 'Propuesta Cache En Notes',
+            status: 'aprobada',
+            coverImage: '/assets/images/cover.jpg',
+          },
+        ]),
+      );
+
+      const initial = (service as any).loadInitialExperiences();
+      const loaded1 = initial.find((e: Experience) => e.id === 'req-cache-slug-data');
+      expect(loaded1).toBeDefined();
+      expect(loaded1.initialSlug).toBe('req-cache-initial-slug');
+      expect(loaded1.slugAliases).toEqual(['req-alias-1']);
+
+      const loaded2 = initial.find((e: Experience) => e.id === 'req-cache-slug-notes');
+      expect(loaded2).toBeDefined();
+      expect(loaded2.initialSlug).toBe('req-cache-notes-initial');
+      expect(loaded2.slugAliases).toEqual(['req-alias-notes']);
     });
   });
 

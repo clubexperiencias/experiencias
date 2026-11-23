@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter, ActivatedRoute, Router } from '@angular/router';
-import { of } from 'rxjs';
+import { provideRouter, ActivatedRoute, Router, convertToParamMap, ParamMap } from '@angular/router';
+import { BehaviorSubject } from 'rxjs';
 import { vi } from 'vitest';
 import { ExperienceDetailComponent } from './experience-detail.component';
 import { KAYAK_DEFAULT_EXPERIENCE, STORAGE_KEY } from '../../../core/services/experience.service';
@@ -8,8 +8,10 @@ import { KAYAK_DEFAULT_EXPERIENCE, STORAGE_KEY } from '../../../core/services/ex
 describe('ExperienceDetailComponent (/experiencias/:slug)', () => {
   let component: ExperienceDetailComponent;
   let fixture: ComponentFixture<ExperienceDetailComponent>;
+  const paramMap$ = new BehaviorSubject<ParamMap>(convertToParamMap({ slug: 'kayak' }));
 
   beforeEach(async () => {
+    paramMap$.next(convertToParamMap({ slug: 'kayak' }));
     if (typeof localStorage !== 'undefined') {
       localStorage.clear();
       localStorage.setItem(
@@ -24,8 +26,8 @@ describe('ExperienceDetailComponent (/experiencias/:slug)', () => {
         {
           provide: ActivatedRoute,
           useValue: {
-            snapshot: { paramMap: { get: () => 'kayak' } },
-            paramMap: of({ get: () => 'kayak' }),
+            snapshot: { paramMap: convertToParamMap({ slug: 'kayak' }) },
+            paramMap: paramMap$.asObservable(),
           },
         },
       ],
@@ -102,18 +104,43 @@ describe('ExperienceDetailComponent (/experiencias/:slug)', () => {
     expect(ctaBtn.textContent).toContain('Ver Álbum Completo');
   });
 
-  it('should redirect to canonical clean slug if navigated via initial slug or alias', () => {
+  it('should redirect to canonical clean slug if navigated via initial slug', () => {
     const router = TestBed.inject(Router);
     const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
 
     const testExp = {
       ...KAYAK_DEFAULT_EXPERIENCE,
+      id: 'exp-different-id',
       slug: 'kayak-clean',
       initialSlug: 'kayak-prop-12345678',
       slugAliases: ['kayak-alias'],
     };
     (component.experienceService as any)._experiences.set([testExp]);
 
+    paramMap$.next(convertToParamMap({ slug: 'kayak-prop-12345678' }));
+    fixture.detectChanges();
+    TestBed.flushEffects();
+
+    expect(navigateSpy).toHaveBeenCalledWith(
+      ['/experiencias', 'kayak-clean'],
+      expect.objectContaining({ replaceUrl: true }),
+    );
+  });
+
+  it('should redirect to canonical clean slug if navigated via alias', () => {
+    const router = TestBed.inject(Router);
+    const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+    const testExp = {
+      ...KAYAK_DEFAULT_EXPERIENCE,
+      id: 'exp-different-id',
+      slug: 'kayak-clean',
+      initialSlug: 'kayak-prop-12345678',
+      slugAliases: ['kayak-alias'],
+    };
+    (component.experienceService as any)._experiences.set([testExp]);
+
+    paramMap$.next(convertToParamMap({ slug: 'kayak-alias' }));
     fixture.detectChanges();
     TestBed.flushEffects();
 

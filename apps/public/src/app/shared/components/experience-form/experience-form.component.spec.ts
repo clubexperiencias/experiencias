@@ -119,6 +119,39 @@ describe('ExperienceFormComponent - isLodging & calculatedUsd reactivity', () =>
       ]);
       expect(component.totalAlbumCount()).toBe(2);
     });
+
+    it('should compute coverCount as 1 when coverImageUrl is set or an album photo has isCover, else 0', () => {
+      expect(component.coverCount()).toBe(0);
+
+      component.coverImageUrl.set('https://example.com/cover.jpg');
+      expect(component.coverCount()).toBe(1);
+
+      component.coverImageUrl.set('');
+      expect(component.coverCount()).toBe(0);
+
+      component.albumPhotos.set([
+        { id: '1', url: 'https://example.com/cover.jpg', order: 1, isFeatured: false, isCover: true },
+      ]);
+      expect(component.coverCount()).toBe(1);
+    });
+
+    it('should render Portada, Destacadas, and Otras pills, and omit Total pill in the template', () => {
+      component.coverImageUrl.set('https://example.com/cover.jpg');
+      component.albumPhotos.set([
+        { id: '1', url: 'https://example.com/1.jpg', order: 1, isFeatured: true },
+        { id: '2', url: 'https://example.com/2.jpg', order: 2, isFeatured: true },
+        { id: '3', url: 'https://example.com/3.jpg', order: 3, isFeatured: false },
+      ]);
+      fixture.detectChanges();
+
+      const pills = Array.from(fixture.nativeElement.querySelectorAll('.album-counter-pill')) as HTMLElement[];
+      const texts = pills.map((p) => p.textContent?.trim().replace(/\s+/g, ' '));
+
+      expect(texts).toContain('Portada: 1 / 1');
+      expect(texts).toContain('Destacadas: 2 / 2');
+      expect(texts).toContain('Otras: 1 / 9');
+      expect(texts.some((t) => t?.startsWith('Total:'))).toBe(false);
+    });
   });
 
   describe('populateForm reactivity', () => {

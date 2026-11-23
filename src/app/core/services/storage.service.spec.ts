@@ -44,7 +44,7 @@ describe('StorageService', () => {
     vi.restoreAllMocks();
   });
 
-  it('debería subir fotos al bucket experiencias de Supabase Storage', async () => {
+  it('debería subir fotos al bucket experiencias de Supabase Storage con upsert false', async () => {
     const mockFile = new File(['file content'], 'foto.jpg', { type: 'image/jpeg' });
 
     const result = await service.uploadFile(mockFile, 'ALBUM');
@@ -52,6 +52,78 @@ describe('StorageService', () => {
     expect(result.provider).toBe('supabase');
     expect(result.url).toContain('experiencias');
     expect(mockSupabase.storage.from).toHaveBeenCalledWith('experiencias');
+    const uploadSpy = mockSupabase.storage.from().upload;
+    expect(uploadSpy).toHaveBeenCalledWith(
+      expect.stringContaining('ALBUM-'),
+      mockFile,
+      expect.objectContaining({ upsert: false, contentType: 'image/jpeg' }),
+    );
+  });
+
+  it('debería detectar contentType video/mp4 al subir videos aunque type venga vacío', async () => {
+    const mockVideo = new File(['video content'], 'video-travesia.mp4', { type: '' });
+
+    const result = await service.uploadFile(mockVideo, 'VIDEO');
+
+    expect(result.provider).toBe('supabase');
+    const uploadSpy = mockSupabase.storage.from().upload;
+    expect(uploadSpy).toHaveBeenCalledWith(
+      expect.stringContaining('VIDEO-'),
+      mockVideo,
+      expect.objectContaining({ upsert: false, contentType: 'video/mp4' }),
+    );
+  });
+
+  it('debería recurrir al fallback backend si la subida directa falla por RLS', async () => {
+    const mockFile = new File(['file content'], 'foto.jpg', { type: 'image/jpeg' });
+    mockSupabase.storage.from().upload.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'new row violates row-level security policy' },
+    });
+
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          success: true,
+          url: 'https://prod-project.supabase.co/storage/v1/object/public/experiencias/fallback.jpg',
+          storageKey: 'fallback.jpg',
+        }),
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const result = await service.uploadFile(mockFile, 'MEDIA');
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      '/api/notify',
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.stringContaining('STORAGE_UPLOAD'),
+      }),
+    );
+    expect(result.url).toContain('fallback.jpg');
+    vi.unstubAllGlobals();
+  });
+
+  it('debería recurrir a Blob URL en modo desarrollo si la subida directa y el fallback backend fallan por RLS', async () => {
+    const mockFile = new File(['file content'], 'foto-dev.jpg', { type: 'image/jpeg' });
+    mockSupabase.storage.from().upload.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'new row violates row-level security policy' },
+    });
+
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const result = await service.uploadFile(mockFile, 'ALBUM');
+
+    expect(result.provider).toBe('local');
+    expect(result.url).toMatch(/^blob:/);
+    expect(result.storageKey).toContain('local/ALBUM-foto-dev.jpg');
+    vi.unstubAllGlobals();
   });
 
   it('debería subir comprobantes al bucket comprobantes de Supabase Storage', async () => {

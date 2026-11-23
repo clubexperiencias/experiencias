@@ -3759,6 +3759,22 @@ export class AdminDashboardComponent {
     const members = typeof this.store.members === 'function' ? this.store.members() : [];
     const favCountMap = new Map<string, number>();
 
+    const publishedExperiences = exps.filter(
+      (e) => (e.status === 'publicada' || (e.status !== 'oculta' && !e.status)) && !e.deletedAt && !(e as any).isSoftDeleted,
+    );
+    const publishedSlugSet = new Set<string>();
+    for (const exp of publishedExperiences) {
+      if (exp.slug) publishedSlugSet.add(exp.slug.trim().toLowerCase());
+      if (exp.id) publishedSlugSet.add(exp.id.trim().toLowerCase());
+      if (exp.initialSlug) publishedSlugSet.add(exp.initialSlug.trim().toLowerCase());
+      if (Array.isArray(exp.slugAliases)) {
+        for (const a of exp.slugAliases) {
+          if (a) publishedSlugSet.add(a.trim().toLowerCase());
+        }
+      }
+    }
+    const isExcludedSurveyKey = (key: string) => SURVEY_INTEREST_KEYS.has(key) && !publishedSlugSet.has(key);
+
     for (const m of members) {
       // Ignorar registros de lista de espera y dados de baja (sus respuestas son de la encuesta de registro)
       if (
@@ -3772,7 +3788,7 @@ export class AdminDashboardComponent {
       if (Array.isArray(list)) {
         for (const slug of list) {
           const norm = (slug || '').trim().toLowerCase();
-          if (norm && !SURVEY_INTEREST_KEYS.has(norm)) {
+          if (norm && !isExcludedSurveyKey(norm)) {
             favCountMap.set(norm, (favCountMap.get(norm) || 0) + 1);
           }
         }
@@ -3782,7 +3798,7 @@ export class AdminDashboardComponent {
     const localFavs = typeof this.favoritesService?.favoriteSlugs === 'function' ? this.favoritesService.favoriteSlugs() : [];
     for (const slug of localFavs) {
       const norm = (slug || '').trim().toLowerCase();
-      if (norm && !SURVEY_INTEREST_KEYS.has(norm)) {
+      if (norm && !isExcludedSurveyKey(norm)) {
         favCountMap.set(norm, Math.max(favCountMap.get(norm) || 0, 1));
       }
     }
@@ -3792,10 +3808,22 @@ export class AdminDashboardComponent {
       .map((e) => {
         const slugNorm = (e.slug || '').trim().toLowerCase();
         const idNorm = (e.id || '').trim().toLowerCase();
+        const initialNorm = (e.initialSlug || '').trim().toLowerCase();
+        let maxAliasCount = 0;
+        if (Array.isArray(e.slugAliases)) {
+          for (const alias of e.slugAliases) {
+            const aKey = (alias || '').trim().toLowerCase();
+            if (aKey && favCountMap.has(aKey)) {
+              maxAliasCount = Math.max(maxAliasCount, favCountMap.get(aKey) || 0);
+            }
+          }
+        }
         const count = Math.max(
           e.favoritesCount || 0,
           slugNorm ? favCountMap.get(slugNorm) || 0 : 0,
           idNorm ? favCountMap.get(idNorm) || 0 : 0,
+          initialNorm ? favCountMap.get(initialNorm) || 0 : 0,
+          maxAliasCount,
         );
         return {
           experience: e,
