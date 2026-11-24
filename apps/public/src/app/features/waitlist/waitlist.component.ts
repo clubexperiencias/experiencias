@@ -58,17 +58,9 @@ export class WaitlistComponent implements OnInit {
   readonly experienceService = inject(ExperienceService);
   readonly activityService = inject(ActivityHistoryService);
   private readonly destroyRef = inject(DestroyRef);
-  private manifestoTimer: any = null;
-
-  // Notificación flotante: Plataforma en construcción (Estilo Toast Favoritos)
-  readonly showConstructionNotice = signal(false);
-  private constructionTimer: any = null;
 
   constructor() {
-    this.destroyRef.onDestroy(() => {
-      this.clearManifestoTimer();
-      this.clearConstructionTimer();
-    });
+
 
     this.route.queryParams.subscribe((params) => {
       const modal = params['modal'] as ModalType;
@@ -94,116 +86,16 @@ export class WaitlistComponent implements OnInit {
         filter((e): e is NavigationEnd => e instanceof NavigationEnd),
         takeUntilDestroyed(this.destroyRef),
       )
-      .subscribe((e) => {
-        const cleanUrl = (e.urlAfterRedirects || e.url || '').split('?')[0].split('#')[0];
-        if (cleanUrl === '' || cleanUrl === '/') {
-          this.triggerConstructionNotice();
-        }
-      });
+      .subscribe(() => {});
   }
 
-  ngOnInit(): void {
-    this.triggerConstructionNotice();
-  }
-
-  triggerConstructionNotice(): void {
-    this.clearConstructionTimer();
-    this.showConstructionNotice.set(false);
-    setTimeout(() => {
-      this.showConstructionNotice.set(true);
-      this.constructionTimer = setTimeout(() => {
-        this.showConstructionNotice.set(false);
-        this.constructionTimer = null;
-      }, 7000);
-    }, 60);
-  }
-
-  dismissConstructionNotice(): void {
-    this.clearConstructionTimer();
-    this.showConstructionNotice.set(false);
-  }
-
-  private clearConstructionTimer(): void {
-    if (this.constructionTimer) {
-      clearTimeout(this.constructionTimer);
-      this.constructionTimer = null;
-    }
-  }
+  ngOnInit(): void {}
 
   // Email de suscripción socio emergente
   readonly email = signal('');
   readonly copyStatus = signal<string | null>(null);
 
-  // Manifiesto del Club (vista desplegable en el root con auto-cierre de 11s)
-  readonly showManifesto = signal(false);
-  readonly manifestoAutoSentEmail = signal<string | null>(null);
 
-  private clearManifestoTimer(): void {
-    if (this.manifestoTimer) {
-      clearTimeout(this.manifestoTimer);
-      this.manifestoTimer = null;
-    }
-  }
-
-  toggleManifesto(focusEmail = false): void {
-    const isOpening = !this.showManifesto();
-    this.clearManifestoTimer();
-    this.manifestoAutoSentEmail.set(null);
-
-    if (isOpening) {
-      const cleanEmail = this.email().trim().toLowerCase();
-      if (cleanEmail && this.newsletter.isValidEmail(cleanEmail)) {
-        void this.submitFromManifesto(cleanEmail);
-        this.email.set('');
-      }
-
-      // Auto-cierre del manifiesto a los 16 segundos
-      this.manifestoTimer = setTimeout(() => {
-        if (this.showManifesto()) {
-          this.closeManifesto();
-        }
-      }, 16000);
-    }
-
-    this.showManifesto.set(isOpening);
-    if (!isOpening && focusEmail && typeof document !== 'undefined') {
-      setTimeout(() => {
-        document.getElementById('waitlist-email')?.focus();
-      }, 150);
-    }
-  }
-
-  closeManifesto(focusEmail = false): void {
-    this.clearManifestoTimer();
-    this.manifestoAutoSentEmail.set(null);
-    this.showManifesto.set(false);
-    if (focusEmail && typeof document !== 'undefined') {
-      setTimeout(() => {
-        document.getElementById('waitlist-email')?.focus();
-      }, 150);
-    }
-  }
-
-  private async submitFromManifesto(cleanEmail: string): Promise<void> {
-    this.manifestoAutoSentEmail.set(null);
-    if (this.newsletter.isSubscribed()) {
-      this.newsletter.resetCurrentSubscription();
-    }
-    try {
-      const loginRes = await this.newsletter.loginWithEmail(cleanEmail);
-      if ((!loginRes?.success && !loginRes?.isWaitlistOnly) || loginRes?.alreadyRegisteredSocio) {
-        return;
-      }
-      if (this.newsletter.isSupabaseConnected()) {
-        const notifRes = await this.notificationService.notifyWaitlistConfirmation({ email: cleanEmail });
-        if (notifRes?.success) {
-          this.manifestoAutoSentEmail.set(cleanEmail);
-        }
-      }
-    } catch (err) {
-      console.warn('[WaitlistComponent] Error enviando confirmación desde manifiesto:', err);
-    }
-  }
 
   // Menú desplegable de perfil de usuario
   readonly profileMenuOpen = signal(false);

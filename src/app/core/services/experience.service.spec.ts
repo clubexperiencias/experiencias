@@ -55,6 +55,9 @@ describe('ExperienceService', () => {
     };
 
     mockSupabase = {
+      auth: {
+        getSession: vi.fn().mockResolvedValue({ data: { session: null }, error: null }),
+      },
       from: vi.fn().mockReturnValue({
         select: vi.fn().mockReturnValue(selectQuery),
         insert: vi.fn().mockResolvedValue({ data: [], error: null }),
@@ -263,6 +266,324 @@ describe('ExperienceService', () => {
 
       await service.updateExperience(completeExp);
       expect(service.experiences().some((e) => e.id === 'complete-new-id')).toBe(true);
+    });
+
+    it('should persist provider fields including provider_id, is_club_experience, and banking into Supabase update payload', async () => {
+      const updateBuilder: any = {
+        eq: vi.fn().mockReturnThis(),
+        select: vi.fn().mockResolvedValue({ data: [{ id: 'exp-kayak' }], error: null }),
+      };
+      const updateMock = vi.fn().mockReturnValue(updateBuilder);
+      mockSupabase.from.mockReturnValue({
+        update: updateMock,
+      });
+
+      await service.updateExperience({
+        id: 'exp-kayak',
+        providerName: 'Nuevo Guía',
+        providerSlug: 'nuevo-guia',
+        providerId: 'prov-new-uuid',
+        isClubExperience: false,
+        providerAgency: 'Agencia Nueva',
+        providerCbuAlias: 'NUEVO.CBU',
+        providerCuitDni: '20-11223344-5',
+        providerBankName: 'Banco Macro',
+      });
+
+      expect(updateMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          provider_name: 'Nuevo Guía',
+          provider_slug: 'nuevo-guia',
+          provider_id: 'prov-new-uuid',
+          is_club_experience: false,
+          provider_agency: 'Agencia Nueva',
+          provider_cbu_alias: 'NUEVO.CBU',
+          provider_cuit_dni: '20-11223344-5',
+          provider_bank_name: 'Banco Macro',
+        }),
+      );
+
+      const live = service.experiences().find((e) => e.id === 'exp-kayak');
+      expect(live?.providerName).toBe('Nuevo Guía');
+      expect(live?.isClubExperience).toBe(false);
+      expect(live?.providerId).toBe('prov-new-uuid');
+    });
+
+    it('should preserve current providerId when providerId is omitted in updateExperience', async () => {
+      const updateBuilder: any = {
+        eq: vi.fn().mockReturnThis(),
+        select: vi.fn().mockResolvedValue({ data: [{ id: 'exp-kayak' }], error: null }),
+      };
+      const updateMock = vi.fn().mockReturnValue(updateBuilder);
+      mockSupabase.from.mockReturnValue({
+        update: updateMock,
+      });
+
+      // First give it a known providerId
+      await service.updateExperience({
+        id: 'exp-kayak',
+        providerId: 'prov-existing-123',
+        isClubExperience: false,
+      });
+
+      // Now update only the title, omitting providerId
+      await service.updateExperience({
+        id: 'exp-kayak',
+        title: 'Kayak Título Actualizado',
+      });
+
+      const live = service.experiences().find((e) => e.id === 'exp-kayak');
+      expect(live?.title).toBe('Kayak Título Actualizado');
+      expect(live?.providerId).toBe('prov-existing-123');
+
+      // Verify that provider_id was omitted from the payload on the title-only update
+      const secondCallPayload = updateMock.mock.calls[1][0];
+      expect(secondCallPayload).not.toHaveProperty('provider_id');
+    });
+
+    it('should omit provider_id from payload when updating an experience that already has no providerId', async () => {
+      const updateBuilder: any = {
+        eq: vi.fn().mockReturnThis(),
+        select: vi.fn().mockResolvedValue({ data: [{ id: 'exp-kayak' }], error: null }),
+      };
+      const updateMock = vi.fn().mockReturnValue(updateBuilder);
+      mockSupabase.from.mockReturnValue({
+        update: updateMock,
+      });
+
+      // Clear provider first
+      await service.updateExperience({
+        id: 'exp-kayak',
+        isClubExperience: true,
+      });
+
+      // Now update only description, without changing ownership
+      await service.updateExperience({
+        id: 'exp-kayak',
+        description: 'Nueva descripción de club',
+      });
+
+      const secondCallPayload = updateMock.mock.calls[1][0];
+      expect(secondCallPayload).not.toHaveProperty('provider_id');
+      expect(secondCallPayload.description).toBe('Nueva descripción de club');
+    });
+
+    it('should explicitly clear providerId and set provider_id to null when providerId is null', async () => {
+      const updateBuilder: any = {
+        eq: vi.fn().mockReturnThis(),
+        select: vi.fn().mockResolvedValue({ data: [{ id: 'exp-kayak' }], error: null }),
+      };
+      const updateMock = vi.fn().mockReturnValue(updateBuilder);
+      mockSupabase.from.mockReturnValue({
+        update: updateMock,
+      });
+
+      // First ensure it has a providerId
+      await service.updateExperience({
+        id: 'exp-kayak',
+        providerId: 'prov-to-clear',
+        isClubExperience: false,
+      });
+
+      // Now explicitly clear providerId with null
+      await service.updateExperience({
+        id: 'exp-kayak',
+        providerId: null,
+      });
+
+      expect(updateMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          provider_id: null,
+        }),
+      );
+
+      const live = service.experiences().find((e) => e.id === 'exp-kayak');
+      expect(live?.providerId).toBeUndefined();
+    });
+
+    it('should explicitly clear providerId and set provider_id to null when providerId is empty string', async () => {
+      const updateBuilder: any = {
+        eq: vi.fn().mockReturnThis(),
+        select: vi.fn().mockResolvedValue({ data: [{ id: 'exp-kayak' }], error: null }),
+      };
+      const updateMock = vi.fn().mockReturnValue(updateBuilder);
+      mockSupabase.from.mockReturnValue({
+        update: updateMock,
+      });
+
+      await service.updateExperience({
+        id: 'exp-kayak',
+        providerId: 'prov-to-clear-2',
+        isClubExperience: false,
+      });
+
+      // Explicit clear with empty string
+      await service.updateExperience({
+        id: 'exp-kayak',
+        providerId: '',
+      });
+
+      expect(updateMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          provider_id: null,
+        }),
+      );
+
+      const live = service.experiences().find((e) => e.id === 'exp-kayak');
+      expect(live?.providerId).toBeUndefined();
+    });
+
+    it('should explicitly clear providerId and set provider_id to null when isClubExperience is true', async () => {
+      const updateBuilder: any = {
+        eq: vi.fn().mockReturnThis(),
+        select: vi.fn().mockResolvedValue({ data: [{ id: 'exp-kayak' }], error: null }),
+      };
+      const updateMock = vi.fn().mockReturnValue(updateBuilder);
+      mockSupabase.from.mockReturnValue({
+        update: updateMock,
+      });
+
+      await service.updateExperience({
+        id: 'exp-kayak',
+        providerId: 'prov-to-be-clubbed',
+        isClubExperience: false,
+      });
+
+      // Converted to Club Experience
+      await service.updateExperience({
+        id: 'exp-kayak',
+        isClubExperience: true,
+      });
+
+      expect(updateMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          provider_id: null,
+          is_club_experience: true,
+        }),
+      );
+
+      const live = service.experiences().find((e) => e.id === 'exp-kayak');
+      expect(live?.providerId).toBeUndefined();
+      expect(live?.isClubExperience).toBe(true);
+    });
+
+    it('should retry without provider_id on missing column error', async () => {
+      let callCount = 0;
+      const updateBuilder: any = {
+        eq: vi.fn().mockReturnThis(),
+        select: vi.fn().mockImplementation(() => {
+          callCount++;
+          if (callCount === 1) {
+            return Promise.resolve({
+              data: null,
+              error: {
+                message: 'column "provider_id" of relation "experiencias" does not exist',
+                code: '42703',
+              },
+            });
+          }
+          return Promise.resolve({ data: [{ id: 'exp-kayak' }], error: null });
+        }),
+      };
+      const updateMock = vi.fn().mockReturnValue(updateBuilder);
+      mockSupabase.from.mockReturnValue({
+        update: updateMock,
+      });
+
+      await service.updateExperience({
+        id: 'exp-kayak',
+        providerId: 'prov-new-id',
+      });
+
+      expect(callCount).toBe(2);
+      // The second call must have deleted provider_id
+      const secondCallPayload = updateMock.mock.calls[1][0];
+      expect(secondCallPayload).not.toHaveProperty('provider_id');
+    });
+
+    it('should reject save on foreign key error if target provider cannot be resolved', async () => {
+      const updateBuilder: any = {
+        eq: vi.fn().mockReturnThis(),
+        select: vi.fn().mockResolvedValue({
+          data: null,
+          error: {
+            message: 'insert or update on table "experiencias" violates foreign key constraint "experiencias_provider_id_fkey"',
+            code: '23503',
+          },
+        }),
+      };
+      const updateMock = vi.fn().mockReturnValue(updateBuilder);
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === 'prestadores') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            ilike: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockReturnThis(),
+            maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+          };
+        }
+        return { update: updateMock };
+      });
+
+      await expect(
+        service.updateExperience({
+          id: 'exp-kayak',
+          providerId: 'invalid-prov-uuid',
+          providerEmail: 'nonexistent@prov.com',
+        }),
+      ).rejects.toThrow();
+
+      // Ensure provider_id was NOT silently discarded to report success
+      expect(updateMock).not.toHaveBeenCalledWith(
+        expect.not.objectContaining({ provider_id: expect.anything() }),
+      );
+    });
+
+    it('should resolve target provider and preserve relationship on foreign key error if provider exists by email', async () => {
+      let updateCalls = 0;
+      const updateBuilder: any = {
+        eq: vi.fn().mockReturnThis(),
+        select: vi.fn().mockImplementation(() => {
+          updateCalls++;
+          if (updateCalls === 1) {
+            return Promise.resolve({
+              data: null,
+              error: {
+                message: 'insert or update on table "experiencias" violates foreign key constraint "experiencias_provider_id_fkey"',
+                code: '23503',
+              },
+            });
+          }
+          return Promise.resolve({ data: [{ id: 'exp-kayak' }], error: null });
+        }),
+      };
+      const updateMock = vi.fn().mockReturnValue(updateBuilder);
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === 'prestadores') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            ilike: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockReturnThis(),
+            maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'correct-provider-uuid' }, error: null }),
+          };
+        }
+        return { update: updateMock };
+      });
+
+      await service.updateExperience({
+        id: 'exp-kayak',
+        providerId: 'stale-user-id',
+        providerEmail: 'guia@experiencias.club',
+      });
+
+      expect(updateCalls).toBe(2);
+      const secondCallPayload = updateMock.mock.calls[1][0];
+      expect(secondCallPayload.provider_id).toBe('correct-provider-uuid');
+
+      const live = service.experiences().find((e) => e.id === 'exp-kayak');
+      expect(live?.providerId).toBe('correct-provider-uuid');
     });
 
     it('should preserve stored record id when lookup matches by slug or alternate id', async () => {
@@ -1513,6 +1834,77 @@ describe('ExperienceService', () => {
         }),
       );
       expect(orSpy).toHaveBeenCalledWith('id.eq."club-exp-1"');
+    });
+  });
+
+  describe('loadFromSupabase prestadores enrichment', () => {
+    it('should select banking fields and notes from prestadores omitting unsupported Mercado Pago columns', async () => {
+      mockSupabase.auth.getSession.mockResolvedValue({
+        data: { session: { user: { id: 'admin-user-id' } } },
+      } as any);
+
+      const remoteExperiences = [
+        {
+          id: 'exp-with-prov',
+          slug: 'exp-with-prov',
+          title: 'Exp Con Proveedor',
+          provider_email: 'guia@example.com',
+          provider_id: 'prov-uuid-1',
+          status: 'publicada',
+        },
+      ];
+
+      const prestadoresSelectSpy = vi.fn().mockResolvedValue({
+        data: [
+          {
+            id: 'prov-uuid-1',
+            email: 'guia@example.com',
+            cbu_alias: 'GUIA.ALIAS.BANCO',
+            cuit_dni: '20-33445566-7',
+            bank_name: 'Banco Galicia',
+            notes: JSON.stringify({ mp_connected: true, mp_collector_id: '99887766' }),
+          },
+        ],
+        error: null,
+      });
+
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === 'experiencias') {
+          return {
+            select: vi.fn().mockReturnValue({
+              order: vi.fn().mockResolvedValue({ data: remoteExperiences, error: null }),
+            }),
+          };
+        }
+        if (table === 'prestadores') {
+          return {
+            select: prestadoresSelectSpy,
+          };
+        }
+        return {
+          select: vi.fn().mockReturnValue({
+            order: vi.fn().mockResolvedValue({ data: [], error: null }),
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+            }),
+          }),
+        };
+      });
+
+      await (service as any).loadFromSupabase();
+
+      // Ensure unsupported columns mp_connected and mp_collector_id are NOT selected
+      expect(prestadoresSelectSpy).toHaveBeenCalledWith(
+        'id, email, cbu_alias, cuit_dni, bank_name, notes',
+      );
+
+      const exp = service.experiences().find((e) => e.id === 'exp-with-prov');
+      expect(exp).toBeDefined();
+      expect(exp?.providerCbuAlias).toBe('GUIA.ALIAS.BANCO');
+      expect(exp?.providerCuitDni).toBe('20-33445566-7');
+      expect(exp?.providerBankName).toBe('Banco Galicia');
+      expect(exp?.mpConnected).toBe(true);
+      expect(exp?.mpCollectorId).toBe('99887766');
     });
   });
 });

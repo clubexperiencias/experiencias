@@ -67,6 +67,7 @@ export interface ExperienceFormPayload {
   providerBankName?: string;
   providerId?: string;
   providerEmail?: string;
+  isClubExperience?: boolean;
   status?: string;
   displayLocation?: string;
 }
@@ -1129,6 +1130,7 @@ export class ExperienceFormComponent implements OnInit, OnChanges {
         this.selectedProviderId() !== 'club' && this.selectedProviderId() !== 'custom'
           ? this.registeredProviders.find((p) => p.id === this.selectedProviderId())?.email
           : undefined,
+      isClubExperience: this.isClubExperience,
       status: value.status,
       displayLocation: value.displayLocation,
     };

@@ -191,7 +191,7 @@ describe('AdminStoreService - Provider Status Update Flow', () => {
                   phone: '+5493834111222',
                   experiencesWishlist: ['exp-kayak', 'exp-cabalgata'],
                   experiencesOther: 'Trekking guiado',
-                  googleLinked: true,
+                  googleLinked: false,
                   paymentsCount: 1,
                   createdAt: '2026-11-01T10:00:00Z',
                 },
@@ -215,6 +215,42 @@ describe('AdminStoreService - Provider Status Update Flow', () => {
       expect(w.experiencesWishlist).toEqual(['exp-kayak', 'exp-cabalgata']);
       expect(w.experiencesOther).toBe('Trekking guiado');
       expect(w.converted).toBe(true);
+    });
+
+    it('should promote Google-linked waitlist members to socio emergente in admin portal', async () => {
+      mockSupabase.rpc = vi.fn().mockImplementation((fn: string) => {
+        if (fn === 'get_admin_all_members') {
+          return Promise.resolve({
+            data: {
+              socios: [],
+              waitlist: [
+                {
+                  id: 'w-google',
+                  email: 'google-socio@ejemplo.com',
+                  fullName: 'Socio Desde Google',
+                  dni: null,
+                  phone: null,
+                  googleLinked: true,
+                  paymentsCount: 0,
+                  createdAt: '2026-11-01T10:00:00Z',
+                },
+              ],
+            },
+            error: null,
+          });
+        }
+        return Promise.resolve({ data: null, error: null });
+      });
+
+      await adminStore.loadAllMembers();
+
+      const members = adminStore.members();
+      expect(members.length).toBe(1);
+      const s = members[0];
+      expect(s.id).toBe('w-google');
+      expect(s.type).toBe('socio');
+      expect(s.membershipTier).toBe('emergente');
+      expect(s.googleLinked).toBe(true);
     });
 
     it('should fallback to placeholders and empty array when waitlist fields are missing or not an array', async () => {

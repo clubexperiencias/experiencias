@@ -817,6 +817,9 @@ module.exports = async function handler(req, res) {
       let isAuthorizedSeller = false;
       let sellerTokenMissing = false;
       let targetProviderEmail = '';
+      let targetProviderId = '';
+      let collectorIdMismatch = false;
+      let isClubExperience = false;
 
       if (supabaseUrl && supabaseServiceKey) {
         try {
@@ -843,6 +846,13 @@ module.exports = async function handler(req, res) {
             expData = expRes.data[0];
           }
 
+          isClubExperience = Boolean(
+            expData?.is_club_experience ||
+            expData?.provider_id === 'prov-club' ||
+            expData?.provider_slug === 'club-de-experiencias' ||
+            expData?.provider_slug === 'club'
+          );
+
           // 2. Cargar porcentaje de recargo oficial configurado por el Club
           const clubRes = await requestHttps({
             hostname: supabaseHost,
@@ -868,72 +878,96 @@ module.exports = async function handler(req, res) {
             }
           }
 
-          // 3. Resolver prestador y su autorización de Mercado Pago
-          const providerEmail = (expData?.provider_email || body.providerEmail || '').trim().toLowerCase();
-          targetProviderEmail = providerEmail;
-          if (providerEmail) {
-            const provRes = await requestHttps({
-              hostname: supabaseHost,
-              path: `/rest/v1/prestadores?email=eq.${encodeURIComponent(providerEmail)}&select=notes`,
-              method: 'GET',
-              headers: authHeaders,
-            });
+          // 3. Resolver prestador y su autorización de Mercado Pago desde datos autoritativos persistidos
+          if (!isClubExperience && expData) {
+            targetProviderId = (expData.provider_id || '').trim();
+            targetProviderEmail = (expData.provider_email || '').trim().toLowerCase();
 
-            if (provRes.status >= 200 && provRes.status < 300 && Array.isArray(provRes.data) && provRes.data.length > 0) {
-              const notesRaw = provRes.data[0].notes;
-              if (notesRaw) {
-                try {
-                  const notes = JSON.parse(notesRaw);
-                  if (notes && typeof notes === 'object' && Boolean(notes.mp_connected)) {
-                    let sellerToken = '';
+            let provQuery = '';
+            if (targetProviderId) {
+              provQuery = `/rest/v1/prestadores?id=eq.${encodeURIComponent(targetProviderId)}&select=id,email,notes,name,agency`;
+            } else if (targetProviderEmail) {
+              provQuery = `/rest/v1/prestadores?email=eq.${encodeURIComponent(targetProviderEmail)}&select=id,email,notes,name,agency`;
+            }
 
-                    // 1. Verificar si notes.mp_access_token contiene un token válido no vacío
-                    if (typeof notes.mp_access_token === 'string' && notes.mp_access_token.trim()) {
-                      sellerToken = notes.mp_access_token.trim();
-                    }
+            if (provQuery) {
+              const provRes = await requestHttps({
+                hostname: supabaseHost,
+                path: provQuery,
+                method: 'GET',
+                headers: authHeaders,
+              });
 
-                    // 2. Si no está en notes, consultar el almacenamiento protegido del servidor (historial_mp)
-                    if (!sellerToken) {
-                      let tokenQueryPath = '';
-                      if (typeof notes.mp_token_id === 'string' && notes.mp_token_id.trim()) {
-                        // Seleccionar únicamente el token explícitamente referenciado por la conexión comprometida
-                        tokenQueryPath = `/rest/v1/historial_mp?id=eq.${encodeURIComponent(notes.mp_token_id.trim())}&provider_email=eq.${encodeURIComponent(providerEmail)}&select=details`;
-                      } else if (notes.mp_collector_id) {
-                        // Conexión previa sin mp_token_id: filtrar por el collector_id comprometido en notes
-                        tokenQueryPath = `/rest/v1/historial_mp?provider_email=eq.${encodeURIComponent(providerEmail)}&collector_id=eq.${encodeURIComponent(String(notes.mp_collector_id))}&action=eq.connect&order=changed_at.desc&limit=1&select=details`;
-                      } else {
-                        tokenQueryPath = `/rest/v1/historial_mp?provider_email=eq.${encodeURIComponent(providerEmail)}&action=eq.connect&order=changed_at.desc&limit=1&select=details`;
+              if (provRes.status >= 200 && provRes.status < 300 && Array.isArray(provRes.data) && provRes.data.length > 0) {
+                const provRow = provRes.data[0];
+                const provEmail = (provRow.email || targetProviderEmail).trim().toLowerCase();
+                targetProviderEmail = provEmail;
+                const notesRaw = provRow.notes;
+                if (notesRaw) {
+                  try {
+                    const notes = JSON.parse(notesRaw);
+                    if (notes && typeof notes === 'object' && Boolean(notes.mp_connected)) {
+                      const authoritativeCollectorId = notes.mp_collector_id ? String(notes.mp_collector_id).trim() : '';
+
+                      // Validar cualquier collector ID enviado contra el registro autoritativo del prestador
+                      const clientCollectorId = body.providerCollectorId ? String(body.providerCollectorId).trim() : '';
+                      if (clientCollectorId && authoritativeCollectorId && clientCollectorId !== authoritativeCollectorId) {
+                        console.warn(
+                          `[MercadoPago API] Discrepancia entre providerCollectorId del cliente (${clientCollectorId}) y el del prestador (${authoritativeCollectorId}).`
+                        );
+                        collectorIdMismatch = true;
                       }
 
-                      const tokenHistRes = await requestHttps({
-                        hostname: supabaseHost,
-                        path: tokenQueryPath,
-                        method: 'GET',
-                        headers: authHeaders,
-                      });
-                      if (
-                        tokenHistRes.status >= 200 &&
-                        tokenHistRes.status < 300 &&
-                        Array.isArray(tokenHistRes.data) &&
-                        tokenHistRes.data.length > 0
-                      ) {
-                        const tokenDetails = tokenHistRes.data[0]?.details;
-                        if (typeof tokenDetails?.access_token === 'string' && tokenDetails.access_token.trim()) {
-                          sellerToken = tokenDetails.access_token.trim();
+                      let sellerToken = '';
+
+                      // 1. Verificar si notes.mp_access_token contiene un token válido no vacío
+                      if (typeof notes.mp_access_token === 'string' && notes.mp_access_token.trim()) {
+                        sellerToken = notes.mp_access_token.trim();
+                      }
+
+                      // 2. Si no está en notes, consultar el almacenamiento protegido del servidor (historial_mp)
+                      if (!sellerToken && !collectorIdMismatch) {
+                        let tokenQueryPath = '';
+                        if (typeof notes.mp_token_id === 'string' && notes.mp_token_id.trim()) {
+                          // Seleccionar únicamente el token explícitamente referenciado por la conexión comprometida
+                          tokenQueryPath = `/rest/v1/historial_mp?id=eq.${encodeURIComponent(notes.mp_token_id.trim())}&provider_email=eq.${encodeURIComponent(provEmail)}&select=details`;
+                        } else if (authoritativeCollectorId) {
+                          // Filtrar por el collector_id autoritativo en notes (nunca confiar en client-supplied providerCollectorId)
+                          tokenQueryPath = `/rest/v1/historial_mp?provider_email=eq.${encodeURIComponent(provEmail)}&collector_id=eq.${encodeURIComponent(authoritativeCollectorId)}&action=eq.connect&order=changed_at.desc&limit=1&select=details`;
+                        } else {
+                          tokenQueryPath = `/rest/v1/historial_mp?provider_email=eq.${encodeURIComponent(provEmail)}&action=eq.connect&order=changed_at.desc&limit=1&select=details`;
+                        }
+
+                        const tokenHistRes = await requestHttps({
+                          hostname: supabaseHost,
+                          path: tokenQueryPath,
+                          method: 'GET',
+                          headers: authHeaders,
+                        });
+                        if (
+                          tokenHistRes.status >= 200 &&
+                          tokenHistRes.status < 300 &&
+                          Array.isArray(tokenHistRes.data) &&
+                          tokenHistRes.data.length > 0
+                        ) {
+                          const tokenDetails = tokenHistRes.data[0]?.details;
+                          if (typeof tokenDetails?.access_token === 'string' && tokenDetails.access_token.trim()) {
+                            sellerToken = tokenDetails.access_token.trim();
+                          }
                         }
                       }
-                    }
 
-                    // isAuthorizedSeller es true únicamente cuando mp_connected es true y se dispone de un access token válido
-                    if (sellerToken) {
-                      resolvedSellerToken = sellerToken;
-                      isAuthorizedSeller = true;
-                    } else {
-                      sellerTokenMissing = true;
+                      // isAuthorizedSeller es true únicamente cuando mp_connected es true y se dispone de un access token válido
+                      if (sellerToken && !collectorIdMismatch) {
+                        resolvedSellerToken = sellerToken;
+                        isAuthorizedSeller = true;
+                      } else if (!collectorIdMismatch) {
+                        sellerTokenMissing = true;
+                      }
                     }
+                  } catch {
+                    // Fallback
                   }
-                } catch {
-                  // Fallback
                 }
               }
             }
@@ -1235,12 +1269,33 @@ module.exports = async function handler(req, res) {
         });
       }
 
+      if (collectorIdMismatch) {
+        return res.status(400).json({
+          error: 'Identificador de cobro de prestador inválido',
+          message: 'El identificador de cobro de Mercado Pago no coincide con el registro oficial del prestador.',
+        });
+      }
+
+      // Si la experiencia pertenece a un prestador externo y este no cuenta con credenciales activas,
+      // no hacer fallback silencioso a la cuenta del Club.
+      if (!isClubExperience && expData && !isAuthorizedSeller) {
+        if (!isTestEnv) {
+          console.warn(`[MercadoPago API] Experiencia de prestador (${targetProviderEmail || targetProviderId || 'desconocido'}) sin Mercado Pago conectado. Rechazando fallback al Club.`);
+          return res.status(502).json({
+            error: 'Cobro con Mercado Pago no disponible para este prestador',
+            message: 'El prestador de esta experiencia no cuenta con credenciales autorizadas de Mercado Pago para procesar el cobro.',
+          });
+        }
+      }
+
       if (!payer?.email || !String(payer.email).trim()) {
         return res.status(400).json({ error: 'El email del pagador es obligatorio para generar la reserva.' });
       }
 
-      // Utilizar el access token del vendedor autorizado si está disponible, o el access token del Club/Marketplace
-      const preferenceAccessToken = resolvedSellerToken || mpAccessToken;
+      // Utilizar el access token del vendedor autorizado si está disponible, o el access token del Club/Marketplace (solo si es experiencia del Club)
+      const preferenceAccessToken = isClubExperience
+        ? mpAccessToken
+        : (resolvedSellerToken || (isTestEnv ? mpAccessToken : ''));
 
       // Si no hay ningún access token disponible en el servidor, rechazar con error de configuración
       if (!preferenceAccessToken) {

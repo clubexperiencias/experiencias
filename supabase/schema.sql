@@ -283,6 +283,23 @@ CREATE TABLE IF NOT EXISTS public.experiencias (
 ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
 ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT 'expediciones';
 ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS pricing_packs JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.experiencias ADD COLUMN IF NOT EXISTS is_club_experience BOOLEAN NOT NULL DEFAULT false;
+
+-- Backfill histórico: asegurar que las experiencias oficiales del Club tengan is_club_experience = true
+-- preservando false para experiencias expresamente de prestadores externos
+UPDATE public.experiencias
+SET is_club_experience = true
+WHERE is_club_experience = false
+  AND (
+    provider_slug IN ('club-de-experiencias', 'club')
+    OR provider_email IN ('admin@experiencias.club', 'hola@experiencias.club')
+    OR lower(trim(provider_name)) IN ('club de experiencias', 'club')
+    OR (
+      provider_id IS NULL
+      AND (provider_email IS NULL OR provider_email IN ('admin@experiencias.club', 'hola@experiencias.club'))
+      AND (provider_slug IS NULL OR provider_slug IN ('club-de-experiencias', 'club'))
+    )
+  );
 
 CREATE INDEX IF NOT EXISTS idx_experiencias_slug ON public.experiencias(slug);
 CREATE INDEX IF NOT EXISTS idx_experiencias_category ON public.experiencias(category);
@@ -636,22 +653,50 @@ CREATE OR REPLACE FUNCTION public.handle_user_auth_link()
 RETURNS TRIGGER AS $$
 DECLARE
   v_google_name TEXT;
+  v_email TEXT;
 BEGIN
+  v_email := LOWER(TRIM(COALESCE(NEW.email, '')));
+  IF v_email = '' THEN
+    RETURN NEW;
+  END IF;
+
   v_google_name := COALESCE(
     NULLIF(TRIM(NEW.raw_user_meta_data ->> 'full_name'), ''),
     NULLIF(TRIM(NEW.raw_user_meta_data ->> 'name'), '')
   );
 
-  UPDATE public.socios
+  INSERT INTO public.socios (
+    email,
+    full_name,
+    membership_tier,
+    auth_user_id,
+    position
+  )
+  VALUES (
+    v_email,
+    COALESCE(v_google_name, 'Socio emergente'),
+    'emergente',
+    NEW.id,
+    nextval('public.socios_position_seq')
+  )
+  ON CONFLICT (email) DO UPDATE
   SET auth_user_id = NEW.id,
-      full_name = CASE 
-        WHEN (full_name IS NULL OR TRIM(full_name) = '' OR full_name = 'Socio sin nombre') AND v_google_name IS NOT NULL
-        THEN v_google_name
-        ELSE full_name
+      membership_tier = CASE 
+        WHEN public.socios.membership_tier IS NULL OR public.socios.membership_tier = 'waitlist'
+        THEN 'emergente'
+        ELSE public.socios.membership_tier
       END,
-      updated_at = now()
-  WHERE LOWER(email) = LOWER(NEW.email)
-    AND (auth_user_id IS NULL OR auth_user_id <> NEW.id OR (full_name IS NULL OR TRIM(full_name) = '' OR full_name = 'Socio sin nombre'));
+      position = CASE
+        WHEN public.socios.position IS NULL
+        THEN nextval('public.socios_position_seq')
+        ELSE public.socios.position
+      END,
+      full_name = CASE 
+        WHEN (public.socios.full_name IS NULL OR TRIM(public.socios.full_name) = '' OR public.socios.full_name = 'Socio sin nombre') AND v_google_name IS NOT NULL
+        THEN v_google_name
+        ELSE public.socios.full_name
+      END,
+      updated_at = now();
 
   RETURN NEW;
 END;
@@ -659,7 +704,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 DROP TRIGGER IF EXISTS on_auth_user_created_link_socio ON auth.users;
 CREATE TRIGGER on_auth_user_created_link_socio
-  AFTER INSERT ON auth.users
+  AFTER INSERT OR UPDATE ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_user_auth_link();
 
 -- 4.5b Sincronización automática de prestadores hacia socios (aprobados y pendientes)
@@ -1114,13 +1159,19 @@ SET search_path = public
 AS $$
 DECLARE
   v_email TEXT := LOWER(TRIM(COALESCE(p_email, '')));
-  v_auth_uid UUID;
+  v_jwt_email TEXT := LOWER(TRIM(COALESCE(auth.jwt() ->> 'email', '')));
+  v_auth_uid UUID := auth.uid();
+  v_is_authorized BOOLEAN := false;
 BEGIN
   IF v_email = '' OR position('@' IN v_email) = 0 THEN
     RETURN jsonb_build_object('success', false, 'error', 'invalid_email');
   END IF;
 
-  SELECT id INTO v_auth_uid FROM auth.users WHERE LOWER(email) = v_email LIMIT 1;
+  -- Promoción a emergente y asignación de posición solo cuando auth.uid() está presente
+  -- y el email del JWT autenticado coincide con v_email.
+  IF v_auth_uid IS NOT NULL AND v_jwt_email = v_email THEN
+    v_is_authorized := true;
+  END IF;
 
   INSERT INTO public.socios (
     email,
@@ -1133,15 +1184,28 @@ BEGIN
   )
   VALUES (
     v_email,
-    'waitlist',
-    v_auth_uid,
+    CASE WHEN v_is_authorized THEN 'emergente' ELSE 'waitlist' END,
+    CASE WHEN v_is_authorized THEN v_auth_uid ELSE NULL END,
     '',
     '',
     '',
-    NULL
+    CASE WHEN v_is_authorized THEN nextval('public.socios_position_seq') ELSE NULL END
   )
   ON CONFLICT (email) DO UPDATE
-  SET auth_user_id = COALESCE(public.socios.auth_user_id, EXCLUDED.auth_user_id);
+  SET auth_user_id = CASE
+        WHEN v_is_authorized THEN COALESCE(public.socios.auth_user_id, v_auth_uid)
+        ELSE public.socios.auth_user_id
+      END,
+      membership_tier = CASE
+        WHEN v_is_authorized AND (public.socios.membership_tier IS NULL OR public.socios.membership_tier = 'waitlist')
+        THEN 'emergente'
+        ELSE public.socios.membership_tier
+      END,
+      position = CASE
+        WHEN v_is_authorized AND public.socios.position IS NULL
+        THEN nextval('public.socios_position_seq')
+        ELSE public.socios.position
+      END;
 
   RETURN jsonb_build_object('success', true, 'email', v_email);
 END;
@@ -1381,9 +1445,20 @@ BEGIN
   END IF;
 
   IF v_auth_uid IS NOT NULL AND (v_socio.auth_user_id = v_auth_uid OR v_jwt_email = v_email) THEN
-    IF v_socio.auth_user_id IS NULL THEN
+    IF v_socio.auth_user_id IS NULL OR v_socio.membership_tier = 'waitlist' OR v_socio.position IS NULL THEN
       UPDATE public.socios
-      SET auth_user_id = v_auth_uid
+      SET auth_user_id = COALESCE(v_socio.auth_user_id, v_auth_uid),
+          membership_tier = CASE
+            WHEN v_socio.membership_tier IS NULL OR v_socio.membership_tier = 'waitlist'
+            THEN 'emergente'
+            ELSE v_socio.membership_tier
+          END,
+          position = CASE
+            WHEN v_socio.position IS NULL
+            THEN nextval('public.socios_position_seq')
+            ELSE v_socio.position
+          END,
+          updated_at = now()
       WHERE id = v_socio.id
       RETURNING * INTO v_socio;
     END IF;
@@ -2182,12 +2257,17 @@ BEGIN
         'id', s.id,
         'type', 'socio',
         'email', s.email,
-        'fullName', s.full_name,
+        'fullName', COALESCE(
+          NULLIF(TRIM(s.full_name), ''),
+          NULLIF(TRIM(u.raw_user_meta_data ->> 'full_name'), ''),
+          NULLIF(TRIM(u.raw_user_meta_data ->> 'name'), ''),
+          'Socio emergente'
+        ),
         'dni', s.dni,
         'phone', s.phone,
         'position', s.position,
-        'membershipTier', s.membership_tier,
-        'googleLinked', (s.auth_user_id IS NOT NULL),
+        'membershipTier', CASE WHEN s.membership_tier = 'waitlist' THEN 'emergente' ELSE COALESCE(s.membership_tier, 'emergente') END,
+        'googleLinked', (s.auth_user_id IS NOT NULL OR u.id IS NOT NULL),
         'converted', EXISTS (
           SELECT 1 FROM public.pagos_transferencias p
           WHERE LOWER(TRIM(p.email)) = LOWER(TRIM(s.email))
@@ -2205,7 +2285,14 @@ BEGIN
     '[]'::jsonb
   ) INTO v_socios
   FROM public.socios s
-  WHERE s.membership_tier <> 'waitlist';
+  LEFT JOIN LATERAL (
+    SELECT u.id, u.raw_user_meta_data
+    FROM auth.users u
+    WHERE u.id = s.auth_user_id OR LOWER(TRIM(u.email)) = LOWER(TRIM(s.email))
+    ORDER BY CASE WHEN u.id = s.auth_user_id THEN 0 ELSE 1 END, u.created_at DESC
+    LIMIT 1
+  ) u ON true
+  WHERE s.membership_tier <> 'waitlist' OR s.auth_user_id IS NOT NULL OR u.id IS NOT NULL;
 
   -- Prospectos de lista de espera (directamente desde socios):
   SELECT COALESCE(
@@ -2224,7 +2311,7 @@ BEGIN
         'phone', NULLIF(TRIM(s.phone), ''),
         'position', NULL,
         'membershipTier', 'waitlist',
-        'googleLinked', (u.id IS NOT NULL OR s.auth_user_id IS NOT NULL),
+        'googleLinked', false,
         'converted', EXISTS (
           SELECT 1 FROM public.pagos_transferencias p
           WHERE LOWER(TRIM(p.email)) = LOWER(TRIM(s.email))
@@ -2242,8 +2329,14 @@ BEGIN
     '[]'::jsonb
   ) INTO v_waitlist
   FROM public.socios s
-  LEFT JOIN auth.users u ON LOWER(TRIM(u.email)) = LOWER(TRIM(s.email))
-  WHERE s.membership_tier = 'waitlist';
+  LEFT JOIN LATERAL (
+    SELECT u.id, u.raw_user_meta_data
+    FROM auth.users u
+    WHERE u.id = s.auth_user_id OR LOWER(TRIM(u.email)) = LOWER(TRIM(s.email))
+    ORDER BY CASE WHEN u.id = s.auth_user_id THEN 0 ELSE 1 END, u.created_at DESC
+    LIMIT 1
+  ) u ON true
+  WHERE s.membership_tier = 'waitlist' AND s.auth_user_id IS NULL AND u.id IS NULL;
 
   RETURN jsonb_build_object(
     'socios', v_socios,
@@ -2339,12 +2432,17 @@ BEGIN
         'id', s.id,
         'type', 'socio',
         'email', s.email,
-        'fullName', s.full_name,
+        'fullName', COALESCE(
+          NULLIF(TRIM(s.full_name), ''),
+          NULLIF(TRIM(u.raw_user_meta_data ->> 'full_name'), ''),
+          NULLIF(TRIM(u.raw_user_meta_data ->> 'name'), ''),
+          'Socio emergente'
+        ),
         'dni', s.dni,
         'phone', s.phone,
         'position', s.position,
-        'membershipTier', s.membership_tier,
-        'googleLinked', (s.auth_user_id IS NOT NULL),
+        'membershipTier', CASE WHEN s.membership_tier = 'waitlist' THEN 'emergente' ELSE COALESCE(s.membership_tier, 'emergente') END,
+        'googleLinked', (s.auth_user_id IS NOT NULL OR u.id IS NOT NULL),
         'converted', EXISTS (
           SELECT 1 FROM public.pagos_transferencias p
           WHERE LOWER(TRIM(p.email)) = LOWER(TRIM(s.email))
@@ -2362,7 +2460,14 @@ BEGIN
     '[]'::jsonb
   ) INTO v_socios
   FROM public.socios s
-  WHERE s.membership_tier <> 'waitlist';
+  LEFT JOIN LATERAL (
+    SELECT u.id, u.raw_user_meta_data
+    FROM auth.users u
+    WHERE u.id = s.auth_user_id OR LOWER(TRIM(u.email)) = LOWER(TRIM(s.email))
+    ORDER BY CASE WHEN u.id = s.auth_user_id THEN 0 ELSE 1 END, u.created_at DESC
+    LIMIT 1
+  ) u ON true
+  WHERE s.membership_tier <> 'waitlist' OR s.auth_user_id IS NOT NULL OR u.id IS NOT NULL;
 
   -- Prospectos de lista de espera (directamente desde socios):
   SELECT COALESCE(
@@ -2381,7 +2486,7 @@ BEGIN
         'phone', NULLIF(TRIM(s.phone), ''),
         'position', NULL,
         'membershipTier', 'waitlist',
-        'googleLinked', (u.id IS NOT NULL OR s.auth_user_id IS NOT NULL),
+        'googleLinked', false,
         'converted', EXISTS (
           SELECT 1 FROM public.pagos_transferencias p
           WHERE LOWER(TRIM(p.email)) = LOWER(TRIM(s.email))
@@ -2399,8 +2504,14 @@ BEGIN
     '[]'::jsonb
   ) INTO v_waitlist
   FROM public.socios s
-  LEFT JOIN auth.users u ON LOWER(TRIM(u.email)) = LOWER(TRIM(s.email))
-  WHERE s.membership_tier = 'waitlist';
+  LEFT JOIN LATERAL (
+    SELECT u.id, u.raw_user_meta_data
+    FROM auth.users u
+    WHERE u.id = s.auth_user_id OR LOWER(TRIM(u.email)) = LOWER(TRIM(s.email))
+    ORDER BY CASE WHEN u.id = s.auth_user_id THEN 0 ELSE 1 END, u.created_at DESC
+    LIMIT 1
+  ) u ON true
+  WHERE s.membership_tier = 'waitlist' AND s.auth_user_id IS NULL AND u.id IS NULL;
 
   RETURN jsonb_build_object(
     'socios', v_socios,

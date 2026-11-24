@@ -48,6 +48,10 @@ export class FaqComponent implements OnInit {
     { label: 'Preguntas Frecuentes' },
   ];
 
+  // Manifiesto del Club (vista desplegable en /faq con auto-cierre de 16s)
+  readonly showManifesto = signal(false);
+  private manifestoTimer: any = null;
+
   // Notificación flotante: Plataforma en construcción (Estilo Toast Favoritos)
   readonly showConstructionNotice = signal(false);
   private constructionTimer: any = null;
@@ -56,6 +60,7 @@ export class FaqComponent implements OnInit {
   constructor() {
     this.destroyRef.onDestroy(() => {
       this.clearConstructionTimer();
+      this.clearManifestoTimer();
     });
 
     // Detectar navegaciones a '/faq' (incluso si el usuario ya está en '/faq')
@@ -70,6 +75,33 @@ export class FaqComponent implements OnInit {
           this.triggerConstructionNotice();
         }
       });
+  }
+
+  clearManifestoTimer(): void {
+    if (this.manifestoTimer) {
+      clearTimeout(this.manifestoTimer);
+      this.manifestoTimer = null;
+    }
+  }
+
+  toggleManifesto(): void {
+    const isOpening = !this.showManifesto();
+    this.clearManifestoTimer();
+
+    if (isOpening) {
+      this.manifestoTimer = setTimeout(() => {
+        if (this.showManifesto()) {
+          this.closeManifesto();
+        }
+      }, 16000);
+    }
+
+    this.showManifesto.set(isOpening);
+  }
+
+  closeManifesto(): void {
+    this.clearManifestoTimer();
+    this.showManifesto.set(false);
   }
 
   ngOnInit(): void {

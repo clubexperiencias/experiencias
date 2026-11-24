@@ -1963,3 +1963,14 @@
     display: none;
   }
 }
+
+/* Notificación Flotante: Plataforma en Construcción (Posición ajustada más abajo en /socios) */
+.fav-toast-banner.is-construction-toast {
+  bottom: 2rem !important;
+}
+
+@media (max-width: 640px) {
+  .fav-toast-banner.is-construction-toast {
+    bottom: 1rem !important;
+  }
+}

@@ -362,7 +362,7 @@
                         <p class="pay-amount">{{ total() | ars }}</p>
                         @if (totalUsd() > 0) {
                         <span class="pay-usd-equivalent" title="Cotización referencial para pagos del exterior">
-                          o ${{ totalUsd() }} USD <span class="pay-usd-ref">(referencial)</span>
+                          o ${{ totalUsd() }} USD <span class="pay-usd-ref">(extranjeros)</span>
                         </span>
                         }
                       </div>
@@ -648,7 +648,7 @@
                     <strong>{{ total() | ars }}</strong>
                     @if (totalUsd() > 0) {
                     <span class="pay-usd-sub" title="Cotización referencial para pagos del exterior">
-                      o ${{ totalUsd() }} USD <span class="pay-usd-ref">(referencial)</span>
+                      o ${{ totalUsd() }} USD <span class="pay-usd-ref">(extranjeros)</span>
                     </span>
                     }
                   </div>

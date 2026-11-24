@@ -143,13 +143,22 @@ export function validateReceiptFile(file: File): string | null {
 }
 
 export function mapLiveExperienceToProvider(live: Experience): ProviderExperience {
+  const isClub = live.isClubExperience !== false && (live.isClubExperience === true || live.providerSlug === 'club-de-experiencias' || (!live.providerId && !live.providerEmail && !live.providerSlug));
   return {
     id: live.id,
     slug: live.slug,
     initialSlug: live.initialSlug,
     slugAliases: live.slugAliases,
-    providerId: 'provider-oficial',
-    providerName: 'Club de Experiencias',
+    providerId: isClub ? 'provider-oficial' : (live.providerId || (live.providerEmail ? `provider-${live.providerEmail}` : 'provider-oficial')),
+    providerName: live.providerName || (isClub ? 'Club de Experiencias' : ''),
+    providerEmail: live.providerEmail,
+    providerSlug: live.providerSlug,
+    providerPhone: live.providerPhone,
+    providerCbuAlias: live.providerCbuAlias,
+    providerCuitDni: live.providerCuitDni,
+    providerBankName: live.providerBankName,
+    mpConnected: live.mpConnected,
+    mpCollectorId: live.mpCollectorId,
     title: live.title,
     shortTitle: live.shortTitle || live.title,
     tagline: live.tagline,
@@ -370,18 +379,94 @@ export class ProviderStoreService {
     const provider = this._currentProvider();
     if (!provider) return this.submissions();
     const providerExpIds = new Set(
-      this._experiences()
-        .filter((e) => e.providerId === provider.id)
-        .map((e) => e.id),
+      this.providerExperiences().map((e) => e.id),
     );
     return this.submissions().filter((s) => providerExpIds.has(s.experienceId));
   });
 
   // Experiences for current logged-in provider
-  readonly providerExperiences = computed(() => {
+  readonly providerExperiences = computed<ProviderExperience[]>(() => {
     const provider = this._currentProvider();
     if (!provider) return this._experiences();
-    return this._experiences().filter((e) => e.providerId === provider.id);
+    const pId = provider.id?.trim();
+    const pEmail = provider.email?.toLowerCase().trim();
+    const pSlug = provider.slug?.toLowerCase().trim();
+    const isClub = isClubProvider(provider);
+
+    // 1. Experiencias en _experiences (almacenadas localmente o propuestas aprobadas en memoria)
+    const storeExps = this._experiences().filter((e) => {
+      const live = this.expService.getExperienceById(e.id) || this.expService.getExperienceBySlug(e.slug);
+      if (live) {
+        if (isClub) {
+          return (
+            live.isClubExperience !== false &&
+            (live.isClubExperience === true || live.providerSlug === 'club-de-experiencias')
+          );
+        }
+        if (live.isClubExperience === true) return false;
+        return (
+          (pId && live.providerId === pId) ||
+          (pEmail && live.providerEmail?.toLowerCase().trim() === pEmail) ||
+          (pSlug && live.providerSlug?.toLowerCase().trim() === pSlug)
+        );
+      }
+      if (isClub) {
+        return (
+          e.providerId === 'prov-club' ||
+          e.providerId === 'provider-oficial' ||
+          e.providerSlug === 'club-de-experiencias'
+        );
+      }
+      return (
+        (pId && e.providerId === pId) ||
+        (pEmail && e.providerEmail?.toLowerCase().trim() === pEmail) ||
+        (pSlug && e.providerSlug?.toLowerCase().trim() === pSlug)
+      );
+    });
+
+    // 2. Experiencias del catálogo oficial en ExperienceService (Supabase / catálogo general)
+    const liveCatalog = this.expService.experiences().filter((live) => {
+      if (isClub) {
+        return (
+          live.isClubExperience !== false &&
+          (live.isClubExperience === true || live.providerSlug === 'club-de-experiencias')
+        );
+      }
+      if (live.isClubExperience === true) return false;
+      return (
+        (pId && live.providerId === pId) ||
+        (pEmail && live.providerEmail?.toLowerCase().trim() === pEmail) ||
+        (pSlug && live.providerSlug?.toLowerCase().trim() === pSlug)
+      );
+    });
+
+    const byId = new Map<string, ProviderExperience>();
+
+    for (const exp of storeExps) {
+      byId.set(exp.id, {
+        ...exp,
+        mpConnected:
+          exp.mpConnected !== undefined ? exp.mpConnected : (provider.mpConnected || false),
+        mpCollectorId: exp.mpCollectorId || provider.mpCollectorId || '',
+      });
+    }
+
+    for (const live of liveCatalog) {
+      const mapped = mapLiveExperienceToProvider(live);
+      const existing = byId.get(live.id);
+      const isPendingModeration = existing?.moderation?.status === 'pendiente';
+      byId.set(live.id, {
+        ...(existing || mapped),
+        ...mapped,
+        status: isPendingModeration && existing ? existing.status : mapped.status,
+        moderation: existing?.moderation || mapped.moderation,
+        mpConnected:
+          mapped.mpConnected !== undefined ? mapped.mpConnected : (provider.mpConnected || false),
+        mpCollectorId: mapped.mpCollectorId || provider.mpCollectorId || '',
+      });
+    }
+
+    return Array.from(byId.values());
   });
 
   // Proposals/requests submitted by current provider
@@ -531,11 +616,11 @@ export class ProviderStoreService {
         existing?.slug ||
         (access.agency
           ? access.agency
-              .toLowerCase()
-              .normalize('NFD')
-              .replace(/[\u0300-\u036f]/g, '')
-              .replace(/[^a-z0-9]+/g, '-')
-              .replace(/(^-|-$)+/g, '')
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/(^-|-$)+/g, '')
           : slugify(email.split('@')[0]));
 
       if (!access.slug && resolvedSlug.startsWith('prov-') && resolvedSlug !== 'prov-club') {
@@ -644,6 +729,7 @@ export class ProviderStoreService {
           });
       }
       void this.loadProposalsFromSupabase(email);
+      void this.expService.reloadFromSupabase();
       return true;
     } catch (err) {
       console.warn('[ProviderStore] Error restaurando sesión Supabase:', err);
@@ -774,20 +860,20 @@ export class ProviderStoreService {
         list.map((p) =>
           p.email.toLowerCase() === normalized
             ? {
-                ...p,
-                ...(details?.name ? { name: details.name } : {}),
-                ...(details?.agency ? { agency: details.agency } : {}),
-                ...(details?.phone ? { phone: details.phone } : {}),
-                ...(details?.cuitDni ? { cuitDni: details.cuitDni } : {}),
-                ...(details?.cbuAlias ? { cbuAlias: details.cbuAlias } : {}),
-                ...(details?.bankName ? { bankName: details.bankName } : {}),
-                slug:
-                  p.slug ||
-                  details?.slug ||
-                  slugify(details?.agency || details?.name || p.agency || p.name || normalized.split('@')[0]),
-                verified: status === 'aprobado',
-                status,
-              }
+              ...p,
+              ...(details?.name ? { name: details.name } : {}),
+              ...(details?.agency ? { agency: details.agency } : {}),
+              ...(details?.phone ? { phone: details.phone } : {}),
+              ...(details?.cuitDni ? { cuitDni: details.cuitDni } : {}),
+              ...(details?.cbuAlias ? { cbuAlias: details.cbuAlias } : {}),
+              ...(details?.bankName ? { bankName: details.bankName } : {}),
+              slug:
+                p.slug ||
+                details?.slug ||
+                slugify(details?.agency || details?.name || p.agency || p.name || normalized.split('@')[0]),
+              verified: status === 'aprobado',
+              status,
+            }
             : p,
         ),
       );
@@ -1256,7 +1342,7 @@ export class ProviderStoreService {
         this._providers.update((list) =>
           list.map((p) =>
             (p.email || '').trim().toLowerCase() === cleanKey ||
-            (p.id || '').trim().toLowerCase() === cleanKey
+              (p.id || '').trim().toLowerCase() === cleanKey
               ? { ...p, notes: remoteRow.notes }
               : p,
           ),
@@ -1874,16 +1960,38 @@ export class ProviderStoreService {
     );
   }
 
+  private enrichProviderExperienceMp(
+    exp: ProviderExperience | undefined,
+  ): ProviderExperience | undefined {
+    if (!exp) return undefined;
+    const provider = this._currentProvider();
+    if (!provider) return exp;
+    const pId = provider.id?.trim();
+    const pEmail = provider.email?.toLowerCase().trim();
+    const pSlug = provider.slug?.toLowerCase().trim();
+    const isOwner =
+      (pId && exp.providerId === pId) ||
+      (pEmail && exp.providerEmail?.toLowerCase().trim() === pEmail) ||
+      (pSlug && exp.providerSlug?.toLowerCase().trim() === pSlug);
+    if (!isOwner) return exp;
+    return {
+      ...exp,
+      mpConnected:
+        exp.mpConnected !== undefined ? exp.mpConnected : (provider.mpConnected || false),
+      mpCollectorId: exp.mpCollectorId || provider.mpCollectorId || '',
+    };
+  }
+
   getExperienceById(id: string): ProviderExperience | undefined {
     const fromStore = this._experiences().find((e) => e.id === id || e.slug === id);
-    if (fromStore) return fromStore;
+    if (fromStore) return this.enrichProviderExperienceMp(fromStore);
     const live = this.expService.getExperienceById(id) || this.expService.getExperienceBySlug(id);
     if (live) {
-      return mapLiveExperienceToProvider(live);
+      return this.enrichProviderExperienceMp(mapLiveExperienceToProvider(live));
     }
     const req = this.findProposalRequestByKey(id);
     if (req) {
-      return this.mapProposalRequestToProviderExperience(req);
+      return this.enrichProviderExperienceMp(this.mapProposalRequestToProviderExperience(req));
     }
     return undefined;
   }
@@ -1898,10 +2006,10 @@ export class ProviderStoreService {
         (Array.isArray(e.slugAliases) &&
           e.slugAliases.some((a) => (a || '').trim().toLowerCase() === clean)),
     );
-    if (fromStore) return fromStore;
+    if (fromStore) return this.enrichProviderExperienceMp(fromStore);
     const live = this.expService.getExperienceBySlug(slug);
     if (live) {
-      return mapLiveExperienceToProvider(live);
+      return this.enrichProviderExperienceMp(mapLiveExperienceToProvider(live));
     }
     const req = this.findProposalRequestByKey(slug);
     if (req) {
@@ -1911,10 +2019,10 @@ export class ProviderStoreService {
           (req.slug ? this.expService.getExperienceBySlug(req.slug) : undefined) ||
           (req.initialSlug ? this.expService.getExperienceBySlug(req.initialSlug) : undefined);
         if (approvedLive) {
-          return mapLiveExperienceToProvider(approvedLive);
+          return this.enrichProviderExperienceMp(mapLiveExperienceToProvider(approvedLive));
         }
       }
-      return this.mapProposalRequestToProviderExperience(req);
+      return this.enrichProviderExperienceMp(this.mapProposalRequestToProviderExperience(req));
     }
     return undefined;
   }
@@ -2019,10 +2127,10 @@ export class ProviderStoreService {
       status: requestPublication ? 'pendiente_publicacion' : 'borrador',
       moderation: requestPublication
         ? {
-            action: 'publicar',
-            requestedAt: new Date().toISOString(),
-            status: 'pendiente',
-          }
+          action: 'publicar',
+          requestedAt: new Date().toISOString(),
+          status: 'pendiente',
+        }
         : undefined,
       coverImage: input.coverImage || '/assets/images/laguna_blanca.jpg',
       createdAt: new Date().toISOString(),
@@ -2036,7 +2144,7 @@ export class ProviderStoreService {
 
   updateExperience(
     id: string,
-    updates: Partial<Omit<ProviderExperience, 'id' | 'createdAt' | 'providerId'>>,
+    updates: Partial<Omit<ProviderExperience, 'id' | 'createdAt'>>,
   ): ProviderExperience {
     let updatedExperience: ProviderExperience | undefined;
     this._experiences.update((list) =>
@@ -2159,7 +2267,7 @@ export class ProviderStoreService {
 
   async saveExperienceChanges(
     id: string,
-    updates: Partial<Omit<ProviderExperience, 'id' | 'createdAt' | 'providerId'>>,
+    updates: Partial<Omit<ProviderExperience, 'id' | 'createdAt'>>,
   ): Promise<ProviderExperience> {
     const localBefore = this._experiences().find((e) => e.id === id || e.slug === id);
     const previousExp = localBefore ?? this.getExperienceById(id) ?? this.getExperienceBySlug(id);
@@ -2215,8 +2323,8 @@ export class ProviderStoreService {
       try {
         const mappedStatus =
           updates.status === 'publicada' ||
-          updates.status === 'oculta' ||
-          updates.status === 'borrador'
+            updates.status === 'oculta' ||
+            updates.status === 'borrador'
             ? updates.status
             : updates.status === 'pendiente_publicacion'
               ? 'pendiente'
@@ -2586,12 +2694,33 @@ export class ProviderStoreService {
     if (!existingExp) {
       throw new Error('Experiencia no encontrada.');
     }
-    if (
-      currentProvider &&
-      existingExp.providerId &&
-      existingExp.providerId !== currentProvider.id
-    ) {
-      throw new Error('No tenés permisos para modificar el álbum de esta experiencia.');
+    if (currentProvider) {
+      const pId = currentProvider.id?.trim();
+      const pEmail = currentProvider.email?.toLowerCase().trim();
+      const pSlug = currentProvider.slug?.toLowerCase().trim();
+      const isClub = isClubProvider(currentProvider);
+
+      const expEmail = existingExp.providerEmail?.toLowerCase().trim();
+      const expSlug = existingExp.providerSlug?.toLowerCase().trim();
+      const isExpClub = (existingExp as any).isClubExperience;
+
+      const isOwner = isClub
+        ? isExpClub !== false &&
+        (isExpClub === true ||
+          existingExp.providerId === 'prov-club' ||
+          existingExp.providerId === 'provider-oficial' ||
+          expSlug === 'club-de-experiencias')
+        : isExpClub !== true &&
+        Boolean(
+          (pId && existingExp.providerId === pId) ||
+          (pEmail && expEmail === pEmail) ||
+          (pSlug && expSlug === pSlug) ||
+          (pEmail && existingExp.providerId === `provider-${pEmail}`),
+        );
+
+      if (!isOwner) {
+        throw new Error('No tenés permisos para modificar el álbum de esta experiencia.');
+      }
     }
 
     const coverPhoto = photos.find((p) => p.isCover);
@@ -2646,15 +2775,15 @@ export class ProviderStoreService {
       list.map((e) =>
         e.id === experienceId
           ? {
-              ...e,
-              status: 'pendiente_publicacion',
-              moderation: {
-                action: 'publicar',
-                requestedAt: new Date().toISOString(),
-                status: 'pendiente',
-              },
-              updatedAt: new Date().toISOString(),
-            }
+            ...e,
+            status: 'pendiente_publicacion',
+            moderation: {
+              action: 'publicar',
+              requestedAt: new Date().toISOString(),
+              status: 'pendiente',
+            },
+            updatedAt: new Date().toISOString(),
+          }
           : e,
       ),
     );
@@ -2669,16 +2798,16 @@ export class ProviderStoreService {
       list.map((e) =>
         e.id === experienceId
           ? {
-              ...e,
-              status: 'pendiente_ocultar',
-              moderation: {
-                action: 'ocultar',
-                requestedAt: new Date().toISOString(),
-                reason: reason?.trim(),
-                status: 'pendiente',
-              },
-              updatedAt: new Date().toISOString(),
-            }
+            ...e,
+            status: 'pendiente_ocultar',
+            moderation: {
+              action: 'ocultar',
+              requestedAt: new Date().toISOString(),
+              reason: reason?.trim(),
+              status: 'pendiente',
+            },
+            updatedAt: new Date().toISOString(),
+          }
           : e,
       ),
     );
@@ -2698,16 +2827,16 @@ export class ProviderStoreService {
       list.map((e) =>
         e.id === experienceId
           ? {
-              ...e,
-              status: 'pendiente_eliminar',
-              moderation: {
-                action: 'eliminar',
-                requestedAt: new Date().toISOString(),
-                reason: reason?.trim(),
-                status: 'pendiente',
-              },
-              updatedAt: new Date().toISOString(),
-            }
+            ...e,
+            status: 'pendiente_eliminar',
+            moderation: {
+              action: 'eliminar',
+              requestedAt: new Date().toISOString(),
+              reason: reason?.trim(),
+              status: 'pendiente',
+            },
+            updatedAt: new Date().toISOString(),
+          }
           : e,
       ),
     );
@@ -2748,17 +2877,17 @@ export class ProviderStoreService {
       list.map((e) =>
         e.id === experienceId
           ? {
-              ...e,
-              status: newStatus,
-              moderation: {
-                ...e.moderation!,
-                status: 'aprobada',
-                reviewedAt: new Date().toISOString(),
-                reviewedBy: 'Admin experiencias.club',
-                adminComment,
-              },
-              updatedAt: new Date().toISOString(),
-            }
+            ...e,
+            status: newStatus,
+            moderation: {
+              ...e.moderation!,
+              status: 'aprobada',
+              reviewedAt: new Date().toISOString(),
+              reviewedBy: 'Admin experiencias.club',
+              adminComment,
+            },
+            updatedAt: new Date().toISOString(),
+          }
           : e,
       ),
     );
@@ -2837,9 +2966,9 @@ export class ProviderStoreService {
         selectedPack &&
         (experience.dates.length === 0 || input.date === 'A coordinar'
           ? selectedPack.active !== false &&
-            selectedPack.seats >= 1 &&
-            (!selectedPack.validDates || selectedPack.validDates.length === 0) &&
-            (!selectedPack.validWeekdays || selectedPack.validWeekdays.length === 0)
+          selectedPack.seats >= 1 &&
+          (!selectedPack.validDates || selectedPack.validDates.length === 0) &&
+          (!selectedPack.validWeekdays || selectedPack.validWeekdays.length === 0)
           : isPricingPackValidForDate(selectedPack, input.date));
       if (!selectedPack || !validForDate || selectedPack.seats !== input.participants) {
         throw new Error('El pack promocional seleccionado no es válido para esta fecha o cantidad de cupos.');
@@ -3790,9 +3919,9 @@ export class ProviderStoreService {
         status: isApprovedMp ? 'aprobado' : 'pendiente_verificacion',
         ...(submission.receipt?.url
           ? {
-              receiptFileUrl: submission.receipt.url,
-              receiptFileName: submission.receipt.fileName,
-            }
+            receiptFileUrl: submission.receipt.url,
+            receiptFileName: submission.receipt.fileName,
+          }
           : {}),
         ...(submission.discountCode
           ? { discountCode: submission.discountCode, discountArs: submission.discountArs }
@@ -4141,7 +4270,14 @@ export class ProviderStoreService {
         .select('*')
         .in('status', statusFilter);
       if (providerEmail) {
-        expQuery = expQuery.ilike('provider_email', providerEmail.trim().toLowerCase());
+        const normEmail = providerEmail.trim().toLowerCase();
+        const currentP = this._currentProvider();
+        const provId = currentP?.id;
+        if (provId) {
+          expQuery = expQuery.or(`provider_email.ilike.${normEmail},provider_id.eq.${provId}`);
+        } else {
+          expQuery = expQuery.ilike('provider_email', normEmail);
+        }
       }
       const { data: expData, error: expError } = await expQuery.order('created_at', {
         ascending: false,
@@ -4205,7 +4341,7 @@ export class ProviderStoreService {
                   if (Array.isArray(aliases)) parsedSlugAliases = aliases.map(String);
                 }
               }
-            } catch {}
+            } catch { }
           }
 
           return {
@@ -4259,16 +4395,16 @@ export class ProviderStoreService {
                 ? row.album_photos
                 : (Array.isArray(row.gallery_images) && row.gallery_images.length > 0
                   ? row.gallery_images.map((u: string, idx: number) => ({
-                      id: `photo_${idx + 1}`,
-                      url: u,
-                      title: row.title || 'Foto de experiencia',
-                      isCover: Boolean(
-                        typeof row.cover_image === 'string' &&
-                          row.cover_image.trim() !== '' &&
-                          u.trim() === row.cover_image.trim(),
-                      ),
-                      order: idx + 1,
-                    }))
+                    id: `photo_${idx + 1}`,
+                    url: u,
+                    title: row.title || 'Foto de experiencia',
+                    isCover: Boolean(
+                      typeof row.cover_image === 'string' &&
+                      row.cover_image.trim() !== '' &&
+                      u.trim() === row.cover_image.trim(),
+                    ),
+                    order: idx + 1,
+                  }))
                   : []),
             galleryImages:
               Array.isArray(row.gallery_images) && row.gallery_images.length > 0
@@ -4303,7 +4439,8 @@ export class ProviderStoreService {
           const others = this._experienceRequests().filter(
             (r) =>
               r.id !== 'req-sunset-las-pirquitas' &&
-              r.providerEmail?.toLowerCase() !== providerEmail.toLowerCase(),
+              r.providerEmail?.toLowerCase() !== providerEmail.toLowerCase() &&
+              !mappedIds.has(r.id),
           );
           const merged = [...mapped, ...preservedApproved, ...others].sort(
             (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
@@ -4608,15 +4745,15 @@ export class ProviderStoreService {
         highlights: [],
         included: req.includedServices
           ? req.includedServices
-              .split('\n')
-              .map((s) => s.trim())
-              .filter(Boolean)
+            .split('\n')
+            .map((s) => s.trim())
+            .filter(Boolean)
           : [],
         notIncluded: req.participantRequirements
           ? req.participantRequirements
-              .split('\n')
-              .map((s) => s.trim())
-              .filter(Boolean)
+            .split('\n')
+            .map((s) => s.trim())
+            .filter(Boolean)
           : [],
         providerId: req.providerId,
         providerEmail: normalizedEmail || undefined,
@@ -4646,15 +4783,15 @@ export class ProviderStoreService {
       list.map((r) =>
         r.id === requestId
           ? {
-              ...r,
-              slug: generatedSlug,
-              initialSlug,
-              slugAliases,
-              publicUrl: resolvedUrl,
-              status: 'aprobada' as const,
-              reviewedAt: new Date().toISOString(),
-              notes: serializedProposalNotes,
-            }
+            ...r,
+            slug: generatedSlug,
+            initialSlug,
+            slugAliases,
+            publicUrl: resolvedUrl,
+            status: 'aprobada' as const,
+            reviewedAt: new Date().toISOString(),
+            notes: serializedProposalNotes,
+          }
           : r,
       ),
     );
@@ -4736,15 +4873,15 @@ export class ProviderStoreService {
           exps.map((e, idx) =>
             idx === existsIndex
               ? {
-                  ...e,
-                  id: publishedId,
-                  slug: generatedSlug,
-                  initialSlug,
-                  slugAliases,
-                  status: 'publicada',
-                  publicUrl: resolvedUrl,
-                  dates: publishedDates,
-                }
+                ...e,
+                id: publishedId,
+                slug: generatedSlug,
+                initialSlug,
+                slugAliases,
+                status: 'publicada',
+                publicUrl: resolvedUrl,
+                dates: publishedDates,
+              }
               : e,
           ),
         );

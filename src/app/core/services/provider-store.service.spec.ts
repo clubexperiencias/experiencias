@@ -2,7 +2,8 @@ import { TestBed } from '@angular/core/testing';
 import { ProviderStoreService } from './provider-store.service';
 import { ExperienceService } from './experience.service';
 import { SUPABASE_CLIENT } from '../supabase/supabase.client';
-import { BANK_TRANSFER_DESTINATION, ProviderExperience } from '../models/bank-transfer.model';
+import { BANK_TRANSFER_DESTINATION, ProviderExperience, ProviderUser } from '../models/bank-transfer.model';
+import { Experience, ExperienceAlbumPhoto } from '../models/experience.model';
 
 describe('ProviderStoreService - Payment & Proposal Persistence', () => {
   let store: ProviderStoreService;
@@ -1269,6 +1270,79 @@ describe('ProviderStoreService - Payment & Proposal Persistence', () => {
       expect(preservedOther).toBeTruthy();
     });
 
+    it('should exclude IDs in mappedIds from others collection to prevent duplicate requests when matched by providerId', async () => {
+      const activeProvider: ProviderUser = {
+        id: 'prov-assigned-uuid',
+        name: 'Guía Transferido',
+        email: 'nuevo@guia.com',
+        slug: 'guia-transferido',
+      } as ProviderUser;
+
+      (store as any)._currentProvider.set(activeProvider);
+
+      // In local store, we had a request with old email 'viejo@guia.com'
+      const localOtherRequest = {
+        id: 'req-matched-by-id',
+        title: 'Travesía Histórica',
+        slug: 'travesia-historica',
+        providerEmail: 'viejo@guia.com',
+        providerId: 'prov-assigned-uuid',
+        status: 'pendiente',
+        createdAt: '2026-10-01T10:00:00.000Z',
+      } as any;
+
+      const unrelatedOtherRequest = {
+        id: 'req-unrelated',
+        title: 'Otra Aventura',
+        slug: 'otra-aventura',
+        providerEmail: 'otro@guia.com',
+        providerId: 'prov-unrelated',
+        status: 'pendiente',
+        createdAt: '2026-09-01T10:00:00.000Z',
+      } as any;
+
+      (store as any)._experienceRequests.set([localOtherRequest, unrelatedOtherRequest]);
+
+      // Supabase returns the experience matched via or(provider_email, provider_id)
+      const remoteData = [
+        {
+          id: 'req-matched-by-id',
+          title: 'Travesía Histórica Actualizada',
+          slug: 'travesia-historica',
+          provider_id: 'prov-assigned-uuid',
+          provider_email: 'nuevo@guia.com',
+          status: 'publicada',
+          created_at: '2026-10-01T10:00:00.000Z',
+        },
+      ];
+
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === 'experiencias') {
+          return {
+            select: vi.fn().mockReturnValue({
+              in: vi.fn().mockReturnValue({
+                or: vi.fn().mockReturnValue({
+                  order: vi.fn().mockResolvedValue({ data: remoteData, error: null }),
+                }),
+              }),
+            }),
+          };
+        }
+        return { select: vi.fn().mockReturnThis() };
+      });
+
+      await store.loadProposalsFromSupabase('nuevo@guia.com');
+
+      const requests = store.experienceRequests();
+      // Should only contain 2 items, NOT 3 (no duplication of req-matched-by-id)
+      expect(requests.length).toBe(2);
+      const matchedEntries = requests.filter((r) => r.id === 'req-matched-by-id');
+      expect(matchedEntries.length).toBe(1);
+      expect(matchedEntries[0].title).toBe('Travesía Histórica Actualizada');
+      expect(matchedEntries[0].status).toBe('aprobada');
+      expect(requests.some((r) => r.id === 'req-unrelated')).toBe(true);
+    });
+
     it('should include "publicada" and exclude "oculta" in statusFilter during global query so deleted/oculta rows are not loaded into _experienceRequests', async () => {
       let capturedStatuses: string[] = [];
       mockSupabase.from = vi.fn().mockImplementation((table: string) => {
@@ -1417,6 +1491,247 @@ describe('ProviderStoreService - Payment & Proposal Persistence', () => {
       expect(existing).toBeTruthy();
       expect(existing?.albumPhotos?.[0].isCover).toBe(false);
       expect(existing?.albumPhotos?.[1].isCover).toBe(true);
+    });
+  });
+
+  describe('Transferred Experiences & Mercado Pago Linking in Provider Portal', () => {
+    it('should include live catalog experiences transferred to current provider in providerExperiences()', () => {
+      const activeProvider: ProviderUser = {
+        id: 'prov-transferred-1',
+        name: 'Carlos Guía',
+        email: 'carlos@guia.com',
+        slug: 'carlos-guia',
+        mpConnected: true,
+        mpCollectorId: 'MP-COLLECTOR-777',
+      } as ProviderUser;
+
+      (store as any)._currentProvider.set(activeProvider);
+
+      const catalogExperience = {
+        id: 'exp-kayak-transferred',
+        slug: 'kayak-en-las-pirquitas',
+        title: 'Kayak en Las Pirquitas',
+        status: 'publicada',
+        providerId: 'prov-transferred-1',
+        providerEmail: 'carlos@guia.com',
+        providerName: 'Carlos Guía',
+        isClubExperience: false,
+      } as any;
+
+      vi.spyOn(expService, 'experiences').mockReturnValue([catalogExperience]);
+
+      const exps = store.providerExperiences();
+      expect(exps.length).toBe(1);
+      expect(exps[0].id).toBe('exp-kayak-transferred');
+      expect(exps[0].providerId).toBe('prov-transferred-1');
+      expect(exps[0].mpConnected).toBe(true);
+      expect(exps[0].mpCollectorId).toBe('MP-COLLECTOR-777');
+    });
+
+    it('should link provider MP credentials to retrieved experiences when experience does not have MP set', () => {
+      const activeProvider: ProviderUser = {
+        id: 'prov-transferred-2',
+        name: 'Guía MP',
+        email: 'guia@mp.com',
+        slug: 'guia-mp',
+        mpConnected: true,
+        mpCollectorId: 'MP-COLLECTOR-888',
+      } as ProviderUser;
+
+      (store as any)._currentProvider.set(activeProvider);
+
+      const catalogExperience = {
+        id: 'exp-trekking-transferred',
+        slug: 'trekking-ancasti',
+        title: 'Trekking Ancasti',
+        status: 'publicada',
+        providerId: 'prov-transferred-2',
+        providerEmail: 'guia@mp.com',
+        isClubExperience: false,
+      } as any;
+
+      vi.spyOn(expService, 'getExperienceBySlug').mockReturnValue(catalogExperience);
+
+      const exp = store.getExperienceBySlug('trekking-ancasti');
+      expect(exp).toBeTruthy();
+      expect(exp?.mpConnected).toBe(true);
+      expect(exp?.mpCollectorId).toBe('MP-COLLECTOR-888');
+    });
+  });
+
+  describe('updateExperienceAlbum - provider ownership resolution', () => {
+    it('should authorize updating album when experience has no providerId but matches provider email despite generated ID', () => {
+      const activeProvider: ProviderUser = {
+        id: 'prov-uuid-1234',
+        name: 'Guía Carlos',
+        email: 'carlos@guia.com',
+        slug: 'guia-carlos',
+      } as ProviderUser;
+
+      (store as any)._currentProvider.set(activeProvider);
+
+      const catalogExperience: Experience = {
+        id: 'exp-without-provider-id',
+        slug: 'cabalgata-ambato',
+        title: 'Cabalgata en Ambato',
+        status: 'publicada',
+        providerEmail: 'carlos@guia.com',
+        providerName: 'Guía Carlos',
+        isClubExperience: false,
+        coverImage: '/cover.jpg',
+        galleryImages: [],
+        albumPhotos: [],
+      } as any;
+
+      vi.spyOn(expService, 'getExperienceById').mockReturnValue(catalogExperience);
+      vi.spyOn(expService, 'updateExperience').mockResolvedValue(undefined as any);
+
+      const newPhotos: ExperienceAlbumPhoto[] = [
+        { id: 'photo-1', url: '/photo-1.jpg', isCover: true, order: 1 },
+      ];
+
+      const result = store.updateExperienceAlbum('exp-without-provider-id', newPhotos);
+
+      expect(result).toBeDefined();
+      expect(result.albumPhotos).toEqual(newPhotos);
+      expect(result.coverImage).toBe('/photo-1.jpg');
+    });
+
+    it('should reject updating album when experience belongs to an unrelated provider', () => {
+      const activeProvider: ProviderUser = {
+        id: 'prov-uuid-1234',
+        name: 'Guía Carlos',
+        email: 'carlos@guia.com',
+        slug: 'guia-carlos',
+      } as ProviderUser;
+
+      (store as any)._currentProvider.set(activeProvider);
+
+      const otherExperience: Experience = {
+        id: 'exp-other-prov',
+        slug: 'trekking-ancasti',
+        title: 'Trekking Ancasti',
+        status: 'publicada',
+        providerId: 'prov-other-999',
+        providerEmail: 'other@guia.com',
+        providerName: 'Otro Guía',
+        isClubExperience: false,
+        coverImage: '/other.jpg',
+        galleryImages: [],
+        albumPhotos: [],
+      } as any;
+
+      vi.spyOn(expService, 'getExperienceById').mockReturnValue(otherExperience);
+
+      const newPhotos: ExperienceAlbumPhoto[] = [
+        { id: 'photo-1', url: '/photo-1.jpg', isCover: true, order: 1 },
+      ];
+
+      expect(() => store.updateExperienceAlbum('exp-other-prov', newPhotos)).toThrow(
+        'No tenés permisos para modificar el álbum de esta experiencia.',
+      );
+    });
+  });
+
+  describe('providerExperiences - live catalog merge moderation status preservation', () => {
+    it('should preserve local status when existing record moderation request is pending so providerStats reflects it', () => {
+      const activeProvider: ProviderUser = {
+        id: 'prov-mod-1',
+        name: 'Guía Moderación',
+        email: 'mod@guia.com',
+        slug: 'guia-mod',
+      } as ProviderUser;
+
+      (store as any)._currentProvider.set(activeProvider);
+
+      const localExp: ProviderExperience = {
+        id: 'exp-mod-pending',
+        slug: 'exp-mod-pending',
+        title: 'Exp Con Moderación Pendiente',
+        status: 'pendiente_ocultar',
+        providerId: 'prov-mod-1',
+        providerEmail: 'mod@guia.com',
+        moderation: {
+          action: 'ocultar',
+          status: 'pendiente',
+          requestedAt: '2026-11-20T10:00:00.000Z',
+        },
+      } as any;
+
+      (store as any)._experiences.set([localExp]);
+
+      const liveCatalogExp: Experience = {
+        id: 'exp-mod-pending',
+        slug: 'exp-mod-pending',
+        title: 'Exp Con Moderación Pendiente (Live)',
+        status: 'publicada',
+        providerId: 'prov-mod-1',
+        providerEmail: 'mod@guia.com',
+        isClubExperience: false,
+      } as any;
+
+      vi.spyOn(expService, 'experiences').mockReturnValue([liveCatalogExp]);
+
+      const merged = store.providerExperiences();
+      expect(merged.length).toBe(1);
+      // Status should be preserved as 'pendiente_ocultar'
+      expect(merged[0].status).toBe('pendiente_ocultar');
+      expect(merged[0].moderation?.status).toBe('pendiente');
+      // Catalog title and fields should still be updated
+      expect(merged[0].title).toBe('Exp Con Moderación Pendiente (Live)');
+
+      // providerStats() must reflect the pending moderation count
+      const stats = store.providerStats();
+      expect(stats.pendingModerationCount).toBe(1);
+      expect(stats.publishedCount).toBe(0);
+    });
+
+    it('should use catalog status when existing record moderation request is NOT pending', () => {
+      const activeProvider: ProviderUser = {
+        id: 'prov-mod-2',
+        name: 'Guía Aprobada',
+        email: 'aprobada@guia.com',
+        slug: 'guia-aprobada',
+      } as ProviderUser;
+
+      (store as any)._currentProvider.set(activeProvider);
+
+      const localExp: ProviderExperience = {
+        id: 'exp-mod-approved',
+        slug: 'exp-mod-approved',
+        title: 'Exp Con Moderación Aprobada',
+        status: 'pendiente_publicacion',
+        providerId: 'prov-mod-2',
+        providerEmail: 'aprobada@guia.com',
+        moderation: {
+          action: 'publicar',
+          status: 'aprobada',
+          requestedAt: '2026-11-20T10:00:00.000Z',
+        },
+      } as any;
+
+      (store as any)._experiences.set([localExp]);
+
+      const liveCatalogExp: Experience = {
+        id: 'exp-mod-approved',
+        slug: 'exp-mod-approved',
+        title: 'Exp Con Moderación Aprobada (Live)',
+        status: 'publicada',
+        providerId: 'prov-mod-2',
+        providerEmail: 'aprobada@guia.com',
+        isClubExperience: false,
+      } as any;
+
+      vi.spyOn(expService, 'experiences').mockReturnValue([liveCatalogExp]);
+
+      const merged = store.providerExperiences();
+      expect(merged.length).toBe(1);
+      // Since moderation is 'aprobada', status should be catalog status 'publicada'
+      expect(merged[0].status).toBe('publicada');
+
+      const stats = store.providerStats();
+      expect(stats.pendingModerationCount).toBe(0);
+      expect(stats.publishedCount).toBe(1);
     });
   });
 });

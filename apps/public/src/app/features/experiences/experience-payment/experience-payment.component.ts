@@ -866,6 +866,10 @@ export class ExperiencePaymentComponent implements OnInit {
       }
 
       // 1. Crear primero la preferencia en Mercado Pago para no bloquear cupos si la pasarela falla
+      const prov =
+        (exp.providerId ? this.store.getProviderById(exp.providerId) : undefined) ||
+        (exp.providerEmail ? this.store.getProviderByEmail(exp.providerEmail) : undefined) ||
+        (exp.providerSlug ? this.store.getProviderBySlug(exp.providerSlug) : undefined);
       const res = await fetch('/api/mercadopago', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -889,8 +893,8 @@ export class ExperiencePaymentComponent implements OnInit {
             phone: value.phone,
             dni: value.dni,
           },
-          providerId: exp.providerId,
-          providerCollectorId: exp.mpCollectorId,
+          providerId: exp.providerId || prov?.id,
+          providerCollectorId: exp.mpCollectorId || prov?.mpCollectorId,
         }),
       });
 
@@ -957,10 +961,12 @@ export class ExperiencePaymentComponent implements OnInit {
       if (bookingRef) {
         void this.store.releaseMercadoPagoPending(bookingRef, 'error_inicio_checkout');
       }
+      console.error('[ExperiencePayment] Error al iniciar pago con Mercado Pago:', err);
       this.submitError.set(
-        err instanceof Error
-          ? err.message
-          : 'Error al conectar con Mercado Pago. Podés abonar por transferencia.',
+        this.sanitizePaymentError(
+          err,
+          'Error al conectar con la pasarela de pagos. Por favor intentá de nuevo más tarde o aboná por transferencia.',
+        ),
       );
       this.submitting.set(false);
     }
@@ -1520,14 +1526,28 @@ export class ExperiencePaymentComponent implements OnInit {
       this.confirmation.set(submission);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
+      console.error('[ExperiencePayment] Error al enviar comprobante de pago:', error);
       this.submitError.set(
-        error instanceof Error
-          ? error.message
-          : 'No pudimos registrar el pago. Intentá nuevamente.',
+        this.sanitizePaymentError(
+          error,
+          'No pudimos registrar tu comprobante en este momento. Por favor, intentá de nuevo más tarde o comunicate con el Club.',
+        ),
       );
     } finally {
       this.submitting.set(false);
     }
+  }
+
+  private sanitizePaymentError(error: unknown, fallbackMessage: string): string {
+    if (!(error instanceof Error) || !error.message) {
+      return fallbackMessage;
+    }
+    const msg = error.message.trim();
+    const isTechnical =
+      /row-level security|supabase|storage|violates|policy|permission denied|syntax error|internal server error|failed to fetch|networkerror|database|sql/i.test(
+        msg,
+      );
+    return isTechnical ? fallbackMessage : msg;
   }
 
   openPreviewModal(): void {

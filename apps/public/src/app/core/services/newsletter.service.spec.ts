@@ -588,9 +588,273 @@ describe('NewsletterService - registerSocio promotion update flow', () => {
 
     expect(authed).toBe(true);
     expect(upsertSpy).toHaveBeenCalledWith(
-      { email: 'active-socio@example.com', membership_tier: 'waitlist' },
+      { email: 'active-socio@example.com', membership_tier: 'emergente' },
       { onConflict: 'email', ignoreDuplicates: true },
     );
+  });
+
+  describe('onAuthStateChange login flow - socio update result check', () => {
+    beforeEach(() => {
+      localStorage.setItem('CATAMARCA_SUPABASE_URL', 'https://prod-project.supabase.co');
+      localStorage.setItem(
+        'CATAMARCA_SUPABASE_ANON_KEY',
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.valid_anon_key_for_tests_123456789',
+      );
+    });
+
+    it('should NOT persist promotion or report success when socios update write fails with error', async () => {
+      let authCallback: ((event: string, session: any) => Promise<void>) | null = null;
+      mockSupabase.auth.onAuthStateChange.mockImplementation((cb: any) => {
+        authCallback = cb;
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
+      });
+
+      const existingRemoteSocio = {
+        id: 'socio-existing-1',
+        email: 'member@example.com',
+        full_name: 'Waitlist Member',
+        membership_tier: 'waitlist',
+        auth_user_id: null,
+      };
+
+      mockSupabase.rpc.mockImplementation((fn: string) => {
+        if (fn === 'record_waitlist_email') {
+          return Promise.resolve({ error: { message: 'RPC not available' } });
+        }
+        if (fn === 'get_socio_by_session_or_token') {
+          return Promise.resolve({ data: null, error: { message: 'RPC not available' } });
+        }
+        return Promise.resolve({ data: null, error: null });
+      });
+
+      const updateSpy = vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: null,
+              error: { message: 'database write failure' },
+            }),
+          }),
+        }),
+      });
+
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === 'socios') {
+          return {
+            upsert: vi.fn().mockResolvedValue({ error: null }),
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({ data: existingRemoteSocio, error: null }),
+              }),
+            }),
+            update: updateSpy,
+          };
+        }
+        return {
+          select: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+          }),
+        };
+      });
+
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        providers: [
+          NewsletterService,
+          { provide: SUPABASE_CLIENT, useValue: mockSupabase },
+        ],
+      });
+      const testService = TestBed.inject(NewsletterService);
+
+      testService.markGoogleLoginPending();
+
+      // Wait a tick for async constructor init to register onAuthStateChange listener
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      await authCallback!('SIGNED_IN', {
+        user: { id: 'auth-uid-456', email: 'member@example.com' },
+      });
+
+      // Update was attempted with select('*')
+      expect(updateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ auth_user_id: 'auth-uid-456', membership_tier: 'emergente' }),
+      );
+
+      // But on failure, membership_tier should NOT be promoted to emergente
+      expect(testService.currentMember()?.membershipTier).toBe('waitlist');
+      // Login success flag was NOT set
+      expect(testService.consumeLoginSuccessFlag()).toBe(false);
+    });
+
+    it('should persist promotion and report success when socios update write succeeds', async () => {
+      let authCallback: ((event: string, session: any) => Promise<void>) | null = null;
+      mockSupabase.auth.onAuthStateChange.mockImplementation((cb: any) => {
+        authCallback = cb;
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
+      });
+
+      const existingRemoteSocio = {
+        id: 'socio-existing-2',
+        email: 'member2@example.com',
+        full_name: 'Waitlist Member 2',
+        membership_tier: 'waitlist',
+        auth_user_id: null,
+      };
+
+      const updatedRemoteSocio = {
+        ...existingRemoteSocio,
+        membership_tier: 'emergente',
+        auth_user_id: 'auth-uid-789',
+        position: 125,
+      };
+
+      mockSupabase.rpc.mockImplementation((fn: string) => {
+        if (fn === 'record_waitlist_email') {
+          return Promise.resolve({ error: { message: 'RPC not available' } });
+        }
+        if (fn === 'get_socio_by_session_or_token') {
+          return Promise.resolve({ data: null, error: { message: 'RPC not available' } });
+        }
+        return Promise.resolve({ data: null, error: null });
+      });
+
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === 'socios') {
+          return {
+            upsert: vi.fn().mockResolvedValue({ error: null }),
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({ data: existingRemoteSocio, error: null }),
+              }),
+            }),
+            update: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                select: vi.fn().mockReturnValue({
+                  maybeSingle: vi.fn().mockResolvedValue({
+                    data: updatedRemoteSocio,
+                    error: null,
+                  }),
+                }),
+              }),
+            }),
+          };
+        }
+        return {
+          select: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+          }),
+        };
+      });
+
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        providers: [
+          NewsletterService,
+          { provide: SUPABASE_CLIENT, useValue: mockSupabase },
+        ],
+      });
+      const testService = TestBed.inject(NewsletterService);
+
+      testService.markGoogleLoginPending();
+
+      // Wait a tick for async constructor init to register onAuthStateChange listener
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      await authCallback!('SIGNED_IN', {
+        user: { id: 'auth-uid-789', email: 'member2@example.com' },
+      });
+
+      // On write success, member is promoted to emergente and receives database-assigned position
+      expect(testService.currentMember()?.membershipTier).toBe('emergente');
+      expect(testService.currentMember()?.authUserId).toBe('auth-uid-789');
+      expect(testService.currentMember()?.position).toBe(125);
+      // Login success flag was set
+      expect(testService.consumeLoginSuccessFlag()).toBe(true);
+    });
+
+    it('should preserve existing member number when update database row does not have a position', async () => {
+      let authCallback: ((event: string, session: any) => Promise<void>) | null = null;
+      mockSupabase.auth.onAuthStateChange.mockImplementation((cb: any) => {
+        authCallback = cb;
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
+      });
+
+      const existingRemoteSocio = {
+        id: 'socio-existing-3',
+        email: 'member3@example.com',
+        full_name: 'Existing Member',
+        membership_tier: 'waitlist',
+        auth_user_id: null,
+        position: 42,
+      };
+
+      const updatedRemoteSocio = {
+        ...existingRemoteSocio,
+        membership_tier: 'emergente',
+        auth_user_id: 'auth-uid-333',
+        position: null, // DB update returns null position
+      };
+
+      mockSupabase.rpc.mockImplementation((fn: string) => {
+        if (fn === 'record_waitlist_email') {
+          return Promise.resolve({ error: { message: 'RPC not available' } });
+        }
+        if (fn === 'get_socio_by_session_or_token') {
+          return Promise.resolve({ data: null, error: { message: 'RPC not available' } });
+        }
+        return Promise.resolve({ data: null, error: null });
+      });
+
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === 'socios') {
+          return {
+            upsert: vi.fn().mockResolvedValue({ error: null }),
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({ data: existingRemoteSocio, error: null }),
+              }),
+            }),
+            update: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                select: vi.fn().mockReturnValue({
+                  maybeSingle: vi.fn().mockResolvedValue({
+                    data: updatedRemoteSocio,
+                    error: null,
+                  }),
+                }),
+              }),
+            }),
+          };
+        }
+        return {
+          select: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+          }),
+        };
+      });
+
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        providers: [
+          NewsletterService,
+          { provide: SUPABASE_CLIENT, useValue: mockSupabase },
+        ],
+      });
+      const testService = TestBed.inject(NewsletterService);
+
+      testService.markGoogleLoginPending();
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      await authCallback!('SIGNED_IN', {
+        user: { id: 'auth-uid-333', email: 'member3@example.com' },
+      });
+
+      // Existing member number 42 is preserved
+      expect(testService.currentMember()?.membershipTier).toBe('emergente');
+      expect(testService.currentMember()?.position).toBe(42);
+      expect(testService.consumeLoginSuccessFlag()).toBe(true);
+    });
   });
 });
 
