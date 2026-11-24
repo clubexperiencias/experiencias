@@ -60,6 +60,9 @@ export interface AdminApplication {
   cuitDni?: string;
   bankName?: string;
   accountHolder?: string;
+  mpConnected?: boolean;
+  mpCollectorId?: string;
+  mpNickname?: string;
 }
 
 const STORAGE_KEYS = {
@@ -224,6 +227,9 @@ export class AdminStoreService {
           accountHolder: p.accountHolder || matchingApp.accountHolder || '',
           agency: p.agency || matchingApp.agency || '',
           name: p.name || matchingApp.fullName || 'Prestador',
+          mpConnected: matchingApp.mpConnected !== undefined ? matchingApp.mpConnected : p.mpConnected,
+          mpCollectorId: matchingApp.mpCollectorId || p.mpCollectorId,
+          mpNickname: matchingApp.mpNickname || p.mpNickname,
         });
       } else {
         list.push(p);
@@ -268,6 +274,9 @@ export class AdminStoreService {
         tier: app.tier || 'emergente',
         region: app.region,
         rubro: app.category,
+        mpConnected: app.mpConnected,
+        mpCollectorId: app.mpCollectorId,
+        mpNickname: app.mpNickname,
       });
     }
 
@@ -1778,6 +1787,33 @@ export class AdminStoreService {
                   ? 'dado_de_baja'
                   : 'pendiente';
 
+          let mpConnected = false;
+          let mpCollectorId: string | undefined = undefined;
+          let mpNickname: string | undefined = undefined;
+
+          if (p.notes) {
+            try {
+              const parsed = typeof p.notes === 'string' ? JSON.parse(p.notes) : p.notes;
+              if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                if (parsed.mp_collector_id && !String(parsed.mp_collector_id).startsWith('mp-col-')) {
+                  mpCollectorId = String(parsed.mp_collector_id).trim();
+                  mpConnected = Boolean(parsed.mp_connected && mpCollectorId);
+                } else if (parsed.mp_connected) {
+                  mpConnected = Boolean(parsed.mp_connected);
+                  if (parsed.mp_collector_id) mpCollectorId = String(parsed.mp_collector_id).trim();
+                }
+                if (parsed.mp_nickname) mpNickname = String(parsed.mp_nickname).trim();
+              }
+            } catch { }
+          }
+          if (!mpConnected && (p as any).mp_connected) {
+            mpConnected = true;
+            if ((p as any).mp_collector_id) mpCollectorId = String((p as any).mp_collector_id).trim();
+          }
+          if (!mpNickname && (p as any).mp_nickname) {
+            mpNickname = String((p as any).mp_nickname).trim();
+          }
+
           return {
             id: p.id,
             type: 'prestador' as const,
@@ -1796,6 +1832,9 @@ export class AdminStoreService {
             bankName: p.bank_name || undefined,
             tier: (p.tier as any) || 'emergente',
             createdAt: p.created_at || new Date().toISOString(),
+            mpConnected,
+            mpCollectorId,
+            mpNickname,
           };
         });
 

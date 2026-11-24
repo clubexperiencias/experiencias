@@ -109,7 +109,7 @@ describe('FavoritesService', () => {
     expect(service.isFavorite('kayak-las-jumeal')).toBe(true);
   });
 
-  it('should preserve overlapping genuine experiences when survey keys arrive with an empty cache', () => {
+  it('should ignore survey interest keys even if they share name with experiences when merging registration wishlist', () => {
     const kayakExp: Experience = {
       ...mockExp,
       id: 'exp-kayak',
@@ -118,7 +118,7 @@ describe('FavoritesService', () => {
     };
     mockExperienceService.experiences = () => [mockExp, kayakExp];
 
-    // Simula caché local vacía y wishlist entrante con mezcla de survey-only y experiencia genuina
+    // Simula caché local vacía y wishlist entrante con opciones de encuesta de registro
     currentMemberSignal.set({
       email: 'empty-cache@experiencias.club',
       fullName: 'Socio Empty Cache',
@@ -126,10 +126,11 @@ describe('FavoritesService', () => {
     });
     TestBed.flushEffects();
 
-    expect(service.isFavorite('kayak')).toBe(true);
+    // Las respuestas de encuesta nunca deben auto-convertirse en favoritos
+    expect(service.isFavorite('kayak')).toBe(false);
     expect(service.isFavorite('galan')).toBe(false);
     expect(service.isFavorite('astroturismo')).toBe(false);
-    expect(service.favoriteSlugs()).toEqual(['kayak']);
+    expect(service.favoriteSlugs()).toEqual([]);
   });
 
   it('should remove previously persisted survey-derived favorites on loadStoredFavorites while preserving genuine experiences', () => {

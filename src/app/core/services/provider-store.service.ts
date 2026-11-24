@@ -446,8 +446,8 @@ export class ProviderStoreService {
       byId.set(exp.id, {
         ...exp,
         mpConnected:
-          exp.mpConnected !== undefined ? exp.mpConnected : (provider.mpConnected || false),
-        mpCollectorId: exp.mpCollectorId || provider.mpCollectorId || '',
+          provider.mpConnected !== undefined ? Boolean(provider.mpConnected) : (exp.mpConnected || false),
+        mpCollectorId: provider.mpCollectorId || exp.mpCollectorId || '',
       });
     }
 
@@ -461,8 +461,8 @@ export class ProviderStoreService {
         status: isPendingModeration && existing ? existing.status : mapped.status,
         moderation: existing?.moderation || mapped.moderation,
         mpConnected:
-          mapped.mpConnected !== undefined ? mapped.mpConnected : (provider.mpConnected || false),
-        mpCollectorId: mapped.mpCollectorId || provider.mpCollectorId || '',
+          provider.mpConnected !== undefined ? Boolean(provider.mpConnected) : (mapped.mpConnected || false),
+        mpCollectorId: provider.mpCollectorId || mapped.mpCollectorId || '',
       });
     }
 
@@ -1977,8 +1977,8 @@ export class ProviderStoreService {
     return {
       ...exp,
       mpConnected:
-        exp.mpConnected !== undefined ? exp.mpConnected : (provider.mpConnected || false),
-      mpCollectorId: exp.mpCollectorId || provider.mpCollectorId || '',
+        provider.mpConnected !== undefined ? Boolean(provider.mpConnected) : (exp.mpConnected || false),
+      mpCollectorId: provider.mpCollectorId || exp.mpCollectorId || '',
     };
   }
 

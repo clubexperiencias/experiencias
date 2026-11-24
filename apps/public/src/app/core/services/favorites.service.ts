@@ -88,6 +88,7 @@ export class FavoritesService {
             this.mergeMemberWishlist(wishlist, memberIdentity);
           });
         }
+        void this.syncRemoteFavoritesFromSupabase(memberIdentity);
       }
     });
 
@@ -257,8 +258,8 @@ export class FavoritesService {
       const normLower = norm.toLowerCase();
       if (!norm) continue;
 
-      // Ignorar opciones genéricas de la encuesta de registro a menos que representen una experiencia genuina
-      if (this.isSurveyOnly(normLower)) {
+      // Opciones genéricas de la encuesta de registro nunca se importan como favoritos de experiencias
+      if (SURVEY_INTEREST_KEYS.has(normLower) || this.isSurveyOnly(normLower)) {
         continue;
       }
 
@@ -442,6 +443,40 @@ export class FavoritesService {
         console.warn('[FavoritesService] Error calling toggle_experiencia_favorita:', err);
       }
     })();
+  }
+
+  async syncRemoteFavoritesFromSupabase(identity?: string | null): Promise<void> {
+    if (!this.supabase || !this.newsletter.isSubscribed()) return;
+
+    try {
+      const { data, error } = await (this.supabase as any)
+        .from('experiencias_favoritas')
+        .select('experience_id');
+
+      if (!error && Array.isArray(data)) {
+        const remoteKeys = data
+          .map((r: any) => (r.experience_id || '').trim())
+          .filter((k: string) => k.length > 0 && !SURVEY_INTEREST_KEYS.has(k.toLowerCase()));
+
+        if (remoteKeys.length > 0) {
+          const current = new Set(this._favoriteSlugs());
+          let changed = false;
+          for (const key of remoteKeys) {
+            if (!current.has(key)) {
+              current.add(key);
+              changed = true;
+            }
+          }
+          if (changed) {
+            const list = Array.from(current);
+            this._favoriteSlugs.set(list);
+            this.persistFavorites(list, identity !== undefined ? identity : this.activeMemberIdentity);
+          }
+        }
+      }
+    } catch {
+      // silent
+    }
   }
 
   showToast(info: FavoriteToastInfo): void {

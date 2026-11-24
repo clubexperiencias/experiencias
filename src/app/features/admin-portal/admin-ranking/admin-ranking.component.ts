@@ -1,4 +1,4 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -12,6 +12,18 @@ import { Experience } from '../../../core/models/experience.model';
 import { SURVEY_INTEREST_KEYS } from '../../../core/models/waitlist.model';
 import { ArsPipe } from '../../../shared/pipes/format.pipes';
 import { getPublicExperienceUrl } from '../../../shared/utils/csv.util';
+import { slugify } from '../../../core/services/provider-store.service';
+
+export interface ProviderVoteDetail {
+  socioEmail: string;
+  socioName: string;
+  socioTier: string;
+  socioPosition?: number | null;
+  socioAvatar?: string;
+  score: number;
+  comment?: string;
+  createdAt?: string;
+}
 
 export interface ProviderRankingRow {
   rank: number;
@@ -153,7 +165,15 @@ export interface ExperienceRankingRow {
                     </div>
                   </td>
                   <td>
-                    <span class="votes-pill">{{ row.rating.count }} valoraciones</span>
+                    <button
+                      type="button"
+                      class="votes-pill-btn"
+                      (click)="openProviderVotesModal(row.provider)"
+                      title="Ver qué socios valoraron a este prestador"
+                    >
+                      <span class="star-icon">★</span>
+                      <span>{{ row.rating.count }} valoraciones</span>
+                    </button>
                   </td>
                   <td>
                     <span class="exp-count-tag">{{ row.activeExperiencesCount }} experiencias</span>
@@ -166,18 +186,28 @@ export interface ExperienceRankingRow {
                     }
                   </td>
                   <td class="text-right">
-                    @if (row.slug) {
+                    <div class="action-btn-group">
                       <a
-                        [href]="getPublicProviderUrl(row.slug)"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="btn-action-outline"
-                        title="Ver perfil público"
+                        [routerLink]="getProviderFicheRoute(row)"
+                        class="btn-action-outline btn-fiche-action"
+                        title="Ver ficha técnica y calificaciones del prestador"
                       >
-                        <mat-icon class="icon-tiny">open_in_new</mat-icon>
-                        <span>IR AL PERFIL PÚBLICO</span>
+                        <mat-icon class="icon-tiny">badge</mat-icon>
+                        <span>VER FICHA</span>
                       </a>
-                    }
+                      @if (row.slug) {
+                        <a
+                          [href]="getPublicProviderUrl(row.slug)"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="btn-action-outline btn-web-link"
+                          title="Ver perfil público"
+                        >
+                          <mat-icon class="icon-tiny">open_in_new</mat-icon>
+                          <span>IR AL PERFIL PÚBLICO</span>
+                        </a>
+                      }
+                    </div>
                   </td>
                 </tr>
               } @empty {
@@ -287,6 +317,131 @@ export interface ExperienceRankingRow {
           </table>
         </div>
       </section>
+
+      <!-- MODAL DE CALIFICACIONES DE SOCIOS -->
+      @if (selectedRankingProviderForVotes(); as prov) {
+        <div class="modal-backdrop" (click)="closeProviderVotesModal()">
+          <div class="modal-card" (click)="$event.stopPropagation()">
+            <div class="modal-header">
+              <div class="modal-header-titles">
+                <span class="modal-kicker">CALIFICACIONES Y RESEÑAS</span>
+                <h3 class="modal-title">{{ prov.name || prov.agency || 'Prestador' }}</h3>
+                <span class="modal-subtitle">{{ prov.agency || 'Agencia de Turismo / Operador' }}</span>
+              </div>
+              <button type="button" class="btn-close-modal" (click)="closeProviderVotesModal()" title="Cerrar">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+
+            <div class="modal-body">
+              <div class="modal-stats-summary">
+                <div class="stats-score-badge">
+                  <span class="star-gold">★</span>
+                  <strong class="stats-score-num">{{ (prov.ratingScore || 5.0).toFixed(1) }}</strong>
+                  <span class="stats-count-label">({{ rankingProviderVotes().length }} {{ rankingProviderVotes().length === 1 ? 'valoración registrada' : 'valoraciones registradas' }})</span>
+                </div>
+              </div>
+
+              @if (isLoadingRankingVotes()) {
+                <div class="modal-loading-box">
+                  <p class="empty-text">Cargando valoraciones de socios...</p>
+                </div>
+              } @else if (rankingVotesError()) {
+                <div class="modal-error-box">
+                  <p class="error-text">{{ rankingVotesError() }}</p>
+                  <button type="button" class="btn-retry" (click)="openProviderVotesModal(prov)">Reintentar</button>
+                </div>
+              } @else if (rankingProviderVotes().length === 0) {
+                <div class="modal-empty-box">
+                  <mat-icon class="empty-icon">star_border</mat-icon>
+                  <strong class="empty-title">Aún no hay votos registrados</strong>
+                  <p class="empty-desc">Ningún socio ha calificado a este prestador todavía en el sistema.</p>
+                </div>
+              } @else {
+                <div class="modal-table-wrap">
+                  <table class="modal-votes-table">
+                    <thead>
+                      <tr>
+                        <th>Socio</th>
+                        <th>Nivel / Categoría</th>
+                        <th>Calificación</th>
+                        <th>Comentario / Reseña</th>
+                        <th class="text-right">Fecha</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (v of rankingProviderVotes(); track v.socioEmail + (v.createdAt || '')) {
+                        <tr>
+                          <!-- Socio -->
+                          <td>
+                            <div class="socio-identity-cell">
+                              <div class="socio-avatar">
+                                @if (v.socioAvatar) {
+                                  <img [src]="v.socioAvatar" [alt]="v.socioName" class="socio-avatar-img" />
+                                } @else {
+                                  <span>{{ (v.socioName || v.socioEmail).charAt(0).toUpperCase() }}</span>
+                                }
+                              </div>
+                              <div class="socio-names">
+                                <strong class="socio-name">{{ v.socioName }}</strong>
+                                <span class="socio-email">{{ v.socioEmail }}</span>
+                              </div>
+                            </div>
+                          </td>
+
+                          <!-- Nivel -->
+                          <td>
+                            <div class="tier-badge-cell">
+                              <span class="socio-tier-pill" [class]="'tier-' + v.socioTier.toLowerCase()">
+                                {{ v.socioTier | uppercase }}
+                              </span>
+                              @if (v.socioPosition) {
+                                <span class="socio-number-tag">#{{ v.socioPosition }}</span>
+                              }
+                            </div>
+                          </td>
+
+                          <!-- Calificación -->
+                          <td>
+                            <div class="vote-stars-pill">
+                              <span class="vote-stars-display">{{ getStarsDisplay(v.score) }}</span>
+                              <strong class="vote-score-num">{{ v.score }} ★</strong>
+                            </div>
+                          </td>
+
+                          <!-- Comentario -->
+                          <td>
+                            <span class="vote-comment-text">{{ v.comment || '—' }}</span>
+                          </td>
+
+                          <!-- Fecha -->
+                          <td class="text-right">
+                            <span class="vote-date-cell">{{ v.createdAt ? (v.createdAt | date: 'dd/MM/yyyy HH:mm') : '—' }}</span>
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              }
+            </div>
+
+            <div class="modal-footer">
+              <a
+                [routerLink]="getProviderFicheRoute({ provider: prov })"
+                class="btn-footer-fiche"
+                (click)="closeProviderVotesModal()"
+              >
+                <mat-icon class="icon-tiny">badge</mat-icon>
+                <span>IR A FICHA TÉCNICA COMPLETA</span>
+              </a>
+              <button type="button" class="btn-footer-close" (click)="closeProviderVotesModal()">
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      }
     </div>
   `,
   styles: [`
@@ -737,6 +892,375 @@ export interface ExperienceRankingRow {
       text-align: right;
     }
 
+    .votes-pill-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.75);
+      background: rgba(255, 255, 255, 0.05);
+      padding: 0.25rem 0.6rem;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      white-space: nowrap;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .votes-pill-btn:hover {
+      background: rgba(255, 149, 0, 0.15);
+      border-color: rgba(255, 149, 0, 0.35);
+      color: #ff9500;
+    }
+
+    .votes-pill-btn .star-icon {
+      color: #ffb703;
+      font-size: 0.82rem;
+    }
+
+    /* Modal de Valoraciones */
+    .modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.78);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1050;
+      padding: 1rem;
+    }
+
+    .modal-card {
+      background: #190f0a;
+      border: 1px solid rgba(255, 149, 0, 0.3);
+      border-radius: 8px;
+      width: 100%;
+      max-width: 780px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+      overflow: hidden;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    .modal-kicker {
+      font-size: 0.7rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      color: #ff9500;
+      text-transform: uppercase;
+      display: block;
+      margin-bottom: 0.2rem;
+    }
+
+    .modal-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin: 0;
+    }
+
+    .modal-subtitle {
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.55);
+    }
+
+    .btn-close-modal {
+      background: none;
+      border: none;
+      color: rgba(255, 255, 255, 0.6);
+      cursor: pointer;
+      padding: 0.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.15s ease;
+    }
+
+    .btn-close-modal:hover {
+      color: #ffffff;
+    }
+
+    .modal-body {
+      padding: 1.25rem 1.5rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .modal-stats-summary {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .stats-score-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      background: rgba(255, 183, 3, 0.12);
+      border: 1px solid rgba(255, 183, 3, 0.3);
+      padding: 0.4rem 0.85rem;
+      border-radius: 6px;
+    }
+
+    .star-gold {
+      color: #ffb703;
+      font-size: 1.1rem;
+    }
+
+    .stats-score-num {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: #ffb703;
+    }
+
+    .stats-count-label {
+      font-size: 0.82rem;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .modal-loading-box,
+    .modal-error-box,
+    .modal-empty-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2.5rem 1rem;
+      text-align: center;
+      gap: 0.5rem;
+      border-radius: 6px;
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    .empty-icon {
+      font-size: 36px;
+      width: 36px;
+      height: 36px;
+      color: rgba(255, 255, 255, 0.3);
+    }
+
+    .empty-title {
+      color: rgba(255, 255, 255, 0.85);
+      font-size: 0.95rem;
+    }
+
+    .empty-desc {
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 0.82rem;
+      margin: 0;
+    }
+
+    .btn-retry {
+      background: #ff5f00;
+      color: #ffffff;
+      border: none;
+      border-radius: 4px;
+      padding: 0.4rem 0.8rem;
+      font-size: 0.8rem;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .modal-table-wrap {
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 6px;
+      overflow-x: auto;
+    }
+
+    .modal-votes-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.82rem;
+    }
+
+    .modal-votes-table th {
+      background: rgba(0, 0, 0, 0.4);
+      padding: 0.75rem 0.85rem;
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .modal-votes-table td {
+      padding: 0.75rem 0.85rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      vertical-align: middle;
+    }
+
+    .socio-identity-cell {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+    }
+
+    .socio-avatar {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: #2a1b14;
+      border: 1px solid rgba(255, 149, 0, 0.3);
+      color: #ff9500;
+      font-weight: 700;
+      font-size: 0.8rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .socio-avatar-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .socio-names {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .socio-name {
+      font-size: 0.84rem;
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    .socio-email {
+      font-size: 0.72rem;
+      color: rgba(255, 255, 255, 0.45);
+    }
+
+    .tier-badge-cell {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .socio-tier-pill {
+      font-size: 0.65rem;
+      font-weight: 800;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.08);
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .socio-tier-pill.tier-fundador,
+    .socio-tier-pill.tier-vip {
+      background: rgba(255, 149, 0, 0.15);
+      color: #ffa726;
+      border: 1px solid rgba(255, 149, 0, 0.3);
+    }
+
+    .socio-tier-pill.tier-activo,
+    .socio-tier-pill.tier-socio {
+      background: rgba(0, 204, 136, 0.15);
+      color: #00cc88;
+      border: 1px solid rgba(0, 204, 136, 0.3);
+    }
+
+    .socio-number-tag {
+      font-size: 0.7rem;
+      color: rgba(255, 255, 255, 0.4);
+      font-family: monospace;
+    }
+
+    .vote-stars-pill {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .vote-stars-display {
+      color: #ffb703;
+      letter-spacing: 0.1em;
+      font-size: 0.85rem;
+    }
+
+    .vote-score-num {
+      color: #ffb703;
+      font-size: 0.78rem;
+    }
+
+    .vote-comment-text {
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 0.78rem;
+      line-height: 1.4;
+      display: inline-block;
+      max-width: 250px;
+    }
+
+    .vote-date-cell {
+      font-size: 0.72rem;
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .modal-footer {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.75rem;
+      padding: 1rem 1.5rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(0, 0, 0, 0.35);
+    }
+
+    .btn-footer-fiche {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #ffffff;
+      background: #ff5f00;
+      border: 1px solid #ff5f00;
+      text-decoration: none;
+      transition: background 0.15s ease;
+    }
+
+    .btn-footer-fiche:hover {
+      background: #e05300;
+    }
+
+    .btn-footer-close {
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.75);
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .btn-footer-close:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+    }
+
     @media (max-width: 768px) {
       .ranking-page-container {
         padding: 1rem 1rem 2.5rem;
@@ -781,6 +1305,70 @@ export class AdminRankingComponent {
       }
     }
     return `https://experiencias.club/prestadores/${cleanSlug}`;
+  }
+
+  readonly selectedRankingProviderForVotes = signal<ProviderUser | null>(null);
+  readonly rankingProviderVotes = signal<ProviderVoteDetail[]>([]);
+  readonly isLoadingRankingVotes = signal<boolean>(false);
+  readonly rankingVotesError = signal<string | null>(null);
+
+  getProviderFicheRoute(row: { slug?: string; provider?: ProviderUser; name?: string; agency?: string; id?: string }): string {
+    const p = row.provider || (row as any);
+    const slug =
+      row.slug ||
+      p?.slug ||
+      ('origin' in p && p.origin === 'application'
+        ? p.id
+        : slugify(p?.agency || p?.name || row.agency || row.name || p?.id || (row as any).id || 'prestador'));
+    const rawPath = this.router.url.split('?')[0].split('#')[0];
+    const segments = rawPath.split('/').filter(Boolean);
+    const base = segments[0] === 'admin' ? '/admin/prestadores' : '/prestadores';
+    return `${base}/${slug || ''}`;
+  }
+
+  async openProviderVotesModal(provider: ProviderUser): Promise<void> {
+    this.selectedRankingProviderForVotes.set(provider);
+    this.isLoadingRankingVotes.set(true);
+    this.rankingVotesError.set(null);
+    this.rankingProviderVotes.set([]);
+
+    try {
+      if (this.adminStore.members().length === 0) {
+        await this.adminStore.loadAllMembers();
+      }
+      const res = await this.ratingService.getProviderVotes(provider);
+      const members = this.adminStore.members();
+      const enriched: ProviderVoteDetail[] = res.votes.map((v) => {
+        const cleanEmail = v.socioEmail.toLowerCase().trim();
+        const member = members.find((m) => m.email.toLowerCase().trim() === cleanEmail);
+        return {
+          socioEmail: v.socioEmail,
+          socioName: member?.fullName || cleanEmail.split('@')[0],
+          socioTier: member?.membershipTier || 'socio',
+          socioPosition: member?.position,
+          socioAvatar: member?.avatarUrl,
+          score: v.score,
+          comment: v.comment,
+          createdAt: v.createdAt,
+        };
+      });
+      this.rankingProviderVotes.set(enriched);
+    } catch (err: any) {
+      this.rankingVotesError.set(err?.message || 'No se pudieron cargar las calificaciones.');
+    } finally {
+      this.isLoadingRankingVotes.set(false);
+    }
+  }
+
+  closeProviderVotesModal(): void {
+    this.selectedRankingProviderForVotes.set(null);
+    this.rankingProviderVotes.set([]);
+    this.rankingVotesError.set(null);
+  }
+
+  getStarsDisplay(score: number): string {
+    const full = Math.min(5, Math.max(0, Math.round(score)));
+    return '★'.repeat(full) + '☆'.repeat(5 - full);
   }
 
   // Ranking ordenado de prestadores activos aprobados por puntaje y cantidad de votos
@@ -951,7 +1539,7 @@ export class AdminRankingComponent {
         }
       }
     }
-    const isExcludedSurveyKey = (key: string) => SURVEY_INTEREST_KEYS.has(key) && !publishedSlugSet.has(key);
+    const isExcludedSurveyKey = (key: string) => SURVEY_INTEREST_KEYS.has(key);
 
     // Contar cuántos socios reales tienen cada experiencia en su wishlist
     const countsMap = new Map<string, number>();

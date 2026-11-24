@@ -914,5 +914,28 @@ describe('AdminStoreService - Provider Status Update Flow', () => {
       expect(prov?.bankName).toBe('Banco Macro');
       expect(prov?.agency).toBe('Aventuras Duales');
     });
+
+    it('should propagate mpConnected, mpCollectorId, and mpNickname to allRegisteredProviders', () => {
+      (adminStore as any)._applications.set([
+        {
+          id: 'app-prov-mp',
+          type: 'prestador',
+          fullName: 'Guía con Mercado Pago',
+          email: 'guiamp@test.com',
+          phone: '+5493834999999',
+          status: 'aprobado',
+          mpConnected: true,
+          mpCollectorId: 'MP-COLLECTOR-12345',
+          mpNickname: 'Guia MP Oficial',
+        },
+      ]);
+
+      const registered = adminStore.allRegisteredProviders();
+      const prov = registered.find((p) => p.email === 'guiamp@test.com');
+      expect(prov).toBeDefined();
+      expect(prov?.mpConnected).toBe(true);
+      expect(prov?.mpCollectorId).toBe('MP-COLLECTOR-12345');
+      expect(prov?.mpNickname).toBe('Guia MP Oficial');
+    });
   });
 });

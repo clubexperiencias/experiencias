@@ -180,13 +180,16 @@ describe('AdminRankingComponent', () => {
     const rowWithSlug = rows.find((r) => r.name === 'Prestador Con Slug');
     expect(rowWithSlug?.slug).toBe('prestador-con-slug');
 
-    const links = fixture.nativeElement.querySelectorAll('.dash-table tbody tr .btn-action-outline');
-    expect(links.length).toBe(1);
-    expect(links[0].getAttribute('href') || links[0].getAttribute('ng-reflect-router-link')).toContain('prestador-con-slug');
+    const webLinks = fixture.nativeElement.querySelectorAll('.dash-table tbody tr .btn-web-link');
+    expect(webLinks.length).toBe(1);
+    expect(webLinks[0].getAttribute('href')).toContain('prestador-con-slug');
     expect(fixture.nativeElement.textContent).not.toContain('app-no-slug-123');
+
+    const ficheLinks = fixture.nativeElement.querySelectorAll('.dash-table tbody tr .btn-fiche-action');
+    expect(ficheLinks.length).toBe(2);
   });
 
-  it('should count favorites for published experience matching survey key (e.g. kayak) and exclude survey keys without experiences', () => {
+  it('should exclude generic registration survey keys (e.g. kayak, astroturismo) from inflating experience favorites', () => {
     experiencesSignal.set([
       {
         id: 'exp-kayak',
@@ -225,7 +228,7 @@ describe('AdminRankingComponent', () => {
     const kayakRow = ranking.find((r) => r.slug === 'kayak');
     const trekkingRow = ranking.find((r) => r.slug === 'trekking-valle');
 
-    expect(kayakRow?.favoritesCount).toBe(1);
+    expect(kayakRow?.favoritesCount).toBe(0);
     expect(trekkingRow?.favoritesCount).toBe(1);
   });
 
@@ -313,6 +316,68 @@ describe('AdminRankingComponent', () => {
 
     // totalFavoritesCount must be 5 (3 + 2), not 28 (25 + 3)
     expect(component.totalFavoritesCount()).toBe(5);
+  });
+
+  describe('getProviderFicheRoute and provider votes modal', () => {
+    it('should generate correct provider fiche route using slug or fallback to name/id', () => {
+      const withSlug = { slug: 'experiencias-extremas', name: 'Pablo Vegvarel' };
+      expect(component.getProviderFicheRoute(withSlug)).toContain('/prestadores/experiencias-extremas');
+
+      const withoutSlug = { slug: '', name: 'Pablo Vegvarel', agency: 'Experiencias Extremas' };
+      expect(component.getProviderFicheRoute(withoutSlug)).toContain('/prestadores/experiencias-extremas');
+
+      const appOrigin = { slug: '', provider: { id: 'app-pablo-123', origin: 'application', name: 'Pablo' } as any };
+      expect(component.getProviderFicheRoute(appOrigin)).toContain('/prestadores/app-pablo-123');
+    });
+
+    it('should open and close provider votes modal and load ratings', async () => {
+      const mockMembers = (component as any).adminStore.members;
+      mockMembers.set([
+        {
+          email: 'socio@club.com',
+          fullName: 'Socio Calificador',
+          membershipTier: 'fundador',
+          position: 1,
+          avatarUrl: 'https://avatar.com/socio.jpg',
+        },
+      ]);
+
+      const mockRatingService = (component as any).ratingService;
+      mockRatingService.getProviderVotes = vi.fn().mockResolvedValue({
+        votes: [
+          {
+            socioEmail: 'socio@club.com',
+            score: 5,
+            comment: 'Excelente servicio y guía!',
+            createdAt: '2026-11-20T10:00:00Z',
+          },
+        ],
+        status: 'complete',
+      });
+
+      const testProv = {
+        id: 'prov-pablo',
+        name: 'Pablo Vegvarel',
+        agency: 'Experiencias Extremas',
+        email: 'pablo@extremas.com',
+        slug: 'pablo-vegvarel',
+      } as any;
+
+      expect(component.selectedRankingProviderForVotes()).toBeNull();
+
+      await component.openProviderVotesModal(testProv);
+
+      expect(component.selectedRankingProviderForVotes()).toBe(testProv);
+      expect(component.rankingProviderVotes().length).toBe(1);
+      expect(component.rankingProviderVotes()[0].socioName).toBe('Socio Calificador');
+      expect(component.rankingProviderVotes()[0].score).toBe(5);
+      expect(component.rankingProviderVotes()[0].comment).toBe('Excelente servicio y guía!');
+
+      component.closeProviderVotesModal();
+
+      expect(component.selectedRankingProviderForVotes()).toBeNull();
+      expect(component.rankingProviderVotes()).toEqual([]);
+    });
   });
 });
 

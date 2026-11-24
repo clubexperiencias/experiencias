@@ -21,6 +21,8 @@ describe('AdminExperiencesComponent - Mercado Pago Precedence', () => {
     allRegisteredProviders?: ReturnType<typeof signal<ProviderUser[]>>;
     loadAllApplications?: () => Promise<void>;
     experiences: ReturnType<typeof signal<Experience[]>>;
+    members: ReturnType<typeof signal<any[]>>;
+    loadAllMembers: () => Promise<void>;
     approveExperienceRequest?: (id: string, publicUrl?: string, dates?: string[]) => Promise<boolean>;
     rejectExperienceRequest?: (id: string) => Promise<boolean>;
     usdExchangeRate?: ReturnType<typeof signal<number>>;
@@ -65,6 +67,8 @@ describe('AdminExperiencesComponent - Mercado Pago Precedence', () => {
       allRegisteredProviders: signal<ProviderUser[]>([sampleConnectedProvider, sampleDisconnectedProvider]),
       loadAllApplications: () => Promise.resolve(),
       experiences: signal<Experience[]>([]),
+      members: signal<any[]>([]),
+      loadAllMembers: () => Promise.resolve(),
       usdExchangeRate: signal(1200),
       approveExperienceRequest: () => Promise.resolve(true),
       rejectExperienceRequest: () => Promise.resolve(true),
@@ -1128,6 +1132,117 @@ describe('AdminExperiencesComponent - Mercado Pago Precedence', () => {
       expect(savedPayload).toBeTruthy();
       expect(savedPayload.mpConnected).toBe(true);
       expect(savedPayload.mpCollectorId).toBe('COLLECTOR-12345');
+    });
+  });
+
+  describe('detailFavoritedMembers and loadExperienceFavorites', () => {
+    it('should initialize with empty favorites list and loading false', () => {
+      expect(component.detailFavoritedMembers()).toEqual([]);
+      expect(component.isLoadingDetailFavorites()).toBe(false);
+    });
+
+    it('should clear detailFavoritedMembers on openCreateModal and closeEditModal', () => {
+      component.detailFavoritedMembers.set([
+        {
+          name: 'Socio Test',
+          email: 'test@socio.com',
+          tier: 'activo',
+        },
+      ]);
+      expect(component.detailFavoritedMembers().length).toBe(1);
+
+      component.openCreateModal();
+      expect(component.detailFavoritedMembers().length).toBe(0);
+
+      component.detailFavoritedMembers.set([
+        {
+          name: 'Socio Test',
+          email: 'test@socio.com',
+          tier: 'activo',
+        },
+      ]);
+      component.closeEditModal();
+      expect(component.detailFavoritedMembers().length).toBe(0);
+    });
+
+    it('should query experiencias_favoritas and match with adminStore.members()', async () => {
+      const mockMembers = [
+        {
+          id: 'socio-uuid-1',
+          fullName: 'Gonzalo Socio',
+          email: 'gonzalo@club.com',
+          phone: '+5493834123456',
+          membershipTier: 'fundador',
+          position: 12,
+          avatarUrl: 'https://avatar.png',
+        },
+      ];
+      mockAdminStore.members.set(mockMembers as any);
+
+      const fakeFrom = vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          in: vi.fn().mockReturnValue({
+            order: vi.fn().mockResolvedValue({
+              data: [
+                {
+                  id: 'fav-1',
+                  socio_id: 'socio-uuid-1',
+                  socio_email: 'gonzalo@club.com',
+                  experience_id: 'kayak',
+                  created_at: '2026-11-20T12:00:00Z',
+                },
+              ],
+              error: null,
+            }),
+          }),
+        }),
+      });
+
+      (component as any).supabase = { from: fakeFrom };
+
+      const exp = {
+        id: 'exp-kayak-1',
+        slug: 'kayak',
+        title: 'Promo 2x1 hidropedales y kayaks',
+      } as Experience;
+
+      await component.loadExperienceFavorites(exp);
+
+      expect(fakeFrom).toHaveBeenCalledWith('experiencias_favoritas');
+      const list = component.detailFavoritedMembers();
+      expect(list.length).toBe(1);
+      expect(list[0].name).toBe('Gonzalo Socio');
+      expect(list[0].email).toBe('gonzalo@club.com');
+      expect(list[0].tier).toBe('fundador');
+      expect(list[0].memberNumber).toBe(12);
+      expect(list[0].phone).toBe('+5493834123456');
+      expect(list[0].favoritedAt).toBe('2026-11-20T12:00:00Z');
+    });
+
+    it('should handle zero favorites in experiencias_favoritas cleanly', async () => {
+      const fakeFrom = vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          in: vi.fn().mockReturnValue({
+            order: vi.fn().mockResolvedValue({
+              data: [],
+              error: null,
+            }),
+          }),
+        }),
+      });
+
+      (component as any).supabase = { from: fakeFrom };
+
+      const exp = {
+        id: 'exp-kayak-1',
+        slug: 'kayak',
+        title: 'Promo 2x1 hidropedales y kayaks',
+      } as Experience;
+
+      await component.loadExperienceFavorites(exp);
+
+      expect(component.detailFavoritedMembers()).toEqual([]);
+      expect(component.isLoadingDetailFavorites()).toBe(false);
     });
   });
 });

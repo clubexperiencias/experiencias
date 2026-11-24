@@ -170,7 +170,7 @@ describe('AdminDashboardComponent - Proposal Review Routes and Actions', () => {
       expect(cabalgataRow?.favoritesCount).toBe(2);
     });
 
-    it('should count favorites for published experiences matching survey keys (e.g. kayak) while ignoring survey keys without experiences', () => {
+    it('should exclude generic registration survey keys (e.g. kayak, astroturismo) from inflating experience favorites', () => {
       mockExpService.experiences.set([
         {
           id: 'exp-kayak',
@@ -179,21 +179,30 @@ describe('AdminDashboardComponent - Proposal Review Routes and Actions', () => {
           status: 'publicada',
           favoritesCount: 0,
         },
+        {
+          id: 'exp-trekking',
+          slug: 'trekking-valle',
+          title: 'Trekking en el valle',
+          status: 'publicada',
+          favoritesCount: 0,
+        },
       ]);
 
       mockStore.members.set([
-        // Active member with kayak favorite (in SURVEY_INTEREST_KEYS, but published experience exists)
+        // Active member with registration survey answers (kayak, astroturismo) and a genuine experience favorite (trekking-valle)
         {
-          id: 'socio-kayak',
+          id: 'socio-1',
           membershipTier: 'activo',
           type: 'socio',
-          experiencesWishlist: ['kayak', 'astroturismo'],
+          experiencesWishlist: ['kayak', 'astroturismo', 'trekking-valle'],
         },
       ]);
 
       const top = component.topFavoritedExperiences();
       const kayakRow = top.find((r) => r.slug === 'kayak');
-      expect(kayakRow?.favoritesCount).toBe(1);
+      const trekkingRow = top.find((r) => r.slug === 'trekking-valle');
+      expect(kayakRow?.favoritesCount).toBe(0);
+      expect(trekkingRow?.favoritesCount).toBe(1);
     });
   });
 

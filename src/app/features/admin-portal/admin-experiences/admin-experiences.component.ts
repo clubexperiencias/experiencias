@@ -21,8 +21,20 @@ import {
   exportExperiencesToCsv,
   getPublicExperienceUrl,
 } from '../../../shared/utils/csv.util';
+import { SUPABASE_CLIENT, isSupabaseConfigured } from '../../../core/supabase/supabase.client';
 
 export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' | 'borradores';
+
+export interface ExperienceFavoritedMember {
+  id?: string;
+  name: string;
+  email: string;
+  phone?: string;
+  avatar?: string;
+  tier: string;
+  memberNumber?: string | number | null;
+  favoritedAt?: string;
+}
 
 @Component({
   selector: 'app-admin-experiences',
@@ -308,6 +320,103 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
                   <span class="info-value">{{ getExpMpConnected(exp) ? (isClub(exp) ? 'Acreditación instantánea a la cuenta oficial del Club' : 'Acreditación instantánea a la cuenta del prestador') : 'Transferencia bancaria directa por CBU' }}</span>
                 </div>
               </div>
+            </div>
+
+            <!-- 3.2 SOCIOS QUE GUARDARON EN FAVORITOS (ME GUSTA) -->
+            <div class="fiche-section-card" [class.is-club-card]="isClub(exp)">
+              <div class="section-title-row">
+                <div class="favorites-title-wrap">
+                  <div class="title-with-icon">
+                    <span class="material-icons-outlined card-header-icon" style="color: #ff4081;">favorite</span>
+                    <h3 class="fiche-card-title">Socios que Guardaron en Favoritos</h3>
+                  </div>
+                  <p class="section-subtext">
+                    Nómina de socios activos y registrados que han agregado esta experiencia a sus me gusta en la plataforma.
+                  </p>
+                </div>
+                <div class="favorites-header-actions">
+                  <span class="favorites-count-badge" [class.has-favorites]="detailFavoritedMembers().length > 0">
+                    <span class="material-icons-outlined count-icon">favorite</span>
+                    {{ detailFavoritedMembers().length }} {{ detailFavoritedMembers().length === 1 ? 'me gusta' : 'me gustas' }}
+                  </span>
+                </div>
+              </div>
+
+              @if (isLoadingDetailFavorites()) {
+                <div class="favorites-loading-placeholder">
+                  <span class="loading-spinner-sm"></span>
+                  <span>Consultando registros de favoritos en la base de datos...</span>
+                </div>
+              } @else if (detailFavoritedMembers().length > 0) {
+                <div class="favorited-members-table-wrap">
+                  <table class="favorited-members-table">
+                    <thead>
+                      <tr>
+                        <th>Socio</th>
+                        <th>N° Socio / Categoría</th>
+                        <th>Contacto</th>
+                        <th>Fecha de Favorito</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (member of detailFavoritedMembers(); track member.id || member.email) {
+                        <tr>
+                          <td class="col-socio">
+                            <div class="socio-profile-cell">
+                              @if (member.avatar) {
+                                <img [src]="member.avatar" alt="Avatar" class="socio-avatar-img" />
+                              } @else {
+                                <div class="socio-avatar-fallback">
+                                  {{ member.name.charAt(0).toUpperCase() }}
+                                </div>
+                              }
+                              <div class="socio-names-wrap">
+                                <span class="socio-display-name">{{ member.name }}</span>
+                                <span class="socio-email-subtext">{{ member.email }}</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td class="col-tier">
+                            <div class="tier-pill-wrap">
+                              <span class="socio-tier-pill" [class]="'tier-' + member.tier.toLowerCase()">
+                                {{ member.tier | uppercase }}
+                              </span>
+                              @if (member.memberNumber) {
+                                <span class="socio-number-tag">#{{ member.memberNumber }}</span>
+                              }
+                            </div>
+                          </td>
+                          <td class="col-contact">
+                            <div class="contact-cell-wrap">
+                              @if (member.phone) {
+                                <a [href]="getWhatsappLink(member.phone, member.name)" target="_blank" rel="noopener noreferrer" class="contact-link whatsapp" title="Escribir por WhatsApp">
+                                  <span class="material-icons-outlined contact-icon">chat</span>
+                                  {{ member.phone }}
+                                </a>
+                              } @else {
+                                <span class="text-muted">—</span>
+                              }
+                            </div>
+                          </td>
+                          <td class="col-date">
+                            <span class="favorited-date-text">
+                              {{ member.favoritedAt ? (member.favoritedAt | date:'dd/MM/yyyy HH:mm') : '—' }}
+                            </span>
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              } @else {
+                <div class="favorites-empty-placeholder">
+                  <span class="material-icons-outlined empty-fav-icon">favorite_border</span>
+                  <div class="empty-fav-texts">
+                    <strong>Sin me gustas registrados</strong>
+                    <p>Ningún socio ha guardado esta experiencia en favoritos todavía en la base de datos (0 registros en experiencias_favoritas).</p>
+                  </div>
+                </div>
+              }
             </div>
 
             <!-- 4. CRONOGRAMA E ITINERARIO DE LA JORNADA -->
@@ -4077,6 +4186,218 @@ export type ExperienceTab = 'all' | 'publicadas' | 'postulaciones' | 'ocultas' |
         color: rgba(255, 255, 255, 0.85) !important;
       }
 
+      /* 3.2 Favoritos Section */
+      .favorites-title-wrap {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+      }
+
+      .title-with-icon {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .card-header-icon {
+        font-size: 20px;
+        width: 20px;
+        height: 20px;
+      }
+
+      .favorites-count-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.35rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        background: rgba(255, 255, 255, 0.05);
+        color: rgba(255, 255, 255, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .favorites-count-badge.has-favorites {
+        background: rgba(255, 64, 129, 0.15);
+        color: #ff4081;
+        border-color: rgba(255, 64, 129, 0.35);
+      }
+
+      .favorites-count-badge .count-icon {
+        font-size: 14px;
+        width: 14px;
+        height: 14px;
+      }
+
+      .favorites-loading-placeholder,
+      .favorites-empty-placeholder {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.5rem;
+        border-radius: 6px;
+        background: rgba(0, 0, 0, 0.25);
+        border: 1px dashed rgba(255, 255, 255, 0.12);
+      }
+
+      .empty-fav-icon {
+        font-size: 32px;
+        width: 32px;
+        height: 32px;
+        color: rgba(255, 255, 255, 0.3);
+      }
+
+      .empty-fav-texts strong {
+        display: block;
+        font-size: 0.88rem;
+        color: rgba(255, 255, 255, 0.85);
+        margin-bottom: 0.2rem;
+      }
+
+      .empty-fav-texts p {
+        margin: 0;
+        font-size: 0.8rem;
+        color: rgba(255, 255, 255, 0.55);
+      }
+
+      .favorited-members-table-wrap {
+        width: 100%;
+        overflow-x: auto;
+        border-radius: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .favorited-members-table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: left;
+        font-size: 0.84rem;
+      }
+
+      .favorited-members-table th {
+        background: rgba(0, 0, 0, 0.4);
+        padding: 0.75rem 1rem;
+        color: rgba(255, 255, 255, 0.5);
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .favorited-members-table td {
+        padding: 0.85rem 1rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        vertical-align: middle;
+      }
+
+      .favorited-members-table tbody tr:hover {
+        background: rgba(255, 255, 255, 0.02);
+      }
+
+      .socio-profile-cell {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .socio-avatar-img,
+      .socio-avatar-fallback {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        object-fit: cover;
+      }
+
+      .socio-avatar-fallback {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #2a1b14;
+        border: 1px solid rgba(255, 149, 0, 0.3);
+        color: #ff9500;
+        font-weight: 700;
+        font-size: 0.85rem;
+      }
+
+      .socio-names-wrap {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+      }
+
+      .socio-display-name {
+        font-weight: 600;
+        color: #ffffff;
+      }
+
+      .socio-email-subtext {
+        font-size: 0.74rem;
+        color: rgba(255, 255, 255, 0.5);
+      }
+
+      .tier-pill-wrap {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+      }
+
+      .socio-tier-pill {
+        display: inline-block;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+        background: rgba(255, 255, 255, 0.08);
+        color: rgba(255, 255, 255, 0.75);
+      }
+
+      .socio-tier-pill.tier-fundador,
+      .socio-tier-pill.tier-vip {
+        background: rgba(255, 149, 0, 0.15);
+        color: #ffa726;
+        border: 1px solid rgba(255, 149, 0, 0.3);
+      }
+
+      .socio-tier-pill.tier-activo,
+      .socio-tier-pill.tier-socio {
+        background: rgba(0, 204, 136, 0.15);
+        color: #00cc88;
+        border: 1px solid rgba(0, 204, 136, 0.3);
+      }
+
+      .socio-number-tag {
+        font-size: 0.72rem;
+        color: rgba(255, 255, 255, 0.45);
+        font-family: monospace;
+      }
+
+      .contact-link.whatsapp {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        color: #25d366;
+        text-decoration: none;
+        font-size: 0.78rem;
+      }
+
+      .contact-link.whatsapp:hover {
+        text-decoration: underline;
+      }
+
+      .contact-link.whatsapp .contact-icon {
+        font-size: 15px;
+        width: 15px;
+        height: 15px;
+      }
+
+      .favorited-date-text {
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 0.78rem;
+      }
+
       @media (max-width: 768px) {
         .table-footer-actions {
           flex-direction: column;
@@ -4109,6 +4430,10 @@ export class AdminExperiencesComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly supabase = inject(SUPABASE_CLIENT, { optional: true });
+
+  readonly detailFavoritedMembers = signal<ExperienceFavoritedMember[]>([]);
+  readonly isLoadingDetailFavorites = signal<boolean>(false);
 
   isClub(exp?: Partial<Experience> | null): boolean {
     return isClubExperience(exp);
@@ -4724,6 +5049,19 @@ export class AdminExperiencesComponent implements OnInit {
       const byName = providers.find((p) => p.name?.toLowerCase() === name || p.agency?.toLowerCase() === name);
       if (byName) return byName;
     }
+    if (exp.id) {
+      const matching = this.findMatchingProposal({ id: exp.id, slug: exp.slug, title: exp.title });
+      if (matching) {
+        if (matching.providerId) {
+          const byProposalId = providers.find((p) => p.id === matching.providerId);
+          if (byProposalId) return byProposalId;
+        }
+        if (matching.providerEmail) {
+          const byProposalEmail = providers.find((p) => p.email?.toLowerCase() === matching.providerEmail?.toLowerCase());
+          if (byProposalEmail) return byProposalEmail;
+        }
+      }
+    }
     return undefined;
   }
 
@@ -4744,9 +5082,9 @@ export class AdminExperiencesComponent implements OnInit {
     if (this.isClub(exp)) {
       return exp.mpCollectorId || 'CLUB-OFICIAL';
     }
-    if (exp.mpCollectorId) return exp.mpCollectorId;
     const prov = this.getProviderForExperience(exp);
-    return prov?.mpCollectorId || '';
+    if (prov?.mpCollectorId) return prov.mpCollectorId;
+    return exp.mpCollectorId || '';
   }
 
   getExpMpNickname(exp: Experience | null): string {
@@ -4755,7 +5093,7 @@ export class AdminExperiencesComponent implements OnInit {
       return 'Club de Experiencias';
     }
     const prov = this.getProviderForExperience(exp);
-    return prov?.mpNickname || '';
+    return prov?.mpNickname || prov?.agency || prov?.name || '';
   }
 
   syncMpFromProvider(): void {
@@ -4803,9 +5141,11 @@ export class AdminExperiencesComponent implements OnInit {
     }
 
     if (isInitialProvider && currentExp) {
-      this.editMpConnected.set(this.getExpMpConnected(currentExp));
-      this.editMpCollectorId.set(this.getExpMpCollectorId(currentExp));
-      this.editMpNickname.set(this.getExpMpNickname(currentExp));
+      const prov = this.getProviderForExperience(currentExp);
+      const hasMp = prov && prov.mpConnected !== undefined ? Boolean(prov.mpConnected) : this.getExpMpConnected(currentExp);
+      this.editMpConnected.set(hasMp);
+      this.editMpCollectorId.set(prov?.mpCollectorId || this.getExpMpCollectorId(currentExp));
+      this.editMpNickname.set(prov?.mpNickname || this.getExpMpNickname(currentExp));
       return;
     }
 
@@ -4866,7 +5206,7 @@ export class AdminExperiencesComponent implements OnInit {
     const isClub = exp ? this.isClub(exp) : false;
     const prov = exp ? this.getProviderForExperience(exp) : null;
     return {
-      connected: isClub ? true : Boolean(prov?.mpConnected || this.editMpConnected()),
+      connected: isClub ? true : Boolean(prov?.mpConnected ?? this.editMpConnected()),
       collectorId: isClub ? 'CLUB_MP_OFICIAL' : (prov?.mpCollectorId || this.editMpCollectorId()),
       nickname: isClub ? 'Club de Experiencias' : (prov?.mpNickname || this.editMpNickname()),
     };
@@ -5107,15 +5447,98 @@ export class AdminExperiencesComponent implements OnInit {
       providerBankName: finalProviderBank,
     });
 
-    const hasMp = this.getExpMpConnected(exp);
-    const colId = this.getExpMpCollectorId(exp);
-    const nickname = this.getExpMpNickname(exp);
+    const prov = this.getProviderForExperience(exp);
+    const hasMp = prov && prov.mpConnected !== undefined ? Boolean(prov.mpConnected) : this.getExpMpConnected(exp);
+    const colId = prov?.mpCollectorId || this.getExpMpCollectorId(exp);
+    const nickname = prov?.mpNickname || this.getExpMpNickname(exp);
     this.editMpConnected.set(hasMp);
     this.editMpCollectorId.set(colId);
     this.editMpNickname.set(nickname);
+
+    void this.loadExperienceFavorites(exp);
+  }
+
+  async loadExperienceFavorites(exp?: Partial<Experience> | null): Promise<void> {
+    if (!exp) {
+      this.detailFavoritedMembers.set([]);
+      return;
+    }
+
+    this.isLoadingDetailFavorites.set(true);
+
+    try {
+      if (!this.supabase || !isSupabaseConfigured()) {
+        this.detailFavoritedMembers.set([]);
+        return;
+      }
+
+      if (this.adminStore.members().length === 0) {
+        await this.adminStore.loadAllMembers();
+      }
+      const members = this.adminStore.members();
+
+      const candidateKeys = Array.from(
+        new Set(
+          [exp.id, exp.slug, (exp as any).initialSlug, ...(exp.slugAliases || [])]
+            .filter((k): k is string => typeof k === 'string' && k.trim().length > 0)
+            .map((k) => k.trim())
+        )
+      );
+
+      if (candidateKeys.length === 0) {
+        this.detailFavoritedMembers.set([]);
+        return;
+      }
+
+      const { data, error } = await this.supabase
+        .from('experiencias_favoritas' as any)
+        .select('id, socio_id, socio_email, experience_id, created_at')
+        .in('experience_id', candidateKeys)
+        .order('created_at', { ascending: false });
+
+      if (error || !data) {
+        this.detailFavoritedMembers.set([]);
+        return;
+      }
+
+      const favoritedMembers: ExperienceFavoritedMember[] = [];
+      const seen = new Set<string>();
+
+      for (const row of (data as any[])) {
+        const socioId = row.socio_id;
+        const socioEmail = (row.socio_email || '').toLowerCase().trim();
+        const uniqueKey = socioEmail || socioId || row.id;
+        if (seen.has(uniqueKey)) continue;
+        seen.add(uniqueKey);
+
+        const matched = members.find((m) => {
+          if (socioId && m.id === socioId) return true;
+          if (socioEmail && m.email && m.email.toLowerCase().trim() === socioEmail) return true;
+          return false;
+        });
+
+        favoritedMembers.push({
+          id: socioId || matched?.id,
+          name: matched?.fullName || matched?.email?.split('@')[0] || row.socio_email?.split('@')[0] || 'Socio',
+          email: matched?.email || row.socio_email || '—',
+          phone: matched?.phone && matched.phone !== '—' ? matched.phone : undefined,
+          avatar: matched?.avatarUrl,
+          tier: matched?.membershipTier || 'socio',
+          memberNumber: matched?.position ?? null,
+          favoritedAt: row.created_at,
+        });
+      }
+
+      this.detailFavoritedMembers.set(favoritedMembers);
+    } catch {
+      this.detailFavoritedMembers.set([]);
+    } finally {
+      this.isLoadingDetailFavorites.set(false);
+    }
   }
 
   openCreateModal(): void {
+    this.detailFavoritedMembers.set([]);
     this.activeFormSelectedProviderId.set(null);
     const newId = `exp-${Date.now().toString(36)}`;
     const blankExp: Experience = {
@@ -5191,6 +5614,7 @@ export class AdminExperiencesComponent implements OnInit {
   }
 
   closeEditModal(): void {
+    this.detailFavoritedMembers.set([]);
     const currentExp = this.editingExperience();
     this.editingExperience.set(null);
     this.isCreating.set(false);

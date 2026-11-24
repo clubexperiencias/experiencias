@@ -2782,6 +2782,10 @@ export class ExperienceService {
               return undefined;
             })(),
             mpConnected: (() => {
+              if (!isClub) {
+                const provMp = (exp.provider_id ? providerMpMap.get(exp.provider_id) : undefined) || (email ? providerMpMap.get(email) : undefined);
+                if (provMp?.connected !== undefined) return provMp.connected;
+              }
               let fromNotes: boolean | undefined = undefined;
               try {
                 if (exp.notes && typeof exp.notes === 'object' && !Array.isArray(exp.notes)) {
@@ -2796,13 +2800,13 @@ export class ExperienceService {
                 }
               } catch { }
               if (fromNotes !== undefined) return fromNotes;
-              if (!isClub) {
-                const provMp = (exp.provider_id ? providerMpMap.get(exp.provider_id) : undefined) || (email ? providerMpMap.get(email) : undefined);
-                if (provMp?.connected) return true;
-              }
               return undefined;
             })(),
             mpCollectorId: (() => {
+              if (!isClub) {
+                const provMp = (exp.provider_id ? providerMpMap.get(exp.provider_id) : undefined) || (email ? providerMpMap.get(email) : undefined);
+                if (provMp?.collectorId) return provMp.collectorId;
+              }
               let fromNotes: string | undefined = undefined;
               try {
                 if (exp.notes && typeof exp.notes === 'object' && !Array.isArray(exp.notes)) {
@@ -2817,10 +2821,6 @@ export class ExperienceService {
                 }
               } catch { }
               if (fromNotes) return fromNotes;
-              if (!isClub) {
-                const provMp = (exp.provider_id ? providerMpMap.get(exp.provider_id) : undefined) || (email ? providerMpMap.get(email) : undefined);
-                if (provMp?.collectorId) return provMp.collectorId;
-              }
               return undefined;
             })(),
             reviewedAt: exp.reviewed_at || undefined,
