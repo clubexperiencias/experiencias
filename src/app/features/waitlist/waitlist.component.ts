@@ -58,12 +58,9 @@ export class WaitlistComponent implements OnInit {
   readonly experienceService = inject(ExperienceService);
   readonly activityService = inject(ActivityHistoryService);
   private readonly destroyRef = inject(DestroyRef);
-  private manifestoTimer: any = null;
 
   constructor() {
-    this.destroyRef.onDestroy(() => {
-      this.clearManifestoTimer();
-    });
+
 
     this.route.queryParams.subscribe((params) => {
       const modal = params['modal'] as ModalType;
@@ -98,76 +95,7 @@ export class WaitlistComponent implements OnInit {
   readonly email = signal('');
   readonly copyStatus = signal<string | null>(null);
 
-  // Manifiesto del Club (vista desplegable en el root con auto-cierre de 11s)
-  readonly showManifesto = signal(false);
-  readonly manifestoAutoSentEmail = signal<string | null>(null);
 
-  private clearManifestoTimer(): void {
-    if (this.manifestoTimer) {
-      clearTimeout(this.manifestoTimer);
-      this.manifestoTimer = null;
-    }
-  }
-
-  toggleManifesto(focusEmail = false): void {
-    const isOpening = !this.showManifesto();
-    this.clearManifestoTimer();
-    this.manifestoAutoSentEmail.set(null);
-
-    if (isOpening) {
-      const cleanEmail = this.email().trim().toLowerCase();
-      if (cleanEmail && this.newsletter.isValidEmail(cleanEmail)) {
-        void this.submitFromManifesto(cleanEmail);
-        this.email.set('');
-      }
-
-      // Auto-cierre del manifiesto a los 16 segundos
-      this.manifestoTimer = setTimeout(() => {
-        if (this.showManifesto()) {
-          this.closeManifesto();
-        }
-      }, 16000);
-    }
-
-    this.showManifesto.set(isOpening);
-    if (!isOpening && focusEmail && typeof document !== 'undefined') {
-      setTimeout(() => {
-        document.getElementById('waitlist-email')?.focus();
-      }, 150);
-    }
-  }
-
-  closeManifesto(focusEmail = false): void {
-    this.clearManifestoTimer();
-    this.manifestoAutoSentEmail.set(null);
-    this.showManifesto.set(false);
-    if (focusEmail && typeof document !== 'undefined') {
-      setTimeout(() => {
-        document.getElementById('waitlist-email')?.focus();
-      }, 150);
-    }
-  }
-
-  private async submitFromManifesto(cleanEmail: string): Promise<void> {
-    this.manifestoAutoSentEmail.set(null);
-    if (this.newsletter.isSubscribed()) {
-      this.newsletter.resetCurrentSubscription();
-    }
-    try {
-      const loginRes = await this.newsletter.loginWithEmail(cleanEmail);
-      if ((!loginRes?.success && !loginRes?.isWaitlistOnly) || loginRes?.alreadyRegisteredSocio) {
-        return;
-      }
-      if (this.newsletter.isSupabaseConnected()) {
-        const notifRes = await this.notificationService.notifyWaitlistConfirmation({ email: cleanEmail });
-        if (notifRes?.success) {
-          this.manifestoAutoSentEmail.set(cleanEmail);
-        }
-      }
-    } catch (err) {
-      console.warn('[WaitlistComponent] Error enviando confirmación desde manifiesto:', err);
-    }
-  }
 
   // Menú desplegable de perfil de usuario
   readonly profileMenuOpen = signal(false);

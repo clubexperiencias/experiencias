@@ -334,11 +334,11 @@ export class ExperienceService {
     providerIdentity:
       | string
       | {
-          slug?: string | null;
-          email?: string | null;
-          agency?: string | null;
-          name?: string | null;
-        },
+        slug?: string | null;
+        email?: string | null;
+        agency?: string | null;
+        name?: string | null;
+      },
   ): Experience[] {
     const normalizeAgency = (val: string) =>
       val
@@ -541,16 +541,16 @@ export class ExperienceService {
     const rawAlbum = updated.albumPhotos !== undefined ? updated.albumPhotos : current.albumPhotos;
     const safeAlbumPhotos = Array.isArray(rawAlbum)
       ? rawAlbum.map((p) => ({
-          ...p,
-          url: typeof p.url === 'string' && p.url.startsWith('blob:') ? KAYAK_IMAGE : p.url,
-        }))
+        ...p,
+        url: typeof p.url === 'string' && p.url.startsWith('blob:') ? KAYAK_IMAGE : p.url,
+      }))
       : rawAlbum;
 
     const replacementGallery = updated.galleryImages !== undefined
       ? updated.galleryImages
       : (updated.albumPhotos !== undefined && Array.isArray(safeAlbumPhotos)
-          ? safeAlbumPhotos.map((p) => p.url)
-          : current.galleryImages);
+        ? safeAlbumPhotos.map((p) => p.url)
+        : current.galleryImages);
 
     const resultingCategory = updated.category || current.category || 'expediciones';
     let resultingSlug = current.slug;
@@ -618,6 +618,17 @@ export class ExperienceService {
     aliasSet.delete(resultingSlug.trim().toLowerCase());
     const resolvedSlugAliases = Array.from(aliasSet).filter(Boolean);
 
+    const hasProviderIdProperty = Object.prototype.hasOwnProperty.call(updated, 'providerId');
+    const isProviderExplicitlyCleared =
+      updated.isClubExperience === true ||
+      updated.providerId === null ||
+      updated.providerId === '' ||
+      (hasProviderIdProperty && (updated.providerId === null || updated.providerId === '' || updated.providerId === undefined));
+
+    const resolvedProviderId: string | undefined = isProviderExplicitlyCleared
+      ? undefined
+      : (updated.providerId ? updated.providerId : (current.providerId || undefined));
+
     const merged: Experience = {
       ...current,
       ...updated,
@@ -632,10 +643,7 @@ export class ExperienceService {
       galleryImages: replacementGallery,
       detailRoute: `${routePrefix}/${resultingSlug}`,
       publicUrl: `https://experiencias.club${routePrefix}/${resultingSlug}`,
-      providerId:
-        updated.isClubExperience === true
-          ? undefined
-          : (updated.providerId !== undefined ? (updated.providerId || undefined) : current.providerId),
+      providerId: resolvedProviderId,
       isClubExperience:
         updated.isClubExperience !== undefined
           ? Boolean(updated.isClubExperience)
@@ -746,7 +754,9 @@ export class ExperienceService {
           payload['provider_slug'] = updated.providerSlug || null;
         }
 
-        if (merged.providerId !== undefined) {
+        if (isProviderExplicitlyCleared) {
+          payload['provider_id'] = null;
+        } else if (hasProviderIdProperty && updated.providerId) {
           payload['provider_id'] = merged.providerId || null;
         }
 
@@ -850,7 +860,17 @@ export class ExperienceService {
           const hasDisplayLocationErr = /display_location/.test(error.message || '');
           const hasCategoryErr = /category/.test(error.message || '');
           const hasPricingPacksErr = /pricing_packs/.test(error.message || '');
-          const hasProviderIdErr = /provider_id/.test(error.message || '');
+          const hasProviderIdFkErr =
+            /foreign key.*provider_id|provider_id.*foreign key|violates foreign key constraint.*provider_id/i.test(
+              error.message || '',
+            ) || ((error as any)?.code === '23503' && /provider_id/i.test(error.message || ''));
+          const hasProviderIdErr =
+            !hasProviderIdFkErr &&
+            (/column.*provider_id.*does not exist|could not find.*provider_id.*column/i.test(
+              error.message || '',
+            ) ||
+              ((error as any)?.code === '42703' && /provider_id/i.test(error.message || '')) ||
+              (/provider_id/.test(error.message || '') && !/foreign key|violates/i.test(error.message || '')));
           const hasIsClubExpErr = /is_club_experience/.test(error.message || '');
           const hasProviderAgencyErr = /provider_agency/.test(error.message || '');
           const hasProviderCbuErr = /provider_cbu_alias/.test(error.message || '');
@@ -885,6 +905,48 @@ export class ExperienceService {
             throw new Error(
               'No se pudieron guardar los packs promocionales: la columna pricing_packs no está disponible en la base de datos remota.',
             );
+          }
+
+          if (hasProviderIdFkErr) {
+            let resolvedProviderId: string | null = null;
+            if (merged.providerEmail) {
+              try {
+                const { data: pData } = await this.supabase
+                  .from('prestadores')
+                  .select('id')
+                  .ilike('email', merged.providerEmail.trim())
+                  .limit(1)
+                  .maybeSingle();
+                if (pData?.id) {
+                  resolvedProviderId = pData.id;
+                }
+              } catch {
+                // Ignore resolution error and proceed to throw
+              }
+            }
+            if (!resolvedProviderId && merged.providerSlug) {
+              try {
+                const { data: pData } = await this.supabase
+                  .from('prestadores')
+                  .select('id')
+                  .eq('slug', merged.providerSlug.trim())
+                  .limit(1)
+                  .maybeSingle();
+                if (pData?.id) {
+                  resolvedProviderId = pData.id;
+                }
+              } catch {
+                // Ignore resolution error and proceed to throw
+              }
+            }
+
+            if (resolvedProviderId && resolvedProviderId !== payloadToUse['provider_id']) {
+              payloadToUse['provider_id'] = resolvedProviderId;
+              merged.providerId = resolvedProviderId;
+            } else {
+              // Preserve target provider relationship by rejecting the save rather than discarding provider_id
+              throw error;
+            }
           }
 
           // Columna aún no migrada en la base remota: reintenta omitiendo solo el campo rechazado
@@ -1679,20 +1741,20 @@ export class ExperienceService {
               ) {
                 const validGalleryImages = Array.isArray(p.galleryImages)
                   ? p.galleryImages.filter(
-                      (u: any) => typeof u === 'string' && u.trim() !== '' && !u.startsWith('blob:'),
-                    )
+                    (u: any) => typeof u === 'string' && u.trim() !== '' && !u.startsWith('blob:'),
+                  )
                   : [];
                 const validAlbumPhotos = Array.isArray(p.albumPhotos)
                   ? p.albumPhotos
-                      .map((ph: any) => ph?.url)
-                      .filter(
-                        (u: any) => typeof u === 'string' && u.trim() !== '' && !u.startsWith('blob:'),
-                      )
+                    .map((ph: any) => ph?.url)
+                    .filter(
+                      (u: any) => typeof u === 'string' && u.trim() !== '' && !u.startsWith('blob:'),
+                    )
                   : [];
                 const safeCover =
                   typeof p.coverImage === 'string' &&
-                  p.coverImage.trim() !== '' &&
-                  !p.coverImage.startsWith('blob:')
+                    p.coverImage.trim() !== '' &&
+                    !p.coverImage.startsWith('blob:')
                     ? p.coverImage
                     : KAYAK_IMAGE;
 
@@ -1719,9 +1781,9 @@ export class ExperienceService {
                   typeof rawAlt === 'number' && Number.isFinite(rawAlt)
                     ? rawAlt
                     : rawAlt !== undefined &&
-                        rawAlt !== null &&
-                        String(rawAlt).replace(/\D/g, '') !== '' &&
-                        Number.isFinite(Number(String(rawAlt).replace(/\D/g, '')))
+                      rawAlt !== null &&
+                      String(rawAlt).replace(/\D/g, '') !== '' &&
+                      Number.isFinite(Number(String(rawAlt).replace(/\D/g, '')))
                       ? Number(String(rawAlt).replace(/\D/g, ''))
                       : 850;
 
@@ -1734,26 +1796,26 @@ export class ExperienceService {
                       const parsed = JSON.parse(p.notes.trim());
                       return parsed.initial_slug || parsed.initialSlug;
                     }
-                  } catch {}
+                  } catch { }
                   return undefined;
                 })();
 
                 const pSlugAliases = Array.isArray(p.slugAliases) && p.slugAliases.length > 0
                   ? p.slugAliases
                   : (() => {
-                      try {
-                        if (p.notes && typeof p.notes === 'object' && !Array.isArray(p.notes)) {
-                          const aliases = (p.notes as any).slug_aliases || (p.notes as any).slugAliases;
-                          if (Array.isArray(aliases)) return aliases.map(String);
-                        }
-                        if (typeof p.notes === 'string' && p.notes.trim().startsWith('{')) {
-                          const parsed = JSON.parse(p.notes.trim());
-                          const aliases = parsed.slug_aliases || parsed.slugAliases;
-                          if (Array.isArray(aliases)) return aliases.map(String);
-                        }
-                      } catch {}
-                      return undefined;
-                    })();
+                    try {
+                      if (p.notes && typeof p.notes === 'object' && !Array.isArray(p.notes)) {
+                        const aliases = (p.notes as any).slug_aliases || (p.notes as any).slugAliases;
+                        if (Array.isArray(aliases)) return aliases.map(String);
+                      }
+                      if (typeof p.notes === 'string' && p.notes.trim().startsWith('{')) {
+                        const parsed = JSON.parse(p.notes.trim());
+                        const aliases = parsed.slug_aliases || parsed.slugAliases;
+                        if (Array.isArray(aliases)) return aliases.map(String);
+                      }
+                    } catch { }
+                    return undefined;
+                  })();
 
                 const pNotesMetadata = (() => {
                   try {
@@ -1769,7 +1831,7 @@ export class ExperienceService {
                         return parsed;
                       }
                     }
-                  } catch {}
+                  } catch { }
                   return undefined;
                 })();
 
@@ -1905,26 +1967,26 @@ export class ExperienceService {
                         const parsed = JSON.parse(r.notes.trim());
                         return parsed.initial_slug || parsed.initialSlug;
                       }
-                    } catch {}
+                    } catch { }
                     return undefined;
                   })();
 
                   const rSlugAliases = Array.isArray(r.slugAliases) && r.slugAliases.length > 0
                     ? r.slugAliases
                     : (() => {
-                        try {
-                          if (r.notes && typeof r.notes === 'object' && !Array.isArray(r.notes)) {
-                            const aliases = (r.notes as any).slug_aliases || (r.notes as any).slugAliases;
-                            if (Array.isArray(aliases)) return aliases.map(String);
-                          }
-                          if (typeof r.notes === 'string' && r.notes.trim().startsWith('{')) {
-                            const parsed = JSON.parse(r.notes.trim());
-                            const aliases = parsed.slug_aliases || parsed.slugAliases;
-                            if (Array.isArray(aliases)) return aliases.map(String);
-                          }
-                        } catch {}
-                        return undefined;
-                      })();
+                      try {
+                        if (r.notes && typeof r.notes === 'object' && !Array.isArray(r.notes)) {
+                          const aliases = (r.notes as any).slug_aliases || (r.notes as any).slugAliases;
+                          if (Array.isArray(aliases)) return aliases.map(String);
+                        }
+                        if (typeof r.notes === 'string' && r.notes.trim().startsWith('{')) {
+                          const parsed = JSON.parse(r.notes.trim());
+                          const aliases = parsed.slug_aliases || parsed.slugAliases;
+                          if (Array.isArray(aliases)) return aliases.map(String);
+                        }
+                      } catch { }
+                      return undefined;
+                    })();
 
                   localExperiences.push({
                     id,
@@ -1969,21 +2031,21 @@ export class ExperienceService {
                     itinerary: r.itinerary,
                     highlights: r.participantRequirements
                       ? r.participantRequirements
-                          .split('\n')
-                          .map((s: string) => s.trim())
-                          .filter(Boolean)
+                        .split('\n')
+                        .map((s: string) => s.trim())
+                        .filter(Boolean)
                       : [],
                     included: r.includedServices
                       ? r.includedServices
-                          .split('\n')
-                          .map((s: string) => s.trim())
-                          .filter(Boolean)
+                        .split('\n')
+                        .map((s: string) => s.trim())
+                        .filter(Boolean)
                       : [],
                     notIncluded: r.participantRequirements
                       ? r.participantRequirements
-                          .split('\n')
-                          .map((s: string) => s.trim())
-                          .filter(Boolean)
+                        .split('\n')
+                        .map((s: string) => s.trim())
+                        .filter(Boolean)
                       : [],
                     providerId: r.providerId,
                     providerEmail: r.providerEmail,
@@ -2464,7 +2526,7 @@ export class ExperienceService {
           if (sessionData?.session?.user) {
             const { data: accessRows } = await (
               this.supabase.from('prestadores') as any
-            ).select('id, email, cbu_alias, cuit_dni, bank_name, notes, mp_connected, mp_collector_id');
+            ).select('id, email, cbu_alias, cuit_dni, bank_name, notes');
             if (Array.isArray(accessRows)) {
               for (const row of accessRows) {
                 const rowEmail = (row?.email || '').trim().toLowerCase();
@@ -2476,7 +2538,7 @@ export class ExperienceService {
                     const parsed = typeof row.notes === 'string' ? JSON.parse(row.notes) : row.notes;
                     if (parsed?.mp_connected !== undefined) isConn = Boolean(parsed.mp_connected);
                     if (parsed?.mp_collector_id) colId = String(parsed.mp_collector_id);
-                  } catch {}
+                  } catch { }
                 }
                 const mpInfo = { connected: isConn, collectorId: colId };
                 if (rowEmail) {
@@ -2555,7 +2617,7 @@ export class ExperienceService {
                 isSoftDeleted = true;
               }
             }
-          } catch {}
+          } catch { }
 
           if (isSoftDeleted) {
             if (exp.id) {
@@ -2570,13 +2632,13 @@ export class ExperienceService {
 
           const rawGallery = Array.isArray(exp.gallery_images) && exp.gallery_images.length > 0
             ? exp.gallery_images
-                .map((u: any) => (typeof u === 'string' && !u.startsWith('blob:') ? u : ''))
-                .filter(Boolean)
+              .map((u: any) => (typeof u === 'string' && !u.startsWith('blob:') ? u : ''))
+              .filter(Boolean)
             : [];
           const rawAlbum = Array.isArray(exp.album_photos) && exp.album_photos.length > 0
             ? exp.album_photos
-                .map((p: any) => (typeof p?.url === 'string' && !p.url.startsWith('blob:') ? p.url : ''))
-                .filter(Boolean)
+              .map((p: any) => (typeof p?.url === 'string' && !p.url.startsWith('blob:') ? p.url : ''))
+              .filter(Boolean)
             : [];
           const combinedGallery = rawGallery.length > 0
             ? rawGallery
@@ -2584,16 +2646,16 @@ export class ExperienceService {
           const persistedCover = typeof exp.cover_image === 'string' ? exp.cover_image.trim() : '';
           const combinedAlbum = Array.isArray(exp.album_photos) && exp.album_photos.length > 0
             ? exp.album_photos.map((p: any) => ({
-                ...p,
-                url: (typeof p?.url === 'string' && p.url.startsWith('blob:')) ? KAYAK_IMAGE : (p?.url || KAYAK_IMAGE),
-              }))
+              ...p,
+              url: (typeof p?.url === 'string' && p.url.startsWith('blob:')) ? KAYAK_IMAGE : (p?.url || KAYAK_IMAGE),
+            }))
             : combinedGallery.map((u: string, idx: number) => ({
-                id: `photo_${idx + 1}`,
-                url: u,
-                title: exp.title,
-                isCover: Boolean(persistedCover && u.trim() === persistedCover),
-                order: idx + 1,
-              }));
+              id: `photo_${idx + 1}`,
+              url: u,
+              title: exp.title,
+              isCover: Boolean(persistedCover && u.trim() === persistedCover),
+              order: idx + 1,
+            }));
 
           return {
             id: exp.id,
@@ -2659,7 +2721,7 @@ export class ExperienceService {
                     }
                   }
                 }
-              } catch {}
+              } catch { }
               return undefined;
             })(),
             notes: (() => {
@@ -2679,7 +2741,7 @@ export class ExperienceService {
                       }
                       return undefined;
                     }
-                  } catch {}
+                  } catch { }
                 }
                 return exp.notes || undefined;
               }
@@ -2699,7 +2761,7 @@ export class ExperienceService {
                     if (p.initialSlug) return String(p.initialSlug);
                   }
                 }
-              } catch {}
+              } catch { }
               return undefined;
             })(),
             slugAliases: (() => {
@@ -2716,7 +2778,7 @@ export class ExperienceService {
                     if (Array.isArray(aliases)) return aliases.map(String);
                   }
                 }
-              } catch {}
+              } catch { }
               return undefined;
             })(),
             mpConnected: (() => {
@@ -2732,7 +2794,7 @@ export class ExperienceService {
                     if (p.mp_connected !== undefined) fromNotes = Boolean(p.mp_connected);
                   }
                 }
-              } catch {}
+              } catch { }
               if (fromNotes !== undefined) return fromNotes;
               if (!isClub) {
                 const provMp = (exp.provider_id ? providerMpMap.get(exp.provider_id) : undefined) || (email ? providerMpMap.get(email) : undefined);
@@ -2753,7 +2815,7 @@ export class ExperienceService {
                     if (p.mp_collector_id) fromNotes = String(p.mp_collector_id);
                   }
                 }
-              } catch {}
+              } catch { }
               if (fromNotes) return fromNotes;
               if (!isClub) {
                 const provMp = (exp.provider_id ? providerMpMap.get(exp.provider_id) : undefined) || (email ? providerMpMap.get(email) : undefined);

@@ -325,17 +325,46 @@ export class NewsletterService {
               if (needsPromotion) {
                 updateData.membership_tier = 'emergente';
               }
-              await (this.supabase.from('socios') as any)
+              const { data: updatedSocio, error: updateErr } = await (
+                this.supabase.from('socios') as any
+              )
                 .update(updateData)
-                .eq('id', remoteSocio.id);
+                .eq('id', remoteSocio.id)
+                .select('*')
+                .maybeSingle();
 
-              const mapped = mapDbRowToEntry({ ...remoteSocio, ...updateData });
-              this._currentMember.set(mapped);
-              this.persistCurrentMember(mapped);
-              if (isFreshGoogleLogin) {
-                this.setLoginSuccessFlag();
+              if (!updateErr && updatedSocio) {
+                const existingPosition = remoteSocio.position ?? this._currentMember()?.position;
+                const rowToMap = {
+                  ...updatedSocio,
+                  position: updatedSocio.position ?? existingPosition ?? null,
+                };
+                const mapped = mapDbRowToEntry(rowToMap);
+                this._currentMember.set(mapped);
+                this.persistCurrentMember(mapped);
+                if (isFreshGoogleLogin) {
+                  this.setLoginSuccessFlag();
+                }
+                this.checkAndNavigateReturnUrl();
+              } else {
+                console.warn(
+                  '[NewsletterService] Error o fila no actualizada al vincular socio con Google Auth:',
+                  updateErr,
+                );
+                if (isFreshGoogleLogin) {
+                  this.markGoogleLoginPending();
+                }
+                // Preservar estado de socio remoto existente sin persistir promoción fallida
+                const existingPosition = remoteSocio.position ?? this._currentMember()?.position;
+                const rowToMap = {
+                  ...remoteSocio,
+                  position: remoteSocio.position ?? existingPosition ?? null,
+                };
+                const mapped = mapDbRowToEntry(rowToMap);
+                this._currentMember.set(mapped);
+                this.persistCurrentMember(mapped);
+                this.checkAndNavigateReturnUrl();
               }
-              this.checkAndNavigateReturnUrl();
             }
           } catch {
             // Manejo de error silencioso

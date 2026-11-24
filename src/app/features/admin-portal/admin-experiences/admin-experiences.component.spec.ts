@@ -510,7 +510,7 @@ describe('AdminExperiencesComponent - Mercado Pago Precedence', () => {
       expect(updateExpSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           isClubExperience: true,
-          providerId: undefined,
+          providerId: null,
           providerName: 'Club de Experiencias',
           mpConnected: true,
           mpCollectorId: 'CLUB-OFICIAL',
@@ -711,7 +711,51 @@ describe('AdminExperiencesComponent - Mercado Pago Precedence', () => {
         expect.objectContaining({
           providerName: 'Guías del Valle',
           providerSlug: 'guias-del-valle',
-          providerId: undefined,
+          providerId: null,
+          isClubExperience: false,
+        }),
+      );
+    });
+
+    it('should explicitly clear providerId (set to null) when a registered provider is cleared or unassigned', async () => {
+      const expService = (component as any).experienceService;
+      const updateExpSpy = vi.spyOn(expService, 'updateExperience').mockResolvedValue(undefined);
+      vi.spyOn(expService, 'reloadFromSupabase').mockResolvedValue(undefined);
+
+      const existingExpWithProvider = {
+        id: 'exp-with-prov',
+        title: 'Travesía con Guía',
+        slug: 'travesia-guia',
+        tagline: 'Expedición',
+        description: 'Detalle',
+        region: 'Catamarca',
+        meetingPoint: 'Base',
+        category: 'expediciones',
+        priceArs: 30000,
+        providerId: 'prov-old-uuid',
+        providerName: 'Guía Anterior',
+        providerEmail: 'anterior@guia.com',
+        providerPhone: '+5493834111222',
+        providerCbuAlias: 'OLD.CBU',
+        providerCuitDni: '20-11111111-2',
+        providerBankName: 'Banco Nación',
+        isClubExperience: false,
+        coverImage: 'https://img.jpg',
+        dates: ['2026-12-01'],
+      } as unknown as Experience;
+
+      component.openEditModal(existingExpWithProvider);
+      component.editDatesRaw.set('A coordinar');
+      component.editProviderName.set('Prestador No Registrado');
+      component.editProviderId.set('');
+      component.activeFormSelectedProviderId.set('custom');
+
+      await component.saveExperience();
+
+      expect(updateExpSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          providerName: 'Prestador No Registrado',
+          providerId: null,
           isClubExperience: false,
         }),
       );
@@ -887,6 +931,45 @@ describe('AdminExperiencesComponent - Mercado Pago Precedence', () => {
       component.onAdminProviderChange({ providerId: 'custom', isClub: false });
       expect(component.currentAdminMpInfo().connected).toBe(false);
       expect(component.currentAdminMpInfo().collectorId).toBe('');
+    });
+
+    it('should preserve editMpConnected and editMpCollectorId when provider is unchanged, and update on reassignment', () => {
+      const exp = {
+        id: 'exp-custom-mp',
+        title: 'Experiencia con MP Custom',
+        isClubExperience: false,
+        mpConnected: true,
+        mpCollectorId: 'CUSTOM-OVERRIDE-ID',
+      } as Experience;
+      component.openEditModal(exp);
+
+      expect(component.editMpConnected()).toBe(true);
+      expect(component.editMpCollectorId()).toBe('CUSTOM-OVERRIDE-ID');
+
+      // 1. Unchanged provider: should preserve settings
+      component.onAdminProviderChange({ providerId: 'custom', isClub: false });
+      expect(component.editMpConnected()).toBe(true);
+      expect(component.editMpCollectorId()).toBe('CUSTOM-OVERRIDE-ID');
+
+      // 2. Reassignment to connected provider: should use target provider's settings
+      component.onAdminProviderChange({ providerId: 'prov-1-uuid', isClub: false });
+      expect(component.editMpConnected()).toBe(true);
+      expect(component.editMpCollectorId()).toBe('123456789');
+
+      // 3. Reassignment to disconnected provider: should clear settings
+      component.onAdminProviderChange({ providerId: 'prov-2-uuid', isClub: false });
+      expect(component.editMpConnected()).toBe(false);
+      expect(component.editMpCollectorId()).toBe('');
+
+      // 4. Reassignment to Club: should set official club settings
+      component.onAdminProviderChange({ providerId: 'club', isClub: true });
+      expect(component.editMpConnected()).toBe(true);
+      expect(component.editMpCollectorId()).toBe('CLUB-OFICIAL');
+
+      // 5. Reselection of original provider: should restore original settings
+      component.onAdminProviderChange({ providerId: 'custom', isClub: false });
+      expect(component.editMpConnected()).toBe(true);
+      expect(component.editMpCollectorId()).toBe('CUSTOM-OVERRIDE-ID');
     });
   });
 

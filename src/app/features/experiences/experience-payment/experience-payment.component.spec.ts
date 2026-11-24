@@ -548,4 +548,69 @@ describe('ExperiencePaymentComponent - Lodging Stay Date Handling and Submission
     expect(consoleErrorSpy).toHaveBeenCalled();
     expect(component.submitting()).toBe(false);
   });
+
+  it('should call /api/mercadopago with create-preference and resolved providerId', async () => {
+    const newsletter = TestBed.inject(NewsletterService);
+    vi.spyOn(newsletter, 'getAuthenticatedMember').mockResolvedValue({
+      email: 'test@example.com',
+      fullName: 'Test User',
+      tier: 'emergente',
+    } as any);
+    vi.spyOn(newsletter, 'updateMemberProfile').mockResolvedValue({ success: true } as any);
+
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation((input: any) => {
+      const url = typeof input === 'string' ? input : input?.url || '';
+      if (url.includes('/api/mercadopago')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ init_point: 'https://mercadopago.com/init' }),
+        } as any);
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve([]),
+      } as any);
+    });
+
+    const store = TestBed.inject(ProviderStoreService);
+    vi.spyOn(store, 'submitMercadoPagoPending').mockResolvedValue(true as any);
+
+    component.form.setValue({
+      date: '2026-12-10 al 2026-12-13 (3 noches)',
+      fullName: 'Test User',
+      email: 'test@example.com',
+      dni: '12345678',
+      phone: '12345678',
+      participants: 2,
+    });
+    component.checkInDate.set('2026-12-10');
+    component.checkOutDate.set('2026-12-13');
+
+    const originalLocation = window.location;
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      configurable: true,
+      value: { ...originalLocation, href: '', pathname: '/experiencias/cabana-del-valle/pago' },
+    });
+
+    try {
+      await component.submitMercadoPago();
+      expect(fetchSpy).toHaveBeenCalledWith(
+        '/api/mercadopago',
+        expect.objectContaining({
+          method: 'POST',
+          body: expect.stringContaining('"action":"create-preference"'),
+        }),
+      );
+      const requestBody = JSON.parse(fetchSpy.mock.calls[0][1]?.body as string);
+      expect(requestBody.providerId).toBe('prov-1');
+      expect(window.location.href).toBe('https://mercadopago.com/init');
+    } finally {
+      Object.defineProperty(window, 'location', {
+        writable: true,
+        configurable: true,
+        value: originalLocation,
+      });
+    }
+  });
 });

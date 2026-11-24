@@ -47,6 +47,43 @@
 }
 
 /* ==========================================================================
+   Hero Editorial del Club (Temporada Inaugural + Manifiesto en /faq)
+   ========================================================================== */
+.faq-hero-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+  margin: 0.5rem auto 0;
+}
+
+.faq-hero-block .hero-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.faq-hero-block .hero-subtitle {
+  max-width: 620px;
+  margin: 0.85rem auto 1.4rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.faq-hero-block .manifesto-trigger-wrap {
+  margin-top: 0.25rem;
+  display: flex;
+  justify-content: center;
+}
+
+.faq-hero-block .manifesto-view {
+  margin: 0 auto;
+}
+
+/* ==========================================================================
    Card / Box Principal con Look & Feel del Club
    ========================================================================== */
 .faq-section-card {

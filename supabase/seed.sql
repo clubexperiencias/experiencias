@@ -119,7 +119,8 @@ INSERT INTO public.experiencias (
   included,
   not_included,
   provider_name,
-  provider_email
+  provider_email,
+  is_club_experience
 )
 VALUES
   (
@@ -156,7 +157,8 @@ VALUES
     '["Kayaks y remos profesionales", "Chalecos salvavidas reglamentarios certificados", "Seguro de accidentes personales", "Guía profesional náutico", "Picada y brindis andino"]'::jsonb,
     '["Traslados al Club Náutico", "Ropa de recambio"]'::jsonb,
     'Catamarca Kayak & Aventura Náutica',
-    'patriciofacundodiaztillar@gmail.com'
+    'patriciofacundodiaztillar@gmail.com',
+    true
   ),
   (
     'exp-pomez',
@@ -189,7 +191,8 @@ VALUES
     '["Vehículo 4x4 con chofer-guía especializado", "Oxígeno a bordo y botiquín de altura", "Almuerzo de campo y bebidas", "Permisos de ingreso al Área Natural Protegida"]'::jsonb,
     '["Alojamiento en El Peñón", "Propinas"]'::jsonb,
     'Catamarca Expediciones & Trekking',
-    'vegvarel@gmail.com'
+    'vegvarel@gmail.com',
+    true
   ),
   (
     'exp-seismiles',
@@ -221,7 +224,8 @@ VALUES
     '["Transporte 4x4 climatizado", "Guía de alta montaña registrado", "Seguro y botiquín de oximetría", "Almuerzo térmico cordillerano"]'::jsonb,
     '["Indumentaria técnica de abrigo"]'::jsonb,
     'Catamarca Experiencias & Expediciones',
-    'gonzagramaglia@gmail.com'
+    'gonzagramaglia@gmail.com',
+    true
   )
 ON CONFLICT (id) DO UPDATE
 SET slug = EXCLUDED.slug,
@@ -234,6 +238,7 @@ SET slug = EXCLUDED.slug,
     album_photos = EXCLUDED.album_photos,
     provider_name = EXCLUDED.provider_name,
     provider_email = EXCLUDED.provider_email,
+    is_club_experience = EXCLUDED.is_club_experience,
     updated_at = now();
 
 -- ------------------------------------------------------------------------------

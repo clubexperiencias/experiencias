@@ -166,7 +166,7 @@ export interface Experience {
   isExclusiveClub: boolean;
   isLocked?: boolean;
   detailRoute?: string;
-  providerId?: string;
+  providerId?: string | null;
   providerEmail?: string;
   providerSlug?: string;
   providerName?: string;
