@@ -632,6 +632,14 @@ export class ExperienceService {
       galleryImages: replacementGallery,
       detailRoute: `${routePrefix}/${resultingSlug}`,
       publicUrl: `https://experiencias.club${routePrefix}/${resultingSlug}`,
+      providerId:
+        updated.isClubExperience === true
+          ? undefined
+          : (updated.providerId !== undefined ? (updated.providerId || undefined) : current.providerId),
+      isClubExperience:
+        updated.isClubExperience !== undefined
+          ? Boolean(updated.isClubExperience)
+          : current.isClubExperience,
     };
 
     const nextList = [...prevList];
@@ -738,6 +746,30 @@ export class ExperienceService {
           payload['provider_slug'] = updated.providerSlug || null;
         }
 
+        if (merged.providerId !== undefined) {
+          payload['provider_id'] = merged.providerId || null;
+        }
+
+        if (merged.isClubExperience !== undefined) {
+          payload['is_club_experience'] = Boolean(merged.isClubExperience);
+        }
+
+        if (merged.providerAgency !== undefined) {
+          payload['provider_agency'] = merged.providerAgency || '';
+        }
+
+        if (merged.providerCbuAlias !== undefined) {
+          payload['provider_cbu_alias'] = merged.providerCbuAlias || '';
+        }
+
+        if (merged.providerCuitDni !== undefined) {
+          payload['provider_cuit_dni'] = merged.providerCuitDni || '';
+        }
+
+        if (merged.providerBankName !== undefined) {
+          payload['provider_bank_name'] = merged.providerBankName || '';
+        }
+
         if (merged.reviewedAt !== undefined) {
           payload['reviewed_at'] = merged.reviewedAt;
         }
@@ -813,11 +845,18 @@ export class ExperienceService {
           .eq('id', merged.id)
           .select();
 
-        if (error && (/meeting_point_url/.test(error.message || '') || /display_location/.test(error.message || '') || /category/.test(error.message || '') || /pricing_packs/.test(error.message || ''))) {
+        if (error && (/meeting_point_url/.test(error.message || '') || /display_location/.test(error.message || '') || /category/.test(error.message || '') || /pricing_packs/.test(error.message || '') || /provider_id/.test(error.message || '') || /is_club_experience/.test(error.message || '') || /provider_agency/.test(error.message || '') || /provider_cbu_alias/.test(error.message || '') || /provider_cuit_dni/.test(error.message || '') || /provider_bank_name/.test(error.message || '') || /foreign key.*provider_email|provider_email.*violates foreign key/i.test(error.message || ''))) {
           const hasMeetingPointUrlErr = /meeting_point_url/.test(error.message || '');
           const hasDisplayLocationErr = /display_location/.test(error.message || '');
           const hasCategoryErr = /category/.test(error.message || '');
           const hasPricingPacksErr = /pricing_packs/.test(error.message || '');
+          const hasProviderIdErr = /provider_id/.test(error.message || '');
+          const hasIsClubExpErr = /is_club_experience/.test(error.message || '');
+          const hasProviderAgencyErr = /provider_agency/.test(error.message || '');
+          const hasProviderCbuErr = /provider_cbu_alias/.test(error.message || '');
+          const hasProviderCuitErr = /provider_cuit_dni/.test(error.message || '');
+          const hasProviderBankErr = /provider_bank_name/.test(error.message || '');
+          const hasProviderEmailFkErr = /foreign key.*provider_email|provider_email.*violates foreign key/i.test(error.message || '');
 
           if (hasMeetingPointUrlErr && updated.meetingPointUrl !== undefined && String(updated.meetingPointUrl).trim() !== '') {
             // A non-empty value was supplied: reject the update rather than committing without it
@@ -860,6 +899,27 @@ export class ExperienceService {
           }
           if (hasPricingPacksErr) {
             delete payloadToUse['pricing_packs'];
+          }
+          if (hasProviderIdErr) {
+            delete payloadToUse['provider_id'];
+          }
+          if (hasIsClubExpErr) {
+            delete payloadToUse['is_club_experience'];
+          }
+          if (hasProviderAgencyErr) {
+            delete payloadToUse['provider_agency'];
+          }
+          if (hasProviderCbuErr) {
+            delete payloadToUse['provider_cbu_alias'];
+          }
+          if (hasProviderCuitErr) {
+            delete payloadToUse['provider_cuit_dni'];
+          }
+          if (hasProviderBankErr) {
+            delete payloadToUse['provider_bank_name'];
+          }
+          if (hasProviderEmailFkErr) {
+            delete payloadToUse['provider_email'];
           }
 
           ({ data, error } = (await this.supabase
@@ -1082,6 +1142,12 @@ export class ExperienceService {
           provider_phone: experience.providerPhone || null,
           provider_email: experience.providerEmail || null,
           provider_slug: experience.providerSlug || null,
+          provider_id: experience.providerId || null,
+          is_club_experience: Boolean(experience.isClubExperience),
+          provider_agency: experience.providerAgency || '',
+          provider_cbu_alias: experience.providerCbuAlias || '',
+          provider_cuit_dni: experience.providerCuitDni || '',
+          provider_bank_name: experience.providerBankName || '',
         };
 
         if (experience.notes !== undefined) {
@@ -1129,6 +1195,12 @@ export class ExperienceService {
           'pricing_packs',
           'display_location',
           'category',
+          'is_club_experience',
+          'provider_id',
+          'provider_agency',
+          'provider_cbu_alias',
+          'provider_cuit_dni',
+          'provider_bank_name',
         ];
 
         let insertPayload: Record<string, any> = { ...payload };
@@ -2292,12 +2364,14 @@ export class ExperienceService {
 
   private async loadFromSupabase(): Promise<boolean> {
     try {
-      const publicColumns =
+      const baseColumns =
         'id, slug, title, tagline, description, region, meeting_point, difficulty, ' +
         'duration_label, price_ars, price_usd, capacity_per_date, cover_image, ' +
         'video_url, video_poster, altitude_meters, dates, highlights, included, ' +
         'not_included, status, public_url, album_photos, gallery_images, provider_name, provider_phone, ' +
         'provider_email, provider_slug, date_slots, favorites_count, created_at';
+      const providerColumns = ', is_club_experience, provider_id, provider_cbu_alias, provider_cuit_dni, provider_bank_name';
+      let publicColumns = `${baseColumns}${providerColumns}`;
 
       const fetchExperiences = (columns: string): Promise<{ data: any[] | null; error: any }> =>
         this.supabase
@@ -2311,6 +2385,12 @@ export class ExperienceService {
       let { data, error } = await fetchExperiences(
         `${publicColumns}, category, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing${pricingCol()}, provider_agency, participant_requirements, notes, reviewed_at, display_location`,
       );
+      if (error && (/is_club_experience/.test(error.message || '') || /provider_id/.test(error.message || '') || /provider_cbu_alias/.test(error.message || ''))) {
+        publicColumns = baseColumns;
+        ({ data, error } = await fetchExperiences(
+          `${publicColumns}, category, meeting_point_url, kicker, best_season, itinerary, promos_and_pricing${pricingCol()}, provider_agency, participant_requirements, notes, reviewed_at, display_location`,
+        ));
+      }
       if (error && /pricing_packs/.test(error.message || '')) {
         includePricingPacks = false;
         ({ data, error } = await fetchExperiences(
@@ -2375,16 +2455,36 @@ export class ExperienceService {
           string,
           { cbu_alias?: string; cuit_dni?: string; bank_name?: string }
         >();
+        let providerMpMap = new Map<
+          string,
+          { connected: boolean; collectorId?: string }
+        >();
         try {
           const { data: sessionData } = await this.supabase.auth.getSession();
           if (sessionData?.session?.user) {
             const { data: accessRows } = await (
               this.supabase.from('prestadores') as any
-            ).select('email, cbu_alias, cuit_dni, bank_name');
+            ).select('id, email, cbu_alias, cuit_dni, bank_name, notes, mp_connected, mp_collector_id');
             if (Array.isArray(accessRows)) {
               for (const row of accessRows) {
-                if (row?.email) {
-                  providerBankingMap.set(row.email.trim().toLowerCase(), row);
+                const rowEmail = (row?.email || '').trim().toLowerCase();
+                const rowId = (row?.id || '').trim();
+                let isConn = Boolean((row as any).mp_connected);
+                let colId = (row as any).mp_collector_id ? String((row as any).mp_collector_id) : undefined;
+                if (row.notes) {
+                  try {
+                    const parsed = typeof row.notes === 'string' ? JSON.parse(row.notes) : row.notes;
+                    if (parsed?.mp_connected !== undefined) isConn = Boolean(parsed.mp_connected);
+                    if (parsed?.mp_collector_id) colId = String(parsed.mp_collector_id);
+                  } catch {}
+                }
+                const mpInfo = { connected: isConn, collectorId: colId };
+                if (rowEmail) {
+                  providerBankingMap.set(rowEmail, row);
+                  providerMpMap.set(rowEmail, mpInfo);
+                }
+                if (rowId) {
+                  providerMpMap.set(rowId, mpInfo);
                 }
               }
             }
@@ -2428,6 +2528,8 @@ export class ExperienceService {
             providerSlug: exp.provider_slug,
             providerEmail: exp.provider_email,
             providerName: exp.provider_name,
+            providerAgency: exp.provider_agency,
+            isClubExperience: typeof exp.is_club_experience === 'boolean' ? exp.is_club_experience : undefined,
           });
 
           const mappedSlug =
@@ -2440,9 +2542,9 @@ export class ExperienceService {
           const resolvedProviderName = isClub ? (clubProfile.name || 'Club de Experiencias') : (exp.provider_name || undefined);
           const resolvedProviderEmail = isClub ? (clubProfile.email || 'admin@experiencias.club') : (exp.provider_email || undefined);
           const resolvedProviderPhone = isClub ? (clubProfile.phone || '+54 9 383 456-7890') : (exp.provider_phone || undefined);
-          const resolvedCbuAlias = isClub ? (clubProfile.cbuAlias || 'EXPERIENCIAS.CLUB.MP') : (banking?.cbu_alias || undefined);
-          const resolvedCuitDni = isClub ? (clubProfile.cuitDni || '30-71829401-4') : (banking?.cuit_dni || undefined);
-          const resolvedBankName = isClub ? (clubProfile.bankName || 'Mercado Pago / Banco Nación') : (banking?.bank_name || undefined);
+          const resolvedCbuAlias = isClub ? (clubProfile.cbuAlias || 'EXPERIENCIAS.CLUB.MP') : (exp.provider_cbu_alias || banking?.cbu_alias || undefined);
+          const resolvedCuitDni = isClub ? (clubProfile.cuitDni || '30-71829401-4') : (exp.provider_cuit_dni || banking?.cuit_dni || undefined);
+          const resolvedBankName = isClub ? (clubProfile.bankName || 'Mercado Pago / Banco Nación') : (exp.provider_bank_name || banking?.bank_name || undefined);
 
           // Omitir experiencias marcadas como borradas (soft delete)
           let isSoftDeleted = Boolean(exp.deleted_at);
@@ -2531,6 +2633,7 @@ export class ExperienceService {
                 : (Array.isArray(exp.highlights) && exp.highlights.length > 0 ? exp.highlights : []),
             dates: Array.isArray(exp.dates) && exp.dates.length > 0 ? exp.dates : [],
             dateSlots: Array.isArray(exp.date_slots) ? exp.date_slots : undefined,
+            providerId: isClub ? undefined : (exp.provider_id || undefined),
             providerEmail: resolvedProviderEmail,
             providerSlug: resolvedProviderSlug,
             providerName: resolvedProviderName,
@@ -2617,33 +2720,45 @@ export class ExperienceService {
               return undefined;
             })(),
             mpConnected: (() => {
+              let fromNotes: boolean | undefined = undefined;
               try {
                 if (exp.notes && typeof exp.notes === 'object' && !Array.isArray(exp.notes)) {
-                  if ((exp.notes as any).mp_connected !== undefined) return Boolean((exp.notes as any).mp_connected);
+                  if ((exp.notes as any).mp_connected !== undefined) fromNotes = Boolean((exp.notes as any).mp_connected);
                 }
                 if (typeof exp.notes === 'string') {
                   const trimmed = exp.notes.trim();
                   if (trimmed.startsWith('{')) {
                     const p = JSON.parse(trimmed);
-                    if (p.mp_connected !== undefined) return Boolean(p.mp_connected);
+                    if (p.mp_connected !== undefined) fromNotes = Boolean(p.mp_connected);
                   }
                 }
               } catch {}
+              if (fromNotes !== undefined) return fromNotes;
+              if (!isClub) {
+                const provMp = (exp.provider_id ? providerMpMap.get(exp.provider_id) : undefined) || (email ? providerMpMap.get(email) : undefined);
+                if (provMp?.connected) return true;
+              }
               return undefined;
             })(),
             mpCollectorId: (() => {
+              let fromNotes: string | undefined = undefined;
               try {
                 if (exp.notes && typeof exp.notes === 'object' && !Array.isArray(exp.notes)) {
-                  if ((exp.notes as any).mp_collector_id) return String((exp.notes as any).mp_collector_id);
+                  if ((exp.notes as any).mp_collector_id) fromNotes = String((exp.notes as any).mp_collector_id);
                 }
                 if (typeof exp.notes === 'string') {
                   const trimmed = exp.notes.trim();
                   if (trimmed.startsWith('{')) {
                     const p = JSON.parse(trimmed);
-                    if (p.mp_collector_id) return String(p.mp_collector_id);
+                    if (p.mp_collector_id) fromNotes = String(p.mp_collector_id);
                   }
                 }
               } catch {}
+              if (fromNotes) return fromNotes;
+              if (!isClub) {
+                const provMp = (exp.provider_id ? providerMpMap.get(exp.provider_id) : undefined) || (email ? providerMpMap.get(email) : undefined);
+                if (provMp?.collectorId) return provMp.collectorId;
+              }
               return undefined;
             })(),
             reviewedAt: exp.reviewed_at || undefined,

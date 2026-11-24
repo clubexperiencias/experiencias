@@ -265,6 +265,47 @@ describe('ExperienceService', () => {
       expect(service.experiences().some((e) => e.id === 'complete-new-id')).toBe(true);
     });
 
+    it('should persist provider fields including provider_id, is_club_experience, and banking into Supabase update payload', async () => {
+      const updateBuilder: any = {
+        eq: vi.fn().mockReturnThis(),
+        select: vi.fn().mockResolvedValue({ data: [{ id: 'exp-kayak' }], error: null }),
+      };
+      const updateMock = vi.fn().mockReturnValue(updateBuilder);
+      mockSupabase.from.mockReturnValue({
+        update: updateMock,
+      });
+
+      await service.updateExperience({
+        id: 'exp-kayak',
+        providerName: 'Nuevo Guía',
+        providerSlug: 'nuevo-guia',
+        providerId: 'prov-new-uuid',
+        isClubExperience: false,
+        providerAgency: 'Agencia Nueva',
+        providerCbuAlias: 'NUEVO.CBU',
+        providerCuitDni: '20-11223344-5',
+        providerBankName: 'Banco Macro',
+      });
+
+      expect(updateMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          provider_name: 'Nuevo Guía',
+          provider_slug: 'nuevo-guia',
+          provider_id: 'prov-new-uuid',
+          is_club_experience: false,
+          provider_agency: 'Agencia Nueva',
+          provider_cbu_alias: 'NUEVO.CBU',
+          provider_cuit_dni: '20-11223344-5',
+          provider_bank_name: 'Banco Macro',
+        }),
+      );
+
+      const live = service.experiences().find((e) => e.id === 'exp-kayak');
+      expect(live?.providerName).toBe('Nuevo Guía');
+      expect(live?.isClubExperience).toBe(false);
+      expect(live?.providerId).toBe('prov-new-uuid');
+    });
+
     it('should preserve stored record id when lookup matches by slug or alternate id', async () => {
       const initialExperiences = [...service.experiences()];
       const targetExp = initialExperiences[0];

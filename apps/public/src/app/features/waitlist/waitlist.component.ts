@@ -60,14 +60,9 @@ export class WaitlistComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private manifestoTimer: any = null;
 
-  // Notificación flotante: Plataforma en construcción (Estilo Toast Favoritos)
-  readonly showConstructionNotice = signal(false);
-  private constructionTimer: any = null;
-
   constructor() {
     this.destroyRef.onDestroy(() => {
       this.clearManifestoTimer();
-      this.clearConstructionTimer();
     });
 
     this.route.queryParams.subscribe((params) => {
@@ -94,41 +89,10 @@ export class WaitlistComponent implements OnInit {
         filter((e): e is NavigationEnd => e instanceof NavigationEnd),
         takeUntilDestroyed(this.destroyRef),
       )
-      .subscribe((e) => {
-        const cleanUrl = (e.urlAfterRedirects || e.url || '').split('?')[0].split('#')[0];
-        if (cleanUrl === '' || cleanUrl === '/') {
-          this.triggerConstructionNotice();
-        }
-      });
+      .subscribe(() => {});
   }
 
-  ngOnInit(): void {
-    this.triggerConstructionNotice();
-  }
-
-  triggerConstructionNotice(): void {
-    this.clearConstructionTimer();
-    this.showConstructionNotice.set(false);
-    setTimeout(() => {
-      this.showConstructionNotice.set(true);
-      this.constructionTimer = setTimeout(() => {
-        this.showConstructionNotice.set(false);
-        this.constructionTimer = null;
-      }, 7000);
-    }, 60);
-  }
-
-  dismissConstructionNotice(): void {
-    this.clearConstructionTimer();
-    this.showConstructionNotice.set(false);
-  }
-
-  private clearConstructionTimer(): void {
-    if (this.constructionTimer) {
-      clearTimeout(this.constructionTimer);
-      this.constructionTimer = null;
-    }
-  }
+  ngOnInit(): void {}
 
   // Email de suscripción socio emergente
   readonly email = signal('');

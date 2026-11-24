@@ -1034,11 +1034,42 @@ export class AdminStoreService {
             createdAt: s.createdAt || s.created_at || new Date().toISOString(),
           }));
 
-          const waitlist: AdminMember[] = (payload.waitlist || [])
+          const rawWaitlist = (payload.waitlist || [])
             .filter((w: any) => {
               const email = (w.email || '').toLowerCase().trim();
               return !email.startsWith('archived_') && !email.startsWith('deleted_');
-            })
+            });
+
+          // Si algún registro en waitlist está vinculado con Google o auth_user_id, debe ascenderse a socio emergente
+          const waitlistGooglePromoted: AdminMember[] = rawWaitlist
+            .filter((w: any) => Boolean(w.googleLinked || w.auth_user_id))
+            .map((w: any) => ({
+              id: w.id,
+              type: 'socio' as const,
+              email: w.email,
+              fullName:
+                w.fullName && w.fullName !== 'Lista de Espera (Email)'
+                  ? w.fullName
+                  : w.full_name || 'Socio emergente',
+              dni: w.dni || '—',
+              phone: w.phone || '—',
+              position: w.position,
+              membershipTier: (w.membershipTier && w.membershipTier !== 'waitlist') ? w.membershipTier : 'emergente',
+              googleLinked: true,
+              converted: typeof w.paymentsCount === 'number' ? w.paymentsCount > 0 : Boolean(w.converted),
+              avatarUrl: w.avatarUrl || w.avatar_url || w.picture || w.avatar || undefined,
+              isProvider: providerEmails.has(w.email?.toLowerCase().trim()),
+              experiencesWishlist: Array.isArray(w.experiencesWishlist)
+                ? w.experiencesWishlist
+                : Array.isArray(w.experiences_wishlist)
+                  ? w.experiences_wishlist
+                  : [],
+              experiencesOther: w.experiencesOther || w.experiences_other,
+              createdAt: w.createdAt || w.created_at || new Date().toISOString(),
+            }));
+
+          const waitlist: AdminMember[] = rawWaitlist
+            .filter((w: any) => !Boolean(w.googleLinked || w.auth_user_id))
             .map((w: any) => ({
             id: w.id,
             type: 'waitlist' as const,
@@ -1051,7 +1082,7 @@ export class AdminStoreService {
             phone: w.phone || '—',
             position: undefined,
             membershipTier: 'waitlist' as const,
-            googleLinked: Boolean(w.googleLinked || w.auth_user_id),
+            googleLinked: false,
             // Convertido = pagó al menos una experiencia / envió comprobante
             converted: typeof w.paymentsCount === 'number' ? w.paymentsCount > 0 : Boolean(w.converted),
             avatarUrl: w.avatarUrl || w.avatar_url || w.picture || w.avatar || undefined,
@@ -1065,7 +1096,7 @@ export class AdminStoreService {
             createdAt: w.createdAt || w.created_at || new Date().toISOString(),
           }));
 
-          const combined = [...socios, ...waitlist];
+          const combined = [...socios, ...waitlistGooglePromoted, ...waitlist];
           this._members.set(combined);
           this.persistMembers(combined);
           this._lastRefreshedAt.set(new Date().toLocaleTimeString('es-AR'));
@@ -1090,21 +1121,23 @@ export class AdminStoreService {
         const sociosList: AdminMember[] = allSocioRows
           .filter((s: any) => {
             const email = (s.email || '').toLowerCase().trim();
-            return s.membership_tier !== 'waitlist' && !email.startsWith('archived_') && !email.startsWith('deleted_');
+            const isGoogle = Boolean(s.auth_user_id);
+            return (s.membership_tier !== 'waitlist' || isGoogle) && !email.startsWith('archived_') && !email.startsWith('deleted_');
           })
           .map((s: any) => {
             const cleanEmail = s.email?.toLowerCase().trim();
             const hasPayment = paidEmailSet.has(cleanEmail);
+            const isGoogle = Boolean(s.auth_user_id);
             return {
               id: s.id,
               type: 'socio' as const,
               email: s.email,
-              fullName: s.full_name,
+              fullName: s.full_name || (isGoogle ? 'Socio emergente' : undefined),
               dni: s.dni,
               phone: s.phone,
               position: s.position,
-              membershipTier: s.membership_tier || 'emergente',
-              googleLinked: Boolean(s.auth_user_id),
+              membershipTier: s.membership_tier === 'waitlist' ? 'emergente' : (s.membership_tier || 'emergente'),
+              googleLinked: isGoogle,
               converted: hasPayment,
               avatarUrl: s.avatar_url || s.avatar || s.picture || undefined,
               isProvider: providerEmails.has(cleanEmail),
@@ -1119,11 +1152,11 @@ export class AdminStoreService {
         const waitlistOnly: AdminMember[] = allSocioRows
           .filter((w: any) => {
             const email = (w.email || '').toLowerCase().trim();
-            return w.membership_tier === 'waitlist' && !email.startsWith('archived_') && !email.startsWith('deleted_');
+            const isGoogle = Boolean(w.auth_user_id);
+            return w.membership_tier === 'waitlist' && !isGoogle && !email.startsWith('archived_') && !email.startsWith('deleted_');
           })
           .map((w: any) => {
             const cleanEmail = w.email?.toLowerCase().trim();
-            const isGoogle = Boolean(w.auth_user_id);
             const hasPayment = paidEmailSet.has(cleanEmail);
             return {
               id: w.id,
@@ -1137,7 +1170,7 @@ export class AdminStoreService {
               phone: w.phone || '—',
               position: undefined,
               membershipTier: 'waitlist' as const,
-              googleLinked: isGoogle,
+              googleLinked: false,
               converted: hasPayment,
               avatarUrl: w.avatar_url || w.avatar || w.picture || undefined,
               isProvider: providerEmails.has(cleanEmail),

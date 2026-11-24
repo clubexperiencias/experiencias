@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { ProviderStoreService } from './provider-store.service';
 import { ExperienceService } from './experience.service';
 import { SUPABASE_CLIENT } from '../supabase/supabase.client';
-import { BANK_TRANSFER_DESTINATION, ProviderExperience } from '../models/bank-transfer.model';
+import { BANK_TRANSFER_DESTINATION, ProviderExperience, ProviderUser } from '../models/bank-transfer.model';
 
 describe('ProviderStoreService - Payment & Proposal Persistence', () => {
   let store: ProviderStoreService;
@@ -1417,6 +1417,71 @@ describe('ProviderStoreService - Payment & Proposal Persistence', () => {
       expect(existing).toBeTruthy();
       expect(existing?.albumPhotos?.[0].isCover).toBe(false);
       expect(existing?.albumPhotos?.[1].isCover).toBe(true);
+    });
+  });
+
+  describe('Transferred Experiences & Mercado Pago Linking in Provider Portal', () => {
+    it('should include live catalog experiences transferred to current provider in providerExperiences()', () => {
+      const activeProvider: ProviderUser = {
+        id: 'prov-transferred-1',
+        name: 'Carlos Guía',
+        email: 'carlos@guia.com',
+        slug: 'carlos-guia',
+        mpConnected: true,
+        mpCollectorId: 'MP-COLLECTOR-777',
+      } as ProviderUser;
+
+      (store as any)._currentProvider.set(activeProvider);
+
+      const catalogExperience = {
+        id: 'exp-kayak-transferred',
+        slug: 'kayak-en-las-pirquitas',
+        title: 'Kayak en Las Pirquitas',
+        status: 'publicada',
+        providerId: 'prov-transferred-1',
+        providerEmail: 'carlos@guia.com',
+        providerName: 'Carlos Guía',
+        isClubExperience: false,
+      } as any;
+
+      vi.spyOn(expService, 'experiences').mockReturnValue([catalogExperience]);
+
+      const exps = store.providerExperiences();
+      expect(exps.length).toBe(1);
+      expect(exps[0].id).toBe('exp-kayak-transferred');
+      expect(exps[0].providerId).toBe('prov-transferred-1');
+      expect(exps[0].mpConnected).toBe(true);
+      expect(exps[0].mpCollectorId).toBe('MP-COLLECTOR-777');
+    });
+
+    it('should link provider MP credentials to retrieved experiences when experience does not have MP set', () => {
+      const activeProvider: ProviderUser = {
+        id: 'prov-transferred-2',
+        name: 'Guía MP',
+        email: 'guia@mp.com',
+        slug: 'guia-mp',
+        mpConnected: true,
+        mpCollectorId: 'MP-COLLECTOR-888',
+      } as ProviderUser;
+
+      (store as any)._currentProvider.set(activeProvider);
+
+      const catalogExperience = {
+        id: 'exp-trekking-transferred',
+        slug: 'trekking-ancasti',
+        title: 'Trekking Ancasti',
+        status: 'publicada',
+        providerId: 'prov-transferred-2',
+        providerEmail: 'guia@mp.com',
+        isClubExperience: false,
+      } as any;
+
+      vi.spyOn(expService, 'getExperienceBySlug').mockReturnValue(catalogExperience);
+
+      const exp = store.getExperienceBySlug('trekking-ancasti');
+      expect(exp).toBeTruthy();
+      expect(exp?.mpConnected).toBe(true);
+      expect(exp?.mpCollectorId).toBe('MP-COLLECTOR-888');
     });
   });
 });

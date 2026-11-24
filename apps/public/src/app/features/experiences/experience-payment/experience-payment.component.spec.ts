@@ -505,11 +505,47 @@ describe('ExperiencePaymentComponent - Lodging Stay Date Handling and Submission
     const usdEquivalentEl = compiled.querySelector('.pay-usd-equivalent');
     expect(usdEquivalentEl).toBeTruthy();
     expect(usdEquivalentEl?.textContent).toContain(`o \$${expectedUsd} USD`);
-    expect(usdEquivalentEl?.textContent).toContain('(referencial)');
+    expect(usdEquivalentEl?.textContent).toContain('(extranjeros)');
 
     const usdSubEl = compiled.querySelector('.pay-usd-sub');
     expect(usdSubEl).toBeTruthy();
     expect(usdSubEl?.textContent).toContain(`o \$${expectedUsd} USD`);
-    expect(usdSubEl?.textContent).toContain('(referencial)');
+    expect(usdSubEl?.textContent).toContain('(extranjeros)');
+  });
+
+  it('should sanitize technical storage RLS errors in submit() and show a friendly message', async () => {
+    const newsletter = TestBed.inject(NewsletterService);
+    vi.spyOn(newsletter, 'getAuthenticatedMember').mockResolvedValue({
+      email: 'test@example.com',
+      fullName: 'Test User',
+      tier: 'emergente',
+    } as any);
+    vi.spyOn(newsletter, 'updateMemberProfile').mockResolvedValue({ success: true } as any);
+
+    component.form.setValue({
+      date: '2026-12-10 al 2026-12-13 (3 noches)',
+      fullName: 'Test User',
+      email: 'test@example.com',
+      dni: '12345678',
+      phone: '12345678',
+      participants: 2,
+    });
+    component.checkInDate.set('2026-12-10');
+    component.checkOutDate.set('2026-12-13');
+    component.receiptFile.set(new File(['dummy'], 'receipt.png', { type: 'image/png' }));
+
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const store = TestBed.inject(ProviderStoreService);
+    vi.spyOn(store, 'submitTransfer').mockRejectedValue(
+      new Error('No se pudo subir el archivo a Supabase Storage: new row violates row-level security policy'),
+    );
+
+    await component.submit();
+
+    expect(component.submitError()).toBe(
+      'No pudimos registrar tu comprobante en este momento. Por favor, intentá de nuevo más tarde o comunicate con el Club.',
+    );
+    expect(consoleErrorSpy).toHaveBeenCalled();
+    expect(component.submitting()).toBe(false);
   });
 });

@@ -588,7 +588,7 @@ describe('NewsletterService - registerSocio promotion update flow', () => {
 
     expect(authed).toBe(true);
     expect(upsertSpy).toHaveBeenCalledWith(
-      { email: 'active-socio@example.com', membership_tier: 'waitlist' },
+      { email: 'active-socio@example.com', membership_tier: 'emergente' },
       { onConflict: 'email', ignoreDuplicates: true },
     );
   });

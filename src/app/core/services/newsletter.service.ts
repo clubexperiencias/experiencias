@@ -276,14 +276,14 @@ export class NewsletterService {
             event === 'SIGNED_IN' && this.consumeGoogleLoginPendingFlag();
 
           try {
-            // 1. Asegurar registro en socios con tier waitlist y auth_user_id
+            // 1. Asegurar registro en socios con tier emergente y auth_user_id
             const { error: wlRpcErr } = await this.supabase.rpc('record_waitlist_email', {
               p_email: authEmail,
               p_google_linked: true,
             });
             if (wlRpcErr) {
               await (this.supabase.from('socios') as any).upsert(
-                { email: authEmail, auth_user_id: authId, membership_tier: 'waitlist' },
+                { email: authEmail, auth_user_id: authId, membership_tier: 'emergente' },
                 { onConflict: 'email', ignoreDuplicates: true },
               );
             }
@@ -310,11 +310,6 @@ export class NewsletterService {
             }
 
             // Fallback directo si la RPC aún no existe
-            await this.supabase
-              .from('socios')
-              .update({ auth_user_id: authId })
-              .eq('email', authEmail);
-
             const { data: remoteSocio } = await this.supabase
               .from('socios')
               .select('*')
@@ -322,7 +317,19 @@ export class NewsletterService {
               .maybeSingle();
 
             if (remoteSocio) {
-              const mapped = mapDbRowToEntry(remoteSocio);
+              const needsPromotion =
+                !remoteSocio.membership_tier || remoteSocio.membership_tier === 'waitlist';
+              const updateData: { auth_user_id: string; membership_tier?: 'emergente' } = {
+                auth_user_id: authId,
+              };
+              if (needsPromotion) {
+                updateData.membership_tier = 'emergente';
+              }
+              await (this.supabase.from('socios') as any)
+                .update(updateData)
+                .eq('id', remoteSocio.id);
+
+              const mapped = mapDbRowToEntry({ ...remoteSocio, ...updateData });
               this._currentMember.set(mapped);
               this.persistCurrentMember(mapped);
               if (isFreshGoogleLogin) {
@@ -485,14 +492,14 @@ export class NewsletterService {
         if (data?.session?.user?.email) {
           const authEmail = data.session.user.email.toLowerCase();
 
-          // Registrar en socios con tier waitlist
+          // Registrar en socios con tier emergente al iniciar sesión con Google
           const { error: wlRpcErr } = await this.supabase.rpc('record_waitlist_email', {
             p_email: authEmail,
             p_google_linked: true,
           });
           if (wlRpcErr) {
             await (this.supabase.from('socios') as any).upsert(
-              { email: authEmail, membership_tier: 'waitlist' },
+              { email: authEmail, membership_tier: 'emergente' },
               { onConflict: 'email', ignoreDuplicates: true },
             );
           }

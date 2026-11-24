@@ -638,6 +638,85 @@ describe('AdminExperiencesComponent - Mercado Pago Precedence', () => {
       );
     });
 
+    it('should switch provider to custom and clear old provider info without retaining old slug/email/id', async () => {
+      const expService = (component as any).experienceService;
+      const updateExpSpy = vi.spyOn(expService, 'updateExperience').mockResolvedValue(undefined);
+      vi.spyOn(expService, 'reloadFromSupabase').mockResolvedValue(undefined);
+
+      const externalExp = {
+        id: 'exp-ext-prev',
+        title: 'Travesía Kayak',
+        slug: 'travesia-kayak',
+        tagline: 'En lago',
+        description: 'Recorrido',
+        region: 'Valle Central',
+        meetingPoint: 'Dique',
+        category: 'expediciones',
+        priceArs: 40000,
+        providerId: 'prov-1-uuid',
+        providerName: 'Patricio Diaz',
+        providerSlug: 'patricio-catamarca',
+        providerEmail: 'patricio@kayak.com',
+        providerPhone: '+5493834998877',
+        providerCbuAlias: 'PATRICIO.CBU',
+        providerCuitDni: '20-99887766-5',
+        providerBankName: 'Banco Galicia',
+        isClubExperience: false,
+        mpConnected: false,
+        coverImage: 'https://img.jpg',
+        dates: ['2026-12-01'],
+      } as unknown as Experience;
+
+      component.openEditModal(externalExp);
+
+      await component.onSaveAdminExperience({
+        payload: {
+          title: 'Travesía Kayak',
+          shortTitle: 'Travesía Kayak',
+          slug: 'travesia-kayak',
+          tagline: 'En lago',
+          description: 'Recorrido',
+          category: 'expediciones',
+          region: 'Valle Central',
+          meetingPoint: 'Dique',
+          meetingPointUrl: 'https://maps.google.com',
+          difficulty: 'Moderada',
+          durationLabel: 'Día completo',
+          altitudeMeters: 800,
+          priceArs: 40000,
+          capacityPerDate: 10,
+          dates: ['2026-12-01'],
+          pricingPacks: [],
+          coverImage: 'https://img.jpg',
+          videoUrl: '',
+          albumPhotos: [],
+          galleryImages: [],
+          included: [],
+          includedServices: '',
+          highlights: [],
+          participantRequirements: '',
+          itinerary: '',
+          providerId: undefined, // custom provider selected
+          providerName: 'Guías del Valle',
+          providerPhone: '+5493834556677',
+          providerCbuAlias: 'VALLE.CBU',
+          providerCuitDni: '20-33445566-7',
+          providerBankName: 'Banco Nación',
+          isClubExperience: false,
+        },
+      });
+
+      expect(component.editProviderId()).toBe('');
+      expect(updateExpSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          providerName: 'Guías del Valle',
+          providerSlug: 'guias-del-valle',
+          providerId: undefined,
+          isClubExperience: false,
+        }),
+      );
+    });
+
     it('should default missing mpConnected to false and mpCollectorId to empty when provider is resolved', async () => {
       const expService = (component as any).experienceService;
       const updateExpSpy = vi.spyOn(expService, 'updateExperience').mockResolvedValue(undefined);

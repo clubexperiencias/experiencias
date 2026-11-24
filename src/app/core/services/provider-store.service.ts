@@ -143,13 +143,22 @@ export function validateReceiptFile(file: File): string | null {
 }
 
 export function mapLiveExperienceToProvider(live: Experience): ProviderExperience {
+  const isClub = live.isClubExperience !== false && (live.isClubExperience === true || live.providerSlug === 'club-de-experiencias' || (!live.providerId && !live.providerEmail && !live.providerSlug));
   return {
     id: live.id,
     slug: live.slug,
     initialSlug: live.initialSlug,
     slugAliases: live.slugAliases,
-    providerId: 'provider-oficial',
-    providerName: 'Club de Experiencias',
+    providerId: isClub ? 'provider-oficial' : (live.providerId || (live.providerEmail ? `provider-${live.providerEmail}` : 'provider-oficial')),
+    providerName: live.providerName || (isClub ? 'Club de Experiencias' : ''),
+    providerEmail: live.providerEmail,
+    providerSlug: live.providerSlug,
+    providerPhone: live.providerPhone,
+    providerCbuAlias: live.providerCbuAlias,
+    providerCuitDni: live.providerCuitDni,
+    providerBankName: live.providerBankName,
+    mpConnected: live.mpConnected,
+    mpCollectorId: live.mpCollectorId,
     title: live.title,
     shortTitle: live.shortTitle || live.title,
     tagline: live.tagline,
@@ -370,18 +379,92 @@ export class ProviderStoreService {
     const provider = this._currentProvider();
     if (!provider) return this.submissions();
     const providerExpIds = new Set(
-      this._experiences()
-        .filter((e) => e.providerId === provider.id)
-        .map((e) => e.id),
+      this.providerExperiences().map((e) => e.id),
     );
     return this.submissions().filter((s) => providerExpIds.has(s.experienceId));
   });
 
   // Experiences for current logged-in provider
-  readonly providerExperiences = computed(() => {
+  readonly providerExperiences = computed<ProviderExperience[]>(() => {
     const provider = this._currentProvider();
     if (!provider) return this._experiences();
-    return this._experiences().filter((e) => e.providerId === provider.id);
+    const pId = provider.id?.trim();
+    const pEmail = provider.email?.toLowerCase().trim();
+    const pSlug = provider.slug?.toLowerCase().trim();
+    const isClub = isClubProvider(provider);
+
+    // 1. Experiencias en _experiences (almacenadas localmente o propuestas aprobadas en memoria)
+    const storeExps = this._experiences().filter((e) => {
+      const live = this.expService.getExperienceById(e.id) || this.expService.getExperienceBySlug(e.slug);
+      if (live) {
+        if (isClub) {
+          return (
+            live.isClubExperience !== false &&
+            (live.isClubExperience === true || live.providerSlug === 'club-de-experiencias')
+          );
+        }
+        if (live.isClubExperience === true) return false;
+        return (
+          (pId && live.providerId === pId) ||
+          (pEmail && live.providerEmail?.toLowerCase().trim() === pEmail) ||
+          (pSlug && live.providerSlug?.toLowerCase().trim() === pSlug)
+        );
+      }
+      if (isClub) {
+        return (
+          e.providerId === 'prov-club' ||
+          e.providerId === 'provider-oficial' ||
+          e.providerSlug === 'club-de-experiencias'
+        );
+      }
+      return (
+        (pId && e.providerId === pId) ||
+        (pEmail && e.providerEmail?.toLowerCase().trim() === pEmail) ||
+        (pSlug && e.providerSlug?.toLowerCase().trim() === pSlug)
+      );
+    });
+
+    // 2. Experiencias del catálogo oficial en ExperienceService (Supabase / catálogo general)
+    const liveCatalog = this.expService.experiences().filter((live) => {
+      if (isClub) {
+        return (
+          live.isClubExperience !== false &&
+          (live.isClubExperience === true || live.providerSlug === 'club-de-experiencias')
+        );
+      }
+      if (live.isClubExperience === true) return false;
+      return (
+        (pId && live.providerId === pId) ||
+        (pEmail && live.providerEmail?.toLowerCase().trim() === pEmail) ||
+        (pSlug && live.providerSlug?.toLowerCase().trim() === pSlug)
+      );
+    });
+
+    const byId = new Map<string, ProviderExperience>();
+
+    for (const exp of storeExps) {
+      byId.set(exp.id, {
+        ...exp,
+        mpConnected:
+          exp.mpConnected !== undefined ? exp.mpConnected : (provider.mpConnected || false),
+        mpCollectorId: exp.mpCollectorId || provider.mpCollectorId || '',
+      });
+    }
+
+    for (const live of liveCatalog) {
+      const mapped = mapLiveExperienceToProvider(live);
+      const existing = byId.get(live.id);
+      byId.set(live.id, {
+        ...(existing || mapped),
+        ...mapped,
+        moderation: existing?.moderation || mapped.moderation,
+        mpConnected:
+          mapped.mpConnected !== undefined ? mapped.mpConnected : (provider.mpConnected || false),
+        mpCollectorId: mapped.mpCollectorId || provider.mpCollectorId || '',
+      });
+    }
+
+    return Array.from(byId.values());
   });
 
   // Proposals/requests submitted by current provider
@@ -644,6 +727,7 @@ export class ProviderStoreService {
           });
       }
       void this.loadProposalsFromSupabase(email);
+      void this.expService.reloadFromSupabase();
       return true;
     } catch (err) {
       console.warn('[ProviderStore] Error restaurando sesión Supabase:', err);
@@ -1874,16 +1958,38 @@ export class ProviderStoreService {
     );
   }
 
+  private enrichProviderExperienceMp(
+    exp: ProviderExperience | undefined,
+  ): ProviderExperience | undefined {
+    if (!exp) return undefined;
+    const provider = this._currentProvider();
+    if (!provider) return exp;
+    const pId = provider.id?.trim();
+    const pEmail = provider.email?.toLowerCase().trim();
+    const pSlug = provider.slug?.toLowerCase().trim();
+    const isOwner =
+      (pId && exp.providerId === pId) ||
+      (pEmail && exp.providerEmail?.toLowerCase().trim() === pEmail) ||
+      (pSlug && exp.providerSlug?.toLowerCase().trim() === pSlug);
+    if (!isOwner) return exp;
+    return {
+      ...exp,
+      mpConnected:
+        exp.mpConnected !== undefined ? exp.mpConnected : (provider.mpConnected || false),
+      mpCollectorId: exp.mpCollectorId || provider.mpCollectorId || '',
+    };
+  }
+
   getExperienceById(id: string): ProviderExperience | undefined {
     const fromStore = this._experiences().find((e) => e.id === id || e.slug === id);
-    if (fromStore) return fromStore;
+    if (fromStore) return this.enrichProviderExperienceMp(fromStore);
     const live = this.expService.getExperienceById(id) || this.expService.getExperienceBySlug(id);
     if (live) {
-      return mapLiveExperienceToProvider(live);
+      return this.enrichProviderExperienceMp(mapLiveExperienceToProvider(live));
     }
     const req = this.findProposalRequestByKey(id);
     if (req) {
-      return this.mapProposalRequestToProviderExperience(req);
+      return this.enrichProviderExperienceMp(this.mapProposalRequestToProviderExperience(req));
     }
     return undefined;
   }
@@ -1898,10 +2004,10 @@ export class ProviderStoreService {
         (Array.isArray(e.slugAliases) &&
           e.slugAliases.some((a) => (a || '').trim().toLowerCase() === clean)),
     );
-    if (fromStore) return fromStore;
+    if (fromStore) return this.enrichProviderExperienceMp(fromStore);
     const live = this.expService.getExperienceBySlug(slug);
     if (live) {
-      return mapLiveExperienceToProvider(live);
+      return this.enrichProviderExperienceMp(mapLiveExperienceToProvider(live));
     }
     const req = this.findProposalRequestByKey(slug);
     if (req) {
@@ -1911,10 +2017,10 @@ export class ProviderStoreService {
           (req.slug ? this.expService.getExperienceBySlug(req.slug) : undefined) ||
           (req.initialSlug ? this.expService.getExperienceBySlug(req.initialSlug) : undefined);
         if (approvedLive) {
-          return mapLiveExperienceToProvider(approvedLive);
+          return this.enrichProviderExperienceMp(mapLiveExperienceToProvider(approvedLive));
         }
       }
-      return this.mapProposalRequestToProviderExperience(req);
+      return this.enrichProviderExperienceMp(this.mapProposalRequestToProviderExperience(req));
     }
     return undefined;
   }
@@ -2036,7 +2142,7 @@ export class ProviderStoreService {
 
   updateExperience(
     id: string,
-    updates: Partial<Omit<ProviderExperience, 'id' | 'createdAt' | 'providerId'>>,
+    updates: Partial<Omit<ProviderExperience, 'id' | 'createdAt'>>,
   ): ProviderExperience {
     let updatedExperience: ProviderExperience | undefined;
     this._experiences.update((list) =>
@@ -2159,7 +2265,7 @@ export class ProviderStoreService {
 
   async saveExperienceChanges(
     id: string,
-    updates: Partial<Omit<ProviderExperience, 'id' | 'createdAt' | 'providerId'>>,
+    updates: Partial<Omit<ProviderExperience, 'id' | 'createdAt'>>,
   ): Promise<ProviderExperience> {
     const localBefore = this._experiences().find((e) => e.id === id || e.slug === id);
     const previousExp = localBefore ?? this.getExperienceById(id) ?? this.getExperienceBySlug(id);
@@ -4141,7 +4247,14 @@ export class ProviderStoreService {
         .select('*')
         .in('status', statusFilter);
       if (providerEmail) {
-        expQuery = expQuery.ilike('provider_email', providerEmail.trim().toLowerCase());
+        const normEmail = providerEmail.trim().toLowerCase();
+        const currentP = this._currentProvider();
+        const provId = currentP?.id;
+        if (provId) {
+          expQuery = expQuery.or(`provider_email.ilike.${normEmail},provider_id.eq.${provId}`);
+        } else {
+          expQuery = expQuery.ilike('provider_email', normEmail);
+        }
       }
       const { data: expData, error: expError } = await expQuery.order('created_at', {
         ascending: false,

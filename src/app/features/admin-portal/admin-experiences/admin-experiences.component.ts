@@ -4837,7 +4837,20 @@ export class AdminExperiencesComponent implements OnInit {
       this.editRequirementsRaw.set(p.participantRequirements);
       this.editHighlightsRaw.set(p.highlights.join('\n'));
       if (p.providerName !== undefined) this.editProviderName.set(p.providerName);
-      if (p.providerId !== undefined) this.editProviderId.set(p.providerId || '');
+      if (p.providerId !== undefined) {
+        this.editProviderId.set(p.providerId || '');
+      } else {
+        this.editProviderId.set('');
+      }
+      if (p.isClubExperience !== undefined) {
+        if (p.isClubExperience) {
+          this.activeFormSelectedProviderId.set('club');
+        } else if (p.providerId) {
+          this.activeFormSelectedProviderId.set(p.providerId);
+        } else {
+          this.activeFormSelectedProviderId.set('custom');
+        }
+      }
       if (p.providerPhone !== undefined) {
         const submittedPhone = (p.providerPhone || '').trim();
         const currentExp = this.editingExperience();
@@ -5417,14 +5430,22 @@ export class AdminExperiencesComponent implements OnInit {
       : (expCreatorName || proposalCreatorName);
 
     const finalProviderName = inputProviderName || fallbackCreatorName;
+    const explicitProviderId = (this.editProviderId() || '').trim();
     const isExplicitClub =
+      this.activeFormSelectedProviderId() === 'club' ||
       inputProviderName.toLowerCase() === 'club de experiencias' ||
       inputProviderName.toLowerCase() === 'club';
+
+    const isExplicitCustomOrExternal =
+      this.activeFormSelectedProviderId() === 'custom' ||
+      (explicitProviderId !== '' && explicitProviderId !== 'club') ||
+      (inputProviderName !== '' && !isExplicitClub);
 
     const isExternalExperience = Boolean(currentExp && !this.isClub(currentExp) && !this.isCreating());
     const isClub =
       isExplicitClub ||
-      (!isExternalExperience &&
+      (!isExplicitCustomOrExternal &&
+        !isExternalExperience &&
         (!finalProviderName ||
           finalProviderName.toLowerCase() === 'club de experiencias' ||
           finalProviderName.toLowerCase() === 'club'));
@@ -5469,7 +5490,6 @@ export class AdminExperiencesComponent implements OnInit {
       ? (club.name || 'Club de Experiencias')
       : finalProviderName;
 
-    const explicitProviderId = (this.editProviderId() || '').trim();
     const matchedProvider = !isClub
       ? (explicitProviderId
           ? this.registeredProviders().find((p) => p.id === explicitProviderId)
@@ -5484,19 +5504,32 @@ export class AdminExperiencesComponent implements OnInit {
 
     const proposalAgency = matchingProposal?.providerAgency || matchingProposal?.providerName;
     const fallbackSlug = (proposalAgency && !isClub ? slugify(proposalAgency) : undefined) || (resolvedProviderName && !isClub ? slugify(resolvedProviderName) : undefined);
+
+    const isSameProviderAsCurrent = Boolean(
+      currentExp &&
+      (matchedProvider
+        ? (currentExp.providerId && currentExp.providerId === matchedProvider.id) ||
+          (currentExp.providerEmail && matchedProvider.email && currentExp.providerEmail.toLowerCase() === matchedProvider.email.toLowerCase())
+        : (currentExp.providerName && resolvedProviderName && currentExp.providerName.toLowerCase().trim() === resolvedProviderName.toLowerCase().trim()))
+    );
+
     const resolvedProviderSlug = isClub
       ? 'club-de-experiencias'
       : (matchedProvider?.slug ||
-        (!isExpCreatorClub && currentExp?.providerSlug && currentExp.providerSlug !== 'club-de-experiencias' && currentExp.providerSlug !== 'club'
+        (isSameProviderAsCurrent && currentExp?.providerSlug && currentExp.providerSlug !== 'club-de-experiencias' && currentExp.providerSlug !== 'club'
           ? currentExp.providerSlug
           : (fallbackSlug || '')));
 
     const resolvedProviderEmail = isClub
       ? (club.email || 'admin@experiencias.club')
       : (matchedProvider?.email ||
-        (!isExpCreatorClub && currentExp?.providerEmail && currentExp.providerEmail !== 'admin@experiencias.club' && currentExp.providerEmail !== 'hola@experiencias.club'
+        (isSameProviderAsCurrent && currentExp?.providerEmail && currentExp.providerEmail !== 'admin@experiencias.club' && currentExp.providerEmail !== 'hola@experiencias.club'
           ? currentExp.providerEmail
           : (matchingProposal?.providerEmail || '')));
+
+    const resolvedProviderId = isClub
+      ? undefined
+      : (matchedProvider?.id || (explicitProviderId || undefined) || (isSameProviderAsCurrent ? currentExp?.providerId : undefined));
 
     const safeAlbumPhotos = this.editAlbumPhotos().map((p) => ({
       ...p,
@@ -5515,6 +5548,13 @@ export class AdminExperiencesComponent implements OnInit {
             (p.email && matchedProvider.email && p.email.toLowerCase().trim() === matchedProvider.email.toLowerCase().trim()),
         )
       : undefined;
+
+    const targetProvider =
+      authoritativeMatch ||
+      matchedProvider ||
+      (resolvedProviderId
+        ? this.registeredProviders().find((p) => p.id === resolvedProviderId)
+        : undefined);
 
     const payload: Partial<Experience> & { id: string } = {
       id: this.editId(),
@@ -5548,17 +5588,17 @@ export class AdminExperiencesComponent implements OnInit {
       providerBankName: resolvedProviderBank,
       providerSlug: resolvedProviderSlug,
       providerEmail: resolvedProviderEmail,
-      providerId: isClub ? undefined : (matchedProvider?.id || (explicitProviderId || undefined) || currentExp?.providerId),
+      providerId: resolvedProviderId,
       isClubExperience: isClub,
       mpConnected: isClub
         ? (isExternalExperience ? true : this.editMpConnected())
-        : (authoritativeMatch
-          ? (authoritativeMatch.mpConnected !== undefined ? authoritativeMatch.mpConnected : false)
+        : (targetProvider && targetProvider.mpConnected !== undefined
+          ? Boolean(targetProvider.mpConnected)
           : this.editMpConnected()),
       mpCollectorId: isClub
         ? (isExternalExperience ? 'CLUB-OFICIAL' : (this.editMpCollectorId().trim() || 'CLUB-OFICIAL'))
-        : (authoritativeMatch
-          ? (authoritativeMatch.mpCollectorId || '').trim()
+        : (targetProvider && targetProvider.mpConnected !== undefined
+          ? (targetProvider.mpCollectorId || '').trim()
           : this.editMpCollectorId().trim()),
       videoUrl: safeVideoUrl,
       videoPoster: this.editVideoPoster().trim(),
