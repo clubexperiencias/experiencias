@@ -337,7 +337,7 @@ export interface ExperienceRankingRow {
               <div class="modal-stats-summary">
                 <div class="stats-score-badge">
                   <span class="star-gold">★</span>
-                  <strong class="stats-score-num">{{ (prov.ratingScore || 5.0).toFixed(1) }}</strong>
+                  <strong class="stats-score-num">{{ ratingService.getRating(prov).score.toFixed(1) }}</strong>
                   <span class="stats-count-label">({{ rankingProviderVotes().length }} {{ rankingProviderVotes().length === 1 ? 'valoración registrada' : 'valoraciones registradas' }})</span>
                 </div>
               </div>
@@ -358,6 +358,12 @@ export interface ExperienceRankingRow {
                   <p class="empty-desc">Ningún socio ha calificado a este prestador todavía en el sistema.</p>
                 </div>
               } @else {
+                @if (rankingVotesPartialWarning()) {
+                  <div class="modal-warning-box">
+                    <mat-icon class="icon-tiny">warning</mat-icon>
+                    <span>{{ rankingVotesPartialWarning() }}</span>
+                  </div>
+                }
                 <div class="modal-table-wrap">
                   <table class="modal-votes-table">
                     <thead>
@@ -897,7 +903,7 @@ export interface ExperienceRankingRow {
       align-items: center;
       gap: 0.35rem;
       font-size: 0.75rem;
-      color: rgba(255, 255, 255, 0.75);
+      color: #ffffff;
       background: rgba(255, 255, 255, 0.05);
       padding: 0.25rem 0.6rem;
       border-radius: 4px;
@@ -910,7 +916,7 @@ export interface ExperienceRankingRow {
     .votes-pill-btn:hover {
       background: rgba(255, 149, 0, 0.15);
       border-color: rgba(255, 149, 0, 0.35);
-      color: #ff9500;
+      color: #ffffff;
     }
 
     .votes-pill-btn .star-icon {
@@ -981,7 +987,7 @@ export interface ExperienceRankingRow {
     .btn-close-modal {
       background: none;
       border: none;
-      color: rgba(255, 255, 255, 0.6);
+      color: #ffffff;
       cursor: pointer;
       padding: 0.25rem;
       display: flex;
@@ -1045,6 +1051,25 @@ export interface ExperienceRankingRow {
       gap: 0.5rem;
       border-radius: 6px;
       background: rgba(0, 0, 0, 0.2);
+    }
+
+    .modal-warning-box {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.65rem 0.9rem;
+      margin-bottom: 1rem;
+      border-radius: 6px;
+      background: rgba(255, 149, 0, 0.12);
+      border: 1px solid rgba(255, 149, 0, 0.35);
+      color: #ffb703;
+      font-size: 0.8rem;
+      line-height: 1.3;
+    }
+
+    .modal-warning-box mat-icon {
+      color: #ff9500;
+      flex-shrink: 0;
     }
 
     .empty-icon {
@@ -1249,7 +1274,7 @@ export interface ExperienceRankingRow {
       border-radius: 4px;
       font-size: 0.8rem;
       font-weight: 600;
-      color: rgba(255, 255, 255, 0.75);
+      color: #ffffff;
       background: rgba(255, 255, 255, 0.08);
       border: 1px solid rgba(255, 255, 255, 0.15);
       cursor: pointer;
@@ -1272,7 +1297,7 @@ export class AdminRankingComponent {
   private readonly router = inject(Router);
   private readonly adminStore = inject(AdminStoreService);
   private readonly experienceService = inject(ExperienceService);
-  private readonly ratingService = inject(ProviderRatingService);
+  readonly ratingService = inject(ProviderRatingService);
   private readonly favoritesService = inject(FavoritesService);
 
   getExperienceFicheRoute(expOrSlug?: string | { id?: string; slug?: string }): string {
@@ -1311,6 +1336,8 @@ export class AdminRankingComponent {
   readonly rankingProviderVotes = signal<ProviderVoteDetail[]>([]);
   readonly isLoadingRankingVotes = signal<boolean>(false);
   readonly rankingVotesError = signal<string | null>(null);
+  readonly rankingVotesPartialWarning = signal<string | null>(null);
+  private providerVotesRequestToken = 0;
 
   getProviderFicheRoute(row: { slug?: string; provider?: ProviderUser; name?: string; agency?: string; id?: string }): string {
     const p = row.provider || (row as any);
@@ -1327,18 +1354,37 @@ export class AdminRankingComponent {
   }
 
   async openProviderVotesModal(provider: ProviderUser): Promise<void> {
+    const token = ++this.providerVotesRequestToken;
     this.selectedRankingProviderForVotes.set(provider);
     this.isLoadingRankingVotes.set(true);
     this.rankingVotesError.set(null);
+    this.rankingVotesPartialWarning.set(null);
     this.rankingProviderVotes.set([]);
 
     try {
-      if (this.adminStore.members().length === 0) {
+      if (typeof this.adminStore.loadAllMembers === 'function' && this.adminStore.members().length === 0) {
         await this.adminStore.loadAllMembers();
       }
+      if (token !== this.providerVotesRequestToken) return;
+
       const res = await this.ratingService.getProviderVotes(provider);
+      if (token !== this.providerVotesRequestToken) return;
+
+      if (!res || res.status === 'unavailable' || (!res.votes?.length && res.error)) {
+        this.rankingVotesError.set(res?.error || 'No se pudieron obtener las valoraciones del servidor.');
+        return;
+      }
+
+      if (res.status === 'partial') {
+        this.rankingVotesPartialWarning.set(
+          res.error || 'Mostrando valoraciones locales; no se pudo sincronizar completamente con el servidor.',
+        );
+      } else {
+        this.rankingVotesPartialWarning.set(null);
+      }
+
       const members = this.adminStore.members();
-      const enriched: ProviderVoteDetail[] = res.votes.map((v) => {
+      const enriched: ProviderVoteDetail[] = (res.votes || []).map((v) => {
         const cleanEmail = v.socioEmail.toLowerCase().trim();
         const member = members.find((m) => m.email.toLowerCase().trim() === cleanEmail);
         return {
@@ -1352,18 +1398,25 @@ export class AdminRankingComponent {
           createdAt: v.createdAt,
         };
       });
+      if (token !== this.providerVotesRequestToken) return;
       this.rankingProviderVotes.set(enriched);
     } catch (err: any) {
+      if (token !== this.providerVotesRequestToken) return;
       this.rankingVotesError.set(err?.message || 'No se pudieron cargar las calificaciones.');
     } finally {
-      this.isLoadingRankingVotes.set(false);
+      if (token === this.providerVotesRequestToken) {
+        this.isLoadingRankingVotes.set(false);
+      }
     }
   }
 
   closeProviderVotesModal(): void {
+    this.providerVotesRequestToken++;
     this.selectedRankingProviderForVotes.set(null);
     this.rankingProviderVotes.set([]);
     this.rankingVotesError.set(null);
+    this.rankingVotesPartialWarning.set(null);
+    this.isLoadingRankingVotes.set(false);
   }
 
   getStarsDisplay(score: number): string {

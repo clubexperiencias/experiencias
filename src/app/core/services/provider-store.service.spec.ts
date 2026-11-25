@@ -1122,6 +1122,60 @@ describe('ProviderStoreService - Payment & Proposal Persistence', () => {
       expect(savedNotes.text).toBe('nueva nota desde formulario ciego');
       expect(savedNotes.pausedByBajaExpIds).toEqual(['exp-3', 'exp-4']);
     });
+
+    it('should notify onProviderUpdated hook when provider is updated', async () => {
+      const existingProvider = {
+        id: 'prov-hook-1',
+        name: 'Guía Hook',
+        email: 'hook@test.com',
+        phone: '12345',
+        status: 'aprobado' as const,
+        notes: '',
+      };
+      (store as any)._providers.set([existingProvider]);
+
+      let notifiedProvider: any = null;
+      let notifiedUpdates: any = null;
+      store.onProviderUpdated = (prov, updates) => {
+        notifiedProvider = prov;
+        notifiedUpdates = updates;
+      };
+
+      mockSupabase.from = vi.fn().mockImplementation((table: string) => {
+        if (table === 'prestadores') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { notes: '' },
+                  error: null,
+                }),
+              }),
+            }),
+            update: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                select: vi.fn().mockResolvedValue({
+                  data: [{ id: 'prov-hook-1' }],
+                  error: null,
+                }),
+              }),
+            }),
+          };
+        }
+        return { update: vi.fn().mockReturnThis(), eq: vi.fn().mockResolvedValue({ error: null }) };
+      });
+
+      const res = await store.adminUpdateProvider('hook@test.com', {
+        mpConnected: true,
+        mpCollectorId: 'HOOK-COLLECTOR-123',
+      });
+
+      expect(res.success).toBe(true);
+      expect(notifiedProvider).toBeTruthy();
+      expect(notifiedProvider.email).toBe('hook@test.com');
+      expect(notifiedUpdates.mpConnected).toBe(true);
+      expect(notifiedUpdates.mpCollectorId).toBe('HOOK-COLLECTOR-123');
+    });
   });
 
   describe('loadProviderNotes', () => {

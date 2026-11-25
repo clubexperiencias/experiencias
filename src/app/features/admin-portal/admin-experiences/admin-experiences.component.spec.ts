@@ -1133,6 +1133,71 @@ describe('AdminExperiencesComponent - Mercado Pago Precedence', () => {
       expect(savedPayload.mpConnected).toBe(true);
       expect(savedPayload.mpCollectorId).toBe('COLLECTOR-12345');
     });
+
+    it('should use synchronized provider record from registeredProviders instead of stale providerStore.providers on saveExperience', async () => {
+      const expService = (component as any).experienceService;
+      let savedPayload: any = null;
+      vi.spyOn(expService, 'updateExperience').mockImplementation(async (payload: any) => {
+        savedPayload = payload;
+        return payload;
+      });
+      vi.spyOn(expService, 'reloadFromSupabase').mockResolvedValue(undefined);
+
+      const staleCachedProvider = {
+        id: 'provider-sync-1',
+        name: 'Guía Stale',
+        agency: 'Aventuras Stale',
+        email: 'guia@sync.com',
+        role: 'prestador',
+        mpConnected: false,
+        mpCollectorId: '',
+      } as unknown as ProviderUser;
+
+      const syncedMergedProvider = {
+        id: 'provider-sync-1',
+        name: 'Guía Stale',
+        agency: 'Aventuras Stale',
+        email: 'guia@sync.com',
+        role: 'prestador',
+        mpConnected: true,
+        mpCollectorId: 'COLLECTOR-SYNCED-999',
+      } as unknown as ProviderUser;
+
+      mockAdminStore.providerStore.providers = signal([staleCachedProvider]);
+      (component as any).adminStore.allRegisteredProviders = signal([syncedMergedProvider]);
+
+      const expToEdit = {
+        id: 'exp-sync-test',
+        title: 'Travesía Sync Test',
+        slug: 'travesia-sync-test',
+        tagline: 'Expedición Sync',
+        description: 'Recorrido guiado sync',
+        region: 'Valle Central',
+        meetingPoint: 'Plaza Central',
+        category: 'expediciones',
+        priceArs: 25000,
+        providerId: 'provider-sync-1',
+        providerName: 'Guía Stale',
+        providerEmail: 'guia@sync.com',
+        providerPhone: '1122334455',
+        providerCbuAlias: 'GUIA.CBU',
+        providerCuitDni: '20123456789',
+        providerBankName: 'Banco Nación',
+        isClubExperience: false,
+        mpConnected: false,
+        coverImage: 'https://img.jpg',
+        dates: ['2026-12-01'],
+      } as unknown as Experience;
+
+      component.openEditModal(expToEdit);
+      component.editDatesRaw.set('A coordinar');
+
+      await component.saveExperience();
+
+      expect(savedPayload).toBeTruthy();
+      expect(savedPayload.mpConnected).toBe(true);
+      expect(savedPayload.mpCollectorId).toBe('COLLECTOR-SYNCED-999');
+    });
   });
 
   describe('detailFavoritedMembers and loadExperienceFavorites', () => {
@@ -1240,6 +1305,204 @@ describe('AdminExperiencesComponent - Mercado Pago Precedence', () => {
       } as Experience;
 
       await component.loadExperienceFavorites(exp);
+
+      expect(component.detailFavoritedMembers()).toEqual([]);
+      expect(component.detailFavoritesError()).toBeNull();
+      expect(component.isLoadingDetailFavorites()).toBe(false);
+    });
+
+    it('should set distinct error state on database query error', async () => {
+      const fakeFrom = vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          in: vi.fn().mockReturnValue({
+            order: vi.fn().mockResolvedValue({
+              data: null,
+              error: { message: 'Database connection failed' },
+            }),
+          }),
+        }),
+      });
+
+      (component as any).supabase = { from: fakeFrom };
+
+      const exp = {
+        id: 'exp-error-test',
+        slug: 'error-exp',
+        title: 'Exp Error Test',
+      } as Experience;
+
+      await component.loadExperienceFavorites(exp);
+
+      expect(component.detailFavoritedMembers()).toEqual([]);
+      expect(component.detailFavoritesError()).toBe('Database connection failed');
+      expect(component.isLoadingDetailFavorites()).toBe(false);
+    });
+
+    it('should set distinct error state when an exception is thrown', async () => {
+      const fakeFrom = vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          in: vi.fn().mockReturnValue({
+            order: vi.fn().mockRejectedValue(new Error('Network offline')),
+          }),
+        }),
+      });
+
+      (component as any).supabase = { from: fakeFrom };
+
+      const exp = {
+        id: 'exp-exception-test',
+        slug: 'exception-exp',
+        title: 'Exp Exception Test',
+      } as Experience;
+
+      await component.loadExperienceFavorites(exp);
+
+      expect(component.detailFavoritedMembers()).toEqual([]);
+      expect(component.detailFavoritesError()).toBe('Network offline');
+      expect(component.isLoadingDetailFavorites()).toBe(false);
+    });
+
+    it('should clear detailFavoritesError on openCreateModal and closeEditModal', () => {
+      component.detailFavoritesError.set('Previous error');
+
+      component.openCreateModal();
+      expect(component.detailFavoritesError()).toBeNull();
+
+      component.detailFavoritesError.set('Another error');
+      component.closeEditModal();
+      expect(component.detailFavoritesError()).toBeNull();
+    });
+
+    it('should invalidate prior in-flight requests when a new load starts', async () => {
+      mockAdminStore.members.set([
+        { id: 'socio-1', email: 'first@club.com', fullName: 'First' },
+        { id: 'socio-2', email: 'second@club.com', fullName: 'Second' },
+      ] as any);
+
+      let resolveFirst!: (value: any) => void;
+      const firstPromise = new Promise((resolve) => {
+        resolveFirst = resolve;
+      });
+
+      const exp1 = { id: 'exp-1', slug: 'slug-1' } as Experience;
+      const exp2 = { id: 'exp-2', slug: 'slug-2' } as Experience;
+
+      let callCount = 0;
+      const fakeFrom = vi.fn().mockImplementation((table: string) => {
+        if (table === 'experiencias_favoritas') {
+          callCount++;
+          if (callCount === 1) {
+            return {
+              select: vi.fn().mockReturnValue({
+                in: vi.fn().mockReturnValue({
+                  order: vi.fn().mockReturnValue(firstPromise),
+                }),
+              }),
+            };
+          }
+          return {
+            select: vi.fn().mockReturnValue({
+              in: vi.fn().mockReturnValue({
+                order: vi.fn().mockResolvedValue({
+                  data: [
+                    {
+                      id: 'fav-2',
+                      socio_id: 'socio-2',
+                      socio_email: 'second@club.com',
+                      experience_id: 'exp-2',
+                      created_at: '2026-11-21T12:00:00Z',
+                    },
+                  ],
+                  error: null,
+                }),
+              }),
+            }),
+          };
+        }
+        return {
+          select: vi.fn().mockReturnValue({
+            order: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        };
+      });
+
+      (component as any).supabase = { from: fakeFrom };
+
+      // Start first load (slow)
+      const p1 = component.loadExperienceFavorites(exp1);
+
+      // Start second load (fast)
+      await component.loadExperienceFavorites(exp2);
+
+      expect(component.detailFavoritedMembers().length).toBe(1);
+      expect(component.detailFavoritedMembers()[0].email).toBe('second@club.com');
+
+      // Now first load finishes late with old data
+      resolveFirst({
+        data: [
+          {
+            id: 'fav-1',
+            socio_id: 'socio-1',
+            socio_email: 'first@club.com',
+            experience_id: 'exp-1',
+            created_at: '2026-11-20T12:00:00Z',
+          },
+        ],
+        error: null,
+      });
+
+      await p1;
+
+      // detailFavoritedMembers must still belong to second load
+      expect(component.detailFavoritedMembers().length).toBe(1);
+      expect(component.detailFavoritedMembers()[0].email).toBe('second@club.com');
+      expect(component.isLoadingDetailFavorites()).toBe(false);
+    });
+
+    it('should invalidate pending requests and clear loading state when closeEditModal or openCreateModal is called', async () => {
+      mockAdminStore.members.set([{ id: 'socio-1', email: 'test@club.com' }] as any);
+
+      let resolveQuery!: (value: any) => void;
+      const queryPromise = new Promise((resolve) => {
+        resolveQuery = resolve;
+      });
+
+      const fakeFrom = vi.fn().mockImplementation((table: string) => {
+        if (table === 'experiencias_favoritas') {
+          return {
+            select: vi.fn().mockReturnValue({
+              in: vi.fn().mockReturnValue({
+                order: vi.fn().mockReturnValue(queryPromise),
+              }),
+            }),
+          };
+        }
+        return {
+          select: vi.fn().mockReturnValue({
+            order: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        };
+      });
+
+      (component as any).supabase = { from: fakeFrom };
+
+      const exp = { id: 'exp-in-flight', slug: 'in-flight' } as Experience;
+      const p = component.loadExperienceFavorites(exp);
+
+      expect(component.isLoadingDetailFavorites()).toBe(true);
+
+      component.closeEditModal();
+
+      expect(component.isLoadingDetailFavorites()).toBe(false);
+      expect(component.detailFavoritedMembers()).toEqual([]);
+
+      // Resolving query late must not modify state
+      resolveQuery({
+        data: [{ id: 'fav-late', socio_email: 'late@club.com', experience_id: 'exp-in-flight' }],
+        error: null,
+      });
+
+      await p;
 
       expect(component.detailFavoritedMembers()).toEqual([]);
       expect(component.isLoadingDetailFavorites()).toBe(false);

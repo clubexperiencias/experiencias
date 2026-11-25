@@ -347,6 +347,22 @@ export interface ExperienceFavoritedMember {
                   <span class="loading-spinner-sm"></span>
                   <span>Consultando registros de favoritos en la base de datos...</span>
                 </div>
+              } @else if (detailFavoritesError()) {
+                <div class="favorites-error-placeholder">
+                  <span class="material-icons-outlined error-fav-icon">error_outline</span>
+                  <div class="error-fav-texts">
+                    <strong>Error al cargar favoritos</strong>
+                    <p>{{ detailFavoritesError() }}</p>
+                  </div>
+                  <button
+                    type="button"
+                    class="btn-retry-favorites"
+                    (click)="loadExperienceFavorites(editingExperience())"
+                  >
+                    <span class="material-icons-outlined">refresh</span>
+                    Reintentar
+                  </button>
+                </div>
               } @else if (detailFavoritedMembers().length > 0) {
                 <div class="favorited-members-table-wrap">
                   <table class="favorited-members-table">
@@ -4231,7 +4247,8 @@ export interface ExperienceFavoritedMember {
       }
 
       .favorites-loading-placeholder,
-      .favorites-empty-placeholder {
+      .favorites-empty-placeholder,
+      .favorites-error-placeholder {
         display: flex;
         align-items: center;
         gap: 1rem;
@@ -4239,6 +4256,62 @@ export interface ExperienceFavoritedMember {
         border-radius: 6px;
         background: rgba(0, 0, 0, 0.25);
         border: 1px dashed rgba(255, 255, 255, 0.12);
+      }
+
+      .favorites-error-placeholder {
+        border-color: rgba(244, 67, 54, 0.35);
+        background: rgba(244, 67, 54, 0.08);
+      }
+
+      .error-fav-icon {
+        font-size: 32px;
+        width: 32px;
+        height: 32px;
+        color: #f44336;
+      }
+
+      .error-fav-texts {
+        flex: 1;
+      }
+
+      .error-fav-texts strong {
+        display: block;
+        font-size: 0.88rem;
+        color: #ff8a80;
+        margin-bottom: 0.2rem;
+      }
+
+      .error-fav-texts p {
+        margin: 0;
+        font-size: 0.8rem;
+        color: rgba(255, 255, 255, 0.7);
+      }
+
+      .btn-retry-favorites {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.45rem 0.85rem;
+        border-radius: 4px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        background: rgba(255, 255, 255, 0.1);
+        color: #fff;
+        font-size: 0.82rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.2s, border-color 0.2s;
+        white-space: nowrap;
+      }
+
+      .btn-retry-favorites:hover {
+        background: rgba(255, 255, 255, 0.2);
+        border-color: rgba(255, 255, 255, 0.35);
+      }
+
+      .btn-retry-favorites .material-icons-outlined {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
       }
 
       .empty-fav-icon {
@@ -4434,6 +4507,8 @@ export class AdminExperiencesComponent implements OnInit {
 
   readonly detailFavoritedMembers = signal<ExperienceFavoritedMember[]>([]);
   readonly isLoadingDetailFavorites = signal<boolean>(false);
+  readonly detailFavoritesError = signal<string | null>(null);
+  private experienceFavoritesRequestToken = 0;
 
   isClub(exp?: Partial<Experience> | null): boolean {
     return isClubExperience(exp);
@@ -5459,22 +5534,30 @@ export class AdminExperiencesComponent implements OnInit {
   }
 
   async loadExperienceFavorites(exp?: Partial<Experience> | null): Promise<void> {
+    const token = ++this.experienceFavoritesRequestToken;
+
     if (!exp) {
       this.detailFavoritedMembers.set([]);
+      this.detailFavoritesError.set(null);
+      this.isLoadingDetailFavorites.set(false);
       return;
     }
 
     this.isLoadingDetailFavorites.set(true);
+    this.detailFavoritesError.set(null);
 
     try {
       if (!this.supabase || !isSupabaseConfigured()) {
+        if (token !== this.experienceFavoritesRequestToken) return;
         this.detailFavoritedMembers.set([]);
+        this.detailFavoritesError.set(null);
         return;
       }
 
       if (this.adminStore.members().length === 0) {
         await this.adminStore.loadAllMembers();
       }
+      if (token !== this.experienceFavoritesRequestToken) return;
       const members = this.adminStore.members();
 
       const candidateKeys = Array.from(
@@ -5486,7 +5569,9 @@ export class AdminExperiencesComponent implements OnInit {
       );
 
       if (candidateKeys.length === 0) {
+        if (token !== this.experienceFavoritesRequestToken) return;
         this.detailFavoritedMembers.set([]);
+        this.detailFavoritesError.set(null);
         return;
       }
 
@@ -5496,8 +5581,21 @@ export class AdminExperiencesComponent implements OnInit {
         .in('experience_id', candidateKeys)
         .order('created_at', { ascending: false });
 
-      if (error || !data) {
+      if (token !== this.experienceFavoritesRequestToken) return;
+
+      if (error) {
         this.detailFavoritedMembers.set([]);
+        this.detailFavoritesError.set(
+          typeof error === 'object' && (error as any)?.message
+            ? String((error as any).message)
+            : 'Error al consultar favoritos en la base de datos.'
+        );
+        return;
+      }
+
+      if (!data) {
+        this.detailFavoritedMembers.set([]);
+        this.detailFavoritesError.set('No se recibieron datos de favoritos desde la base de datos.');
         return;
       }
 
@@ -5529,16 +5627,27 @@ export class AdminExperiencesComponent implements OnInit {
         });
       }
 
+      if (token !== this.experienceFavoritesRequestToken) return;
       this.detailFavoritedMembers.set(favoritedMembers);
-    } catch {
+      this.detailFavoritesError.set(null);
+    } catch (err: any) {
+      if (token !== this.experienceFavoritesRequestToken) return;
       this.detailFavoritedMembers.set([]);
+      this.detailFavoritesError.set(
+        err?.message ? String(err.message) : 'Error inesperado al cargar los favoritos de la experiencia.'
+      );
     } finally {
-      this.isLoadingDetailFavorites.set(false);
+      if (token === this.experienceFavoritesRequestToken) {
+        this.isLoadingDetailFavorites.set(false);
+      }
     }
   }
 
   openCreateModal(): void {
+    this.experienceFavoritesRequestToken++;
     this.detailFavoritedMembers.set([]);
+    this.detailFavoritesError.set(null);
+    this.isLoadingDetailFavorites.set(false);
     this.activeFormSelectedProviderId.set(null);
     const newId = `exp-${Date.now().toString(36)}`;
     const blankExp: Experience = {
@@ -5614,7 +5723,10 @@ export class AdminExperiencesComponent implements OnInit {
   }
 
   closeEditModal(): void {
+    this.experienceFavoritesRequestToken++;
     this.detailFavoritedMembers.set([]);
+    this.detailFavoritesError.set(null);
+    this.isLoadingDetailFavorites.set(false);
     const currentExp = this.editingExperience();
     this.editingExperience.set(null);
     this.isCreating.set(false);
@@ -6024,22 +6136,22 @@ export class AdminExperiencesComponent implements OnInit {
     const rawVideoUrl = this.editVideoUrl().trim();
     const safeVideoUrl = rawVideoUrl.startsWith('blob:') ? '' : rawVideoUrl;
 
-    const authoritativeProviders = (typeof this.adminStore.providerStore?.providers === 'function'
-      ? this.adminStore.providerStore.providers()
-      : (this.adminStore.providerStore?.providers || [])) as ProviderUser[];
+    const authoritativeProviders = this.registeredProviders();
     const authoritativeMatch = matchedProvider
       ? authoritativeProviders.find(
           (p) =>
             (p.id && matchedProvider.id && p.id === matchedProvider.id) ||
             (p.email && matchedProvider.email && p.email.toLowerCase().trim() === matchedProvider.email.toLowerCase().trim()),
         )
-      : undefined;
+      : (resolvedProviderId
+          ? authoritativeProviders.find((p) => p.id === resolvedProviderId)
+          : undefined);
 
     const targetProvider =
-      authoritativeMatch ||
       matchedProvider ||
+      authoritativeMatch ||
       (resolvedProviderId
-        ? this.registeredProviders().find((p) => p.id === resolvedProviderId)
+        ? authoritativeProviders.find((p) => p.id === resolvedProviderId)
         : undefined);
 
     const payload: Partial<Experience> & { id: string } = {

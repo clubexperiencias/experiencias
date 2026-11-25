@@ -27,6 +27,7 @@ describe('AdminRankingComponent', () => {
           provide: AdminStoreService,
           useValue: {
             members: signal([]),
+            loadAllMembers: vi.fn().mockResolvedValue(undefined),
             providerStore: {
               allProviders: allProvidersSignal,
             },
@@ -377,6 +378,171 @@ describe('AdminRankingComponent', () => {
 
       expect(component.selectedRankingProviderForVotes()).toBeNull();
       expect(component.rankingProviderVotes()).toEqual([]);
+      expect(component.isLoadingRankingVotes()).toBe(false);
+    });
+
+    it('should invalidate pending requests and clear loading state when closing modal', async () => {
+      let resolvePromise: (val: any) => void;
+      const deferred = new Promise((resolve) => {
+        resolvePromise = resolve;
+      });
+
+      const mockRatingService = (component as any).ratingService;
+      mockRatingService.getProviderVotes = vi.fn().mockReturnValue(deferred);
+
+      const testProv = {
+        id: 'prov-pending',
+        name: 'Guia Pendiente',
+      } as any;
+
+      const openPromise = component.openProviderVotesModal(testProv);
+      expect(component.isLoadingRankingVotes()).toBe(true);
+
+      // Close modal before promise resolves
+      component.closeProviderVotesModal();
+      expect(component.isLoadingRankingVotes()).toBe(false);
+      expect(component.selectedRankingProviderForVotes()).toBeNull();
+
+      // Resolve the pending network call
+      resolvePromise!({
+        votes: [
+          {
+            socioEmail: 'socio@club.com',
+            score: 4,
+            comment: 'Llegó tarde',
+          },
+        ],
+      });
+      await openPromise;
+
+      // Ensure state was not modified by the cancelled/invalidated request
+      expect(component.rankingProviderVotes()).toEqual([]);
+      expect(component.isLoadingRankingVotes()).toBe(false);
+      expect(component.rankingVotesError()).toBeNull();
+    });
+
+    it('should guard state updates so an older slower request does not overwrite the current request', async () => {
+      const mockMembers = (component as any).adminStore.members;
+      mockMembers.set([
+        {
+          email: 'socio1@club.com',
+          fullName: 'Socio Uno',
+        },
+        {
+          email: 'socio2@club.com',
+          fullName: 'Socio Dos',
+        },
+      ]);
+
+      let resolveFirst: (val: any) => void;
+      const firstDeferred = new Promise((resolve) => {
+        resolveFirst = resolve;
+      });
+
+      const mockRatingService = (component as any).ratingService;
+      mockRatingService.getProviderVotes = vi.fn()
+        .mockReturnValueOnce(firstDeferred)
+        .mockResolvedValueOnce({
+          votes: [
+            {
+              socioEmail: 'socio2@club.com',
+              score: 5,
+              comment: 'Voto del segundo prestador',
+            },
+          ],
+        });
+
+      const prov1 = { id: 'prov-1', name: 'Prestador 1' } as any;
+      const prov2 = { id: 'prov-2', name: 'Prestador 2' } as any;
+
+      // Start first request
+      const firstPromise = component.openProviderVotesModal(prov1);
+      // Immediately switch to second provider
+      const secondPromise = component.openProviderVotesModal(prov2);
+
+      await secondPromise;
+      expect(component.rankingProviderVotes().length).toBe(1);
+      expect(component.rankingProviderVotes()[0].comment).toBe('Voto del segundo prestador');
+
+      // Now resolve the older first request
+      resolveFirst!({
+        votes: [
+          {
+            socioEmail: 'socio1@club.com',
+            score: 1,
+            comment: 'Voto obsoleto del primer prestador',
+          },
+        ],
+      });
+      await firstPromise;
+
+      // Ensure the second provider's data was NOT overwritten by the first request
+      expect(component.rankingProviderVotes().length).toBe(1);
+      expect(component.rankingProviderVotes()[0].comment).toBe('Voto del segundo prestador');
+    });
+
+    it('should display the score from ratingService.getRating(prov) in the modal header', async () => {
+      const mockRatingService = (component as any).ratingService;
+      mockRatingService.getProviderVotes = vi.fn().mockResolvedValue({ votes: [] });
+      mockRatingService.getRating = vi.fn().mockReturnValue({ score: 4.8, count: 12 });
+
+      const testProv = {
+        id: 'prov-test',
+        name: 'Guia Test',
+        ratingScore: 2.1, // prov has old/different score
+      } as any;
+
+      component.openProviderVotesModal(testProv);
+      fixture.detectChanges();
+
+      const modalScore = fixture.nativeElement.querySelector('.stats-score-num');
+      expect(modalScore).toBeTruthy();
+      expect(modalScore.textContent.trim()).toBe('4.8');
+      expect(mockRatingService.getRating).toHaveBeenCalledWith(testProv);
+    });
+
+    it('should route unavailable getProviderVotes results into rankingVotesError instead of showing empty results', async () => {
+      const mockRatingService = (component as any).ratingService;
+      mockRatingService.getProviderVotes = vi.fn().mockResolvedValue({
+        votes: [],
+        status: 'unavailable',
+        error: 'Servidor no disponible',
+      });
+
+      const testProv = { id: 'prov-err', name: 'Prestador Error' } as any;
+      await component.openProviderVotesModal(testProv);
+      fixture.detectChanges();
+
+      expect(component.rankingVotesError()).toBe('Servidor no disponible');
+      expect(component.rankingProviderVotes()).toEqual([]);
+      expect(fixture.nativeElement.querySelector('.modal-error-box')).toBeTruthy();
+      expect(fixture.nativeElement.querySelector('.modal-empty-box')).toBeNull();
+    });
+
+    it('should display warning banner and preserve local votes when getProviderVotes returns partial results', async () => {
+      const mockRatingService = (component as any).ratingService;
+      mockRatingService.getProviderVotes = vi.fn().mockResolvedValue({
+        votes: [
+          {
+            socioEmail: 'socio.local@club.com',
+            score: 5,
+            comment: 'Voto guardado en almacenamiento local',
+          },
+        ],
+        status: 'partial',
+        error: 'No se pudo sincronizar con el servidor; mostrando votos locales.',
+      });
+
+      const testProv = { id: 'prov-part', name: 'Prestador Parcial' } as any;
+      await component.openProviderVotesModal(testProv);
+      fixture.detectChanges();
+
+      expect(component.rankingVotesError()).toBeNull();
+      expect(component.rankingVotesPartialWarning()).toBe('No se pudo sincronizar con el servidor; mostrando votos locales.');
+      expect(component.rankingProviderVotes().length).toBe(1);
+      expect(fixture.nativeElement.querySelector('.modal-warning-box')).toBeTruthy();
+      expect(fixture.nativeElement.querySelector('.modal-warning-box').textContent).toContain('mostrando votos locales');
+      expect(fixture.nativeElement.querySelector('.modal-table-wrap')).toBeTruthy();
     });
   });
 });

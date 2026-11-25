@@ -275,6 +275,8 @@ export class ProviderStoreService {
   readonly providers = this._providers.asReadonly();
   readonly deletedProviderIds = this._deletedProviderIds.asReadonly();
 
+  onProviderUpdated?: (provider: ProviderUser, updates: Partial<ProviderUser>) => void;
+
   recordDeletedProvider(id?: string, email?: string): void {
     const next = new Set(this._deletedProviderIds());
     if (id) next.add(id.toLowerCase().trim());
@@ -1194,6 +1196,14 @@ export class ProviderStoreService {
     this.saveSession(updated);
     this.saveProviders();
 
+    if (typeof this.onProviderUpdated === 'function') {
+      try {
+        this.onProviderUpdated(updated, updates);
+      } catch (err) {
+        console.warn('[ProviderStore] Error notificando actualización de perfil de prestador:', err);
+      }
+    }
+
     if (
       (updates.agency !== undefined && updates.agency.trim()) ||
       (updates.slug !== undefined && updates.slug.trim())
@@ -1573,6 +1583,14 @@ export class ProviderStoreService {
       list.map((p) => (p.id === current.id || p.email.toLowerCase() === email ? updated : p)),
     );
     this.saveProviders();
+
+    if (typeof this.onProviderUpdated === 'function') {
+      try {
+        this.onProviderUpdated(updated, updates);
+      } catch (err) {
+        console.warn('[ProviderStore] Error notificando actualización de prestador:', err);
+      }
+    }
 
     if (this._currentProvider()?.email.toLowerCase() === email) {
       this._currentProvider.set(updated);

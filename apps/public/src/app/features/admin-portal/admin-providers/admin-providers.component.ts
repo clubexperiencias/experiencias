@@ -3304,6 +3304,28 @@ export class AdminProvidersComponent implements OnInit {
       .replace(/(^-|-$)+/g, '');
 
     if (cleanSlug === 'club-de-experiencias' || cleanSlug === 'club' || normalizedSlug === 'club-de-experiencias') {
+      const canonical =
+        this.store.providerStore.getProviderBySlug('club-de-experiencias') ||
+        this.store.providerStore.getProviderBySlug(cleanSlug) ||
+        this.store.providerStore.getProviderBySlug(normalizedSlug) ||
+        (() => {
+          const allProviders = (
+            typeof (this.store as any).allRegisteredProviders === 'function'
+              ? (this.store as any).allRegisteredProviders()
+              : this.store.providerStore.providers()
+          ) as ProviderUser[];
+          return allProviders.find(
+            (p) =>
+              (p.slug &&
+                (p.slug.toLowerCase().trim() === 'club-de-experiencias' ||
+                  p.slug.toLowerCase().trim() === cleanSlug ||
+                  p.slug.toLowerCase().trim() === normalizedSlug)) ||
+              (p.email && p.email.toLowerCase().trim() === 'admin@experiencias.club'),
+          );
+        })();
+
+      if (canonical) return canonical;
+
       const club = this.store.clubProfile();
       return {
         id: 'prov-club',

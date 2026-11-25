@@ -79,8 +79,31 @@
   justify-content: center;
 }
 
+.faq-hero-block.manifesto-active .hero-content {
+  max-width: 100%;
+}
+
 .faq-hero-block .manifesto-view {
+  width: 100%;
+  max-width: 100%;
   margin: 0 auto;
+}
+
+.faq-hero-block .manifesto-card {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(74, 85, 104, 0.38);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 212, 42, 0.38);
+  border-radius: 4px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+  text-align: center;
+}
+
+.faq-hero-block .manifesto-title,
+.faq-hero-block .manifesto-body {
+  text-align: center;
 }
 
 /* ==========================================================================
