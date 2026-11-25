@@ -2009,8 +2009,8 @@ BEGIN
     p_receipt_file_name,
     p_receipt_mime_type,
     p_receipt_size_bytes,
-    COALESCE(NULLIF(p_receipt_url, ''), p_receipt_storage_key, ''),
-    COALESCE(NULLIF(p_receipt_storage_key, ''), p_receipt_url, ''),
+    COALESCE(NULLIF(TRIM(p_receipt_url), ''), NULLIF(TRIM(p_receipt_storage_key), ''), ''),
+    COALESCE(NULLIF(TRIM(p_receipt_storage_key), ''), NULLIF(TRIM(p_receipt_url), ''), ''),
     p_receipt_storage_provider,
     'pendiente'
   )

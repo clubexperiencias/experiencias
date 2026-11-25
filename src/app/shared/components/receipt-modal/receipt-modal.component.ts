@@ -10,6 +10,17 @@ import { ActivityHistoryService } from '../../../core/services/activity-history.
 export class ReceiptModalComponent {
   readonly activityService = inject(ActivityHistoryService);
 
+  isUsableUrl(url?: string | null): boolean {
+    if (!url) return false;
+    const trimmed = url.trim();
+    return (
+      trimmed.startsWith('http://') ||
+      trimmed.startsWith('https://') ||
+      trimmed.startsWith('blob:') ||
+      trimmed.startsWith('data:')
+    );
+  }
+
   closeReceipt(): void {
     this.activityService.closeReceipt();
   }

@@ -60,7 +60,7 @@
         <button type="button" class="pill-action-btn secondary" (click)="closeReceipt()">
           Cerrar
         </button>
-        @if (receipt.receiptFileUrl) {
+        @if (receipt.receiptFileUrl && isUsableUrl(receipt.receiptFileUrl)) {
           <a
             [href]="receipt.receiptFileUrl"
             [download]="receipt.receiptFileName || 'comprobante.jpg'"

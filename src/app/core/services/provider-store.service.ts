@@ -3081,7 +3081,7 @@ export class ProviderStoreService {
     const ref = this.buildReference(experience.slug);
 
     const uploadRes = await this.storageService.uploadReceipt(input.receiptFile, ref);
-    let receiptUrl = uploadRes.url || uploadRes.storageKey;
+    let receiptUrl = uploadRes.url || '';
     const storageKey = uploadRes.storageKey;
     const storageProvider = uploadRes.provider;
 
