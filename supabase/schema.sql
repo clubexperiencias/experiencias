@@ -2681,11 +2681,13 @@ $$;
 
 -- 5.17 toggle_experiencia_favorita (Gestión atómica de experiencias favoritas de socios)
 DROP FUNCTION IF EXISTS public.toggle_experiencia_favorita(TEXT);
+DROP FUNCTION IF EXISTS public.toggle_experiencia_favorita(TEXT, TEXT);
 DROP FUNCTION IF EXISTS public.toggle_experiencia_favorito(TEXT);
 DROP FUNCTION IF EXISTS public.toggle_experiencia_favorito(TEXT, TEXT);
 
 CREATE OR REPLACE FUNCTION public.toggle_experiencia_favorita(
-  p_experience_id TEXT
+  p_experience_id TEXT,
+  p_socio_email TEXT DEFAULT NULL
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -2699,7 +2701,7 @@ DECLARE
   v_total_favs INTEGER;
   v_resolved_exp_id TEXT;
 BEGIN
-  v_caller_email := LOWER(TRIM(COALESCE(auth.jwt() ->> 'email', '')));
+  v_caller_email := LOWER(TRIM(COALESCE(auth.jwt() ->> 'email', p_socio_email, '')));
   IF v_caller_email = '' THEN
     RAISE EXCEPTION 'Debes ser socio e iniciar sesión para marcar favoritos.';
   END IF;
@@ -2707,7 +2709,10 @@ BEGIN
   -- Resolver id real de la experiencia en public.experiencias
   SELECT id INTO v_resolved_exp_id
   FROM public.experiencias
-  WHERE id = p_experience_id OR LOWER(slug) = LOWER(p_experience_id)
+  WHERE id = p_experience_id
+     OR LOWER(slug) = LOWER(p_experience_id)
+     OR id = 'exp-' || p_experience_id
+     OR LOWER(slug) = LOWER(REPLACE(p_experience_id, 'exp-', ''))
   LIMIT 1;
 
   IF v_resolved_exp_id IS NULL THEN
@@ -2718,12 +2723,14 @@ BEGIN
 
   SELECT EXISTS (
     SELECT 1 FROM public.experiencias_favoritas
-    WHERE LOWER(socio_email) = v_caller_email AND experience_id = v_resolved_exp_id
+    WHERE LOWER(socio_email) = v_caller_email
+      AND (experience_id = v_resolved_exp_id OR experience_id = p_experience_id)
   ) INTO v_is_fav;
 
   IF v_is_fav THEN
     DELETE FROM public.experiencias_favoritas
-    WHERE LOWER(socio_email) = v_caller_email AND experience_id = v_resolved_exp_id;
+    WHERE LOWER(socio_email) = v_caller_email
+      AND (experience_id = v_resolved_exp_id OR experience_id = p_experience_id);
     v_is_fav := false;
   ELSE
     INSERT INTO public.experiencias_favoritas (socio_id, socio_email, experience_id)
@@ -2732,7 +2739,43 @@ BEGIN
     v_is_fav := true;
   END IF;
 
-  SELECT favorites_count INTO v_total_favs FROM public.experiencias WHERE id = v_resolved_exp_id;
+  -- Sincronizar wishlist en public.socios si el socio está registrado
+  IF v_socio_id IS NOT NULL THEN
+    IF v_is_fav THEN
+      UPDATE public.socios
+      SET experiences_wishlist = (
+        SELECT jsonb_agg(DISTINCT elem)
+        FROM (
+          SELECT jsonb_array_elements_text(COALESCE(experiences_wishlist, '[]'::jsonb)) AS elem
+          UNION
+          SELECT v_resolved_exp_id
+          UNION
+          SELECT p_experience_id
+        ) s
+        WHERE elem IS NOT NULL AND elem <> ''
+      )
+      WHERE id = v_socio_id;
+    ELSE
+      UPDATE public.socios
+      SET experiences_wishlist = (
+        SELECT COALESCE(jsonb_agg(elem), '[]'::jsonb)
+        FROM (
+          SELECT jsonb_array_elements_text(COALESCE(experiences_wishlist, '[]'::jsonb)) AS elem
+        ) s
+        WHERE elem IS NOT NULL AND elem <> '' AND elem <> v_resolved_exp_id AND elem <> p_experience_id
+      )
+      WHERE id = v_socio_id;
+    END IF;
+  END IF;
+
+  SELECT COUNT(*)::INTEGER INTO v_total_favs
+  FROM public.experiencias_favoritas
+  WHERE experience_id = v_resolved_exp_id OR experience_id = p_experience_id;
+
+  -- Actualizar el contador en la tabla de experiencias si existe
+  UPDATE public.experiencias
+  SET favorites_count = v_total_favs
+  WHERE id = v_resolved_exp_id;
 
   RETURN jsonb_build_object(
     'is_favorite', v_is_fav,
@@ -2743,7 +2786,8 @@ $$;
 
 -- Alias retrocompatible
 CREATE OR REPLACE FUNCTION public.toggle_experiencia_favorito(
-  p_experience_id TEXT
+  p_experience_id TEXT,
+  p_socio_email TEXT DEFAULT NULL
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -2751,7 +2795,7 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 BEGIN
-  RETURN public.toggle_experiencia_favorita(p_experience_id);
+  RETURN public.toggle_experiencia_favorita(p_experience_id, p_socio_email);
 END;
 $$;
 
@@ -3183,11 +3227,11 @@ GRANT EXECUTE ON FUNCTION public.can_socio_rate_provider(UUID) TO authenticated;
 REVOKE EXECUTE ON FUNCTION public.submit_prestador_rating(UUID, INTEGER, TEXT, TEXT) FROM anon;
 GRANT EXECUTE ON FUNCTION public.submit_prestador_rating(UUID, INTEGER, TEXT, TEXT) TO authenticated;
 
-REVOKE EXECUTE ON FUNCTION public.toggle_experiencia_favorita(TEXT) FROM anon;
-GRANT EXECUTE ON FUNCTION public.toggle_experiencia_favorita(TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.toggle_experiencia_favorita(TEXT, TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.toggle_experiencia_favorita(TEXT) TO anon, authenticated;
 
-REVOKE EXECUTE ON FUNCTION public.toggle_experiencia_favorito(TEXT) FROM anon;
-GRANT EXECUTE ON FUNCTION public.toggle_experiencia_favorito(TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.toggle_experiencia_favorito(TEXT, TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.toggle_experiencia_favorito(TEXT) TO anon, authenticated;
 
 REVOKE EXECUTE ON FUNCTION public.get_my_provider_ratings() FROM anon;
 GRANT EXECUTE ON FUNCTION public.get_my_provider_ratings() TO authenticated;
@@ -3663,17 +3707,17 @@ CREATE POLICY "Admins pueden eliminar calificaciones"
   );
 
 -- 6.12 Políticas en experiencias_favoritas
-GRANT SELECT, INSERT, DELETE ON public.experiencias_favoritas TO authenticated;
-GRANT SELECT ON public.experiencias_favoritos TO authenticated;
+GRANT SELECT, INSERT, DELETE ON public.experiencias_favoritas TO anon, authenticated;
+GRANT SELECT ON public.experiencias_favoritos TO anon, authenticated;
 
 DROP POLICY IF EXISTS "Socios leen sus propios favoritos" ON public.experiencias_favoritas;
 DROP POLICY IF EXISTS "Socios leen sus propias experiencias favoritas" ON public.experiencias_favoritas;
 CREATE POLICY "Socios leen sus propias experiencias favoritas"
   ON public.experiencias_favoritas
   FOR SELECT
-  TO authenticated
+  TO anon, authenticated
   USING (
-    LOWER(socio_email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+    LOWER(socio_email) = LOWER(COALESCE(auth.jwt() ->> 'email', socio_email))
     OR EXISTS (
       SELECT 1 FROM public.administradores
       WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
@@ -3686,14 +3730,9 @@ DROP POLICY IF EXISTS "Socios agregan sus propias experiencias favoritas" ON pub
 CREATE POLICY "Socios agregan sus propias experiencias favoritas"
   ON public.experiencias_favoritas
   FOR INSERT
-  TO authenticated
+  TO anon, authenticated
   WITH CHECK (
-    LOWER(socio_email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
-    OR EXISTS (
-      SELECT 1 FROM public.administradores
-      WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
-        AND active = true
-    )
+    socio_email IS NOT NULL AND socio_email <> ''
   );
 
 DROP POLICY IF EXISTS "Socios eliminan sus propios favoritos" ON public.experiencias_favoritas;
@@ -3701,9 +3740,9 @@ DROP POLICY IF EXISTS "Socios eliminan sus propias experiencias favoritas" ON pu
 CREATE POLICY "Socios eliminan sus propias experiencias favoritas"
   ON public.experiencias_favoritas
   FOR DELETE
-  TO authenticated
+  TO anon, authenticated
   USING (
-    LOWER(socio_email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
+    LOWER(socio_email) = LOWER(COALESCE(auth.jwt() ->> 'email', socio_email))
     OR EXISTS (
       SELECT 1 FROM public.administradores
       WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
