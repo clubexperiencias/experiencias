@@ -429,7 +429,7 @@ export interface ExperienceFavoritedMember {
                   <span class="material-icons-outlined empty-fav-icon">favorite_border</span>
                   <div class="empty-fav-texts">
                     <strong>Sin me gustas registrados</strong>
-                    <p>Ningún socio ha guardado esta experiencia en favoritos todavía en la base de datos (0 registros en experiencias_favoritas).</p>
+                    <p>Ningún socio ha guardado esta experiencia en favoritos todavía en la base de datos o en su lista de deseos.</p>
                   </div>
                 </div>
               }
@@ -5554,12 +5554,6 @@ export class AdminExperiencesComponent implements OnInit {
         return;
       }
 
-      if (this.adminStore.members().length === 0) {
-        await this.adminStore.loadAllMembers();
-      }
-      if (token !== this.experienceFavoritesRequestToken) return;
-      const members = this.adminStore.members();
-
       const candidateKeys = Array.from(
         new Set(
           [exp.id, exp.slug, (exp as any).initialSlug, ...(exp.slugAliases || [])]
@@ -5575,13 +5569,21 @@ export class AdminExperiencesComponent implements OnInit {
         return;
       }
 
-      const { data, error } = await this.supabase
-        .from('experiencias_favoritas' as any)
-        .select('id, socio_id, socio_email, experience_id, created_at')
-        .in('experience_id', candidateKeys)
-        .order('created_at', { ascending: false });
+      // Consultar en paralelo tanto los registros de la tabla experiencias_favoritas
+      // como la nómina actualizada de socios del servidor para evitar snapshots en memoria desactualizados
+      const [favResult] = await Promise.all([
+        this.supabase
+          .from('experiencias_favoritas' as any)
+          .select('id, socio_id, socio_email, experience_id, created_at')
+          .in('experience_id', candidateKeys)
+          .order('created_at', { ascending: false }),
+        this.adminStore.loadAllMembers(),
+      ]);
 
       if (token !== this.experienceFavoritesRequestToken) return;
+
+      const { data, error } = favResult;
+      const members = this.adminStore.members();
 
       if (error) {
         this.detailFavoritedMembers.set([]);
@@ -5608,6 +5610,8 @@ export class AdminExperiencesComponent implements OnInit {
         const uniqueKey = socioEmail || socioId || row.id;
         if (seen.has(uniqueKey)) continue;
         seen.add(uniqueKey);
+        if (socioEmail) seen.add(socioEmail);
+        if (socioId) seen.add(socioId);
 
         const matched = members.find((m) => {
           if (socioId && m.id === socioId) return true;
@@ -5625,6 +5629,46 @@ export class AdminExperiencesComponent implements OnInit {
           memberNumber: matched?.position ?? null,
           favoritedAt: row.created_at,
         });
+      }
+
+      // Complementar con socios registrados que guardaron la experiencia en su lista de deseos (wishlist)
+      const candidateKeysLower = candidateKeys.map((k) => k.toLowerCase().trim());
+      for (const m of members) {
+        if (
+          m.membershipTier === 'waitlist' ||
+          m.membershipTier === 'dado_de_baja' ||
+          (m as any).type === 'waitlist' ||
+          (m as any).status === 'dado_de_baja'
+        ) {
+          continue;
+        }
+
+        const mEmail = (m.email || '').toLowerCase().trim();
+        const mId = m.id;
+        if ((mEmail && seen.has(mEmail)) || (mId && seen.has(mId))) {
+          continue;
+        }
+
+        const wishlist = Array.isArray(m.experiencesWishlist)
+          ? m.experiencesWishlist.map((w) => String(w).toLowerCase().trim())
+          : [];
+
+        const hasMatch = candidateKeysLower.some((ck) => wishlist.includes(ck));
+        if (hasMatch) {
+          if (mEmail) seen.add(mEmail);
+          if (mId) seen.add(mId);
+
+          favoritedMembers.push({
+            id: m.id,
+            name: m.fullName || m.email?.split('@')[0] || 'Socio',
+            email: m.email || '—',
+            phone: m.phone && m.phone !== '—' ? m.phone : undefined,
+            avatar: m.avatarUrl,
+            tier: m.membershipTier || 'socio',
+            memberNumber: m.position ?? null,
+            favoritedAt: (m as any).updatedAt || (m as any).createdAt || undefined,
+          });
+        }
       }
 
       if (token !== this.experienceFavoritesRequestToken) return;

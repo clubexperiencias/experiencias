@@ -32,164 +32,6 @@ import {
       <div class="profile-card">
         <form [formGroup]="form" (ngSubmit)="onSave()" class="profile-form">
           <div class="form-section">
-            <div>
-              <h3 class="section-title">Datos Bancarios para Liquidación de Pagos</h3>
-              <p class="section-desc">
-                Es la cuenta bancaria o virtual donde se liquidan las recaudaciones y aranceles de
-                tus experiencias.
-              </p>
-            </div>
-
-            <div class="form-grid">
-              <div class="form-group">
-                <label class="form-label"
-                  >CBU o Alias de Destino <span class="req-star">*</span></label
-                >
-                <input
-                  type="text"
-                  formControlName="cbuAlias"
-                  class="form-input text-mono"
-                  placeholder="Ej. EXPERIENCIAS.CLUB.MP o 22 dígitos"
-                  required
-                />
-                <span class="field-hint">Alias o CBU de 22 dígitos exactos</span>
-              </div>
-
-              <div class="form-group">
-                <label class="form-label"
-                  >Entidad Bancaria o Billetera <span class="req-star">*</span></label
-                >
-                <input
-                  type="text"
-                  formControlName="bankName"
-                  class="form-input"
-                  placeholder="Ej. Banco Nación / Mercado Pago"
-                  required
-                />
-              </div>
-
-              <div class="form-group">
-                <label class="form-label"
-                  >Nombre / Titular de la Cuenta <span class="req-star">*</span></label
-                >
-                <input
-                  type="text"
-                  formControlName="name"
-                  class="form-input"
-                  placeholder="Ej. Gonzalo Gramaglia"
-                  required
-                />
-              </div>
-
-              <div class="form-group">
-                <label class="form-label"
-                  >CUIT / CUIL del Titular <span class="req-star">*</span></label
-                >
-                <input
-                  type="text"
-                  formControlName="cuitDni"
-                  class="form-input text-mono"
-                  placeholder="Ej. 20-33445566-7"
-                  required
-                />
-              </div>
-            </div>
-
-            <!-- Alerta informativa de auditoría bancaria -->
-            <div class="audit-notice-card" aria-label="Aviso de seguridad bancaria">
-              <div class="audit-text">
-                <strong class="audit-title">Registro Seguro de Datos Bancarios</strong>
-                <p class="audit-desc">
-                  Podés actualizar tus datos de cobro cuando lo necesites. Cada modificación queda
-                  registrada con fecha y hora de auditoría para asegurar la trazabilidad y la
-                  correcta liquidación de tus servicios.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <!-- SECCIÓN: Cobros con Mercado Pago -->
-          <div id="mercadopago" class="form-section mp-form-section">
-            <div class="section-title-row">
-              <h3 class="section-title">Cobros con Mercado Pago (Acreditación Instantánea)</h3>
-              @if (isMpConnected()) {
-                <span class="mp-status-pill connected">
-                  Cuenta Vinculada
-                </span>
-              } @else {
-                <span class="mp-status-pill disconnected">
-                  No Vinculada
-                </span>
-              }
-            </div>
-
-            <p class="section-desc mp-section-desc">
-              Vinculá tu cuenta de Mercado Pago para permitir que los exploradores paguen tus experiencias en el checkout con
-              tarjeta de crédito, débito y dinero en cuenta. Los cobros se acreditan en tu cuenta automáticamente.
-              Las transferencias bancarias directas a tu CBU seguirán siempre habilitadas por defecto.
-            </p>
-
-            @if (mpToast()) {
-              <div class="alert-success mp-toast-alert" role="status">
-                <mat-icon>check_circle</mat-icon>
-                <span>{{ mpToast() }}</span>
-              </div>
-            }
-
-            @if (mpError()) {
-              <div class="alert-error mp-toast-alert" role="alert">
-                <mat-icon class="alert-icon">error_outline</mat-icon>
-                <span>{{ mpError() }}</span>
-              </div>
-            }
-
-            @if (isMpConnected()) {
-              <div class="mp-active-card">
-                <div class="mp-active-left">
-                  <div class="mp-active-details">
-                    <strong class="mp-active-title">Tu cuenta de Mercado Pago está vinculada y activa</strong>
-                    <span class="mp-active-sub">
-                      ID de Cobrador: <code class="mp-code">{{ mpCollectorId() }}</code>
-                      @if (mpNickname()) {
-                        · Titular: <strong>{{ mpNickname() }}</strong>
-                      }
-                    </span>
-                    <span class="mp-active-hint">Tus experiencias ya tienen habilitada la opción de pago con Mercado Pago en el checkout.</span>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  class="btn-disconnect-mp"
-                  (click)="disconnectMercadoPago()"
-                  title="Desvincular cuenta de Mercado Pago"
-                >
-                  <span>Desvincular</span>
-                </button>
-              </div>
-            } @else {
-              <div class="mp-connect-box">
-                <div class="mp-connect-info">
-                  <span class="mp-benefit">✓ Acreditación automática e instantánea</span>
-                  <span class="mp-benefit">✓ Cobro en cuotas y con tarjetas de todos los bancos</span>
-                  <span class="mp-benefit">✓ Comisión de pasarela absorbida por el recargo del checkout</span>
-                </div>
-                <div class="mp-connect-action-row">
-                  <button
-                    type="button"
-                    class="btn-connect-mp"
-                    (click)="connectMercadoPago()"
-                    title="Vincular cuenta con Mercado Pago"
-                    style="color: #ffffff !important;"
-                  >
-                    <span style="color: #ffffff !important;">Vincular mi cuenta de Mercado Pago</span>
-                  </button>
-                  <span class="mp-connect-note">Podés desvincularla en cualquier momento.</span>
-                </div>
-              </div>
-            }
-          </div>
-
-          <div class="form-section">
             <h3 class="section-title">Datos del Emprendimiento</h3>
 
             <div class="form-grid">
@@ -436,6 +278,164 @@ import {
             </div>
           </div>
 
+          <div class="form-section">
+            <div>
+              <h3 class="section-title">Datos Bancarios para Liquidación de Pagos</h3>
+              <p class="section-desc">
+                Es la cuenta bancaria o virtual donde se liquidan las recaudaciones y aranceles de
+                tus experiencias.
+              </p>
+            </div>
+
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-label"
+                  >CBU o Alias de Destino <span class="req-star">*</span></label
+                >
+                <input
+                  type="text"
+                  formControlName="cbuAlias"
+                  class="form-input text-mono"
+                  placeholder="Ej. EXPERIENCIAS.CLUB.MP o 22 dígitos"
+                  required
+                />
+                <span class="field-hint">Alias o CBU de 22 dígitos exactos</span>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label"
+                  >Entidad Bancaria o Billetera <span class="req-star">*</span></label
+                >
+                <input
+                  type="text"
+                  formControlName="bankName"
+                  class="form-input"
+                  placeholder="Ej. Banco Nación / Mercado Pago"
+                  required
+                />
+              </div>
+
+              <div class="form-group">
+                <label class="form-label"
+                  >Nombre / Titular de la Cuenta <span class="req-star">*</span></label
+                >
+                <input
+                  type="text"
+                  formControlName="name"
+                  class="form-input"
+                  placeholder="Ej. Gonzalo Gramaglia"
+                  required
+                />
+              </div>
+
+              <div class="form-group">
+                <label class="form-label"
+                  >CUIT / CUIL del Titular <span class="req-star">*</span></label
+                >
+                <input
+                  type="text"
+                  formControlName="cuitDni"
+                  class="form-input text-mono"
+                  placeholder="Ej. 20-33445566-7"
+                  required
+                />
+              </div>
+            </div>
+
+            <!-- Alerta informativa de auditoría bancaria -->
+            <div class="audit-notice-card" aria-label="Aviso de seguridad bancaria">
+              <div class="audit-text">
+                <strong class="audit-title">Registro Seguro de Datos Bancarios</strong>
+                <p class="audit-desc">
+                  Podés actualizar tus datos de cobro cuando lo necesites. Cada modificación queda
+                  registrada con fecha y hora de auditoría para asegurar la trazabilidad y la
+                  correcta liquidación de tus servicios.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- SECCIÓN: Cobros con Mercado Pago -->
+          <div id="mercadopago" class="form-section mp-form-section">
+            <div class="section-title-row">
+              <h3 class="section-title">Cobros con Mercado Pago (Acreditación Instantánea)</h3>
+              @if (isMpConnected()) {
+                <span class="mp-status-pill connected">
+                  Cuenta Vinculada
+                </span>
+              } @else {
+                <span class="mp-status-pill disconnected">
+                  No Vinculada
+                </span>
+              }
+            </div>
+
+            <p class="section-desc mp-section-desc">
+              Vinculá tu cuenta de Mercado Pago para permitir que los exploradores paguen tus experiencias en el checkout con
+              tarjeta de crédito, débito y dinero en cuenta. Los cobros se acreditan en tu cuenta automáticamente.
+              Las transferencias bancarias directas a tu CBU seguirán siempre habilitadas por defecto.
+            </p>
+
+            @if (mpToast()) {
+              <div class="alert-success mp-toast-alert" role="status">
+                <mat-icon>check_circle</mat-icon>
+                <span>{{ mpToast() }}</span>
+              </div>
+            }
+
+            @if (mpError()) {
+              <div class="alert-error mp-toast-alert" role="alert">
+                <mat-icon class="alert-icon">error_outline</mat-icon>
+                <span>{{ mpError() }}</span>
+              </div>
+            }
+
+            @if (isMpConnected()) {
+              <div class="mp-active-card">
+                <div class="mp-active-left">
+                  <div class="mp-active-details">
+                    <strong class="mp-active-title">Tu cuenta de Mercado Pago está vinculada y activa</strong>
+                    <span class="mp-active-sub">
+                      ID de Cobrador: <code class="mp-code">{{ mpCollectorId() }}</code>
+                      @if (mpNickname()) {
+                        · Titular: <strong>{{ mpNickname() }}</strong>
+                      }
+                    </span>
+                    <span class="mp-active-hint">Tus experiencias ya tienen habilitada la opción de pago con Mercado Pago en el checkout.</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  class="btn-disconnect-mp"
+                  (click)="disconnectMercadoPago()"
+                  title="Desvincular cuenta de Mercado Pago"
+                >
+                  <span>Desvincular</span>
+                </button>
+              </div>
+            } @else {
+              <div class="mp-connect-box">
+                <div class="mp-connect-info">
+                  <span class="mp-benefit">✓ Acreditación automática e instantánea</span>
+                  <span class="mp-benefit">✓ Cobro en cuotas y con tarjetas de todos los bancos</span>
+                  <span class="mp-benefit">✓ Comisión de pasarela absorbida por el recargo del checkout</span>
+                </div>
+                <div class="mp-connect-action-row">
+                  <button
+                    type="button"
+                    class="btn-connect-mp"
+                    (click)="connectMercadoPago()"
+                    title="Vincular cuenta con Mercado Pago"
+                    style="color: #ffffff !important;"
+                  >
+                    <span style="color: #ffffff !important;">Vincular mi cuenta de Mercado Pago</span>
+                  </button>
+                  <span class="mp-connect-note">Podés desvincularla en cualquier momento.</span>
+                </div>
+              </div>
+            }
+          </div>
+
           @if (savedSuccess()) {
             <aside class="fav-toast-banner" role="status" aria-live="polite">
               <div class="fav-toast-progress-track" aria-hidden="true">
@@ -621,7 +621,7 @@ import {
         border-bottom: 1px solid rgba(128, 179, 255, 0.15);
         padding-bottom: 1.75rem;
       }
-      .form-section:last-of-type {
+      .form-section:not(.mp-form-section):last-of-type {
         border-bottom: none;
         padding-bottom: 0;
       }

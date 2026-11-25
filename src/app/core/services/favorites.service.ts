@@ -297,8 +297,8 @@ export class FavoritesService {
     // Actualiza el perfil en memoria y en localStorage sincrónicamente
     this.newsletter.updateCurrentMemberWishlist([...slugs]);
 
-    // Si tiene DNI o teléfono guardados, sincroniza remotamente con Supabase
-    if (member.email && (member.dni || member.documentNumber || member.phone)) {
+    // Sincroniza remotamente con Supabase en el perfil del socio si cuenta con email
+    if (member.email) {
       void this.newsletter.updateMemberProfile({
         fullName: member.fullName || '',
         dni: member.dni || member.documentNumber || '',
@@ -408,7 +408,7 @@ export class FavoritesService {
       this._favoriteSlugs.set(updated);
       this.persistFavorites(updated);
       this.syncWithMemberProfile(updated);
-      this.callToggleRemoteFavorite(this.resolveExperienceId(exp));
+      this.callToggleRemoteFavorite(this.resolveExperienceId(exp), false, exp.slug);
       this.showToast({
         title: exp.title || 'Experiencia',
         slug: exp.slug || slug,
@@ -426,7 +426,7 @@ export class FavoritesService {
       this._favoriteSlugs.set(updated);
       this.persistFavorites(updated);
       this.syncWithMemberProfile(updated);
-      this.callToggleRemoteFavorite(this.resolveExperienceId(exp));
+      this.callToggleRemoteFavorite(this.resolveExperienceId(exp), true, exp.slug);
 
       this.showToast({
         title: exp.title || 'Experiencia',
@@ -465,7 +465,7 @@ export class FavoritesService {
     this._favoriteSlugs.set(updated);
     this.persistFavorites(updated);
     this.syncWithMemberProfile(updated);
-    this.callToggleRemoteFavorite(this.resolveExperienceId(exp));
+    this.callToggleRemoteFavorite(this.resolveExperienceId(exp), false, exp.slug);
 
     this.showToast({
       title: exp.title || 'Experiencia',
@@ -490,19 +490,83 @@ export class FavoritesService {
     return rawSlugOrId;
   }
 
-  private callToggleRemoteFavorite(targetId: string): void {
+  private callToggleRemoteFavorite(
+    targetId: string,
+    isAdding: boolean = true,
+    fallbackSlug?: string
+  ): void {
     if (!this.supabase || !this.newsletter.isSubscribed() || !targetId) return;
 
+    const member = this.newsletter.currentMember();
+    const memberEmail = (
+      member?.email ||
+      (this.activeMemberIdentity && this.activeMemberIdentity.includes('@')
+        ? this.activeMemberIdentity
+        : '')
+    ).trim().toLowerCase();
+    const memberId = member?.id || null;
+
     void (async () => {
+      let rpcSucceeded = false;
       try {
         const { data, error } = await (this.supabase as any).rpc('toggle_experiencia_favorita', {
           p_experience_id: targetId,
+          ...(memberEmail ? { p_socio_email: memberEmail } : {}),
+          p_is_favorite: isAdding,
         });
-        if (!error && data && typeof data.favorites_count === 'number') {
-          this.experienceService.updateFavoritesCount(targetId, data.favorites_count);
+        if (!error && data) {
+          rpcSucceeded = true;
+          if (typeof data.favorites_count === 'number') {
+            this.experienceService.updateFavoritesCount(targetId, data.favorites_count);
+          }
+        } else if (error) {
+          // Reintentar sin p_socio_email pero manteniendo el estado esperado p_is_favorite para idempotencia
+          const { data: dataRetry, error: retryErr } = await (this.supabase as any).rpc(
+            'toggle_experiencia_favorita',
+            {
+              p_experience_id: targetId,
+              p_is_favorite: isAdding,
+            }
+          );
+          if (!retryErr && dataRetry) {
+            rpcSucceeded = true;
+            if (typeof dataRetry.favorites_count === 'number') {
+              this.experienceService.updateFavoritesCount(targetId, dataRetry.favorites_count);
+            }
+          }
         }
       } catch (err) {
-        console.warn('[FavoritesService] Error calling toggle_experiencia_favorita:', err);
+        console.warn('[FavoritesService] Error calling toggle_experiencia_favorita RPC:', err);
+      }
+
+      // Fallback a operaciones directas en la tabla si el RPC no tuvo éxito
+      if (!rpcSucceeded && memberEmail) {
+        try {
+          const candidateKeys = Array.from(
+            new Set([targetId, fallbackSlug].filter((k): k is string => Boolean(k && k.trim())))
+          );
+
+          if (isAdding) {
+            await (this.supabase as any)
+              .from('experiencias_favoritas')
+              .upsert(
+                {
+                  socio_id: memberId,
+                  socio_email: memberEmail,
+                  experience_id: targetId,
+                },
+                { onConflict: 'socio_email, experience_id' }
+              );
+          } else {
+            await (this.supabase as any)
+              .from('experiencias_favoritas')
+              .delete()
+              .eq('socio_email', memberEmail)
+              .in('experience_id', candidateKeys);
+          }
+        } catch (tableErr) {
+          console.warn('[FavoritesService] Fallback direct table operation on experiencias_favoritas failed:', tableErr);
+        }
       }
     })();
   }

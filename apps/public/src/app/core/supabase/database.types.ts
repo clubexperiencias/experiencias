@@ -982,12 +982,16 @@ export interface Database {
       toggle_experiencia_favorita: {
         Args: {
           p_experience_id: string;
+          p_socio_email?: string | null;
+          p_is_favorite?: boolean | null;
         };
         Returns: Json;
       };
       toggle_experiencia_favorito: {
         Args: {
           p_experience_id: string;
+          p_socio_email?: string | null;
+          p_is_favorite?: boolean | null;
         };
         Returns: Json;
       };
