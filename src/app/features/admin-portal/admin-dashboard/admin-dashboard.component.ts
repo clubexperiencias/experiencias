@@ -99,7 +99,17 @@ import { SURVEY_INTEREST_KEYS } from '../../../core/models/waitlist.model';
           <div class="metric-content">
             <span class="metric-label">Clientes</span>
             <strong class="metric-value">{{ stats().totalConverted }}</strong>
-            <span class="metric-hint">Socios que ya pagaron</span>
+            <span class="metric-hint">
+              @if (stats().approvedReceiptsCount > 0 && stats().pendingReceiptsCount > 0) {
+                {{ stats().approvedReceiptsCount }} acreditados · {{ stats().pendingReceiptsCount }} a conciliar
+              } @else if (stats().approvedReceiptsCount > 0) {
+                {{ stats().approvedReceiptsCount }} {{ stats().approvedReceiptsCount === 1 ? 'con pago acreditado' : 'con pagos acreditados' }}
+              } @else if (stats().pendingReceiptsCount > 0) {
+                {{ stats().pendingReceiptsCount }} {{ stats().pendingReceiptsCount === 1 ? 'con pago a conciliar' : 'con pagos a conciliar' }}
+              } @else {
+                Sin pagos registrados
+              }
+            </span>
           </div>
         </div>
 
@@ -107,8 +117,18 @@ import { SURVEY_INTEREST_KEYS } from '../../../core/models/waitlist.model';
         <div class="metric-card">
           <div class="metric-content">
             <span class="metric-label">Total Recaudado</span>
-            <strong class="metric-value">{{ stats().confirmedRevenue | ars }}</strong>
-            <span class="metric-hint">{{ stats().approvedReceiptsCount }} pagos acreditados</span>
+            <strong class="metric-value">{{ stats().totalRevenue | ars }}</strong>
+            <span class="metric-hint">
+              @if (stats().approvedReceiptsCount > 0 && stats().pendingReceiptsCount > 0) {
+                {{ stats().approvedReceiptsCount }} acreditados · {{ stats().pendingReceiptsCount }} a conciliar
+              } @else if (stats().approvedReceiptsCount > 0) {
+                {{ stats().approvedReceiptsCount }} {{ stats().approvedReceiptsCount === 1 ? 'pago acreditado' : 'pagos acreditados' }}
+              } @else if (stats().pendingReceiptsCount > 0) {
+                {{ stats().pendingReceiptsCount }} a conciliar ({{ stats().pendingRevenue | ars }})
+              } @else {
+                0 pagos acreditados
+              }
+            </span>
           </div>
         </div>
       </section>
@@ -478,7 +498,12 @@ import { SURVEY_INTEREST_KEYS } from '../../../core/models/waitlist.model';
           </div>
         </div>
 
-        @if (webExperiences().length === 0) {
+        @if (isExperiencesLoading() && webExperiences().length === 0) {
+          <div class="dash-loading-wrap">
+            <div class="dash-spinner"></div>
+            <span>Cargando catálogo de experiencias...</span>
+          </div>
+        } @else if (webExperiences().length === 0) {
           <p class="empty-text">No hay experiencias cargadas en el catálogo.</p>
         } @else {
           <div class="table-wrap">
@@ -753,7 +778,7 @@ import { SURVEY_INTEREST_KEYS } from '../../../core/models/waitlist.model';
                       </td>
                       <td class="text-right">
                         <span class="rank-score-pill">
-                          {{ prov.rating.score.toFixed(1) }} ★
+                          ★ {{ prov.rating.score.toFixed(1) }}
                         </span>
                       </td>
                     </tr>
@@ -792,19 +817,29 @@ import { SURVEY_INTEREST_KEYS } from '../../../core/models/waitlist.model';
                         </span>
                       </td>
                       <td>
-                        <div class="rank-exp-cell">
+                        <a
+                          [routerLink]="['/admin/experiencias', exp.slug]"
+                          class="rank-exp-cell rank-exp-link"
+                          title="Ver ficha de la experiencia"
+                        >
                           <img [src]="exp.coverImage" [alt]="exp.title" class="rank-exp-thumb" />
                           <div class="rank-entity-info">
                             <strong class="rank-entity-name">{{ exp.title }}</strong>
                             <span class="rank-entity-sub">{{ exp.providerName }}</span>
                           </div>
-                        </div>
+                        </a>
                       </td>
                       <td class="text-right">
-                        <span class="rank-fav-pill">
+                        <a
+                          [routerLink]="['/admin/experiencias', exp.slug]"
+                          [fragment]="'favoritos'"
+                          [queryParams]="{ section: 'favoritos' }"
+                          class="rank-fav-pill"
+                          title="Ver socios que guardaron en favoritos esta experiencia"
+                        >
                           <mat-icon class="fav-heart-icon">favorite</mat-icon>
                           {{ exp.favoritesCount }}
-                        </span>
+                        </a>
                       </td>
                     </tr>
                   }
@@ -3508,6 +3543,19 @@ import { SURVEY_INTEREST_KEYS } from '../../../core/models/waitlist.model';
         font-size: 0.85rem;
       }
 
+      .rank-exp-link {
+        text-decoration: none;
+        color: inherit;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        cursor: pointer;
+      }
+
+      .rank-exp-link:hover .rank-entity-name {
+        color: #ffd42a;
+      }
+
       .rank-fav-pill {
         display: inline-flex;
         align-items: center;
@@ -3519,6 +3567,17 @@ import { SURVEY_INTEREST_KEYS } from '../../../core/models/waitlist.model';
         background: rgba(244, 63, 94, 0.15);
         color: #fda4af;
         border: 1px solid rgba(244, 63, 94, 0.3);
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .rank-fav-pill:hover {
+        background: rgba(244, 63, 94, 0.3);
+        border-color: #fb7185;
+        color: #ffffff;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(244, 63, 94, 0.35);
       }
 
       .fav-heart-icon {
@@ -3670,6 +3729,32 @@ import { SURVEY_INTEREST_KEYS } from '../../../core/models/waitlist.model';
         text-decoration: underline;
         margin-left: 0.4rem;
       }
+
+      .dash-loading-wrap {
+        padding: 3rem 1.5rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.85rem;
+        color: #94a3b8;
+        font-size: 0.88rem;
+      }
+
+      .dash-spinner {
+        width: 28px;
+        height: 28px;
+        border: 3px solid rgba(255, 255, 255, 0.12);
+        border-top-color: #ffd42a;
+        border-radius: 50%;
+        animation: dashSpinAnim 0.8s linear infinite;
+      }
+
+      @keyframes dashSpinAnim {
+        to {
+          transform: rotate(360deg);
+        }
+      }
     `,
   ],
 })
@@ -3680,6 +3765,7 @@ export class AdminDashboardComponent {
   private readonly ratingService = inject(ProviderRatingService);
   private readonly favoritesService = inject(FavoritesService);
   readonly webExperiences = this.experienceService.publishedExperiences;
+  readonly isExperiencesLoading = this.experienceService.isLoading;
 
   isClub(exp?: Partial<Experience> | null): boolean {
     return isClubExperience(exp);

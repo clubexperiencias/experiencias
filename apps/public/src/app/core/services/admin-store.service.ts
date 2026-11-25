@@ -344,9 +344,20 @@ export class AdminStoreService {
 
     const confirmedRevenue = approvedSubs.reduce((sum, s) => sum + (Number(s.amountArs) || 0), 0);
     const pendingRevenue = pendingSubs.reduce((sum, s) => sum + (Number(s.amountArs) || 0), 0);
+    const totalRevenue = confirmedRevenue + pendingRevenue;
     const totalEnrolled = approvedSubs.reduce((sum, s) => sum + (Number(s.participants) || 0), 0);
 
-    const conversionRate = list.length > 0 ? Math.round((converted.length / list.length) * 100) : 0;
+    const convertedEmails = new Set<string>();
+    for (const m of converted) {
+      if (m.email) convertedEmails.add(m.email.toLowerCase().trim());
+    }
+    for (const s of subs) {
+      if (s.email && s.status !== 'rechazado') {
+        convertedEmails.add(s.email.toLowerCase().trim());
+      }
+    }
+    const totalConverted = Math.max(converted.length, convertedEmails.size);
+    const conversionRate = list.length > 0 ? Math.round((totalConverted / list.length) * 100) : 0;
 
     // Métricas temporales (Día, Semana, Mes)
     const now = new Date();
@@ -400,7 +411,7 @@ export class AdminStoreService {
       totalSocios: officialSocios.length,
       totalWaitlist: waitlistOnly.length,
       totalGoogleLinked: googleLinked.length,
-      totalConverted: converted.length,
+      totalConverted,
       conversionRate,
       totalSubmissions: subs.length,
       pendingReceiptsCount: pendingSubs.length,
@@ -408,6 +419,7 @@ export class AdminStoreService {
       rejectedReceiptsCount: rejectedSubs.length,
       confirmedRevenue,
       pendingRevenue,
+      totalRevenue,
       totalEnrolled,
       membersToday,
       membersThisWeek,
@@ -479,8 +491,18 @@ export class AdminStoreService {
         let data: any = null;
         let error: any = null;
 
+        // 0. Intentar consultar RPC pública get_club_public_profile con SECURITY DEFINER (para sortear RLS si el usuario no es admin)
+        try {
+          const rpcRes = await (this.supabase.rpc as any)('get_club_public_profile');
+          if (!rpcRes.error && rpcRes.data) {
+            data = rpcRes.data;
+          }
+        } catch {
+          // ignore RPC error and fallback
+        }
+
         // 1. Intentar buscar por id si ya lo tenemos registrado
-        if (current.id) {
+        if (!data && current.id) {
           const res = await (this.supabase.from('prestadores') as any)
             .select('*')
             .eq('id', current.id)

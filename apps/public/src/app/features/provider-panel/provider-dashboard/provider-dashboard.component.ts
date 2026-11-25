@@ -194,7 +194,12 @@ import { ArsPipe, FechaPipe } from '../../../shared/pipes/format.pipes';
           </a>
         </div>
 
-        @if (activeExperiences().length === 0) {
+        @if (store.isExperiencesLoading() && activeExperiences().length === 0) {
+          <div style="padding: 2.5rem 1rem; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.8rem; color: #a0aec0;">
+            <div style="width: 26px; height: 26px; border: 3px solid rgba(255,255,255,0.15); border-top-color: #ffd42a; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+            <span style="font-size: 0.88rem;">Cargando catálogo de experiencias...</span>
+          </div>
+        } @else if (activeExperiences().length === 0) {
           <p class="empty-text">No tenés experiencias activas publicadas actualmente.</p>
         } @else {
           <div class="active-experiences-list">

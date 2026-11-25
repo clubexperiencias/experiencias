@@ -24,7 +24,7 @@ import {
 import { ExperienceService } from '../../../core/services/experience.service';
 import { HospedajesService } from '../../../core/services/hospedajes.service';
 import { AdminStoreService } from '../../../core/services/admin-store.service';
-import { isClubExperience } from '../../../core/models/club-profile.model';
+import { isClubExperience, getStoredUsdExchangeRate } from '../../../core/models/club-profile.model';
 import { NotificationService } from '../../../core/services/notification.service';
 import { isSupabaseConfigured } from '../../../core/supabase/supabase.client';
 import {
@@ -529,7 +529,9 @@ export class ExperiencePaymentComponent implements OnInit {
 
   readonly total = computed(() => this.baseTotal() + this.mercadoPagoSurchargeArs());
 
-  readonly usdExchangeRate = computed(() => this.adminStore.usdExchangeRate() || 1400);
+  readonly usdExchangeRate = computed(
+    () => this.adminStore.usdExchangeRate() || getStoredUsdExchangeRate() || 1400,
+  );
 
   readonly totalUsd = computed(() => {
     const rate = this.usdExchangeRate();
@@ -1058,6 +1060,7 @@ export class ExperiencePaymentComponent implements OnInit {
   }
 
   private async initializeCheckout(): Promise<void> {
+    void this.adminStore.loadClubProfile();
     if (!isSupabaseConfigured()) {
       this.authReady.set(true);
     }

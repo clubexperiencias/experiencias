@@ -25,7 +25,7 @@ import { DiscountService } from './discount.service';
 import { TransactionalEmailService } from './transactional-email.service';
 import { NewsletterService } from './newsletter.service';
 import { ActivityHistoryService } from './activity-history.service';
-import { ClubProfile, isClubExperience, isClubProvider } from '../models/club-profile.model';
+import { ClubProfile, isClubExperience, isClubProvider, getStoredUsdExchangeRate } from '../models/club-profile.model';
 import {
   ExperienceService,
   KAYAK_ALBUM_PHOTOS,
@@ -385,6 +385,9 @@ export class ProviderStoreService {
     );
     return this.submissions().filter((s) => providerExpIds.has(s.experienceId));
   });
+
+  // Loading state of catalog experiences
+  readonly isExperiencesLoading = this.expService.isLoading;
 
   // Experiences for current logged-in provider
   readonly providerExperiences = computed<ProviderExperience[]>(() => {
@@ -3081,9 +3084,11 @@ export class ProviderStoreService {
     const ref = this.buildReference(experience.slug);
 
     const uploadRes = await this.storageService.uploadReceipt(input.receiptFile, ref);
-    let receiptUrl = uploadRes.url || '';
     const storageKey = uploadRes.storageKey;
     const storageProvider = uploadRes.provider;
+    let receiptUrl =
+      uploadRes.url?.trim() ||
+      (storageKey ? `storage://comprobantes/${storageKey}` : `receipt://comprobantes/${ref}`);
 
     if (isSupabaseConfigured()) {
       try {
@@ -3155,9 +3160,9 @@ export class ProviderStoreService {
       }
     }
 
-    if (!receiptUrl && typeof window !== 'undefined') {
-      receiptUrl = URL.createObjectURL(input.receiptFile);
-    }
+    const localBlobUrl = typeof window !== 'undefined' ? URL.createObjectURL(input.receiptFile) : '';
+    const displayReceiptUrl =
+      uploadRes.url && !uploadRes.url.startsWith('storage://') ? uploadRes.url : (localBlobUrl || receiptUrl);
 
     const submission: TransferSubmission = {
       id: `sub-${crypto.randomUUID()}`,
@@ -3177,7 +3182,7 @@ export class ProviderStoreService {
         fileName: input.receiptFile.name,
         mimeType: input.receiptFile.type,
         sizeBytes: input.receiptFile.size,
-        url: receiptUrl,
+        url: displayReceiptUrl,
         storageKey,
         provider: storageProvider,
       },
@@ -3928,7 +3933,9 @@ export class ProviderStoreService {
         gateway: isApprovedMp ? 'mercadopago' : 'custom',
         gatewayDisplayName: isApprovedMp ? 'Mercado Pago' : 'Transferencia bancaria',
         amountArs: submission.amountArs,
-        amountUsd: 0,
+        amountUsd: getStoredUsdExchangeRate() > 0
+          ? Math.round(submission.amountArs / getStoredUsdExchangeRate())
+          : 0,
         paidAt: new Date(
           isApprovedMp ? (submission.reviewedAt || submission.submittedAt) : submission.submittedAt,
         ).toLocaleString('es-AR'),
@@ -3941,6 +3948,14 @@ export class ProviderStoreService {
           ? (submission.mpPaymentId || submission.reference)
           : submission.reference,
         status: isApprovedMp ? 'aprobado' : 'pendiente_verificacion',
+        providerAgency:
+          experience.providerAgency ||
+          experience.providerName ||
+          'Club de Experiencias',
+        providerResponsible:
+          experience.providerName ||
+          experience.providerAgency ||
+          'Equipo de Guías del Club',
         ...(submission.receipt?.url
           ? {
             receiptFileUrl: submission.receipt.url,

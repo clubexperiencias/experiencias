@@ -37,6 +37,26 @@ export const DEFAULT_CLUB_PROFILE: ClubProfile = {
   mercadoPagoSurchargePercentage: 12,
 };
 
+export function getStoredUsdExchangeRate(): number {
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem('catamarca_usd_exchange_rate_v1');
+      const num = Number(stored);
+      if (num && num > 0) return num;
+      const profileRaw = localStorage.getItem('catamarca_club_profile_v1');
+      if (profileRaw) {
+        const parsed = JSON.parse(profileRaw);
+        if (parsed?.usdExchangeRate && parsed.usdExchangeRate > 0) {
+          return Number(parsed.usdExchangeRate);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return DEFAULT_CLUB_PROFILE.usdExchangeRate || 1400;
+}
+
 /**
  * Determina si una experiencia corresponde a una expedición oficial del Club de Experiencias
  * evaluando su flag explícito, slug o las credenciales fijas de prestador del Club (slug/email).

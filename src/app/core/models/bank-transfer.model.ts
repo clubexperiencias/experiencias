@@ -87,6 +87,7 @@ export interface ProviderExperience {
   publicUrl?: string;
   providerId: string;
   providerName: string;
+  providerAgency?: string;
   providerEmail?: string;
   providerSlug?: string;
   providerPhone?: string;

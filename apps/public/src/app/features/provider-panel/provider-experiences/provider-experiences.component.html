@@ -159,8 +159,14 @@
 }
 
 @if (activeTab() !== 'solicitudes') {
+<!-- Loading State -->
+@if (isLoading() && rows().length === 0) {
+<section class="kayak-section-card empty-state-card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3rem 1.5rem; gap: 0.85rem;">
+  <div style="width: 28px; height: 28px; border: 3px solid rgba(255,255,255,0.15); border-top-color: #ffd42a; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+  <p style="color: rgba(255,255,255,0.7); font-size: 0.9rem; margin: 0;">Cargando catálogo de experiencias...</p>
+</section>
+} @else if (rows().length === 0) {
 <!-- Empty State -->
-@if (rows().length === 0) {
 <section class="kayak-section-card empty-state-card">
   <h2 class="card-heading">No se encontraron experiencias</h2>
   <p class="card-subheading">

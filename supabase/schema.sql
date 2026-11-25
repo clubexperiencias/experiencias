@@ -3265,7 +3265,46 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.get_club_public_profile()
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_row public.prestadores%ROWTYPE;
+BEGIN
+  SELECT * INTO v_row
+  FROM public.prestadores
+  WHERE slug = 'club-de-experiencias'
+     OR is_club_official = true
+     OR email IN ('admin@experiencias.club', 'hola@experiencias.club')
+  ORDER BY updated_at DESC
+  LIMIT 1;
+
+  IF v_row.id IS NULL THEN
+    RETURN NULL;
+  END IF;
+
+  RETURN jsonb_build_object(
+    'id', v_row.id,
+    'name', v_row.name,
+    'agency', v_row.agency,
+    'email', v_row.email,
+    'slug', v_row.slug,
+    'phone', v_row.phone,
+    'cbu_alias', v_row.cbu_alias,
+    'cuit_dni', v_row.cuit_dni,
+    'bank_name', v_row.bank_name,
+    'account_holder', v_row.account_holder,
+    'notes', v_row.notes,
+    'address', v_row.address
+  );
+END;
+$$;
+
 -- Permisos de ejecución de RPCs
+GRANT EXECUTE ON FUNCTION public.get_club_public_profile TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.record_waitlist_email TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_admin_socios_roster TO authenticated;
 GRANT EXECUTE ON FUNCTION public.check_email_registration_status TO anon, authenticated;
@@ -3437,7 +3476,7 @@ CREATE POLICY "Admins can update postulaciones_fundadores"
 
 -- 6.6 Política para permitir nuevas postulaciones en prestadores
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
-GRANT INSERT ON TABLE public.prestadores TO anon, authenticated;
+GRANT INSERT, SELECT ON TABLE public.prestadores TO anon, authenticated;
 GRANT SELECT ON public.administradores TO anon;
 GRANT SELECT ON public.experiencias TO anon;
 
@@ -3484,6 +3523,17 @@ CREATE POLICY "Prestadores can read own profile"
       WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
         AND active = true
     )
+  );
+
+DROP POLICY IF EXISTS "Lectura publica del prestador oficial club" ON public.prestadores;
+CREATE POLICY "Lectura publica del prestador oficial club"
+  ON public.prestadores
+  FOR SELECT
+  TO anon, authenticated
+  USING (
+    slug = 'club-de-experiencias'
+    OR is_club_official = true
+    OR email IN ('admin@experiencias.club', 'hola@experiencias.club')
   );
 
 DROP POLICY IF EXISTS "Providers can update their own profile" ON public.prestadores;

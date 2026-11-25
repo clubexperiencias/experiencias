@@ -145,16 +145,28 @@
   margin-top: 1.4rem;
 }
 .pill-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 0.65rem 0.9rem;
   border: 1px solid #8bbaba;
   background: #8bbaba;
   color: #fff;
   cursor: pointer;
+  font-family: inherit;
+  font-size: 0.82rem;
   font-weight: 700;
+  line-height: normal;
+  text-decoration: none;
+  transition: all 0.2s ease;
 }
-.pill-action-btn:hover {
+.pill-action-btn:hover:not(:disabled) {
   background: #668888;
   border-color: #fff;
+}
+.pill-action-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
 }
 .pill-action-btn.secondary {
   background: #668888;
