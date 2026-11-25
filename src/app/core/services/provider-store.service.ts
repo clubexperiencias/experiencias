@@ -3081,7 +3081,7 @@ export class ProviderStoreService {
     const ref = this.buildReference(experience.slug);
 
     const uploadRes = await this.storageService.uploadReceipt(input.receiptFile, ref);
-    let receiptUrl = uploadRes.url;
+    let receiptUrl = uploadRes.url || uploadRes.storageKey;
     const storageKey = uploadRes.storageKey;
     const storageProvider = uploadRes.provider;
 
@@ -3134,7 +3134,10 @@ export class ProviderStoreService {
           throw new Error('No quedan cupos suficientes para esa fecha.');
         }
         if (rpcPayload?.status === 'invalid_input') {
-          throw new Error('Los datos ingresados no son válidos.');
+          throw new Error(
+            rpcPayload?.message ||
+              'No se pudieron validar los datos de la reserva o el comprobante adjunto. Por favor verificá tus datos e intentá nuevamente.',
+          );
         }
       } catch (err: any) {
         if (
@@ -3467,7 +3470,10 @@ export class ProviderStoreService {
         throw new Error('El importe transferido no coincide con el total esperado.');
       }
       if (rpcPayload?.status === 'invalid_input') {
-        throw new Error('Los datos ingresados no son válidos.');
+        throw new Error(
+          rpcPayload?.message ||
+            'No se pudieron validar los datos de la reserva. Por favor verificá tus datos e intentá nuevamente.',
+        );
       }
     }
 

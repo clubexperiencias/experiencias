@@ -123,7 +123,7 @@ export class StorageService {
         const { data: signData, error: signErr } = await this.supabase.storage
           .from('comprobantes')
           .createSignedUrl(storageKey, 3600);
-        resolvedUrl = (!signErr && signData?.signedUrl) ? signData.signedUrl : '';
+        resolvedUrl = (!signErr && signData?.signedUrl) ? signData.signedUrl : storageKey;
       }
 
       return {
