@@ -150,7 +150,7 @@
             <h1 class="provider-agency-title">
               {{ p.agency || p.name }}
               <span class="provider-score-pill">
-                {{ currentRating().score.toFixed(1) }} ★
+                ★ {{ currentRating().score.toFixed(1) }}
                 <span class="score-votes">({{ currentRating().count }} {{ currentRating().count === 1 ? 'voto' : 'votos' }})</span>
               </span>
             </h1>

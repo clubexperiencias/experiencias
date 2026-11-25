@@ -323,7 +323,7 @@ export interface ExperienceFavoritedMember {
             </div>
 
             <!-- 3.2 SOCIOS QUE GUARDARON EN FAVORITOS (ME GUSTA) -->
-            <div class="fiche-section-card" [class.is-club-card]="isClub(exp)">
+            <div id="seccion-favoritos" class="fiche-section-card seccion-favoritos" [class.is-club-card]="isClub(exp)">
               <div class="section-title-row">
                 <div class="favorites-title-wrap">
                   <div class="title-with-icon">
@@ -406,7 +406,6 @@ export interface ExperienceFavoritedMember {
                             <div class="contact-cell-wrap">
                               @if (member.phone) {
                                 <a [href]="getWhatsappLink(member.phone, member.name)" target="_blank" rel="noopener noreferrer" class="contact-link whatsapp" title="Escribir por WhatsApp">
-                                  <span class="material-icons-outlined contact-icon">chat</span>
                                   {{ member.phone }}
                                 </a>
                               } @else {
@@ -761,7 +760,12 @@ export interface ExperienceFavoritedMember {
           </div>
         </div>
 
-        @if (filteredExperiences().length === 0) {
+        @if (isExperiencesLoading() && allCount() === 0) {
+          <div class="empty-box" style="margin: 1.5rem; padding: 3rem 1.5rem; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.85rem;">
+            <div style="width: 28px; height: 28px; border: 3px solid rgba(255, 255, 255, 0.12); border-top-color: #ff5f00; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+            <p style="color: rgba(255, 255, 255, 0.7); font-size: 0.9rem; margin: 0;">Cargando catálogo de experiencias...</p>
+          </div>
+        } @else if (filteredExperiences().length === 0) {
           <div class="empty-box" style="margin: 1.5rem; padding: 2.5rem 1.5rem; text-align: center;">
             <mat-icon style="font-size: 2.5rem; width: 2.5rem; height: 2.5rem; color: rgba(255, 95, 0, 0.7); margin-bottom: 0.75rem;">explore_off</mat-icon>
             <h3 style="color: #ffffff; font-size: 1.1rem; margin-bottom: 0.5rem;">No se encontraron experiencias</h3>
@@ -4240,6 +4244,10 @@ export interface ExperienceFavoritedMember {
         border-color: rgba(255, 64, 129, 0.35);
       }
 
+      .fiche-section-card.seccion-favoritos {
+        scroll-margin-top: 2.5rem;
+      }
+
       .favorites-count-badge .count-icon {
         font-size: 14px;
         width: 14px;
@@ -4441,6 +4449,24 @@ export interface ExperienceFavoritedMember {
         border: 1px solid rgba(0, 204, 136, 0.3);
       }
 
+      .socio-tier-pill.tier-emergente {
+        background: rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.85);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+
+      .socio-tier-pill.tier-pleno {
+        background: rgba(59, 130, 246, 0.15);
+        color: #60a5fa;
+        border: 1px solid rgba(59, 130, 246, 0.3);
+      }
+
+      .socio-tier-pill.tier-waitlist {
+        background: rgba(168, 85, 247, 0.15);
+        color: #c084fc;
+        border: 1px solid rgba(168, 85, 247, 0.3);
+      }
+
       .socio-number-tag {
         font-size: 0.72rem;
         color: rgba(255, 255, 255, 0.45);
@@ -4588,6 +4614,7 @@ export class AdminExperiencesComponent implements OnInit {
   }
 
   readonly experiences = this.experienceService.experiences;
+  readonly isExperiencesLoading = this.experienceService.isLoading;
   readonly activeTab = signal<ExperienceTab>('all');
   readonly searchQuery = signal<string>('');
 
@@ -4767,9 +4794,18 @@ export class AdminExperiencesComponent implements OnInit {
     void this.adminStore.providerStore.loadProposalsFromSupabase();
     void this.adminStore.loadAllApplications();
 
+    this.route.fragment
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.checkAndScrollToFavorites();
+      });
+
     this.route.queryParamMap
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((params) => {
+        if (params.get('section') === 'favoritos') {
+          this.checkAndScrollToFavorites();
+        }
         const tab = params.get('tab');
         if (tab === 'postulaciones' || tab === 'experiencias' || tab === 'pendientes') {
           this.activeTab.set('postulaciones');
@@ -4902,6 +4938,7 @@ export class AdminExperiencesComponent implements OnInit {
         } else {
           this.isRouteEditMode.set(false);
           this.isRouteDetailMode.set(true);
+          this.checkAndScrollToFavorites();
         }
       } else {
         this.notFound.set(true);
@@ -4915,6 +4952,26 @@ export class AdminExperiencesComponent implements OnInit {
       if (!this.isCreating()) {
         this.editingExperience.set(null);
       }
+    }
+  }
+
+  private checkAndScrollToFavorites(): void {
+    if (typeof window === 'undefined') return;
+    const hasFavSection =
+      this.route.snapshot.queryParamMap.get('section') === 'favoritos' ||
+      this.route.snapshot.fragment === 'favoritos' ||
+      this.route.snapshot.fragment === 'seccion-favoritos' ||
+      window.location.hash === '#favoritos' ||
+      window.location.hash === '#seccion-favoritos' ||
+      window.location.search.includes('section=favoritos');
+
+    if (hasFavSection) {
+      setTimeout(() => {
+        const el = document.getElementById('seccion-favoritos');
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 350);
     }
   }
 
@@ -5554,13 +5611,28 @@ export class AdminExperiencesComponent implements OnInit {
         return;
       }
 
-      const candidateKeys = Array.from(
-        new Set(
-          [exp.id, exp.slug, (exp as any).initialSlug, ...(exp.slugAliases || [])]
-            .filter((k): k is string => typeof k === 'string' && k.trim().length > 0)
-            .map((k) => k.trim())
-        )
-      );
+      const expSlug = (exp.slug || '').trim();
+      const expId = (exp.id || '').trim();
+      const initialSlug = ((exp as any).initialSlug || '').trim();
+      const aliases = (exp.slugAliases || []).map((a: string) => (a || '').trim()).filter(Boolean);
+
+      const keys = new Set<string>();
+      if (expId) keys.add(expId);
+      if (expSlug) keys.add(expSlug);
+      if (initialSlug) keys.add(initialSlug);
+      for (const a of aliases) {
+        if (a) keys.add(a);
+      }
+
+      // Aplicar conversión de prefijo heredado solo si el ID y el slug confirman la misma experiencia
+      if (expId && expSlug) {
+        if (expId === `exp-${expSlug}` || `exp-${expId}` === expSlug) {
+          keys.add(expId);
+          keys.add(expSlug);
+        }
+      }
+
+      const candidateKeys = Array.from(keys);
 
       if (candidateKeys.length === 0) {
         if (token !== this.experienceFavoritesRequestToken) return;
@@ -5631,13 +5703,11 @@ export class AdminExperiencesComponent implements OnInit {
         });
       }
 
-      // Complementar con socios registrados que guardaron la experiencia en su lista de deseos (wishlist)
+      // Complementar con socios y postulantes registrados que guardaron la experiencia en su lista de deseos (wishlist)
       const candidateKeysLower = candidateKeys.map((k) => k.toLowerCase().trim());
       for (const m of members) {
         if (
-          m.membershipTier === 'waitlist' ||
           m.membershipTier === 'dado_de_baja' ||
-          (m as any).type === 'waitlist' ||
           (m as any).status === 'dado_de_baja'
         ) {
           continue;

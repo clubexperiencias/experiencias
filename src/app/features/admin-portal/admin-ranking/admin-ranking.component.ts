@@ -69,7 +69,7 @@ export interface ExperienceRankingRow {
         <div class="summary-card">
           <span class="sum-label">Prestadores Evaluados</span>
           <strong class="sum-value num-lg">{{ providerRanking().length }}</strong>
-          <span class="sum-sub">Promedio red: {{ networkAverageScore() }} ★</span>
+          <span class="sum-sub">Promedio red: ★ {{ networkAverageScore() }}</span>
         </div>
 
         <div class="summary-card">
@@ -79,7 +79,7 @@ export interface ExperienceRankingRow {
           </strong>
           <span class="sum-sub">
             @if (topProvider()) {
-              Score líder: {{ topProvider()?.rating?.score?.toFixed(1) }} ★ ({{ topProvider()?.rating?.count }} votos)
+              Score líder: ★ {{ topProvider()?.rating?.score?.toFixed(1) }} ({{ topProvider()?.rating?.count }} votos)
             } @else {
               Sin prestadores activos
             }
@@ -154,8 +154,8 @@ export interface ExperienceRankingRow {
                   </td>
                   <td>
                     <div class="stars-cell">
-                      <span class="score-number">{{ row.rating.score.toFixed(1) }}</span>
                       <span class="score-star">★</span>
+                      <span class="score-number">{{ row.rating.score.toFixed(1) }}</span>
                       <div class="score-progress-bar">
                         <div
                           class="score-progress-fill"
@@ -411,7 +411,7 @@ export interface ExperienceRankingRow {
                           <td>
                             <div class="vote-stars-pill">
                               <span class="vote-stars-display">{{ getStarsDisplay(v.score) }}</span>
-                              <strong class="vote-score-num">{{ v.score }} ★</strong>
+                              <strong class="vote-score-num">★ {{ v.score }}</strong>
                             </div>
                           </td>
 

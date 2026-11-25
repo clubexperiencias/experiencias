@@ -734,13 +734,13 @@
         </div>
 
         <div class="voucher-field">
-          <span class="voucher-label">ID DE TRANSACCIÓN</span>
-          <span class="voucher-val">{{ activityService.selectedReceipt()?.transactionId }}</span>
+          <span class="voucher-label">PRESTADOR / AGENCIA</span>
+          <span class="voucher-val">{{ activityService.selectedReceipt()?.providerAgency || activityService.selectedReceipt()?.providerResponsible || 'Club de Experiencias' }}</span>
         </div>
 
         <div class="voucher-field">
-          <span class="voucher-label">CÓDIGO DE AUTORIZACIÓN</span>
-          <span class="voucher-val">{{ activityService.selectedReceipt()?.authCode }}</span>
+          <span class="voucher-label">RESPONSABLE DEL PRESTADOR</span>
+          <span class="voucher-val">{{ activityService.selectedReceipt()?.providerResponsible || activityService.selectedReceipt()?.providerAgency || 'Equipo de Guías del Club' }}</span>
         </div>
 
         <div class="voucher-field">

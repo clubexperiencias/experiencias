@@ -497,13 +497,13 @@
 .activity-title {
   font-size: 1.05rem;
   font-weight: 600;
-  color: #fff;
+  color: #ffffff;
   margin: 0 0 0.55rem;
   line-height: 1.3;
 }
 
 .activity-title-link {
-  color: inherit;
+  color: #ffffff !important;
   text-decoration: underline;
   text-decoration-color: rgba(255, 255, 255, 0.45);
   text-underline-offset: 3px;
@@ -512,20 +512,20 @@
 
 .activity-title-link:hover,
 .activity-title-link:focus-visible {
-  color: #ffcc00;
+  color: #ffcc00 !important;
   text-decoration: underline;
-  text-decoration-color: #ffcc00;
+  text-decoration-color: #ffcc00 !important;
 }
 
 .activity-card:hover .activity-title-link {
-  color: #070d18;
-  text-decoration-color: rgba(7, 13, 24, 0.6);
+  color: #ffffff !important;
+  text-decoration-color: rgba(255, 255, 255, 0.45);
 }
 
 .activity-card:hover .activity-title-link:hover,
 .activity-card:hover .activity-title-link:focus-visible {
-  color: #ffcc00;
-  text-decoration-color: #ffcc00;
+  color: #ffcc00 !important;
+  text-decoration-color: #ffcc00 !important;
 }
 
 .activity-provider {
@@ -562,8 +562,15 @@
 
 .activity-btns-group {
   display: flex;
+  flex-direction: column;
   gap: 0.5rem;
-  flex-wrap: wrap;
+  width: 100%;
+}
+
+.activity-btns-group .receipt-btn {
+  width: 100%;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 .receipt-btn {
@@ -868,13 +875,5 @@
   .activity-btns-group .receipt-btn {
     width: 100%;
     justify-content: center;
-  }
-
-  .activity-btns-group .btn-view-details {
-    order: 1;
-  }
-
-  .activity-btns-group .btn-receipt-doc {
-    order: 2;
   }
 }

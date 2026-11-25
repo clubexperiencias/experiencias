@@ -19,6 +19,8 @@ export interface PaymentReceipt {
   receiptFileUrl?: string;
   receiptFileName?: string;
   receiptStorageKey?: string;
+  providerAgency?: string;
+  providerResponsible?: string;
 }
 
 export interface ActivityRecord {

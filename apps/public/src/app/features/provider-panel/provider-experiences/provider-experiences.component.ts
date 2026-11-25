@@ -40,6 +40,7 @@ export class ProviderExperiencesComponent implements OnInit {
   }
   readonly searchQuery = signal('');
   readonly requests = this.store.providerExperienceRequests;
+  readonly isLoading = this.store.isExperiencesLoading;
   readonly newProposalLink = computed(() => {
     const isPanel =
       typeof window !== 'undefined' && window.location.pathname.includes('/prestadores/panel');

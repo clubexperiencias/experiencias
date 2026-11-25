@@ -5,6 +5,7 @@ import {
 } from '../models/activity-history.model';
 import { SUPABASE_CLIENT, isSupabaseConfigured } from '../supabase/supabase.client';
 import { StorageService } from './storage.service';
+import { getStoredUsdExchangeRate } from '../models/club-profile.model';
 
 const STORAGE_KEY = 'catamarca_club_activity_history';
 
@@ -39,6 +40,8 @@ export class ActivityHistoryService {
     const [
       { data: payments, error: paymentsError },
       { data: experiences, error: experiencesError },
+      { data: providers },
+      { data: clubProvider },
     ] = await Promise.all([
       this.supabase
         .from('pagos_transferencias')
@@ -46,6 +49,12 @@ export class ActivityHistoryService {
         .eq('email', email)
         .order('submitted_at', { ascending: false }),
       this.supabase.from('experiencias').select('*'),
+      this.supabase.from('prestadores').select('*'),
+      this.supabase
+        .from('prestadores')
+        .select('notes')
+        .eq('slug', 'club-de-experiencias')
+        .maybeSingle(),
     ]);
 
     if (paymentsError || experiencesError) {
@@ -56,12 +65,57 @@ export class ActivityHistoryService {
       return;
     }
 
-    const experienceById = new Map(
-      (experiences ?? []).map((experience) => [experience.id, experience]),
+    const providerById = new Map((providers ?? []).map((p: any) => [p.id, p]));
+    const providerByEmail = new Map(
+      (providers ?? []).map((p: any) => [p.email?.trim().toLowerCase(), p]),
     );
+
+    let remoteRate: number | undefined;
+    if (clubProvider?.notes) {
+      try {
+        const parsed = JSON.parse(clubProvider.notes);
+        if (typeof parsed?.usd_exchange_rate === 'number' && parsed.usd_exchange_rate > 0) {
+          remoteRate = Math.round(parsed.usd_exchange_rate);
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.setItem('catamarca_usd_exchange_rate_v1', String(remoteRate));
+            } catch {}
+          }
+        }
+      } catch {}
+    }
+    const rate = remoteRate || getStoredUsdExchangeRate();
+
+    const experienceByIdOrSlug = new Map<string, any>();
+    (experiences ?? []).forEach((exp: any) => {
+      if (exp.id) experienceByIdOrSlug.set(String(exp.id).trim(), exp);
+      if (exp.slug) experienceByIdOrSlug.set(String(exp.slug).trim().toLowerCase(), exp);
+    });
+
     this._activities.set(
       (payments ?? []).map((payment) => {
-        const experience = experienceById.get(payment.experience_id);
+        const experience =
+          experienceByIdOrSlug.get(String(payment.experience_id).trim()) ||
+          experienceByIdOrSlug.get(String(payment.experience_id).trim().toLowerCase());
+        const provider = experience?.provider_id
+          ? providerById.get(experience.provider_id)
+          : (experience?.provider_email
+            ? providerByEmail.get(experience.provider_email.trim().toLowerCase())
+            : (payment.provider_email ? providerByEmail.get(payment.provider_email.trim().toLowerCase()) : undefined));
+
+        const providerAgency =
+          experience?.provider_agency?.trim() ||
+          provider?.agency?.trim() ||
+          experience?.provider_name?.trim() ||
+          provider?.name?.trim() ||
+          'Club de Experiencias';
+
+        const providerResponsible =
+          provider?.name?.trim() ||
+          experience?.provider_name?.trim() ||
+          provider?.account_holder?.trim() ||
+          providerAgency;
+
         const rawDate = (payment.selected_date || payment.date)?.trim();
         let dateLabel = rawDate || 'A coordinar';
         if (rawDate && rawDate.toLowerCase() !== 'a coordinar') {
@@ -98,7 +152,7 @@ export class ActivityHistoryService {
                 : 'pendiente_pago',
           description: experience?.description ?? undefined,
           provider: {
-            name: experience?.short_title ?? payment.experience_title,
+            name: providerAgency,
             category: experience?.difficulty ?? 'Experiencia',
             contactPhone: '',
           },
@@ -109,7 +163,7 @@ export class ActivityHistoryService {
             gateway: isMp ? 'mercadopago' : 'custom',
             gatewayDisplayName: isMp ? 'Mercado Pago' : 'Transferencia bancaria',
             amountArs: payment.amount_ars,
-            amountUsd: 0,
+            amountUsd: rate > 0 ? Math.round(payment.amount_ars / rate) : 0,
             paidAt: new Date(payment.reviewed_at || payment.submitted_at).toLocaleString('es-AR'),
             paymentMethodSummary: isMp
               ? 'Mercado Pago · Pago acreditado online'
@@ -122,6 +176,8 @@ export class ActivityHistoryService {
             receiptFileUrl: payment.receipt_url || undefined,
             receiptFileName: payment.receipt_file_name,
             receiptStorageKey: payment.receipt_storage_key || payment.receipt_storage_path || undefined,
+            providerAgency,
+            providerResponsible,
             ...(payment.discount_code
               ? { discountCode: payment.discount_code, discountArs: payment.discount_ars ?? 0 }
               : {}),
@@ -134,8 +190,32 @@ export class ActivityHistoryService {
   }
 
   viewReceipt(receipt: PaymentReceipt): void {
-    this.selectedReceipt.set(receipt);
-    void this.resolveFreshReceiptUrl(receipt);
+    const rate = getStoredUsdExchangeRate();
+    const amountUsd =
+      receipt.amountUsd && receipt.amountUsd > 0
+        ? receipt.amountUsd
+        : (rate > 0 ? Math.round(receipt.amountArs / rate) : 0);
+
+    let providerAgency = receipt.providerAgency;
+    let providerResponsible = receipt.providerResponsible;
+    if (!providerAgency || !providerResponsible) {
+      const act = this._activities().find(
+        (a) => a.receipt.receiptNumber === receipt.receiptNumber,
+      );
+      if (act) {
+        providerAgency = providerAgency || act.receipt.providerAgency || act.provider.name;
+        providerResponsible = providerResponsible || act.receipt.providerResponsible || act.provider.name;
+      }
+    }
+
+    const updatedReceipt: PaymentReceipt = {
+      ...receipt,
+      amountUsd,
+      providerAgency,
+      providerResponsible,
+    };
+    this.selectedReceipt.set(updatedReceipt);
+    void this.resolveFreshReceiptUrl(updatedReceipt);
   }
 
   private async resolveFreshReceiptUrl(receipt: PaymentReceipt): Promise<void> {

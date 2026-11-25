@@ -109,6 +109,7 @@ CREATE TABLE IF NOT EXISTS public.prestadores (
   tier                    TEXT NOT NULL DEFAULT 'emergente' CHECK (tier IN ('emergente', 'pleno', 'fundador')),
   rubro                   TEXT NOT NULL DEFAULT '',
   verified                BOOLEAN NOT NULL DEFAULT false,
+  is_club_official        BOOLEAN NOT NULL DEFAULT false,
   rating_score            NUMERIC(3,2) NOT NULL DEFAULT 5.00 CHECK (rating_score >= 1.0 AND rating_score <= 5.0),
   rating_count            INTEGER NOT NULL DEFAULT 0 CHECK (rating_count >= 0),
   cbu_alias               TEXT NOT NULL DEFAULT '',
@@ -116,6 +117,7 @@ CREATE TABLE IF NOT EXISTS public.prestadores (
   bank_name               TEXT NOT NULL DEFAULT '',
   account_holder          TEXT NOT NULL DEFAULT '',
   phone                   TEXT NOT NULL DEFAULT '',
+  address                 TEXT NOT NULL DEFAULT '',
   website                 TEXT NOT NULL DEFAULT '',
   social_media            TEXT NOT NULL DEFAULT '',
   social_media_secondary  TEXT NOT NULL DEFAULT '',
@@ -131,23 +133,29 @@ CREATE TABLE IF NOT EXISTS public.prestadores (
   updated_at              TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Migraciones seguras para instancias existentes
+ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS address TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.prestadores ADD COLUMN IF NOT EXISTS is_club_official BOOLEAN NOT NULL DEFAULT false;
+
 CREATE INDEX IF NOT EXISTS idx_prestadores_email ON public.prestadores(email);
 CREATE INDEX IF NOT EXISTS idx_prestadores_tier ON public.prestadores(tier);
 CREATE INDEX IF NOT EXISTS idx_prestadores_rating ON public.prestadores(rating_score DESC, rating_count DESC);
+CREATE INDEX IF NOT EXISTS idx_prestadores_is_club_official ON public.prestadores(is_club_official) WHERE is_club_official = true;
 CREATE UNIQUE INDEX IF NOT EXISTS uq_prestadores_nonempty_slug
   ON public.prestadores(slug)
   WHERE slug IS NOT NULL AND slug <> '';
 
 -- Cuenta Oficial del Club de Experiencias como Prestador Institucional
 INSERT INTO public.prestadores (
-  email, name, agency, slug, phone, cbu_alias, cuit_dni, bank_name, account_holder, bio, website, active, status,
-  tier, rubro, verified, rating_score, rating_count
+  email, name, agency, slug, phone, address, cbu_alias, cuit_dni, bank_name, account_holder, bio, website, active, status,
+  tier, rubro, verified, is_club_official, rating_score, rating_count
 ) VALUES (
   'admin@experiencias.club',
   'Club de Experiencias',
   'Club de Experiencias',
   'club-de-experiencias',
   '+54 9 383 456-7890',
+  'San Fernando del Valle de Catamarca, Catamarca, Argentina',
   'EXPERIENCIAS.CLUB.MP',
   '30-71829401-4',
   'Mercado Pago / Banco Nación',
@@ -159,6 +167,7 @@ INSERT INTO public.prestadores (
   'fundador',
   'Operador Oficial del Club',
   true,
+  true,
   5.00,
   1
 ) ON CONFLICT (email) DO UPDATE SET
@@ -168,6 +177,8 @@ INSERT INTO public.prestadores (
   tier = 'fundador',
   rubro = COALESCE(NULLIF(public.prestadores.rubro, ''), 'Operador Oficial del Club'),
   verified = true,
+  is_club_official = true,
+  address = COALESCE(NULLIF(public.prestadores.address, ''), EXCLUDED.address),
   active = true,
   status = 'aprobado';
 
@@ -3265,7 +3276,50 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.get_club_public_profile()
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_row public.prestadores%ROWTYPE;
+BEGIN
+  SELECT * INTO v_row
+  FROM public.prestadores
+  WHERE slug = 'club-de-experiencias'
+     OR is_club_official = true
+     OR email IN ('admin@experiencias.club', 'hola@experiencias.club')
+  ORDER BY updated_at DESC
+  LIMIT 1;
+
+  IF v_row.id IS NULL THEN
+    RETURN NULL;
+  END IF;
+
+  RETURN jsonb_build_object(
+    'id', v_row.id,
+    'name', v_row.name,
+    'agency', v_row.agency,
+    'email', v_row.email,
+    'slug', v_row.slug,
+    'phone', v_row.phone,
+    'cbu_alias', v_row.cbu_alias,
+    'cuit_dni', v_row.cuit_dni,
+    'bank_name', v_row.bank_name,
+    'account_holder', v_row.account_holder,
+    'bio', v_row.bio,
+    'website', v_row.website,
+    'social_media', v_row.social_media,
+    'address', v_row.address,
+    'notes', v_row.notes,
+    'updated_at', v_row.updated_at
+  );
+END;
+$$;
+
 -- Permisos de ejecución de RPCs
+GRANT EXECUTE ON FUNCTION public.get_club_public_profile TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.record_waitlist_email TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_admin_socios_roster TO authenticated;
 GRANT EXECUTE ON FUNCTION public.check_email_registration_status TO anon, authenticated;
@@ -3437,7 +3491,7 @@ CREATE POLICY "Admins can update postulaciones_fundadores"
 
 -- 6.6 Política para permitir nuevas postulaciones en prestadores
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
-GRANT INSERT ON TABLE public.prestadores TO anon, authenticated;
+GRANT INSERT, SELECT ON TABLE public.prestadores TO anon, authenticated;
 GRANT SELECT ON public.administradores TO anon;
 GRANT SELECT ON public.experiencias TO anon;
 
@@ -3484,6 +3538,17 @@ CREATE POLICY "Prestadores can read own profile"
       WHERE LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email', ''))
         AND active = true
     )
+  );
+
+DROP POLICY IF EXISTS "Lectura publica del prestador oficial club" ON public.prestadores;
+CREATE POLICY "Lectura publica del prestador oficial club"
+  ON public.prestadores
+  FOR SELECT
+  TO anon, authenticated
+  USING (
+    slug = 'club-de-experiencias'
+    OR is_club_official = true
+    OR email IN ('admin@experiencias.club', 'hola@experiencias.club')
   );
 
 DROP POLICY IF EXISTS "Providers can update their own profile" ON public.prestadores;

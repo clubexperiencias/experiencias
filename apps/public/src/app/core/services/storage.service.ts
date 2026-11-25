@@ -42,6 +42,12 @@ export class StorageService {
       return storageKey;
     }
 
+    if (storageKey.startsWith('storage://comprobantes/')) {
+      storageKey = storageKey.replace('storage://comprobantes/', '');
+    } else if (storageKey.startsWith('receipt://comprobantes/')) {
+      storageKey = storageKey.replace('receipt://comprobantes/', '');
+    }
+
     // Si viene como URL de Supabase Storage (firmada previa o pública), extraer el storageKey del bucket comprobantes
     const match = storageKey.match(/\/storage\/v1\/object\/(?:sign|public|authenticated)\/comprobantes\/([^?#]+)/);
     if (match && match[1]) {
@@ -134,8 +140,12 @@ export class StorageService {
         resolvedUrl = (!signErr && signData?.signedUrl) ? signData.signedUrl : '';
       }
 
+      // Si no hay URL firmada (ej: usuario anónimo o socio sin permiso SELECT en bucket privado),
+      // proporcionar URI canónica del storage para que nunca viaje vacía a los RPC ni validaciones
+      const finalUrl = resolvedUrl || `storage://comprobantes/${storageKey}`;
+
       return {
-        url: resolvedUrl,
+        url: finalUrl,
         storageKey,
         provider: 'supabase',
       };

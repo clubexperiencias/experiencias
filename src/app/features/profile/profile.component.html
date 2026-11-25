@@ -226,6 +226,9 @@
               <div class="activity-actions">
                 <span class="receipt-amount-hint">${{ act.receipt.amountArs.toLocaleString('es-AR') }} ARS</span>
                 <div class="activity-btns-group">
+                  <button type="button" class="receipt-btn btn-receipt-doc" (click)="openReceipt(act.receipt, $event)">
+                    Ver Comprobante
+                  </button>
                   <a
                     [href]="getActivityGoogleCalendarUrl(act)"
                     target="_blank"
@@ -236,9 +239,6 @@
                   >
                     Agregar a Google Calendar
                   </a>
-                  <button type="button" class="receipt-btn btn-receipt-doc" (click)="openReceipt(act.receipt, $event)">
-                    Ver Comprobante
-                  </button>
                 </div>
               </div>
             </div>
