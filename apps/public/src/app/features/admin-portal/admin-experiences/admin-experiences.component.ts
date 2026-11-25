@@ -5554,12 +5554,6 @@ export class AdminExperiencesComponent implements OnInit {
         return;
       }
 
-      if (this.adminStore.members().length === 0) {
-        await this.adminStore.loadAllMembers();
-      }
-      if (token !== this.experienceFavoritesRequestToken) return;
-      const members = this.adminStore.members();
-
       const candidateKeys = Array.from(
         new Set(
           [exp.id, exp.slug, (exp as any).initialSlug, ...(exp.slugAliases || [])]
@@ -5575,13 +5569,21 @@ export class AdminExperiencesComponent implements OnInit {
         return;
       }
 
-      const { data, error } = await this.supabase
-        .from('experiencias_favoritas' as any)
-        .select('id, socio_id, socio_email, experience_id, created_at')
-        .in('experience_id', candidateKeys)
-        .order('created_at', { ascending: false });
+      // Consultar en paralelo tanto los registros de la tabla experiencias_favoritas
+      // como la nómina actualizada de socios del servidor para evitar snapshots en memoria desactualizados
+      const [favResult] = await Promise.all([
+        this.supabase
+          .from('experiencias_favoritas' as any)
+          .select('id, socio_id, socio_email, experience_id, created_at')
+          .in('experience_id', candidateKeys)
+          .order('created_at', { ascending: false }),
+        this.adminStore.loadAllMembers(),
+      ]);
 
       if (token !== this.experienceFavoritesRequestToken) return;
+
+      const { data, error } = favResult;
+      const members = this.adminStore.members();
 
       if (error) {
         this.detailFavoritedMembers.set([]);
@@ -5633,7 +5635,9 @@ export class AdminExperiencesComponent implements OnInit {
       const candidateKeysLower = candidateKeys.map((k) => k.toLowerCase().trim());
       for (const m of members) {
         if (
+          m.membershipTier === 'waitlist' ||
           m.membershipTier === 'dado_de_baja' ||
+          (m as any).type === 'waitlist' ||
           (m as any).status === 'dado_de_baja'
         ) {
           continue;

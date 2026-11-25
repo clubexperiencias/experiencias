@@ -512,6 +512,7 @@ export class FavoritesService {
         const { data, error } = await (this.supabase as any).rpc('toggle_experiencia_favorita', {
           p_experience_id: targetId,
           ...(memberEmail ? { p_socio_email: memberEmail } : {}),
+          p_is_favorite: isAdding,
         });
         if (!error && data) {
           rpcSucceeded = true;
@@ -519,10 +520,13 @@ export class FavoritesService {
             this.experienceService.updateFavoritesCount(targetId, data.favorites_count);
           }
         } else if (error) {
-          // Reintentar sin p_socio_email por si la firma remota sólo espera 1 parámetro
+          // Reintentar sin p_socio_email pero manteniendo el estado esperado p_is_favorite para idempotencia
           const { data: dataRetry, error: retryErr } = await (this.supabase as any).rpc(
             'toggle_experiencia_favorita',
-            { p_experience_id: targetId }
+            {
+              p_experience_id: targetId,
+              p_is_favorite: isAdding,
+            }
           );
           if (!retryErr && dataRetry) {
             rpcSucceeded = true;

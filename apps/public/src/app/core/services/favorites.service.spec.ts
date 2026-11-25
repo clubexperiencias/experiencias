@@ -275,6 +275,8 @@ describe('FavoritesService', () => {
 
     expect(mockSupabase.rpc).toHaveBeenCalledWith('toggle_experiencia_favorita', {
       p_experience_id: 'exp-kayak-1',
+      p_socio_email: 'socio@experiencias.club',
+      p_is_favorite: false,
     });
 
     await new Promise((r) => setTimeout(r, 20));
