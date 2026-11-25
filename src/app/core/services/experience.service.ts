@@ -2519,7 +2519,7 @@ export class ExperienceService {
         >();
         let providerMpMap = new Map<
           string,
-          { connected: boolean; collectorId?: string }
+          { connected?: boolean; collectorId?: string }
         >();
         try {
           const { data: sessionData } = await this.supabase.auth.getSession();
@@ -2531,14 +2531,25 @@ export class ExperienceService {
               for (const row of accessRows) {
                 const rowEmail = (row?.email || '').trim().toLowerCase();
                 const rowId = (row?.id || '').trim();
-                let isConn = Boolean((row as any).mp_connected);
-                let colId = (row as any).mp_collector_id ? String((row as any).mp_collector_id) : undefined;
+                let isConn: boolean | undefined =
+                  (row as any).mp_connected !== undefined
+                    ? Boolean((row as any).mp_connected)
+                    : undefined;
+                let colId: string | undefined = (row as any).mp_collector_id
+                  ? String((row as any).mp_collector_id).trim()
+                  : undefined;
                 if (row.notes) {
                   try {
                     const parsed = typeof row.notes === 'string' ? JSON.parse(row.notes) : row.notes;
-                    if (parsed?.mp_connected !== undefined) isConn = Boolean(parsed.mp_connected);
-                    if (parsed?.mp_collector_id) colId = String(parsed.mp_collector_id);
+                    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                      if (parsed.mp_connected !== undefined) isConn = Boolean(parsed.mp_connected);
+                      if (parsed.mp_collector_id) colId = String(parsed.mp_collector_id).trim();
+                    }
                   } catch { }
+                }
+                if (colId && colId.startsWith('mp-col-')) {
+                  colId = undefined;
+                  if (isConn === true) isConn = false;
                 }
                 const mpInfo = { connected: isConn, collectorId: colId };
                 if (rowEmail) {
@@ -2782,6 +2793,10 @@ export class ExperienceService {
               return undefined;
             })(),
             mpConnected: (() => {
+              if (!isClub) {
+                const provMp = (exp.provider_id ? providerMpMap.get(exp.provider_id) : undefined) || (email ? providerMpMap.get(email) : undefined);
+                if (provMp?.connected !== undefined) return provMp.connected;
+              }
               let fromNotes: boolean | undefined = undefined;
               try {
                 if (exp.notes && typeof exp.notes === 'object' && !Array.isArray(exp.notes)) {
@@ -2796,13 +2811,13 @@ export class ExperienceService {
                 }
               } catch { }
               if (fromNotes !== undefined) return fromNotes;
-              if (!isClub) {
-                const provMp = (exp.provider_id ? providerMpMap.get(exp.provider_id) : undefined) || (email ? providerMpMap.get(email) : undefined);
-                if (provMp?.connected) return true;
-              }
               return undefined;
             })(),
             mpCollectorId: (() => {
+              if (!isClub) {
+                const provMp = (exp.provider_id ? providerMpMap.get(exp.provider_id) : undefined) || (email ? providerMpMap.get(email) : undefined);
+                if (provMp?.collectorId) return provMp.collectorId;
+              }
               let fromNotes: string | undefined = undefined;
               try {
                 if (exp.notes && typeof exp.notes === 'object' && !Array.isArray(exp.notes)) {
@@ -2816,11 +2831,7 @@ export class ExperienceService {
                   }
                 }
               } catch { }
-              if (fromNotes) return fromNotes;
-              if (!isClub) {
-                const provMp = (exp.provider_id ? providerMpMap.get(exp.provider_id) : undefined) || (email ? providerMpMap.get(email) : undefined);
-                if (provMp?.collectorId) return provMp.collectorId;
-              }
+              if (fromNotes && !fromNotes.startsWith('mp-col-')) return fromNotes;
               return undefined;
             })(),
             reviewedAt: exp.reviewed_at || undefined,
@@ -2837,8 +2848,8 @@ export class ExperienceService {
         // Fin procesamiento de experiencias remotas
 
         const currentLocal = this._experiences();
-        const remoteIds = new Set(remoteExperiences.map((e) => e.id.toLowerCase()));
-        const remoteSlugs = new Set(remoteExperiences.map((e) => e.slug.toLowerCase()));
+        const remoteIds = new Set(remoteExperiences.map((e) => (e.id || '').toLowerCase()));
+        const remoteSlugs = new Set(remoteExperiences.map((e) => (e.slug || '').toLowerCase()));
         const deletedIds = this.getDeletedIds();
 
         // Preservar experiencias locales (pendientes de sincronización no presentes en remoto ni borradas remotamente)

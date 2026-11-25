@@ -3773,7 +3773,7 @@ export class AdminDashboardComponent {
         }
       }
     }
-    const isExcludedSurveyKey = (key: string) => SURVEY_INTEREST_KEYS.has(key) && !publishedSlugSet.has(key);
+    const isExcludedSurveyKey = (key: string) => SURVEY_INTEREST_KEYS.has(key);
 
     for (const m of members) {
       // Ignorar registros de lista de espera y dados de baja (sus respuestas son de la encuesta de registro)

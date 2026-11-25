@@ -45,6 +45,7 @@ export class FavoritesService {
   readonly lastFavoritedToast = signal<FavoriteToastInfo | null>(null);
   private toastTimer: ReturnType<typeof setTimeout> | null = null;
   private lastMergedMemberIdentity: string | null = null;
+  private sessionGeneration = 0;
 
   constructor() {
     // Sincronizar automáticamente con el perfil del socio cuando esté autenticado.
@@ -56,6 +57,7 @@ export class FavoritesService {
 
       // Si no hay socio autenticado, limpiar la lista en memoria
       if (!member || !memberIdentity) {
+        this.sessionGeneration++;
         if (this.activeMemberIdentity !== null || this._favoriteSlugs().length > 0) {
           this.activeMemberIdentity = null;
           this.lastMergedMemberIdentity = null;
@@ -69,6 +71,7 @@ export class FavoritesService {
 
       // Si cambió el socio autenticado, recargar la lista en memoria para el nuevo socio
       if (memberIdentity !== this.activeMemberIdentity) {
+        this.sessionGeneration++;
         this.activeMemberIdentity = memberIdentity;
         this.lastMergedMemberIdentity = null;
         untracked(() => {
@@ -88,6 +91,7 @@ export class FavoritesService {
             this.mergeMemberWishlist(wishlist, memberIdentity);
           });
         }
+        void this.syncRemoteFavoritesFromSupabase(memberIdentity);
       }
     });
 
@@ -257,8 +261,8 @@ export class FavoritesService {
       const normLower = norm.toLowerCase();
       if (!norm) continue;
 
-      // Ignorar opciones genéricas de la encuesta de registro a menos que representen una experiencia genuina
-      if (this.isSurveyOnly(normLower)) {
+      // Opciones genéricas de la encuesta de registro nunca se importan como favoritos de experiencias
+      if (SURVEY_INTEREST_KEYS.has(normLower) || this.isSurveyOnly(normLower)) {
         continue;
       }
 
@@ -308,10 +312,54 @@ export class FavoritesService {
     if (!this.newsletter.isSubscribed()) return false;
     if (!expOrKey) return false;
     if (typeof expOrKey === 'object' && expOrKey.isLocked) return false;
-    const key = typeof expOrKey === 'string' ? expOrKey.trim().toLowerCase() : (expOrKey.slug || expOrKey.id || '').trim().toLowerCase();
+
+    const slugs = this._favoriteSlugs();
+    if (slugs.length === 0) return false;
+    const slugSet = new Set(slugs.map((s) => s.toLowerCase()));
+
+    if (typeof expOrKey === 'object') {
+      const expSlug = (expOrKey.slug || '').trim().toLowerCase();
+      const expId = (expOrKey.id || '').trim().toLowerCase();
+      if (expSlug && !this.isSurveyOnly(expSlug) && slugSet.has(expSlug)) return true;
+      if (expId && !this.isSurveyOnly(expId) && slugSet.has(expId)) return true;
+
+      const all = this.experienceService.experiences();
+      if (Array.isArray(all) && all.length > 0) {
+        const match = all.find(
+          (e) =>
+            (expId && (e.id || '').toLowerCase() === expId) ||
+            (expSlug && (e.slug || '').toLowerCase() === expSlug),
+        );
+        if (match) {
+          const mSlug = (match.slug || '').toLowerCase();
+          const mId = (match.id || '').toLowerCase();
+          if (mSlug && !this.isSurveyOnly(mSlug) && slugSet.has(mSlug)) return true;
+          if (mId && !this.isSurveyOnly(mId) && slugSet.has(mId)) return true;
+        }
+      }
+      return false;
+    }
+
+    const key = expOrKey.trim().toLowerCase();
     if (!key || key === 'proximamente' || key === 'proximamente-valle-catamarca' || key === 'exp-coming-soon' || key === 'exp-coming-soon-catalog') return false;
     if (this.isSurveyOnly(key)) return false;
-    return this._favoriteSlugs().some((s) => s.toLowerCase() === key);
+
+    if (slugSet.has(key)) return true;
+
+    const all = this.experienceService.experiences();
+    if (Array.isArray(all) && all.length > 0) {
+      const match = all.find(
+        (e) => (e.slug || '').toLowerCase() === key || (e.id || '').toLowerCase() === key,
+      );
+      if (match) {
+        const mSlug = (match.slug || '').toLowerCase();
+        const mId = (match.id || '').toLowerCase();
+        if (mSlug && !this.isSurveyOnly(mSlug) && slugSet.has(mSlug)) return true;
+        if (mId && !this.isSurveyOnly(mId) && slugSet.has(mId)) return true;
+      }
+    }
+
+    return false;
   }
 
   toggleFavorite(exp: Experience, event?: Event): boolean {
@@ -336,20 +384,27 @@ export class FavoritesService {
     }
 
     const current = this._favoriteSlugs();
-    const isFav = this.isFavorite(slug);
+    const isFav = this.isFavorite(exp);
     let updated: string[];
 
     if (isFav) {
       // Quitar de favoritos
       this.recordRemoval(slug);
       if (exp.id && exp.id !== slug) this.recordRemoval(exp.id);
+      if (exp.slug && exp.slug !== slug) this.recordRemoval(exp.slug);
 
-      updated = current.filter(
-        (s) =>
-          s.toLowerCase() !== slug.toLowerCase() &&
-          s.toLowerCase() !== (exp.id || '').toLowerCase() &&
-          s.toLowerCase() !== (exp.slug || '').toLowerCase(),
-      );
+      const expSlugLower = (exp.slug || '').toLowerCase();
+      const expIdLower = (exp.id || '').toLowerCase();
+      const slugLower = slug.toLowerCase();
+
+      updated = current.filter((s) => {
+        const sLower = s.toLowerCase();
+        return (
+          sLower !== slugLower &&
+          (!expIdLower || sLower !== expIdLower) &&
+          (!expSlugLower || sLower !== expSlugLower)
+        );
+      });
       this._favoriteSlugs.set(updated);
       this.persistFavorites(updated);
       this.syncWithMemberProfile(updated);
@@ -365,6 +420,7 @@ export class FavoritesService {
       // Agregar a favoritos
       this.clearRemoval(slug);
       if (exp.id && exp.id !== slug) this.clearRemoval(exp.id);
+      if (exp.slug && exp.slug !== slug) this.clearRemoval(exp.slug);
 
       updated = [...current, slug];
       this._favoriteSlugs.set(updated);
@@ -391,14 +447,21 @@ export class FavoritesService {
     if (!slug) return;
     this.recordRemoval(slug);
     if (exp.id && exp.id !== slug) this.recordRemoval(exp.id);
+    if (exp.slug && exp.slug !== slug) this.recordRemoval(exp.slug);
 
     const current = this._favoriteSlugs();
-    const updated = current.filter(
-      (s) =>
-        s.toLowerCase() !== slug.toLowerCase() &&
-        s.toLowerCase() !== (exp.id || '').toLowerCase() &&
-        s.toLowerCase() !== (exp.slug || '').toLowerCase(),
-    );
+    const expSlugLower = (exp.slug || '').toLowerCase();
+    const expIdLower = (exp.id || '').toLowerCase();
+    const slugLower = slug.toLowerCase();
+
+    const updated = current.filter((s) => {
+      const sLower = s.toLowerCase();
+      return (
+        sLower !== slugLower &&
+        (!expIdLower || sLower !== expIdLower) &&
+        (!expSlugLower || sLower !== expSlugLower)
+      );
+    });
     this._favoriteSlugs.set(updated);
     this.persistFavorites(updated);
     this.syncWithMemberProfile(updated);
@@ -442,6 +505,122 @@ export class FavoritesService {
         console.warn('[FavoritesService] Error calling toggle_experiencia_favorita:', err);
       }
     })();
+  }
+
+  async syncRemoteFavoritesFromSupabase(identity?: string | null): Promise<void> {
+    if (!this.supabase || !this.newsletter.isSubscribed()) return;
+
+    const requestGeneration = this.sessionGeneration;
+    const member = this.newsletter.currentMember();
+    const targetEmail = (
+      (member?.email ? member.email : '') ||
+      (identity && identity.includes('@') ? identity : '') ||
+      (this.activeMemberIdentity && this.activeMemberIdentity.includes('@') ? this.activeMemberIdentity : '')
+    ).trim().toLowerCase();
+
+    if (!targetEmail) return;
+
+    try {
+      const { data, error } = await (this.supabase as any)
+        .from('experiencias_favoritas')
+        .select('experience_id, socio_email')
+        .eq('socio_email', targetEmail);
+
+      if (this.sessionGeneration !== requestGeneration) return;
+      if (this.activeMemberIdentity !== targetEmail) return;
+
+      if (!error && Array.isArray(data)) {
+        if (this.sessionGeneration !== requestGeneration) return;
+        if (this.activeMemberIdentity !== targetEmail) return;
+
+        const catalog = this.experienceService.experiences();
+        const hasCatalog = Array.isArray(catalog) && catalog.length > 0;
+
+        const remoteKeys = data
+          .filter((r: any) => {
+            if (!r || !r.experience_id) return false;
+            if (r.socio_email) {
+              return String(r.socio_email).trim().toLowerCase() === targetEmail;
+            }
+            return true;
+          })
+          .map((r: any) => {
+            const rawId = (r.experience_id || '').trim();
+            if (!rawId) return '';
+            if (hasCatalog) {
+              const rawLower = rawId.toLowerCase();
+              const match = catalog.find(
+                (e) => (e.id || '').toLowerCase() === rawLower || (e.slug || '').toLowerCase() === rawLower,
+              );
+              if (match) {
+                return (match.slug || match.id || rawId).trim();
+              }
+            }
+            return rawId;
+          })
+          .filter((k: string) => k.length > 0 && !SURVEY_INTEREST_KEYS.has(k.toLowerCase()));
+
+        if (remoteKeys.length > 0) {
+          const current = new Set(this._favoriteSlugs());
+          const currentLower = new Set(Array.from(current).map((s) => s.toLowerCase()));
+          const removed = this._removedSlugs();
+          let changed = false;
+
+          for (const key of remoteKeys) {
+            const keyLower = key.toLowerCase();
+
+            // Si el usuario eliminó explícitamente esta experiencia, no re-agregarla
+            let isRemoved = removed.has(keyLower);
+            let match: Experience | undefined;
+            if (hasCatalog) {
+              match = catalog.find(
+                (e) => (e.id || '').toLowerCase() === keyLower || (e.slug || '').toLowerCase() === keyLower,
+              );
+              if (match) {
+                const matchSlugLower = (match.slug || '').toLowerCase();
+                const matchIdLower = (match.id || '').toLowerCase();
+                if (
+                  (Boolean(matchSlugLower) && removed.has(matchSlugLower)) ||
+                  (Boolean(matchIdLower) && removed.has(matchIdLower))
+                ) {
+                  isRemoved = true;
+                }
+              }
+            }
+
+            if (isRemoved) {
+              continue;
+            }
+
+            let alreadyPresent = currentLower.has(keyLower);
+
+            if (!alreadyPresent && match) {
+              const matchSlugLower = (match.slug || '').toLowerCase();
+              const matchIdLower = (match.id || '').toLowerCase();
+              alreadyPresent =
+                (Boolean(matchSlugLower) && currentLower.has(matchSlugLower)) ||
+                (Boolean(matchIdLower) && currentLower.has(matchIdLower));
+            }
+
+            if (!alreadyPresent) {
+              current.add(key);
+              currentLower.add(keyLower);
+              changed = true;
+            }
+          }
+          if (changed) {
+            if (this.sessionGeneration !== requestGeneration) return;
+            if (this.activeMemberIdentity !== targetEmail) return;
+
+            const list = Array.from(current);
+            this._favoriteSlugs.set(list);
+            this.persistFavorites(list, identity !== undefined ? identity : this.activeMemberIdentity);
+          }
+        }
+      }
+    } catch {
+      // silent
+    }
   }
 
   showToast(info: FavoriteToastInfo): void {

@@ -942,7 +942,7 @@ const CLUB_AVATAR_FALLBACK = '/assets/images/kayak-video.png';
                       <!-- Acciones -->
                       <td class="text-right">
                         <div class="actions-row">
-                          @if ((item.origin === 'official' || item.status === 'aprobado') && item.slug) {
+                          @if (item.origin === 'official' || item.status === 'aprobado') {
                             <a
                               [routerLink]="getDetailRoute(item)"
                               class="btn-view-fiche"
@@ -3303,6 +3303,49 @@ export class AdminProvidersComponent implements OnInit {
       .replace(/[^a-z0-9-]+/g, '-')
       .replace(/(^-|-$)+/g, '');
 
+    if (cleanSlug === 'club-de-experiencias' || cleanSlug === 'club' || normalizedSlug === 'club-de-experiencias') {
+      const canonical =
+        this.store.providerStore.getProviderBySlug('club-de-experiencias') ||
+        this.store.providerStore.getProviderBySlug(cleanSlug) ||
+        this.store.providerStore.getProviderBySlug(normalizedSlug) ||
+        (() => {
+          const allProviders = (
+            typeof (this.store as any).allRegisteredProviders === 'function'
+              ? (this.store as any).allRegisteredProviders()
+              : this.store.providerStore.providers()
+          ) as ProviderUser[];
+          return allProviders.find(
+            (p) =>
+              (p.slug &&
+                (p.slug.toLowerCase().trim() === 'club-de-experiencias' ||
+                  p.slug.toLowerCase().trim() === cleanSlug ||
+                  p.slug.toLowerCase().trim() === normalizedSlug)) ||
+              (p.email && p.email.toLowerCase().trim() === 'admin@experiencias.club'),
+          );
+        })();
+
+      if (canonical) return canonical;
+
+      const club = this.store.clubProfile();
+      return {
+        id: 'prov-club',
+        name: club.name || 'Club de Experiencias',
+        agency: club.name || 'Club de Experiencias',
+        email: club.email || 'admin@experiencias.club',
+        phone: club.phone || '',
+        slug: 'club-de-experiencias',
+        bio: club.bio || 'Cuenta oficial del Club de Experiencias.',
+        cuitDni: club.cuitDni || '',
+        cbuAlias: club.cbuAlias || '',
+        bankName: club.bankName || '',
+        verified: true,
+        status: 'aprobado',
+        role: 'prestador',
+        avatar: '/assets/images/kayak-video.png',
+        joinedAt: '2024-01-01T00:00:00Z',
+      };
+    }
+
     provider =
       this.store.providerStore.getProviderBySlug(normalizedSlug) ||
       this.store.providerStore.getProviderById(slug) ||
@@ -3310,6 +3353,22 @@ export class AdminProvidersComponent implements OnInit {
       this.store.providerStore.getProviderByEmail(slug);
 
     if (provider) return provider;
+
+    const allProviders = (
+      typeof (this.store as any).allRegisteredProviders === 'function'
+        ? (this.store as any).allRegisteredProviders()
+        : this.store.providerStore.providers()
+    ) as ProviderUser[];
+
+    const foundInAll = allProviders.find(
+      (p) =>
+        (p.slug && (p.slug.toLowerCase().trim() === cleanSlug || p.slug.toLowerCase().trim() === normalizedSlug)) ||
+        (p.id && (p.id.toLowerCase().trim() === cleanSlug || p.id.toLowerCase().trim() === normalizedSlug)) ||
+        (p.email && p.email.toLowerCase().trim() === cleanSlug) ||
+        (Boolean(p.name) && (slugify(p.name) === cleanSlug || slugify(p.name) === normalizedSlug)) ||
+        (Boolean(p.agency) && (slugify(p.agency) === cleanSlug || slugify(p.agency) === normalizedSlug))
+    );
+    if (foundInAll) return foundInAll;
 
     const app = this.store.applications().find(
       (a: any) =>

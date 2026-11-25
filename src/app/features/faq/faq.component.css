@@ -79,8 +79,31 @@
   justify-content: center;
 }
 
+.faq-hero-block.manifesto-active .hero-content {
+  max-width: 100%;
+}
+
 .faq-hero-block .manifesto-view {
+  width: 100%;
+  max-width: 100%;
   margin: 0 auto;
+}
+
+.faq-hero-block .manifesto-card {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(74, 85, 104, 0.38);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 212, 42, 0.38);
+  border-radius: 4px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+  text-align: center;
+}
+
+.faq-hero-block .manifesto-title,
+.faq-hero-block .manifesto-body {
+  text-align: center;
 }
 
 /* ==========================================================================
@@ -89,9 +112,9 @@
 .faq-section-card {
   width: 100%;
   box-sizing: border-box;
-  background: rgba(74, 85, 104, 0.82);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(74, 85, 104, 0.38);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 212, 42, 0.38);
   border-radius: 4px;
   padding: clamp(1.6rem, 4vw, 2.8rem);
@@ -450,7 +473,7 @@
   display: flex;
   align-items: center;
   gap: 1.25rem;
-  background: rgba(14, 28, 42, 0.48);
+  background: rgba(14, 28, 42, 0.25);
   border: 1px solid rgba(255, 212, 42, 0.35);
   border-radius: 4px;
   padding: 1.4rem 1.6rem;
@@ -550,7 +573,7 @@
    ========================================================================== */
 .fav-toast-banner.is-construction-toast {
   position: fixed;
-  bottom: 5.5rem;
+  bottom: 2rem !important;
   right: 2rem;
   z-index: 99999;
   display: flex;
@@ -701,7 +724,7 @@
   .fav-toast-banner.is-construction-toast {
     left: 1rem;
     right: 1rem;
-    bottom: 1rem;
+    bottom: 1rem !important;
     max-width: none;
     flex-direction: column;
     align-items: stretch;

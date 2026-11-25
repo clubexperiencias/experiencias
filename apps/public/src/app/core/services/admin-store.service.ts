@@ -60,6 +60,9 @@ export interface AdminApplication {
   cuitDni?: string;
   bankName?: string;
   accountHolder?: string;
+  mpConnected?: boolean;
+  mpCollectorId?: string;
+  mpNickname?: string;
 }
 
 const STORAGE_KEYS = {
@@ -224,6 +227,9 @@ export class AdminStoreService {
           accountHolder: p.accountHolder || matchingApp.accountHolder || '',
           agency: p.agency || matchingApp.agency || '',
           name: p.name || matchingApp.fullName || 'Prestador',
+          mpConnected: p.mpConnected !== undefined ? p.mpConnected : matchingApp.mpConnected,
+          mpCollectorId: p.mpCollectorId || matchingApp.mpCollectorId,
+          mpNickname: p.mpNickname || matchingApp.mpNickname,
         });
       } else {
         list.push(p);
@@ -268,6 +274,9 @@ export class AdminStoreService {
         tier: app.tier || 'emergente',
         region: app.region,
         rubro: app.category,
+        mpConnected: app.mpConnected,
+        mpCollectorId: app.mpCollectorId,
+        mpNickname: app.mpNickname,
       });
     }
 
@@ -410,6 +419,9 @@ export class AdminStoreService {
   });
 
   constructor() {
+    this.providerStore.onProviderUpdated = (provider, updates) => {
+      this.syncApplicationMpFromProvider(provider.email, updates);
+    };
     void this.initStore();
   }
 
@@ -1778,6 +1790,37 @@ export class AdminStoreService {
                   ? 'dado_de_baja'
                   : 'pendiente';
 
+          let mpConnected = false;
+          let mpCollectorId: string | undefined = undefined;
+          let mpNickname: string | undefined = undefined;
+
+          if (p.notes) {
+            try {
+              const parsed = typeof p.notes === 'string' ? JSON.parse(p.notes) : p.notes;
+              if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                const notesCollectorId = parsed.mp_collector_id ? String(parsed.mp_collector_id).trim() : undefined;
+                const isNotesSynthetic = notesCollectorId ? notesCollectorId.startsWith('mp-col-') : false;
+
+                if (notesCollectorId && !isNotesSynthetic) {
+                  mpCollectorId = notesCollectorId;
+                  mpConnected = Boolean(parsed.mp_connected && mpCollectorId);
+                }
+                if (parsed.mp_nickname) mpNickname = String(parsed.mp_nickname).trim();
+              }
+            } catch { }
+          }
+
+          const topCollectorId = (p as any).mp_collector_id ? String((p as any).mp_collector_id).trim() : undefined;
+          const isTopSynthetic = topCollectorId ? topCollectorId.startsWith('mp-col-') : false;
+
+          if (!mpConnected && (p as any).mp_connected && topCollectorId && !isTopSynthetic) {
+            mpConnected = true;
+            mpCollectorId = topCollectorId;
+          }
+          if (!mpNickname && (p as any).mp_nickname) {
+            mpNickname = String((p as any).mp_nickname).trim();
+          }
+
           return {
             id: p.id,
             type: 'prestador' as const,
@@ -1796,6 +1839,9 @@ export class AdminStoreService {
             bankName: p.bank_name || undefined,
             tier: (p.tier as any) || 'emergente',
             createdAt: p.created_at || new Date().toISOString(),
+            mpConnected,
+            mpCollectorId,
+            mpNickname,
           };
         });
 
@@ -2000,6 +2046,25 @@ export class AdminStoreService {
       list.filter(
         (a) => a.type !== 'prestador' || (a.email || '').toLowerCase().trim() !== clean,
       ),
+    );
+    this.persistApplications(this._applications());
+  }
+
+  syncApplicationMpFromProvider(email: string, updates: Partial<ProviderUser>): void {
+    const clean = (email || '').toLowerCase().trim();
+    if (!clean) return;
+    this._applications.update((list) =>
+      list.map((a) => {
+        if (a.type === 'prestador' && (a.email || '').toLowerCase().trim() === clean) {
+          return {
+            ...a,
+            ...(updates.mpConnected !== undefined ? { mpConnected: updates.mpConnected } : {}),
+            ...(updates.mpCollectorId !== undefined ? { mpCollectorId: updates.mpCollectorId } : {}),
+            ...(updates.mpNickname !== undefined ? { mpNickname: updates.mpNickname } : {}),
+          };
+        }
+        return a;
+      }),
     );
     this.persistApplications(this._applications());
   }

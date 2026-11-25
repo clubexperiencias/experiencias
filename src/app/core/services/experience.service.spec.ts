@@ -1906,5 +1906,180 @@ describe('ExperienceService', () => {
       expect(exp?.mpConnected).toBe(true);
       expect(exp?.mpCollectorId).toBe('99887766');
     });
+
+    it('should preserve experience notes mpConnected when provider connection value is absent', async () => {
+      mockSupabase.auth.getSession.mockResolvedValue({
+        data: { session: { user: { email: 'admin@experiencias.club' } } },
+      });
+
+      const remoteExperiences = [
+        {
+          id: 'exp-absent-prov-mp',
+          slug: 'exp-absent-prov-mp',
+          title: 'Exp Con Proveedor Sin MP',
+          provider_email: 'guia-sin-mp@example.com',
+          provider_id: 'prov-uuid-no-mp',
+          status: 'publicada',
+          notes: JSON.stringify({ mp_connected: true, mp_collector_id: 'exp-col-123' }),
+        },
+      ];
+
+      const prestadoresSelectSpy = vi.fn().mockResolvedValue({
+        data: [
+          {
+            id: 'prov-uuid-no-mp',
+            email: 'guia-sin-mp@example.com',
+            notes: null, // No MP config on provider
+          },
+        ],
+        error: null,
+      });
+
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === 'experiencias') {
+          return {
+            select: vi.fn().mockReturnValue({
+              order: vi.fn().mockResolvedValue({ data: remoteExperiences, error: null }),
+            }),
+          };
+        }
+        if (table === 'prestadores') {
+          return {
+            select: prestadoresSelectSpy,
+          };
+        }
+        return {
+          select: vi.fn().mockReturnValue({
+            order: vi.fn().mockResolvedValue({ data: [], error: null }),
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+            }),
+          }),
+        };
+      });
+
+      await (service as any).loadFromSupabase();
+
+      const exp = service.experiences().find((e) => e.id === 'exp-absent-prov-mp');
+      expect(exp).toBeDefined();
+      expect(exp?.mpConnected).toBe(true);
+      expect(exp?.mpCollectorId).toBe('exp-col-123');
+    });
+
+    it('should let explicit provider mpConnected override experience notes', async () => {
+      mockSupabase.auth.getSession.mockResolvedValue({
+        data: { session: { user: { email: 'admin@experiencias.club' } } },
+      });
+
+      const remoteExperiences = [
+        {
+          id: 'exp-explicit-override',
+          slug: 'exp-explicit-override',
+          title: 'Exp Override',
+          provider_email: 'guia-override@example.com',
+          provider_id: 'prov-uuid-override',
+          status: 'publicada',
+          notes: JSON.stringify({ mp_connected: true, mp_collector_id: 'exp-col-abc' }),
+        },
+      ];
+
+      const prestadoresSelectSpy = vi.fn().mockResolvedValue({
+        data: [
+          {
+            id: 'prov-uuid-override',
+            email: 'guia-override@example.com',
+            notes: JSON.stringify({ mp_connected: false }), // Explicitly false
+          },
+        ],
+        error: null,
+      });
+
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === 'experiencias') {
+          return {
+            select: vi.fn().mockReturnValue({
+              order: vi.fn().mockResolvedValue({ data: remoteExperiences, error: null }),
+            }),
+          };
+        }
+        if (table === 'prestadores') {
+          return {
+            select: prestadoresSelectSpy,
+          };
+        }
+        return {
+          select: vi.fn().mockReturnValue({
+            order: vi.fn().mockResolvedValue({ data: [], error: null }),
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+            }),
+          }),
+        };
+      });
+
+      await (service as any).loadFromSupabase();
+
+      const exp = service.experiences().find((e) => e.id === 'exp-explicit-override');
+      expect(exp).toBeDefined();
+      expect(exp?.mpConnected).toBe(false);
+    });
+
+    it('should reject synthetic provider collector ID', async () => {
+      mockSupabase.auth.getSession.mockResolvedValue({
+        data: { session: { user: { email: 'admin@experiencias.club' } } },
+      });
+
+      const remoteExperiences = [
+        {
+          id: 'exp-synth-prov',
+          slug: 'exp-synth-prov',
+          title: 'Exp Synth Prov',
+          provider_email: 'guia-synth@example.com',
+          provider_id: 'prov-uuid-synth',
+          status: 'publicada',
+        },
+      ];
+
+      const prestadoresSelectSpy = vi.fn().mockResolvedValue({
+        data: [
+          {
+            id: 'prov-uuid-synth',
+            email: 'guia-synth@example.com',
+            notes: JSON.stringify({ mp_connected: true, mp_collector_id: 'mp-col-demo' }),
+          },
+        ],
+        error: null,
+      });
+
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === 'experiencias') {
+          return {
+            select: vi.fn().mockReturnValue({
+              order: vi.fn().mockResolvedValue({ data: remoteExperiences, error: null }),
+            }),
+          };
+        }
+        if (table === 'prestadores') {
+          return {
+            select: prestadoresSelectSpy,
+          };
+        }
+        return {
+          select: vi.fn().mockReturnValue({
+            order: vi.fn().mockResolvedValue({ data: [], error: null }),
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+            }),
+          }),
+        };
+      });
+
+      await (service as any).loadFromSupabase();
+
+      const exp = service.experiences().find((e) => e.id === 'exp-synth-prov');
+      expect(exp).toBeDefined();
+      expect(exp?.mpConnected).toBe(false);
+      expect(exp?.mpCollectorId).toBeUndefined();
+    });
   });
 });

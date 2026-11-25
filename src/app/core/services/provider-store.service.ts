@@ -275,6 +275,8 @@ export class ProviderStoreService {
   readonly providers = this._providers.asReadonly();
   readonly deletedProviderIds = this._deletedProviderIds.asReadonly();
 
+  onProviderUpdated?: (provider: ProviderUser, updates: Partial<ProviderUser>) => void;
+
   recordDeletedProvider(id?: string, email?: string): void {
     const next = new Set(this._deletedProviderIds());
     if (id) next.add(id.toLowerCase().trim());
@@ -446,8 +448,8 @@ export class ProviderStoreService {
       byId.set(exp.id, {
         ...exp,
         mpConnected:
-          exp.mpConnected !== undefined ? exp.mpConnected : (provider.mpConnected || false),
-        mpCollectorId: exp.mpCollectorId || provider.mpCollectorId || '',
+          provider.mpConnected !== undefined ? Boolean(provider.mpConnected) : (exp.mpConnected || false),
+        mpCollectorId: provider.mpCollectorId || exp.mpCollectorId || '',
       });
     }
 
@@ -461,8 +463,8 @@ export class ProviderStoreService {
         status: isPendingModeration && existing ? existing.status : mapped.status,
         moderation: existing?.moderation || mapped.moderation,
         mpConnected:
-          mapped.mpConnected !== undefined ? mapped.mpConnected : (provider.mpConnected || false),
-        mpCollectorId: mapped.mpCollectorId || provider.mpCollectorId || '',
+          provider.mpConnected !== undefined ? Boolean(provider.mpConnected) : (mapped.mpConnected || false),
+        mpCollectorId: provider.mpCollectorId || mapped.mpCollectorId || '',
       });
     }
 
@@ -1194,6 +1196,14 @@ export class ProviderStoreService {
     this.saveSession(updated);
     this.saveProviders();
 
+    if (typeof this.onProviderUpdated === 'function') {
+      try {
+        this.onProviderUpdated(updated, updates);
+      } catch (err) {
+        console.warn('[ProviderStore] Error notificando actualización de perfil de prestador:', err);
+      }
+    }
+
     if (
       (updates.agency !== undefined && updates.agency.trim()) ||
       (updates.slug !== undefined && updates.slug.trim())
@@ -1573,6 +1583,14 @@ export class ProviderStoreService {
       list.map((p) => (p.id === current.id || p.email.toLowerCase() === email ? updated : p)),
     );
     this.saveProviders();
+
+    if (typeof this.onProviderUpdated === 'function') {
+      try {
+        this.onProviderUpdated(updated, updates);
+      } catch (err) {
+        console.warn('[ProviderStore] Error notificando actualización de prestador:', err);
+      }
+    }
 
     if (this._currentProvider()?.email.toLowerCase() === email) {
       this._currentProvider.set(updated);
@@ -1977,8 +1995,8 @@ export class ProviderStoreService {
     return {
       ...exp,
       mpConnected:
-        exp.mpConnected !== undefined ? exp.mpConnected : (provider.mpConnected || false),
-      mpCollectorId: exp.mpCollectorId || provider.mpCollectorId || '',
+        provider.mpConnected !== undefined ? Boolean(provider.mpConnected) : (exp.mpConnected || false),
+      mpCollectorId: provider.mpCollectorId || exp.mpCollectorId || '',
     };
   }
 

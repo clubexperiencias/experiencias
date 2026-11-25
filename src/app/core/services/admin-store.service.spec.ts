@@ -45,6 +45,7 @@ describe('AdminStoreService - Provider Status Update Flow', () => {
       reloadFromStorage: vi.fn(),
       syncClubProviderProfile: vi.fn(),
       isProviderDeleted: vi.fn().mockReturnValue(false),
+      loadProposalsFromSupabase: vi.fn().mockResolvedValue(undefined),
     };
 
     TestBed.configureTestingModule({
@@ -913,6 +914,222 @@ describe('AdminStoreService - Provider Status Update Flow', () => {
       expect(prov?.cuitDni).toBe('20-11223344-9');
       expect(prov?.bankName).toBe('Banco Macro');
       expect(prov?.agency).toBe('Aventuras Duales');
+    });
+
+    it('should propagate mpConnected, mpCollectorId, and mpNickname to allRegisteredProviders', () => {
+      (adminStore as any)._applications.set([
+        {
+          id: 'app-prov-mp',
+          type: 'prestador',
+          fullName: 'Guía con Mercado Pago',
+          email: 'guiamp@test.com',
+          phone: '+5493834999999',
+          status: 'aprobado',
+          mpConnected: true,
+          mpCollectorId: 'MP-COLLECTOR-12345',
+          mpNickname: 'Guia MP Oficial',
+        },
+      ]);
+
+      const registered = adminStore.allRegisteredProviders();
+      const prov = registered.find((p) => p.email === 'guiamp@test.com');
+      expect(prov).toBeDefined();
+      expect(prov?.mpConnected).toBe(true);
+      expect(prov?.mpCollectorId).toBe('MP-COLLECTOR-12345');
+      expect(prov?.mpNickname).toBe('Guia MP Oficial');
+    });
+
+    it('should prioritize provider live mpConnected over stale application mpConnected in allRegisteredProviders', () => {
+      const mockProvStore = (adminStore as any).providerStore;
+      mockProvStore.providers.set([
+        {
+          id: 'prov-live-mp',
+          email: 'live@prestador.com',
+          name: 'Prestador Live',
+          status: 'aprobado',
+          mpConnected: true,
+          mpCollectorId: 'MP-LIVE-COLLECTOR',
+          mpNickname: 'Live Nickname',
+        },
+      ]);
+
+      (adminStore as any)._applications.set([
+        {
+          id: 'app-stale-mp',
+          type: 'prestador',
+          email: 'live@prestador.com',
+          fullName: 'Prestador Live App',
+          status: 'aprobado',
+          mpConnected: false,
+          mpCollectorId: 'MP-STALE-COLLECTOR',
+          mpNickname: 'Stale Nickname',
+        },
+      ]);
+
+      const registered = adminStore.allRegisteredProviders();
+      const prov = registered.find((p) => p.email === 'live@prestador.com');
+      expect(prov).toBeDefined();
+      expect(prov?.mpConnected).toBe(true);
+      expect(prov?.mpCollectorId).toBe('MP-LIVE-COLLECTOR');
+      expect(prov?.mpNickname).toBe('Live Nickname');
+    });
+
+    it('should synchronize application mp fields when provider is updated', () => {
+      const mockProvStore = (adminStore as any).providerStore;
+      (adminStore as any)._applications.set([
+        {
+          id: 'app-sync-test',
+          type: 'prestador',
+          email: 'test-sync@prestador.com',
+          fullName: 'Prestador Sync App',
+          status: 'aprobado',
+          mpConnected: false,
+          mpCollectorId: '',
+        },
+      ]);
+
+      expect(typeof mockProvStore.onProviderUpdated).toBe('function');
+      mockProvStore.onProviderUpdated(
+        { email: 'test-sync@prestador.com' },
+        {
+          mpConnected: true,
+          mpCollectorId: 'COLLECTOR-SYNCED-123',
+          mpNickname: 'Nickname Synced',
+        },
+      );
+
+      const apps = (adminStore as any)._applications();
+      const matchingApp = apps.find((a: any) => a.email === 'test-sync@prestador.com');
+      expect(matchingApp).toBeDefined();
+      expect(matchingApp.mpConnected).toBe(true);
+      expect(matchingApp.mpCollectorId).toBe('COLLECTOR-SYNCED-123');
+      expect(matchingApp.mpNickname).toBe('Nickname Synced');
+    });
+
+    describe('loadAllApplications - Mercado Pago synthetic collector ID rejection', () => {
+      it('should reject synthetic collector ID in notes and keep mpConnected false', async () => {
+        mockSupabase.from = vi.fn((table: string) => ({
+          select: vi.fn().mockReturnValue({
+            order: vi.fn().mockImplementation(() => {
+              if (table === 'prestadores') {
+                return Promise.resolve({
+                  data: [
+                    {
+                      id: 'prov-synth-notes',
+                      name: 'Synth Notes Provider',
+                      email: 'synth-notes@test.com',
+                      status: 'aprobado',
+                      notes: JSON.stringify({
+                        mp_connected: true,
+                        mp_collector_id: 'mp-col-demo-123',
+                        mp_nickname: 'Demo Collector',
+                      }),
+                    },
+                  ],
+                  error: null,
+                });
+              }
+              return Promise.resolve({ data: [], error: null });
+            }),
+          }),
+        }));
+
+        await adminStore.loadAllApplications();
+
+        const apps = (adminStore as any)._applications();
+        const app = apps.find((a: any) => a.id === 'prov-synth-notes');
+        expect(app).toBeDefined();
+        expect(app.mpConnected).toBe(false);
+        expect(app.mpCollectorId).toBeUndefined();
+        expect(app.mpNickname).toBe('Demo Collector');
+      });
+
+      it('should reject synthetic collector ID in top-level fields and keep mpConnected false', async () => {
+        mockSupabase.from = vi.fn((table: string) => ({
+          select: vi.fn().mockReturnValue({
+            order: vi.fn().mockImplementation(() => {
+              if (table === 'prestadores') {
+                return Promise.resolve({
+                  data: [
+                    {
+                      id: 'prov-synth-top',
+                      name: 'Synth Top Provider',
+                      email: 'synth-top@test.com',
+                      status: 'aprobado',
+                      mp_connected: true,
+                      mp_collector_id: 'mp-col-fallback-999',
+                      mp_nickname: 'Demo Fallback',
+                    },
+                  ],
+                  error: null,
+                });
+              }
+              return Promise.resolve({ data: [], error: null });
+            }),
+          }),
+        }));
+
+        await adminStore.loadAllApplications();
+
+        const apps = (adminStore as any)._applications();
+        const app = apps.find((a: any) => a.id === 'prov-synth-top');
+        expect(app).toBeDefined();
+        expect(app.mpConnected).toBe(false);
+        expect(app.mpCollectorId).toBeUndefined();
+        expect(app.mpNickname).toBe('Demo Fallback');
+      });
+
+      it('should accept valid non-synthetic collector ID in notes or top-level and set mpConnected true', async () => {
+        mockSupabase.from = vi.fn((table: string) => ({
+          select: vi.fn().mockReturnValue({
+            order: vi.fn().mockImplementation(() => {
+              if (table === 'prestadores') {
+                return Promise.resolve({
+                  data: [
+                    {
+                      id: 'prov-valid-notes',
+                      name: 'Valid Provider Notes',
+                      email: 'valid-notes@test.com',
+                      status: 'aprobado',
+                      notes: JSON.stringify({
+                        mp_connected: true,
+                        mp_collector_id: '123456789',
+                        mp_nickname: 'Valid MP',
+                      }),
+                    },
+                    {
+                      id: 'prov-valid-top',
+                      name: 'Valid Provider Top',
+                      email: 'valid-top@test.com',
+                      status: 'aprobado',
+                      mp_connected: true,
+                      mp_collector_id: '987654321',
+                      mp_nickname: 'Valid Top MP',
+                    },
+                  ],
+                  error: null,
+                });
+              }
+              return Promise.resolve({ data: [], error: null });
+            }),
+          }),
+        }));
+
+        await adminStore.loadAllApplications();
+
+        const apps = (adminStore as any)._applications();
+        const appNotes = apps.find((a: any) => a.id === 'prov-valid-notes');
+        expect(appNotes).toBeDefined();
+        expect(appNotes.mpConnected).toBe(true);
+        expect(appNotes.mpCollectorId).toBe('123456789');
+        expect(appNotes.mpNickname).toBe('Valid MP');
+
+        const appTop = apps.find((a: any) => a.id === 'prov-valid-top');
+        expect(appTop).toBeDefined();
+        expect(appTop.mpConnected).toBe(true);
+        expect(appTop.mpCollectorId).toBe('987654321');
+        expect(appTop.mpNickname).toBe('Valid Top MP');
+      });
     });
   });
 });
