@@ -298,6 +298,7 @@ export class ExperienceService {
   private readonly _experiences = signal<Experience[]>(this.loadInitialExperiences());
   private readonly _hasRemoteExperiences = signal(false);
   private readonly _isLoading = signal<boolean>(isSupabaseConfigured());
+  private pendingLoadsCount = 0;
 
   readonly experiences = this._experiences.asReadonly();
   readonly isLoading = this._isLoading.asReadonly();
@@ -2427,6 +2428,7 @@ export class ExperienceService {
   }
 
   private async loadFromSupabase(): Promise<boolean> {
+    this.pendingLoadsCount++;
     this._isLoading.set(true);
     try {
       const baseColumns =
@@ -2880,7 +2882,10 @@ export class ExperienceService {
       console.warn('[ExperienceService] Error cargando desde Supabase:', err);
       return false;
     } finally {
-      this._isLoading.set(false);
+      this.pendingLoadsCount = Math.max(0, this.pendingLoadsCount - 1);
+      if (this.pendingLoadsCount === 0) {
+        this._isLoading.set(false);
+      }
     }
   }
 }

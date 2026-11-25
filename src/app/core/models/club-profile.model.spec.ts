@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_CLUB_PROFILE,
+  getStoredUsdExchangeRate,
   isClubExperience,
   isClubProvider,
 } from './club-profile.model';
@@ -98,6 +99,36 @@ describe('ClubProfile Model Helpers', () => {
           slug: 'guia-catamarca',
         })
       ).toBe(false);
+    });
+  });
+
+  describe('getStoredUsdExchangeRate', () => {
+    it('returns rate from standalone localStorage key first', () => {
+      localStorage.setItem('catamarca_usd_exchange_rate_v1', '1250');
+      localStorage.setItem(
+        'catamarca_club_official_profile_v1',
+        JSON.stringify({ usdExchangeRate: 1100 })
+      );
+      expect(getStoredUsdExchangeRate()).toBe(1250);
+      localStorage.removeItem('catamarca_usd_exchange_rate_v1');
+      localStorage.removeItem('catamarca_club_official_profile_v1');
+    });
+
+    it('falls back to official profile in localStorage when standalone is absent', () => {
+      localStorage.removeItem('catamarca_usd_exchange_rate_v1');
+      localStorage.setItem(
+        'catamarca_club_official_profile_v1',
+        JSON.stringify({ usdExchangeRate: 1150 })
+      );
+      expect(getStoredUsdExchangeRate()).toBe(1150);
+      localStorage.removeItem('catamarca_club_official_profile_v1');
+    });
+
+    it('returns default rate when no stored values exist', () => {
+      localStorage.removeItem('catamarca_usd_exchange_rate_v1');
+      localStorage.removeItem('catamarca_club_official_profile_v1');
+      localStorage.removeItem('catamarca_club_profile_v1');
+      expect(getStoredUsdExchangeRate()).toBe(DEFAULT_CLUB_PROFILE.usdExchangeRate);
     });
   });
 });

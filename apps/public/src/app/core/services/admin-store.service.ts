@@ -347,17 +347,20 @@ export class AdminStoreService {
     const totalRevenue = confirmedRevenue + pendingRevenue;
     const totalEnrolled = approvedSubs.reduce((sum, s) => sum + (Number(s.participants) || 0), 0);
 
+    const memberEmails = new Set(list.map((m) => (m.email || '').toLowerCase().trim()).filter(Boolean));
     const convertedEmails = new Set<string>();
     for (const m of converted) {
-      if (m.email) convertedEmails.add(m.email.toLowerCase().trim());
+      const email = (m.email || '').toLowerCase().trim();
+      if (email) convertedEmails.add(email);
     }
     for (const s of subs) {
-      if (s.email && s.status !== 'rechazado') {
-        convertedEmails.add(s.email.toLowerCase().trim());
+      const email = (s.email || '').toLowerCase().trim();
+      if (email && s.status !== 'rechazado' && memberEmails.has(email)) {
+        convertedEmails.add(email);
       }
     }
     const totalConverted = Math.max(converted.length, convertedEmails.size);
-    const conversionRate = list.length > 0 ? Math.round((totalConverted / list.length) * 100) : 0;
+    const conversionRate = list.length > 0 ? Math.min(100, Math.round((totalConverted / list.length) * 100)) : 0;
 
     // Métricas temporales (Día, Semana, Mes)
     const now = new Date();

@@ -151,6 +151,7 @@ export function mapLiveExperienceToProvider(live: Experience): ProviderExperienc
     slugAliases: live.slugAliases,
     providerId: isClub ? 'provider-oficial' : (live.providerId || (live.providerEmail ? `provider-${live.providerEmail}` : 'provider-oficial')),
     providerName: live.providerName || (isClub ? 'Club de Experiencias' : ''),
+    providerAgency: live.providerAgency || (isClub ? 'Club de Experiencias' : undefined),
     providerEmail: live.providerEmail,
     providerSlug: live.providerSlug,
     providerPhone: live.providerPhone,
@@ -3907,6 +3908,10 @@ export class ProviderStoreService {
     const isMp = submission.paymentMethod === 'mercadopago' || Boolean(submission.mpPaymentId);
     const isApprovedMp = submission.status === 'aprobado' && isMp;
 
+    const provider =
+      (experience.providerId ? this.getProviderById(experience.providerId) : undefined) ||
+      (experience.providerEmail ? this.getProviderByEmail(experience.providerEmail) : undefined);
+
     this.activities.addActivity({
       id: `act_${submission.id}`,
       slug: `${experience.slug}-${submission.reference.toLowerCase()}`,
@@ -3949,10 +3954,12 @@ export class ProviderStoreService {
           : submission.reference,
         status: isApprovedMp ? 'aprobado' : 'pendiente_verificacion',
         providerAgency:
+          provider?.agency ||
           experience.providerAgency ||
           experience.providerName ||
           'Club de Experiencias',
         providerResponsible:
+          provider?.name ||
           experience.providerName ||
           experience.providerAgency ||
           'Equipo de Guías del Club',

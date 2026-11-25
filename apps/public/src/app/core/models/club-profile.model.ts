@@ -43,7 +43,9 @@ export function getStoredUsdExchangeRate(): number {
       const stored = localStorage.getItem('catamarca_usd_exchange_rate_v1');
       const num = Number(stored);
       if (num && num > 0) return num;
-      const profileRaw = localStorage.getItem('catamarca_club_profile_v1');
+      const profileRaw =
+        localStorage.getItem('catamarca_club_official_profile_v1') ||
+        localStorage.getItem('catamarca_club_profile_v1');
       if (profileRaw) {
         const parsed = JSON.parse(profileRaw);
         if (parsed?.usdExchangeRate && parsed.usdExchangeRate > 0) {

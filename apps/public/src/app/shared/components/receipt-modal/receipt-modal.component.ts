@@ -55,6 +55,8 @@ export class ReceiptModalComponent {
       console.warn('[ReceiptModal] Error al descargar archivo directamente vía fetch:', err);
       const link = document.createElement('a');
       link.href = url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
       link.download = fileName || 'comprobante.jpg';
       document.body.appendChild(link);
       link.click();

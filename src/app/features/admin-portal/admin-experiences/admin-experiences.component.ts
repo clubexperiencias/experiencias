@@ -5616,26 +5616,23 @@ export class AdminExperiencesComponent implements OnInit {
       const initialSlug = ((exp as any).initialSlug || '').trim();
       const aliases = (exp.slugAliases || []).map((a: string) => (a || '').trim()).filter(Boolean);
 
-      const candidateKeys = Array.from(
-        new Set(
-          [
-            expId,
-            expSlug,
-            expSlug.replace(/^exp-/, ''),
-            `exp-${expSlug}`,
-            expId.replace(/^exp-/, ''),
-            `exp-${expId}`,
-            initialSlug,
-            initialSlug.replace(/^exp-/, ''),
-            `exp-${initialSlug}`,
-            ...aliases,
-            ...aliases.map((a: string) => a.replace(/^exp-/, '')),
-            ...aliases.map((a: string) => `exp-${a}`),
-          ]
-            .filter((k): k is string => typeof k === 'string' && k.trim().length > 0)
-            .map((k) => k.trim())
-        )
-      );
+      const keys = new Set<string>();
+      if (expId) keys.add(expId);
+      if (expSlug) keys.add(expSlug);
+      if (initialSlug) keys.add(initialSlug);
+      for (const a of aliases) {
+        if (a) keys.add(a);
+      }
+
+      // Aplicar conversión de prefijo heredado solo si el ID y el slug confirman la misma experiencia
+      if (expId && expSlug) {
+        if (expId === `exp-${expSlug}` || `exp-${expId}` === expSlug) {
+          keys.add(expId);
+          keys.add(expSlug);
+        }
+      }
+
+      const candidateKeys = Array.from(keys);
 
       if (candidateKeys.length === 0) {
         if (token !== this.experienceFavoritesRequestToken) return;
