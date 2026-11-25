@@ -1359,9 +1359,9 @@
 
 .activity-title-link:hover,
 .activity-title-link:focus-visible {
-  color: #ffffff;
+  color: #ffcc00;
   text-decoration: underline;
-  text-decoration-color: #ffffff;
+  text-decoration-color: #ffcc00;
 }
 
 .activity-card:hover .activity-title-link {
@@ -1371,8 +1371,8 @@
 
 .activity-card:hover .activity-title-link:hover,
 .activity-card:hover .activity-title-link:focus-visible {
-  color: #000000;
-  text-decoration-color: #000000;
+  color: #ffcc00;
+  text-decoration-color: #ffcc00;
 }
 
 .activity-provider {
@@ -2028,24 +2028,25 @@
 
 .testimonial-actions-row {
   display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 1rem;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  gap: 0.75rem;
 }
 
 .btn-save-testimonial {
-  display: inline-flex;
+  display: flex;
+  width: 100%;
   align-items: center;
   justify-content: center;
-  margin-left: auto;
+  margin-left: 0;
   background: #d99b00;
   color: #ffffff !important;
   border: 1px solid rgba(255, 212, 42, 0.4);
-  border-radius: 4px;
-  padding: 0.75rem 1.6rem;
+  border-radius: 2px;
+  padding: 0.85rem 1.6rem;
   font-family: var(--font-sans);
-  font-size: 0.9rem;
+  font-size: 0.92rem;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s ease;

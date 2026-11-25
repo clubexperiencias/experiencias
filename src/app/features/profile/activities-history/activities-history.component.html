@@ -138,27 +138,15 @@
                     class="receipt-btn"
                     title="Agregar esta experiencia a Google Calendar"
                   >
-                    <span>Google Calendar</span>
+                    <span>Agregar a Google Calendar</span>
                   </a>
                   <button
                     type="button"
                     class="receipt-btn btn-receipt-doc"
                     (click)="openReceipt(act.receipt)"
                   >
-                    <span>Comprobante</span>
+                    <span>Ver Comprobante</span>
                   </button>
-                  @if (act.receipt.receiptFileUrl) {
-                    <a
-                      [href]="act.receipt.receiptFileUrl"
-                      [download]="act.receipt.receiptFileName || 'comprobante.jpg'"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="receipt-btn btn-receipt-download"
-                      title="Descargar archivo transferido"
-                    >
-                      <span>Descargar Archivo</span>
-                    </a>
-                  }
                 </div>
               </div>
             </article>
