@@ -135,5 +135,29 @@ describe('StorageService', () => {
     expect(result.url).toContain('https://prod-project.supabase.co/storage');
     expect(mockSupabase.storage.from).toHaveBeenCalledWith('comprobantes');
   });
+
+  it('no debería retornar el storageKey como URL si la generación de URL firmada falla en uploadReceipt', async () => {
+    const mockFile = new File(['file content'], 'comprobante.jpg', { type: 'image/jpeg' });
+    mockSupabase.storage.from().createSignedUrl.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'sign error' },
+    });
+
+    const result = await service.uploadReceipt(mockFile, 'PAY');
+
+    expect(result.provider).toBe('supabase');
+    expect(result.url).toBe('');
+    expect(result.storageKey).toMatch(/PAY-/);
+  });
+
+  it('debería resolver URL firmada fresca a partir de un storageKey o URL previa', async () => {
+    const freshUrl = await service.getSignedReceiptUrl('2026-11/PAY-123-rec.jpg');
+    expect(freshUrl).toContain('test/comprobante.jpg?token=abc');
+
+    const fromOldUrl = await service.getSignedReceiptUrl(
+      'https://prod-project.supabase.co/storage/v1/object/sign/comprobantes/2026-11/PAY-123-rec.jpg?token=old'
+    );
+    expect(fromOldUrl).toContain('test/comprobante.jpg?token=abc');
+  });
 });
 

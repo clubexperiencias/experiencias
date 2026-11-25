@@ -215,10 +215,6 @@
     justify-content: flex-start;
   }
 
-  .pay-transfer-box .pay-discount-block {
-    padding: 0 1rem 0.85rem;
-  }
-
   .pay-transfer-box .pay-transfer-detail {
     padding: 0.85rem 1rem;
   }
@@ -409,15 +405,9 @@
   color: var(--color-gold, #ffd42a);
 }
 
-.pay-transfer-box .pay-discount-block {
-  margin-top: 0;
-  padding: 0 1.2rem 0.85rem;
-  background: transparent;
-}
-
 .pay-transfer-box .pay-cbu-row {
   background: transparent;
-  border-top: 0;
+  border-top: 1px solid var(--glass-border);
 }
 
 .pay-transfer-box .pay-transfer-detail {
@@ -707,6 +697,10 @@
   gap: 0.8rem;
 }
 
+.pay-actions-row .cta-primary-btn {
+  text-transform: none;
+}
+
 .pay-whatsapp-btn {
   display: inline-flex;
   align-items: center;
@@ -718,7 +712,7 @@
   font-size: 0.88rem;
   font-weight: 700;
   letter-spacing: 0.04em;
-  text-transform: uppercase;
+  text-transform: none;
   text-decoration: none;
   border-radius: 4px;
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -841,6 +835,15 @@
   flex-direction: column;
   gap: 0.5rem;
   margin-top: 1.25rem;
+}
+
+.pay-label-optional {
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: var(--color-text-muted);
+  text-transform: none;
+  letter-spacing: normal;
+  margin-left: 0.35rem;
 }
 
 .pay-discount-row {

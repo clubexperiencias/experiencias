@@ -1780,8 +1780,8 @@ DECLARE
   v_reserved INTEGER := 0;
   v_inserted public.pagos_transferencias%ROWTYPE;
 BEGIN
-  IF v_email = '' OR TRIM(COALESCE(p_full_name, '')) = '' OR TRIM(COALESCE(p_receipt_url, '')) = '' THEN
-    RETURN jsonb_build_object('status', 'invalid_input');
+  IF v_email = '' OR TRIM(COALESCE(p_full_name, '')) = '' OR (TRIM(COALESCE(p_receipt_url, '')) = '' AND TRIM(COALESCE(p_receipt_storage_key, '')) = '') THEN
+    RETURN jsonb_build_object('status', 'invalid_input', 'message', 'Completá todos los campos obligatorios del pago.');
   END IF;
 
   IF auth.uid() IS NULL
@@ -2009,8 +2009,8 @@ BEGIN
     p_receipt_file_name,
     p_receipt_mime_type,
     p_receipt_size_bytes,
-    p_receipt_url,
-    COALESCE(p_receipt_storage_key, p_receipt_url),
+    COALESCE(NULLIF(TRIM(p_receipt_url), ''), NULLIF(TRIM(p_receipt_storage_key), ''), ''),
+    COALESCE(NULLIF(TRIM(p_receipt_storage_key), ''), NULLIF(TRIM(p_receipt_url), ''), ''),
     p_receipt_storage_provider,
     'pendiente'
   )

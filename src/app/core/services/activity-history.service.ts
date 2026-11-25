@@ -4,6 +4,7 @@ import {
   PaymentReceipt,
 } from '../models/activity-history.model';
 import { SUPABASE_CLIENT, isSupabaseConfigured } from '../supabase/supabase.client';
+import { StorageService } from './storage.service';
 
 const STORAGE_KEY = 'catamarca_club_activity_history';
 
@@ -12,6 +13,7 @@ const STORAGE_KEY = 'catamarca_club_activity_history';
 })
 export class ActivityHistoryService {
   private readonly supabase = inject(SUPABASE_CLIENT);
+  private readonly storageService = inject(StorageService);
   private readonly _activities = signal<ActivityRecord[]>([]);
   readonly activities = this._activities.asReadonly();
 
@@ -117,8 +119,9 @@ export class ActivityHistoryService {
             authCode:
               isMp && payment.receipt_storage_key ? payment.receipt_storage_key : payment.reference,
             status: payment.status === 'aprobado' ? 'aprobado' : 'pendiente_verificacion',
-            receiptFileUrl: payment.receipt_url,
+            receiptFileUrl: payment.receipt_url || undefined,
             receiptFileName: payment.receipt_file_name,
+            receiptStorageKey: payment.receipt_storage_key || payment.receipt_storage_path || undefined,
             ...(payment.discount_code
               ? { discountCode: payment.discount_code, discountArs: payment.discount_ars ?? 0 }
               : {}),
@@ -132,6 +135,24 @@ export class ActivityHistoryService {
 
   viewReceipt(receipt: PaymentReceipt): void {
     this.selectedReceipt.set(receipt);
+    void this.resolveFreshReceiptUrl(receipt);
+  }
+
+  private async resolveFreshReceiptUrl(receipt: PaymentReceipt): Promise<void> {
+    const keyOrUrl = receipt.receiptStorageKey || receipt.receiptFileUrl;
+    if (!keyOrUrl) return;
+
+    try {
+      const freshUrl = await this.storageService.getSignedReceiptUrl(keyOrUrl);
+      if (freshUrl && this.selectedReceipt()?.receiptNumber === receipt.receiptNumber) {
+        this.selectedReceipt.set({
+          ...this.selectedReceipt()!,
+          receiptFileUrl: freshUrl,
+        });
+      }
+    } catch (err) {
+      console.warn('[ActivityHistoryService] Error al refrescar URL firmada:', err);
+    }
   }
 
   closeReceipt(): void {

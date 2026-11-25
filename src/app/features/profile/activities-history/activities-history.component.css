@@ -512,9 +512,9 @@
 
 .activity-title-link:hover,
 .activity-title-link:focus-visible {
-  color: #ffffff;
+  color: #ffcc00;
   text-decoration: underline;
-  text-decoration-color: #ffffff;
+  text-decoration-color: #ffcc00;
 }
 
 .activity-card:hover .activity-title-link {
@@ -524,8 +524,8 @@
 
 .activity-card:hover .activity-title-link:hover,
 .activity-card:hover .activity-title-link:focus-visible {
-  color: #000000;
-  text-decoration-color: #000000;
+  color: #ffcc00;
+  text-decoration-color: #ffcc00;
 }
 
 .activity-provider {

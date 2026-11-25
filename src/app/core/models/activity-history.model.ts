@@ -18,6 +18,7 @@ export interface PaymentReceipt {
   discountArs?: number;
   receiptFileUrl?: string;
   receiptFileName?: string;
+  receiptStorageKey?: string;
 }
 
 export interface ActivityRecord {

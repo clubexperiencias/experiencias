@@ -33,16 +33,24 @@ export class StorageService {
   /**
    * Resuelve una URL firmada fresca y autorizada para acceder a un comprobante privado.
    */
-  async getSignedReceiptUrl(storageKey: string, expiresIn = 3600): Promise<string> {
-    if (!storageKey) return '';
-    if (
-      storageKey.startsWith('http://') ||
-      storageKey.startsWith('https://') ||
-      storageKey.startsWith('data:') ||
-      storageKey.startsWith('blob:')
-    ) {
+  async getSignedReceiptUrl(storageKeyOrUrl: string, expiresIn = 3600): Promise<string> {
+    if (!storageKeyOrUrl) return '';
+    let storageKey = storageKeyOrUrl.trim();
+
+    // Si es un Blob URL o Data URL local (desarrollo/offline), es directamente usable
+    if (storageKey.startsWith('blob:') || storageKey.startsWith('data:')) {
       return storageKey;
     }
+
+    // Si viene como URL de Supabase Storage (firmada previa o pública), extraer el storageKey del bucket comprobantes
+    const match = storageKey.match(/\/storage\/v1\/object\/(?:sign|public|authenticated)\/comprobantes\/([^?#]+)/);
+    if (match && match[1]) {
+      storageKey = decodeURIComponent(match[1]);
+    } else if (storageKey.startsWith('http://') || storageKey.startsWith('https://')) {
+      // Si es una URL http(s) externa que no pertenece al bucket comprobantes de supabase, retornarla directamente
+      return storageKey;
+    }
+
     if (!isSupabaseConfigured()) {
       return '';
     }
@@ -117,7 +125,7 @@ export class StorageService {
         const { data: pubData } = this.supabase.storage
           .from('experiencias')
           .getPublicUrl(storageKey);
-        resolvedUrl = pubData?.publicUrl || storageKey;
+        resolvedUrl = pubData?.publicUrl || '';
       } else {
         // En comprobantes (privado), generar URL firmada temporal sin exponer acceso público
         const { data: signData, error: signErr } = await this.supabase.storage
